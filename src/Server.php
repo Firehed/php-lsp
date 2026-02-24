@@ -1,0 +1,74 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp;
+
+use Firehed\PhpLsp\Handler\HandlerInterface;
+use Firehed\PhpLsp\Handler\LifecycleHandler;
+use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Protocol\ResponseError;
+use Firehed\PhpLsp\Protocol\ResponseMessage;
+use Firehed\PhpLsp\Transport\TransportInterface;
+
+final class Server
+{
+    private LifecycleHandler $lifecycleHandler;
+
+    /** @var list<HandlerInterface> */
+    private array $handlers = [];
+
+    public function __construct(
+        private TransportInterface $transport,
+        ServerInfo $serverInfo,
+    ) {
+        $this->lifecycleHandler = new LifecycleHandler($serverInfo);
+        $this->handlers[] = $this->lifecycleHandler;
+    }
+
+    public function run(): int
+    {
+        while (($message = $this->transport->read()) !== null) {
+            $result = null;
+            $error = null;
+
+            $handler = $this->findHandler($message->method);
+
+            if ($handler !== null) {
+                $result = $handler->handle($message);
+            } elseif ($message instanceof RequestMessage) {
+                $error = ResponseError::methodNotFound($message->method);
+            }
+
+            // Send response for requests (not notifications)
+            if ($message instanceof RequestMessage) {
+                if ($error !== null) {
+                    $response = ResponseMessage::error($message->id, $error);
+                } else {
+                    $response = ResponseMessage::success($message->id, $result);
+                }
+                $this->transport->write($response);
+            }
+
+            // Check for exit
+            $exitCode = $this->lifecycleHandler->getExitCode();
+            if ($exitCode !== null) {
+                $this->transport->close();
+                return $exitCode;
+            }
+        }
+
+        $this->transport->close();
+        return 1;
+    }
+
+    private function findHandler(string $method): ?HandlerInterface
+    {
+        foreach ($this->handlers as $handler) {
+            if ($handler->supports($method)) {
+                return $handler;
+            }
+        }
+        return null;
+    }
+}

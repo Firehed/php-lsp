@@ -1,0 +1,16 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Firehed\PhpLsp\Server;
+use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Transport\StdioTransport;
+
+$serverInfo = new ServerInfo('php-lsp', '0.1.0');
+$transport = new StdioTransport();
+$server = new Server($transport, $serverInfo);
+
+exit($server->run());
