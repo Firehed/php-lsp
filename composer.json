@@ -1,0 +1,45 @@
+{
+    "name": "firehed/php-lsp",
+    "description": "A minimal, performant Language Server Protocol server for PHP",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Eric Stern",
+            "email": "eric@ericstern.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "amphp/amp": "^3.0",
+        "amphp/byte-stream": "^2.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Firehed\\PhpLsp\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Firehed\\PhpLsp\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyze": "phpstan analyze",
+        "check": [
+            "@analyze",
+            "@test"
+        ]
+    },
+    "bin": [
+        "bin/php-lsp"
+    ],
+    "config": {
+        "sort-packages": true
+    }
+}
