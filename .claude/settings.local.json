@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:microsoft.github.io)",
+      "Bash(git checkout:*)",
+      "Bash(composer install:*)",
+      "Bash(git add:*)",
+      "Bash(composer test:*)",
+      "Bash(composer analyze:*)",
+      "Bash(composer check:*)",
+      "Bash(git branch:*)",
+      "Bash(composer require:*)"
+    ]
+  }
+}
