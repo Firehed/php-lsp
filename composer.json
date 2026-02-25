@@ -12,7 +12,8 @@
     "require": {
         "php": "^8.3",
         "amphp/amp": "^3.0",
-        "amphp/byte-stream": "^2.0"
+        "amphp/byte-stream": "^2.0",
+        "nikic/php-parser": "^5.7"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.0",

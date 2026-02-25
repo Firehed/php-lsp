@@ -56,7 +56,10 @@ final class LifecycleHandler implements HandlerInterface
     private function handleInitialize(): array
     {
         return [
-            'capabilities' => [],
+            'capabilities' => [
+                // TextDocumentSyncKind.Full = 1 (send full document on change)
+                'textDocumentSync' => 1,
+            ],
             'serverInfo' => $this->serverInfo->toArray(),
         ];
     }

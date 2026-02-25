@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
+use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
+use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
@@ -14,6 +16,7 @@ use Firehed\PhpLsp\Transport\TransportInterface;
 final class Server
 {
     private LifecycleHandler $lifecycleHandler;
+    private DocumentManager $documentManager;
 
     /** @var list<HandlerInterface> */
     private array $handlers = [];
@@ -22,8 +25,10 @@ final class Server
         private TransportInterface $transport,
         ServerInfo $serverInfo,
     ) {
+        $this->documentManager = new DocumentManager();
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
+        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager);
     }
 
     public function run(): int
