@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Protocol\Message;
 
 final class TextDocumentSyncHandler implements HandlerInterface
@@ -17,6 +18,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
 
     public function __construct(
         private readonly DocumentManager $documentManager,
+        private readonly ?DocumentIndexer $indexer = null,
     ) {
     }
 
@@ -56,6 +58,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         assert(is_string($text));
 
         $this->documentManager->open($uri, $languageId, $version, $text);
+        $this->indexDocument($uri);
 
         return null;
     }
@@ -82,6 +85,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         if (is_array($lastChange) && isset($lastChange['text'])) {
             assert(is_string($lastChange['text']));
             $this->documentManager->update($uri, $lastChange['text'], $version);
+            $this->indexDocument($uri);
         }
 
         return null;
@@ -98,8 +102,17 @@ final class TextDocumentSyncHandler implements HandlerInterface
         $uri = $textDocument['uri'] ?? '';
         assert(is_string($uri));
 
+        $this->indexer?->remove($uri);
         $this->documentManager->close($uri);
 
         return null;
+    }
+
+    private function indexDocument(string $uri): void
+    {
+        $document = $this->documentManager->get($uri);
+        if ($document !== null && $this->indexer !== null) {
+            $this->indexer->index($document);
+        }
     }
 }

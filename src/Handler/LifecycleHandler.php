@@ -59,6 +59,7 @@ final class LifecycleHandler implements HandlerInterface
             'capabilities' => [
                 // TextDocumentSyncKind.Full = 1 (send full document on change)
                 'textDocumentSync' => 1,
+                'definitionProvider' => true,
             ],
             'serverInfo' => $this->serverInfo->toArray(),
         ];

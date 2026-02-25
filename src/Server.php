@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Index\DocumentIndexer;
+use Firehed\PhpLsp\Index\SymbolExtractor;
+use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
@@ -26,9 +31,14 @@ final class Server
         ServerInfo $serverInfo,
     ) {
         $this->documentManager = new DocumentManager();
+        $parser = new ParserService();
+        $symbolIndex = new SymbolIndex();
+        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
+
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
-        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager);
+        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer);
+        $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex);
     }
 
     public function run(): int
