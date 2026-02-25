@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\HandlerInterface;
+use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
@@ -45,6 +46,7 @@ final class Server
         $this->handlers[] = $this->lifecycleHandler;
         $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer);
         $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
+        $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator);
     }
 
     public function run(): int

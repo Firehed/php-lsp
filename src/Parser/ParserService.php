@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
+use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
@@ -20,6 +21,8 @@ final class ParserService
     {
         $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
         $this->traverser = new NodeTraverser();
+        // ParentConnectingVisitor adds 'parent' attribute to all nodes
+        $this->traverser->addVisitor(new ParentConnectingVisitor());
         // NameResolver adds 'resolvedName' attribute to Name nodes
         $this->traverser->addVisitor(new NameResolver());
     }
