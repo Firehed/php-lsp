@@ -828,7 +828,7 @@ final class HoverHandler implements HandlerInterface
 
     private function formatDocblock(string $docblock): string
     {
-        // Strip /** and */ and clean up
+        // Strip /** and */ and clean up, stop at @tags
         $lines = explode("\n", $docblock);
         $cleaned = [];
 
@@ -837,6 +837,11 @@ final class HoverHandler implements HandlerInterface
             $line = preg_replace('/^\/\*\*\s*/', '', $line) ?? '';
             $line = preg_replace('/^\*\/\s*$/', '', $line) ?? '';
             $line = preg_replace('/^\*\s?/', '', $line) ?? '';
+
+            // Stop at @param, @return, etc - signature already shows types
+            if (str_starts_with($line, '@')) {
+                break;
+            }
 
             if ($line !== '') {
                 $cleaned[] = $line;
