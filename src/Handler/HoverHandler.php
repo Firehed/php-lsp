@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Utility\DocblockParser;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -250,7 +251,7 @@ final class HoverHandler implements HandlerInterface
         // Add docblock if present
         $docComment = $node->getDocComment();
         if ($docComment !== null) {
-            $parts[] = $this->formatDocblock($docComment->getText());
+            $parts[] = DocblockParser::extractDescription($docComment->getText());
         }
 
         // Add signature
@@ -323,7 +324,7 @@ final class HoverHandler implements HandlerInterface
         // Add docblock if present
         $docComment = $node->getDocComment();
         if ($docComment !== null) {
-            $parts[] = $this->formatDocblock($docComment->getText());
+            $parts[] = DocblockParser::extractDescription($docComment->getText());
         }
 
         // Build signature
@@ -580,7 +581,7 @@ final class HoverHandler implements HandlerInterface
 
         $docComment = $method->getDocComment();
         if ($docComment !== null) {
-            $parts[] = $this->formatDocblock($docComment->getText());
+            $parts[] = DocblockParser::extractDescription($docComment->getText());
         }
 
         $visibility = $this->getVisibility($method);
@@ -616,7 +617,7 @@ final class HoverHandler implements HandlerInterface
 
         $docComment = $property->getDocComment();
         if ($docComment !== null) {
-            $parts[] = $this->formatDocblock($docComment->getText());
+            $parts[] = DocblockParser::extractDescription($docComment->getText());
         }
 
         $visibility = $this->getPropertyVisibility($property);
@@ -707,7 +708,7 @@ final class HoverHandler implements HandlerInterface
 
         $docComment = $func->getDocComment();
         if ($docComment !== false) {
-            $parts[] = $this->formatDocblock($docComment);
+            $parts[] = DocblockParser::extractDescription($docComment);
         }
 
         $params = [];
@@ -745,7 +746,7 @@ final class HoverHandler implements HandlerInterface
 
         $docComment = $method->getDocComment();
         if ($docComment !== false) {
-            $parts[] = $this->formatDocblock($docComment);
+            $parts[] = DocblockParser::extractDescription($docComment);
         }
 
         $visibility = match (true) {
@@ -790,7 +791,7 @@ final class HoverHandler implements HandlerInterface
 
         $docComment = $property->getDocComment();
         if ($docComment !== false) {
-            $parts[] = $this->formatDocblock($docComment);
+            $parts[] = DocblockParser::extractDescription($docComment);
         }
 
         $visibility = match (true) {
@@ -824,31 +825,6 @@ final class HoverHandler implements HandlerInterface
             return implode('&', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
         }
         return (string) $type;
-    }
-
-    private function formatDocblock(string $docblock): string
-    {
-        // Strip /** and */ and clean up, stop at @tags
-        $lines = explode("\n", $docblock);
-        $cleaned = [];
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            $line = preg_replace('/^\/\*\*\s*/', '', $line) ?? '';
-            $line = preg_replace('/^\*\/\s*$/', '', $line) ?? '';
-            $line = preg_replace('/^\*\s?/', '', $line) ?? '';
-
-            // Stop at @param, @return, etc - signature already shows types
-            if (str_starts_with($line, '@')) {
-                break;
-            }
-
-            if ($line !== '') {
-                $cleaned[] = $line;
-            }
-        }
-
-        return implode("\n", $cleaned);
     }
 
     private function formatType(Node $type): string

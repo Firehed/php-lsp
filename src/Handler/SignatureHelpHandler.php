@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Utility\DocblockParser;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -478,7 +479,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         $docComment = $func->getDocComment();
         if ($docComment !== null) {
-            $result['documentation'] = $this->extractDocDescription($docComment->getText());
+            $result['documentation'] = DocblockParser::extractDescription($docComment->getText());
         }
 
         return $result;
@@ -517,7 +518,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         $docComment = $method->getDocComment();
         if ($docComment !== null) {
-            $result['documentation'] = $this->extractDocDescription($docComment->getText());
+            $result['documentation'] = DocblockParser::extractDescription($docComment->getText());
         }
 
         return $result;
@@ -555,7 +556,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         $docComment = $func->getDocComment();
         if ($docComment !== false) {
-            $result['documentation'] = $this->extractDocDescription($docComment);
+            $result['documentation'] = DocblockParser::extractDescription($docComment);
         }
 
         return $result;
@@ -609,29 +610,5 @@ final class SignatureHelpHandler implements HandlerInterface
             return implode('&', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
         }
         return (string) $type;
-    }
-
-    private function extractDocDescription(string $docblock): string
-    {
-        $lines = explode("\n", $docblock);
-        $description = [];
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            $line = preg_replace('/^\/\*\*\s*/', '', $line) ?? '';
-            $line = preg_replace('/^\*\/\s*$/', '', $line) ?? '';
-            $line = preg_replace('/^\*\s?/', '', $line) ?? '';
-
-            // Stop at first @tag
-            if (str_starts_with($line, '@')) {
-                break;
-            }
-
-            if ($line !== '') {
-                $description[] = $line;
-            }
-        }
-
-        return implode("\n", $description);
     }
 }
