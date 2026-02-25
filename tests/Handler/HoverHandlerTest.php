@@ -148,4 +148,140 @@ PHP;
         self::assertStringContainsString('add', $result['contents']);
         self::assertStringContainsString('int', $result['contents']);
     }
+
+    public function testHoverOnMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    /**
+     * Multiplies two numbers.
+     */
+    public function multiply(int $a, int $b): int
+    {
+        return $a * $b;
+    }
+
+    public function test(): void
+    {
+        $this->multiply(2, 3);
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16], // On "multiply"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('multiply', $result['contents']);
+        self::assertStringContainsString('Multiplies two numbers', $result['contents']);
+    }
+
+    public function testHoverOnProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Person
+{
+    /**
+     * The person's full name.
+     */
+    public string $name;
+
+    public function greet(): string
+    {
+        return 'Hello, ' . $this->name;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 35], // On "name"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$name', $result['contents']);
+        self::assertStringContainsString('string', $result['contents']);
+    }
+
+    public function testHoverOnBuiltinFunction(): void
+    {
+        $code = <<<'PHP'
+<?php
+$arr = [3, 1, 2];
+sort($arr);
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 2, 'character' => 2], // On "sort"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('sort', $result['contents']);
+    }
+
+    public function testHoverOnStaticMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Math
+{
+    /**
+     * Returns the absolute value.
+     */
+    public static function abs(int $n): int
+    {
+        return $n < 0 ? -$n : $n;
+    }
+}
+
+$result = Math::abs(-5);
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 16], // On "abs"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('abs', $result['contents']);
+        self::assertStringContainsString('Returns the absolute value', $result['contents']);
+    }
 }
