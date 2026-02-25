@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
+use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\DocumentIndexer;
@@ -47,6 +48,7 @@ final class Server
         $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer);
         $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
         $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator);
+        $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator);
     }
 
     public function run(): int
