@@ -61,6 +61,9 @@ final class LifecycleHandler implements HandlerInterface
                 'textDocumentSync' => 1,
                 'definitionProvider' => true,
                 'hoverProvider' => true,
+                'signatureHelpProvider' => [
+                    'triggerCharacters' => ['(', ','],
+                ],
             ],
             'serverInfo' => $this->serverInfo->toArray(),
         ];
