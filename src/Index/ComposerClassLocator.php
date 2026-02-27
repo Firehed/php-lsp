@@ -15,6 +15,48 @@ final class ComposerClassLocator
         $this->loadFromComposerAutoload($projectRoot);
     }
 
+    /**
+     * Get all known class names from PSR-4 mappings.
+     *
+     * @return list<string>
+     */
+    public function getAllClasses(): array
+    {
+        $classes = [];
+
+        foreach ($this->psr4Mappings as $prefix => $directories) {
+            foreach ($directories as $directory) {
+                if (!is_dir($directory)) {
+                    continue;
+                }
+                $this->scanDirectory($directory, $prefix, $classes);
+            }
+        }
+
+        return $classes;
+    }
+
+    /**
+     * @param list<string> $classes
+     */
+    private function scanDirectory(string $directory, string $namespacePrefix, array &$classes): void
+    {
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY,
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file instanceof \SplFileInfo || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $relativePath = substr($file->getPathname(), strlen($directory) + 1);
+            $className = str_replace(['/', '.php'], ['\\', ''], $relativePath);
+            $classes[] = $namespacePrefix . $className;
+        }
+    }
+
     public function locateClass(string $fullyQualifiedName): ?string
     {
         // Sort by prefix length descending for most specific match first

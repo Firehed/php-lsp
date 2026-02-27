@@ -48,7 +48,7 @@ class ParserServiceTest extends TestCase
         self::assertInstanceOf(Class_::class, $result[0]);
     }
 
-    public function testParseInvalidPhpReturnsNull(): void
+    public function testParseInvalidPhpUsesErrorRecovery(): void
     {
         $parser = new ParserService();
         $doc = new TextDocument(
@@ -60,7 +60,8 @@ class ParserServiceTest extends TestCase
 
         $result = $parser->parse($doc);
 
-        self::assertNull($result);
+        // With error recovery, we get partial results instead of null
+        self::assertIsArray($result);
     }
 
     public function testParseEmptyFile(): void

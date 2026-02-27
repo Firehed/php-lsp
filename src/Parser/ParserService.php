@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use PhpParser\ErrorHandler;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
@@ -32,8 +33,11 @@ final class ParserService
      */
     public function parse(TextDocument $document): ?array
     {
+        // Use error-collecting handler for partial/incomplete code
+        $errorHandler = new ErrorHandler\Collecting();
+
         try {
-            $ast = $this->parser->parse($document->getContent());
+            $ast = $this->parser->parse($document->getContent(), $errorHandler);
             if ($ast === null) {
                 return [];
             }

@@ -1,0 +1,269 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp\Tests\Handler;
+
+use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Handler\CompletionHandler;
+use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Protocol\RequestMessage;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+
+#[CoversClass(CompletionHandler::class)]
+class CompletionHandlerTest extends TestCase
+{
+    private DocumentManager $documents;
+    private ParserService $parser;
+    private CompletionHandler $handler;
+
+    protected function setUp(): void
+    {
+        $this->documents = new DocumentManager();
+        $this->parser = new ParserService();
+        $this->handler = new CompletionHandler($this->documents, $this->parser, null);
+    }
+
+    public function testSupports(): void
+    {
+        self::assertTrue($this->handler->supports('textDocument/completion'));
+        self::assertFalse($this->handler->supports('textDocument/hover'));
+    }
+
+    public function testThisMethodCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    public function greet(): string
+    {
+        return "Hello";
+    }
+
+    public function farewell(): string
+    {
+        return "Goodbye";
+    }
+
+    public function test(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 15], // After $this->
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertNotEmpty($result['items']);
+
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('greet', $labels);
+        self::assertContains('farewell', $labels);
+        self::assertContains('test', $labels);
+    }
+
+    public function testThisMethodCompletionWithPrefix(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    public function greet(): string { return "Hello"; }
+    public function goodbye(): string { return "Bye"; }
+    public function test(): void
+    {
+        $this->gr
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 17], // After $this->gr
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('greet', $labels);
+        self::assertNotContains('goodbye', $labels);
+    }
+
+    public function testThisPropertyCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    private string $name;
+    protected int $age;
+
+    public function test(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name', $labels);
+        self::assertContains('age', $labels);
+    }
+
+    public function testStaticMethodCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Math
+{
+    public static function add(int $a, int $b): int
+    {
+        return $a + $b;
+    }
+
+    public static function multiply(int $a, int $b): int
+    {
+        return $a * $b;
+    }
+}
+
+$result = Math::
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 16], // After Math::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('add', $labels);
+        self::assertContains('multiply', $labels);
+    }
+
+    public function testClassConstantCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Status
+{
+    public const ACTIVE = 'active';
+    public const INACTIVE = 'inactive';
+}
+
+$status = Status::
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 18],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('ACTIVE', $labels);
+        self::assertContains('INACTIVE', $labels);
+    }
+
+    public function testFunctionCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+function myCustomFunction(): void {}
+
+$x = arr
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 8], // After "arr"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Should include built-in functions starting with "arr"
+        self::assertContains('array_map', $labels);
+        self::assertContains('array_filter', $labels);
+    }
+
+    public function testCompletionReturnsEmptyForUnknownContext(): void
+    {
+        $code = '<?php $x = 1;';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 12],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+}
