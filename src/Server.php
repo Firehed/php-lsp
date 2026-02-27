@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\HoverHandler;
@@ -49,6 +50,7 @@ final class Server
         $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
         $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator);
         $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator);
+        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $classLocator);
     }
 
     public function run(): int

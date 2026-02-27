@@ -64,6 +64,9 @@ final class LifecycleHandler implements HandlerInterface
                 'signatureHelpProvider' => [
                     'triggerCharacters' => ['(', ','],
                 ],
+                'completionProvider' => [
+                    'triggerCharacters' => ['>', ':', '$', '\\'],
+                ],
             ],
             'serverInfo' => $this->serverInfo->toArray(),
         ];
