@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeInferenceInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -35,6 +36,7 @@ final class HoverHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly ?ComposerClassLocator $classLocator,
+        private readonly ?TypeInferenceInterface $typeInference = null,
     ) {
     }
 
@@ -129,6 +131,11 @@ final class HoverHandler implements HandlerInterface
         }
 
         // Identifier node - could be method name, property name, or function call
+        // Variable node - show inferred type
+        if ($node instanceof Variable && is_string($node->name)) {
+            return $this->getVariableHover($node, $document);
+        }
+
         if ($node instanceof Identifier) {
             $parent = $node->getAttribute('parent');
 
@@ -158,6 +165,27 @@ final class HoverHandler implements HandlerInterface
         }
 
         return null;
+    }
+
+    private function getVariableHover(Variable $variable, TextDocument $document): ?string
+    {
+        if ($this->typeInference === null) {
+            return null;
+        }
+
+        $variableName = $variable->name;
+        if (!is_string($variableName)) {
+            return null;
+        }
+
+        $line = $variable->getStartLine();
+        $type = $this->typeInference->getVariableType($document, $variableName, $line);
+
+        if ($type === null) {
+            return null;
+        }
+
+        return '```php' . "\n" . $type . ' $' . $variableName . "\n```";
     }
 
     /**
@@ -362,7 +390,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = $this->resolveExpressionClass($call->var, $ast);
+        $className = $this->resolveExpressionClass($call->var, $ast, $document);
         if ($className === null) {
             return null;
         }
@@ -403,7 +431,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = $this->resolveExpressionClass($fetch->var, $ast);
+        $className = $this->resolveExpressionClass($fetch->var, $ast, $document);
         if ($className === null) {
             return null;
         }
@@ -467,14 +495,19 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveExpressionClass(Node\Expr $expr, array $ast): ?string
+    private function resolveExpressionClass(Node\Expr $expr, array $ast, TextDocument $document): ?string
     {
         // $this refers to the enclosing class
         if ($expr instanceof Variable && $expr->name === 'this') {
             return $this->findEnclosingClassName($expr, $ast);
         }
 
-        // For other expressions, we'd need type inference - skip for now
+        // Use type inference for other variables
+        if ($expr instanceof Variable && is_string($expr->name) && $this->typeInference !== null) {
+            $line = $expr->getStartLine();
+            return $this->typeInference->getVariableType($document, $expr->name, $line);
+        }
+
         return null;
     }
 
