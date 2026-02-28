@@ -44,7 +44,7 @@ final class Server
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
         $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
-        $typeInference = new PhpStanTypeInferenceService();
+        $typeInference = new PhpStanTypeInferenceService($projectRoot);
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
