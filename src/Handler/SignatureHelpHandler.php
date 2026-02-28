@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeInferenceInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -34,6 +35,7 @@ final class SignatureHelpHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly ?ComposerClassLocator $classLocator,
+        private readonly ?TypeInferenceInterface $typeInference = null,
     ) {
     }
 
@@ -223,13 +225,18 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        // Only support $this for now
         $var = $call->var;
-        if (!$var instanceof Variable || $var->name !== 'this') {
-            return null;
+        $className = null;
+
+        // $this refers to enclosing class
+        if ($var instanceof Variable && $var->name === 'this') {
+            $className = $this->findEnclosingClassName($call, $ast);
+        } elseif ($var instanceof Variable && is_string($var->name) && $this->typeInference !== null) {
+            // Use type inference for other variables
+            $line = $var->getStartLine();
+            $className = $this->typeInference->getVariableType($document, $var->name, $line);
         }
 
-        $className = $this->findEnclosingClassName($call, $ast);
         if ($className === null) {
             return null;
         }

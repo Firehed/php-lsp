@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\TypeInference\PhpStanTypeInferenceService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -243,5 +244,80 @@ PHP;
         $result = $this->handler->handle($request);
 
         self::assertNull($result);
+    }
+
+    public function testSignatureHelpForMethodCallOnVariable(): void
+    {
+        $documents = new DocumentManager();
+        $parser = new ParserService();
+        $typeInference = new PhpStanTypeInferenceService();
+        $handler = new SignatureHelpHandler($documents, $parser, null, $typeInference);
+
+        // Use a real autoloaded class
+        $code = <<<'PHP'
+<?php
+
+class Example {
+    public function test(): void {
+        $doc = new \Firehed\PhpLsp\Document\TextDocument('uri', 'php', 1, 'content');
+        $line = $doc->getLine(0);
+    }
+}
+PHP;
+        $documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/signatureHelp',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 5, 'character' => 26], // Inside getLine(|0)
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('signatures', $result);
+        self::assertCount(1, $result['signatures']);
+        self::assertStringContainsString('getLine', $result['signatures'][0]['label']);
+        self::assertStringContainsString('int $line', $result['signatures'][0]['label']);
+    }
+
+    public function testSignatureHelpFallsBackWithoutTypeInference(): void
+    {
+        // Handler without type inference should still work for $this-> cases
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    public function multiply(int $a, int $b): int
+    {
+        return $a * $b;
+    }
+
+    public function test(): void
+    {
+        $this->multiply(2, 3);
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/signatureHelp',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 24],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('multiply', $result['signatures'][0]['label']);
     }
 }
