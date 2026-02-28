@@ -219,6 +219,59 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getClassMemberCompletions(string $className, string $prefix): array
     {
+        // Handle union types like "ClassName|false" or "ClassName|null"
+        $classNames = $this->extractClassNamesFromType($className);
+        if (empty($classNames)) {
+            return [];
+        }
+
+        $items = [];
+        $seenLabels = [];
+
+        foreach ($classNames as $singleClassName) {
+            $classItems = $this->getClassMemberCompletionsForSingleClass($singleClassName, $prefix, $seenLabels);
+            foreach ($classItems as $item) {
+                $seenLabels[$item['label']] = true;
+                $items[] = $item;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Extract class names from a type string, filtering out scalar types.
+     *
+     * @return list<string>
+     */
+    private function extractClassNamesFromType(string $type): array
+    {
+        // Remove nullable prefix
+        $type = ltrim($type, '?');
+
+        // Split union types
+        $parts = explode('|', $type);
+
+        $classNames = [];
+        $scalarTypes = ['int', 'string', 'float', 'bool', 'array', 'object', 'null', 'false', 'true', 'mixed', 'void', 'never', 'callable', 'iterable', 'resource'];
+
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '' || in_array(strtolower($part), $scalarTypes, true)) {
+                continue;
+            }
+            $classNames[] = $part;
+        }
+
+        return $classNames;
+    }
+
+    /**
+     * @param array<string, bool> $seenLabels
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getClassMemberCompletionsForSingleClass(string $className, string $prefix, array $seenLabels): array
+    {
         $items = [];
 
         try {
@@ -234,6 +287,9 @@ final class CompletionHandler implements HandlerInterface
                     continue;
                 }
                 $name = $method->getName();
+                if (isset($seenLabels[$name])) {
+                    continue;
+                }
                 if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
                     $items[] = $this->formatReflectionMethodCompletion($method);
                 }
@@ -245,6 +301,9 @@ final class CompletionHandler implements HandlerInterface
                     continue;
                 }
                 $name = $prop->getName();
+                if (isset($seenLabels[$name])) {
+                    continue;
+                }
                 if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
                     $items[] = $this->formatReflectionPropertyCompletion($prop);
                 }
