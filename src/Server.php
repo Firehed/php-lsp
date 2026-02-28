@@ -27,32 +27,17 @@ final class Server
 {
     private LifecycleHandler $lifecycleHandler;
     private DocumentManager $documentManager;
+    private bool $initialized = false;
 
     /** @var list<HandlerInterface> */
     private array $handlers = [];
 
     public function __construct(
         private TransportInterface $transport,
-        ServerInfo $serverInfo,
-        ?string $projectRoot = null,
+        private ServerInfo $serverInfo,
     ) {
-        // Use provided root, or fall back to cwd
-        $projectRoot ??= getcwd() ?: null;
-
         $this->documentManager = new DocumentManager();
-        $parser = new ParserService();
-        $symbolIndex = new SymbolIndex();
-        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
-        $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
-        $typeInference = new PhpStanTypeInferenceService($projectRoot);
-
-        $this->lifecycleHandler = new LifecycleHandler($serverInfo);
-        $this->handlers[] = $this->lifecycleHandler;
-        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer, $typeInference);
-        $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator, $typeInference);
-        $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator, $typeInference);
-        $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator, $typeInference);
-        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $classLocator, $typeInference);
+        $this->lifecycleHandler = new LifecycleHandler($this->serverInfo);
     }
 
     public function run(): int
@@ -61,12 +46,17 @@ final class Server
             $result = null;
             $error = null;
 
-            $handler = $this->findHandler($message->method);
+            // Handle initialize specially to set up handlers with project root
+            if ($message->method === 'initialize' && $message instanceof RequestMessage) {
+                $result = $this->handleInitialize($message);
+            } else {
+                $handler = $this->findHandler($message->method);
 
-            if ($handler !== null) {
-                $result = $handler->handle($message);
-            } elseif ($message instanceof RequestMessage) {
-                $error = ResponseError::methodNotFound($message->method);
+                if ($handler !== null) {
+                    $result = $handler->handle($message);
+                } elseif ($message instanceof RequestMessage) {
+                    $error = ResponseError::methodNotFound($message->method);
+                }
             }
 
             // Send response for requests (not notifications)
@@ -91,8 +81,64 @@ final class Server
         return 1;
     }
 
+    /**
+     * Handle the initialize request and set up handlers with the project root.
+     *
+     * @return array{capabilities: array<string, mixed>, serverInfo: array{name: string, version: string}}
+     */
+    private function handleInitialize(RequestMessage $message): array
+    {
+        $params = $message->params ?? [];
+
+        // Extract project root from initialize params
+        $projectRoot = null;
+        if (isset($params['rootUri']) && is_string($params['rootUri'])) {
+            // Convert file:// URI to path
+            $projectRoot = preg_replace('#^file://#', '', $params['rootUri']);
+        } elseif (isset($params['rootPath']) && is_string($params['rootPath'])) {
+            $projectRoot = $params['rootPath'];
+        }
+
+        // Fall back to cwd if not provided
+        $projectRoot ??= getcwd() ?: null;
+
+        // Now initialize all handlers with the correct project root
+        $this->initializeHandlers($projectRoot);
+        $this->initialized = true;
+
+        // Return capabilities (delegated to lifecycle handler for consistency)
+        /** @var array{capabilities: array<string, mixed>, serverInfo: array{name: string, version: string}} */
+        $result = $this->lifecycleHandler->handle($message);
+        return $result;
+    }
+
+    private function initializeHandlers(?string $projectRoot): void
+    {
+        $parser = new ParserService();
+        $symbolIndex = new SymbolIndex();
+        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
+        $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
+        $typeInference = new PhpStanTypeInferenceService($projectRoot);
+
+        $this->handlers = [];
+        $this->handlers[] = $this->lifecycleHandler;
+        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer, $typeInference);
+        $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator, $typeInference);
+        $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator, $typeInference);
+        $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator, $typeInference);
+        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $classLocator, $typeInference);
+    }
+
     private function findHandler(string $method): ?HandlerInterface
     {
+        // Before initialization, only lifecycle handler is available
+        if (!$this->initialized && $method !== 'initialized') {
+            if ($this->lifecycleHandler->supports($method)) {
+                return $this->lifecycleHandler;
+            }
+            return null;
+        }
+
         foreach ($this->handlers as $handler) {
             if ($handler->supports($method)) {
                 return $handler;
