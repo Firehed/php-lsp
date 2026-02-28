@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
+use Firehed\PhpLsp\TypeInference\TypeInferenceInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -99,5 +100,59 @@ class TextDocumentSyncHandlerTest extends TestCase
         $handler->handle($notification);
 
         self::assertNull($manager->get('file:///test.php'));
+    }
+
+    public function testDidChangeInvalidatesTypeInferenceCache(): void
+    {
+        $manager = new DocumentManager();
+        $typeInference = $this->createMock(TypeInferenceInterface::class);
+        $handler = new TextDocumentSyncHandler($manager, null, $typeInference);
+
+        $manager->open('file:///test.php', 'php', 1, '<?php echo "v1";');
+
+        $typeInference->expects($this->once())
+            ->method('invalidate')
+            ->with('file:///test.php');
+
+        $notification = NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didChange',
+            'params' => [
+                'textDocument' => [
+                    'uri' => 'file:///test.php',
+                    'version' => 2,
+                ],
+                'contentChanges' => [
+                    ['text' => '<?php echo "v2";'],
+                ],
+            ],
+        ]);
+
+        $handler->handle($notification);
+    }
+
+    public function testDidCloseInvalidatesTypeInferenceCache(): void
+    {
+        $manager = new DocumentManager();
+        $typeInference = $this->createMock(TypeInferenceInterface::class);
+        $handler = new TextDocumentSyncHandler($manager, null, $typeInference);
+
+        $manager->open('file:///test.php', 'php', 1, '<?php');
+
+        $typeInference->expects($this->once())
+            ->method('invalidate')
+            ->with('file:///test.php');
+
+        $notification = NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didClose',
+            'params' => [
+                'textDocument' => [
+                    'uri' => 'file:///test.php',
+                ],
+            ],
+        ]);
+
+        $handler->handle($notification);
     }
 }

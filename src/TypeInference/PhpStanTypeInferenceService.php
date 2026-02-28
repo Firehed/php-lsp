@@ -23,7 +23,7 @@ use ReflectionException;
  * Handles common patterns for variable type inference without requiring
  * external tools or temp files.
  */
-final class PhpStanTypeInferenceService
+final class PhpStanTypeInferenceService implements TypeInferenceInterface
 {
     private ParserService $parser;
 

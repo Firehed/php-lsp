@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeInferenceInterface;
 
 final class TextDocumentSyncHandler implements HandlerInterface
 {
@@ -19,6 +20,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ?DocumentIndexer $indexer = null,
+        private readonly ?TypeInferenceInterface $typeInference = null,
     ) {
     }
 
@@ -86,6 +88,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
             assert(is_string($lastChange['text']));
             $this->documentManager->update($uri, $lastChange['text'], $version);
             $this->indexDocument($uri);
+            $this->typeInference?->invalidate($uri);
         }
 
         return null;
@@ -103,6 +106,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         assert(is_string($uri));
 
         $this->indexer?->remove($uri);
+        $this->typeInference?->invalidate($uri);
         $this->documentManager->close($uri);
 
         return null;
