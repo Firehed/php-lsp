@@ -98,6 +98,11 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getCompletionItems(string $textBeforeCursor, array $ast, TextDocument $document): array
     {
+        // Skip completions inside comments or strings
+        if ($this->isInsideCommentOrString($textBeforeCursor)) {
+            return [];
+        }
+
         // $this-> completion
         if (preg_match('/\$this->(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
@@ -131,6 +136,55 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return [];
+    }
+
+    /**
+     * Check if the cursor is inside a string or comment.
+     */
+    private function isInsideCommentOrString(string $textBeforeCursor): bool
+    {
+        // Check for line comment (// before cursor)
+        if (preg_match('#//[^"\'\n]*$#', $textBeforeCursor)) {
+            return true;
+        }
+
+        // Check for unclosed block comment (/* without matching */)
+        $lastBlockOpen = strrpos($textBeforeCursor, '/*');
+        if ($lastBlockOpen !== false) {
+            $lastBlockClose = strrpos($textBeforeCursor, '*/');
+            if ($lastBlockClose === false || $lastBlockClose < $lastBlockOpen) {
+                return true;
+            }
+        }
+
+        // Check for unclosed string - count quotes to see if we're inside a string
+        // This is a simplified check that handles most common cases
+        $singleQuotes = 0;
+        $doubleQuotes = 0;
+        $len = strlen($textBeforeCursor);
+        $i = 0;
+
+        while ($i < $len) {
+            $char = $textBeforeCursor[$i];
+
+            // Handle escape sequences
+            if ($char === '\\' && $i + 1 < $len) {
+                $i += 2;
+                continue;
+            }
+
+            // Track quotes, but only when not inside the other quote type
+            if ($char === "'" && $doubleQuotes % 2 === 0) {
+                $singleQuotes++;
+            } elseif ($char === '"' && $singleQuotes % 2 === 0) {
+                $doubleQuotes++;
+            }
+
+            $i++;
+        }
+
+        // If odd number of quotes, we're inside a string
+        return ($singleQuotes % 2 !== 0) || ($doubleQuotes % 2 !== 0);
     }
 
     /**
