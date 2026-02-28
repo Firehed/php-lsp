@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeInferenceInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
@@ -34,6 +35,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly ?ComposerClassLocator $classLocator,
+        private readonly ?TypeInferenceInterface $typeInference = null,
     ) {
     }
 
@@ -102,6 +104,13 @@ final class CompletionHandler implements HandlerInterface
             return $this->getThisMemberCompletions($prefix, $ast);
         }
 
+        // $variable-> completion (non-$this variables)
+        if (preg_match('/\$(\w+)->(\w*)$/', $textBeforeCursor, $matches)) {
+            $variableName = $matches[1];
+            $prefix = $matches[2];
+            return $this->getVariableMemberCompletions($variableName, $prefix, $document);
+        }
+
         // ClassName:: completion (static)
         if (preg_match('/([A-Z]\w*)::(\w*)$/', $textBeforeCursor, $matches)) {
             $className = $matches[1];
@@ -162,6 +171,86 @@ final class CompletionHandler implements HandlerInterface
         $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
         if ($className !== null) {
             $items = array_merge($items, $this->getInheritedMemberCompletions($className, $prefix, $items));
+        }
+
+        return $items;
+    }
+
+    /**
+     * Get completions for $variable-> where variable type is inferred.
+     *
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getVariableMemberCompletions(string $variableName, string $prefix, TextDocument $document): array
+    {
+        if ($this->typeInference === null) {
+            return [];
+        }
+
+        // We need to find the line where this variable is used
+        // For simplicity, search for the variable in the document and use its line
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $variableLine = null;
+
+        // Find the last occurrence of $variable-> in the document
+        foreach ($lines as $lineNum => $lineText) {
+            if (str_contains($lineText, '$' . $variableName . '->')) {
+                $variableLine = $lineNum + 1; // 1-indexed
+            }
+        }
+
+        if ($variableLine === null) {
+            return [];
+        }
+
+        $className = $this->typeInference->getVariableType($document, $variableName, $variableLine);
+        if ($className === null) {
+            return [];
+        }
+
+        return $this->getClassMemberCompletions($className, $prefix);
+    }
+
+    /**
+     * Get completions for a class's methods and properties via reflection.
+     *
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getClassMemberCompletions(string $className, string $prefix): array
+    {
+        $items = [];
+
+        try {
+            if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
+                return [];
+            }
+
+            $reflection = new ReflectionClass($className);
+
+            // Public methods
+            foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+                if ($method->isStatic()) {
+                    continue;
+                }
+                $name = $method->getName();
+                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                    $items[] = $this->formatReflectionMethodCompletion($method);
+                }
+            }
+
+            // Public properties
+            foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
+                if ($prop->isStatic()) {
+                    continue;
+                }
+                $name = $prop->getName();
+                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                    $items[] = $this->formatReflectionPropertyCompletion($prop);
+                }
+            }
+        } catch (ReflectionException) {
+            // Class not autoloadable
         }
 
         return $items;
