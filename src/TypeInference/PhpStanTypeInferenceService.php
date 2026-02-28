@@ -29,6 +29,7 @@ final class PhpStanTypeInferenceService implements TypeInferenceInterface
     private ParserService $parser;
     private ?Container $container = null;
     private ?ReflectionProvider $reflectionProvider = null;
+    private bool $containerInitAttempted = false;
     private string $tempDir;
     private string $projectRoot;
 
@@ -174,6 +175,43 @@ final class PhpStanTypeInferenceService implements TypeInferenceInterface
             return $this->reflectionProvider->hasClass($className);
         } catch (\Throwable) {
             return false;
+        }
+    }
+
+    /**
+     * Get the return type of a function.
+     */
+    public function getFunctionReturnType(string $functionName): ?string
+    {
+        $this->ensureContainerInitialized();
+
+        if ($this->reflectionProvider === null) {
+            return null;
+        }
+
+        try {
+            $nameNode = new Name($functionName);
+            if (!$this->reflectionProvider->hasFunction($nameNode, null)) {
+                return null;
+            }
+
+            $function = $this->reflectionProvider->getFunction($nameNode, null);
+            $variants = $function->getVariants();
+
+            if (empty($variants)) {
+                return null;
+            }
+
+            $returnType = $variants[0]->getReturnType();
+            $description = $returnType->describe(VerbosityLevel::typeOnly());
+
+            if ($description === 'mixed') {
+                return null;
+            }
+
+            return $description;
+        } catch (\Throwable) {
+            return null;
         }
     }
 
@@ -406,6 +444,12 @@ final class PhpStanTypeInferenceService implements TypeInferenceInterface
                     }
                 }
 
+                // Function call functionName()
+                if ($expr instanceof Expr\FuncCall && $expr->name instanceof Name) {
+                    $funcName = $expr->name->toString();
+                    return $this->service->getFunctionReturnType($funcName);
+                }
+
                 return null;
             }
         };
@@ -417,11 +461,18 @@ final class PhpStanTypeInferenceService implements TypeInferenceInterface
 
     private function ensureContainerInitialized(): void
     {
-        if ($this->container !== null) {
+        if ($this->container !== null || $this->containerInitAttempted) {
             return;
         }
+        $this->containerInitAttempted = true;
 
         try {
+            // Load the project's autoloader if available
+            $projectAutoloader = $this->projectRoot . '/vendor/autoload.php';
+            if (file_exists($projectAutoloader)) {
+                require_once $projectAutoloader;
+            }
+
             $containerFactory = new ContainerFactory($this->projectRoot);
 
             // Find phpstan.neon if it exists
