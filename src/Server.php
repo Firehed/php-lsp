@@ -21,6 +21,7 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Transport\TransportInterface;
+use Firehed\PhpLsp\TypeInference\PhpStanTypeInferenceService;
 
 final class Server
 {
@@ -43,14 +44,15 @@ final class Server
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
         $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
+        $typeInference = new PhpStanTypeInferenceService();
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
-        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer);
-        $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
-        $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator);
-        $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator);
-        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $classLocator);
+        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer, $typeInference);
+        $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator, $typeInference);
+        $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator, $typeInference);
+        $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator, $typeInference);
+        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $classLocator, $typeInference);
     }
 
     public function run(): int
