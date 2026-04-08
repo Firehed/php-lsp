@@ -185,19 +185,22 @@ final class CompletionHandler implements HandlerInterface
     {
         $items = [];
 
+        // Resolve short name to FQCN using imports
+        $resolvedClassName = $this->resolveClassName($className, $ast);
+
         // Try to find class in AST first
-        $classNode = $this->findClassInAst($className, $ast);
+        $classNode = $this->findClassInAst($resolvedClassName, $ast);
 
         // If not in current file, try Composer
         if ($classNode === null && $this->classLocator !== null) {
-            $filePath = $this->classLocator->locateClass($className);
+            $filePath = $this->classLocator->locateClass($resolvedClassName);
             if ($filePath !== null) {
                 $content = file_get_contents($filePath);
                 if ($content !== false) {
                     $externalDoc = new TextDocument('file://' . $filePath, 'php', 0, $content);
                     $externalAst = $this->parser->parse($externalDoc);
                     if ($externalAst !== null) {
-                        $classNode = $this->findClassInAst($className, $externalAst);
+                        $classNode = $this->findClassInAst($resolvedClassName, $externalAst);
                     }
                 }
             }
@@ -236,7 +239,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Also try reflection for inherited/built-in
-        $items = array_merge($items, $this->getReflectionStaticCompletions($className, $prefix, $items));
+        $items = array_merge($items, $this->getReflectionStaticCompletions($resolvedClassName, $prefix, $items));
 
         // Always offer ::class magic constant
         if ($prefix === '' || str_starts_with('class', strtolower($prefix))) {
@@ -704,5 +707,48 @@ final class CompletionHandler implements HandlerInterface
     {
         $parts = explode('\\', $fqcn);
         return end($parts);
+    }
+
+    /**
+     * Resolve a short class name to its FQCN using use statements.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveClassName(string $shortName, array $ast): string
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $nsStmt) {
+                    $resolved = $this->checkUseStatement($nsStmt, $shortName);
+                    if ($resolved !== null) {
+                        return $resolved;
+                    }
+                }
+            } else {
+                $resolved = $this->checkUseStatement($stmt, $shortName);
+                if ($resolved !== null) {
+                    return $resolved;
+                }
+            }
+        }
+
+        // Not found in imports, return as-is (might be FQCN or in same namespace)
+        return $shortName;
+    }
+
+    private function checkUseStatement(Stmt $stmt, string $shortName): ?string
+    {
+        if (!$stmt instanceof Stmt\Use_) {
+            return null;
+        }
+
+        foreach ($stmt->uses as $use) {
+            $alias = $use->alias?->toString() ?? $use->name->getLast();
+            if ($alias === $shortName) {
+                return $use->name->toString();
+            }
+        }
+
+        return null;
     }
 }

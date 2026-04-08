@@ -219,6 +219,96 @@ PHP;
         self::assertContains('INACTIVE', $labels);
     }
 
+    public function testStaticCompletionResolvesImportedClassName(): void
+    {
+        // Class defined in a namespace, then imported via use statement
+        $code = <<<'PHP'
+<?php
+namespace App\Models;
+
+class User
+{
+    public const STATUS_ACTIVE = 'active';
+    public static function findById(int $id): self {}
+}
+
+namespace App\Controllers;
+
+use App\Models\User;
+
+class UserController
+{
+    public function show(): void
+    {
+        User::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 17, 'character' => 14], // After User::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Should resolve User to App\Models\User and find its members
+        self::assertContains('STATUS_ACTIVE', $labels);
+        self::assertContains('findById', $labels);
+        self::assertContains('class', $labels);
+    }
+
+    public function testStaticCompletionResolvesAliasedImport(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Models;
+
+class UserModel
+{
+    public const ROLE_ADMIN = 'admin';
+}
+
+namespace App\Controllers;
+
+use App\Models\UserModel as User;
+
+class Controller
+{
+    public function test(): void
+    {
+        User::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 16, 'character' => 14], // After User::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Should resolve User alias to App\Models\UserModel
+        self::assertContains('ROLE_ADMIN', $labels);
+    }
+
     public function testFunctionCompletion(): void
     {
         $code = <<<'PHP'
