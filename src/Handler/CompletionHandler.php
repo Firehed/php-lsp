@@ -102,8 +102,8 @@ final class CompletionHandler implements HandlerInterface
             return $this->getThisMemberCompletions($prefix, $ast);
         }
 
-        // ClassName:: completion (static)
-        if (preg_match('/([A-Z]\w*)::(\w*)$/', $textBeforeCursor, $matches)) {
+        // ClassName:: completion (static) - also match single : for mid-typing
+        if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches)) {
             $className = $matches[1];
             $prefix = $matches[2];
             return $this->getStaticCompletions($className, $prefix, $ast, $document);
@@ -227,6 +227,15 @@ final class CompletionHandler implements HandlerInterface
 
         // Also try reflection for inherited/built-in
         $items = array_merge($items, $this->getReflectionStaticCompletions($className, $prefix, $items));
+
+        // Always offer ::class magic constant
+        if ($prefix === '' || str_starts_with('class', strtolower($prefix))) {
+            $items[] = [
+                'label' => 'class',
+                'kind' => self::KIND_CONSTANT,
+                'detail' => 'string (fully qualified class name)',
+            ];
+        }
 
         return $items;
     }
