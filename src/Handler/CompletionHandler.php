@@ -102,8 +102,8 @@ final class CompletionHandler implements HandlerInterface
             return $this->getThisMemberCompletions($prefix, $ast);
         }
 
-        // ClassName:: completion (static)
-        if (preg_match('/([A-Z]\w*)::(\w*)$/', $textBeforeCursor, $matches)) {
+        // ClassName:: completion (static) - also match single : for mid-typing
+        if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches)) {
             $className = $matches[1];
             $prefix = $matches[2];
             return $this->getStaticCompletions($className, $prefix, $ast, $document);
