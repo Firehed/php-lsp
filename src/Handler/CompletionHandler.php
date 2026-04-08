@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
@@ -71,6 +72,15 @@ final class CompletionHandler implements HandlerInterface
         $document = $this->documentManager->get($uri);
         if ($document === null) {
             return null;
+        }
+
+        // Skip completions inside comments, strings, heredocs
+        $offset = $document->offsetAt($line, $character);
+        if (!ContextDetector::isCompletable($document->getContent(), $offset)) {
+            return [
+                'isIncomplete' => false,
+                'items' => [],
+            ];
         }
 
         $ast = $this->parser->parse($document);
