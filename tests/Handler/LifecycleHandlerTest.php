@@ -47,6 +47,35 @@ class LifecycleHandlerTest extends TestCase
         self::assertSame('0.1.0', $result['serverInfo']['version']);
     }
 
+    public function testCompletionTriggerCharactersExcludeColon(): void
+    {
+        $handler = new LifecycleHandler(new ServerInfo('test', '1.0'));
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'initialize',
+            'params' => [],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $capabilities = $result['capabilities'];
+        self::assertIsArray($capabilities);
+        $completion = $capabilities['completionProvider'];
+        self::assertIsArray($completion);
+        $triggers = $completion['triggerCharacters'];
+        self::assertIsArray($triggers);
+
+        // ':' should NOT be a trigger - it fires prematurely on first ':' of '::'
+        self::assertNotContains(':', $triggers);
+        // These should still be triggers
+        self::assertContains('>', $triggers);
+        self::assertContains('$', $triggers);
+        self::assertContains('\\', $triggers);
+    }
+
     public function testInitializedReturnsNull(): void
     {
         $handler = new LifecycleHandler(new ServerInfo('test', '1.0'));

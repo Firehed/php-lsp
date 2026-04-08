@@ -65,7 +65,8 @@ final class LifecycleHandler implements HandlerInterface
                     'triggerCharacters' => ['(', ','],
                 ],
                 'completionProvider' => [
-                    'triggerCharacters' => ['>', ':', '$', '\\'],
+                    // Note: ':' omitted - fires prematurely on first ':' of '::'
+                    'triggerCharacters' => ['>', '$', '\\'],
                 ],
             ],
             'serverInfo' => $this->serverInfo->toArray(),
