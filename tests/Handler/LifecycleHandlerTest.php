@@ -45,6 +45,15 @@ class LifecycleHandlerTest extends TestCase
         self::assertIsArray($result['serverInfo']);
         self::assertSame('php-lsp', $result['serverInfo']['name']);
         self::assertSame('0.1.0', $result['serverInfo']['version']);
+
+        // Verify textDocumentSync uses options object, not bare number
+        $capabilities = $result['capabilities'];
+        self::assertIsArray($capabilities);
+        $sync = $capabilities['textDocumentSync'];
+        self::assertIsArray($sync);
+        self::assertTrue($sync['openClose']);
+        self::assertSame(1, $sync['change']);
+        self::assertFalse($sync['save']);
     }
 
     public function testInitializedReturnsNull(): void

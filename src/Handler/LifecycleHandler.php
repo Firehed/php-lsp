@@ -57,8 +57,11 @@ final class LifecycleHandler implements HandlerInterface
     {
         return [
             'capabilities' => [
-                // TextDocumentSyncKind.Full = 1 (send full document on change)
-                'textDocumentSync' => 1,
+                'textDocumentSync' => [
+                    'openClose' => true,
+                    'change' => 1, // TextDocumentSyncKind.Full
+                    'save' => false,
+                ],
                 'definitionProvider' => true,
                 'hoverProvider' => true,
                 'signatureHelpProvider' => [
