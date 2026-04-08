@@ -228,6 +228,15 @@ final class CompletionHandler implements HandlerInterface
         // Also try reflection for inherited/built-in
         $items = array_merge($items, $this->getReflectionStaticCompletions($className, $prefix, $items));
 
+        // Always offer ::class magic constant
+        if ($prefix === '' || str_starts_with('class', strtolower($prefix))) {
+            $items[] = [
+                'label' => 'class',
+                'kind' => self::KIND_CONSTANT,
+                'detail' => 'string (fully qualified class name)',
+            ];
+        }
+
         return $items;
     }
 

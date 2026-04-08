@@ -183,6 +183,8 @@ PHP;
         $labels = array_column($result['items'], 'label');
         self::assertContains('add', $labels);
         self::assertContains('multiply', $labels);
+        // ::class magic constant should always be suggested
+        self::assertContains('class', $labels);
     }
 
     public function testClassConstantCompletion(): void
