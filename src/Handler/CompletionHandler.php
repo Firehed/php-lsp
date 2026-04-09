@@ -8,6 +8,8 @@ use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Utility\DocblockParser;
@@ -34,6 +36,7 @@ final class CompletionHandler implements HandlerInterface
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
+        private readonly SymbolIndex $symbolIndex,
         private readonly ?ComposerClassLocator $classLocator,
     ) {
     }
@@ -119,10 +122,12 @@ final class CompletionHandler implements HandlerInterface
             return $this->getStaticCompletions($className, $prefix, $ast, $document);
         }
 
-        // new ClassName completion - only suggest imported classes
+        // new ClassName completion - suggest imported classes and indexed instantiable types
         if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
-            return $this->getImportedClassCompletions($prefix, $ast);
+            $items = $this->getImportedClassCompletions($prefix, $ast);
+            $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_, SymbolKind::Enum_]));
+            return $this->deduplicateCompletions($items);
         }
 
         // Function/class completion (at start of expression or after operators)
@@ -785,5 +790,49 @@ final class CompletionHandler implements HandlerInterface
                 $imports[$shortName] = $fqcn;
             }
         }
+    }
+
+    /**
+     * Get class completions from the workspace symbol index.
+     *
+     * @param list<SymbolKind> $kinds
+     * @return list<array{label: string, kind: int, detail: string}>
+     */
+    private function getIndexedClassCompletions(string $prefix, array $kinds): array
+    {
+        $symbols = $this->symbolIndex->findByPrefix($prefix, $kinds);
+        $items = [];
+
+        foreach ($symbols as $symbol) {
+            $items[] = [
+                'label' => $symbol->name,
+                'kind' => self::KIND_CLASS,
+                'detail' => $symbol->fullyQualifiedName,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Remove duplicate completions, preferring items that appear earlier.
+     *
+     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $items
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function deduplicateCompletions(array $items): array
+    {
+        $seen = [];
+        $result = [];
+
+        foreach ($items as $item) {
+            $key = $item['label'];
+            if (!isset($seen[$key])) {
+                $seen[$key] = true;
+                $result[] = $item;
+            }
+        }
+
+        return $result;
     }
 }
