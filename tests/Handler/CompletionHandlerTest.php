@@ -413,6 +413,43 @@ PHP;
         self::assertSame('App\Models\UserRepository', $repoItem['detail'] ?? null);
     }
 
+    public function testExpressionCompletionIncludesGroupedImports(): void
+    {
+        $code = <<<'PHP'
+<?php
+use App\Models\{User, Post};
+
+function foo() {
+    $x = Us
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 10], // After "Us"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Should include both grouped imports
+        self::assertContains('User', $labels);
+
+        // Check that FQCN is correct for grouped import
+        $userItems = array_filter($result['items'], fn($item) => $item['label'] === 'User');
+        self::assertNotEmpty($userItems);
+        $userItem = reset($userItems);
+        self::assertIsArray($userItem);
+        self::assertSame('App\Models\User', $userItem['detail'] ?? null);
+    }
+
     public function testCompletionReturnsEmptyForUnknownContext(): void
     {
         $code = '<?php $x = 1;';

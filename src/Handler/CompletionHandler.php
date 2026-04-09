@@ -771,14 +771,19 @@ final class CompletionHandler implements HandlerInterface
      */
     private function extractImportsFromUse(Stmt $stmt, array &$imports): void
     {
-        if (!$stmt instanceof Stmt\Use_) {
-            return;
-        }
-
-        foreach ($stmt->uses as $use) {
-            $shortName = $use->alias?->toString() ?? $use->name->getLast();
-            $fqcn = $use->name->toString();
-            $imports[$shortName] = $fqcn;
+        if ($stmt instanceof Stmt\Use_) {
+            foreach ($stmt->uses as $use) {
+                $shortName = $use->alias?->toString() ?? $use->name->getLast();
+                $fqcn = $use->name->toString();
+                $imports[$shortName] = $fqcn;
+            }
+        } elseif ($stmt instanceof Stmt\GroupUse) {
+            $prefix = $stmt->prefix->toString();
+            foreach ($stmt->uses as $use) {
+                $shortName = $use->alias?->toString() ?? $use->name->getLast();
+                $fqcn = $prefix . '\\' . $use->name->toString();
+                $imports[$shortName] = $fqcn;
+            }
         }
     }
 }
