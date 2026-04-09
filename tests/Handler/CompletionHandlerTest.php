@@ -571,6 +571,102 @@ PHP;
         self::assertContains('MyTrait', $labels);
     }
 
+    public function testTypeHintCompletionInReturnType(): void
+    {
+        $code = '<?php function foo(): str';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 25],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
+        // Should NOT contain functions
+        self::assertNotContains('strlen', $labels);
+        self::assertNotContains('str_replace', $labels);
+    }
+
+    public function testTypeHintCompletionInParameter(): void
+    {
+        $code = '<?php function foo(str';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 22],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
+    }
+
+    public function testTypeHintCompletionIncludesBuiltinTypes(): void
+    {
+        $code = '<?php function foo(): ';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 22],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
+        self::assertContains('int', $labels);
+        self::assertContains('bool', $labels);
+        self::assertContains('array', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('mixed', $labels);
+    }
+
+    public function testTypeHintCompletionForPropertyType(): void
+    {
+        $code = '<?php class Foo { private str';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 29],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
+    }
+
     public function testCompletionReturnsEmptyForUnknownContext(): void
     {
         $code = '<?php $x = 1;';
