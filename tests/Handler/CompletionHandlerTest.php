@@ -6,6 +6,10 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
+use Firehed\PhpLsp\Index\Location;
+use Firehed\PhpLsp\Index\Symbol;
+use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -16,13 +20,15 @@ class CompletionHandlerTest extends TestCase
 {
     private DocumentManager $documents;
     private ParserService $parser;
+    private SymbolIndex $symbolIndex;
     private CompletionHandler $handler;
 
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
-        $this->handler = new CompletionHandler($this->documents, $this->parser, null);
+        $this->symbolIndex = new SymbolIndex();
+        $this->handler = new CompletionHandler($this->documents, $this->parser, $this->symbolIndex, null);
     }
 
     public function testSupports(): void
@@ -448,6 +454,217 @@ PHP;
         $userItem = reset($userItems);
         self::assertIsArray($userItem);
         self::assertSame('App\Models\User', $userItem['detail'] ?? null);
+    }
+
+    public function testNewCompletionIncludesIndexedClasses(): void
+    {
+        // Add a class to the index
+        $this->symbolIndex->add(new Symbol(
+            'MyIndexedClass',
+            'App\MyIndexedClass',
+            SymbolKind::Class_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+
+        $code = '<?php $x = new MyIn';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 19],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('MyIndexedClass', $labels);
+    }
+
+    public function testNewCompletionExcludesIndexedInterfaces(): void
+    {
+        // Add an interface and a class to the index
+        $this->symbolIndex->add(new Symbol(
+            'MyInterface',
+            'App\MyInterface',
+            SymbolKind::Interface_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+        $this->symbolIndex->add(new Symbol(
+            'MyClass',
+            'App\MyClass',
+            SymbolKind::Class_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+
+        $code = '<?php $x = new My';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 17],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Should include class
+        self::assertContains('MyClass', $labels);
+        // Should NOT include interface
+        self::assertNotContains('MyInterface', $labels);
+    }
+
+    public function testExpressionCompletionIncludesAllIndexedTypes(): void
+    {
+        // Add various symbol types to the index
+        $this->symbolIndex->add(new Symbol(
+            'MyClass',
+            'App\MyClass',
+            SymbolKind::Class_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+        $this->symbolIndex->add(new Symbol(
+            'MyInterface',
+            'App\MyInterface',
+            SymbolKind::Interface_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+        $this->symbolIndex->add(new Symbol(
+            'MyTrait',
+            'App\MyTrait',
+            SymbolKind::Trait_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+
+        // Expression context (not `new`)
+        $code = '<?php $x = My';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 13],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Expression context should include all types
+        self::assertContains('MyClass', $labels);
+        self::assertContains('MyInterface', $labels);
+        self::assertContains('MyTrait', $labels);
+    }
+
+    public function testTypeHintCompletionInReturnType(): void
+    {
+        $code = '<?php function foo(): str';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 25],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
+        // Should NOT contain functions
+        self::assertNotContains('strlen', $labels);
+        self::assertNotContains('str_replace', $labels);
+    }
+
+    public function testTypeHintCompletionInParameter(): void
+    {
+        $code = '<?php function foo(str';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 22],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
+    }
+
+    public function testTypeHintCompletionIncludesBuiltinTypes(): void
+    {
+        $code = '<?php function foo(): ';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 22],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
+        self::assertContains('int', $labels);
+        self::assertContains('bool', $labels);
+        self::assertContains('array', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('mixed', $labels);
+    }
+
+    public function testTypeHintCompletionForPropertyType(): void
+    {
+        $code = '<?php class Foo { private str';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 29],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('string', $labels);
     }
 
     public function testCompletionReturnsEmptyForUnknownContext(): void

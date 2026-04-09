@@ -8,6 +8,8 @@ use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Utility\DocblockParser;
@@ -34,6 +36,7 @@ final class CompletionHandler implements HandlerInterface
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
+        private readonly SymbolIndex $symbolIndex,
         private readonly ?ComposerClassLocator $classLocator,
     ) {
     }
@@ -119,10 +122,19 @@ final class CompletionHandler implements HandlerInterface
             return $this->getStaticCompletions($className, $prefix, $ast, $document);
         }
 
-        // new ClassName completion - only suggest imported classes
+        // new ClassName completion - suggest imported classes and indexed instantiable types
         if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
-            return $this->getImportedClassCompletions($prefix, $ast);
+            $items = $this->getImportedClassCompletions($prefix, $ast);
+            $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_, SymbolKind::Enum_]));
+            return $this->deduplicateCompletions($items);
+        }
+
+        // Type hint context - after : (return type), in parameters, union/intersection types
+        // Matches: "): str", "(str", ", str", "?str", "|str", "&str", "private str", "public readonly str"
+        if (preg_match('/(?:(?:private|protected|public)(?:\s+readonly)?\s+|[(:,?|&]\s*)(\w*)$/', $textBeforeCursor, $matches)) {
+            $prefix = $matches[1];
+            return $this->getTypeHintCompletions($prefix, $ast);
         }
 
         // Function/class completion (at start of expression or after operators)
@@ -130,7 +142,13 @@ final class CompletionHandler implements HandlerInterface
             $prefix = $matches[1];
             $items = $this->getFunctionCompletions($prefix, $ast);
             $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
-            return $items;
+            $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
+                SymbolKind::Class_,
+                SymbolKind::Interface_,
+                SymbolKind::Trait_,
+                SymbolKind::Enum_,
+            ]));
+            return $this->deduplicateCompletions($items);
         }
 
         return [];
@@ -785,5 +803,90 @@ final class CompletionHandler implements HandlerInterface
                 $imports[$shortName] = $fqcn;
             }
         }
+    }
+
+    /**
+     * Get class completions from the workspace symbol index.
+     *
+     * @param list<SymbolKind> $kinds
+     * @return list<array{label: string, kind: int, detail: string}>
+     */
+    private function getIndexedClassCompletions(string $prefix, array $kinds): array
+    {
+        $symbols = $this->symbolIndex->findByPrefix($prefix, $kinds);
+        $items = [];
+
+        foreach ($symbols as $symbol) {
+            $items[] = [
+                'label' => $symbol->name,
+                'kind' => self::KIND_CLASS,
+                'detail' => $symbol->fullyQualifiedName,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Remove duplicate completions, preferring items that appear earlier.
+     *
+     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $items
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function deduplicateCompletions(array $items): array
+    {
+        $seen = [];
+        $result = [];
+
+        foreach ($items as $item) {
+            $key = $item['label'];
+            if (!isset($seen[$key])) {
+                $seen[$key] = true;
+                $result[] = $item;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get completions for type hint positions.
+     *
+     * @param array<Stmt> $ast
+     * @return list<array{label: string, kind?: int, detail?: string}>
+     */
+    private function getTypeHintCompletions(string $prefix, array $ast): array
+    {
+        $items = [];
+
+        // Built-in types
+        $builtinTypes = [
+            'string', 'int', 'float', 'bool', 'array', 'object',
+            'mixed', 'null', 'void', 'never', 'callable', 'iterable',
+            'true', 'false', 'self', 'static', 'parent',
+        ];
+
+        foreach ($builtinTypes as $type) {
+            if ($prefix === '' || str_starts_with($type, strtolower($prefix))) {
+                $items[] = [
+                    'label' => $type,
+                    'kind' => self::KIND_CLASS, // Keyword kind would be better but not defined
+                    'detail' => 'builtin type',
+                ];
+            }
+        }
+
+        // Imported classes
+        $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
+
+        // Indexed types (all are valid in type hints)
+        $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
+            SymbolKind::Class_,
+            SymbolKind::Interface_,
+            SymbolKind::Trait_,
+            SymbolKind::Enum_,
+        ]));
+
+        return $this->deduplicateCompletions($items);
     }
 }

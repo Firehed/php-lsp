@@ -39,6 +39,29 @@ final class SymbolIndex
         return $this->byName[$name] ?? [];
     }
 
+    /**
+     * Find symbols matching a prefix, optionally filtered by kind.
+     *
+     * @param list<SymbolKind>|null $kinds
+     * @return list<Symbol>
+     */
+    public function findByPrefix(string $prefix, ?array $kinds = null): array
+    {
+        $results = [];
+        $prefixLower = strtolower($prefix);
+
+        foreach ($this->byFqn as $symbol) {
+            if ($kinds !== null && !in_array($symbol->kind, $kinds, true)) {
+                continue;
+            }
+            if (str_starts_with(strtolower($symbol->name), $prefixLower)) {
+                $results[] = $symbol;
+            }
+        }
+
+        return $results;
+    }
+
     public function clearByUri(string $uri): void
     {
         $fqns = $this->byUri[$uri] ?? [];
