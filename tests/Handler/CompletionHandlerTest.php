@@ -829,6 +829,171 @@ PHP;
         self::assertNotContains('return', $labels);
     }
 
+    public function testVariableCompletionSuggestsParameters(): void
+    {
+        $code = '<?php function foo(string $name, int $age) { $n; }';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 47], // After $n
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$name', $labels);
+        self::assertNotContains('$age', $labels); // doesn't match prefix
+    }
+
+    public function testVariableCompletionSuggestsLocalVariables(): void
+    {
+        $code = '<?php function foo() { $logger = new Logger(); $l; }';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 49], // After $l
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$logger', $labels);
+    }
+
+    public function testVariableCompletionSuggestsThisInMethod(): void
+    {
+        $code = '<?php class Foo { public function bar() { $t; } }';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 44], // After $t
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$this', $labels);
+    }
+
+    public function testVariableCompletionWorksInClosures(): void
+    {
+        $code = '<?php $fn = function ($param) { $localVar = 1; $l; };';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 49], // After $l
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$localVar', $labels);
+    }
+
+    public function testVariableCompletionSuggestsForeachVariables(): void
+    {
+        $code = '<?php function foo() { foreach ([1,2] as $item) { $i; } }';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 52], // After $i
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$item', $labels);
+    }
+
+    public function testVariableCompletionIsolatesScopes(): void
+    {
+        // Two closures - variables from one should not leak to the other
+        $code = <<<'PHP'
+<?php
+$a = [
+    'x' => function () { $logger = 1; return $logger; },
+    'y' => function () { $siteDir = 2; $s; },
+];
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 41], // After $s in second closure
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$siteDir', $labels);
+        self::assertNotContains('$logger', $labels); // From other closure
+    }
+
+    public function testVariableCompletionShowsTypeInDetail(): void
+    {
+        $code = '<?php function foo(string $name) { $x; }';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 36], // After $
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $nameItems = array_filter($result['items'], fn($item) => $item['label'] === '$name');
+        self::assertNotEmpty($nameItems);
+        $nameItem = reset($nameItems);
+        self::assertSame('string', $nameItem['detail'] ?? null);
+    }
+
     public function testCompletionReturnsEmptyForUnknownContext(): void
     {
         $code = '<?php $x = 1;';
