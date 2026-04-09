@@ -125,10 +125,12 @@ final class CompletionHandler implements HandlerInterface
             return $this->getClassCompletions($prefix);
         }
 
-        // Function call completion (at start of expression or after operators)
+        // Function/class completion (at start of expression or after operators)
         if (preg_match('/(?:^|[(\s=,!&|])(\w+)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
-            return $this->getFunctionCompletions($prefix, $ast);
+            $items = $this->getFunctionCompletions($prefix, $ast);
+            $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
+            return $items;
         }
 
         return [];
@@ -750,5 +752,68 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return null;
+    }
+
+    /**
+     * Get completions for imported classes (from use statements).
+     *
+     * @param array<Stmt> $ast
+     * @return list<array{label: string, kind: int, detail: string}>
+     */
+    private function getImportedClassCompletions(string $prefix, array $ast): array
+    {
+        $items = [];
+        $imports = $this->getImports($ast);
+
+        foreach ($imports as $shortName => $fqcn) {
+            if ($prefix === '' || str_starts_with(strtolower($shortName), strtolower($prefix))) {
+                $items[] = [
+                    'label' => $shortName,
+                    'kind' => self::KIND_CLASS,
+                    'detail' => $fqcn,
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Extract all imports from use statements.
+     *
+     * @param array<Stmt> $ast
+     * @return array<string, string> Short name => FQCN
+     */
+    private function getImports(array $ast): array
+    {
+        $imports = [];
+
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $nsStmt) {
+                    $this->extractImportsFromUse($nsStmt, $imports);
+                }
+            } else {
+                $this->extractImportsFromUse($stmt, $imports);
+            }
+        }
+
+        return $imports;
+    }
+
+    /**
+     * @param array<string, string> $imports
+     */
+    private function extractImportsFromUse(Stmt $stmt, array &$imports): void
+    {
+        if (!$stmt instanceof Stmt\Use_) {
+            return;
+        }
+
+        foreach ($stmt->uses as $use) {
+            $shortName = $use->alias?->toString() ?? $use->name->getLast();
+            $fqcn = $use->name->toString();
+            $imports[$shortName] = $fqcn;
+        }
     }
 }

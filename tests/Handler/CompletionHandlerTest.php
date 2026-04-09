@@ -338,6 +338,81 @@ PHP;
         self::assertContains('array_filter', $labels);
     }
 
+    public function testExpressionCompletionIncludesImportedClasses(): void
+    {
+        $code = <<<'PHP'
+<?php
+use App\Models\User;
+use App\Models\UserRepository as Repo;
+
+function foo() {
+    $x = Us
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 5, 'character' => 10], // After "Us"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Should include imported class
+        self::assertContains('User', $labels);
+
+        // Check that FQCN is in detail
+        $userItems = array_filter($result['items'], fn($item) => $item['label'] === 'User');
+        self::assertNotEmpty($userItems);
+        $userItem = reset($userItems);
+        self::assertIsArray($userItem);
+        self::assertSame('App\Models\User', $userItem['detail'] ?? null);
+    }
+
+    public function testExpressionCompletionIncludesAliasedImports(): void
+    {
+        $code = <<<'PHP'
+<?php
+use App\Models\UserRepository as Repo;
+
+function foo() {
+    $x = Rep
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 11], // After "Rep"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Should include aliased import
+        self::assertContains('Repo', $labels);
+
+        // Check that FQCN is in detail
+        $repoItems = array_filter($result['items'], fn($item) => $item['label'] === 'Repo');
+        self::assertNotEmpty($repoItems);
+        $repoItem = reset($repoItems);
+        self::assertIsArray($repoItem);
+        self::assertSame('App\Models\UserRepository', $repoItem['detail'] ?? null);
+    }
+
     public function testCompletionReturnsEmptyForUnknownContext(): void
     {
         $code = '<?php $x = 1;';
