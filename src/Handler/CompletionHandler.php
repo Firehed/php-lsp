@@ -31,6 +31,7 @@ final class CompletionHandler implements HandlerInterface
     private const KIND_FUNCTION = 3;
     private const KIND_CLASS = 7;
     private const KIND_PROPERTY = 10;
+    private const KIND_KEYWORD = 14;
     private const KIND_CONSTANT = 21;
 
     public function __construct(
@@ -130,17 +131,36 @@ final class CompletionHandler implements HandlerInterface
             return $this->deduplicateCompletions($items);
         }
 
+        // After visibility keyword - suggest function, static, readonly, const, or types
+        // Must check before general type hint context since both patterns overlap
+        if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches)) {
+            $prefix = $matches[1];
+            $items = $this->getClassMemberKeywordCompletions($prefix);
+            $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast));
+            return $this->deduplicateCompletions($items);
+        }
+
         // Type hint context - after : (return type), in parameters, union/intersection types
-        // Matches: "): str", "(str", ", str", "?str", "|str", "&str", "private str", "public readonly str"
-        if (preg_match('/(?:(?:private|protected|public)(?:\s+readonly)?\s+|[(:,?|&]\s*)(\w*)$/', $textBeforeCursor, $matches)) {
+        // Matches: "): str", "(str", ", str", "?str", "|str", "&str"
+        if (preg_match('/[(:,?|&]\s*(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
             return $this->getTypeHintCompletions($prefix, $ast);
         }
 
-        // Function/class completion (at start of expression or after operators)
+        // Class body context - only class-level keywords, no functions
+        if ($this->isInClassBody($textBeforeCursor)) {
+            if (preg_match('/(?:^|[\s{;])(\w+)$/', $textBeforeCursor, $matches)) {
+                $prefix = $matches[1];
+                return $this->getClassBodyKeywordCompletions($prefix);
+            }
+            return [];
+        }
+
+        // Function/class/keyword completion (at start of expression or after operators)
         if (preg_match('/(?:^|[(\s=,!&|])(\w+)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
-            $items = $this->getFunctionCompletions($prefix, $ast);
+            $items = $this->getKeywordCompletions($prefix);
+            $items = array_merge($items, $this->getFunctionCompletions($prefix, $ast));
             $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
             $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
                 SymbolKind::Class_,
@@ -870,7 +890,7 @@ final class CompletionHandler implements HandlerInterface
             if ($prefix === '' || str_starts_with($type, strtolower($prefix))) {
                 $items[] = [
                     'label' => $type,
-                    'kind' => self::KIND_CLASS, // Keyword kind would be better but not defined
+                    'kind' => self::KIND_KEYWORD,
                     'detail' => 'builtin type',
                 ];
             }
@@ -888,5 +908,142 @@ final class CompletionHandler implements HandlerInterface
         ]));
 
         return $this->deduplicateCompletions($items);
+    }
+
+    /**
+     * Get PHP keyword completions.
+     *
+     * @return list<array{label: string, kind: int}>
+     */
+    private function getKeywordCompletions(string $prefix): array
+    {
+        $keywords = [
+            // Control flow
+            'if', 'else', 'elseif', 'switch', 'case', 'default',
+            'while', 'do', 'for', 'foreach', 'break', 'continue',
+            'return', 'throw', 'try', 'catch', 'finally',
+            // Declarations
+            'function', 'class', 'interface', 'trait', 'enum', 'namespace', 'use',
+            'extends', 'implements', 'const', 'public', 'protected', 'private',
+            'static', 'final', 'abstract', 'readonly',
+            // Operators and other
+            'new', 'instanceof', 'clone', 'yield', 'match',
+            'echo', 'print', 'include', 'include_once', 'require', 'require_once',
+            'global', 'unset', 'isset', 'empty', 'list', 'fn',
+        ];
+
+        $items = [];
+        $prefixLower = strtolower($prefix);
+
+        foreach ($keywords as $keyword) {
+            if ($prefix === '' || str_starts_with($keyword, $prefixLower)) {
+                $items[] = [
+                    'label' => $keyword,
+                    'kind' => self::KIND_KEYWORD,
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Check if cursor is inside a class/interface/trait/enum body (but not inside a method).
+     */
+    private function isInClassBody(string $textBeforeCursor): bool
+    {
+        // Count braces to detect if we're inside a class body
+        // This is a heuristic - look for class/interface/trait/enum followed by unbalanced {
+        if (!preg_match('/(?:class|interface|trait|enum)\s+\w+/', $textBeforeCursor)) {
+            return false;
+        }
+
+        // Count brace depth after the class declaration
+        $lastClassPos = max(
+            strrpos($textBeforeCursor, 'class ') ?: 0,
+            strrpos($textBeforeCursor, 'interface ') ?: 0,
+            strrpos($textBeforeCursor, 'trait ') ?: 0,
+            strrpos($textBeforeCursor, 'enum ') ?: 0,
+        );
+
+        $afterClass = substr($textBeforeCursor, $lastClassPos);
+        $depth = 0;
+        $inString = false;
+        $stringChar = '';
+
+        for ($i = 0; $i < strlen($afterClass); $i++) {
+            $char = $afterClass[$i];
+
+            if ($inString) {
+                if ($char === $stringChar && ($i === 0 || $afterClass[$i - 1] !== '\\')) {
+                    $inString = false;
+                }
+                continue;
+            }
+
+            if ($char === '"' || $char === "'") {
+                $inString = true;
+                $stringChar = $char;
+            } elseif ($char === '{') {
+                $depth++;
+            } elseif ($char === '}') {
+                $depth--;
+            }
+        }
+
+        // depth === 1 means we're directly inside the class body (not in a method)
+        return $depth === 1;
+    }
+
+    /**
+     * Get keywords valid at class body level.
+     *
+     * @return list<array{label: string, kind: int}>
+     */
+    private function getClassBodyKeywordCompletions(string $prefix): array
+    {
+        $keywords = [
+            'public', 'private', 'protected',
+            'static', 'final', 'abstract', 'readonly',
+            'const', 'function', 'use',
+        ];
+
+        $items = [];
+        $prefixLower = strtolower($prefix);
+
+        foreach ($keywords as $keyword) {
+            if ($prefix === '' || str_starts_with($keyword, $prefixLower)) {
+                $items[] = [
+                    'label' => $keyword,
+                    'kind' => self::KIND_KEYWORD,
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Get keywords valid after a visibility modifier.
+     *
+     * @return list<array{label: string, kind: int}>
+     */
+    private function getClassMemberKeywordCompletions(string $prefix): array
+    {
+        $keywords = ['function', 'static', 'readonly', 'const'];
+
+        $items = [];
+        $prefixLower = strtolower($prefix);
+
+        foreach ($keywords as $keyword) {
+            if ($prefix === '' || str_starts_with($keyword, $prefixLower)) {
+                $items[] = [
+                    'label' => $keyword,
+                    'kind' => self::KIND_KEYWORD,
+                ];
+            }
+        }
+
+        return $items;
     }
 }
