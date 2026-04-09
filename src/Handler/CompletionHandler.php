@@ -135,7 +135,13 @@ final class CompletionHandler implements HandlerInterface
             $prefix = $matches[1];
             $items = $this->getFunctionCompletions($prefix, $ast);
             $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
-            return $items;
+            $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
+                SymbolKind::Class_,
+                SymbolKind::Interface_,
+                SymbolKind::Trait_,
+                SymbolKind::Enum_,
+            ]));
+            return $this->deduplicateCompletions($items);
         }
 
         return [];

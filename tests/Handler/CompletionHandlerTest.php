@@ -525,6 +525,52 @@ PHP;
         self::assertNotContains('MyInterface', $labels);
     }
 
+    public function testExpressionCompletionIncludesAllIndexedTypes(): void
+    {
+        // Add various symbol types to the index
+        $this->symbolIndex->add(new Symbol(
+            'MyClass',
+            'App\MyClass',
+            SymbolKind::Class_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+        $this->symbolIndex->add(new Symbol(
+            'MyInterface',
+            'App\MyInterface',
+            SymbolKind::Interface_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+        $this->symbolIndex->add(new Symbol(
+            'MyTrait',
+            'App\MyTrait',
+            SymbolKind::Trait_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+
+        // Expression context (not `new`)
+        $code = '<?php $x = My';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 13],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Expression context should include all types
+        self::assertContains('MyClass', $labels);
+        self::assertContains('MyInterface', $labels);
+        self::assertContains('MyTrait', $labels);
+    }
+
     public function testCompletionReturnsEmptyForUnknownContext(): void
     {
         $code = '<?php $x = 1;';
