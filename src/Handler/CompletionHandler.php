@@ -119,10 +119,10 @@ final class CompletionHandler implements HandlerInterface
             return $this->getStaticCompletions($className, $prefix, $ast, $document);
         }
 
-        // new ClassName completion
+        // new ClassName completion - only suggest imported classes
         if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
-            return $this->getClassCompletions($prefix);
+            return $this->getImportedClassCompletions($prefix, $ast);
         }
 
         // Function/class completion (at start of expression or after operators)
@@ -253,35 +253,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $items;
-    }
-
-    /**
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
-     */
-    private function getClassCompletions(string $prefix): array
-    {
-        $items = [];
-
-        if ($this->classLocator === null) {
-            return $items;
-        }
-
-        // Get all known classes from Composer
-        $classes = $this->classLocator->getAllClasses();
-
-        foreach ($classes as $className) {
-            $shortName = $this->getShortClassName($className);
-            if ($prefix === '' || str_starts_with(strtolower($shortName), strtolower($prefix))) {
-                $items[] = [
-                    'label' => $shortName,
-                    'kind' => self::KIND_CLASS,
-                    'detail' => $className,
-                ];
-            }
-        }
-
-        // Limit results to prevent overwhelming the client
-        return array_slice($items, 0, 100);
     }
 
     /**
@@ -703,12 +674,6 @@ final class CompletionHandler implements HandlerInterface
             return implode('&', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
         }
         return (string) $type;
-    }
-
-    private function getShortClassName(string $fqcn): string
-    {
-        $parts = explode('\\', $fqcn);
-        return end($parts);
     }
 
     /**
