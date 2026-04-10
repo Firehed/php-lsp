@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
@@ -43,6 +44,7 @@ final class Server
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
         $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
+        $typeResolver = new BasicTypeResolver();
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
@@ -50,7 +52,7 @@ final class Server
         $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
         $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator);
         $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator);
-        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
+        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $symbolIndex, $classLocator, $typeResolver);
     }
 
     public function run(): int

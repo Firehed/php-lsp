@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
@@ -40,6 +41,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
         private readonly ?ComposerClassLocator $classLocator,
+        private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
 
@@ -1077,19 +1079,22 @@ final class CompletionHandler implements HandlerInterface
 
         // Add $this if we're in a method
         if ($inMethod && ($prefix === '' || str_starts_with('this', $prefixLower))) {
+            $className = $this->typeResolver?->resolveVariableType('this', $enclosingScope, $cursorLine, $ast);
             $items[] = [
                 'label' => '$this',
                 'kind' => self::KIND_VARIABLE,
-                'detail' => 'self',
+                'detail' => $className ?? 'self',
             ];
         }
 
-        foreach ($variables as $name => $type) {
+        foreach ($variables as $name => $basicType) {
             if ($prefix === '' || str_starts_with(strtolower($name), $prefixLower)) {
+                // Use type resolver if available, fall back to basic type
+                $resolvedType = $this->typeResolver?->resolveVariableType($name, $enclosingScope, $cursorLine, $ast);
                 $items[] = [
                     'label' => '$' . $name,
                     'kind' => self::KIND_VARIABLE,
-                    'detail' => $type,
+                    'detail' => $resolvedType ?? $basicType,
                 ];
             }
         }
