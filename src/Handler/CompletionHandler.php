@@ -29,6 +29,7 @@ final class CompletionHandler implements HandlerInterface
     // LSP CompletionItemKind constants
     private const KIND_METHOD = 2;
     private const KIND_FUNCTION = 3;
+    private const KIND_VARIABLE = 6;
     private const KIND_CLASS = 7;
     private const KIND_PROPERTY = 10;
     private const KIND_KEYWORD = 14;
@@ -96,7 +97,7 @@ final class CompletionHandler implements HandlerInterface
         $lineText = $document->getLine($line);
         $textBeforeCursor = substr($lineText, 0, $character);
 
-        $items = $this->getCompletionItems($textBeforeCursor, $ast, $document);
+        $items = $this->getCompletionItems($textBeforeCursor, $ast, $document, $line);
 
         return [
             'isIncomplete' => false,
@@ -108,12 +109,18 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
      */
-    private function getCompletionItems(string $textBeforeCursor, array $ast, TextDocument $document): array
+    private function getCompletionItems(string $textBeforeCursor, array $ast, TextDocument $document, int $line): array
     {
         // $this-> completion
         if (preg_match('/\$this->(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
             return $this->getThisMemberCompletions($prefix, $ast);
+        }
+
+        // Variable completion ($var)
+        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches)) {
+            $prefix = $matches[1];
+            return $this->getVariableCompletions($prefix, $ast, $line);
         }
 
         // ClassName:: completion (static) - also match single : for mid-typing
@@ -1045,5 +1052,210 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $items;
+    }
+
+    /**
+     * Get variable completions for the current scope.
+     *
+     * @param array<Stmt> $ast
+     * @return list<array{label: string, kind: int, detail?: string}>
+     */
+    private function getVariableCompletions(string $prefix, array $ast, int $cursorLine): array
+    {
+        // Find the innermost function/method/closure containing the cursor
+        $enclosingScope = $this->findEnclosingScope($ast, $cursorLine);
+        if ($enclosingScope === null) {
+            return [];
+        }
+
+        $inMethod = $enclosingScope instanceof Stmt\ClassMethod;
+        $variables = $this->collectScopeVariables($enclosingScope);
+
+        // Build completion items
+        $items = [];
+        $prefixLower = strtolower($prefix);
+
+        // Add $this if we're in a method
+        if ($inMethod && ($prefix === '' || str_starts_with('this', $prefixLower))) {
+            $items[] = [
+                'label' => '$this',
+                'kind' => self::KIND_VARIABLE,
+                'detail' => 'self',
+            ];
+        }
+
+        foreach ($variables as $name => $type) {
+            if ($prefix === '' || str_starts_with(strtolower($name), $prefixLower)) {
+                $items[] = [
+                    'label' => '$' . $name,
+                    'kind' => self::KIND_VARIABLE,
+                    'detail' => $type,
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Find the innermost function/method/closure containing the given line.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function findEnclosingScope(array $ast, int $cursorLine): Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null
+    {
+        $found = null;
+
+        $visitor = new class ($cursorLine, $found) extends NodeVisitorAbstract {
+            /** @var Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null */
+            public $found = null;
+            private int $cursorLine;
+
+            /**
+             * @param Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null $found
+             */
+            public function __construct(int $cursorLine, &$found)
+            {
+                $this->cursorLine = $cursorLine;
+                $this->found = &$found;
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Stmt\Function_
+                    || $node instanceof Stmt\ClassMethod
+                    || $node instanceof Node\Expr\Closure
+                    || $node instanceof Node\Expr\ArrowFunction
+                ) {
+                    $startLine = $node->getStartLine();
+                    $endLine = $node->getEndLine();
+
+                    // Check if cursor is within this scope (1-based lines from parser)
+                    if ($startLine !== -1 && $endLine !== -1
+                        && $this->cursorLine >= $startLine - 1
+                        && $this->cursorLine <= $endLine - 1
+                    ) {
+                        // Keep the innermost (last found) scope
+                        $this->found = $node;
+                    }
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
+    }
+
+    /**
+     * Collect variables from a function/method/closure scope.
+     *
+     * @return array<string, string> Variable name => type
+     */
+    private function collectScopeVariables(Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $scope): array
+    {
+        $variables = [];
+
+        // Collect parameters
+        foreach ($scope->params as $param) {
+            if ($param->var instanceof Variable && is_string($param->var->name)) {
+                $variables[$param->var->name] = $this->formatParamType($param->type);
+            }
+        }
+
+        // Collect use() variables from closures
+        if ($scope instanceof Node\Expr\Closure) {
+            foreach ($scope->uses as $use) {
+                if (is_string($use->var->name)) {
+                    $variables[$use->var->name] = 'mixed';
+                }
+            }
+        }
+
+        // Traverse the scope body to find assignments and foreach variables
+        $stmts = $scope instanceof Node\Expr\ArrowFunction ? [] : ($scope->stmts ?? []);
+
+        $collector = new class ($variables) extends NodeVisitorAbstract {
+            /** @var array<string, string> */
+            public array $variables;
+
+            /**
+             * @param array<string, string> $variables
+             */
+            public function __construct(array &$variables)
+            {
+                $this->variables = &$variables;
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                // Skip nested function scopes
+                if ($node instanceof Stmt\Function_
+                    || $node instanceof Stmt\ClassMethod
+                    || $node instanceof Node\Expr\Closure
+                    || $node instanceof Node\Expr\ArrowFunction
+                ) {
+                    return NodeTraverser::DONT_TRAVERSE_CHILDREN;
+                }
+
+                // Collect assignments
+                if ($node instanceof Node\Expr\Assign) {
+                    if ($node->var instanceof Variable && is_string($node->var->name)) {
+                        if (!isset($this->variables[$node->var->name])) {
+                            $this->variables[$node->var->name] = 'mixed';
+                        }
+                    }
+                }
+
+                // Collect foreach variables
+                if ($node instanceof Stmt\Foreach_) {
+                    if ($node->valueVar instanceof Variable && is_string($node->valueVar->name)) {
+                        $this->variables[$node->valueVar->name] = 'mixed';
+                    }
+                    if ($node->keyVar instanceof Variable && is_string($node->keyVar->name)) {
+                        $this->variables[$node->keyVar->name] = 'mixed';
+                    }
+                }
+
+                // Collect catch variables
+                if ($node instanceof Stmt\Catch_) {
+                    if ($node->var !== null && is_string($node->var->name)) {
+                        $this->variables[$node->var->name] = 'Exception';
+                    }
+                }
+
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($collector);
+        $traverser->traverse($stmts);
+
+        return $collector->variables;
+    }
+
+    private function formatParamType(?Node $type): string
+    {
+        if ($type === null) {
+            return 'mixed';
+        }
+        if ($type instanceof Node\Identifier) {
+            return $type->toString();
+        }
+        if ($type instanceof Node\Name) {
+            return $type->toString();
+        }
+        if ($type instanceof Node\NullableType) {
+            return '?' . $this->formatParamType($type->type);
+        }
+        if ($type instanceof Node\UnionType) {
+            $types = array_map(fn($t) => $this->formatParamType($t), $type->types);
+            return implode('|', $types);
+        }
+        return 'mixed';
     }
 }
