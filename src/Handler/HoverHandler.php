@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
@@ -171,78 +172,13 @@ final class HoverHandler implements HandlerInterface
             ? $resolvedName->toString()
             : $node->toString();
 
-        // First look in current file
-        $classNode = $this->findClassInAst($className, $ast);
-
-        // If not found, try to locate via Composer
-        if ($classNode === null && $this->classLocator !== null) {
-            $filePath = $this->classLocator->locateClass($className);
-            if ($filePath !== null) {
-                $content = file_get_contents($filePath);
-                if ($content !== false) {
-                    $externalDoc = new TextDocument('file://' . $filePath, 'php', 0, $content);
-                    $externalAst = $this->parser->parse($externalDoc);
-                    if ($externalAst !== null) {
-                        $classNode = $this->findClassInAst($className, $externalAst);
-                    }
-                }
-            }
-        }
+        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
 
         if ($classNode === null) {
             return null;
         }
 
         return $this->formatClassHover($classNode);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findClassInAst(string $className, array $ast): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null
-    {
-        $finder = new class ($className) extends NodeVisitorAbstract {
-            public Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found = null;
-            private string $namespace = '';
-
-            public function __construct(private readonly string $className)
-            {
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Namespace_) {
-                    $this->namespace = $node->name?->toString() ?? '';
-                    return null;
-                }
-
-                if ($node instanceof Stmt\Class_
-                    || $node instanceof Stmt\Interface_
-                    || $node instanceof Stmt\Trait_
-                    || $node instanceof Stmt\Enum_
-                ) {
-                    $name = $node->name?->toString();
-                    if ($name === null) {
-                        return null;
-                    }
-                    $fqn = $this->namespace !== '' ? $this->namespace . '\\' . $name : $name;
-
-                    // Match by FQN or short name
-                    if ($fqn === $this->className || $name === $this->className) {
-                        $this->found = $node;
-                        return NodeTraverser::STOP_TRAVERSAL;
-                    }
-                }
-
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        return $finder->found;
     }
 
     private function formatClassHover(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): string
@@ -505,24 +441,7 @@ final class HoverHandler implements HandlerInterface
      */
     private function findMethodInClass(string $className, string $methodName, array $ast, TextDocument $document): ?Stmt\ClassMethod
     {
-        // First check current file
-        $classNode = $this->findClassInAst($className, $ast);
-
-        // If not found, try Composer
-        if ($classNode === null && $this->classLocator !== null) {
-            $filePath = $this->classLocator->locateClass($className);
-            if ($filePath !== null) {
-                $content = file_get_contents($filePath);
-                if ($content !== false) {
-                    $externalDoc = new TextDocument('file://' . $filePath, 'php', 0, $content);
-                    $externalAst = $this->parser->parse($externalDoc);
-                    if ($externalAst !== null) {
-                        $classNode = $this->findClassInAst($className, $externalAst);
-                    }
-                }
-            }
-        }
-
+        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
         if ($classNode === null) {
             return null;
         }
@@ -541,24 +460,7 @@ final class HoverHandler implements HandlerInterface
      */
     private function findPropertyInClass(string $className, string $propertyName, array $ast, TextDocument $document): ?Stmt\Property
     {
-        // First check current file
-        $classNode = $this->findClassInAst($className, $ast);
-
-        // If not found, try Composer
-        if ($classNode === null && $this->classLocator !== null) {
-            $filePath = $this->classLocator->locateClass($className);
-            if ($filePath !== null) {
-                $content = file_get_contents($filePath);
-                if ($content !== false) {
-                    $externalDoc = new TextDocument('file://' . $filePath, 'php', 0, $content);
-                    $externalAst = $this->parser->parse($externalDoc);
-                    if ($externalAst !== null) {
-                        $classNode = $this->findClassInAst($className, $externalAst);
-                    }
-                }
-            }
-        }
-
+        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
         if ($classNode === null) {
             return null;
         }
