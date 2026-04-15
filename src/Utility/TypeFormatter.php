@@ -17,8 +17,11 @@ final class TypeFormatter
     /**
      * Format a PhpParser type node to its string representation.
      */
-    public static function formatNode(Node $type): string
+    public static function formatNode(?Node $type): ?string
     {
+        if ($type === null) {
+            return null;
+        }
         if ($type instanceof Name) {
             return $type->toString();
         }
@@ -34,7 +37,7 @@ final class TypeFormatter
         if ($type instanceof Node\IntersectionType) {
             return implode('&', array_map(self::formatNode(...), $type->types));
         }
-        return '';
+        return null;
     }
 
     /**
