@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
@@ -507,7 +508,7 @@ final class CompletionHandler implements HandlerInterface
         foreach ($method->params as $param) {
             $paramStr = '';
             if ($param->type !== null) {
-                $paramStr .= $this->formatType($param->type) . ' ';
+                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
             }
             $var = $param->var;
             if ($var instanceof Variable && is_string($var->name)) {
@@ -518,7 +519,7 @@ final class CompletionHandler implements HandlerInterface
 
         $detail = $method->name->toString() . '(' . implode(', ', $params) . ')';
         if ($method->returnType !== null) {
-            $detail .= ': ' . $this->formatType($method->returnType);
+            $detail .= ': ' . TypeFormatter::formatNode($method->returnType);
         }
 
         $item = [
@@ -543,7 +544,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatPropertyCompletion(Stmt\Property $property, string $name): array
     {
-        $type = $property->type !== null ? $this->formatType($property->type) : 'mixed';
+        $type = $property->type !== null ? TypeFormatter::formatNode($property->type) : 'mixed';
 
         $item = [
             'label' => $name,
@@ -593,7 +594,7 @@ final class CompletionHandler implements HandlerInterface
         foreach ($func->params as $param) {
             $paramStr = '';
             if ($param->type !== null) {
-                $paramStr .= $this->formatType($param->type) . ' ';
+                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
             }
             $var = $param->var;
             if ($var instanceof Variable && is_string($var->name)) {
@@ -604,7 +605,7 @@ final class CompletionHandler implements HandlerInterface
 
         $detail = 'function ' . $func->name->toString() . '(' . implode(', ', $params) . ')';
         if ($func->returnType !== null) {
-            $detail .= ': ' . $this->formatType($func->returnType);
+            $detail .= ': ' . TypeFormatter::formatNode($func->returnType);
         }
 
         $item = [
@@ -634,7 +635,7 @@ final class CompletionHandler implements HandlerInterface
             $paramStr = '';
             $type = $param->getType();
             if ($type !== null) {
-                $paramStr .= $this->formatReflectionType($type) . ' ';
+                $paramStr .= TypeFormatter::formatReflection($type) . ' ';
             }
             $paramStr .= '$' . $param->getName();
             $params[] = $paramStr;
@@ -643,7 +644,7 @@ final class CompletionHandler implements HandlerInterface
         $detail = $method->getName() . '(' . implode(', ', $params) . ')';
         $returnType = $method->getReturnType();
         if ($returnType !== null) {
-            $detail .= ': ' . $this->formatReflectionType($returnType);
+            $detail .= ': ' . TypeFormatter::formatReflection($returnType);
         }
 
         $item = [
@@ -669,7 +670,7 @@ final class CompletionHandler implements HandlerInterface
     private function formatReflectionPropertyCompletion(ReflectionProperty $prop): array
     {
         $type = $prop->getType();
-        $typeStr = $type !== null ? $this->formatReflectionType($type) : 'mixed';
+        $typeStr = $type !== null ? TypeFormatter::formatReflection($type) : 'mixed';
 
         $item = [
             'label' => $prop->getName(),
@@ -686,41 +687,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $item;
-    }
-
-    private function formatType(Node $type): string
-    {
-        if ($type instanceof Name) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\Identifier) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\NullableType) {
-            return '?' . $this->formatType($type->type);
-        }
-        if ($type instanceof Node\UnionType) {
-            return implode('|', array_map(fn($t) => $this->formatType($t), $type->types));
-        }
-        if ($type instanceof Node\IntersectionType) {
-            return implode('&', array_map(fn($t) => $this->formatType($t), $type->types));
-        }
-        return '';
-    }
-
-    private function formatReflectionType(\ReflectionType $type): string
-    {
-        if ($type instanceof \ReflectionNamedType) {
-            $name = $type->getName();
-            return $type->allowsNull() && $name !== 'null' && $name !== 'mixed' ? '?' . $name : $name;
-        }
-        if ($type instanceof \ReflectionUnionType) {
-            return implode('|', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
-        }
-        if ($type instanceof \ReflectionIntersectionType) {
-            return implode('&', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
-        }
-        return (string) $type;
     }
 
     /**
