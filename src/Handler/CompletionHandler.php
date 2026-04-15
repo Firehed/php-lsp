@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
@@ -22,8 +23,6 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
-use ReflectionClass;
-use ReflectionException;
 use ReflectionMethod;
 use ReflectionProperty;
 
@@ -347,39 +346,34 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getInheritedMemberCompletions(string $className, string $prefix, array $existingItems): array
     {
+        $reflection = ReflectionHelper::getClass($className);
+        if ($reflection === null) {
+            return [];
+        }
+
         $existingLabels = array_column($existingItems, 'label');
         $items = [];
 
-        try {
-            if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
-                return [];
+        // Methods from parent classes
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
+            $name = $method->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
             }
-
-            $reflection = new ReflectionClass($className);
-
-            // Methods from parent classes
-            foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
-                $name = $method->getName();
-                if (in_array($name, $existingLabels, true)) {
-                    continue;
-                }
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                    $items[] = $this->formatReflectionMethodCompletion($method);
-                }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionMethodCompletion($method);
             }
+        }
 
-            // Properties from parent classes
-            foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED) as $prop) {
-                $name = $prop->getName();
-                if (in_array($name, $existingLabels, true)) {
-                    continue;
-                }
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                    $items[] = $this->formatReflectionPropertyCompletion($prop);
-                }
+        // Properties from parent classes
+        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED) as $prop) {
+            $name = $prop->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
             }
-        } catch (ReflectionException) {
-            // Class not autoloadable
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionPropertyCompletion($prop);
+            }
         }
 
         return $items;
@@ -391,46 +385,41 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getReflectionStaticCompletions(string $className, string $prefix, array $existingItems): array
     {
+        $reflection = ReflectionHelper::getClass($className);
+        if ($reflection === null) {
+            return [];
+        }
+
         $existingLabels = array_column($existingItems, 'label');
         $items = [];
 
-        try {
-            if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
-                return [];
+        // Static methods
+        foreach ($reflection->getMethods(ReflectionMethod::IS_STATIC | ReflectionMethod::IS_PUBLIC) as $method) {
+            if (!$method->isStatic()) {
+                continue;
             }
-
-            $reflection = new ReflectionClass($className);
-
-            // Static methods
-            foreach ($reflection->getMethods(ReflectionMethod::IS_STATIC | ReflectionMethod::IS_PUBLIC) as $method) {
-                if (!$method->isStatic()) {
-                    continue;
-                }
-                $name = $method->getName();
-                if (in_array($name, $existingLabels, true)) {
-                    continue;
-                }
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                    $items[] = $this->formatReflectionMethodCompletion($method);
-                }
+            $name = $method->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
             }
-
-            // Constants
-            foreach ($reflection->getReflectionConstants() as $const) {
-                $name = $const->getName();
-                if (in_array($name, $existingLabels, true)) {
-                    continue;
-                }
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                    $items[] = [
-                        'label' => $name,
-                        'kind' => self::KIND_CONSTANT,
-                        'detail' => 'const ' . $name,
-                    ];
-                }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionMethodCompletion($method);
             }
-        } catch (ReflectionException) {
-            // Class not autoloadable
+        }
+
+        // Constants
+        foreach ($reflection->getReflectionConstants() as $const) {
+            $name = $const->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
+            }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = [
+                    'label' => $name,
+                    'kind' => self::KIND_CONSTANT,
+                    'detail' => 'const ' . $name,
+                ];
+            }
         }
 
         return $items;
