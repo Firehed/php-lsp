@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -25,7 +26,6 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
-use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
@@ -573,36 +573,22 @@ final class HoverHandler implements HandlerInterface
 
     private function getReflectionMethodHover(string $className, string $methodName): ?string
     {
-        try {
-            if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
-                return null;
-            }
-            $classReflection = new ReflectionClass($className);
-            if (!$classReflection->hasMethod($methodName)) {
-                return null;
-            }
-            $reflection = $classReflection->getMethod($methodName);
-            return $this->formatReflectionMethod($reflection);
-        } catch (ReflectionException) {
+        $classReflection = ReflectionHelper::getClass($className);
+        if ($classReflection === null || !$classReflection->hasMethod($methodName)) {
             return null;
         }
+        $reflection = $classReflection->getMethod($methodName);
+        return $this->formatReflectionMethod($reflection);
     }
 
     private function getReflectionPropertyHover(string $className, string $propertyName): ?string
     {
-        try {
-            if (!class_exists($className) && !interface_exists($className) && !trait_exists($className)) {
-                return null;
-            }
-            $classReflection = new ReflectionClass($className);
-            if (!$classReflection->hasProperty($propertyName)) {
-                return null;
-            }
-            $reflection = $classReflection->getProperty($propertyName);
-            return $this->formatReflectionProperty($reflection);
-        } catch (ReflectionException) {
+        $classReflection = ReflectionHelper::getClass($className);
+        if ($classReflection === null || !$classReflection->hasProperty($propertyName)) {
             return null;
         }
+        $reflection = $classReflection->getProperty($propertyName);
+        return $this->formatReflectionProperty($reflection);
     }
 
     private function formatReflectionFunction(ReflectionFunction $func): string
