@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -457,7 +458,7 @@ final class SignatureHelpHandler implements HandlerInterface
         foreach ($func->params as $param) {
             $paramStr = '';
             if ($param->type !== null) {
-                $paramStr .= $this->formatType($param->type) . ' ';
+                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
             }
             $var = $param->var;
             if ($var instanceof Variable && is_string($var->name)) {
@@ -469,7 +470,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         $label = 'function ' . $func->name->toString() . '(' . implode(', ', $paramLabels) . ')';
         if ($func->returnType !== null) {
-            $label .= ': ' . $this->formatType($func->returnType);
+            $label .= ': ' . TypeFormatter::formatNode($func->returnType);
         }
 
         $result = [
@@ -496,7 +497,7 @@ final class SignatureHelpHandler implements HandlerInterface
         foreach ($method->params as $param) {
             $paramStr = '';
             if ($param->type !== null) {
-                $paramStr .= $this->formatType($param->type) . ' ';
+                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
             }
             $var = $param->var;
             if ($var instanceof Variable && is_string($var->name)) {
@@ -508,7 +509,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         $label = $method->name->toString() . '(' . implode(', ', $paramLabels) . ')';
         if ($method->returnType !== null) {
-            $label .= ': ' . $this->formatType($method->returnType);
+            $label .= ': ' . TypeFormatter::formatNode($method->returnType);
         }
 
         $result = [
@@ -546,7 +547,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         $returnType = $func->getReturnType();
         if ($returnType !== null) {
-            $label .= ': ' . $this->formatReflectionType($returnType);
+            $label .= ': ' . TypeFormatter::formatReflection($returnType);
         }
 
         $result = [
@@ -567,7 +568,7 @@ final class SignatureHelpHandler implements HandlerInterface
         $paramStr = '';
         $type = $param->getType();
         if ($type !== null) {
-            $paramStr .= $this->formatReflectionType($type) . ' ';
+            $paramStr .= TypeFormatter::formatReflection($type) . ' ';
         }
         if ($param->isVariadic()) {
             $paramStr .= '...';
@@ -575,40 +576,5 @@ final class SignatureHelpHandler implements HandlerInterface
         $paramStr .= '$' . $param->getName();
 
         return $paramStr;
-    }
-
-    private function formatType(Node $type): string
-    {
-        if ($type instanceof Name) {
-            return $type->toString();
-        }
-        if ($type instanceof Identifier) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\NullableType) {
-            return '?' . $this->formatType($type->type);
-        }
-        if ($type instanceof Node\UnionType) {
-            return implode('|', array_map(fn($t) => $this->formatType($t), $type->types));
-        }
-        if ($type instanceof Node\IntersectionType) {
-            return implode('&', array_map(fn($t) => $this->formatType($t), $type->types));
-        }
-        return '';
-    }
-
-    private function formatReflectionType(\ReflectionType $type): string
-    {
-        if ($type instanceof \ReflectionNamedType) {
-            $name = $type->getName();
-            return $type->allowsNull() && $name !== 'null' && $name !== 'mixed' ? '?' . $name : $name;
-        }
-        if ($type instanceof \ReflectionUnionType) {
-            return implode('|', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
-        }
-        if ($type instanceof \ReflectionIntersectionType) {
-            return implode('&', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
-        }
-        return (string) $type;
     }
 }
