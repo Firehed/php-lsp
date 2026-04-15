@@ -116,11 +116,14 @@ class TypeFormatterTest extends TestCase
 
     public function testFormatReflectionWithIntersectionType(): void
     {
-        // Use eval to create a function with intersection type
-        // since we can't use intersection types in closure return types easily
-        eval('function _typeFormatterTestIntersection(): \Countable&\Traversable { return new \ArrayObject(); }');
-        $fn = new ReflectionFunction('_typeFormatterTestIntersection');
-        $type = $fn->getReturnType();
+        $obj = new class {
+            public function test(): \Countable&\Traversable
+            {
+                return new \ArrayObject();
+            }
+        };
+        $method = new ReflectionMethod($obj, 'test');
+        $type = $method->getReturnType();
         assert($type !== null);
         self::assertSame('Countable&Traversable', TypeFormatter::formatReflection($type));
     }
