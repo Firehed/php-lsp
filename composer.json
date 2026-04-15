@@ -30,11 +30,11 @@
         }
     },
     "scripts": {
-        "test": "phpunit",
-        "analyze": "phpstan analyze",
+        "phpunit": "phpunit",
+        "phpstan": "phpstan analyze",
         "check": [
-            "@analyze",
-            "@test"
+            "@phpstan",
+            "@phpunit"
         ]
     },
     "bin": [

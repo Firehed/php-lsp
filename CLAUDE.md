@@ -3,8 +3,10 @@
 ## Quick Start
 
 ```bash
-composer check              # PHPStan + tests (run before commits)
-composer test -- --filter X # Run specific tests
+composer check # PHPStan + tests (run before commits)
+composer phpunit -- --filter X # Run specific tests
+composer phpstan -- --error-format=raw --no-progress # run phpstan
+composer phpstan -- --error-format=raw --no-progress path/to/analyze # run phpstan on a specific path
 ```
 
 ## Project Structure
