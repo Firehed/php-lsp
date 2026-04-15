@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
+use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
@@ -238,23 +239,7 @@ final class CompletionHandler implements HandlerInterface
         // Resolve short name to FQCN using imports
         $resolvedClassName = $this->resolveClassName($className, $ast);
 
-        // Try to find class in AST first
-        $classNode = $this->findClassInAst($resolvedClassName, $ast);
-
-        // If not in current file, try Composer
-        if ($classNode === null && $this->classLocator !== null) {
-            $filePath = $this->classLocator->locateClass($resolvedClassName);
-            if ($filePath !== null) {
-                $content = file_get_contents($filePath);
-                if ($content !== false) {
-                    $externalDoc = new TextDocument('file://' . $filePath, 'php', 0, $content);
-                    $externalAst = $this->parser->parse($externalDoc);
-                    if ($externalAst !== null) {
-                        $classNode = $this->findClassInAst($resolvedClassName, $externalAst);
-                    }
-                }
-            }
-        }
+        $classNode = ClassFinder::findWithLocator($resolvedClassName, $ast, $this->classLocator, $this->parser);
 
         if ($classNode !== null) {
             foreach ($classNode->stmts as $stmt) {
@@ -354,54 +339,6 @@ final class CompletionHandler implements HandlerInterface
             }
         }
         return null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findClassInAst(string $className, array $ast): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null
-    {
-        $finder = new class ($className) extends NodeVisitorAbstract {
-            public Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found = null;
-            private string $namespace = '';
-
-            public function __construct(private readonly string $className)
-            {
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Namespace_) {
-                    $this->namespace = $node->name?->toString() ?? '';
-                    return null;
-                }
-
-                if ($node instanceof Stmt\Class_
-                    || $node instanceof Stmt\Interface_
-                    || $node instanceof Stmt\Trait_
-                    || $node instanceof Stmt\Enum_
-                ) {
-                    $name = $node->name?->toString();
-                    if ($name === null) {
-                        return null;
-                    }
-                    $fqn = $this->namespace !== '' ? $this->namespace . '\\' . $name : $name;
-
-                    if ($fqn === $this->className || $name === $this->className) {
-                        $this->found = $node;
-                        return NodeTraverser::STOP_TRAVERSAL;
-                    }
-                }
-
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        return $finder->found;
     }
 
     /**
