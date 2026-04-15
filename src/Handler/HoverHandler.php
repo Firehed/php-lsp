@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -332,7 +333,7 @@ final class HoverHandler implements HandlerInterface
         foreach ($node->params as $param) {
             $paramStr = '';
             if ($param->type !== null) {
-                $paramStr .= $this->formatType($param->type) . ' ';
+                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
             }
             $var = $param->var;
             if ($var instanceof Node\Expr\Variable && is_string($var->name)) {
@@ -344,7 +345,7 @@ final class HoverHandler implements HandlerInterface
         $signature = 'function ' . $node->name->toString() . '(' . implode(', ', $params) . ')';
 
         if ($node->returnType !== null) {
-            $signature .= ': ' . $this->formatType($node->returnType);
+            $signature .= ': ' . TypeFormatter::formatNode($node->returnType);
         }
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
@@ -591,7 +592,7 @@ final class HoverHandler implements HandlerInterface
         foreach ($method->params as $param) {
             $paramStr = '';
             if ($param->type !== null) {
-                $paramStr .= $this->formatType($param->type) . ' ';
+                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
             }
             $var = $param->var;
             if ($var instanceof Variable && is_string($var->name)) {
@@ -603,7 +604,7 @@ final class HoverHandler implements HandlerInterface
         $signature = $visibility . $static . 'function ' . $method->name->toString() . '(' . implode(', ', $params) . ')';
 
         if ($method->returnType !== null) {
-            $signature .= ': ' . $this->formatType($method->returnType);
+            $signature .= ': ' . TypeFormatter::formatNode($method->returnType);
         }
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
@@ -626,7 +627,7 @@ final class HoverHandler implements HandlerInterface
 
         $type = '';
         if ($property->type !== null) {
-            $type = $this->formatType($property->type) . ' ';
+            $type = TypeFormatter::formatNode($property->type) . ' ';
         }
 
         $signature = $visibility . $static . $readonly . $type . '$' . $propertyName;
@@ -716,7 +717,7 @@ final class HoverHandler implements HandlerInterface
             $paramStr = '';
             $type = $param->getType();
             if ($type !== null) {
-                $paramStr .= $this->formatReflectionType($type) . ' ';
+                $paramStr .= TypeFormatter::formatReflection($type) . ' ';
             }
             if ($param->isVariadic()) {
                 $paramStr .= '...';
@@ -732,7 +733,7 @@ final class HoverHandler implements HandlerInterface
 
         $returnType = $func->getReturnType();
         if ($returnType !== null) {
-            $signature .= ': ' . $this->formatReflectionType($returnType);
+            $signature .= ': ' . TypeFormatter::formatReflection($returnType);
         }
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
@@ -761,7 +762,7 @@ final class HoverHandler implements HandlerInterface
             $paramStr = '';
             $type = $param->getType();
             if ($type !== null) {
-                $paramStr .= $this->formatReflectionType($type) . ' ';
+                $paramStr .= TypeFormatter::formatReflection($type) . ' ';
             }
             if ($param->isVariadic()) {
                 $paramStr .= '...';
@@ -777,7 +778,7 @@ final class HoverHandler implements HandlerInterface
 
         $returnType = $method->getReturnType();
         if ($returnType !== null) {
-            $signature .= ': ' . $this->formatReflectionType($returnType);
+            $signature .= ': ' . TypeFormatter::formatReflection($returnType);
         }
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
@@ -803,47 +804,12 @@ final class HoverHandler implements HandlerInterface
         $readonly = $property->isReadOnly() ? 'readonly ' : '';
 
         $type = $property->getType();
-        $typeStr = $type !== null ? $this->formatReflectionType($type) . ' ' : '';
+        $typeStr = $type !== null ? TypeFormatter::formatReflection($type) . ' ' : '';
 
         $signature = $visibility . $static . $readonly . $typeStr . '$' . $property->getName();
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
 
         return implode("\n\n", $parts);
-    }
-
-    private function formatReflectionType(\ReflectionType $type): string
-    {
-        if ($type instanceof \ReflectionNamedType) {
-            $name = $type->getName();
-            return $type->allowsNull() && $name !== 'null' && $name !== 'mixed' ? '?' . $name : $name;
-        }
-        if ($type instanceof \ReflectionUnionType) {
-            return implode('|', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
-        }
-        if ($type instanceof \ReflectionIntersectionType) {
-            return implode('&', array_map(fn($t) => $this->formatReflectionType($t), $type->getTypes()));
-        }
-        return (string) $type;
-    }
-
-    private function formatType(Node $type): string
-    {
-        if ($type instanceof Name) {
-            return $type->toString();
-        }
-        if ($type instanceof Identifier) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\NullableType) {
-            return '?' . $this->formatType($type->type);
-        }
-        if ($type instanceof Node\UnionType) {
-            return implode('|', array_map(fn($t) => $this->formatType($t), $type->types));
-        }
-        if ($type instanceof Node\IntersectionType) {
-            return implode('&', array_map(fn($t) => $this->formatType($t), $type->types));
-        }
-        return '';
     }
 }
