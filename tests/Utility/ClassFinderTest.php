@@ -8,12 +8,14 @@ use Firehed\PhpLsp\Utility\ClassFinder;
 use PhpParser\Node\Stmt;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ClassFinder::class)]
 class ClassFinderTest extends TestCase
 {
+    /**
+     * @return array<Stmt>
+     */
     private static function parse(string $code): array
     {
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
@@ -30,6 +32,7 @@ PHP;
         $result = ClassFinder::findInAst('MyClass', $ast);
 
         self::assertInstanceOf(Stmt\Class_::class, $result);
+        self::assertNotNull($result->name);
         self::assertSame('MyClass', $result->name->toString());
     }
 
@@ -44,6 +47,7 @@ PHP;
         $result = ClassFinder::findInAst('App\\Models\\User', $ast);
 
         self::assertInstanceOf(Stmt\Class_::class, $result);
+        self::assertNotNull($result->name);
         self::assertSame('User', $result->name->toString());
     }
 
@@ -58,6 +62,7 @@ PHP;
         $result = ClassFinder::findInAst('App\\Contracts\\UserRepository', $ast);
 
         self::assertInstanceOf(Stmt\Interface_::class, $result);
+        self::assertNotNull($result->name);
         self::assertSame('UserRepository', $result->name->toString());
     }
 
@@ -72,6 +77,7 @@ PHP;
         $result = ClassFinder::findInAst('App\\Concerns\\HasTimestamps', $ast);
 
         self::assertInstanceOf(Stmt\Trait_::class, $result);
+        self::assertNotNull($result->name);
         self::assertSame('HasTimestamps', $result->name->toString());
     }
 
@@ -86,6 +92,7 @@ PHP;
         $result = ClassFinder::findInAst('App\\Enums\\Status', $ast);
 
         self::assertInstanceOf(Stmt\Enum_::class, $result);
+        self::assertNotNull($result->name);
         self::assertSame('Status', $result->name->toString());
     }
 
