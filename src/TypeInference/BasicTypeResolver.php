@@ -11,6 +11,7 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use ReflectionClass;
 use ReflectionException;
+use Firehed\PhpLsp\Utility\TypeFormatter;
 use ReflectionNamedType;
 
 /**
@@ -107,7 +108,7 @@ final class BasicTypeResolver implements TypeResolverInterface
                 && is_string($param->var->name)
                 && $param->var->name === $variableName
             ) {
-                return $this->formatType($param->type);
+                return TypeFormatter::formatNode($param->type);
             }
         }
 
@@ -191,32 +192,6 @@ final class BasicTypeResolver implements TypeResolverInterface
         $traverser->traverse($stmts);
 
         return $visitor->foundType;
-    }
-
-    private function formatType(?Node $type): ?string
-    {
-        if ($type === null) {
-            return null;
-        }
-        if ($type instanceof Node\Identifier) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\Name) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\NullableType) {
-            $inner = $this->formatType($type->type);
-            return $inner !== null ? '?' . $inner : null;
-        }
-        if ($type instanceof Node\UnionType) {
-            $types = array_filter(array_map(fn($t) => $this->formatType($t), $type->types));
-            return count($types) > 0 ? implode('|', $types) : null;
-        }
-        if ($type instanceof Node\IntersectionType) {
-            $types = array_filter(array_map(fn($t) => $this->formatType($t), $type->types));
-            return count($types) > 0 ? implode('&', $types) : null;
-        }
-        return null;
     }
 
     private function getMethodReturnType(string $className, string $methodName): ?string
