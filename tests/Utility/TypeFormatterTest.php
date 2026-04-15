@@ -117,6 +117,7 @@ class TypeFormatterTest extends TestCase
     public function testFormatReflectionWithIntersectionType(): void
     {
         $obj = new class {
+            /** @return \Countable&\Traversable<mixed, mixed> */
             public function test(): \Countable&\Traversable
             {
                 return new \ArrayObject();
