@@ -10,9 +10,11 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -37,6 +39,7 @@ final class HoverHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly ?ComposerClassLocator $classLocator,
+        private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
 
@@ -419,7 +422,14 @@ final class HoverHandler implements HandlerInterface
             return $this->findEnclosingClassName($expr, $ast);
         }
 
-        // For other expressions, we'd need type inference - skip for now
+        // Use type resolver for other expressions
+        if ($this->typeResolver !== null) {
+            $scope = ScopeFinder::findEnclosingScope($expr);
+            if ($scope !== null) {
+                return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
+            }
+        }
+
         return null;
     }
 
