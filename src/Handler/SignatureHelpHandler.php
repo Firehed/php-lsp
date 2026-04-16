@@ -13,6 +13,7 @@ use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -256,36 +257,12 @@ final class SignatureHelpHandler implements HandlerInterface
 
         // Use type resolver for other expressions
         if ($this->typeResolver !== null) {
-            $scope = $this->findEnclosingScope($expr, $ast);
+            $scope = ScopeFinder::findEnclosingScope($expr, $ast);
             if ($scope !== null) {
                 return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
             }
         }
 
-        return null;
-    }
-
-    /**
-     * Find the enclosing function/method/closure for a node.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function findEnclosingScope(
-        Node $node,
-        array $ast,
-    ): Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null {
-        $current = $node->getAttribute('parent');
-        while ($current instanceof Node) {
-            if (
-                $current instanceof Stmt\Function_
-                || $current instanceof Stmt\ClassMethod
-                || $current instanceof Node\Expr\Closure
-                || $current instanceof Node\Expr\ArrowFunction
-            ) {
-                return $current;
-            }
-            $current = $current->getAttribute('parent');
-        }
         return null;
     }
 
