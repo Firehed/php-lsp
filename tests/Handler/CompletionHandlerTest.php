@@ -1080,6 +1080,12 @@ PHP;
         self::assertContains('Active', $labels);
         self::assertContains('Inactive', $labels);
         self::assertContains('class', $labels);
+
+        // Check unit enum case detail
+        $activeItems = array_filter($result['items'], fn($item) => $item['label'] === 'Active');
+        self::assertNotEmpty($activeItems);
+        $activeItem = reset($activeItems);
+        self::assertSame('case Active', $activeItem['detail'] ?? '');
     }
 
     public function testEnumBuiltinMethodCompletion(): void
@@ -1159,6 +1165,12 @@ PHP;
         self::assertNotEmpty($fromItems);
         $fromItem = reset($fromItems);
         self::assertStringContainsString('int', $fromItem['detail'] ?? '');
+
+        // Check enum case detail shows backing value
+        $lowItems = array_filter($result['items'], fn($item) => $item['label'] === 'Low');
+        self::assertNotEmpty($lowItems);
+        $lowItem = reset($lowItems);
+        self::assertSame('case Low = 1', $lowItem['detail'] ?? '');
     }
 
     public function testBackedEnumCompletionString(): void
@@ -1204,5 +1216,46 @@ PHP;
         self::assertNotEmpty($fromItems);
         $fromItem = reset($fromItems);
         self::assertStringContainsString('string', $fromItem['detail'] ?? '');
+
+        // Check enum case detail shows backing value
+        $redItems = array_filter($result['items'], fn($item) => $item['label'] === 'Red');
+        self::assertNotEmpty($redItems);
+        $redItem = reset($redItems);
+        self::assertSame("case Red = 'red'", $redItem['detail'] ?? '');
+    }
+
+    public function testBackedEnumMethodPrefixFiltering(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Priority: int
+{
+    case Low = 1;
+    case High = 2;
+}
+
+$p = Priority::f
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 16], // After Priority::f
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('from', $labels);
+        self::assertNotContains('cases', $labels);
+        self::assertNotContains('tryFrom', $labels);
+        self::assertNotContains('Low', $labels);
+        self::assertNotContains('High', $labels);
     }
 }

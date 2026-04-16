@@ -531,20 +531,24 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * @return array{label: string, kind: int, detail?: string}
+     * @return array{label: string, kind: int, detail: string}
      */
     private function formatEnumCaseCompletion(Stmt\EnumCase $case): array
     {
-        $item = [
-            'label' => $case->name->toString(),
-            'kind' => self::KIND_ENUM_MEMBER,
-        ];
+        $name = $case->name->toString();
+        $detail = 'case ' . $name;
 
-        if ($case->expr !== null) {
-            $item['detail'] = 'case ' . $case->name->toString();
+        if ($case->expr instanceof Node\Scalar\Int_) {
+            $detail .= ' = ' . $case->expr->value;
+        } elseif ($case->expr instanceof Node\Scalar\String_) {
+            $detail .= " = '" . $case->expr->value . "'";
         }
 
-        return $item;
+        return [
+            'label' => $name,
+            'kind' => self::KIND_ENUM_MEMBER,
+            'detail' => $detail,
+        ];
     }
 
     /**
