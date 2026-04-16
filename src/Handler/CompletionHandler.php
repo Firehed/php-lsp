@@ -124,6 +124,13 @@ final class CompletionHandler implements HandlerInterface
             return $this->getThisMemberCompletions($prefix, $ast);
         }
 
+        // $variable-> completion (typed variables, not $this)
+        if (preg_match('/\$(\w+)->(\w*)$/', $textBeforeCursor, $matches)) {
+            $variableName = $matches[1];
+            $prefix = $matches[2];
+            return $this->getTypedVariableMemberCompletions($variableName, $prefix, $ast, $line);
+        }
+
         // Variable completion ($var)
         if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
@@ -227,6 +234,127 @@ final class CompletionHandler implements HandlerInterface
         $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
         if ($className !== null) {
             $items = array_merge($items, $this->getInheritedMemberCompletions($className, $prefix, $items));
+        }
+
+        return $items;
+    }
+
+    /**
+     * Get completions for a typed variable: $user-> where $user has a known type.
+     *
+     * @param array<Stmt> $ast
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getTypedVariableMemberCompletions(
+        string $variableName,
+        string $prefix,
+        array $ast,
+        int $line,
+    ): array {
+        if ($this->typeResolver === null) {
+            return [];
+        }
+
+        // Find the enclosing scope
+        $scope = $this->findEnclosingScope($ast, $line);
+        if ($scope === null) {
+            return [];
+        }
+
+        // Resolve the variable's type
+        $className = $this->typeResolver->resolveVariableType($variableName, $scope, $line, $ast);
+        if ($className === null) {
+            return [];
+        }
+
+        return $this->getInstanceMemberCompletions($className, $prefix, $ast);
+    }
+
+    /**
+     * Get instance (non-static) member completions for a class.
+     *
+     * @param array<Stmt> $ast
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getInstanceMemberCompletions(
+        string $className,
+        string $prefix,
+        array $ast,
+    ): array {
+        $items = [];
+
+        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
+
+        if ($classNode !== null) {
+            foreach ($classNode->stmts as $stmt) {
+                // Public methods (non-static)
+                if ($stmt instanceof Stmt\ClassMethod && !$stmt->isStatic() && $stmt->isPublic()) {
+                    $name = $stmt->name->toString();
+                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                        $items[] = $this->formatMethodCompletion($stmt);
+                    }
+                }
+
+                // Public properties (non-static)
+                if ($stmt instanceof Stmt\Property && !$stmt->isStatic() && $stmt->isPublic()) {
+                    foreach ($stmt->props as $prop) {
+                        $name = $prop->name->toString();
+                        if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                            $items[] = $this->formatPropertyCompletion($stmt, $name);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add public members from reflection (for inherited/built-in classes)
+        $items = array_merge($items, $this->getReflectionInstanceCompletions($className, $prefix, $items));
+
+        return $items;
+    }
+
+    /**
+     * Get public instance members via reflection.
+     *
+     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getReflectionInstanceCompletions(string $className, string $prefix, array $existingItems): array
+    {
+        $reflection = ReflectionHelper::getClass($className);
+        if ($reflection === null) {
+            return [];
+        }
+
+        $existingLabels = array_column($existingItems, 'label');
+        $items = [];
+
+        // Public non-static methods
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            if ($method->isStatic()) {
+                continue;
+            }
+            $name = $method->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
+            }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionMethodCompletion($method);
+            }
+        }
+
+        // Public non-static properties
+        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
+            if ($prop->isStatic()) {
+                continue;
+            }
+            $name = $prop->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
+            }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionPropertyCompletion($prop);
+            }
         }
 
         return $items;

@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -1257,5 +1258,302 @@ PHP;
         self::assertNotContains('tryFrom', $labels);
         self::assertNotContains('Low', $labels);
         self::assertNotContains('High', $labels);
+    }
+
+    public function testTypedVariableCompletionFromParameter(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public string $name;
+    public function getName(): string { return $this->name; }
+    public function setName(string $name): void { $this->name = $name; }
+}
+
+function processUser(User $user): void
+{
+    $user->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 11], // After $user->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name', $labels);
+        self::assertContains('getName', $labels);
+        self::assertContains('setName', $labels);
+    }
+
+    public function testTypedVariableCompletionFromNewExpression(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Logger
+{
+    public function info(string $message): void {}
+    public function error(string $message): void {}
+}
+
+function foo(): void
+{
+    $logger = new Logger();
+    $logger->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 13], // After $logger->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('info', $labels);
+        self::assertContains('error', $labels);
+    }
+
+    public function testTypedVariableCompletionWithPrefix(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function getName(): string { return ''; }
+    public function getEmail(): string { return ''; }
+    public function setName(string $name): void {}
+}
+
+function processUser(User $user): void
+{
+    $user->get
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 14], // After $user->get
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels);
+        self::assertContains('getEmail', $labels);
+        self::assertNotContains('setName', $labels);
+    }
+
+    public function testTypedVariableCompletionReturnsEmptyWhenTypeUnknown(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(): void
+{
+    $unknown->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 14], // After $unknown->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testTypedVariableCompletionIncludesInheritedMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(ArrayObject $obj): void
+{
+    $obj->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 10], // After $obj->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // ArrayObject methods from reflection
+        self::assertContains('append', $labels);
+        self::assertContains('count', $labels);
+        self::assertContains('getIterator', $labels);
+    }
+
+    public function testTypedVariableCompletionExcludesNonPublicMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public string $name;
+    protected string $email;
+    private string $password;
+
+    public function getName(): string { return $this->name; }
+    protected function getEmail(): string { return $this->email; }
+    private function getPassword(): string { return $this->password; }
+}
+
+function foo(User $user): void
+{
+    $user->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 11], // After $user->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Public members should be included
+        self::assertContains('name', $labels);
+        self::assertContains('getName', $labels);
+        // Protected and private members should be excluded
+        self::assertNotContains('email', $labels);
+        self::assertNotContains('password', $labels);
+        self::assertNotContains('getEmail', $labels);
+        self::assertNotContains('getPassword', $labels);
+    }
+
+    public function testTypedVariableCompletionReturnsEmptyWithoutTypeResolver(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function getName(): string { return ''; }
+}
+
+function foo(User $user): void
+{
+    $user->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        // Handler without type resolver (uses default from setUp)
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 11], // After $user->
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        // Without type resolver, no completions for typed variables
+        self::assertEmpty($result['items']);
     }
 }
