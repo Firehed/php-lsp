@@ -1469,6 +1469,60 @@ PHP;
         self::assertContains('getIterator', $labels);
     }
 
+    public function testTypedVariableCompletionExcludesNonPublicMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public string $name;
+    protected string $email;
+    private string $password;
+
+    public function getName(): string { return $this->name; }
+    protected function getEmail(): string { return $this->email; }
+    private function getPassword(): string { return $this->password; }
+}
+
+function foo(User $user): void
+{
+    $user->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 11], // After $user->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Public members should be included
+        self::assertContains('name', $labels);
+        self::assertContains('getName', $labels);
+        // Protected and private members should be excluded
+        self::assertNotContains('email', $labels);
+        self::assertNotContains('password', $labels);
+        self::assertNotContains('getEmail', $labels);
+        self::assertNotContains('getPassword', $labels);
+    }
+
     public function testTypedVariableCompletionReturnsEmptyWithoutTypeResolver(): void
     {
         $code = <<<'PHP'
