@@ -1014,4 +1014,195 @@ PHP;
         self::assertIsArray($result);
         self::assertEmpty($result['items']);
     }
+
+    public function testEnumCaseCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Status
+{
+    case Active;
+    case Inactive;
+    case Pending;
+}
+
+$status = Status::A
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 19], // After Status::A
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Active', $labels);
+        self::assertNotContains('Inactive', $labels); // doesn't match prefix
+        self::assertNotContains('Pending', $labels); // doesn't match prefix
+    }
+
+    public function testEnumCaseCompletionNoPrefix(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Status
+{
+    case Active;
+    case Inactive;
+}
+
+$status = Status::
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 18], // After Status::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Active', $labels);
+        self::assertContains('Inactive', $labels);
+        self::assertContains('class', $labels);
+    }
+
+    public function testEnumBuiltinMethodCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Status
+{
+    case Active;
+    case Inactive;
+}
+
+$cases = Status::c
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 18], // After Status::c
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('cases', $labels);
+        self::assertContains('class', $labels);
+    }
+
+    public function testBackedEnumCompletionInt(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Priority: int
+{
+    case Low = 1;
+    case Medium = 2;
+    case High = 3;
+}
+
+$p = Priority::
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 15], // After Priority::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Cases
+        self::assertContains('Low', $labels);
+        self::assertContains('Medium', $labels);
+        self::assertContains('High', $labels);
+        // Built-in methods for backed enums
+        self::assertContains('cases', $labels);
+        self::assertContains('from', $labels);
+        self::assertContains('tryFrom', $labels);
+        // Magic constant
+        self::assertContains('class', $labels);
+
+        // Check from() signature shows int type
+        $fromItems = array_filter($result['items'], fn($item) => $item['label'] === 'from');
+        self::assertNotEmpty($fromItems);
+        $fromItem = reset($fromItems);
+        self::assertStringContainsString('int', $fromItem['detail'] ?? '');
+    }
+
+    public function testBackedEnumCompletionString(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Color: string
+{
+    case Red = 'red';
+    case Green = 'green';
+    case Blue = 'blue';
+}
+
+$c = Color::
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 12], // After Color::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Cases
+        self::assertContains('Red', $labels);
+        self::assertContains('Green', $labels);
+        self::assertContains('Blue', $labels);
+        // Built-in methods for backed enums
+        self::assertContains('cases', $labels);
+        self::assertContains('from', $labels);
+        self::assertContains('tryFrom', $labels);
+
+        // Check from() signature shows string type
+        $fromItems = array_filter($result['items'], fn($item) => $item['label'] === 'from');
+        self::assertNotEmpty($fromItems);
+        $fromItem = reset($fromItems);
+        self::assertStringContainsString('string', $fromItem['detail'] ?? '');
+    }
 }

@@ -35,6 +35,7 @@ final class CompletionHandler implements HandlerInterface
     private const KIND_CLASS = 7;
     private const KIND_PROPERTY = 10;
     private const KIND_KEYWORD = 14;
+    private const KIND_ENUM_MEMBER = 20;
     private const KIND_CONSTANT = 21;
 
     public function __construct(
@@ -273,6 +274,19 @@ final class CompletionHandler implements HandlerInterface
                         }
                     }
                 }
+
+                // Enum cases
+                if ($stmt instanceof Stmt\EnumCase) {
+                    $name = $stmt->name->toString();
+                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                        $items[] = $this->formatEnumCaseCompletion($stmt);
+                    }
+                }
+            }
+
+            // Add built-in enum methods
+            if ($classNode instanceof Stmt\Enum_) {
+                $items = array_merge($items, $this->getEnumBuiltinMethods($classNode, $prefix));
             }
         }
 
@@ -514,6 +528,63 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $item;
+    }
+
+    /**
+     * @return array{label: string, kind: int, detail?: string}
+     */
+    private function formatEnumCaseCompletion(Stmt\EnumCase $case): array
+    {
+        $item = [
+            'label' => $case->name->toString(),
+            'kind' => self::KIND_ENUM_MEMBER,
+        ];
+
+        if ($case->expr !== null) {
+            $item['detail'] = 'case ' . $case->name->toString();
+        }
+
+        return $item;
+    }
+
+    /**
+     * @return list<array{label: string, kind: int, detail: string}>
+     */
+    private function getEnumBuiltinMethods(Stmt\Enum_ $enum, string $prefix): array
+    {
+        $items = [];
+
+        // cases() is available on all enums
+        if ($prefix === '' || str_starts_with('cases', strtolower($prefix))) {
+            $items[] = [
+                'label' => 'cases',
+                'kind' => self::KIND_METHOD,
+                'detail' => 'cases(): array',
+            ];
+        }
+
+        // from() and tryFrom() are only available on backed enums
+        if ($enum->scalarType !== null) {
+            $scalarType = $enum->scalarType->toString();
+
+            if ($prefix === '' || str_starts_with('from', strtolower($prefix))) {
+                $items[] = [
+                    'label' => 'from',
+                    'kind' => self::KIND_METHOD,
+                    'detail' => "from($scalarType \$value): static",
+                ];
+            }
+
+            if ($prefix === '' || str_starts_with('tryfrom', strtolower($prefix))) {
+                $items[] = [
+                    'label' => 'tryFrom',
+                    'kind' => self::KIND_METHOD,
+                    'detail' => "tryFrom($scalarType \$value): ?static",
+                ];
+            }
+        }
+
+        return $items;
     }
 
     /**
