@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
@@ -37,6 +38,7 @@ final class HoverHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly ?ComposerClassLocator $classLocator,
+        private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
 
@@ -419,7 +421,38 @@ final class HoverHandler implements HandlerInterface
             return $this->findEnclosingClassName($expr, $ast);
         }
 
-        // For other expressions, we'd need type inference - skip for now
+        // Use type resolver for other expressions
+        if ($this->typeResolver !== null) {
+            $scope = $this->findEnclosingScope($expr, $ast);
+            if ($scope !== null) {
+                return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find the enclosing function/method/closure for a node.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function findEnclosingScope(
+        Node $node,
+        array $ast,
+    ): Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null {
+        $current = $node->getAttribute('parent');
+        while ($current instanceof Node) {
+            if (
+                $current instanceof Stmt\Function_
+                || $current instanceof Stmt\ClassMethod
+                || $current instanceof Node\Expr\Closure
+                || $current instanceof Node\Expr\ArrowFunction
+            ) {
+                return $current;
+            }
+            $current = $current->getAttribute('parent');
+        }
         return null;
     }
 
