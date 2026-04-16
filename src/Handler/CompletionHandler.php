@@ -128,7 +128,7 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/\$(\w+)->(\w*)$/', $textBeforeCursor, $matches)) {
             $variableName = $matches[1];
             $prefix = $matches[2];
-            return $this->getTypedVariableMemberCompletions($variableName, $prefix, $ast, $document, $line);
+            return $this->getTypedVariableMemberCompletions($variableName, $prefix, $ast, $line);
         }
 
         // Variable completion ($var)
@@ -249,7 +249,6 @@ final class CompletionHandler implements HandlerInterface
         string $variableName,
         string $prefix,
         array $ast,
-        TextDocument $document,
         int $line,
     ): array {
         if ($this->typeResolver === null) {
@@ -268,7 +267,7 @@ final class CompletionHandler implements HandlerInterface
             return [];
         }
 
-        return $this->getInstanceMemberCompletions($className, $prefix, $ast, $document);
+        return $this->getInstanceMemberCompletions($className, $prefix, $ast);
     }
 
     /**
@@ -281,7 +280,6 @@ final class CompletionHandler implements HandlerInterface
         string $className,
         string $prefix,
         array $ast,
-        TextDocument $document,
     ): array {
         $items = [];
 
