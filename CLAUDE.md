@@ -7,7 +7,7 @@ composer check # PHPStan + tests + PHPCS (run before commits)
 composer phpunit -- --filter X # Run specific tests
 composer phpstan -- --error-format=raw --no-progress # run phpstan
 composer phpstan -- --error-format=raw --no-progress path/to/analyze # run phpstan on a specific path
-composer phpcs # run code style checks (PSR-12)
+composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ```
 
 ## Project Structure
