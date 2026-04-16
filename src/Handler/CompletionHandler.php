@@ -52,7 +52,10 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * @return array{isIncomplete: bool, items: list<array{label: string, kind?: int, detail?: string, documentation?: string}>}|null
+     * @return array{
+     *   isIncomplete: bool,
+     *   items: list<array{label: string, kind?: int, detail?: string, documentation?: string}>,
+     * }|null
      */
     public function handle(Message $message): ?array
     {
@@ -137,7 +140,8 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches)) {
             $prefix = $matches[1];
             $items = $this->getImportedClassCompletions($prefix, $ast);
-            $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_, SymbolKind::Enum_]));
+            $indexedItems = $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_, SymbolKind::Enum_]);
+            $items = array_merge($items, $indexedItems);
             return $this->deduplicateCompletions($items);
         }
 
@@ -366,7 +370,8 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Properties from parent classes
-        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED) as $prop) {
+        $flags = ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED;
+        foreach ($reflection->getProperties($flags) as $prop) {
             $name = $prop->getName();
             if (in_array($name, $existingLabels, true)) {
                 continue;
@@ -999,8 +1004,10 @@ final class CompletionHandler implements HandlerInterface
      *
      * @param array<Stmt> $ast
      */
-    private function findEnclosingScope(array $ast, int $cursorLine): Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null
-    {
+    private function findEnclosingScope(
+        array $ast,
+        int $cursorLine,
+    ): Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null {
         $found = null;
 
         $visitor = new class ($cursorLine, $found) extends NodeVisitorAbstract {
@@ -1019,7 +1026,8 @@ final class CompletionHandler implements HandlerInterface
 
             public function enterNode(Node $node): ?int
             {
-                if ($node instanceof Stmt\Function_
+                if (
+                    $node instanceof Stmt\Function_
                     || $node instanceof Stmt\ClassMethod
                     || $node instanceof Node\Expr\Closure
                     || $node instanceof Node\Expr\ArrowFunction
@@ -1028,7 +1036,8 @@ final class CompletionHandler implements HandlerInterface
                     $endLine = $node->getEndLine();
 
                     // Check if cursor is within this scope (1-based lines from parser)
-                    if ($startLine !== -1 && $endLine !== -1
+                    if (
+                        $startLine !== -1 && $endLine !== -1
                         && $this->cursorLine >= $startLine - 1
                         && $this->cursorLine <= $endLine - 1
                     ) {
@@ -1052,8 +1061,9 @@ final class CompletionHandler implements HandlerInterface
      *
      * @return array<string, string> Variable name => type
      */
-    private function collectScopeVariables(Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $scope): array
-    {
+    private function collectScopeVariables(
+        Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $scope,
+    ): array {
         $variables = [];
 
         // Collect parameters
@@ -1090,7 +1100,8 @@ final class CompletionHandler implements HandlerInterface
             public function enterNode(Node $node): ?int
             {
                 // Skip nested function scopes
-                if ($node instanceof Stmt\Function_
+                if (
+                    $node instanceof Stmt\Function_
                     || $node instanceof Stmt\ClassMethod
                     || $node instanceof Node\Expr\Closure
                     || $node instanceof Node\Expr\ArrowFunction

@@ -374,8 +374,12 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function getMethodHoverForClass(string $className, string $methodName, array $ast, TextDocument $document): ?string
-    {
+    private function getMethodHoverForClass(
+        string $className,
+        string $methodName,
+        array $ast,
+        TextDocument $document,
+    ): ?string {
         // Try to find in AST first (current file or via Composer)
         $methodNode = $this->findMethodInClass($className, $methodName, $ast, $document);
         if ($methodNode !== null) {
@@ -389,8 +393,12 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function getPropertyHoverForClass(string $className, string $propertyName, array $ast, TextDocument $document): ?string
-    {
+    private function getPropertyHoverForClass(
+        string $className,
+        string $propertyName,
+        array $ast,
+        TextDocument $document,
+    ): ?string {
         // Try to find in AST first
         $propertyNode = $this->findPropertyInClass($className, $propertyName, $ast, $document);
         if ($propertyNode !== null) {
@@ -439,8 +447,12 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function findMethodInClass(string $className, string $methodName, array $ast, TextDocument $document): ?Stmt\ClassMethod
-    {
+    private function findMethodInClass(
+        string $className,
+        string $methodName,
+        array $ast,
+        TextDocument $document,
+    ): ?Stmt\ClassMethod {
         $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
         if ($classNode === null) {
             return null;
@@ -458,8 +470,12 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function findPropertyInClass(string $className, string $propertyName, array $ast, TextDocument $document): ?Stmt\Property
-    {
+    private function findPropertyInClass(
+        string $className,
+        string $propertyName,
+        array $ast,
+        TextDocument $document,
+    ): ?Stmt\Property {
         $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
         if ($classNode === null) {
             return null;
@@ -503,7 +519,8 @@ final class HoverHandler implements HandlerInterface
             $params[] = $paramStr;
         }
 
-        $signature = $visibility . $static . 'function ' . $method->name->toString() . '(' . implode(', ', $params) . ')';
+        $signature = $visibility . $static . 'function ' . $method->name->toString()
+            . '(' . implode(', ', $params) . ')';
 
         if ($method->returnType !== null) {
             $signature .= ': ' . TypeFormatter::formatNode($method->returnType);

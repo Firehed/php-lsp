@@ -21,8 +21,10 @@ final class ClassFinder
      *
      * @param array<Stmt> $ast
      */
-    public static function findInAst(string $className, array $ast): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null
-    {
+    public static function findInAst(
+        string $className,
+        array $ast,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
         $finder = new class ($className) extends NodeVisitorAbstract {
             public Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found = null;
             private string $namespace = '';
@@ -38,7 +40,8 @@ final class ClassFinder
                     return null;
                 }
 
-                if ($node instanceof Stmt\Class_
+                if (
+                    $node instanceof Stmt\Class_
                     || $node instanceof Stmt\Interface_
                     || $node instanceof Stmt\Trait_
                     || $node instanceof Stmt\Enum_

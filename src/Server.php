@@ -52,7 +52,13 @@ final class Server
         $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
         $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator);
         $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator);
-        $this->handlers[] = new CompletionHandler($this->documentManager, $parser, $symbolIndex, $classLocator, $typeResolver);
+        $this->handlers[] = new CompletionHandler(
+            $this->documentManager,
+            $parser,
+            $symbolIndex,
+            $classLocator,
+            $typeResolver,
+        );
     }
 
     public function run(): int
