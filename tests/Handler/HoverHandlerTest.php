@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -283,5 +284,99 @@ PHP;
         self::assertIsArray($result);
         self::assertStringContainsString('abs', $result['contents']);
         self::assertStringContainsString('Returns the absolute value', $result['contents']);
+    }
+
+    public function testHoverOnTypedVariableMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    /**
+     * Adds two numbers.
+     */
+    public function add(int $a, int $b): int
+    {
+        return $a + $b;
+    }
+}
+
+function useCalculator(Calculator $calc): void
+{
+    $calc->add(1, 2);
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        // Create handler with type resolver
+        $handlerWithResolver = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 12], // On "add"
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('add', $result['contents']);
+        self::assertStringContainsString('Adds two numbers', $result['contents']);
+    }
+
+    public function testHoverOnAssignedVariableMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Greeter
+{
+    /**
+     * Greets a person.
+     */
+    public function greet(string $name): string
+    {
+        return "Hello, $name!";
+    }
+}
+
+function test(): void
+{
+    $greeter = new Greeter();
+    $greeter->greet("World");
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handlerWithResolver = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 15], // On "greet"
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('greet', $result['contents']);
+        self::assertStringContainsString('Greets a person', $result['contents']);
     }
 }
