@@ -31,11 +31,13 @@
         }
     },
     "scripts": {
+        "phpcs": "phpcs",
         "phpunit": "phpunit",
         "phpstan": "phpstan analyze",
         "check": [
             "@phpstan",
-            "@phpunit"
+            "@phpunit",
+            "@phpcs"
         ]
     },
     "bin": [
