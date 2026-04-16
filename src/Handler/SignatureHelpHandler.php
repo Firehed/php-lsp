@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
@@ -44,6 +45,7 @@ final class SignatureHelpHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly ?ComposerClassLocator $classLocator,
+        private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
 
@@ -234,18 +236,57 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        // Only support $this for now
-        $var = $call->var;
-        if (!$var instanceof Variable || $var->name !== 'this') {
-            return null;
-        }
-
-        $className = $this->findEnclosingClassName($call, $ast);
+        $className = $this->resolveExpressionClass($call->var, $ast);
         if ($className === null) {
             return null;
         }
 
         return $this->getMethodSignatureForClass($className, $methodName->toString(), $ast, $document);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveExpressionClass(Node\Expr $expr, array $ast): ?string
+    {
+        // $this refers to the enclosing class
+        if ($expr instanceof Variable && $expr->name === 'this') {
+            return $this->findEnclosingClassName($expr, $ast);
+        }
+
+        // Use type resolver for other expressions
+        if ($this->typeResolver !== null) {
+            $scope = $this->findEnclosingScope($expr, $ast);
+            if ($scope !== null) {
+                return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find the enclosing function/method/closure for a node.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function findEnclosingScope(
+        Node $node,
+        array $ast,
+    ): Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null {
+        $current = $node->getAttribute('parent');
+        while ($current instanceof Node) {
+            if (
+                $current instanceof Stmt\Function_
+                || $current instanceof Stmt\ClassMethod
+                || $current instanceof Node\Expr\Closure
+                || $current instanceof Node\Expr\ArrowFunction
+            ) {
+                return $current;
+            }
+            $current = $current->getAttribute('parent');
+        }
+        return null;
     }
 
     /**
