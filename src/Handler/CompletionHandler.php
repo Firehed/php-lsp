@@ -1019,7 +1019,8 @@ final class CompletionHandler implements HandlerInterface
 
             public function enterNode(Node $node): ?int
             {
-                if ($node instanceof Stmt\Function_
+                if (
+                    $node instanceof Stmt\Function_
                     || $node instanceof Stmt\ClassMethod
                     || $node instanceof Node\Expr\Closure
                     || $node instanceof Node\Expr\ArrowFunction
@@ -1028,7 +1029,8 @@ final class CompletionHandler implements HandlerInterface
                     $endLine = $node->getEndLine();
 
                     // Check if cursor is within this scope (1-based lines from parser)
-                    if ($startLine !== -1 && $endLine !== -1
+                    if (
+                        $startLine !== -1 && $endLine !== -1
                         && $this->cursorLine >= $startLine - 1
                         && $this->cursorLine <= $endLine - 1
                     ) {
@@ -1090,7 +1092,8 @@ final class CompletionHandler implements HandlerInterface
             public function enterNode(Node $node): ?int
             {
                 // Skip nested function scopes
-                if ($node instanceof Stmt\Function_
+                if (
+                    $node instanceof Stmt\Function_
                     || $node instanceof Stmt\ClassMethod
                     || $node instanceof Node\Expr\Closure
                     || $node instanceof Node\Expr\ArrowFunction

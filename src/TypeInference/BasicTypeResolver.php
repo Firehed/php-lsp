@@ -103,7 +103,8 @@ final class BasicTypeResolver implements TypeResolverInterface
     ): ?string {
         // Check parameters first
         foreach ($scope->params as $param) {
-            if ($param->var instanceof Expr\Variable
+            if (
+                $param->var instanceof Expr\Variable
                 && is_string($param->var->name)
                 && $param->var->name === $variableName
             ) {
@@ -158,7 +159,8 @@ final class BasicTypeResolver implements TypeResolverInterface
             public function enterNode(Node $node): ?int
             {
                 // Skip nested scopes
-                if ($node instanceof Stmt\Function_
+                if (
+                    $node instanceof Stmt\Function_
                     || $node instanceof Stmt\ClassMethod
                     || $node instanceof Expr\Closure
                     || $node instanceof Expr\ArrowFunction
@@ -169,7 +171,8 @@ final class BasicTypeResolver implements TypeResolverInterface
                 // Look for assignments
                 if ($node instanceof Expr\Assign) {
                     $nodeLine = $node->getStartLine() - 1; // Convert to 0-based
-                    if ($nodeLine <= $this->line
+                    if (
+                        $nodeLine <= $this->line
                         && $node->var instanceof Expr\Variable
                         && is_string($node->var->name)
                         && $node->var->name === $this->variableName

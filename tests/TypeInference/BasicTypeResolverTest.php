@@ -347,7 +347,8 @@ PHP;
 
             public function enterNode(\PhpParser\Node $node): ?int
             {
-                if ($node instanceof Expr\Variable
+                if (
+                    $node instanceof Expr\Variable
                     && $node->name === 'this'
                     && $this->found === null
                 ) {

@@ -121,7 +121,8 @@ final class SignatureHelpHandler implements HandlerInterface
 
             public function enterNode(Node $node): ?int
             {
-                if (!$node instanceof FuncCall
+                if (
+                    !$node instanceof FuncCall
                     && !$node instanceof MethodCall
                     && !$node instanceof StaticCall
                     && !$node instanceof New_

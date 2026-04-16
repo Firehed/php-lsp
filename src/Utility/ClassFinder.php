@@ -38,7 +38,8 @@ final class ClassFinder
                     return null;
                 }
 
-                if ($node instanceof Stmt\Class_
+                if (
+                    $node instanceof Stmt\Class_
                     || $node instanceof Stmt\Interface_
                     || $node instanceof Stmt\Trait_
                     || $node instanceof Stmt\Enum_
