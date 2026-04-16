@@ -31,7 +31,13 @@ final class DefinitionHandler implements HandlerInterface
     }
 
     /**
-     * @return array{uri: string, range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}}|null
+     * @return array{
+     *   uri: string,
+     *   range: array{
+     *     start: array{line: int, character: int},
+     *     end: array{line: int, character: int},
+     *   },
+     * }|null
      */
     public function handle(Message $message): ?array
     {

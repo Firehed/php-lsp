@@ -45,7 +45,15 @@ final class SignatureHelpHandler implements HandlerInterface
     }
 
     /**
-     * @return array{signatures: list<array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}>, activeSignature: int, activeParameter: int}|null
+     * @return array{
+     *   signatures: list<array{
+     *     label: string,
+     *     documentation?: string,
+     *     parameters?: list<array{label: string, documentation?: string}>,
+     *   }>,
+     *   activeSignature: int,
+     *   activeParameter: int,
+     * }|null
      */
     public function handle(Message $message): ?array
     {
@@ -167,7 +175,11 @@ final class SignatureHelpHandler implements HandlerInterface
     /**
      * @param FuncCall|MethodCall|StaticCall|New_ $call
      * @param array<Stmt> $ast
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}|null
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }|null
      */
     private function getSignature(Node $call, array $ast, TextDocument $document): ?array
     {
@@ -189,7 +201,11 @@ final class SignatureHelpHandler implements HandlerInterface
 
     /**
      * @param array<Stmt> $ast
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}|null
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }|null
      */
     private function getFunctionSignature(FuncCall $call, array $ast): ?array
     {
@@ -217,7 +233,11 @@ final class SignatureHelpHandler implements HandlerInterface
 
     /**
      * @param array<Stmt> $ast
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}|null
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }|null
      */
     private function getMethodSignature(MethodCall $call, array $ast, TextDocument $document): ?array
     {
@@ -242,7 +262,11 @@ final class SignatureHelpHandler implements HandlerInterface
 
     /**
      * @param array<Stmt> $ast
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}|null
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }|null
      */
     private function getStaticMethodSignature(StaticCall $call, array $ast, TextDocument $document): ?array
     {
@@ -275,7 +299,11 @@ final class SignatureHelpHandler implements HandlerInterface
 
     /**
      * @param array<Stmt> $ast
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}|null
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }|null
      */
     private function getConstructorSignature(New_ $call, array $ast, TextDocument $document): ?array
     {
@@ -294,10 +322,18 @@ final class SignatureHelpHandler implements HandlerInterface
 
     /**
      * @param array<Stmt> $ast
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}|null
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }|null
      */
-    private function getMethodSignatureForClass(string $className, string $methodName, array $ast, TextDocument $document): ?array
-    {
+    private function getMethodSignatureForClass(
+        string $className,
+        string $methodName,
+        array $ast,
+        TextDocument $document,
+    ): ?array {
         // Try to find in AST first
         $methodNode = $this->findMethodInClass($className, $methodName, $ast, $document);
         if ($methodNode !== null) {
@@ -364,8 +400,12 @@ final class SignatureHelpHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function findMethodInClass(string $className, string $methodName, array $ast, TextDocument $document): ?Stmt\ClassMethod
-    {
+    private function findMethodInClass(
+        string $className,
+        string $methodName,
+        array $ast,
+        TextDocument $document,
+    ): ?Stmt\ClassMethod {
         $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
         if ($classNode === null) {
             return null;
@@ -381,7 +421,11 @@ final class SignatureHelpHandler implements HandlerInterface
     }
 
     /**
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }
      */
     private function formatFunctionNodeSignature(Stmt\Function_ $func): array
     {
@@ -420,7 +464,11 @@ final class SignatureHelpHandler implements HandlerInterface
     }
 
     /**
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }
      */
     private function formatMethodNodeSignature(Stmt\ClassMethod $method): array
     {
@@ -459,7 +507,11 @@ final class SignatureHelpHandler implements HandlerInterface
     }
 
     /**
-     * @return array{label: string, documentation?: string, parameters?: list<array{label: string, documentation?: string}>}
+     * @return array{
+     *   label: string,
+     *   documentation?: string,
+     *   parameters?: list<array{label: string, documentation?: string}>,
+     * }
      */
     private function formatReflectionSignature(ReflectionFunctionAbstract $func): array
     {

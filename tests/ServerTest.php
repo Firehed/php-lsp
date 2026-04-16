@@ -20,7 +20,8 @@ class ServerTest extends TestCase
 {
     public function testFullLifecycle(): void
     {
-        $initializeJson = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":1234,"capabilities":{}}}';
+        $initializeJson = '{"jsonrpc":"2.0","id":1,"method":"initialize",'
+            . '"params":{"processId":1234,"capabilities":{}}}';
         $initializedJson = '{"jsonrpc":"2.0","method":"initialized"}';
         $shutdownJson = '{"jsonrpc":"2.0","id":2,"method":"shutdown"}';
         $exitJson = '{"jsonrpc":"2.0","method":"exit"}';

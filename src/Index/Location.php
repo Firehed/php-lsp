@@ -16,7 +16,13 @@ final readonly class Location
     }
 
     /**
-     * @return array{uri: string, range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}}
+     * @return array{
+     *   uri: string,
+     *   range: array{
+     *     start: array{line: int, character: int},
+     *     end: array{line: int, character: int},
+     *   },
+     * }
      */
     public function toLspLocation(): array
     {
