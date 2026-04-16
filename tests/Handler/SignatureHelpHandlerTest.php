@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -243,5 +244,99 @@ PHP;
         $result = $this->handler->handle($request);
 
         self::assertNull($result);
+    }
+
+    public function testSignatureHelpOnTypedVariableMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    /**
+     * Multiplies two numbers.
+     */
+    public function multiply(int $a, int $b): int
+    {
+        return $a * $b;
+    }
+}
+
+function useCalculator(Calculator $calc): void
+{
+    $calc->multiply(2, 3);
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        // Create handler with type resolver
+        $handlerWithResolver = new SignatureHelpHandler(
+            $this->documents,
+            $this->parser,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/signatureHelp',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 21], // Inside multiply(|2, 3)
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('multiply', $result['signatures'][0]['label']);
+        self::assertStringContainsString('Multiplies two numbers', $result['signatures'][0]['documentation'] ?? '');
+    }
+
+    public function testSignatureHelpOnAssignedVariableMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Greeter
+{
+    /**
+     * Greets a person by name.
+     */
+    public function greet(string $name, string $greeting = 'Hello'): string
+    {
+        return "$greeting, $name!";
+    }
+}
+
+function test(): void
+{
+    $greeter = new Greeter();
+    $greeter->greet("World");
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handlerWithResolver = new SignatureHelpHandler(
+            $this->documents,
+            $this->parser,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/signatureHelp',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 21], // Inside greet(|"World")
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('greet', $result['signatures'][0]['label']);
+        self::assertStringContainsString('Greets a person', $result['signatures'][0]['documentation'] ?? '');
     }
 }
