@@ -18,12 +18,9 @@ final class ScopeFinder
      * Find the enclosing function/method/closure for a node.
      *
      * Walks up the parent chain to find the innermost scope.
-     *
-     * @param array<Stmt> $ast Unused, kept for API consistency
      */
     public static function findEnclosingScope(
         Node $node,
-        array $ast,
     ): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null {
         $current = $node->getAttribute('parent');
         while ($current instanceof Node) {

@@ -1,12 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(composer analyze:*)",
       "Bash(composer check:*)",
       "Bash(composer install:*)",
+      "Bash(composer phpstan:*)",
+      "Bash(composer phpunit:*)",
       "Bash(composer require:*)",
       "Bash(composer test:*)",
       "Bash(gh issue view*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr view:*)",
       "WebSearch"
     ]
   }

@@ -257,7 +257,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         // Use type resolver for other expressions
         if ($this->typeResolver !== null) {
-            $scope = ScopeFinder::findEnclosingScope($expr, $ast);
+            $scope = ScopeFinder::findEnclosingScope($expr);
             if ($scope !== null) {
                 return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
             }
