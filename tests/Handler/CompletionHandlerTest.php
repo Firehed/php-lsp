@@ -1292,7 +1292,7 @@ PHP;
             'method' => 'textDocument/completion',
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 11, 'character' => 11], // After $user->
+                'position' => ['line' => 10, 'character' => 11], // After $user->
             ],
         ]);
 
