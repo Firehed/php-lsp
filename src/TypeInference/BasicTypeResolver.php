@@ -9,8 +9,7 @@ use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
-use ReflectionClass;
-use ReflectionException;
+use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use ReflectionNamedType;
 
@@ -196,44 +195,30 @@ final class BasicTypeResolver implements TypeResolverInterface
 
     private function getMethodReturnType(string $className, string $methodName): ?string
     {
-        if (!class_exists($className) && !interface_exists($className)) {
+        $reflection = ReflectionHelper::getClass($className);
+        if ($reflection === null || !$reflection->hasMethod($methodName)) {
             return null;
         }
-        try {
-            $reflection = new ReflectionClass($className);
-            if (!$reflection->hasMethod($methodName)) {
-                return null;
-            }
-            $method = $reflection->getMethod($methodName);
-            $returnType = $method->getReturnType();
-            if (!$returnType instanceof ReflectionNamedType) {
-                return null;
-            }
-            return $returnType->getName();
-        } catch (ReflectionException) {
+        $method = $reflection->getMethod($methodName);
+        $returnType = $method->getReturnType();
+        if (!$returnType instanceof ReflectionNamedType) {
             return null;
         }
+        return $returnType->getName();
     }
 
     private function getPropertyType(string $className, string $propertyName): ?string
     {
-        if (!class_exists($className) && !interface_exists($className)) {
+        $reflection = ReflectionHelper::getClass($className);
+        if ($reflection === null || !$reflection->hasProperty($propertyName)) {
             return null;
         }
-        try {
-            $reflection = new ReflectionClass($className);
-            if (!$reflection->hasProperty($propertyName)) {
-                return null;
-            }
-            $property = $reflection->getProperty($propertyName);
-            $type = $property->getType();
-            if (!$type instanceof ReflectionNamedType) {
-                return null;
-            }
-            return $type->getName();
-        } catch (ReflectionException) {
+        $property = $reflection->getProperty($propertyName);
+        $type = $property->getType();
+        if (!$type instanceof ReflectionNamedType) {
             return null;
         }
+        return $type->getName();
     }
 
     /**
