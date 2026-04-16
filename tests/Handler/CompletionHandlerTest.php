@@ -1429,4 +1429,77 @@ PHP;
         self::assertIsArray($result);
         self::assertEmpty($result['items']);
     }
+
+    public function testTypedVariableCompletionIncludesInheritedMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(ArrayObject $obj): void
+{
+    $obj->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 10], // After $obj->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // ArrayObject methods from reflection
+        self::assertContains('append', $labels);
+        self::assertContains('count', $labels);
+        self::assertContains('getIterator', $labels);
+    }
+
+    public function testTypedVariableCompletionReturnsEmptyWithoutTypeResolver(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function getName(): string { return ''; }
+}
+
+function foo(User $user): void
+{
+    $user->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        // Handler without type resolver (uses default from setUp)
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 11], // After $user->
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        // Without type resolver, no completions for typed variables
+        self::assertEmpty($result['items']);
+    }
 }
