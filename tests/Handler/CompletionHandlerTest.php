@@ -1817,6 +1817,34 @@ PHP;
         self::assertNotContains('instanceProp', $labels);
     }
 
+    public function testSelfCompletionOutsideClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(): void
+{
+    self::
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 10], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertEmpty($result['items']);
+    }
+
     public function testParentMethodCompletion(): void
     {
         $code = <<<'PHP'
