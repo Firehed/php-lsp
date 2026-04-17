@@ -137,6 +137,12 @@ final class CompletionHandler implements HandlerInterface
             return $this->getVariableCompletions($prefix, $ast, $line);
         }
 
+        // parent:: completion - methods from parent class
+        if (preg_match('/\bparent::(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            $prefix = $matches[1];
+            return $this->getParentCompletions($prefix, $ast, $line);
+        }
+
         // ClassName:: completion (static) - also match single : for mid-typing
         if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $className = $matches[1];
@@ -234,6 +240,82 @@ final class CompletionHandler implements HandlerInterface
         $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
         if ($className !== null) {
             $items = array_merge($items, $this->getInheritedMemberCompletions($className, $prefix, $items));
+        }
+
+        return $items;
+    }
+
+    /**
+     * Get completions for parent:: - methods from the parent class.
+     *
+     * @param array<Stmt> $ast
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getParentCompletions(string $prefix, array $ast, int $line): array
+    {
+        $classNode = $this->findClassAtLine($ast, $line);
+        if ($classNode === null || $classNode->extends === null) {
+            return [];
+        }
+
+        $parentClassName = $classNode->extends->toString();
+
+        // Resolve the parent class name if it's in the same file
+        $parentClassNode = ClassFinder::findWithLocator(
+            $parentClassName,
+            $ast,
+            $this->classLocator,
+            $this->parser,
+        );
+
+        $items = [];
+
+        if ($parentClassNode !== null) {
+            foreach ($parentClassNode->stmts as $stmt) {
+                // Methods (public and protected, both static and non-static)
+                if ($stmt instanceof Stmt\ClassMethod) {
+                    if ($stmt->isPrivate()) {
+                        continue;
+                    }
+                    $name = $stmt->name->toString();
+                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                        $items[] = $this->formatMethodCompletion($stmt);
+                    }
+                }
+            }
+        }
+
+        // Also check via reflection for inherited/built-in classes
+        $items = array_merge($items, $this->getParentReflectionCompletions($parentClassName, $prefix, $items));
+
+        return $items;
+    }
+
+    /**
+     * Get parent class methods via reflection.
+     *
+     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getParentReflectionCompletions(string $className, string $prefix, array $existingItems): array
+    {
+        $reflection = ReflectionHelper::getClass($className);
+        if ($reflection === null) {
+            return [];
+        }
+
+        $existingLabels = array_column($existingItems, 'label');
+        $items = [];
+
+        // Public and protected methods (both static and non-static)
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
+            $name = $method->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
+            }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionMethodCompletion($method);
+            }
         }
 
         return $items;
@@ -484,6 +566,45 @@ final class CompletionHandler implements HandlerInterface
             }
         }
         return null;
+    }
+
+    /**
+     * Find the class containing the given line.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function findClassAtLine(array $ast, int $line): ?Stmt\Class_
+    {
+        $visitor = new class ($line) extends NodeVisitorAbstract {
+            public ?Stmt\Class_ $found = null;
+
+            public function __construct(private readonly int $line)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Stmt\Class_) {
+                    $startLine = $node->getStartLine();
+                    $endLine = $node->getEndLine();
+
+                    if (
+                        $startLine !== -1 && $endLine !== -1
+                        && $this->line >= $startLine - 1
+                        && $this->line <= $endLine - 1
+                    ) {
+                        $this->found = $node;
+                    }
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
     }
 
     /**
