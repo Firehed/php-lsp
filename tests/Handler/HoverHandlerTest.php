@@ -457,4 +457,90 @@ PHP;
         self::assertStringContainsString('$parentProperty', $result['contents']);
         self::assertStringContainsString('Parent property docs', $result['contents']);
     }
+
+    public function testHoverOnMultiLevelInheritedMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class GrandparentClass
+{
+    /**
+     * Grandparent method docs.
+     */
+    public function grandparentMethod(): void {}
+}
+
+class ParentClass extends GrandparentClass
+{
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->grandparentMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 17, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('grandparentMethod', $result['contents']);
+        self::assertStringContainsString('Grandparent method docs', $result['contents']);
+    }
+
+    public function testHoverOnMultiLevelInheritedProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+class GrandparentClass
+{
+    /**
+     * Grandparent property docs.
+     */
+    protected string $grandparentProperty;
+}
+
+class ParentClass extends GrandparentClass
+{
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->grandparentProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 17, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$grandparentProperty', $result['contents']);
+        self::assertStringContainsString('Grandparent property docs', $result['contents']);
+    }
 }
