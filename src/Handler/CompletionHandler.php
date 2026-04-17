@@ -141,7 +141,7 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/\b(?:self|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $classNode = $this->findFirstClass($ast);
             if ($classNode !== null) {
-                $className = $classNode->name?->toString() ?? '';
+                $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString() ?? '';
                 $prefix = $matches[1];
                 return $this->getStaticCompletions($className, $prefix, $ast, $document);
             }
