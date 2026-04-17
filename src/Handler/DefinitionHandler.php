@@ -200,15 +200,22 @@ final class DefinitionHandler implements HandlerInterface
     }
 
     /**
-     * Find the enclosing class node for a given node.
+     * Find the enclosing class-like node for a given node.
      *
      * @param array<Stmt> $ast
      */
-    private function findEnclosingClassNode(Node $node, array $ast): ?Stmt\Class_
-    {
+    private function findEnclosingClassNode(
+        Node $node,
+        array $ast,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
         $current = $node->getAttribute('parent');
         while ($current instanceof Node) {
-            if ($current instanceof Stmt\Class_) {
+            if (
+                $current instanceof Stmt\Class_
+                || $current instanceof Stmt\Interface_
+                || $current instanceof Stmt\Trait_
+                || $current instanceof Stmt\Enum_
+            ) {
                 return $current;
             }
             $current = $current->getAttribute('parent');
@@ -366,16 +373,8 @@ final class DefinitionHandler implements HandlerInterface
             }
         }
 
-        // Search in parent class
-        if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $parentName = $classNode->extends->toString();
-            $parentResult = $this->findMethodDefinition($parentName, $methodName, $ast);
-            if ($parentResult !== null) {
-                return $parentResult;
-            }
-        }
-
-        // Search in traits
+        // PHP method resolution order: class -> traits -> parent
+        // Search in traits first (before parent)
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
@@ -384,6 +383,15 @@ final class DefinitionHandler implements HandlerInterface
                         return $traitResult;
                     }
                 }
+            }
+        }
+
+        // Search in parent class
+        if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
+            $parentName = $classNode->extends->toString();
+            $parentResult = $this->findMethodDefinition($parentName, $methodName, $ast);
+            if ($parentResult !== null) {
+                return $parentResult;
             }
         }
 
