@@ -1560,6 +1560,116 @@ PHP;
         self::assertContains('class', $labels);
     }
 
+    public function testParentMethodCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    public function __construct(string $name) {}
+    protected function greet(): string { return 'Hello'; }
+}
+
+class ChildClass extends ParentClass
+{
+    public function __construct(string $name)
+    {
+        parent::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 16], // After parent::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('__construct', $labels);
+        self::assertContains('greet', $labels);
+    }
+
+    public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    public function test(): void
+    {
+        parent::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 5, 'character' => 16], // After parent::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testParentMethodCompletionWithPrefix(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    public function __construct() {}
+    protected function greet(): string { return 'Hello'; }
+    protected function goodbye(): string { return 'Bye'; }
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        parent::gr
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 18], // After parent::gr
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('greet', $labels);
+        self::assertNotContains('goodbye', $labels);
+        self::assertNotContains('__construct', $labels);
+    }
+
     public function testTypedVariableCompletionReturnsEmptyWithoutTypeResolver(): void
     {
         $code = <<<'PHP'
