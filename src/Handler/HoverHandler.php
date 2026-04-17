@@ -475,11 +475,8 @@ final class HoverHandler implements HandlerInterface
         }
 
         // Check parent class (only non-private members are inherited)
-        if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $resolvedName = $classNode->extends->getAttribute('resolvedName');
-            $parentName = $resolvedName instanceof Name
-                ? $resolvedName->toString()
-                : $classNode->extends->toString();
+        $parentName = $this->getParentClassName($classNode);
+        if ($parentName !== null) {
             $parentMethod = $this->findMethodInClass($parentName, $methodName, $ast, $document);
             if ($parentMethod !== null && !$parentMethod->isPrivate()) {
                 return $parentMethod;
@@ -514,11 +511,8 @@ final class HoverHandler implements HandlerInterface
         }
 
         // Check parent class (only non-private members are inherited)
-        if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $resolvedName = $classNode->extends->getAttribute('resolvedName');
-            $parentName = $resolvedName instanceof Name
-                ? $resolvedName->toString()
-                : $classNode->extends->toString();
+        $parentName = $this->getParentClassName($classNode);
+        if ($parentName !== null) {
             $parentProperty = $this->findPropertyInClass($parentName, $propertyName, $ast, $document);
             if ($parentProperty !== null && !$parentProperty->isPrivate()) {
                 return $parentProperty;
@@ -526,6 +520,18 @@ final class HoverHandler implements HandlerInterface
         }
 
         return null;
+    }
+
+    private function getParentClassName(
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $classNode,
+    ): ?string {
+        if (!$classNode instanceof Stmt\Class_ || $classNode->extends === null) {
+            return null;
+        }
+        $resolvedName = $classNode->extends->getAttribute('resolvedName');
+        return $resolvedName instanceof Name
+            ? $resolvedName->toString()
+            : $classNode->extends->toString();
     }
 
     private function formatMethodHover(Stmt\ClassMethod $method): string
