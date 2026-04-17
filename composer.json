@@ -31,9 +31,6 @@
         },
         "classmap": [
             "tests/Fixtures/Autoload/Classmap/"
-        ],
-        "files": [
-            "tests/Fixtures/Autoload/Files/functions.php"
         ]
     },
     "scripts": {
