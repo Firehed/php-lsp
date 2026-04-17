@@ -49,7 +49,13 @@ final class Server
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
         $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer);
-        $this->handlers[] = new DefinitionHandler($this->documentManager, $parser, $symbolIndex, $classLocator);
+        $this->handlers[] = new DefinitionHandler(
+            $this->documentManager,
+            $parser,
+            $symbolIndex,
+            $classLocator,
+            $typeResolver,
+        );
         $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator, $typeResolver);
         $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator, $typeResolver);
         $this->handlers[] = new CompletionHandler(
