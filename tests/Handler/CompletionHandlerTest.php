@@ -1673,6 +1673,38 @@ PHP;
         self::assertNotContains('class', $labels);
     }
 
+    public function testSelfCompletionInAnonymousClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+$obj = new class {
+    public const FOO = 'foo';
+
+    public function thing(): string
+    {
+        return self::
+    }
+};
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 6, 'character' => 21], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertEmpty($result['items']);
+    }
+
     public function testParentMethodCompletion(): void
     {
         $code = <<<'PHP'
