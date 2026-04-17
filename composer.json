@@ -28,7 +28,10 @@
     "autoload-dev": {
         "psr-4": {
             "Firehed\\PhpLsp\\Tests\\": "tests/"
-        }
+        },
+        "classmap": [
+            "tests/Fixtures/Autoload/Classmap/"
+        ]
     },
     "scripts": {
         "phpcs": "phpcs",
