@@ -24,32 +24,28 @@ final class ComposerClassLocator
      */
     public function getAllClasses(): array
     {
-        $classes = [];
+        $classmap = $this->loader?->getClassMap() ?? [];
 
-        // Include all classes from classmap (handles classmap autoloading)
-        if ($this->loader !== null) {
-            foreach (array_keys($this->loader->getClassMap()) as $fqcn) {
-                $classes[] = $fqcn;
-            }
-        }
+        // Start with all classes from classmap
+        $seen = $classmap;
 
-        // Scan PSR-4 directories for additional classes
+        // Scan PSR-4 directories for classes not in classmap
         foreach ($this->psr4Mappings as $prefix => $directories) {
             foreach ($directories as $directory) {
                 if (!is_dir($directory)) {
                     continue;
                 }
-                $this->scanDirectory($directory, $prefix, $classes);
+                $this->scanDirectory($directory, $prefix, $seen);
             }
         }
 
-        return $classes;
+        return array_keys($seen);
     }
 
     /**
-     * @param list<string> $classes
+     * @param array<string, string> $seen FQCN => file path (modified by reference)
      */
-    private function scanDirectory(string $directory, string $namespacePrefix, array &$classes): void
+    private function scanDirectory(string $directory, string $namespacePrefix, array &$seen): void
     {
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -62,8 +58,11 @@ final class ComposerClassLocator
             }
 
             $relativePath = substr($file->getPathname(), strlen($directory) + 1);
-            $className = str_replace(['/', '.php'], ['\\', ''], $relativePath);
-            $classes[] = $namespacePrefix . $className;
+            $className = $namespacePrefix . str_replace(['/', '.php'], ['\\', ''], $relativePath);
+
+            if (!array_key_exists($className, $seen)) {
+                $seen[$className] = $file->getPathname();
+            }
         }
     }
 
