@@ -474,6 +474,12 @@ final class HoverHandler implements HandlerInterface
             }
         }
 
+        // Check parent class
+        if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
+            $parentName = $classNode->extends->toString();
+            return $this->findMethodInClass($parentName, $methodName, $ast, $document);
+        }
+
         return null;
     }
 
@@ -499,6 +505,12 @@ final class HoverHandler implements HandlerInterface
                     }
                 }
             }
+        }
+
+        // Check parent class
+        if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
+            $parentName = $classNode->extends->toString();
+            return $this->findPropertyInClass($parentName, $propertyName, $ast, $document);
         }
 
         return null;

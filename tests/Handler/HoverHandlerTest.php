@@ -379,4 +379,82 @@ PHP;
         self::assertStringContainsString('greet', $result['contents']);
         self::assertStringContainsString('Greets a person', $result['contents']);
     }
+
+    public function testHoverOnInheritedMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent method docs.
+     */
+    public function parentMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->parentMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16], // On "parentMethod"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('parentMethod', $result['contents']);
+        self::assertStringContainsString('Parent method docs', $result['contents']);
+    }
+
+    public function testHoverOnInheritedProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent property docs.
+     */
+    protected string $parentProperty;
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->parentProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16], // On "parentProperty"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$parentProperty', $result['contents']);
+        self::assertStringContainsString('Parent property docs', $result['contents']);
+    }
 }
