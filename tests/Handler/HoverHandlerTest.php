@@ -705,4 +705,94 @@ PHP;
         // Private properties are not inherited, so hover should return null
         self::assertNull($result);
     }
+
+    public function testHoverOnOverriddenMethodShowsChildVersion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent implementation.
+     */
+    public function sharedMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    /**
+     * Child implementation.
+     */
+    public function sharedMethod(): void {}
+
+    public function test(): void
+    {
+        $this->sharedMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 18, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('sharedMethod', $result['contents']);
+        self::assertStringContainsString('Child implementation', $result['contents']);
+        self::assertStringNotContainsString('Parent implementation', $result['contents']);
+    }
+
+    public function testHoverOnOverriddenPropertyShowsChildVersion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent property.
+     */
+    protected string $sharedProperty;
+}
+
+class ChildClass extends ParentClass
+{
+    /**
+     * Child property.
+     */
+    protected string $sharedProperty;
+
+    public function test(): void
+    {
+        $this->sharedProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 18, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$sharedProperty', $result['contents']);
+        self::assertStringContainsString('Child property', $result['contents']);
+        self::assertStringNotContainsString('Parent property', $result['contents']);
+    }
 }
