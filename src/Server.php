@@ -37,7 +37,8 @@ final class Server
         ?string $projectRoot = null,
     ) {
         // Use provided root, or fall back to cwd
-        $projectRoot ??= getcwd() ?: null;
+        $cwd = getcwd();
+        $projectRoot ??= $cwd !== false ? $cwd : null;
 
         $this->documentManager = new DocumentManager();
         $parser = new ParserService();
