@@ -22,6 +22,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - GitHub issues are the source of truth for feature specs
 - Update `docs/features/*.md` when merging features
 - Run `composer check` before commits
+- `composer.lock` is gitignored — do not attempt to stage or commit it
 
 ## Completion System
 
