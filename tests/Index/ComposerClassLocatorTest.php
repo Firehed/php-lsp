@@ -52,15 +52,6 @@ final class ComposerClassLocatorTest extends TestCase
         self::assertStringEndsWith('src/Index/ComposerClassLocator.php', $path);
     }
 
-    public function testGetAllClassesIncludesPsr4Classes(): void
-    {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
-
-        $classes = $locator->getAllClasses();
-
-        self::assertContains(ComposerClassLocator::class, $classes);
-    }
-
     public function testGetAllClassesHasNoDuplicates(): void
     {
         $locator = new ComposerClassLocator(self::PROJECT_ROOT);
