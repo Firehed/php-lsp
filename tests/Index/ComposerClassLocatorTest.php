@@ -60,4 +60,14 @@ final class ComposerClassLocatorTest extends TestCase
 
         self::assertContains(ComposerClassLocator::class, $classes);
     }
+
+    public function testGetAllClassesHasNoDuplicates(): void
+    {
+        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+
+        $classes = $locator->getAllClasses();
+        $duplicates = array_filter(array_count_values($classes), fn($count) => $count > 1);
+
+        self::assertSame([], $duplicates, 'Found duplicate classes');
+    }
 }
