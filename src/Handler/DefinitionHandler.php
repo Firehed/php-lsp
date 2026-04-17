@@ -192,7 +192,7 @@ final class DefinitionHandler implements HandlerInterface
 
         // Handle self:: and static:: - resolve to enclosing class
         if ($className === 'self' || $className === 'static') {
-            $enclosingClassName = $this->findEnclosingClassName($call, $ast);
+            $enclosingClassName = $this->findEnclosingClassName($call);
             if ($enclosingClassName === null) {
                 return null;
             }
@@ -259,7 +259,7 @@ final class DefinitionHandler implements HandlerInterface
     {
         // $this refers to the enclosing class
         if ($expr instanceof Variable && $expr->name === 'this') {
-            return $this->findEnclosingClassName($expr, $ast);
+            return $this->findEnclosingClassName($expr);
         }
 
         // Use type resolver for other expressions
@@ -275,10 +275,8 @@ final class DefinitionHandler implements HandlerInterface
 
     /**
      * Find the enclosing class name for a node.
-     *
-     * @param array<Stmt> $ast
      */
-    private function findEnclosingClassName(Node $node, array $ast): ?string
+    private function findEnclosingClassName(Node $node): ?string
     {
         $current = $node->getAttribute('parent');
         while ($current instanceof Node) {
@@ -326,7 +324,11 @@ final class DefinitionHandler implements HandlerInterface
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
-                    $traitResult = $this->findMethodDefinition($traitName->toString(), $methodName, $ast);
+                    $traitResolved = $traitName->getAttribute('resolvedName');
+                    $traitFqn = $traitResolved instanceof Name
+                        ? $traitResolved->toString()
+                        : $traitName->toString();
+                    $traitResult = $this->findMethodDefinition($traitFqn, $methodName, $ast);
                     if ($traitResult !== null) {
                         return $traitResult;
                     }
