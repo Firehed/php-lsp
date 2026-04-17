@@ -179,9 +179,12 @@ final class DefinitionHandler implements HandlerInterface
 
         // Handle parent:: - resolve to actual parent class name
         if ($className === 'parent') {
-            $enclosingClass = $this->findEnclosingClassNode($call, $ast);
+            $enclosingClass = $this->findEnclosingClassNode($call);
             if ($enclosingClass instanceof Stmt\Class_ && $enclosingClass->extends !== null) {
-                $className = $enclosingClass->extends->toString();
+                $parentResolved = $enclosingClass->extends->getAttribute('resolvedName');
+                $className = $parentResolved instanceof Name
+                    ? $parentResolved->toString()
+                    : $enclosingClass->extends->toString();
             } else {
                 return null;
             }
@@ -201,12 +204,9 @@ final class DefinitionHandler implements HandlerInterface
 
     /**
      * Find the enclosing class-like node for a given node.
-     *
-     * @param array<Stmt> $ast
      */
     private function findEnclosingClassNode(
         Node $node,
-        array $ast,
     ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
         $current = $node->getAttribute('parent');
         while ($current instanceof Node) {
@@ -336,7 +336,10 @@ final class DefinitionHandler implements HandlerInterface
 
         // Search in parent class
         if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $parentName = $classNode->extends->toString();
+            $parentResolved = $classNode->extends->getAttribute('resolvedName');
+            $parentName = $parentResolved instanceof Name
+                ? $parentResolved->toString()
+                : $classNode->extends->toString();
             $parentResult = $this->findMethodDefinition($parentName, $methodName, $ast);
             if ($parentResult !== null) {
                 return $parentResult;
