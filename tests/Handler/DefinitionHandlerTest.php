@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
-use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -28,11 +27,6 @@ class DefinitionHandlerTest extends TestCase
         $this->documents = new DocumentManager();
         $this->index = new SymbolIndex();
         $this->parser = new ParserService();
-        $indexer = new DocumentIndexer(
-            $this->parser,
-            new SymbolExtractor(),
-            $this->index,
-        );
         $this->handler = new DefinitionHandler(
             $this->documents,
             $this->parser,
