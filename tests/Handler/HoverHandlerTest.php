@@ -379,4 +379,420 @@ PHP;
         self::assertStringContainsString('greet', $result['contents']);
         self::assertStringContainsString('Greets a person', $result['contents']);
     }
+
+    public function testHoverOnInheritedMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent method docs.
+     */
+    public function parentMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->parentMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16], // On "parentMethod"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('parentMethod', $result['contents']);
+        self::assertStringContainsString('Parent method docs', $result['contents']);
+    }
+
+    public function testHoverOnInheritedProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent property docs.
+     */
+    protected string $parentProperty;
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->parentProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16], // On "parentProperty"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$parentProperty', $result['contents']);
+        self::assertStringContainsString('Parent property docs', $result['contents']);
+    }
+
+    public function testHoverOnMultiLevelInheritedMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class GrandparentClass
+{
+    /**
+     * Grandparent method docs.
+     */
+    public function grandparentMethod(): void {}
+}
+
+class ParentClass extends GrandparentClass
+{
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->grandparentMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 17, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('grandparentMethod', $result['contents']);
+        self::assertStringContainsString('Grandparent method docs', $result['contents']);
+    }
+
+    public function testHoverOnMultiLevelInheritedProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+class GrandparentClass
+{
+    /**
+     * Grandparent property docs.
+     */
+    protected string $grandparentProperty;
+}
+
+class ParentClass extends GrandparentClass
+{
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->grandparentProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 17, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$grandparentProperty', $result['contents']);
+        self::assertStringContainsString('Grandparent property docs', $result['contents']);
+    }
+
+    public function testHoverOnInheritedMethodWithNamespace(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class ParentClass
+{
+    /**
+     * Namespaced parent method.
+     */
+    public function parentMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->parentMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('parentMethod', $result['contents']);
+        self::assertStringContainsString('Namespaced parent method', $result['contents']);
+    }
+
+    public function testHoverOnInheritedMethodAcrossNamespaces(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace Base;
+
+class ParentClass
+{
+    /**
+     * Method from Base namespace.
+     */
+    public function baseMethod(): void {}
+}
+
+namespace App;
+
+use Base\ParentClass;
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->baseMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 19, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('baseMethod', $result['contents']);
+        self::assertStringContainsString('Method from Base namespace', $result['contents']);
+    }
+
+    public function testHoverOnPrivateInheritedMethodReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Private parent method.
+     */
+    private function privateMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->privateMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        // Private methods are not inherited, so hover should return null
+        self::assertNull($result);
+    }
+
+    public function testHoverOnPrivateInheritedPropertyReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Private parent property.
+     */
+    private string $privateProperty;
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->privateProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        // Private properties are not inherited, so hover should return null
+        self::assertNull($result);
+    }
+
+    public function testHoverOnOverriddenMethodShowsChildVersion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent implementation.
+     */
+    public function sharedMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    /**
+     * Child implementation.
+     */
+    public function sharedMethod(): void {}
+
+    public function test(): void
+    {
+        $this->sharedMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 18, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('sharedMethod', $result['contents']);
+        self::assertStringContainsString('Child implementation', $result['contents']);
+        self::assertStringNotContainsString('Parent implementation', $result['contents']);
+    }
+
+    public function testHoverOnOverriddenPropertyShowsChildVersion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Parent property.
+     */
+    protected string $sharedProperty;
+}
+
+class ChildClass extends ParentClass
+{
+    /**
+     * Child property.
+     */
+    protected string $sharedProperty;
+
+    public function test(): void
+    {
+        $this->sharedProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 18, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$sharedProperty', $result['contents']);
+        self::assertStringContainsString('Child property', $result['contents']);
+        self::assertStringNotContainsString('Parent property', $result['contents']);
+    }
 }

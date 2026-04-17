@@ -384,7 +384,7 @@ final class HoverHandler implements HandlerInterface
         TextDocument $document,
     ): ?string {
         // Try to find in AST first (current file or via Composer)
-        $methodNode = $this->findMethodInClass($className, $methodName, $ast, $document);
+        $methodNode = $this->findMethodInClass($className, $methodName, $ast);
         if ($methodNode !== null) {
             return $this->formatMethodHover($methodNode);
         }
@@ -403,7 +403,7 @@ final class HoverHandler implements HandlerInterface
         TextDocument $document,
     ): ?string {
         // Try to find in AST first
-        $propertyNode = $this->findPropertyInClass($className, $propertyName, $ast, $document);
+        $propertyNode = $this->findPropertyInClass($className, $propertyName, $ast);
         if ($propertyNode !== null) {
             return $this->formatPropertyHover($propertyNode, $propertyName);
         }
@@ -461,7 +461,6 @@ final class HoverHandler implements HandlerInterface
         string $className,
         string $methodName,
         array $ast,
-        TextDocument $document,
     ): ?Stmt\ClassMethod {
         $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
         if ($classNode === null) {
@@ -471,6 +470,15 @@ final class HoverHandler implements HandlerInterface
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toString() === $methodName) {
                 return $stmt;
+            }
+        }
+
+        // Check parent class (only non-private members are inherited)
+        $parentName = $this->getParentClassName($classNode);
+        if ($parentName !== null) {
+            $parentMethod = $this->findMethodInClass($parentName, $methodName, $ast);
+            if ($parentMethod !== null && !$parentMethod->isPrivate()) {
+                return $parentMethod;
             }
         }
 
@@ -484,7 +492,6 @@ final class HoverHandler implements HandlerInterface
         string $className,
         string $propertyName,
         array $ast,
-        TextDocument $document,
     ): ?Stmt\Property {
         $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
         if ($classNode === null) {
@@ -501,7 +508,28 @@ final class HoverHandler implements HandlerInterface
             }
         }
 
+        // Check parent class (only non-private members are inherited)
+        $parentName = $this->getParentClassName($classNode);
+        if ($parentName !== null) {
+            $parentProperty = $this->findPropertyInClass($parentName, $propertyName, $ast);
+            if ($parentProperty !== null && !$parentProperty->isPrivate()) {
+                return $parentProperty;
+            }
+        }
+
         return null;
+    }
+
+    private function getParentClassName(
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $classNode,
+    ): ?string {
+        if (!$classNode instanceof Stmt\Class_ || $classNode->extends === null) {
+            return null;
+        }
+        $resolvedName = $classNode->extends->getAttribute('resolvedName');
+        return $resolvedName instanceof Name
+            ? $resolvedName->toString()
+            : $classNode->extends->toString();
     }
 
     private function formatMethodHover(Stmt\ClassMethod $method): string
