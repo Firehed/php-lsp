@@ -137,6 +137,21 @@ final class CompletionHandler implements HandlerInterface
             return $this->getVariableCompletions($prefix, $ast, $line);
         }
 
+        // self:: and static:: completion - resolve to enclosing class
+        if (preg_match('/\b(?:self|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            $classNode = $this->findClassAtLine($ast, $line);
+            if ($classNode !== null) {
+                $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
+                if ($className === null) {
+                    // Anonymous class - no completions available
+                    return [];
+                }
+                $prefix = $matches[1];
+                return $this->getStaticCompletions($className, $prefix, $ast, $document);
+            }
+            return [];
+        }
+
         // parent:: completion - methods from parent class
         if (preg_match('/\bparent::(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];

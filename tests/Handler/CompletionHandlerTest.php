@@ -1523,6 +1523,328 @@ PHP;
         self::assertNotContains('getPassword', $labels);
     }
 
+    public function testSelfConstantCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo
+{
+    public const FOO = 'foo';
+    public const BAR = 'bar';
+
+    public function thing(): string
+    {
+        return self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 21], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('FOO', $labels);
+        self::assertContains('BAR', $labels);
+        self::assertContains('class', $labels);
+    }
+
+    public function testSelfConstantCompletionNamespaced(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Models;
+
+class Foo
+{
+    public const FOO = 'foo';
+    public const BAR = 'bar';
+
+    public function thing(): string
+    {
+        return self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 21], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('FOO', $labels);
+        self::assertContains('BAR', $labels);
+        self::assertContains('class', $labels);
+    }
+
+    public function testStaticConstantCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo
+{
+    public const FOO = 'foo';
+    public const BAR = 'bar';
+
+    public function thing(): string
+    {
+        return static::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 23], // After static::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('FOO', $labels);
+        self::assertContains('BAR', $labels);
+        self::assertContains('class', $labels);
+    }
+
+    public function testSelfConstantCompletionWithPrefix(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo
+{
+    public const FOO = 'foo';
+    public const BAR = 'bar';
+
+    public function thing(): string
+    {
+        return self::FO
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 23], // After self::FO
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('FOO', $labels);
+        self::assertNotContains('BAR', $labels);
+        self::assertNotContains('class', $labels);
+    }
+
+    public function testSelfCompletionInAnonymousClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+$obj = new class {
+    public const FOO = 'foo';
+
+    public function thing(): string
+    {
+        return self::
+    }
+};
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 6, 'character' => 21], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testSelfCompletionInMultiClassFile(): void
+    {
+        $code = <<<'PHP'
+<?php
+class First
+{
+    public const FIRST_CONST = 1;
+}
+
+class Second
+{
+    public const SECOND_CONST = 2;
+
+    public function thing(): int
+    {
+        return self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 21], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('SECOND_CONST', $labels);
+        self::assertNotContains('FIRST_CONST', $labels);
+    }
+
+    public function testSelfStaticMethodCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo
+{
+    public static function staticMethod(): void {}
+    public function instanceMethod(): void {}
+
+    public function thing(): void
+    {
+        self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 14], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('staticMethod', $labels);
+        self::assertNotContains('instanceMethod', $labels);
+    }
+
+    public function testSelfStaticPropertyCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo
+{
+    public static string $staticProp = 'static';
+    public string $instanceProp = 'instance';
+
+    public function thing(): void
+    {
+        self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 14], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('staticProp', $labels);
+        self::assertNotContains('instanceProp', $labels);
+    }
+
+    public function testSelfCompletionOutsideClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(): void
+{
+    self::
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 10], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertEmpty($result['items']);
+    }
+
     public function testParentMethodCompletion(): void
     {
         $code = <<<'PHP'
