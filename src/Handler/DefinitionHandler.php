@@ -127,11 +127,7 @@ final class DefinitionHandler implements HandlerInterface
      */
     private function handleNameDefinition(Name $node): ?array
     {
-        // Use the resolved name if available (handles use statements)
-        $resolvedName = $node->getAttribute('resolvedName');
-        $symbolName = $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $node->toString();
+        $symbolName = $this->resolveName($node);
 
         // Look up in index first (for open files)
         $symbol = $this->symbolIndex->findByFqn($symbolName);
@@ -172,19 +168,13 @@ final class DefinitionHandler implements HandlerInterface
             return null;
         }
 
-        $resolvedName = $class->getAttribute('resolvedName');
-        $className = $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $class->toString();
+        $className = $this->resolveName($class);
 
         // Handle parent:: - resolve to actual parent class name
         if ($className === 'parent') {
             $enclosingClass = $this->findEnclosingClassNode($call);
             if ($enclosingClass instanceof Stmt\Class_ && $enclosingClass->extends !== null) {
-                $parentResolved = $enclosingClass->extends->getAttribute('resolvedName');
-                $className = $parentResolved instanceof Name
-                    ? $parentResolved->toString()
-                    : $enclosingClass->extends->toString();
+                $className = $this->resolveName($enclosingClass->extends);
             } else {
                 return null;
             }
@@ -327,11 +317,7 @@ final class DefinitionHandler implements HandlerInterface
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
-                    $traitResolved = $traitName->getAttribute('resolvedName');
-                    $traitFqn = $traitResolved instanceof Name
-                        ? $traitResolved->toString()
-                        : $traitName->toString();
-                    $traitResult = $this->findMethodDefinition($traitFqn, $methodName, $ast);
+                    $traitResult = $this->findMethodDefinition($this->resolveName($traitName), $methodName, $ast);
                     if ($traitResult !== null) {
                         return $traitResult;
                     }
@@ -341,11 +327,7 @@ final class DefinitionHandler implements HandlerInterface
 
         // Search in parent class
         if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $parentResolved = $classNode->extends->getAttribute('resolvedName');
-            $parentName = $parentResolved instanceof Name
-                ? $parentResolved->toString()
-                : $classNode->extends->toString();
-            $parentResult = $this->findMethodDefinition($parentName, $methodName, $ast);
+            $parentResult = $this->findMethodDefinition($this->resolveName($classNode->extends), $methodName, $ast);
             if ($parentResult !== null) {
                 return $parentResult;
             }
@@ -513,5 +495,16 @@ final class DefinitionHandler implements HandlerInterface
 
         // Fallback: return start of file
         return new Location($uri, 0, 0, 0, 0);
+    }
+
+    /**
+     * Get the fully qualified name from a Name node, using resolvedName if available.
+     */
+    private function resolveName(Name $node): string
+    {
+        $resolved = $node->getAttribute('resolvedName');
+        return $resolved instanceof Name
+            ? $resolved->toString()
+            : $node->toString();
     }
 }
