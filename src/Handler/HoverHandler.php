@@ -474,10 +474,16 @@ final class HoverHandler implements HandlerInterface
             }
         }
 
-        // Check parent class
+        // Check parent class (only non-private members are inherited)
         if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $parentName = $classNode->extends->toString();
-            return $this->findMethodInClass($parentName, $methodName, $ast, $document);
+            $resolvedName = $classNode->extends->getAttribute('resolvedName');
+            $parentName = $resolvedName instanceof Name
+                ? $resolvedName->toString()
+                : $classNode->extends->toString();
+            $parentMethod = $this->findMethodInClass($parentName, $methodName, $ast, $document);
+            if ($parentMethod !== null && !$parentMethod->isPrivate()) {
+                return $parentMethod;
+            }
         }
 
         return null;
@@ -507,10 +513,16 @@ final class HoverHandler implements HandlerInterface
             }
         }
 
-        // Check parent class
+        // Check parent class (only non-private members are inherited)
         if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $parentName = $classNode->extends->toString();
-            return $this->findPropertyInClass($parentName, $propertyName, $ast, $document);
+            $resolvedName = $classNode->extends->getAttribute('resolvedName');
+            $parentName = $resolvedName instanceof Name
+                ? $resolvedName->toString()
+                : $classNode->extends->toString();
+            $parentProperty = $this->findPropertyInClass($parentName, $propertyName, $ast, $document);
+            if ($parentProperty !== null && !$parentProperty->isPrivate()) {
+                return $parentProperty;
+            }
         }
 
         return null;

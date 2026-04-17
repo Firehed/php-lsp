@@ -619,7 +619,7 @@ PHP;
             'method' => 'textDocument/hover',
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 20, 'character' => 16],
+                'position' => ['line' => 19, 'character' => 16],
             ],
         ]);
 
