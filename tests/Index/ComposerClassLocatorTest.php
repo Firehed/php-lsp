@@ -42,4 +42,14 @@ final class ComposerClassLocatorTest extends TestCase
         self::assertNotNull($path);
         self::assertStringEndsWith('src/Index/ComposerClassLocator.php', $path);
     }
+
+    public function testLocateClassFromVendorClassmap(): void
+    {
+        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+
+        $path = $locator->locateClass(TestCase::class);
+
+        self::assertNotNull($path);
+        self::assertStringContainsString('phpunit/phpunit', $path);
+    }
 }
