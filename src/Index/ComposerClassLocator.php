@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Composer\Autoload\ClassLoader;
+
 final class ComposerClassLocator
 {
+    private ?ClassLoader $loader = null;
+
     /** @var array<string, list<string>> namespace prefix => directories */
     private array $psr4Mappings = [];
 
@@ -16,14 +20,20 @@ final class ComposerClassLocator
     }
 
     /**
-     * Get all known class names from PSR-4 mappings.
-     *
      * @return list<string>
      */
     public function getAllClasses(): array
     {
         $classes = [];
 
+        // Include all classes from classmap (handles classmap autoloading)
+        if ($this->loader !== null) {
+            foreach (array_keys($this->loader->getClassMap()) as $fqcn) {
+                $classes[] = $fqcn;
+            }
+        }
+
+        // Scan PSR-4 directories for additional classes
         foreach ($this->psr4Mappings as $prefix => $directories) {
             foreach ($directories as $directory) {
                 if (!is_dir($directory)) {
@@ -59,23 +69,10 @@ final class ComposerClassLocator
 
     public function locateClass(string $fullyQualifiedName): ?string
     {
-        // Sort by prefix length descending for most specific match first
-        $prefixes = array_keys($this->psr4Mappings);
-        usort($prefixes, fn($a, $b) => strlen($b) <=> strlen($a));
-
-        foreach ($prefixes as $prefix) {
-            if (!str_starts_with($fullyQualifiedName, $prefix)) {
-                continue;
-            }
-
-            $relativeClass = substr($fullyQualifiedName, strlen($prefix));
-            $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
-
-            foreach ($this->psr4Mappings[$prefix] as $directory) {
-                $fullPath = $directory . '/' . $relativePath;
-                if (file_exists($fullPath)) {
-                    return $fullPath;
-                }
+        if ($this->loader !== null) {
+            $file = $this->loader->findFile($fullyQualifiedName);
+            if ($file !== false) {
+                return $file;
             }
         }
 
@@ -84,22 +81,19 @@ final class ComposerClassLocator
 
     private function loadFromComposerAutoload(string $projectRoot): void
     {
-        // Use Composer's generated autoload which includes all vendor mappings
-        $autoloadFile = $projectRoot . '/vendor/composer/autoload_psr4.php';
+        $autoloadFile = $projectRoot . '/vendor/autoload.php';
 
         if (file_exists($autoloadFile)) {
-            $mappings = require $autoloadFile;
-            if (is_array($mappings)) {
-                foreach ($mappings as $prefix => $dirs) {
-                    if (!is_string($prefix) || !is_array($dirs)) {
-                        continue;
-                    }
+            $loader = require $autoloadFile;
+            if ($loader instanceof ClassLoader) {
+                $this->loader = $loader;
+
+                // Extract PSR-4 mappings for directory scanning
+                foreach ($loader->getPrefixesPsr4() as $prefix => $dirs) {
                     $prefix = rtrim($prefix, '\\') . '\\';
                     $this->psr4Mappings[$prefix] = [];
                     foreach ($dirs as $dir) {
-                        if (is_string($dir)) {
-                            $this->psr4Mappings[$prefix][] = rtrim($dir, '/');
-                        }
+                        $this->psr4Mappings[$prefix][] = rtrim($dir, '/');
                     }
                 }
             }
