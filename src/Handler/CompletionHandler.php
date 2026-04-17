@@ -139,7 +139,7 @@ final class CompletionHandler implements HandlerInterface
 
         // self:: and static:: completion - resolve to enclosing class
         if (preg_match('/\b(?:self|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $classNode = $this->findFirstClass($ast);
+            $classNode = $this->findClassAtLine($ast, $line);
             if ($classNode !== null) {
                 $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
                 if ($className === null) {
