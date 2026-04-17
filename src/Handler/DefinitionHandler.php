@@ -308,61 +308,9 @@ final class DefinitionHandler implements HandlerInterface
      */
     private function findMethodDefinition(string $className, string $methodName, array $ast): ?array
     {
-        // First, try to find the class in the current AST
-        $classNode = ClassFinder::findInAst($className, $ast);
-        $classUri = null;
+        [$classNode, $classUri] = $this->findClassWithUri($className, $ast);
 
-        if ($classNode === null) {
-            // Try to find via SymbolIndex
-            $symbol = $this->symbolIndex->findByFqn($className);
-            if ($symbol === null) {
-                $matches = $this->symbolIndex->findByName($className);
-                $symbol = $matches[0] ?? null;
-            }
-
-            if ($symbol !== null) {
-                $classUri = $symbol->location->uri;
-                // Load and parse the file containing the class
-                $document = $this->documentManager->get($classUri);
-                if ($document === null) {
-                    // Try to load from file system
-                    $filePath = str_starts_with($classUri, 'file://') ? substr($classUri, 7) : $classUri;
-                    $content = @file_get_contents($filePath);
-                    if ($content !== false) {
-                        $document = new TextDocument($classUri, 'php', 0, $content);
-                    }
-                }
-
-                if ($document !== null) {
-                    $classAst = $this->parser->parse($document);
-                    if ($classAst !== null) {
-                        $classNode = ClassFinder::findInAst($className, $classAst);
-                    }
-                }
-            }
-        }
-
-        // Try Composer locator as fallback
-        if ($classNode === null && $this->classLocator !== null) {
-            $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
-            if ($classNode !== null) {
-                $filePath = $this->classLocator->locateClass($className);
-                if ($filePath !== null) {
-                    $classUri = 'file://' . $filePath;
-                }
-            }
-        }
-
-        if ($classNode === null) {
-            return null;
-        }
-
-        // Determine the URI if not already set
-        if ($classUri === null) {
-            $classUri = $this->getClassUri($classNode);
-        }
-
-        if ($classUri === null) {
+        if ($classNode === null || $classUri === null) {
             return null;
         }
 
@@ -453,6 +401,72 @@ final class DefinitionHandler implements HandlerInterface
         }
 
         return null;
+    }
+
+    /**
+     * Find a class node and its URI.
+     *
+     * Searches in order:
+     * 1. Current AST
+     * 2. SymbolIndex (for open files)
+     * 3. Composer autoload (for external dependencies)
+     *
+     * @param array<Stmt> $ast
+     * @return array{
+     *   0: Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null,
+     *   1: string|null,
+     * }
+     */
+    private function findClassWithUri(string $className, array $ast): array
+    {
+        // First, try to find the class in the current AST
+        $classNode = ClassFinder::findInAst($className, $ast);
+        if ($classNode !== null) {
+            $uri = $this->getClassUri($classNode);
+            return [$classNode, $uri];
+        }
+
+        // Try to find via SymbolIndex
+        $symbol = $this->symbolIndex->findByFqn($className);
+        if ($symbol === null) {
+            $matches = $this->symbolIndex->findByName($className);
+            $symbol = $matches[0] ?? null;
+        }
+
+        if ($symbol !== null) {
+            $classUri = $symbol->location->uri;
+            $document = $this->documentManager->get($classUri);
+            if ($document === null) {
+                $filePath = str_starts_with($classUri, 'file://') ? substr($classUri, 7) : $classUri;
+                $content = @file_get_contents($filePath);
+                if ($content !== false) {
+                    $document = new TextDocument($classUri, 'php', 0, $content);
+                }
+            }
+
+            if ($document !== null) {
+                $classAst = $this->parser->parse($document);
+                if ($classAst !== null) {
+                    $classNode = ClassFinder::findInAst($className, $classAst);
+                    if ($classNode !== null) {
+                        return [$classNode, $classUri];
+                    }
+                }
+            }
+        }
+
+        // Try Composer locator as fallback
+        if ($this->classLocator !== null) {
+            $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
+            if ($classNode !== null) {
+                $filePath = $this->classLocator->locateClass($className);
+                if ($filePath !== null) {
+                    return [$classNode, 'file://' . $filePath];
+                }
+            }
+        }
+
+        return [null, null];
     }
 
     private function locateViaComposer(string $className): ?Location
