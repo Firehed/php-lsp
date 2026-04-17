@@ -264,25 +264,20 @@ final class DefinitionHandler implements HandlerInterface
     }
 
     /**
-     * Find the enclosing class or trait name for a node.
+     * Find the enclosing class-like name for a node.
      */
     private function findEnclosingClassName(Node $node): ?string
     {
-        $current = $node->getAttribute('parent');
-        while ($current instanceof Node) {
-            if (
-                ($current instanceof Stmt\Class_ || $current instanceof Stmt\Trait_)
-                && $current->name !== null
-            ) {
-                $namespacedName = $current->namespacedName;
-                if ($namespacedName instanceof Name) {
-                    return $namespacedName->toString();
-                }
-                return $current->name->toString();
-            }
-            $current = $current->getAttribute('parent');
+        $classNode = $this->findEnclosingClassNode($node);
+        if ($classNode === null || $classNode->name === null) {
+            return null;
         }
-        return null;
+
+        $namespacedName = $classNode->namespacedName;
+        if ($namespacedName instanceof Name) {
+            return $namespacedName->toString();
+        }
+        return $classNode->name->toString();
     }
 
     /**
