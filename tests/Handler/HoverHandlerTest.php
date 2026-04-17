@@ -584,4 +584,125 @@ PHP;
         self::assertStringContainsString('parentMethod', $result['contents']);
         self::assertStringContainsString('Namespaced parent method', $result['contents']);
     }
+
+    public function testHoverOnInheritedMethodAcrossNamespaces(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace Base;
+
+class ParentClass
+{
+    /**
+     * Method from Base namespace.
+     */
+    public function baseMethod(): void {}
+}
+
+namespace App;
+
+use Base\ParentClass;
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->baseMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 20, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('baseMethod', $result['contents']);
+        self::assertStringContainsString('Method from Base namespace', $result['contents']);
+    }
+
+    public function testHoverOnPrivateInheritedMethodReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Private parent method.
+     */
+    private function privateMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->privateMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        // Private methods are not inherited, so hover should return null
+        self::assertNull($result);
+    }
+
+    public function testHoverOnPrivateInheritedPropertyReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    /**
+     * Private parent property.
+     */
+    private string $privateProperty;
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->privateProperty;
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        // Private properties are not inherited, so hover should return null
+        self::assertNull($result);
+    }
 }
