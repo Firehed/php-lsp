@@ -1523,6 +1523,43 @@ PHP;
         self::assertNotContains('getPassword', $labels);
     }
 
+    public function testSelfConstantCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo
+{
+    public const FOO = 'foo';
+    public const BAR = 'bar';
+
+    public function thing(): string
+    {
+        return self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 21], // After self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('FOO', $labels);
+        self::assertContains('BAR', $labels);
+        self::assertContains('class', $labels);
+    }
+
     public function testTypedVariableCompletionReturnsEmptyWithoutTypeResolver(): void
     {
         $code = <<<'PHP'

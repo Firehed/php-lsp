@@ -137,6 +137,17 @@ final class CompletionHandler implements HandlerInterface
             return $this->getVariableCompletions($prefix, $ast, $line);
         }
 
+        // self::, parent::, static:: completion - resolve to enclosing class
+        if (preg_match('/\b(self|parent|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            $classNode = $this->findFirstClass($ast);
+            if ($classNode !== null) {
+                $className = $classNode->name?->toString() ?? '';
+                $prefix = $matches[2];
+                return $this->getStaticCompletions($className, $prefix, $ast, $document);
+            }
+            return [];
+        }
+
         // ClassName:: completion (static) - also match single : for mid-typing
         if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $className = $matches[1];
