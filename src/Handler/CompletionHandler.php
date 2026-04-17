@@ -119,33 +119,33 @@ final class CompletionHandler implements HandlerInterface
     private function getCompletionItems(string $textBeforeCursor, array $ast, TextDocument $document, int $line): array
     {
         // $this-> completion
-        if (preg_match('/\$this->(\w*)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/\$this->(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             return $this->getThisMemberCompletions($prefix, $ast);
         }
 
         // $variable-> completion (typed variables, not $this)
-        if (preg_match('/\$(\w+)->(\w*)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/\$(\w+)->(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $variableName = $matches[1];
             $prefix = $matches[2];
             return $this->getTypedVariableMemberCompletions($variableName, $prefix, $ast, $line);
         }
 
         // Variable completion ($var)
-        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             return $this->getVariableCompletions($prefix, $ast, $line);
         }
 
         // ClassName:: completion (static) - also match single : for mid-typing
-        if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $className = $matches[1];
             $prefix = $matches[2];
             return $this->getStaticCompletions($className, $prefix, $ast, $document);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
-        if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             $items = $this->getImportedClassCompletions($prefix, $ast);
             $indexedItems = $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_, SymbolKind::Enum_]);
@@ -155,7 +155,7 @@ final class CompletionHandler implements HandlerInterface
 
         // After visibility keyword - suggest function, static, readonly, const, or types
         // Must check before general type hint context since both patterns overlap
-        if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             $items = $this->getClassMemberKeywordCompletions($prefix);
             $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast));
@@ -164,14 +164,14 @@ final class CompletionHandler implements HandlerInterface
 
         // Type hint context - after : (return type), in parameters, union/intersection types
         // Matches: "): str", "(str", ", str", "?str", "|str", "&str"
-        if (preg_match('/[(:,?|&]\s*(\w*)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/[(:,?|&]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             return $this->getTypeHintCompletions($prefix, $ast);
         }
 
         // Class body context - only class-level keywords, no functions
         if ($this->isInClassBody($textBeforeCursor)) {
-            if (preg_match('/(?:^|[\s{;])(\w+)$/', $textBeforeCursor, $matches)) {
+            if (preg_match('/(?:^|[\s{;])(\w+)$/', $textBeforeCursor, $matches) === 1) {
                 $prefix = $matches[1];
                 return $this->getClassBodyKeywordCompletions($prefix);
             }
@@ -179,7 +179,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Function/class/keyword completion (at start of expression or after operators)
-        if (preg_match('/(?:^|[(\s=,!&|])(\w+)$/', $textBeforeCursor, $matches)) {
+        if (preg_match('/(?:^|[(\s=,!&|])(\w+)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             $items = $this->getKeywordCompletions($prefix);
             $items = array_merge($items, $this->getFunctionCompletions($prefix, $ast));
@@ -1063,16 +1063,20 @@ final class CompletionHandler implements HandlerInterface
     {
         // Count braces to detect if we're inside a class body
         // This is a heuristic - look for class/interface/trait/enum followed by unbalanced {
-        if (!preg_match('/(?:class|interface|trait|enum)\s+\w+/', $textBeforeCursor)) {
+        if (preg_match('/(?:class|interface|trait|enum)\s+\w+/', $textBeforeCursor) !== 1) {
             return false;
         }
 
         // Count brace depth after the class declaration
+        $classPos = strrpos($textBeforeCursor, 'class ');
+        $interfacePos = strrpos($textBeforeCursor, 'interface ');
+        $traitPos = strrpos($textBeforeCursor, 'trait ');
+        $enumPos = strrpos($textBeforeCursor, 'enum ');
         $lastClassPos = max(
-            strrpos($textBeforeCursor, 'class ') ?: 0,
-            strrpos($textBeforeCursor, 'interface ') ?: 0,
-            strrpos($textBeforeCursor, 'trait ') ?: 0,
-            strrpos($textBeforeCursor, 'enum ') ?: 0,
+            $classPos !== false ? $classPos : 0,
+            $interfacePos !== false ? $interfacePos : 0,
+            $traitPos !== false ? $traitPos : 0,
+            $enumPos !== false ? $enumPos : 0,
         );
 
         $afterClass = substr($textBeforeCursor, $lastClassPos);

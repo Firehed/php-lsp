@@ -76,7 +76,7 @@ final class SymbolIndex
                     $this->byName[$symbol->name] ?? [],
                     fn(Symbol $s) => $s->fullyQualifiedName !== $fqn,
                 ));
-                if (empty($this->byName[$symbol->name])) {
+                if ($this->byName[$symbol->name] === []) {
                     unset($this->byName[$symbol->name]);
                 }
             }

@@ -146,7 +146,7 @@ final class ContextDetector
      */
     private static function checkUnfinishedContext(array $tokens): bool
     {
-        if (empty($tokens)) {
+        if ($tokens === []) {
             return true;
         }
 
