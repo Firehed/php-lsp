@@ -460,4 +460,144 @@ PHP;
         self::assertSame('file:///ParentClass.php', $result['uri']);
         self::assertSame(2, $result['range']['start']['line']);
     }
+
+    public function testGoToTraitMethodDefinition(): void
+    {
+        // Trait with method
+        $traitCode = <<<'PHP'
+<?php
+trait MyTrait {
+    public function traitMethod(): void {}
+}
+PHP;
+        $this->documents->open('file:///MyTrait.php', 'php', 1, $traitCode);
+        $traitDoc = $this->documents->get('file:///MyTrait.php');
+        self::assertNotNull($traitDoc);
+        $traitAst = $this->parser->parse($traitDoc);
+        self::assertNotNull($traitAst);
+        foreach ((new SymbolExtractor())->extract($traitDoc, $traitAst) as $symbol) {
+            $this->index->add($symbol);
+        }
+
+        // Class that uses the trait
+        $classCode = <<<'PHP'
+<?php
+class MyClass {
+    use MyTrait;
+}
+PHP;
+        $this->documents->open('file:///MyClass.php', 'php', 1, $classCode);
+        $classDoc = $this->documents->get('file:///MyClass.php');
+        self::assertNotNull($classDoc);
+        $classAst = $this->parser->parse($classDoc);
+        self::assertNotNull($classAst);
+        foreach ((new SymbolExtractor())->extract($classDoc, $classAst) as $symbol) {
+            $this->index->add($symbol);
+        }
+
+        // Usage: $obj->traitMethod()
+        $usageCode = <<<'PHP'
+<?php
+function test(MyClass $obj): void {
+    $obj->traitMethod();
+}
+PHP;
+        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+
+        // Request definition at "traitMethod"
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///usage.php'],
+                'position' => ['line' => 2, 'character' => 12],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        // Should go to the trait where the method is defined
+        self::assertIsArray($result);
+        self::assertSame('file:///MyTrait.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
+
+    public function testTraitMethodTakesPrecedenceOverParent(): void
+    {
+        // Parent class with method
+        $parentCode = <<<'PHP'
+<?php
+class ParentClass {
+    public function sharedMethod(): void {}
+}
+PHP;
+        $this->documents->open('file:///ParentClass.php', 'php', 1, $parentCode);
+        $parentDoc = $this->documents->get('file:///ParentClass.php');
+        self::assertNotNull($parentDoc);
+        $parentAst = $this->parser->parse($parentDoc);
+        self::assertNotNull($parentAst);
+        foreach ((new SymbolExtractor())->extract($parentDoc, $parentAst) as $symbol) {
+            $this->index->add($symbol);
+        }
+
+        // Trait with same method
+        $traitCode = <<<'PHP'
+<?php
+trait MyTrait {
+    public function sharedMethod(): void {}
+}
+PHP;
+        $this->documents->open('file:///MyTrait.php', 'php', 1, $traitCode);
+        $traitDoc = $this->documents->get('file:///MyTrait.php');
+        self::assertNotNull($traitDoc);
+        $traitAst = $this->parser->parse($traitDoc);
+        self::assertNotNull($traitAst);
+        foreach ((new SymbolExtractor())->extract($traitDoc, $traitAst) as $symbol) {
+            $this->index->add($symbol);
+        }
+
+        // Child class extends ParentClass and uses MyTrait
+        $childCode = <<<'PHP'
+<?php
+class ChildClass extends ParentClass {
+    use MyTrait;
+}
+PHP;
+        $this->documents->open('file:///ChildClass.php', 'php', 1, $childCode);
+        $childDoc = $this->documents->get('file:///ChildClass.php');
+        self::assertNotNull($childDoc);
+        $childAst = $this->parser->parse($childDoc);
+        self::assertNotNull($childAst);
+        foreach ((new SymbolExtractor())->extract($childDoc, $childAst) as $symbol) {
+            $this->index->add($symbol);
+        }
+
+        // Usage: $obj->sharedMethod()
+        $usageCode = <<<'PHP'
+<?php
+function test(ChildClass $obj): void {
+    $obj->sharedMethod();
+}
+PHP;
+        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+
+        // Request definition at "sharedMethod"
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///usage.php'],
+                'position' => ['line' => 2, 'character' => 12],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        // Should go to trait (trait takes precedence over parent in PHP)
+        self::assertIsArray($result);
+        self::assertSame('file:///MyTrait.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
 }
