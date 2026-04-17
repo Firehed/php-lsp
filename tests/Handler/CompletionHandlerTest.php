@@ -1562,6 +1562,37 @@ PHP;
         self::assertContains('greet', $labels);
     }
 
+    public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    public function test(): void
+    {
+        parent::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 5, 'character' => 16], // After parent::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertEmpty($result['items']);
+    }
+
     public function testParentMethodCompletionWithPrefix(): void
     {
         $code = <<<'PHP'
