@@ -22,18 +22,6 @@ final class ComposerClassLocator
         }
     }
 
-    /**
-     * @return list<string>
-     */
-    public function getAllClasses(): array
-    {
-        if ($this->loader === null) {
-            return [];
-        }
-
-        return array_keys($this->loader->getClassMap());
-    }
-
     public function locateClass(string $fullyQualifiedName): ?string
     {
         if ($this->loader === null) {

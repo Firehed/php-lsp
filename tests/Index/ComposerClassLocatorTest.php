@@ -24,15 +24,6 @@ final class ComposerClassLocatorTest extends TestCase
         self::assertStringEndsWith('tests/Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
     }
 
-    public function testGetAllClassesIncludesClassmapClasses(): void
-    {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
-
-        $classes = $locator->getAllClasses();
-
-        self::assertContains(ClassmapFixture::class, $classes);
-    }
-
     public function testLocateClassReturnsNullForNonexistentClass(): void
     {
         $locator = new ComposerClassLocator(self::PROJECT_ROOT);
@@ -50,15 +41,5 @@ final class ComposerClassLocatorTest extends TestCase
 
         self::assertNotNull($path);
         self::assertStringEndsWith('src/Index/ComposerClassLocator.php', $path);
-    }
-
-    public function testGetAllClassesHasNoDuplicates(): void
-    {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
-
-        $classes = $locator->getAllClasses();
-        $duplicates = array_filter(array_count_values($classes), fn($count) => $count > 1);
-
-        self::assertSame([], $duplicates, 'Found duplicate classes');
     }
 }
