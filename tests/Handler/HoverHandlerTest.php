@@ -543,4 +543,45 @@ PHP;
         self::assertStringContainsString('$grandparentProperty', $result['contents']);
         self::assertStringContainsString('Grandparent property docs', $result['contents']);
     }
+
+    public function testHoverOnInheritedMethodWithNamespace(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class ParentClass
+{
+    /**
+     * Namespaced parent method.
+     */
+    public function parentMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        $this->parentMethod();
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('parentMethod', $result['contents']);
+        self::assertStringContainsString('Namespaced parent method', $result['contents']);
+    }
 }
