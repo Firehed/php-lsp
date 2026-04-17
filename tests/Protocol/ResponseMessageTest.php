@@ -91,25 +91,23 @@ class ResponseMessageTest extends TestCase
     }
 
     #[DataProvider('errorCodesProvider')]
-    public function testStandardErrorCodes(int $code, string $expectedMessage): void
+    public function testStandardErrorCodes(int $code, ResponseError $error): void
     {
-        $error = ResponseError::$expectedMessage();
-        assert($error instanceof ResponseError);
-
         self::assertSame($code, $error->code);
     }
 
     /**
-     * @return array<string, array{int, string}>
+     * @return array<string, array{int, ResponseError}>
+     * @codeCoverageIgnore
      */
     public static function errorCodesProvider(): array
     {
         return [
-            'parseError' => [-32700, 'parseError'],
-            'invalidRequest' => [-32600, 'invalidRequest'],
-            'methodNotFound' => [-32601, 'methodNotFound'],
-            'invalidParams' => [-32602, 'invalidParams'],
-            'internalError' => [-32603, 'internalError'],
+            'parseError' => [-32700, ResponseError::parseError()],
+            'invalidRequest' => [-32600, ResponseError::invalidRequest()],
+            'methodNotFound' => [-32601, ResponseError::methodNotFound()],
+            'invalidParams' => [-32602, ResponseError::invalidParams()],
+            'internalError' => [-32603, ResponseError::internalError()],
         ];
     }
 
