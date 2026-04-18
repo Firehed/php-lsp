@@ -670,8 +670,8 @@ PHP;
 
     public function testPropertyTypeExcludesInvalidTypes(): void
     {
-        // "    private " = 12 chars, cursor at position 12
-        $code = '<?php trait MyTrait {} class Foo { private ';
+        // Use nullable type context (after ?) which is unambiguously a type position
+        $code = '<?php trait MyTrait {} class Foo { private ?';
         $this->documents->open('file:///test.php', 'php', 1, $code);
 
         $request = RequestMessage::fromArray([
@@ -680,7 +680,7 @@ PHP;
             'method' => 'textDocument/completion',
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 44],
+                'position' => ['line' => 0, 'character' => 45],
             ],
         ]);
 
