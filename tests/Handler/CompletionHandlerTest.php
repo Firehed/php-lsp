@@ -843,9 +843,8 @@ PHP;
         self::assertNotContains('MyTrait', $labels);
     }
 
-    public function testReturnTypeUnionIncludesStaticButNotVoidOrNever(): void
+    public function testReturnTypeUnionIncludesAllReturnTypes(): void
     {
-        // Union return type context (after |)
         $code = '<?php trait MyTrait {} function foo(): int|';
         $this->documents->open('file:///test.php', 'php', 1, $code);
 
@@ -867,14 +866,44 @@ PHP;
         self::assertContainsCommonBuiltinTypes($labels);
         self::assertNotContainsNonTypeItems($labels);
 
-        // static, self, parent are valid in union return types
+        // All return-type-specific types should be available
         self::assertContains('static', $labels);
         self::assertContains('self', $labels);
         self::assertContains('parent', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('never', $labels);
 
-        // void and never cannot be in union types, but we still suggest them
-        // since the LSP should offer all valid return types and let PHP error
-        // if the user creates an invalid combination
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testReturnTypeIntersectionIncludesAllReturnTypes(): void
+    {
+        $code = '<?php trait MyTrait {} function foo(): Countable&';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 50],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // All return-type-specific types should be available
+        self::assertContains('static', $labels);
+        self::assertContains('self', $labels);
+        self::assertContains('parent', $labels);
         self::assertContains('void', $labels);
         self::assertContains('never', $labels);
 
