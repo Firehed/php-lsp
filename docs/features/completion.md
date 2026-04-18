@@ -13,6 +13,20 @@ This document tracks the current state of code completion in php-lsp.
 | `new` expression | `new ` | Classes from composer classmap | ✅ Working |
 | Function calls | identifier at expression start | Built-in PHP functions + file-local functions | ✅ Working |
 
+## Type Hint Completions
+
+Type hints are filtered by context:
+
+| Type | Property | Parameter | Return |
+|------|----------|-----------|--------|
+| `void` | No | No | Yes |
+| `never` | No | No | Yes |
+| `self` | No | Yes | Yes |
+| `static` | No | No | Yes |
+| `parent` | No | Yes | Yes |
+
+Traits are excluded from all type hint contexts (not valid as type hints in PHP).
+
 ## Limitations
 
 - **Union types**: For parameters typed as `User|Admin`, no completions are suggested. Only single-type parameters are supported.
