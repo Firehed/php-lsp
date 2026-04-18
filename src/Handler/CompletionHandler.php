@@ -193,6 +193,12 @@ final class CompletionHandler implements HandlerInterface
             return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType);
         }
 
+        // Return type context - nullable/union/intersection (e.g., "): ?", "): int|", "): Foo&")
+        if (preg_match('/\):\s*(?:\?|(?:\w+\s*[|&]\s*)+)(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            $prefix = $matches[1];
+            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType);
+        }
+
         // Property type context - nullable/union/intersection after visibility keyword
         if (preg_match(self::PROPERTY_TYPE_PATTERN, $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
