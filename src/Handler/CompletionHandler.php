@@ -39,6 +39,9 @@ final class CompletionHandler implements HandlerInterface
     private const KIND_ENUM_MEMBER = 20;
     private const KIND_CONSTANT = 21;
 
+    // Matches property type continuations: "private ?", "public int|", "protected Foo&"
+    private const PROPERTY_TYPE_PATTERN = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
@@ -191,9 +194,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Property type context - nullable/union/intersection after visibility keyword
-        // Matches: "private ?", "public int|", "protected Foo&"
-        $propertyTypePattern = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
-        if (preg_match($propertyTypePattern, $textBeforeCursor, $matches) === 1) {
+        if (preg_match(self::PROPERTY_TYPE_PATTERN, $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property);
         }
