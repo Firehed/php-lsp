@@ -668,9 +668,9 @@ PHP;
         self::assertContains('string', $labels);
     }
 
-    public function testPropertyTypeExcludesInvalidTypes(): void
+    public function testPropertyTypeNullableExcludesInvalidTypes(): void
     {
-        // Use nullable type context (after ?) which is unambiguously a type position
+        // Nullable type context (after ?)
         $code = '<?php trait MyTrait {} class Foo { private ?';
         $this->documents->open('file:///test.php', 'php', 1, $code);
 
@@ -693,6 +693,76 @@ PHP;
         self::assertNotContainsNonTypeItems($labels);
 
         // Invalid for property types specifically
+        self::assertNotContains('void', $labels);
+        self::assertNotContains('never', $labels);
+        self::assertNotContains('self', $labels);
+        self::assertNotContains('static', $labels);
+        self::assertNotContains('parent', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testPropertyTypeUnionExcludesInvalidTypes(): void
+    {
+        // Union type context (after |)
+        $code = '<?php trait MyTrait {} class Foo { private int|';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 48],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // Invalid for property types
+        self::assertNotContains('void', $labels);
+        self::assertNotContains('never', $labels);
+        self::assertNotContains('self', $labels);
+        self::assertNotContains('static', $labels);
+        self::assertNotContains('parent', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testPropertyTypeIntersectionExcludesInvalidTypes(): void
+    {
+        // Intersection type context (after &)
+        $code = '<?php trait MyTrait {} class Foo { private Countable&';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 54],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // Invalid for property types
         self::assertNotContains('void', $labels);
         self::assertNotContains('never', $labels);
         self::assertNotContains('self', $labels);
