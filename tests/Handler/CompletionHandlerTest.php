@@ -943,6 +943,35 @@ PHP;
         self::assertContains('never', $labels);
     }
 
+    public function testReturnTypeNullableWithSpaceIncludesAllValidTypes(): void
+    {
+        // Edge case: space after ? in nullable return type (cursor after space, before typing)
+        $code = '<?php function foo(): ? ';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 24],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+
+        // Should be return type context, not parameter
+        self::assertContains('static', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('never', $labels);
+    }
+
     public function testKeywordCompletions(): void
     {
         $code = '<?php fore';
