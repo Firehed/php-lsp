@@ -194,7 +194,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Return type context - nullable/union/intersection (e.g., "): ?", "): int|", "): Foo&")
-        if (preg_match('/\):\s*(?:\?|(?:\w+\s*[|&]\s*)+)(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        if (preg_match('/\):\s*(?:\?\s*|(?:\w+\s*[|&]\s*)+)(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType);
         }
@@ -205,8 +205,8 @@ final class CompletionHandler implements HandlerInterface
             return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property);
         }
 
-        // Parameter type context - after ( or , in function signature
-        // Matches: "(str", ", str", "?str", "|str", "&str" when in parameter position
+        // Parameter type context - fallback for type positions not matched above
+        // Matches after (, ,, ?, |, & which occur in parameter lists and complex types
         if (preg_match('/[(,?|&]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Parameter);
