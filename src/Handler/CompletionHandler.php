@@ -644,39 +644,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatMethodCompletion(Stmt\ClassMethod $method): array
     {
-        $params = [];
-        foreach ($method->params as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
-            }
-            $var = $param->var;
-            if ($var instanceof Variable && is_string($var->name)) {
-                $paramStr .= '$' . $var->name;
-            }
-            $params[] = $paramStr;
-        }
-
-        $detail = $method->name->toString() . '(' . implode(', ', $params) . ')';
-        if ($method->returnType !== null) {
-            $detail .= ': ' . TypeFormatter::formatNode($method->returnType);
-        }
-
-        $item = [
-            'label' => $method->name->toString(),
-            'kind' => self::KIND_METHOD,
-            'detail' => $detail,
-        ];
-
-        $docComment = $method->getDocComment();
-        if ($docComment !== null) {
-            $doc = DocblockParser::extractDescription($docComment->getText());
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
-
-        return $item;
+        return $this->formatCallableCompletion($method, self::KIND_METHOD);
     }
 
     /**
@@ -791,8 +759,19 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatFunctionCompletion(Stmt\Function_ $func): array
     {
+        return $this->formatCallableCompletion($func, self::KIND_FUNCTION, 'function ');
+    }
+
+    /**
+     * @return array{label: string, kind: int, detail?: string, documentation?: string}
+     */
+    private function formatCallableCompletion(
+        Stmt\ClassMethod|Stmt\Function_ $callable,
+        int $kind,
+        string $detailPrefix = '',
+    ): array {
         $params = [];
-        foreach ($func->params as $param) {
+        foreach ($callable->params as $param) {
             $paramStr = '';
             if ($param->type !== null) {
                 $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
@@ -804,18 +783,18 @@ final class CompletionHandler implements HandlerInterface
             $params[] = $paramStr;
         }
 
-        $detail = 'function ' . $func->name->toString() . '(' . implode(', ', $params) . ')';
-        if ($func->returnType !== null) {
-            $detail .= ': ' . TypeFormatter::formatNode($func->returnType);
+        $detail = $detailPrefix . $callable->name->toString() . '(' . implode(', ', $params) . ')';
+        if ($callable->returnType !== null) {
+            $detail .= ': ' . TypeFormatter::formatNode($callable->returnType);
         }
 
         $item = [
-            'label' => $func->name->toString(),
-            'kind' => self::KIND_FUNCTION,
+            'label' => $callable->name->toString(),
+            'kind' => $kind,
             'detail' => $detail,
         ];
 
-        $docComment = $func->getDocComment();
+        $docComment = $callable->getDocComment();
         if ($docComment !== null) {
             $doc = DocblockParser::extractDescription($docComment->getText());
             if ($doc !== '') {
