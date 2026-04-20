@@ -35,17 +35,16 @@ class ExpressionTypeResolverTest extends TestCase
         return $ast;
     }
 
+    /**
+     * @param array<Stmt> $ast
+     */
     private static function findVariableNode(string $name, array $ast): ?Variable
     {
-        $found = null;
-        $visitor = new class ($name, $found) extends \PhpParser\NodeVisitorAbstract {
+        $visitor = new class ($name) extends \PhpParser\NodeVisitorAbstract {
             public ?Variable $found = null;
 
-            public function __construct(
-                private readonly string $name,
-                &$found,
-            ) {
-                $this->found = &$found;
+            public function __construct(private readonly string $name)
+            {
             }
 
             public function enterNode(Node $node): ?int
@@ -162,7 +161,7 @@ PHP;
 
         self::assertNotNull($varNode);
 
-        $typeResolver = $this->createStub(TypeResolverInterface::class);
+        $typeResolver = self::createStub(TypeResolverInterface::class);
         $typeResolver->method('resolveExpressionType')
             ->willReturn(null);
 

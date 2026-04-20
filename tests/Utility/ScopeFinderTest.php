@@ -34,17 +34,16 @@ class ScopeFinderTest extends TestCase
         return $ast;
     }
 
+    /**
+     * @param array<Stmt> $ast
+     */
     private static function findVariableNode(string $name, array $ast): ?Variable
     {
-        $found = null;
-        $visitor = new class ($name, $found) extends \PhpParser\NodeVisitorAbstract {
+        $visitor = new class ($name) extends \PhpParser\NodeVisitorAbstract {
             public ?Variable $found = null;
 
-            public function __construct(
-                private readonly string $name,
-                &$found,
-            ) {
-                $this->found = &$found;
+            public function __construct(private readonly string $name)
+            {
             }
 
             public function enterNode(Node $node): ?int
@@ -130,14 +129,8 @@ interface MyInterface {
 PHP;
         $ast = self::parseWithParents($code);
 
-        $methodNode = null;
-        $visitor = new class ($methodNode) extends \PhpParser\NodeVisitorAbstract {
+        $visitor = new class () extends \PhpParser\NodeVisitorAbstract {
             public ?Stmt\ClassMethod $found = null;
-
-            public function __construct(&$found)
-            {
-                $this->found = &$found;
-            }
 
             public function enterNode(Node $node): ?int
             {
