@@ -358,4 +358,41 @@ PHP;
         $class = ScopeFinder::findClassAtLine($ast, 3);
         self::assertNull($class);
     }
+
+    public function testResolveExtendsNameReturnsNullWhenNoExtends(): void
+    {
+        $code = '<?php class MyClass {}';
+        $ast = self::parseWithParents($code);
+        $class = $ast[0];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+
+        self::assertNull(ScopeFinder::resolveExtendsName($class));
+    }
+
+    public function testResolveExtendsNameReturnsParentName(): void
+    {
+        $code = '<?php class Child extends ParentClass {}';
+        $ast = self::parseWithParents($code);
+        $class = $ast[0];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+
+        self::assertSame('ParentClass', ScopeFinder::resolveExtendsName($class));
+    }
+
+    public function testResolveExtendsNameUsesResolvedNameWhenAvailable(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+use Other\ParentClass;
+class Child extends ParentClass {}
+PHP;
+        $ast = self::parseWithParents($code);
+        $namespace = $ast[0];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $class = $namespace->stmts[1];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+
+        self::assertSame('Other\ParentClass', ScopeFinder::resolveExtendsName($class));
+    }
 }

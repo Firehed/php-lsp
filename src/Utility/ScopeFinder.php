@@ -84,6 +84,24 @@ final class ScopeFinder
     }
 
     /**
+     * Resolve the parent class name from a class node's extends clause.
+     *
+     * Uses the resolved name if available (from NameResolver), otherwise
+     * falls back to the raw name.
+     */
+    public static function resolveExtendsName(Stmt\Class_ $class): ?string
+    {
+        if ($class->extends === null) {
+            return null;
+        }
+        $resolvedName = $class->extends->getAttribute('resolvedName');
+        if ($resolvedName instanceof Name) {
+            return $resolvedName->toString();
+        }
+        return $class->extends->toString();
+    }
+
+    /**
      * Check if a node's line range contains the given line (0-indexed).
      */
     public static function nodeContainsLine(Node $node, int $line): bool

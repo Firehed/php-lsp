@@ -483,14 +483,11 @@ final class CompletionHandler implements HandlerInterface
             return [];
         }
 
-        $parentClassName = $classNode->extends->toString();
-        $resolvedName = $parentClassName;
-        if ($classNode->extends->getAttribute('resolvedName') instanceof Name) {
-            $resolvedName = $classNode->extends->getAttribute('resolvedName')->toString();
-        }
+        $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+        assert($parentClassName !== null);
 
         return $this->getMemberCompletions(
-            $resolvedName,
+            $parentClassName,
             $ast,
             VisibilityFilter::PublicProtected,
             MemberFilter::Both,

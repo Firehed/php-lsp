@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Utility\ReflectionHelper;
-use PhpParser\Node\Name;
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
 
 enum VisibilityFilter
@@ -68,14 +68,8 @@ enum VisibilityFilter
         }
 
         // Check direct extends in AST
-        if ($enclosingClass->extends !== null) {
-            $resolvedName = $enclosingClass->extends->getAttribute('resolvedName');
-            $extendsName = $resolvedName instanceof Name
-                ? $resolvedName->toString()
-                : $enclosingClass->extends->toString();
-            if ($extendsName === $targetClassName) {
-                return self::PublicProtected;
-            }
+        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
+            return self::PublicProtected;
         }
 
         // Check deeper inheritance via reflection
