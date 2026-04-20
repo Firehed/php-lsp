@@ -3045,4 +3045,113 @@ PHP;
         $doc = $nameItem['documentation'] ?? '';
         self::assertStringContainsString('display name', $doc);
     }
+
+    public function testPromotedPropertyCompletionInsideConstructorBody(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private string $name,
+        private int $age,
+    ) {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name', $labels);
+        self::assertContains('age', $labels);
+    }
+
+    public function testPromotedPropertyWithAttribute(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        #[\SensitiveParameter]
+        private string $password,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('password', $labels);
+    }
+
+    public function testPromotedPropertyWithVariadicNonPromotedParam(): void
+    {
+        $code = <<<'PHP'
+<?php
+class TaggedItem
+{
+    public function __construct(
+        private string $name,
+        string ...$tags,
+    ) {}
+
+    public function info(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Promoted property should be included
+        self::assertContains('name', $labels);
+        // Variadic non-promoted param should NOT be a property
+        self::assertNotContains('tags', $labels);
+    }
 }
