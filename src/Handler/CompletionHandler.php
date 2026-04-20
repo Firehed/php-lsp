@@ -45,6 +45,11 @@ final class CompletionHandler implements HandlerInterface
     // Matches property type continuations: "private ?", "public int|", "protected Foo&"
     private const PROPERTY_TYPE_PATTERN = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
 
+    private static function matchesPrefix(string $name, string $prefix): bool
+    {
+        return $prefix === '' || str_starts_with(strtolower($name), strtolower($prefix));
+    }
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
@@ -296,7 +301,7 @@ final class CompletionHandler implements HandlerInterface
 
         foreach ($members['methods'] as $member) {
             $name = $member['name'];
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+            if (self::matchesPrefix($name, $prefix)) {
                 $items[] = $this->formatMethodCompletion($member['node']);
             }
         }
@@ -304,7 +309,7 @@ final class CompletionHandler implements HandlerInterface
         if ($includeProperties) {
             foreach ($members['properties'] as $member) {
                 $name = $member['name'];
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                if (self::matchesPrefix($name, $prefix)) {
                     $items[] = $this->formatPropertyCompletion($member['node'], $name);
                 }
             }
@@ -313,7 +318,7 @@ final class CompletionHandler implements HandlerInterface
         if ($includeConstants) {
             foreach ($members['constants'] as $member) {
                 $name = $member['name'];
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                if (self::matchesPrefix($name, $prefix)) {
                     $items[] = $this->formatConstantCompletion($member['node'], $name);
                 }
             }
@@ -322,7 +327,7 @@ final class CompletionHandler implements HandlerInterface
             if (
                 $memberFilter === MemberFilter::Static || $memberFilter === MemberFilter::Both
             ) {
-                if ($prefix === '' || str_starts_with('class', strtolower($prefix))) {
+                if (self::matchesPrefix('class', $prefix)) {
                     $items[] = [
                         'label' => 'class',
                         'kind' => self::KIND_CONSTANT,
@@ -335,7 +340,7 @@ final class CompletionHandler implements HandlerInterface
         if ($includeEnumCases) {
             foreach ($members['enumCases'] as $member) {
                 $name = $member['name'];
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                if (self::matchesPrefix($name, $prefix)) {
                     $items[] = $this->formatEnumCaseCompletion($member['node']);
                 }
             }
@@ -408,7 +413,7 @@ final class CompletionHandler implements HandlerInterface
             if (in_array($name, $existingLabels, true)) {
                 continue;
             }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+            if (self::matchesPrefix($name, $prefix)) {
                 $items[] = $this->formatReflectionMethodCompletion($method);
             }
         }
@@ -436,7 +441,7 @@ final class CompletionHandler implements HandlerInterface
                 if (in_array($name, $existingLabels, true)) {
                     continue;
                 }
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                if (self::matchesPrefix($name, $prefix)) {
                     $items[] = $this->formatReflectionPropertyCompletion($prop);
                 }
             }
@@ -448,7 +453,7 @@ final class CompletionHandler implements HandlerInterface
                 if (in_array($name, $existingLabels, true)) {
                     continue;
                 }
-                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                if (self::matchesPrefix($name, $prefix)) {
                     $items[] = [
                         'label' => $name,
                         'kind' => self::KIND_CONSTANT,
@@ -559,7 +564,7 @@ final class CompletionHandler implements HandlerInterface
         foreach ($ast as $stmt) {
             if ($stmt instanceof Stmt\Function_) {
                 $name = $stmt->name->toString();
-                if (str_starts_with(strtolower($name), strtolower($prefix))) {
+                if (self::matchesPrefix($name, $prefix)) {
                     $items[] = $this->formatFunctionCompletion($stmt);
                 }
             }
@@ -568,7 +573,7 @@ final class CompletionHandler implements HandlerInterface
         // Built-in functions
         $definedFunctions = get_defined_functions();
         foreach ($definedFunctions['internal'] as $name) {
-            if (str_starts_with(strtolower($name), strtolower($prefix))) {
+            if (self::matchesPrefix($name, $prefix)) {
                 $items[] = [
                     'label' => $name,
                     'kind' => self::KIND_FUNCTION,
@@ -722,7 +727,7 @@ final class CompletionHandler implements HandlerInterface
         $items = [];
 
         // cases() is available on all enums
-        if ($prefix === '' || str_starts_with('cases', strtolower($prefix))) {
+        if (self::matchesPrefix('cases', $prefix)) {
             $items[] = [
                 'label' => 'cases',
                 'kind' => self::KIND_METHOD,
@@ -734,7 +739,7 @@ final class CompletionHandler implements HandlerInterface
         if ($enum->scalarType !== null) {
             $scalarType = $enum->scalarType->toString();
 
-            if ($prefix === '' || str_starts_with('from', strtolower($prefix))) {
+            if (self::matchesPrefix('from', $prefix)) {
                 $items[] = [
                     'label' => 'from',
                     'kind' => self::KIND_METHOD,
@@ -742,7 +747,7 @@ final class CompletionHandler implements HandlerInterface
                 ];
             }
 
-            if ($prefix === '' || str_starts_with('tryfrom', strtolower($prefix))) {
+            if (self::matchesPrefix('tryFrom', $prefix)) {
                 $items[] = [
                     'label' => 'tryFrom',
                     'kind' => self::KIND_METHOD,
@@ -924,7 +929,7 @@ final class CompletionHandler implements HandlerInterface
         $imports = $this->getImports($ast);
 
         foreach ($imports as $shortName => $fqcn) {
-            if ($prefix === '' || str_starts_with(strtolower($shortName), strtolower($prefix))) {
+            if (self::matchesPrefix($shortName, $prefix)) {
                 $items[] = [
                     'label' => $shortName,
                     'kind' => self::KIND_CLASS,
@@ -1055,7 +1060,7 @@ final class CompletionHandler implements HandlerInterface
         };
 
         foreach ($builtinTypes as $type) {
-            if ($prefix === '' || str_starts_with($type, strtolower($prefix))) {
+            if (self::matchesPrefix($type, $prefix)) {
                 $items[] = [
                     'label' => $type,
                     'kind' => self::KIND_KEYWORD,
@@ -1192,10 +1197,9 @@ final class CompletionHandler implements HandlerInterface
 
         // Build completion items
         $items = [];
-        $prefixLower = strtolower($prefix);
 
         // Add $this if we're in a method
-        if ($inMethod && ($prefix === '' || str_starts_with('this', $prefixLower))) {
+        if ($inMethod && self::matchesPrefix('this', $prefix)) {
             $className = $this->typeResolver?->resolveVariableType('this', $enclosingScope, $cursorLine, $ast);
             $items[] = [
                 'label' => '$this',
@@ -1205,7 +1209,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         foreach ($variables as $name => $basicType) {
-            if ($prefix === '' || str_starts_with(strtolower($name), $prefixLower)) {
+            if (self::matchesPrefix($name, $prefix)) {
                 // Use type resolver if available, fall back to basic type
                 $resolvedType = $this->typeResolver?->resolveVariableType($name, $enclosingScope, $cursorLine, $ast);
                 $items[] = [
