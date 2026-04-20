@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
+use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 
 final class MemberFinder
@@ -78,7 +79,7 @@ final class MemberFinder
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
-                    $traitClassName = $traitName->toString();
+                    $traitClassName = self::resolveName($traitName);
                     $traitNode = ClassFinder::findWithLocator($traitClassName, $ast, $classLocator, $parser);
                     if ($traitNode !== null) {
                         $traitMethod = self::findMethodInClassNode(
@@ -142,7 +143,7 @@ final class MemberFinder
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
-                    $traitClassName = $traitName->toString();
+                    $traitClassName = self::resolveName($traitName);
                     $traitNode = ClassFinder::findWithLocator($traitClassName, $ast, $classLocator, $parser);
                     if ($traitNode !== null) {
                         $traitProperty = self::findPropertyInClassNode(
@@ -185,6 +186,14 @@ final class MemberFinder
         if (!$classNode instanceof Stmt\Class_ || $classNode->extends === null) {
             return null;
         }
-        return $classNode->extends->toString();
+        return self::resolveName($classNode->extends);
+    }
+
+    private static function resolveName(Name $name): string
+    {
+        $resolvedName = $name->getAttribute('resolvedName');
+        return $resolvedName instanceof Name
+            ? $resolvedName->toString()
+            : $name->toString();
     }
 }
