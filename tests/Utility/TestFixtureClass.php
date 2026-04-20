@@ -21,4 +21,10 @@ class TestFixtureClass
     private function privateMethod(): void
     {
     }
+
+    public function usePrivateMembers(): string
+    {
+        $this->privateMethod();
+        return $this->privateProperty;
+    }
 }
