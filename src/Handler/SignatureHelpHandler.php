@@ -10,8 +10,8 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
-use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\MemberFinder;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -308,13 +308,11 @@ final class SignatureHelpHandler implements HandlerInterface
         array $ast,
         TextDocument $document,
     ): ?array {
-        // Try to find in AST first
-        $methodNode = $this->findMethodInClass($className, $methodName, $ast, $document);
+        $methodNode = MemberFinder::findMethod($className, $methodName, $ast, $this->classLocator, $this->parser);
         if ($methodNode !== null) {
             return $this->formatMethodNodeSignature($methodNode);
         }
 
-        // Fall back to reflection
         $classReflection = ReflectionHelper::getClass($className);
         if ($classReflection === null || !$classReflection->hasMethod($methodName)) {
             return null;
@@ -350,29 +348,6 @@ final class SignatureHelpHandler implements HandlerInterface
         $traverser->traverse($ast);
 
         return $finder->found;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findMethodInClass(
-        string $className,
-        string $methodName,
-        array $ast,
-        TextDocument $document,
-    ): ?Stmt\ClassMethod {
-        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
-        if ($classNode === null) {
-            return null;
-        }
-
-        foreach ($classNode->stmts as $stmt) {
-            if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toString() === $methodName) {
-                return $stmt;
-            }
-        }
-
-        return null;
     }
 
     /**
