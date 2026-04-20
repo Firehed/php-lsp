@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Completion\MemberFilter;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VisibilityFilter;
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
@@ -159,7 +158,7 @@ final class CompletionHandler implements HandlerInterface
         $lineText = $document->getLine($line);
         $textBeforeCursor = substr($lineText, 0, $character);
 
-        $items = $this->getCompletionItems($textBeforeCursor, $ast, $document, $line);
+        $items = $this->getCompletionItems($textBeforeCursor, $ast, $line);
 
         return [
             'isIncomplete' => false,
@@ -171,7 +170,7 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
      */
-    private function getCompletionItems(string $textBeforeCursor, array $ast, TextDocument $document, int $line): array
+    private function getCompletionItems(string $textBeforeCursor, array $ast, int $line): array
     {
         // $this-> completion
         if (preg_match('/\$this->(\w*)$/', $textBeforeCursor, $matches) === 1) {
@@ -202,7 +201,7 @@ final class CompletionHandler implements HandlerInterface
                     return [];
                 }
                 $prefix = $matches[1];
-                return $this->getStaticCompletions($className, $prefix, $ast, $document);
+                return $this->getStaticCompletions($className, $prefix, $ast);
             }
             return [];
         }
@@ -217,7 +216,7 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $className = $matches[1];
             $prefix = $matches[2];
-            return $this->getStaticCompletions($className, $prefix, $ast, $document);
+            return $this->getStaticCompletions($className, $prefix, $ast);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
@@ -579,7 +578,7 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
      */
-    private function getStaticCompletions(string $className, string $prefix, array $ast, TextDocument $document): array
+    private function getStaticCompletions(string $className, string $prefix, array $ast): array
     {
         // Resolve short name to FQCN using imports
         $resolvedClassName = $this->resolveClassName($className, $ast);
