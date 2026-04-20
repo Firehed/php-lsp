@@ -2474,13 +2474,13 @@ class User
 {
     public function __construct(
         private string $name,
-        private string $nickname,
+        private string $number,
         private int $age,
     ) {}
 
     public function greet(): void
     {
-        $this->na
+        $this->n
     }
 }
 PHP;
@@ -2492,7 +2492,7 @@ PHP;
             'method' => 'textDocument/completion',
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 11, 'character' => 17],
+                'position' => ['line' => 11, 'character' => 16],
             ],
         ]);
 
@@ -2501,7 +2501,7 @@ PHP;
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('name', $labels);
-        self::assertContains('nickname', $labels);
+        self::assertContains('number', $labels);
         self::assertNotContains('age', $labels);
     }
 

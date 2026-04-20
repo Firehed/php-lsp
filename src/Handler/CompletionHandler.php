@@ -18,9 +18,11 @@ use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\TypeFormatter;
+use PhpParser\Modifiers;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
+use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -260,6 +262,24 @@ final class CompletionHandler implements HandlerInterface
                 if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
                     $items[] = $this->formatMethodCompletion($stmt);
                 }
+
+                // Check for promoted properties in constructor
+                if ($stmt->name->toLowerString() === '__construct') {
+                    foreach ($stmt->params as $param) {
+                        if (!$this->isPromotedProperty($param) || !$param->var instanceof Variable) {
+                            continue;
+                        }
+                        $name = $param->var->name;
+                        if (!is_string($name)) {
+                            continue;
+                        }
+                        $matchesPrefix = $prefix === ''
+                            || str_starts_with(strtolower($name), strtolower($prefix));
+                        if ($matchesPrefix) {
+                            $items[] = $this->formatPromotedPropertyCompletion($param);
+                        }
+                    }
+                }
             }
 
             // Properties
@@ -411,6 +431,27 @@ final class CompletionHandler implements HandlerInterface
                     $name = $stmt->name->toString();
                     if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
                         $items[] = $this->formatMethodCompletion($stmt);
+                    }
+                }
+
+                // Check for public promoted properties in constructor
+                if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toLowerString() === '__construct') {
+                    foreach ($stmt->params as $param) {
+                        $isPublicPromoted = $this->isPromotedProperty($param)
+                            && ($param->flags & Modifiers::PUBLIC) !== 0
+                            && $param->var instanceof Variable;
+                        if (!$isPublicPromoted) {
+                            continue;
+                        }
+                        $name = $param->var->name;
+                        if (!is_string($name)) {
+                            continue;
+                        }
+                        $matchesPrefix = $prefix === ''
+                            || str_starts_with(strtolower($name), strtolower($prefix));
+                        if ($matchesPrefix) {
+                            $items[] = $this->formatPromotedPropertyCompletion($param);
+                        }
                     }
                 }
 
@@ -784,6 +825,37 @@ final class CompletionHandler implements HandlerInterface
         ];
 
         $docComment = $property->getDocComment();
+        if ($docComment !== null) {
+            $doc = DocblockParser::extractDescription($docComment->getText());
+            if ($doc !== '') {
+                $item['documentation'] = $doc;
+            }
+        }
+
+        return $item;
+    }
+
+    private function isPromotedProperty(Param $param): bool
+    {
+        return ($param->flags & Modifiers::VISIBILITY_MASK) !== 0;
+    }
+
+    /**
+     * @return array{label: string, kind: int, detail: string, documentation?: string}
+     */
+    private function formatPromotedPropertyCompletion(Param $param): array
+    {
+        assert($param->var instanceof Variable);
+        $name = is_string($param->var->name) ? $param->var->name : '';
+        $type = $param->type !== null ? TypeFormatter::formatNode($param->type) : 'mixed';
+
+        $item = [
+            'label' => $name,
+            'kind' => self::KIND_PROPERTY,
+            'detail' => $type . ' $' . $name,
+        ];
+
+        $docComment = $param->getDocComment();
         if ($docComment !== null) {
             $doc = DocblockParser::extractDescription($docComment->getText());
             if ($doc !== '') {
