@@ -2945,4 +2945,104 @@ PHP;
             "Expected detail to contain 'string|int' or 'int|string', got: $detail"
         );
     }
+
+    public function testPromotedPropertyWithIntersectionType(): void
+    {
+        $code = <<<'PHP'
+<?php
+interface Foo {}
+interface Bar {}
+
+class User
+{
+    public function __construct(
+        private Foo&Bar $service,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('service', $labels);
+
+        $items = $result['items'];
+        $serviceItem = null;
+        foreach ($items as $item) {
+            if ($item['label'] === 'service') {
+                $serviceItem = $item;
+                break;
+            }
+        }
+        self::assertNotNull($serviceItem);
+        $detail = $serviceItem['detail'] ?? '';
+        self::assertTrue(
+            str_contains($detail, 'Foo&Bar') || str_contains($detail, 'Bar&Foo'),
+            "Expected detail to contain intersection type, got: $detail"
+        );
+    }
+
+    public function testPromotedPropertyDocblockExtraction(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        /** The user's display name. */
+        private string $name,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $items = $result['items'];
+
+        $nameItem = null;
+        foreach ($items as $item) {
+            if ($item['label'] === 'name') {
+                $nameItem = $item;
+                break;
+            }
+        }
+        self::assertNotNull($nameItem, 'name property should be in completions');
+        self::assertArrayHasKey('documentation', $nameItem);
+        $doc = $nameItem['documentation'] ?? '';
+        self::assertStringContainsString('display name', $doc);
+    }
 }
