@@ -76,6 +76,23 @@ final class CompletionHandler implements HandlerInterface
         return $item;
     }
 
+    /**
+     * Iterate top-level statements, flattening namespace contents.
+     *
+     * @param array<Stmt> $ast
+     * @return \Generator<Stmt>
+     */
+    private function iterateTopLevelStatements(array $ast): \Generator
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                yield from $stmt->stmts;
+            } else {
+                yield $stmt;
+            }
+        }
+    }
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
@@ -616,14 +633,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function findFirstClass(array $ast): ?Stmt\Class_
     {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $nsStmt) {
-                    if ($nsStmt instanceof Stmt\Class_) {
-                        return $nsStmt;
-                    }
-                }
-            }
+        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
             if ($stmt instanceof Stmt\Class_) {
                 return $stmt;
             }
@@ -848,19 +858,10 @@ final class CompletionHandler implements HandlerInterface
      */
     private function resolveClassName(string $shortName, array $ast): string
     {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $nsStmt) {
-                    $resolved = $this->checkUseStatement($nsStmt, $shortName);
-                    if ($resolved !== null) {
-                        return $resolved;
-                    }
-                }
-            } else {
-                $resolved = $this->checkUseStatement($stmt, $shortName);
-                if ($resolved !== null) {
-                    return $resolved;
-                }
+        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
+            $resolved = $this->checkUseStatement($stmt, $shortName);
+            if ($resolved !== null) {
+                return $resolved;
             }
         }
 
@@ -918,14 +919,8 @@ final class CompletionHandler implements HandlerInterface
     {
         $imports = [];
 
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $nsStmt) {
-                    $this->extractImportsFromUse($nsStmt, $imports);
-                }
-            } else {
-                $this->extractImportsFromUse($stmt, $imports);
-            }
+        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
+            $this->extractImportsFromUse($stmt, $imports);
         }
 
         return $imports;
