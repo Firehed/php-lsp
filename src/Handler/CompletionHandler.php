@@ -345,8 +345,10 @@ final class CompletionHandler implements HandlerInterface
         $existingLabels = array_column($existingItems, 'label');
         $items = [];
 
-        // Public and protected methods (both static and non-static)
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
+        foreach ($reflection->getMethods() as $method) {
+            if (!VisibilityFilter::isReflectionMethodAccessible($method, AccessContext::Subclass)) {
+                continue;
+            }
             $name = $method->getName();
             if (in_array($name, $existingLabels, true)) {
                 continue;
@@ -455,9 +457,11 @@ final class CompletionHandler implements HandlerInterface
         $existingLabels = array_column($existingItems, 'label');
         $items = [];
 
-        // Public non-static methods
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+        foreach ($reflection->getMethods() as $method) {
             if ($method->isStatic()) {
+                continue;
+            }
+            if (!VisibilityFilter::isReflectionMethodAccessible($method, AccessContext::External)) {
                 continue;
             }
             $name = $method->getName();
@@ -469,9 +473,11 @@ final class CompletionHandler implements HandlerInterface
             }
         }
 
-        // Public non-static properties
-        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
+        foreach ($reflection->getProperties() as $prop) {
             if ($prop->isStatic()) {
+                continue;
+            }
+            if (!VisibilityFilter::isReflectionPropertyAccessible($prop, AccessContext::External)) {
                 continue;
             }
             $name = $prop->getName();
