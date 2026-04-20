@@ -185,7 +185,7 @@ final class CompletionHandler implements HandlerInterface
         // Must check before general type hint context since both patterns overlap
         if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
-            $items = $this->getClassMemberKeywordCompletions($prefix);
+            $items = $this->filterKeywords(self::KEYWORDS_AFTER_VISIBILITY, $prefix);
             $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property));
             return $this->deduplicateCompletions($items);
         }
@@ -219,7 +219,7 @@ final class CompletionHandler implements HandlerInterface
         if ($this->isInClassBody($textBeforeCursor)) {
             if (preg_match('/(?:^|[\s{;])(\w+)$/', $textBeforeCursor, $matches) === 1) {
                 $prefix = $matches[1];
-                return $this->getClassBodyKeywordCompletions($prefix);
+                return $this->filterKeywords(self::KEYWORDS_CLASS_BODY, $prefix);
             }
             return [];
         }
@@ -227,7 +227,7 @@ final class CompletionHandler implements HandlerInterface
         // Function/class/keyword completion (at start of expression or after operators)
         if (preg_match('/(?:^|[(\s=,!&|])(\w+)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
-            $items = $this->getKeywordCompletions($prefix);
+            $items = $this->filterKeywords(self::KEYWORDS_ALL, $prefix);
             $items = array_merge($items, $this->getFunctionCompletions($prefix, $ast));
             $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
             $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
@@ -279,6 +279,7 @@ final class CompletionHandler implements HandlerInterface
         VisibilityFilter $visibility,
         MemberFilter $memberFilter,
         string $prefix,
+        bool $includeProperties = true,
         bool $includeConstants = false,
         bool $includeEnumCases = false,
     ): array {
@@ -300,10 +301,12 @@ final class CompletionHandler implements HandlerInterface
             }
         }
 
-        foreach ($members['properties'] as $member) {
-            $name = $member['name'];
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatPropertyCompletion($member['node'], $name);
+        if ($includeProperties) {
+            foreach ($members['properties'] as $member) {
+                $name = $member['name'];
+                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                    $items[] = $this->formatPropertyCompletion($member['node'], $name);
+                }
             }
         }
 
@@ -353,6 +356,7 @@ final class CompletionHandler implements HandlerInterface
                 $memberFilter,
                 $items,
                 $includeConstants,
+                $includeProperties,
             ),
         );
 
@@ -476,39 +480,14 @@ final class CompletionHandler implements HandlerInterface
             $resolvedName = $classNode->extends->getAttribute('resolvedName')->toString();
         }
 
-        $parentNode = ClassFinder::findWithLocator(
+        return $this->getMemberCompletions(
             $resolvedName,
             $ast,
-            $this->classLocator,
-            $this->parser,
+            VisibilityFilter::PublicProtected,
+            MemberFilter::Both,
+            $prefix,
+            includeProperties: false,
         );
-
-        $items = [];
-
-        $members = MemberCollector::collect($parentNode, VisibilityFilter::PublicProtected, MemberFilter::Both);
-
-        foreach ($members['methods'] as $member) {
-            $name = $member['name'];
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatMethodCompletion($member['node']);
-            }
-        }
-
-        // Add inherited methods via reflection (parent:: only supports methods)
-        $items = array_merge(
-            $items,
-            $this->getReflectionMemberCompletions(
-                $resolvedName,
-                $prefix,
-                VisibilityFilter::PublicProtected,
-                MemberFilter::Both,
-                $items,
-                includeConstants: false,
-                includeProperties: false,
-            ),
-        );
-
-        return $items;
     }
 
     /**
@@ -539,20 +518,6 @@ final class CompletionHandler implements HandlerInterface
             return [];
         }
 
-        return $this->getInstanceMemberCompletions($className, $prefix, $ast);
-    }
-
-    /**
-     * Get instance (non-static) member completions for a class.
-     *
-     * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
-     */
-    private function getInstanceMemberCompletions(
-        string $className,
-        string $prefix,
-        array $ast,
-    ): array {
         return $this->getMemberCompletions(
             $className,
             $ast,
@@ -1133,28 +1098,35 @@ final class CompletionHandler implements HandlerInterface
         return $this->deduplicateCompletions($items);
     }
 
+    private const KEYWORDS_ALL = [
+        // Control flow
+        'if', 'else', 'elseif', 'switch', 'case', 'default',
+        'while', 'do', 'for', 'foreach', 'break', 'continue',
+        'return', 'throw', 'try', 'catch', 'finally',
+        // Declarations
+        'function', 'class', 'interface', 'trait', 'enum', 'namespace', 'use',
+        'extends', 'implements', 'const', 'public', 'protected', 'private',
+        'static', 'final', 'abstract', 'readonly',
+        // Operators and other
+        'new', 'instanceof', 'clone', 'yield', 'match',
+        'echo', 'print', 'include', 'include_once', 'require', 'require_once',
+        'global', 'unset', 'isset', 'empty', 'list', 'fn',
+    ];
+
+    private const KEYWORDS_CLASS_BODY = [
+        'public', 'private', 'protected',
+        'static', 'final', 'abstract', 'readonly',
+        'const', 'function', 'use',
+    ];
+
+    private const KEYWORDS_AFTER_VISIBILITY = ['function', 'static', 'readonly', 'const'];
+
     /**
-     * Get PHP keyword completions.
-     *
+     * @param list<string> $keywords
      * @return list<array{label: string, kind: int}>
      */
-    private function getKeywordCompletions(string $prefix): array
+    private function filterKeywords(array $keywords, string $prefix): array
     {
-        $keywords = [
-            // Control flow
-            'if', 'else', 'elseif', 'switch', 'case', 'default',
-            'while', 'do', 'for', 'foreach', 'break', 'continue',
-            'return', 'throw', 'try', 'catch', 'finally',
-            // Declarations
-            'function', 'class', 'interface', 'trait', 'enum', 'namespace', 'use',
-            'extends', 'implements', 'const', 'public', 'protected', 'private',
-            'static', 'final', 'abstract', 'readonly',
-            // Operators and other
-            'new', 'instanceof', 'clone', 'yield', 'match',
-            'echo', 'print', 'include', 'include_once', 'require', 'require_once',
-            'global', 'unset', 'isset', 'empty', 'list', 'fn',
-        ];
-
         $items = [];
         $prefixLower = strtolower($prefix);
 
@@ -1220,58 +1192,6 @@ final class CompletionHandler implements HandlerInterface
 
         // depth === 1 means we're directly inside the class body (not in a method)
         return $depth === 1;
-    }
-
-    /**
-     * Get keywords valid at class body level.
-     *
-     * @return list<array{label: string, kind: int}>
-     */
-    private function getClassBodyKeywordCompletions(string $prefix): array
-    {
-        $keywords = [
-            'public', 'private', 'protected',
-            'static', 'final', 'abstract', 'readonly',
-            'const', 'function', 'use',
-        ];
-
-        $items = [];
-        $prefixLower = strtolower($prefix);
-
-        foreach ($keywords as $keyword) {
-            if ($prefix === '' || str_starts_with($keyword, $prefixLower)) {
-                $items[] = [
-                    'label' => $keyword,
-                    'kind' => self::KIND_KEYWORD,
-                ];
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * Get keywords valid after a visibility modifier.
-     *
-     * @return list<array{label: string, kind: int}>
-     */
-    private function getClassMemberKeywordCompletions(string $prefix): array
-    {
-        $keywords = ['function', 'static', 'readonly', 'const'];
-
-        $items = [];
-        $prefixLower = strtolower($prefix);
-
-        foreach ($keywords as $keyword) {
-            if ($prefix === '' || str_starts_with($keyword, $prefixLower)) {
-                $items[] = [
-                    'label' => $keyword,
-                    'kind' => self::KIND_KEYWORD,
-                ];
-            }
-        }
-
-        return $items;
     }
 
     /**
