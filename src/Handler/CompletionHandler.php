@@ -291,8 +291,7 @@ final class CompletionHandler implements HandlerInterface
             $this->parser,
         );
 
-        $collector = new MemberCollector();
-        $members = $collector->collect($className, $ast, $visibility, $memberFilter);
+        $members = MemberCollector::collect($classNode, $visibility, $memberFilter);
 
         foreach ($members['methods'] as $member) {
             $name = $member['name'];
@@ -373,6 +372,7 @@ final class CompletionHandler implements HandlerInterface
         MemberFilter $memberFilter,
         array $existingItems,
         bool $includeConstants = false,
+        bool $includeProperties = true,
     ): array {
         $reflection = ReflectionHelper::getClass($className);
         if ($reflection === null) {
@@ -409,30 +409,32 @@ final class CompletionHandler implements HandlerInterface
             }
         }
 
-        $allProps = ReflectionProperty::IS_PUBLIC
-            | ReflectionProperty::IS_PROTECTED
-            | ReflectionProperty::IS_PRIVATE;
-        $propertyFlags = match ($visibility) {
-            VisibilityFilter::All => $allProps,
-            VisibilityFilter::PublicOnly => ReflectionProperty::IS_PUBLIC,
-            VisibilityFilter::PublicProtected => ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED,
-        };
-
-        foreach ($reflection->getProperties($propertyFlags) as $prop) {
-            $matchesStatic = match ($memberFilter) {
-                MemberFilter::Instance => !$prop->isStatic(),
-                MemberFilter::Static => $prop->isStatic(),
-                MemberFilter::Both => true,
+        if ($includeProperties) {
+            $allProps = ReflectionProperty::IS_PUBLIC
+                | ReflectionProperty::IS_PROTECTED
+                | ReflectionProperty::IS_PRIVATE;
+            $propertyFlags = match ($visibility) {
+                VisibilityFilter::All => $allProps,
+                VisibilityFilter::PublicOnly => ReflectionProperty::IS_PUBLIC,
+                VisibilityFilter::PublicProtected => ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED,
             };
-            if (!$matchesStatic) {
-                continue;
-            }
-            $name = $prop->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatReflectionPropertyCompletion($prop);
+
+            foreach ($reflection->getProperties($propertyFlags) as $prop) {
+                $matchesStatic = match ($memberFilter) {
+                    MemberFilter::Instance => !$prop->isStatic(),
+                    MemberFilter::Static => $prop->isStatic(),
+                    MemberFilter::Both => true,
+                };
+                if (!$matchesStatic) {
+                    continue;
+                }
+                $name = $prop->getName();
+                if (in_array($name, $existingLabels, true)) {
+                    continue;
+                }
+                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                    $items[] = $this->formatReflectionPropertyCompletion($prop);
+                }
             }
         }
 
@@ -474,10 +476,16 @@ final class CompletionHandler implements HandlerInterface
             $resolvedName = $classNode->extends->getAttribute('resolvedName')->toString();
         }
 
+        $parentNode = ClassFinder::findWithLocator(
+            $resolvedName,
+            $ast,
+            $this->classLocator,
+            $this->parser,
+        );
+
         $items = [];
 
-        $collector = new MemberCollector();
-        $members = $collector->collect($resolvedName, $ast, VisibilityFilter::PublicProtected, MemberFilter::Both);
+        $members = MemberCollector::collect($parentNode, VisibilityFilter::PublicProtected, MemberFilter::Both);
 
         foreach ($members['methods'] as $member) {
             $name = $member['name'];
@@ -486,68 +494,19 @@ final class CompletionHandler implements HandlerInterface
             }
         }
 
-        // Add inherited methods via reflection
+        // Add inherited methods via reflection (parent:: only supports methods)
         $items = array_merge(
             $items,
-            $this->getReflectionMethodCompletions(
+            $this->getReflectionMemberCompletions(
                 $resolvedName,
                 $prefix,
                 VisibilityFilter::PublicProtected,
                 MemberFilter::Both,
                 $items,
+                includeConstants: false,
+                includeProperties: false,
             ),
         );
-
-        return $items;
-    }
-
-    /**
-     * Get methods via reflection (for parent:: which only needs methods, not properties).
-     *
-     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
-     */
-    private function getReflectionMethodCompletions(
-        string $className,
-        string $prefix,
-        VisibilityFilter $visibility,
-        MemberFilter $memberFilter,
-        array $existingItems,
-    ): array {
-        $reflection = ReflectionHelper::getClass($className);
-        if ($reflection === null) {
-            return [];
-        }
-
-        $existingLabels = array_column($existingItems, 'label');
-        $items = [];
-
-        $allMethods = ReflectionMethod::IS_PUBLIC
-            | ReflectionMethod::IS_PROTECTED
-            | ReflectionMethod::IS_PRIVATE;
-        $methodFlags = match ($visibility) {
-            VisibilityFilter::All => $allMethods,
-            VisibilityFilter::PublicOnly => ReflectionMethod::IS_PUBLIC,
-            VisibilityFilter::PublicProtected => ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED,
-        };
-
-        foreach ($reflection->getMethods($methodFlags) as $method) {
-            $matchesStatic = match ($memberFilter) {
-                MemberFilter::Instance => !$method->isStatic(),
-                MemberFilter::Static => $method->isStatic(),
-                MemberFilter::Both => true,
-            };
-            if (!$matchesStatic) {
-                continue;
-            }
-            $name = $method->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatReflectionMethodCompletion($method);
-            }
-        }
 
         return $items;
     }

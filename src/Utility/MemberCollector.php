@@ -13,7 +13,6 @@ final class MemberCollector
     /**
      * Collect class members filtered by visibility and static/instance.
      *
-     * @param array<Stmt> $ast
      * @return array{
      *   methods: list<array{name: string, node: Stmt\ClassMethod}>,
      *   properties: list<array{name: string, node: Stmt\Property}>,
@@ -21,13 +20,11 @@ final class MemberCollector
      *   enumCases: list<array{name: string, node: Stmt\EnumCase}>,
      * }
      */
-    public function collect(
-        string $className,
-        array $ast,
+    public static function collect(
+        Stmt\Class_|Stmt\Enum_|Stmt\Interface_|Stmt\Trait_|null $classNode,
         VisibilityFilter $visibility,
         MemberFilter $memberFilter,
     ): array {
-        $classNode = $this->findClass($className, $ast);
         if ($classNode === null) {
             return [
                 'methods' => [],
@@ -44,13 +41,13 @@ final class MemberCollector
 
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\ClassMethod) {
-                if ($this->matchesFilters($stmt, $visibility, $memberFilter)) {
+                if (self::matchesFilters($stmt, $visibility, $memberFilter)) {
                     $methods[] = ['name' => $stmt->name->toString(), 'node' => $stmt];
                 }
             }
 
             if ($stmt instanceof Stmt\Property) {
-                if ($this->matchesFilters($stmt, $visibility, $memberFilter)) {
+                if (self::matchesFilters($stmt, $visibility, $memberFilter)) {
                     foreach ($stmt->props as $prop) {
                         $properties[] = ['name' => $prop->name->toString(), 'node' => $stmt];
                     }
@@ -58,10 +55,8 @@ final class MemberCollector
             }
 
             if ($stmt instanceof Stmt\ClassConst) {
-                if (
-                    $memberFilter === MemberFilter::Static || $memberFilter === MemberFilter::Both
-                ) {
-                    if ($this->matchesVisibility($stmt, $visibility)) {
+                if ($memberFilter !== MemberFilter::Instance) {
+                    if (self::matchesVisibility($stmt, $visibility)) {
                         foreach ($stmt->consts as $const) {
                             $constants[] = ['name' => $const->name->toString(), 'node' => $stmt];
                         }
@@ -70,9 +65,7 @@ final class MemberCollector
             }
 
             if ($stmt instanceof Stmt\EnumCase) {
-                if (
-                    $memberFilter === MemberFilter::Static || $memberFilter === MemberFilter::Both
-                ) {
+                if ($memberFilter !== MemberFilter::Instance) {
                     $enumCases[] = ['name' => $stmt->name->toString(), 'node' => $stmt];
                 }
             }
@@ -86,46 +79,12 @@ final class MemberCollector
         ];
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findClass(string $className, array $ast): Stmt\Class_|Stmt\Enum_|null
-    {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $nsStmt) {
-                    $result = $this->checkClassNode($nsStmt, $className);
-                    if ($result !== null) {
-                        return $result;
-                    }
-                }
-            } else {
-                $result = $this->checkClassNode($stmt, $className);
-                if ($result !== null) {
-                    return $result;
-                }
-            }
-        }
-        return null;
-    }
-
-    private function checkClassNode(Stmt $stmt, string $className): Stmt\Class_|Stmt\Enum_|null
-    {
-        if ($stmt instanceof Stmt\Class_ || $stmt instanceof Stmt\Enum_) {
-            $fqcn = $stmt->namespacedName?->toString() ?? $stmt->name?->toString();
-            if ($fqcn === $className) {
-                return $stmt;
-            }
-        }
-        return null;
-    }
-
-    private function matchesFilters(
+    private static function matchesFilters(
         Stmt\ClassMethod|Stmt\Property $stmt,
         VisibilityFilter $visibility,
         MemberFilter $memberFilter,
     ): bool {
-        if (!$this->matchesVisibility($stmt, $visibility)) {
+        if (!self::matchesVisibility($stmt, $visibility)) {
             return false;
         }
 
@@ -136,7 +95,7 @@ final class MemberCollector
         };
     }
 
-    private function matchesVisibility(
+    private static function matchesVisibility(
         Stmt\ClassMethod|Stmt\Property|Stmt\ClassConst $stmt,
         VisibilityFilter $visibility,
     ): bool {

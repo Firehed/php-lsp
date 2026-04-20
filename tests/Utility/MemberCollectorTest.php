@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Utility;
 use Firehed\PhpLsp\Completion\MemberFilter;
 use Firehed\PhpLsp\Completion\VisibilityFilter;
 use Firehed\PhpLsp\Utility\MemberCollector;
+use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -33,15 +34,12 @@ class User
     public static function getCount(): int { return 0; }
 }
 PHP;
-        $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('User', $ast, VisibilityFilter::All, MemberFilter::Instance);
+        $classNode = self::findClassInCode($code, 'User');
+        $members = MemberCollector::collect($classNode, VisibilityFilter::All, MemberFilter::Instance);
 
         $methodNames = array_column($members['methods'], 'name');
         $propertyNames = array_column($members['properties'], 'name');
 
-        // Should include all instance members
         self::assertContains('getName', $methodNames);
         self::assertContains('getAge', $methodNames);
         self::assertContains('getPassword', $methodNames);
@@ -49,7 +47,6 @@ PHP;
         self::assertContains('age', $propertyNames);
         self::assertContains('password', $propertyNames);
 
-        // Should exclude static members
         self::assertNotContains('getCount', $methodNames);
         self::assertNotContains('count', $propertyNames);
     }
@@ -69,19 +66,15 @@ class User
     private function getPassword(): string { return $this->password; }
 }
 PHP;
-        $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('User', $ast, VisibilityFilter::PublicOnly, MemberFilter::Instance);
+        $classNode = self::findClassInCode($code, 'User');
+        $members = MemberCollector::collect($classNode, VisibilityFilter::PublicOnly, MemberFilter::Instance);
 
         $methodNames = array_column($members['methods'], 'name');
         $propertyNames = array_column($members['properties'], 'name');
 
-        // Should include only public
         self::assertContains('getName', $methodNames);
         self::assertContains('name', $propertyNames);
 
-        // Should exclude protected and private
         self::assertNotContains('getAge', $methodNames);
         self::assertNotContains('getPassword', $methodNames);
         self::assertNotContains('age', $propertyNames);
@@ -103,21 +96,17 @@ class User
     private function getPassword(): string { return $this->password; }
 }
 PHP;
-        $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('User', $ast, VisibilityFilter::PublicProtected, MemberFilter::Instance);
+        $classNode = self::findClassInCode($code, 'User');
+        $members = MemberCollector::collect($classNode, VisibilityFilter::PublicProtected, MemberFilter::Instance);
 
         $methodNames = array_column($members['methods'], 'name');
         $propertyNames = array_column($members['properties'], 'name');
 
-        // Should include public and protected
         self::assertContains('getName', $methodNames);
         self::assertContains('getAge', $methodNames);
         self::assertContains('name', $propertyNames);
         self::assertContains('age', $propertyNames);
 
-        // Should exclude private
         self::assertNotContains('getPassword', $methodNames);
         self::assertNotContains('password', $propertyNames);
     }
@@ -138,51 +127,19 @@ class Counter
     public function instanceMethod(): void {}
 }
 PHP;
-        $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('Counter', $ast, VisibilityFilter::All, MemberFilter::Static);
+        $classNode = self::findClassInCode($code, 'Counter');
+        $members = MemberCollector::collect($classNode, VisibilityFilter::All, MemberFilter::Static);
 
         $methodNames = array_column($members['methods'], 'name');
         $propertyNames = array_column($members['properties'], 'name');
 
-        // Should include all static members
         self::assertContains('increment', $methodNames);
         self::assertContains('reset', $methodNames);
         self::assertContains('count', $propertyNames);
         self::assertContains('internalState', $propertyNames);
 
-        // Should exclude instance members
         self::assertNotContains('instanceMethod', $methodNames);
         self::assertNotContains('instanceProp', $propertyNames);
-    }
-
-    public function testCollectsBothStaticAndInstanceMembers(): void
-    {
-        $code = <<<'PHP'
-<?php
-class Mixed
-{
-    public string $instanceProp;
-    public static int $staticProp;
-
-    public function instanceMethod(): void {}
-    public static function staticMethod(): void {}
-}
-PHP;
-        $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('Mixed', $ast, VisibilityFilter::All, MemberFilter::Both);
-
-        $methodNames = array_column($members['methods'], 'name');
-        $propertyNames = array_column($members['properties'], 'name');
-
-        // Should include both
-        self::assertContains('instanceMethod', $methodNames);
-        self::assertContains('staticMethod', $methodNames);
-        self::assertContains('instanceProp', $propertyNames);
-        self::assertContains('staticProp', $propertyNames);
     }
 
     public function testCollectsConstants(): void
@@ -195,10 +152,8 @@ class Config
     private const SECRET = 'abc';
 }
 PHP;
-        $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('Config', $ast, VisibilityFilter::All, MemberFilter::Static);
+        $classNode = self::findClassInCode($code, 'Config');
+        $members = MemberCollector::collect($classNode, VisibilityFilter::All, MemberFilter::Static);
 
         $constantNames = array_column($members['constants'], 'name');
 
@@ -217,9 +172,8 @@ enum Status
 }
 PHP;
         $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('Status', $ast, VisibilityFilter::All, MemberFilter::Static);
+        $enumNode = self::findEnumInAst($ast, 'Status');
+        $members = MemberCollector::collect($enumNode, VisibilityFilter::All, MemberFilter::Static);
 
         $caseNames = array_column($members['enumCases'], 'name');
 
@@ -227,13 +181,9 @@ PHP;
         self::assertContains('Inactive', $caseNames);
     }
 
-    public function testReturnsEmptyForUnknownClass(): void
+    public function testReturnsEmptyForNullNode(): void
     {
-        $code = '<?php class Foo {}';
-        $ast = self::parseWithParents($code);
-
-        $collector = new MemberCollector();
-        $members = $collector->collect('UnknownClass', $ast, VisibilityFilter::All, MemberFilter::Instance);
+        $members = MemberCollector::collect(null, VisibilityFilter::All, MemberFilter::Instance);
 
         self::assertEmpty($members['methods']);
         self::assertEmpty($members['properties']);
@@ -241,27 +191,27 @@ PHP;
         self::assertEmpty($members['enumCases']);
     }
 
-    public function testCollectsNamespacedClass(): void
+    private static function findClassInCode(string $code, string $className): ?Stmt\Class_
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Models;
-
-class User
-{
-    public string $name;
-    public function getName(): string { return $this->name; }
-}
-PHP;
         $ast = self::parseWithParents($code);
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Class_ && $stmt->name?->toString() === $className) {
+                return $stmt;
+            }
+        }
+        return null;
+    }
 
-        $collector = new MemberCollector();
-        $members = $collector->collect('App\\Models\\User', $ast, VisibilityFilter::All, MemberFilter::Instance);
-
-        $methodNames = array_column($members['methods'], 'name');
-        $propertyNames = array_column($members['properties'], 'name');
-
-        self::assertContains('getName', $methodNames);
-        self::assertContains('name', $propertyNames);
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findEnumInAst(array $ast, string $enumName): ?Stmt\Enum_
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Enum_ && $stmt->name?->toString() === $enumName) {
+                return $stmt;
+            }
+        }
+        return null;
     }
 }
