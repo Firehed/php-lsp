@@ -128,6 +128,14 @@ class VisibilityFilterTest extends TestCase
         self::assertSame(VisibilityFilter::PublicOnly, VisibilityFilter::forClassAccess($class, 'Target'));
     }
 
+    public function testForClassAccessReturnsPublicProtectedForDeeperInheritance(): void
+    {
+        // InvalidArgumentException extends LogicException extends Exception
+        // This tests the reflection isSubclassOf path
+        $class = $this->parseClass('<?php class InvalidArgumentException {}', 'InvalidArgumentException');
+        self::assertSame(VisibilityFilter::PublicProtected, VisibilityFilter::forClassAccess($class, 'Exception'));
+    }
+
     private function parseClass(string $code, string $className): ?Stmt\Class_
     {
         $ast = self::parseWithParents($code);
