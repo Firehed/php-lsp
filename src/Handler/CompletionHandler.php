@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Completion\ContextDetector;
+use Firehed\PhpLsp\Completion\MemberFilter;
 use Firehed\PhpLsp\Completion\TypeHintContext;
+use Firehed\PhpLsp\Completion\VisibilityFilter;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
@@ -16,6 +18,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\MemberCollector;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
@@ -245,38 +248,208 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getThisMemberCompletions(string $prefix, array $ast): array
     {
-        // Find the enclosing class
         $classNode = $this->findFirstClass($ast);
         if ($classNode === null) {
             return [];
         }
 
+        $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
+        if ($className === null) {
+            return [];
+        }
+
+        return $this->getMemberCompletions(
+            $className,
+            $ast,
+            VisibilityFilter::All,
+            MemberFilter::Instance,
+            $prefix,
+        );
+    }
+
+    /**
+     * Unified method to collect member completions with visibility and static/instance filters.
+     *
+     * @param array<Stmt> $ast
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getMemberCompletions(
+        string $className,
+        array $ast,
+        VisibilityFilter $visibility,
+        MemberFilter $memberFilter,
+        string $prefix,
+        bool $includeConstants = false,
+        bool $includeEnumCases = false,
+    ): array {
         $items = [];
 
-        foreach ($classNode->stmts as $stmt) {
-            // Methods
-            if ($stmt instanceof Stmt\ClassMethod) {
-                $name = $stmt->name->toString();
+        $classNode = ClassFinder::findWithLocator(
+            $className,
+            $ast,
+            $this->classLocator,
+            $this->parser,
+        );
+
+        $collector = new MemberCollector();
+        $members = $collector->collect($className, $ast, $visibility, $memberFilter);
+
+        foreach ($members['methods'] as $member) {
+            $name = $member['name'];
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatMethodCompletion($member['node']);
+            }
+        }
+
+        foreach ($members['properties'] as $member) {
+            $name = $member['name'];
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatPropertyCompletion($member['node'], $name);
+            }
+        }
+
+        if ($includeConstants) {
+            foreach ($members['constants'] as $member) {
+                $name = $member['name'];
                 if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                    $items[] = $this->formatMethodCompletion($stmt);
+                    $items[] = $this->formatConstantCompletion($member['node'], $name);
                 }
             }
 
-            // Properties
-            if ($stmt instanceof Stmt\Property) {
-                foreach ($stmt->props as $prop) {
-                    $name = $prop->name->toString();
-                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                        $items[] = $this->formatPropertyCompletion($stmt, $name);
-                    }
+            // ::class magic constant is always available for static access
+            if (
+                $memberFilter === MemberFilter::Static || $memberFilter === MemberFilter::Both
+            ) {
+                if ($prefix === '' || str_starts_with('class', strtolower($prefix))) {
+                    $items[] = [
+                        'label' => 'class',
+                        'kind' => self::KIND_CONSTANT,
+                        'detail' => 'string (fully qualified class name)',
+                    ];
                 }
             }
         }
 
-        // Also include inherited members via reflection if class exists
-        $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
-        if ($className !== null) {
-            $items = array_merge($items, $this->getInheritedMemberCompletions($className, $prefix, $items));
+        if ($includeEnumCases) {
+            foreach ($members['enumCases'] as $member) {
+                $name = $member['name'];
+                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                    $items[] = $this->formatEnumCaseCompletion($member['node']);
+                }
+            }
+
+            // Enum built-in methods
+            if ($classNode instanceof Stmt\Enum_) {
+                $items = array_merge($items, $this->getEnumBuiltinMethods($classNode, $prefix));
+            }
+        }
+
+        // Add inherited members via reflection
+        $items = array_merge(
+            $items,
+            $this->getReflectionMemberCompletions(
+                $className,
+                $prefix,
+                $visibility,
+                $memberFilter,
+                $items,
+                $includeConstants,
+            ),
+        );
+
+        return $items;
+    }
+
+    /**
+     * Get members via reflection for inherited/built-in classes.
+     *
+     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
+     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     */
+    private function getReflectionMemberCompletions(
+        string $className,
+        string $prefix,
+        VisibilityFilter $visibility,
+        MemberFilter $memberFilter,
+        array $existingItems,
+        bool $includeConstants = false,
+    ): array {
+        $reflection = ReflectionHelper::getClass($className);
+        if ($reflection === null) {
+            return [];
+        }
+
+        $existingLabels = array_column($existingItems, 'label');
+        $items = [];
+
+        $allMethods = ReflectionMethod::IS_PUBLIC
+            | ReflectionMethod::IS_PROTECTED
+            | ReflectionMethod::IS_PRIVATE;
+        $methodFlags = match ($visibility) {
+            VisibilityFilter::All => $allMethods,
+            VisibilityFilter::PublicOnly => ReflectionMethod::IS_PUBLIC,
+            VisibilityFilter::PublicProtected => ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED,
+        };
+
+        foreach ($reflection->getMethods($methodFlags) as $method) {
+            $matchesStatic = match ($memberFilter) {
+                MemberFilter::Instance => !$method->isStatic(),
+                MemberFilter::Static => $method->isStatic(),
+                MemberFilter::Both => true,
+            };
+            if (!$matchesStatic) {
+                continue;
+            }
+            $name = $method->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
+            }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionMethodCompletion($method);
+            }
+        }
+
+        $allProps = ReflectionProperty::IS_PUBLIC
+            | ReflectionProperty::IS_PROTECTED
+            | ReflectionProperty::IS_PRIVATE;
+        $propertyFlags = match ($visibility) {
+            VisibilityFilter::All => $allProps,
+            VisibilityFilter::PublicOnly => ReflectionProperty::IS_PUBLIC,
+            VisibilityFilter::PublicProtected => ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED,
+        };
+
+        foreach ($reflection->getProperties($propertyFlags) as $prop) {
+            $matchesStatic = match ($memberFilter) {
+                MemberFilter::Instance => !$prop->isStatic(),
+                MemberFilter::Static => $prop->isStatic(),
+                MemberFilter::Both => true,
+            };
+            if (!$matchesStatic) {
+                continue;
+            }
+            $name = $prop->getName();
+            if (in_array($name, $existingLabels, true)) {
+                continue;
+            }
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatReflectionPropertyCompletion($prop);
+            }
+        }
+
+        if ($includeConstants) {
+            foreach ($reflection->getReflectionConstants() as $const) {
+                $name = $const->getName();
+                if (in_array($name, $existingLabels, true)) {
+                    continue;
+                }
+                if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                    $items[] = [
+                        'label' => $name,
+                        'kind' => self::KIND_CONSTANT,
+                        'detail' => 'const ' . $name,
+                    ];
+                }
+            }
         }
 
         return $items;
@@ -296,46 +469,51 @@ final class CompletionHandler implements HandlerInterface
         }
 
         $parentClassName = $classNode->extends->toString();
-
-        // Resolve the parent class name if it's in the same file
-        $parentClassNode = ClassFinder::findWithLocator(
-            $parentClassName,
-            $ast,
-            $this->classLocator,
-            $this->parser,
-        );
+        $resolvedName = $parentClassName;
+        if ($classNode->extends->getAttribute('resolvedName') instanceof Name) {
+            $resolvedName = $classNode->extends->getAttribute('resolvedName')->toString();
+        }
 
         $items = [];
 
-        if ($parentClassNode !== null) {
-            foreach ($parentClassNode->stmts as $stmt) {
-                // Methods (public and protected, both static and non-static)
-                if ($stmt instanceof Stmt\ClassMethod) {
-                    if ($stmt->isPrivate()) {
-                        continue;
-                    }
-                    $name = $stmt->name->toString();
-                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                        $items[] = $this->formatMethodCompletion($stmt);
-                    }
-                }
+        $collector = new MemberCollector();
+        $members = $collector->collect($resolvedName, $ast, VisibilityFilter::PublicProtected, MemberFilter::Both);
+
+        foreach ($members['methods'] as $member) {
+            $name = $member['name'];
+            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
+                $items[] = $this->formatMethodCompletion($member['node']);
             }
         }
 
-        // Also check via reflection for inherited/built-in classes
-        $items = array_merge($items, $this->getParentReflectionCompletions($parentClassName, $prefix, $items));
+        // Add inherited methods via reflection
+        $items = array_merge(
+            $items,
+            $this->getReflectionMethodCompletions(
+                $resolvedName,
+                $prefix,
+                VisibilityFilter::PublicProtected,
+                MemberFilter::Both,
+                $items,
+            ),
+        );
 
         return $items;
     }
 
     /**
-     * Get parent class methods via reflection.
+     * Get methods via reflection (for parent:: which only needs methods, not properties).
      *
      * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
      * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
      */
-    private function getParentReflectionCompletions(string $className, string $prefix, array $existingItems): array
-    {
+    private function getReflectionMethodCompletions(
+        string $className,
+        string $prefix,
+        VisibilityFilter $visibility,
+        MemberFilter $memberFilter,
+        array $existingItems,
+    ): array {
         $reflection = ReflectionHelper::getClass($className);
         if ($reflection === null) {
             return [];
@@ -344,8 +522,24 @@ final class CompletionHandler implements HandlerInterface
         $existingLabels = array_column($existingItems, 'label');
         $items = [];
 
-        // Public and protected methods (both static and non-static)
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
+        $allMethods = ReflectionMethod::IS_PUBLIC
+            | ReflectionMethod::IS_PROTECTED
+            | ReflectionMethod::IS_PRIVATE;
+        $methodFlags = match ($visibility) {
+            VisibilityFilter::All => $allMethods,
+            VisibilityFilter::PublicOnly => ReflectionMethod::IS_PUBLIC,
+            VisibilityFilter::PublicProtected => ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED,
+        };
+
+        foreach ($reflection->getMethods($methodFlags) as $method) {
+            $matchesStatic = match ($memberFilter) {
+                MemberFilter::Instance => !$method->isStatic(),
+                MemberFilter::Static => $method->isStatic(),
+                MemberFilter::Both => true,
+            };
+            if (!$matchesStatic) {
+                continue;
+            }
             $name = $method->getName();
             if (in_array($name, $existingLabels, true)) {
                 continue;
@@ -400,83 +594,13 @@ final class CompletionHandler implements HandlerInterface
         string $prefix,
         array $ast,
     ): array {
-        $items = [];
-
-        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
-
-        if ($classNode !== null) {
-            foreach ($classNode->stmts as $stmt) {
-                // Public methods (non-static)
-                if ($stmt instanceof Stmt\ClassMethod && !$stmt->isStatic() && $stmt->isPublic()) {
-                    $name = $stmt->name->toString();
-                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                        $items[] = $this->formatMethodCompletion($stmt);
-                    }
-                }
-
-                // Public properties (non-static)
-                if ($stmt instanceof Stmt\Property && !$stmt->isStatic() && $stmt->isPublic()) {
-                    foreach ($stmt->props as $prop) {
-                        $name = $prop->name->toString();
-                        if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                            $items[] = $this->formatPropertyCompletion($stmt, $name);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Add public members from reflection (for inherited/built-in classes)
-        $items = array_merge($items, $this->getReflectionInstanceCompletions($className, $prefix, $items));
-
-        return $items;
-    }
-
-    /**
-     * Get public instance members via reflection.
-     *
-     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
-     */
-    private function getReflectionInstanceCompletions(string $className, string $prefix, array $existingItems): array
-    {
-        $reflection = ReflectionHelper::getClass($className);
-        if ($reflection === null) {
-            return [];
-        }
-
-        $existingLabels = array_column($existingItems, 'label');
-        $items = [];
-
-        // Public non-static methods
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->isStatic()) {
-                continue;
-            }
-            $name = $method->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatReflectionMethodCompletion($method);
-            }
-        }
-
-        // Public non-static properties
-        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
-            if ($prop->isStatic()) {
-                continue;
-            }
-            $name = $prop->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatReflectionPropertyCompletion($prop);
-            }
-        }
-
-        return $items;
+        return $this->getMemberCompletions(
+            $className,
+            $ast,
+            VisibilityFilter::PublicOnly,
+            MemberFilter::Instance,
+            $prefix,
+        );
     }
 
     /**
@@ -485,71 +609,18 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getStaticCompletions(string $className, string $prefix, array $ast, TextDocument $document): array
     {
-        $items = [];
-
         // Resolve short name to FQCN using imports
         $resolvedClassName = $this->resolveClassName($className, $ast);
 
-        $classNode = ClassFinder::findWithLocator($resolvedClassName, $ast, $this->classLocator, $this->parser);
-
-        if ($classNode !== null) {
-            foreach ($classNode->stmts as $stmt) {
-                // Static methods
-                if ($stmt instanceof Stmt\ClassMethod && $stmt->isStatic()) {
-                    $name = $stmt->name->toString();
-                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                        $items[] = $this->formatMethodCompletion($stmt);
-                    }
-                }
-
-                // Static properties
-                if ($stmt instanceof Stmt\Property && $stmt->isStatic()) {
-                    foreach ($stmt->props as $prop) {
-                        $name = $prop->name->toString();
-                        if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                            $items[] = $this->formatPropertyCompletion($stmt, $name);
-                        }
-                    }
-                }
-
-                // Constants
-                if ($stmt instanceof Stmt\ClassConst) {
-                    foreach ($stmt->consts as $const) {
-                        $name = $const->name->toString();
-                        if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                            $items[] = $this->formatConstantCompletion($stmt, $name);
-                        }
-                    }
-                }
-
-                // Enum cases
-                if ($stmt instanceof Stmt\EnumCase) {
-                    $name = $stmt->name->toString();
-                    if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                        $items[] = $this->formatEnumCaseCompletion($stmt);
-                    }
-                }
-            }
-
-            // Add built-in enum methods
-            if ($classNode instanceof Stmt\Enum_) {
-                $items = array_merge($items, $this->getEnumBuiltinMethods($classNode, $prefix));
-            }
-        }
-
-        // Also try reflection for inherited/built-in
-        $items = array_merge($items, $this->getReflectionStaticCompletions($resolvedClassName, $prefix, $items));
-
-        // Always offer ::class magic constant
-        if ($prefix === '' || str_starts_with('class', strtolower($prefix))) {
-            $items[] = [
-                'label' => 'class',
-                'kind' => self::KIND_CONSTANT,
-                'detail' => 'string (fully qualified class name)',
-            ];
-        }
-
-        return $items;
+        return $this->getMemberCompletions(
+            $resolvedClassName,
+            $ast,
+            VisibilityFilter::All,
+            MemberFilter::Static,
+            $prefix,
+            includeConstants: true,
+            includeEnumCases: true,
+        );
     }
 
     /**
@@ -642,92 +713,6 @@ final class CompletionHandler implements HandlerInterface
         $traverser->traverse($ast);
 
         return $visitor->found;
-    }
-
-    /**
-     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
-     */
-    private function getInheritedMemberCompletions(string $className, string $prefix, array $existingItems): array
-    {
-        $reflection = ReflectionHelper::getClass($className);
-        if ($reflection === null) {
-            return [];
-        }
-
-        $existingLabels = array_column($existingItems, 'label');
-        $items = [];
-
-        // Methods from parent classes
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
-            $name = $method->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatReflectionMethodCompletion($method);
-            }
-        }
-
-        // Properties from parent classes
-        $flags = ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED;
-        foreach ($reflection->getProperties($flags) as $prop) {
-            $name = $prop->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatReflectionPropertyCompletion($prop);
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
-     */
-    private function getReflectionStaticCompletions(string $className, string $prefix, array $existingItems): array
-    {
-        $reflection = ReflectionHelper::getClass($className);
-        if ($reflection === null) {
-            return [];
-        }
-
-        $existingLabels = array_column($existingItems, 'label');
-        $items = [];
-
-        // Static methods
-        foreach ($reflection->getMethods(ReflectionMethod::IS_STATIC | ReflectionMethod::IS_PUBLIC) as $method) {
-            if (!$method->isStatic()) {
-                continue;
-            }
-            $name = $method->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = $this->formatReflectionMethodCompletion($method);
-            }
-        }
-
-        // Constants
-        foreach ($reflection->getReflectionConstants() as $const) {
-            $name = $const->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
-                $items[] = [
-                    'label' => $name,
-                    'kind' => self::KIND_CONSTANT,
-                    'detail' => 'const ' . $name,
-                ];
-            }
-        }
-
-        return $items;
     }
 
     /**
