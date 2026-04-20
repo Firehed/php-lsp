@@ -67,9 +67,10 @@ final class MemberFinder
         ParserService $parser,
         bool $excludePrivate,
     ): ?Stmt\ClassMethod {
+        $context = $excludePrivate ? AccessContext::Subclass : AccessContext::SameClass;
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toString() === $methodName) {
-                if ($excludePrivate && $stmt->isPrivate()) {
+                if (!VisibilityFilter::isMethodAccessible($stmt, $context)) {
                     continue;
                 }
                 return $stmt;
@@ -127,9 +128,10 @@ final class MemberFinder
         ParserService $parser,
         bool $excludePrivate,
     ): ?Stmt\Property {
+        $context = $excludePrivate ? AccessContext::Subclass : AccessContext::SameClass;
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\Property) {
-                if ($excludePrivate && $stmt->isPrivate()) {
+                if (!VisibilityFilter::isPropertyAccessible($stmt, $context)) {
                     continue;
                 }
                 foreach ($stmt->props as $prop) {
