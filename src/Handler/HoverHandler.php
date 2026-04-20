@@ -13,8 +13,8 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
-use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -302,7 +302,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = $this->resolveExpressionClass($call->var, $ast);
+        $className = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
         if ($className === null) {
             return null;
         }
@@ -343,7 +343,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = $this->resolveExpressionClass($fetch->var, $ast);
+        $className = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
         if ($className === null) {
             return null;
         }
@@ -410,48 +410,6 @@ final class HoverHandler implements HandlerInterface
 
         // Fall back to reflection
         return $this->getReflectionPropertyHover($className, $propertyName);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveExpressionClass(Node\Expr $expr, array $ast): ?string
-    {
-        // $this refers to the enclosing class
-        if ($expr instanceof Variable && $expr->name === 'this') {
-            return $this->findEnclosingClassName($expr, $ast);
-        }
-
-        // Use type resolver for other expressions
-        if ($this->typeResolver !== null) {
-            $scope = ScopeFinder::findEnclosingScope($expr);
-            if ($scope !== null) {
-                return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findEnclosingClassName(Node $node, array $ast): ?string
-    {
-        // Walk up through parent nodes to find enclosing class
-        $current = $node->getAttribute('parent');
-        while ($current instanceof Node) {
-            if ($current instanceof Stmt\Class_ && $current->name !== null) {
-                // Get the fully qualified name if available
-                $namespacedName = $current->namespacedName;
-                if ($namespacedName instanceof Name) {
-                    return $namespacedName->toString();
-                }
-                return $current->name->toString();
-            }
-            $current = $current->getAttribute('parent');
-        }
-        return null;
     }
 
     /**

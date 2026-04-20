@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
@@ -237,33 +238,12 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        $className = $this->resolveExpressionClass($call->var, $ast);
+        $className = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
         if ($className === null) {
             return null;
         }
 
         return $this->getMethodSignatureForClass($className, $methodName->toString(), $ast, $document);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveExpressionClass(Node\Expr $expr, array $ast): ?string
-    {
-        // $this refers to the enclosing class
-        if ($expr instanceof Variable && $expr->name === 'this') {
-            return $this->findEnclosingClassName($expr, $ast);
-        }
-
-        // Use type resolver for other expressions
-        if ($this->typeResolver !== null) {
-            $scope = ScopeFinder::findEnclosingScope($expr);
-            if ($scope !== null) {
-                return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -289,7 +269,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         // Handle self/static/parent
         if ($className === 'self' || $className === 'static' || $className === 'parent') {
-            $enclosingClass = $this->findEnclosingClassName($call, $ast);
+            $enclosingClass = ScopeFinder::findEnclosingClassName($call);
             if ($enclosingClass === null) {
                 return null;
             }
@@ -370,25 +350,6 @@ final class SignatureHelpHandler implements HandlerInterface
         $traverser->traverse($ast);
 
         return $finder->found;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findEnclosingClassName(Node $node, array $ast): ?string
-    {
-        $current = $node->getAttribute('parent');
-        while ($current instanceof Node) {
-            if ($current instanceof Stmt\Class_ && $current->name !== null) {
-                $namespacedName = $current->namespacedName;
-                if ($namespacedName instanceof Name) {
-                    return $namespacedName->toString();
-                }
-                return $current->name->toString();
-            }
-            $current = $current->getAttribute('parent');
-        }
-        return null;
     }
 
     /**

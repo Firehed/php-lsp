@@ -15,11 +15,11 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
+use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
@@ -172,7 +172,7 @@ final class DefinitionHandler implements HandlerInterface
 
         // Handle parent:: - resolve to actual parent class name
         if ($className === 'parent') {
-            $enclosingClass = $this->findEnclosingClassNode($call);
+            $enclosingClass = ScopeFinder::findEnclosingClassNode($call);
             if ($enclosingClass instanceof Stmt\Class_ && $enclosingClass->extends !== null) {
                 $className = $this->resolveName($enclosingClass->extends);
             } else {
@@ -182,7 +182,7 @@ final class DefinitionHandler implements HandlerInterface
 
         // Handle self:: and static:: - resolve to enclosing class
         if ($className === 'self' || $className === 'static') {
-            $enclosingClassName = $this->findEnclosingClassName($call);
+            $enclosingClassName = ScopeFinder::findEnclosingClassName($call);
             if ($enclosingClassName === null) {
                 return null;
             }
@@ -190,27 +190,6 @@ final class DefinitionHandler implements HandlerInterface
         }
 
         return $this->findMethodDefinition($className, $methodName->toString(), $ast);
-    }
-
-    /**
-     * Find the enclosing class-like node for a given node.
-     */
-    private function findEnclosingClassNode(
-        Node $node,
-    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
-        $current = $node->getAttribute('parent');
-        while ($current instanceof Node) {
-            if (
-                $current instanceof Stmt\Class_
-                || $current instanceof Stmt\Interface_
-                || $current instanceof Stmt\Trait_
-                || $current instanceof Stmt\Enum_
-            ) {
-                return $current;
-            }
-            $current = $current->getAttribute('parent');
-        }
-        return null;
     }
 
     /**
@@ -232,52 +211,12 @@ final class DefinitionHandler implements HandlerInterface
             return null;
         }
 
-        $className = $this->resolveExpressionClass($call->var, $ast);
+        $className = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
         if ($className === null) {
             return null;
         }
 
         return $this->findMethodDefinition($className, $methodName->toString(), $ast);
-    }
-
-    /**
-     * Resolve the class name of an expression.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveExpressionClass(Node\Expr $expr, array $ast): ?string
-    {
-        // $this refers to the enclosing class
-        if ($expr instanceof Variable && $expr->name === 'this') {
-            return $this->findEnclosingClassName($expr);
-        }
-
-        // Use type resolver for other expressions
-        if ($this->typeResolver !== null) {
-            $scope = ScopeFinder::findEnclosingScope($expr);
-            if ($scope !== null) {
-                return $this->typeResolver->resolveExpressionType($expr, $scope, $ast);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Find the enclosing class-like name for a node.
-     */
-    private function findEnclosingClassName(Node $node): ?string
-    {
-        $classNode = $this->findEnclosingClassNode($node);
-        if ($classNode === null || $classNode->name === null) {
-            return null;
-        }
-
-        $namespacedName = $classNode->namespacedName;
-        if ($namespacedName instanceof Name) {
-            return $namespacedName->toString();
-        }
-        return $classNode->name->toString();
     }
 
     /**

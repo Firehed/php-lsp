@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Utility;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 
 /**
@@ -35,5 +36,48 @@ final class ScopeFinder
             $current = $current->getAttribute('parent');
         }
         return null;
+    }
+
+    /**
+     * Find the enclosing class-like node (class, interface, trait, or enum).
+     *
+     * Walks up the parent chain to find the innermost class-like scope.
+     */
+    public static function findEnclosingClassNode(
+        Node $node,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        $current = $node->getAttribute('parent');
+        while ($current instanceof Node) {
+            if (
+                $current instanceof Stmt\Class_
+                || $current instanceof Stmt\Interface_
+                || $current instanceof Stmt\Trait_
+                || $current instanceof Stmt\Enum_
+            ) {
+                return $current;
+            }
+            $current = $current->getAttribute('parent');
+        }
+        return null;
+    }
+
+    /**
+     * Find the fully qualified name of the enclosing class-like node.
+     *
+     * Returns the FQN if available, otherwise the short name, or null if not
+     * in a class context.
+     */
+    public static function findEnclosingClassName(Node $node): ?string
+    {
+        $classNode = self::findEnclosingClassNode($node);
+        if ($classNode === null || $classNode->name === null) {
+            return null;
+        }
+
+        $namespacedName = $classNode->namespacedName;
+        if ($namespacedName instanceof Name) {
+            return $namespacedName->toString();
+        }
+        return $classNode->name->toString();
     }
 }
