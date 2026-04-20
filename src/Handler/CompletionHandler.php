@@ -345,7 +345,7 @@ final class CompletionHandler implements HandlerInterface
         foreach ($members['methods'] as $member) {
             $name = $member['name'];
             if (self::matchesPrefix($name, $prefix)) {
-                $items[] = $this->formatMethodCompletion($member['node']);
+                $items[] = $this->formatCallableCompletion($member['node'], self::KIND_METHOD);
             }
         }
 
@@ -608,7 +608,7 @@ final class CompletionHandler implements HandlerInterface
             if ($stmt instanceof Stmt\Function_) {
                 $name = $stmt->name->toString();
                 if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = $this->formatFunctionCompletion($stmt);
+                    $items[] = $this->formatCallableCompletion($stmt, self::KIND_FUNCTION, 'function ');
                 }
             }
         }
@@ -669,14 +669,6 @@ final class CompletionHandler implements HandlerInterface
         $traverser->traverse($ast);
 
         return $visitor->found;
-    }
-
-    /**
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
-     */
-    private function formatMethodCompletion(Stmt\ClassMethod $method): array
-    {
-        return $this->formatCallableCompletion($method, self::KIND_METHOD);
     }
 
     /**
@@ -764,14 +756,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $items;
-    }
-
-    /**
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
-     */
-    private function formatFunctionCompletion(Stmt\Function_ $func): array
-    {
-        return $this->formatCallableCompletion($func, self::KIND_FUNCTION, 'function ');
     }
 
     /**
