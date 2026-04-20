@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Completion\ContextDetector;
+use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
@@ -37,6 +38,9 @@ final class CompletionHandler implements HandlerInterface
     private const KIND_KEYWORD = 14;
     private const KIND_ENUM_MEMBER = 20;
     private const KIND_CONSTANT = 21;
+
+    // Matches property type continuations: "private ?", "public int|", "protected Foo&"
+    private const PROPERTY_TYPE_PATTERN = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
 
     public function __construct(
         private readonly DocumentManager $documentManager,
@@ -179,15 +183,33 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             $items = $this->getClassMemberKeywordCompletions($prefix);
-            $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast));
+            $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property));
             return $this->deduplicateCompletions($items);
         }
 
-        // Type hint context - after : (return type), in parameters, union/intersection types
-        // Matches: "): str", "(str", ", str", "?str", "|str", "&str"
-        if (preg_match('/[(:,?|&]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        // Return type context - after ): with optional space
+        if (preg_match('/\):\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
-            return $this->getTypeHintCompletions($prefix, $ast);
+            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType);
+        }
+
+        // Return type context - nullable/union/intersection (e.g., "): ?", "): int|", "): Foo&")
+        if (preg_match('/\):\s*(?:\?\s*|(?:\w+\s*[|&]\s*)+)(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            $prefix = $matches[1];
+            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType);
+        }
+
+        // Property type context - nullable/union/intersection after visibility keyword
+        if (preg_match(self::PROPERTY_TYPE_PATTERN, $textBeforeCursor, $matches) === 1) {
+            $prefix = $matches[1];
+            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property);
+        }
+
+        // Parameter type context - fallback for type positions not matched above
+        // Matches after (, ,, ?, |, & which occur in parameter lists and complex types
+        if (preg_match('/[(,?|&]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            $prefix = $matches[1];
+            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Parameter);
         }
 
         // Class body context - only class-level keywords, no functions
@@ -1120,16 +1142,29 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<array{label: string, kind?: int, detail?: string}>
      */
-    private function getTypeHintCompletions(string $prefix, array $ast): array
+    private function getTypeHintCompletions(string $prefix, array $ast, TypeHintContext $context): array
     {
         $items = [];
 
-        // Built-in types
-        $builtinTypes = [
+        // Types valid in all contexts
+        $commonTypes = [
             'string', 'int', 'float', 'bool', 'array', 'object',
-            'mixed', 'null', 'void', 'never', 'callable', 'iterable',
-            'true', 'false', 'self', 'static', 'parent',
+            'mixed', 'null', 'callable', 'iterable', 'true', 'false',
         ];
+
+        // Context-specific type validity:
+        // | Type   | Property | Parameter | Return |
+        // |--------|----------|-----------|--------|
+        // | void   | No       | No        | Yes    |
+        // | never  | No       | No        | Yes    |
+        // | self   | No       | Yes       | Yes    |
+        // | static | No       | No        | Yes    |
+        // | parent | No       | Yes       | Yes    |
+        $builtinTypes = match ($context) {
+            TypeHintContext::Property => $commonTypes,
+            TypeHintContext::Parameter => [...$commonTypes, 'self', 'parent'],
+            TypeHintContext::ReturnType => [...$commonTypes, 'void', 'never', 'self', 'static', 'parent'],
+        };
 
         foreach ($builtinTypes as $type) {
             if ($prefix === '' || str_starts_with($type, strtolower($prefix))) {
@@ -1144,11 +1179,10 @@ final class CompletionHandler implements HandlerInterface
         // Imported classes
         $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
 
-        // Indexed types (all are valid in type hints)
+        // Indexed types (traits are not valid type hints)
         $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
             SymbolKind::Class_,
             SymbolKind::Interface_,
-            SymbolKind::Trait_,
             SymbolKind::Enum_,
         ]));
 

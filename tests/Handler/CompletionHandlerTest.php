@@ -668,6 +668,310 @@ PHP;
         self::assertContains('string', $labels);
     }
 
+    public function testPropertyTypeNullableExcludesInvalidTypes(): void
+    {
+        // Nullable type context (after ?)
+        $code = '<?php trait MyTrait {} class Foo { private ?';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 45],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // Invalid for property types specifically
+        self::assertNotContains('void', $labels);
+        self::assertNotContains('never', $labels);
+        self::assertNotContains('self', $labels);
+        self::assertNotContains('static', $labels);
+        self::assertNotContains('parent', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testPropertyTypeUnionExcludesInvalidTypes(): void
+    {
+        // Union type context (after |)
+        $code = '<?php trait MyTrait {} class Foo { private int|';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 48],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // Invalid for property types
+        self::assertNotContains('void', $labels);
+        self::assertNotContains('never', $labels);
+        self::assertNotContains('self', $labels);
+        self::assertNotContains('static', $labels);
+        self::assertNotContains('parent', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testPropertyTypeIntersectionExcludesInvalidTypes(): void
+    {
+        // Intersection type context (after &)
+        $code = '<?php trait MyTrait {} class Foo { private Countable&';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 54],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // Invalid for property types
+        self::assertNotContains('void', $labels);
+        self::assertNotContains('never', $labels);
+        self::assertNotContains('self', $labels);
+        self::assertNotContains('static', $labels);
+        self::assertNotContains('parent', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testParameterTypeExcludesInvalidTypes(): void
+    {
+        $code = '<?php trait MyTrait {} function foo(';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 36],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // self and parent ARE valid for parameters
+        self::assertContains('self', $labels);
+        self::assertContains('parent', $labels);
+
+        // Invalid for parameter types specifically
+        self::assertNotContains('void', $labels);
+        self::assertNotContains('never', $labels);
+        self::assertNotContains('static', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testReturnTypeIncludesAllValidTypes(): void
+    {
+        $code = '<?php trait MyTrait {} function foo(): ';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 39],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // All special types valid for return
+        self::assertContains('void', $labels);
+        self::assertContains('never', $labels);
+        self::assertContains('self', $labels);
+        self::assertContains('static', $labels);
+        self::assertContains('parent', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testReturnTypeUnionIncludesAllReturnTypes(): void
+    {
+        $code = '<?php trait MyTrait {} function foo(): int|';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 44],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // All return-type-specific types should be available
+        self::assertContains('static', $labels);
+        self::assertContains('self', $labels);
+        self::assertContains('parent', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('never', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testReturnTypeIntersectionIncludesAllReturnTypes(): void
+    {
+        $code = '<?php trait MyTrait {} function foo(): Countable&';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 50],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // All return-type-specific types should be available
+        self::assertContains('static', $labels);
+        self::assertContains('self', $labels);
+        self::assertContains('parent', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('never', $labels);
+
+        // Traits are not valid type hints
+        self::assertNotContains('MyTrait', $labels);
+    }
+
+    public function testReturnTypeNullableIncludesAllValidTypes(): void
+    {
+        // Nullable return type context (after ?)
+        $code = '<?php function foo(): ?';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 23],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+        self::assertNotContainsNonTypeItems($labels);
+
+        // All return-type-specific types should be available
+        self::assertContains('static', $labels);
+        self::assertContains('self', $labels);
+        self::assertContains('parent', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('never', $labels);
+    }
+
+    public function testReturnTypeNullableWithSpaceIncludesAllValidTypes(): void
+    {
+        // Edge case: space after ? in nullable return type (cursor after space, before typing)
+        $code = '<?php function foo(): ? ';
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 24],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContainsCommonBuiltinTypes($labels);
+
+        // Should be return type context, not parameter
+        self::assertContains('static', $labels);
+        self::assertContains('void', $labels);
+        self::assertContains('never', $labels);
+    }
+
     public function testKeywordCompletions(): void
     {
         $code = '<?php fore';
@@ -1987,5 +2291,94 @@ PHP;
         self::assertIsArray($result);
         // Without type resolver, no completions for typed variables
         self::assertEmpty($result['items']);
+    }
+
+    /**
+     * Assert that type hint completions contain common valid builtin types.
+     *
+     * @param list<string> $labels
+     */
+    private static function assertContainsCommonBuiltinTypes(array $labels): void
+    {
+        self::assertContains('string', $labels);
+        self::assertContains('int', $labels);
+        self::assertContains('float', $labels);
+        self::assertContains('bool', $labels);
+        self::assertContains('array', $labels);
+        self::assertContains('object', $labels);
+        self::assertContains('mixed', $labels);
+        self::assertContains('iterable', $labels);
+        self::assertContains('callable', $labels);
+        self::assertContains('null', $labels);
+        self::assertContains('true', $labels);
+        self::assertContains('false', $labels);
+    }
+
+    /**
+     * Assert that completions do NOT contain items invalid in any type hint context.
+     *
+     * @param list<string> $labels
+     */
+    private static function assertNotContainsNonTypeItems(array $labels): void
+    {
+        // Functions should never appear in type hints
+        self::assertNotContains('strlen', $labels);
+        self::assertNotContains('array_map', $labels);
+        self::assertNotContains('str_replace', $labels);
+        self::assertNotContains('preg_match', $labels);
+        self::assertNotContains('json_encode', $labels);
+
+        // Control flow keywords
+        self::assertNotContains('if', $labels);
+        self::assertNotContains('else', $labels);
+        self::assertNotContains('foreach', $labels);
+        self::assertNotContains('while', $labels);
+        self::assertNotContains('for', $labels);
+        self::assertNotContains('switch', $labels);
+        self::assertNotContains('match', $labels);
+        self::assertNotContains('try', $labels);
+        self::assertNotContains('catch', $labels);
+        self::assertNotContains('return', $labels);
+        self::assertNotContains('throw', $labels);
+
+        // Declaration keywords
+        self::assertNotContains('class', $labels);
+        self::assertNotContains('interface', $labels);
+        self::assertNotContains('trait', $labels);
+        self::assertNotContains('enum', $labels);
+        self::assertNotContains('function', $labels);
+        self::assertNotContains('namespace', $labels);
+        self::assertNotContains('use', $labels);
+        self::assertNotContains('extends', $labels);
+        self::assertNotContains('implements', $labels);
+        self::assertNotContains('const', $labels);
+
+        // Visibility/modifier keywords
+        self::assertNotContains('public', $labels);
+        self::assertNotContains('private', $labels);
+        self::assertNotContains('protected', $labels);
+        self::assertNotContains('final', $labels);
+        self::assertNotContains('abstract', $labels);
+        self::assertNotContains('readonly', $labels);
+
+        // Other non-type keywords
+        self::assertNotContains('new', $labels);
+        self::assertNotContains('instanceof', $labels);
+        self::assertNotContains('clone', $labels);
+        self::assertNotContains('echo', $labels);
+        self::assertNotContains('print', $labels);
+        self::assertNotContains('include', $labels);
+        self::assertNotContains('require', $labels);
+        self::assertNotContains('global', $labels);
+        self::assertNotContains('unset', $labels);
+        self::assertNotContains('isset', $labels);
+        self::assertNotContains('empty', $labels);
+        self::assertNotContains('list', $labels);
+        self::assertNotContains('fn', $labels);
+        self::assertNotContains('yield', $labels);
+
+        // PHP constants
+        self::assertNotContains('PHP_VERSION', $labels);
+        self::assertNotContains('PHP_INT_MAX', $labels);
     }
 }
