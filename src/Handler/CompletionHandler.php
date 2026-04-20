@@ -81,7 +81,7 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return \Generator<Stmt>
      */
-    private function iterateTopLevelStatements(array $ast): \Generator
+    private static function iterateTopLevelStatements(array $ast): \Generator
     {
         foreach ($ast as $stmt) {
             if ($stmt instanceof Stmt\Namespace_) {
@@ -433,16 +433,7 @@ final class CompletionHandler implements HandlerInterface
         $existingLabels = array_column($existingItems, 'label');
         $items = [];
 
-        $allMethods = ReflectionMethod::IS_PUBLIC
-            | ReflectionMethod::IS_PROTECTED
-            | ReflectionMethod::IS_PRIVATE;
-        $methodFlags = match ($visibility) {
-            VisibilityFilter::All => $allMethods,
-            VisibilityFilter::PublicOnly => ReflectionMethod::IS_PUBLIC,
-            VisibilityFilter::PublicProtected => ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED,
-        };
-
-        foreach ($reflection->getMethods($methodFlags) as $method) {
+        foreach ($reflection->getMethods($visibility->getMethodFlags()) as $method) {
             if (!$memberFilter->matches($method->isStatic())) {
                 continue;
             }
@@ -456,16 +447,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         if ($includeProperties) {
-            $allProps = ReflectionProperty::IS_PUBLIC
-                | ReflectionProperty::IS_PROTECTED
-                | ReflectionProperty::IS_PRIVATE;
-            $propertyFlags = match ($visibility) {
-                VisibilityFilter::All => $allProps,
-                VisibilityFilter::PublicOnly => ReflectionProperty::IS_PUBLIC,
-                VisibilityFilter::PublicProtected => ReflectionProperty::IS_PUBLIC | ReflectionProperty::IS_PROTECTED,
-            };
-
-            foreach ($reflection->getProperties($propertyFlags) as $prop) {
+            foreach ($reflection->getProperties($visibility->getPropertyFlags()) as $prop) {
                 if (!$memberFilter->matches($prop->isStatic())) {
                     continue;
                 }
@@ -480,7 +462,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         if ($includeConstants) {
-            foreach ($reflection->getReflectionConstants() as $const) {
+            foreach ($reflection->getReflectionConstants($visibility->getConstantFlags()) as $const) {
                 $name = $const->getName();
                 if (in_array($name, $existingLabels, true)) {
                     continue;
@@ -622,7 +604,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function findFirstClass(array $ast): ?Stmt\Class_
     {
-        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
+        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
             if ($stmt instanceof Stmt\Class_) {
                 return $stmt;
             }
@@ -869,7 +851,7 @@ final class CompletionHandler implements HandlerInterface
     {
         $imports = [];
 
-        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
+        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
             $this->extractImportsFromUse($stmt, $imports);
         }
 
