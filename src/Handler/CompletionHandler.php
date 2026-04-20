@@ -831,31 +831,8 @@ final class CompletionHandler implements HandlerInterface
      */
     private function resolveClassName(string $shortName, array $ast): string
     {
-        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
-            $resolved = $this->checkUseStatement($stmt, $shortName);
-            if ($resolved !== null) {
-                return $resolved;
-            }
-        }
-
-        // Not found in imports, return as-is (might be FQCN or in same namespace)
-        return $shortName;
-    }
-
-    private function checkUseStatement(Stmt $stmt, string $shortName): ?string
-    {
-        if (!$stmt instanceof Stmt\Use_) {
-            return null;
-        }
-
-        foreach ($stmt->uses as $use) {
-            $alias = $use->alias?->toString() ?? $use->name->getLast();
-            if ($alias === $shortName) {
-                return $use->name->toString();
-            }
-        }
-
-        return null;
+        $imports = $this->getImports($ast);
+        return $imports[$shortName] ?? $shortName;
     }
 
     /**
