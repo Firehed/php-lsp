@@ -311,7 +311,8 @@ final class CompletionHandler implements HandlerInterface
 
         if ($parentClassNode !== null) {
             foreach ($parentClassNode->stmts as $stmt) {
-                if ($stmt instanceof Stmt\ClassMethod
+                if (
+                    $stmt instanceof Stmt\ClassMethod
                     && VisibilityFilter::isMethodAccessible($stmt, AccessContext::Subclass)
                 ) {
                     $name = $stmt->name->toString();
@@ -406,7 +407,8 @@ final class CompletionHandler implements HandlerInterface
 
         if ($classNode !== null) {
             foreach ($classNode->stmts as $stmt) {
-                if ($stmt instanceof Stmt\ClassMethod
+                if (
+                    $stmt instanceof Stmt\ClassMethod
                     && !$stmt->isStatic()
                     && VisibilityFilter::isMethodAccessible($stmt, AccessContext::External)
                 ) {
@@ -416,7 +418,8 @@ final class CompletionHandler implements HandlerInterface
                     }
                 }
 
-                if ($stmt instanceof Stmt\Property
+                if (
+                    $stmt instanceof Stmt\Property
                     && !$stmt->isStatic()
                     && VisibilityFilter::isPropertyAccessible($stmt, AccessContext::External)
                 ) {
