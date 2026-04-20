@@ -201,7 +201,7 @@ final class CompletionHandler implements HandlerInterface
                     return [];
                 }
                 $prefix = $matches[1];
-                return $this->getStaticCompletions($className, $prefix, $ast);
+                return $this->getStaticCompletions($className, $prefix, $ast, $line);
             }
             return [];
         }
@@ -216,7 +216,7 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $className = $matches[1];
             $prefix = $matches[2];
-            return $this->getStaticCompletions($className, $prefix, $ast);
+            return $this->getStaticCompletions($className, $prefix, $ast, $line);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
@@ -550,20 +550,87 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
      */
-    private function getStaticCompletions(string $className, string $prefix, array $ast): array
+    private function getStaticCompletions(string $className, string $prefix, array $ast, int $line): array
     {
         // Resolve short name to FQCN using imports
         $resolvedClassName = $this->resolveClassName($className, $ast);
 
+        $visibility = $this->determineVisibilityForClass($resolvedClassName, $ast, $line);
+
         return $this->getMemberCompletions(
             $resolvedClassName,
             $ast,
-            VisibilityFilter::All,
+            $visibility,
             MemberFilter::Static,
             $prefix,
             includeConstants: true,
             includeEnumCases: true,
         );
+    }
+
+    /**
+     * Determine the appropriate visibility filter based on the relationship
+     * between the enclosing class and the target class.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function determineVisibilityForClass(string $targetClassName, array $ast, int $line): VisibilityFilter
+    {
+        $enclosingClass = $this->findClassAtLine($ast, $line);
+        if ($enclosingClass === null) {
+            return VisibilityFilter::PublicOnly;
+        }
+
+        $enclosingClassName = $enclosingClass->namespacedName?->toString()
+            ?? $enclosingClass->name?->toString();
+
+        if ($enclosingClassName === null) {
+            return VisibilityFilter::PublicOnly;
+        }
+
+        // Same class - can access all members
+        if ($enclosingClassName === $targetClassName) {
+            return VisibilityFilter::All;
+        }
+
+        // Check if enclosing class extends target class (AST first, then reflection)
+        if ($this->isSubclassOf($enclosingClass, $targetClassName)) {
+            return VisibilityFilter::PublicProtected;
+        }
+
+        return VisibilityFilter::PublicOnly;
+    }
+
+    private function isSubclassOf(Stmt\Class_ $childClass, string $parentClass): bool
+    {
+        // Check extends clause in AST
+        if ($childClass->extends !== null) {
+            $resolvedName = $childClass->extends->getAttribute('resolvedName');
+            $extendsName = $resolvedName instanceof Name
+                ? $resolvedName->toString()
+                : $childClass->extends->toString();
+            if ($extendsName === $parentClass) {
+                return true;
+            }
+        }
+
+        // Try reflection for deeper inheritance
+        $childClassName = $childClass->namespacedName?->toString()
+            ?? $childClass->name?->toString();
+        if ($childClassName === null) {
+            return false;
+        }
+
+        if (class_exists($childClassName, false) && class_exists($parentClass, false)) {
+            return is_subclass_of($childClassName, $parentClass);
+        }
+
+        $childReflection = ReflectionHelper::getClass($childClassName);
+        if ($childReflection === null) {
+            return false;
+        }
+
+        return $childReflection->isSubclassOf($parentClass);
     }
 
     /**
