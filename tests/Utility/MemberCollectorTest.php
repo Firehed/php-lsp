@@ -142,6 +142,31 @@ PHP;
         self::assertNotContains('instanceProp', $propertyNames);
     }
 
+    public function testCollectsBothStaticAndInstanceMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Mixed
+{
+    public static int $staticProp = 0;
+    public int $instanceProp;
+
+    public static function staticMethod(): void {}
+    public function instanceMethod(): void {}
+}
+PHP;
+        $classNode = self::findClassInCode($code, 'Mixed');
+        $members = MemberCollector::collect($classNode, VisibilityFilter::All, MemberFilter::Both);
+
+        $methodNames = array_column($members['methods'], 'name');
+        $propertyNames = array_column($members['properties'], 'name');
+
+        self::assertContains('staticMethod', $methodNames);
+        self::assertContains('instanceMethod', $methodNames);
+        self::assertContains('staticProp', $propertyNames);
+        self::assertContains('instanceProp', $propertyNames);
+    }
+
     public function testCollectsConstants(): void
     {
         $code = <<<'PHP'

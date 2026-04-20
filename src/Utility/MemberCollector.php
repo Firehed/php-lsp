@@ -88,11 +88,7 @@ final class MemberCollector
             return false;
         }
 
-        return match ($memberFilter) {
-            MemberFilter::Instance => !$stmt->isStatic(),
-            MemberFilter::Static => $stmt->isStatic(),
-            MemberFilter::Both => true,
-        };
+        return $memberFilter->matches($stmt->isStatic());
     }
 
     private static function matchesVisibility(
