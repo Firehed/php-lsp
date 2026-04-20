@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\MemberFinder;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\TypeFormatter;
@@ -383,13 +384,11 @@ final class HoverHandler implements HandlerInterface
         array $ast,
         TextDocument $document,
     ): ?string {
-        // Try to find in AST first (current file or via Composer)
-        $methodNode = $this->findMethodInClass($className, $methodName, $ast);
+        $methodNode = MemberFinder::findMethod($className, $methodName, $ast, $this->classLocator, $this->parser);
         if ($methodNode !== null) {
             return $this->formatMethodHover($methodNode);
         }
 
-        // Fall back to reflection for built-in or autoloaded classes
         return $this->getReflectionMethodHover($className, $methodName);
     }
 
@@ -402,92 +401,12 @@ final class HoverHandler implements HandlerInterface
         array $ast,
         TextDocument $document,
     ): ?string {
-        // Try to find in AST first
-        $propertyNode = $this->findPropertyInClass($className, $propertyName, $ast);
+        $propertyNode = MemberFinder::findProperty($className, $propertyName, $ast, $this->classLocator, $this->parser);
         if ($propertyNode !== null) {
             return $this->formatPropertyHover($propertyNode, $propertyName);
         }
 
-        // Fall back to reflection
         return $this->getReflectionPropertyHover($className, $propertyName);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findMethodInClass(
-        string $className,
-        string $methodName,
-        array $ast,
-    ): ?Stmt\ClassMethod {
-        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
-        if ($classNode === null) {
-            return null;
-        }
-
-        foreach ($classNode->stmts as $stmt) {
-            if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toString() === $methodName) {
-                return $stmt;
-            }
-        }
-
-        // Check parent class (only non-private members are inherited)
-        $parentName = $this->getParentClassName($classNode);
-        if ($parentName !== null) {
-            $parentMethod = $this->findMethodInClass($parentName, $methodName, $ast);
-            if ($parentMethod !== null && !$parentMethod->isPrivate()) {
-                return $parentMethod;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findPropertyInClass(
-        string $className,
-        string $propertyName,
-        array $ast,
-    ): ?Stmt\Property {
-        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
-        if ($classNode === null) {
-            return null;
-        }
-
-        foreach ($classNode->stmts as $stmt) {
-            if ($stmt instanceof Stmt\Property) {
-                foreach ($stmt->props as $prop) {
-                    if ($prop->name->toString() === $propertyName) {
-                        return $stmt;
-                    }
-                }
-            }
-        }
-
-        // Check parent class (only non-private members are inherited)
-        $parentName = $this->getParentClassName($classNode);
-        if ($parentName !== null) {
-            $parentProperty = $this->findPropertyInClass($parentName, $propertyName, $ast);
-            if ($parentProperty !== null && !$parentProperty->isPrivate()) {
-                return $parentProperty;
-            }
-        }
-
-        return null;
-    }
-
-    private function getParentClassName(
-        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $classNode,
-    ): ?string {
-        if (!$classNode instanceof Stmt\Class_ || $classNode->extends === null) {
-            return null;
-        }
-        $resolvedName = $classNode->extends->getAttribute('resolvedName');
-        return $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $classNode->extends->toString();
     }
 
     private function formatMethodHover(Stmt\ClassMethod $method): string
