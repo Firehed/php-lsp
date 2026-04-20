@@ -1218,7 +1218,7 @@ final class CompletionHandler implements HandlerInterface
         // Collect parameters
         foreach ($scope->params as $param) {
             if ($param->var instanceof Variable && is_string($param->var->name)) {
-                $variables[$param->var->name] = $this->formatParamType($param->type);
+                $variables[$param->var->name] = TypeFormatter::formatNode($param->type) ?? 'mixed';
             }
         }
 
@@ -1293,26 +1293,5 @@ final class CompletionHandler implements HandlerInterface
         $traverser->traverse($stmts);
 
         return $collector->variables;
-    }
-
-    private function formatParamType(?Node $type): string
-    {
-        if ($type === null) {
-            return 'mixed';
-        }
-        if ($type instanceof Node\Identifier) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\Name) {
-            return $type->toString();
-        }
-        if ($type instanceof Node\NullableType) {
-            return '?' . $this->formatParamType($type->type);
-        }
-        if ($type instanceof Node\UnionType) {
-            $types = array_map(fn($t) => $this->formatParamType($t), $type->types);
-            return implode('|', $types);
-        }
-        return 'mixed';
     }
 }
