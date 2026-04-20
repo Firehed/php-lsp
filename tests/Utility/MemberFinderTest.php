@@ -235,4 +235,117 @@ PHP;
         self::assertNotNull($result);
         self::assertSame('getName', $result->name->toString());
     }
+
+    public function testFindPrivateMethodInSameClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    private function privateMethod(): void {}
+}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findMethod('MyClass', 'privateMethod', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('privateMethod', $result->name->toString());
+    }
+
+    public function testFindPrivatePropertyInSameClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    private string $privateProperty;
+}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findProperty('MyClass', 'privateProperty', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('privateProperty', $result->props[0]->name->toString());
+    }
+
+    public function testFindPropertyInTrait(): void
+    {
+        $code = <<<'PHP'
+<?php
+trait MyTrait {
+    public string $traitProperty;
+}
+class MyClass {
+    use MyTrait;
+}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findProperty('MyClass', 'traitProperty', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('traitProperty', $result->props[0]->name->toString());
+    }
+
+    public function testFindPropertyIncludesProtectedFromParent(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass {
+    protected string $protectedProperty;
+}
+class ChildClass extends ParentClass {}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findProperty('ChildClass', 'protectedProperty', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('protectedProperty', $result->props[0]->name->toString());
+    }
+
+    public function testFindMethodInInterface(): void
+    {
+        $code = <<<'PHP'
+<?php
+interface MyInterface {
+    public function interfaceMethod(): void;
+}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findMethod('MyInterface', 'interfaceMethod', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('interfaceMethod', $result->name->toString());
+    }
+
+    public function testFindMethodInGrandparent(): void
+    {
+        $code = <<<'PHP'
+<?php
+class GrandparentClass {
+    public function grandparentMethod(): void {}
+}
+class ParentClass extends GrandparentClass {}
+class ChildClass extends ParentClass {}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findMethod('ChildClass', 'grandparentMethod', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('grandparentMethod', $result->name->toString());
+    }
+
+    public function testFindPropertyInGrandparent(): void
+    {
+        $code = <<<'PHP'
+<?php
+class GrandparentClass {
+    public string $grandparentProperty;
+}
+class ParentClass extends GrandparentClass {}
+class ChildClass extends ParentClass {}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findProperty('ChildClass', 'grandparentProperty', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('grandparentProperty', $result->props[0]->name->toString());
+    }
 }
