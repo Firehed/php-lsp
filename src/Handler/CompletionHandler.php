@@ -14,10 +14,12 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
+use Firehed\PhpLsp\Utility\AccessContext;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\TypeFormatter;
+use Firehed\PhpLsp\Utility\VisibilityFilter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
@@ -309,11 +311,9 @@ final class CompletionHandler implements HandlerInterface
 
         if ($parentClassNode !== null) {
             foreach ($parentClassNode->stmts as $stmt) {
-                // Methods (public and protected, both static and non-static)
-                if ($stmt instanceof Stmt\ClassMethod) {
-                    if ($stmt->isPrivate()) {
-                        continue;
-                    }
+                if ($stmt instanceof Stmt\ClassMethod
+                    && VisibilityFilter::isMethodAccessible($stmt, AccessContext::Subclass)
+                ) {
                     $name = $stmt->name->toString();
                     if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
                         $items[] = $this->formatMethodCompletion($stmt);
@@ -406,16 +406,20 @@ final class CompletionHandler implements HandlerInterface
 
         if ($classNode !== null) {
             foreach ($classNode->stmts as $stmt) {
-                // Public methods (non-static)
-                if ($stmt instanceof Stmt\ClassMethod && !$stmt->isStatic() && $stmt->isPublic()) {
+                if ($stmt instanceof Stmt\ClassMethod
+                    && !$stmt->isStatic()
+                    && VisibilityFilter::isMethodAccessible($stmt, AccessContext::External)
+                ) {
                     $name = $stmt->name->toString();
                     if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
                         $items[] = $this->formatMethodCompletion($stmt);
                     }
                 }
 
-                // Public properties (non-static)
-                if ($stmt instanceof Stmt\Property && !$stmt->isStatic() && $stmt->isPublic()) {
+                if ($stmt instanceof Stmt\Property
+                    && !$stmt->isStatic()
+                    && VisibilityFilter::isPropertyAccessible($stmt, AccessContext::External)
+                ) {
                     foreach ($stmt->props as $prop) {
                         $name = $prop->name->toString();
                         if ($prefix === '' || str_starts_with(strtolower($name), strtolower($prefix))) {
