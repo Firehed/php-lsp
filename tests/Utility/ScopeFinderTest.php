@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Tests\Utility;
 
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
+use PhpParser\Node\Expr\ArrowFunction;
+use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -49,6 +51,56 @@ PHP;
         $scope = ScopeFinder::findEnclosingScope($varNode);
 
         self::assertNull($scope);
+    }
+
+    public function testFindEnclosingScopeReturnsFunction(): void
+    {
+        $code = <<<'PHP'
+<?php
+function myFunction(): void {
+    $var = 1;
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $varNode = self::findVariableNode('var', $ast);
+
+        self::assertNotNull($varNode);
+        $scope = ScopeFinder::findEnclosingScope($varNode);
+
+        self::assertInstanceOf(Stmt\Function_::class, $scope);
+        self::assertSame('myFunction', $scope->name->toString());
+    }
+
+    public function testFindEnclosingScopeReturnsClosure(): void
+    {
+        $code = <<<'PHP'
+<?php
+$fn = function () {
+    $var = 1;
+};
+PHP;
+        $ast = self::parseWithParents($code);
+        $varNode = self::findVariableNode('var', $ast);
+
+        self::assertNotNull($varNode);
+        $scope = ScopeFinder::findEnclosingScope($varNode);
+
+        self::assertInstanceOf(Closure::class, $scope);
+    }
+
+    public function testFindEnclosingScopeReturnsArrowFunction(): void
+    {
+        $code = <<<'PHP'
+<?php
+$fn = fn() => $var = 1;
+PHP;
+        $ast = self::parseWithParents($code);
+        $varNode = self::findVariableNode('var', $ast);
+
+        self::assertNotNull($varNode);
+        $scope = ScopeFinder::findEnclosingScope($varNode);
+
+        self::assertInstanceOf(ArrowFunction::class, $scope);
     }
 
     public function testFindEnclosingClassNodeReturnsClass(): void
