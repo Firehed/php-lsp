@@ -2381,4 +2381,568 @@ PHP;
         self::assertNotContains('PHP_VERSION', $labels);
         self::assertNotContains('PHP_INT_MAX', $labels);
     }
+
+    // ==================== Constructor Property Promotion Tests ====================
+
+    public function testThisCompletionIncludesPromotedProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private string $name,
+        private int $age,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name', $labels);
+        self::assertContains('age', $labels);
+        self::assertContains('greet', $labels);
+    }
+
+    public function testThisCompletionIncludesMixedPromotedAndRegularProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    private string $email;
+
+    public function __construct(
+        private string $name,
+        private int $age,
+    ) {
+        $this->email = 'test@example.com';
+    }
+
+    public function info(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Regular property
+        self::assertContains('email', $labels);
+        // Promoted properties
+        self::assertContains('name', $labels);
+        self::assertContains('age', $labels);
+    }
+
+    public function testThisCompletionWithPrefixFiltersPromotedProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private string $name,
+        private string $nickname,
+        private int $age,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->na
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 17],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name', $labels);
+        self::assertContains('nickname', $labels);
+        self::assertNotContains('age', $labels);
+    }
+
+    public function testThisCompletionIncludesAllVisibilityPromotedProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        public string $publicName,
+        protected string $protectedName,
+        private string $privateName,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('publicName', $labels);
+        self::assertContains('protectedName', $labels);
+        self::assertContains('privateName', $labels);
+    }
+
+    public function testThisCompletionIncludesReadonlyPromotedProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private readonly string $name,
+        private readonly int $age,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name', $labels);
+        self::assertContains('age', $labels);
+    }
+
+    public function testPromotedPropertyCompletionShowsTypeInDetail(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private string $name,
+        private int $age,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $items = $result['items'];
+
+        $nameItem = null;
+        $ageItem = null;
+        foreach ($items as $item) {
+            if ($item['label'] === 'name') {
+                $nameItem = $item;
+            }
+            if ($item['label'] === 'age') {
+                $ageItem = $item;
+            }
+        }
+
+        self::assertNotNull($nameItem, 'name property should be in completions');
+        self::assertNotNull($ageItem, 'age property should be in completions');
+        self::assertStringContainsString('string', $nameItem['detail'] ?? '');
+        self::assertStringContainsString('int', $ageItem['detail'] ?? '');
+    }
+
+    public function testExternalAccessShowsOnlyPublicPromotedProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        public string $publicName,
+        protected string $protectedName,
+        private string $privateName,
+    ) {}
+}
+
+function foo(User $user): void
+{
+    $user->
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            null,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 11],
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Public promoted property should be included
+        self::assertContains('publicName', $labels);
+        // Protected and private promoted properties should be excluded
+        self::assertNotContains('protectedName', $labels);
+        self::assertNotContains('privateName', $labels);
+    }
+
+    public function testStaticContextExcludesPromotedProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public const STATUS_ACTIVE = 'active';
+
+    public function __construct(
+        private string $name,
+        private int $age,
+    ) {}
+
+    public function greet(): void
+    {
+        self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Constant should be included
+        self::assertContains('STATUS_ACTIVE', $labels);
+        // Promoted properties should NOT be in static context
+        self::assertNotContains('name', $labels);
+        self::assertNotContains('age', $labels);
+    }
+
+    public function testPromotedPropertiesNotDuplicatedWithRegularProperties(): void
+    {
+        // Edge case: someone might define both a promoted property and a regular property
+        // with the same name (invalid PHP, but we should handle gracefully)
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private string $name,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Count occurrences of 'name' - should only appear once
+        $nameCount = array_count_values($labels)['name'] ?? 0;
+        self::assertSame(1, $nameCount, 'Promoted property should appear exactly once');
+    }
+
+    public function testPromotedPropertyWithDefaultValue(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private string $name = 'Anonymous',
+        private int $age = 0,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name', $labels);
+        self::assertContains('age', $labels);
+    }
+
+    public function testNonPromotedConstructorParametersNotIncludedAsProperties(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    private string $fullName;
+
+    public function __construct(
+        string $firstName,
+        string $lastName,
+        private int $age,
+    ) {
+        $this->fullName = $firstName . ' ' . $lastName;
+    }
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Regular property should be included
+        self::assertContains('fullName', $labels);
+        // Promoted property should be included
+        self::assertContains('age', $labels);
+        // Non-promoted parameters should NOT be included as properties
+        self::assertNotContains('firstName', $labels);
+        self::assertNotContains('lastName', $labels);
+    }
+
+    public function testPromotedPropertyWithNullableType(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private ?string $nickname,
+        private ?int $age = null,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('nickname', $labels);
+        self::assertContains('age', $labels);
+
+        // Check type info includes nullable marker
+        $items = $result['items'];
+        $nicknameItem = null;
+        foreach ($items as $item) {
+            if ($item['label'] === 'nickname') {
+                $nicknameItem = $item;
+                break;
+            }
+        }
+        self::assertNotNull($nicknameItem);
+        self::assertStringContainsString('?string', $nicknameItem['detail'] ?? '');
+    }
+
+    public function testPromotedPropertyWithUnionType(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function __construct(
+        private string|int $id,
+    ) {}
+
+    public function greet(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('id', $labels);
+
+        // Check type info includes union type
+        $items = $result['items'];
+        $idItem = null;
+        foreach ($items as $item) {
+            if ($item['label'] === 'id') {
+                $idItem = $item;
+                break;
+            }
+        }
+        self::assertNotNull($idItem);
+        $detail = $idItem['detail'] ?? '';
+        self::assertTrue(
+            str_contains($detail, 'string|int') || str_contains($detail, 'int|string'),
+            "Expected detail to contain 'string|int' or 'int|string', got: $detail"
+        );
+    }
 }
