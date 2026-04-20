@@ -50,6 +50,32 @@ final class CompletionHandler implements HandlerInterface
         return $prefix === '' || str_starts_with(strtolower($name), strtolower($prefix));
     }
 
+    public static function nodeContainsLine(Node $node, int $line): bool
+    {
+        $startLine = $node->getStartLine();
+        $endLine = $node->getEndLine();
+
+        return $startLine !== -1
+            && $endLine !== -1
+            && $line >= $startLine - 1
+            && $line <= $endLine - 1;
+    }
+
+    /**
+     * @param array{label: string, kind: int, detail?: string, documentation?: string} $item
+     * @return array{label: string, kind: int, detail?: string, documentation?: string}
+     */
+    private static function withDocumentation(array $item, string|false|null $docText): array
+    {
+        if ($docText !== null && $docText !== false && $docText !== '') {
+            $doc = DocblockParser::extractDescription($docText);
+            if ($doc !== '') {
+                $item['documentation'] = $doc;
+            }
+        }
+        return $item;
+    }
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
@@ -621,17 +647,8 @@ final class CompletionHandler implements HandlerInterface
 
             public function enterNode(Node $node): ?int
             {
-                if ($node instanceof Stmt\Class_) {
-                    $startLine = $node->getStartLine();
-                    $endLine = $node->getEndLine();
-
-                    if (
-                        $startLine !== -1 && $endLine !== -1
-                        && $this->line >= $startLine - 1
-                        && $this->line <= $endLine - 1
-                    ) {
-                        $this->found = $node;
-                    }
+                if ($node instanceof Stmt\Class_ && CompletionHandler::nodeContainsLine($node, $this->line)) {
+                    $this->found = $node;
                 }
                 return null;
             }
@@ -659,21 +676,11 @@ final class CompletionHandler implements HandlerInterface
     {
         $type = $property->type !== null ? TypeFormatter::formatNode($property->type) : 'mixed';
 
-        $item = [
+        return self::withDocumentation([
             'label' => $name,
             'kind' => self::KIND_PROPERTY,
             'detail' => $type . ' $' . $name,
-        ];
-
-        $docComment = $property->getDocComment();
-        if ($docComment !== null) {
-            $doc = DocblockParser::extractDescription($docComment->getText());
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
-
-        return $item;
+        ], $property->getDocComment()?->getText());
     }
 
     /**
@@ -681,21 +688,11 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatConstantCompletion(Stmt\ClassConst $const, string $name): array
     {
-        $item = [
+        return self::withDocumentation([
             'label' => $name,
             'kind' => self::KIND_CONSTANT,
             'detail' => 'const ' . $name,
-        ];
-
-        $docComment = $const->getDocComment();
-        if ($docComment !== null) {
-            $doc = DocblockParser::extractDescription($docComment->getText());
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
-
-        return $item;
+        ], $const->getDocComment()?->getText());
     }
 
     /**
@@ -793,21 +790,11 @@ final class CompletionHandler implements HandlerInterface
             $detail .= ': ' . TypeFormatter::formatNode($callable->returnType);
         }
 
-        $item = [
+        return self::withDocumentation([
             'label' => $callable->name->toString(),
             'kind' => $kind,
             'detail' => $detail,
-        ];
-
-        $docComment = $callable->getDocComment();
-        if ($docComment !== null) {
-            $doc = DocblockParser::extractDescription($docComment->getText());
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
-
-        return $item;
+        ], $callable->getDocComment()?->getText());
     }
 
     /**
@@ -832,21 +819,11 @@ final class CompletionHandler implements HandlerInterface
             $detail .= ': ' . TypeFormatter::formatReflection($returnType);
         }
 
-        $item = [
+        return self::withDocumentation([
             'label' => $method->getName(),
             'kind' => self::KIND_METHOD,
             'detail' => $detail,
-        ];
-
-        $docComment = $method->getDocComment();
-        if ($docComment !== false) {
-            $doc = DocblockParser::extractDescription($docComment);
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
-
-        return $item;
+        ], $method->getDocComment());
     }
 
     /**
@@ -857,21 +834,11 @@ final class CompletionHandler implements HandlerInterface
         $type = $prop->getType();
         $typeStr = $type !== null ? TypeFormatter::formatReflection($type) : 'mixed';
 
-        $item = [
+        return self::withDocumentation([
             'label' => $prop->getName(),
             'kind' => self::KIND_PROPERTY,
             'detail' => $typeStr . ' $' . $prop->getName(),
-        ];
-
-        $docComment = $prop->getDocComment();
-        if ($docComment !== false) {
-            $doc = DocblockParser::extractDescription($docComment);
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
-
-        return $item;
+        ], $prop->getDocComment());
     }
 
     /**
@@ -1251,23 +1218,13 @@ final class CompletionHandler implements HandlerInterface
             public function enterNode(Node $node): ?int
             {
                 if (
-                    $node instanceof Stmt\Function_
-                    || $node instanceof Stmt\ClassMethod
-                    || $node instanceof Node\Expr\Closure
-                    || $node instanceof Node\Expr\ArrowFunction
+                    ($node instanceof Stmt\Function_
+                        || $node instanceof Stmt\ClassMethod
+                        || $node instanceof Node\Expr\Closure
+                        || $node instanceof Node\Expr\ArrowFunction)
+                    && CompletionHandler::nodeContainsLine($node, $this->cursorLine)
                 ) {
-                    $startLine = $node->getStartLine();
-                    $endLine = $node->getEndLine();
-
-                    // Check if cursor is within this scope (1-based lines from parser)
-                    if (
-                        $startLine !== -1 && $endLine !== -1
-                        && $this->cursorLine >= $startLine - 1
-                        && $this->cursorLine <= $endLine - 1
-                    ) {
-                        // Keep the innermost (last found) scope
-                        $this->found = $node;
-                    }
+                    $this->found = $node;
                 }
                 return null;
             }
