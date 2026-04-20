@@ -443,12 +443,7 @@ final class CompletionHandler implements HandlerInterface
         };
 
         foreach ($reflection->getMethods($methodFlags) as $method) {
-            $matchesStatic = match ($memberFilter) {
-                MemberFilter::Instance => !$method->isStatic(),
-                MemberFilter::Static => $method->isStatic(),
-                MemberFilter::Both => true,
-            };
-            if (!$matchesStatic) {
+            if (!$memberFilter->matches($method->isStatic())) {
                 continue;
             }
             $name = $method->getName();
@@ -471,12 +466,7 @@ final class CompletionHandler implements HandlerInterface
             };
 
             foreach ($reflection->getProperties($propertyFlags) as $prop) {
-                $matchesStatic = match ($memberFilter) {
-                    MemberFilter::Instance => !$prop->isStatic(),
-                    MemberFilter::Static => $prop->isStatic(),
-                    MemberFilter::Both => true,
-                };
-                if (!$matchesStatic) {
+                if (!$memberFilter->matches($prop->isStatic())) {
                     continue;
                 }
                 $name = $prop->getName();
