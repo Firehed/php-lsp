@@ -348,4 +348,27 @@ PHP;
         self::assertNotNull($result);
         self::assertSame('grandparentProperty', $result->props[0]->name->toString());
     }
+
+    public function testFindMethodInEnum(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Status: string {
+    case Active = 'active';
+    case Inactive = 'inactive';
+
+    public function label(): string {
+        return match($this) {
+            self::Active => 'Active',
+            self::Inactive => 'Inactive',
+        };
+    }
+}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findMethod('Status', 'label', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('label', $result->name->toString());
+    }
 }
