@@ -9,6 +9,8 @@ use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
 
 /**
  * Utility for finding enclosing scopes in an AST.
@@ -79,5 +81,49 @@ final class ScopeFinder
             return $namespacedName->toString();
         }
         return $classNode->name->toString();
+    }
+
+    /**
+     * Check if a node's line range contains the given line (0-indexed).
+     */
+    public static function nodeContainsLine(Node $node, int $line): bool
+    {
+        $startLine = $node->getStartLine();
+        $endLine = $node->getEndLine();
+
+        return $startLine !== -1
+            && $endLine !== -1
+            && $line >= $startLine - 1
+            && $line <= $endLine - 1;
+    }
+
+    /**
+     * Find the class containing the given line (0-indexed).
+     *
+     * @param array<Stmt> $ast
+     */
+    public static function findClassAtLine(array $ast, int $line): ?Stmt\Class_
+    {
+        $visitor = new class ($line) extends NodeVisitorAbstract {
+            public ?Stmt\Class_ $found = null;
+
+            public function __construct(private readonly int $line)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Stmt\Class_ && ScopeFinder::nodeContainsLine($node, $this->line)) {
+                    $this->found = $node;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
     }
 }

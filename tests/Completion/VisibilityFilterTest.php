@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\VisibilityFilter;
+use Firehed\PhpLsp\Tests\Utility\AstTestHelperTrait;
+use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -15,6 +17,8 @@ use ReflectionProperty;
 #[CoversClass(VisibilityFilter::class)]
 class VisibilityFilterTest extends TestCase
 {
+    use AstTestHelperTrait;
+
     /**
      * @return array<string, array{VisibilityFilter, int}>
      * @codeCoverageIgnore
@@ -99,5 +103,39 @@ class VisibilityFilterTest extends TestCase
     public function testGetConstantFlags(VisibilityFilter $filter, int $expected): void
     {
         self::assertSame($expected, $filter->getConstantFlags());
+    }
+
+    public function testForClassAccessReturnsPublicOnlyWhenNoEnclosingClass(): void
+    {
+        self::assertSame(VisibilityFilter::PublicOnly, VisibilityFilter::forClassAccess(null, 'Target'));
+    }
+
+    public function testForClassAccessReturnsAllForSameClass(): void
+    {
+        $class = $this->parseClass('<?php class MyClass {}', 'MyClass');
+        self::assertSame(VisibilityFilter::All, VisibilityFilter::forClassAccess($class, 'MyClass'));
+    }
+
+    public function testForClassAccessReturnsPublicProtectedForDirectSubclass(): void
+    {
+        $class = $this->parseClass('<?php class Child extends Parent_ {}', 'Child');
+        self::assertSame(VisibilityFilter::PublicProtected, VisibilityFilter::forClassAccess($class, 'Parent_'));
+    }
+
+    public function testForClassAccessReturnsPublicOnlyForUnrelatedClass(): void
+    {
+        $class = $this->parseClass('<?php class Other {}', 'Other');
+        self::assertSame(VisibilityFilter::PublicOnly, VisibilityFilter::forClassAccess($class, 'Target'));
+    }
+
+    private function parseClass(string $code, string $className): ?Stmt\Class_
+    {
+        $ast = self::parseWithParents($code);
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Class_ && $stmt->name?->toString() === $className) {
+                return $stmt;
+            }
+        }
+        return null;
     }
 }

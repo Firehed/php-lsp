@@ -290,4 +290,72 @@ PHP;
 
         self::assertNull($className);
     }
+
+    public function testNodeContainsLineReturnsTrueWhenLineInRange(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    public function test(): void {}
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $classNode = $ast[0];
+        self::assertInstanceOf(Stmt\Class_::class, $classNode);
+
+        // Line 1 (0-indexed) is inside the class (lines 2-4 in 1-indexed)
+        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, 1));
+        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, 2));
+        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, 3));
+    }
+
+    public function testNodeContainsLineReturnsFalseWhenLineOutsideRange(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $classNode = $ast[0];
+        self::assertInstanceOf(Stmt\Class_::class, $classNode);
+
+        // Line 0 is <?php, before the class
+        self::assertFalse(ScopeFinder::nodeContainsLine($classNode, 0));
+        // Line 10 is well after the class ends
+        self::assertFalse(ScopeFinder::nodeContainsLine($classNode, 10));
+    }
+
+    public function testFindClassAtLineReturnsClassContainingLine(): void
+    {
+        $code = <<<'PHP'
+<?php
+class First {}
+
+class Second {
+    public function test(): void {}
+}
+PHP;
+        $ast = self::parseWithParents($code);
+
+        // Line 4 (0-indexed) is inside Second class
+        $class = ScopeFinder::findClassAtLine($ast, 4);
+        self::assertNotNull($class);
+        self::assertSame('Second', $class->name?->toString());
+    }
+
+    public function testFindClassAtLineReturnsNullWhenNotInClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {}
+
+$var = 1;
+PHP;
+        $ast = self::parseWithParents($code);
+
+        // Line 3 (0-indexed) is after the class
+        $class = ScopeFinder::findClassAtLine($ast, 3);
+        self::assertNull($class);
+    }
 }
