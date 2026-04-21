@@ -105,6 +105,60 @@ class VisibilityFilterTest extends TestCase
         self::assertSame($expected, $filter->getConstantFlags());
     }
 
+    /**
+     * @return array<string, array{VisibilityFilter, string, bool}>
+     * @codeCoverageIgnore
+     */
+    public static function allowsMethodProvider(): array
+    {
+        return [
+            'All allows public' => [VisibilityFilter::All, 'public', true],
+            'All allows protected' => [VisibilityFilter::All, 'protected', true],
+            'All allows private' => [VisibilityFilter::All, 'private', true],
+            'PublicOnly allows public' => [VisibilityFilter::PublicOnly, 'public', true],
+            'PublicOnly denies protected' => [VisibilityFilter::PublicOnly, 'protected', false],
+            'PublicOnly denies private' => [VisibilityFilter::PublicOnly, 'private', false],
+            'PublicProtected allows public' => [VisibilityFilter::PublicProtected, 'public', true],
+            'PublicProtected allows protected' => [VisibilityFilter::PublicProtected, 'protected', true],
+            'PublicProtected denies private' => [VisibilityFilter::PublicProtected, 'private', false],
+        ];
+    }
+
+    #[DataProvider('allowsMethodProvider')]
+    public function testAllowsMethod(VisibilityFilter $filter, string $visibility, bool $expected): void
+    {
+        $method = $this->parseMethod("<?php class Foo { {$visibility} function bar() {} }");
+        self::assertNotNull($method);
+        self::assertSame($expected, $filter->allowsMethod($method));
+    }
+
+    /**
+     * @return array<string, array{VisibilityFilter, string, bool}>
+     * @codeCoverageIgnore
+     */
+    public static function allowsConstantProvider(): array
+    {
+        return [
+            'All allows public' => [VisibilityFilter::All, 'public', true],
+            'All allows protected' => [VisibilityFilter::All, 'protected', true],
+            'All allows private' => [VisibilityFilter::All, 'private', true],
+            'PublicOnly allows public' => [VisibilityFilter::PublicOnly, 'public', true],
+            'PublicOnly denies protected' => [VisibilityFilter::PublicOnly, 'protected', false],
+            'PublicOnly denies private' => [VisibilityFilter::PublicOnly, 'private', false],
+            'PublicProtected allows public' => [VisibilityFilter::PublicProtected, 'public', true],
+            'PublicProtected allows protected' => [VisibilityFilter::PublicProtected, 'protected', true],
+            'PublicProtected denies private' => [VisibilityFilter::PublicProtected, 'private', false],
+        ];
+    }
+
+    #[DataProvider('allowsConstantProvider')]
+    public function testAllowsConstant(VisibilityFilter $filter, string $visibility, bool $expected): void
+    {
+        $const = $this->parseConstant("<?php class Foo { {$visibility} const BAR = 1; }");
+        self::assertNotNull($const);
+        self::assertSame($expected, $filter->allowsConstant($const));
+    }
+
     public function testForClassAccessReturnsPublicOnlyWhenNoEnclosingClass(): void
     {
         self::assertSame(VisibilityFilter::PublicOnly, VisibilityFilter::forClassAccess(null, 'Target'));
@@ -142,6 +196,36 @@ class VisibilityFilterTest extends TestCase
         foreach ($ast as $stmt) {
             if ($stmt instanceof Stmt\Class_ && $stmt->name?->toString() === $className) {
                 return $stmt;
+            }
+        }
+        return null;
+    }
+
+    private function parseMethod(string $code): ?Stmt\ClassMethod
+    {
+        $ast = self::parseWithParents($code);
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Class_) {
+                foreach ($stmt->stmts as $member) {
+                    if ($member instanceof Stmt\ClassMethod) {
+                        return $member;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private function parseConstant(string $code): ?Stmt\ClassConst
+    {
+        $ast = self::parseWithParents($code);
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Class_) {
+                foreach ($stmt->stmts as $member) {
+                    if ($member instanceof Stmt\ClassConst) {
+                        return $member;
+                    }
+                }
             }
         }
         return null;
