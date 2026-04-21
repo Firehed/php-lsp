@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Domain;
 final readonly class EnumCaseInfo
 {
     public function __construct(
-        public string $name,
+        public EnumCaseName $name,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,

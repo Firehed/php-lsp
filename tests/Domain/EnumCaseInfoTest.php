@@ -13,14 +13,14 @@ class EnumCaseInfoTest extends TestCase
     public function testConstruction(): void
     {
         $case = new EnumCaseInfo(
-            name: 'Active',
+            name: new EnumCaseName('Active'),
             docblock: null,
             file: '/path/to/file.php',
             line: 8,
             declaringClass: new ClassName('App\\Status'),
         );
 
-        self::assertSame('Active', $case->name);
+        self::assertSame('Active', $case->name->name);
         self::assertNull($case->docblock);
         self::assertSame('/path/to/file.php', $case->file);
         self::assertSame(8, $case->line);
