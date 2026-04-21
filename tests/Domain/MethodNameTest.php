@@ -15,4 +15,25 @@ class MethodNameTest extends TestCase
         $name = new MethodName('doSomething');
         self::assertSame('doSomething', $name->name);
     }
+
+    public function testEqualsTrue(): void
+    {
+        $a = new MethodName('doSomething');
+        $b = new MethodName('doSomething');
+        self::assertTrue($a->equals($b));
+    }
+
+    public function testEqualsFalse(): void
+    {
+        $a = new MethodName('doSomething');
+        $b = new MethodName('doOther');
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsCaseInsensitive(): void
+    {
+        $a = new MethodName('doSomething');
+        $b = new MethodName('DOSOMETHING');
+        self::assertTrue($a->equals($b));
+    }
 }

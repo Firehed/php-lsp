@@ -13,4 +13,9 @@ final readonly class MethodName
         public string $name,
     ) {
     }
+
+    public function equals(self $other): bool
+    {
+        return strcasecmp($this->name, $other->name) === 0;
+    }
 }
