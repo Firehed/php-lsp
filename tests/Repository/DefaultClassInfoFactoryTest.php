@@ -326,26 +326,3 @@ final class DefaultClassInfoFactoryTest extends TestCase
         throw new \RuntimeException('No class found in code');
     }
 }
-
-trait TestTrait
-{
-}
-
-enum TestEnum
-{
-    case Foo;
-    case Bar;
-}
-
-class TestClass
-{
-    use TestTrait;
-
-    public const TEST_CONST = 'value';
-
-    public string $publicProp;
-
-    public function publicMethod(): void
-    {
-    }
-}
