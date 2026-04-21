@@ -124,6 +124,24 @@ PHP;
         self::assertSame('traitMethod', $result->name->toString());
     }
 
+    public function testFindMethodIncludesPrivateFromTrait(): void
+    {
+        $code = <<<'PHP'
+<?php
+trait MyTrait {
+    private function privateTraitMethod(): void {}
+}
+class MyClass {
+    use MyTrait;
+}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findMethod('MyClass', 'privateTraitMethod', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('privateTraitMethod', $result->name->toString());
+    }
+
     public function testFindMethodPrefersClassOverTrait(): void
     {
         $code = <<<'PHP'
@@ -281,6 +299,24 @@ PHP;
 
         self::assertNotNull($result);
         self::assertSame('traitProperty', $result->name);
+    }
+
+    public function testFindPropertyIncludesPrivateFromTrait(): void
+    {
+        $code = <<<'PHP'
+<?php
+trait MyTrait {
+    private string $privateTraitProperty;
+}
+class MyClass {
+    use MyTrait;
+}
+PHP;
+        $ast = self::parse($code);
+        $result = MemberFinder::findProperty('MyClass', 'privateTraitProperty', $ast, null, $this->parser);
+
+        self::assertNotNull($result);
+        self::assertSame('privateTraitProperty', $result->name);
     }
 
     public function testFindPropertyIncludesProtectedFromParent(): void
