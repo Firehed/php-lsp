@@ -34,6 +34,6 @@ final readonly class ClassName
 
     public function equals(self $other): bool
     {
-        return $this->fqn === $other->fqn;
+        return strcasecmp($this->fqn, $other->fqn) === 0;
     }
 }

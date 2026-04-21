@@ -48,4 +48,11 @@ class ClassNameTest extends TestCase
         $b = new ClassName('Foo\\Baz');
         self::assertFalse($a->equals($b));
     }
+
+    public function testEqualsCaseInsensitive(): void
+    {
+        $a = new ClassName('Foo\\Bar');
+        $b = new ClassName('FOO\\BAR');
+        self::assertTrue($a->equals($b));
+    }
 }
