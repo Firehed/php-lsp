@@ -20,7 +20,8 @@ interface ClassInfoFactory
     public function fromAstNode(Stmt\ClassLike $node, string $uri): ClassInfo;
 
     /**
-     * @param ReflectionClass<object> $class
+     * @template T of object
+     * @param ReflectionClass<T> $class
      */
     public function fromReflection(ReflectionClass $class): ClassInfo;
 }

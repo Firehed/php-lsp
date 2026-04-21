@@ -52,7 +52,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @template T of object
+     * @param ReflectionClass<T> $class
      */
     public function fromReflection(ReflectionClass $class): ClassInfo
     {
@@ -103,7 +104,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @template T of object
+     * @param ReflectionClass<T> $class
      */
     private function determineKindFromReflection(ReflectionClass $class): ClassKind
     {
@@ -316,7 +318,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @template T of object
+     * @param ReflectionClass<T> $class
      * @return array<string, MethodInfo>
      */
     private function extractMethodsFromReflection(ReflectionClass $class, ClassName $className): array
@@ -372,7 +375,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @template T of object
+     * @param ReflectionClass<T> $class
      * @return array<string, PropertyInfo>
      */
     private function extractPropertiesFromReflection(ReflectionClass $class, ClassName $className): array
@@ -405,7 +409,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @template T of object
+     * @param ReflectionClass<T> $class
      * @return array<string, ConstantInfo>
      */
     private function extractConstantsFromReflection(ReflectionClass $class, ClassName $className): array
@@ -434,7 +439,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
-     * @param ReflectionClass<object> $class
+     * @template T of object
+     * @param ReflectionClass<T> $class
      * @return array<string, EnumCaseInfo>
      */
     private function extractEnumCasesFromReflection(ReflectionClass $class, ClassName $className): array
