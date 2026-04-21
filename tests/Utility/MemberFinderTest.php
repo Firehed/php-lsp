@@ -158,8 +158,7 @@ PHP;
         $result = MemberFinder::findProperty('MyClass', 'myProperty', $ast, null, $this->parser);
 
         self::assertNotNull($result);
-        self::assertCount(1, $result->props);
-        self::assertSame('myProperty', $result->props[0]->name->toString());
+        self::assertSame('myProperty', $result->name);
     }
 
     public function testFindPropertyReturnsNullWhenNotFound(): void
@@ -189,7 +188,7 @@ PHP;
         $result = MemberFinder::findProperty('ChildClass', 'parentProperty', $ast, null, $this->parser);
 
         self::assertNotNull($result);
-        self::assertSame('parentProperty', $result->props[0]->name->toString());
+        self::assertSame('parentProperty', $result->name);
     }
 
     public function testFindPropertyExcludesPrivateFromParent(): void
@@ -263,7 +262,7 @@ PHP;
         $result = MemberFinder::findProperty('MyClass', 'privateProperty', $ast, null, $this->parser);
 
         self::assertNotNull($result);
-        self::assertSame('privateProperty', $result->props[0]->name->toString());
+        self::assertSame('privateProperty', $result->name);
     }
 
     public function testFindPropertyInTrait(): void
@@ -281,7 +280,7 @@ PHP;
         $result = MemberFinder::findProperty('MyClass', 'traitProperty', $ast, null, $this->parser);
 
         self::assertNotNull($result);
-        self::assertSame('traitProperty', $result->props[0]->name->toString());
+        self::assertSame('traitProperty', $result->name);
     }
 
     public function testFindPropertyIncludesProtectedFromParent(): void
@@ -297,7 +296,7 @@ PHP;
         $result = MemberFinder::findProperty('ChildClass', 'protectedProperty', $ast, null, $this->parser);
 
         self::assertNotNull($result);
-        self::assertSame('protectedProperty', $result->props[0]->name->toString());
+        self::assertSame('protectedProperty', $result->name);
     }
 
     public function testFindMethodInInterface(): void
@@ -346,7 +345,7 @@ PHP;
         $result = MemberFinder::findProperty('ChildClass', 'grandparentProperty', $ast, null, $this->parser);
 
         self::assertNotNull($result);
-        self::assertSame('grandparentProperty', $result->props[0]->name->toString());
+        self::assertSame('grandparentProperty', $result->name);
     }
 
     public function testFindMethodInEnum(): void

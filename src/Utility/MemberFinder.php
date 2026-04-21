@@ -46,7 +46,7 @@ final class MemberFinder
         array $ast,
         ?ComposerClassLocator $classLocator,
         ParserService $parser,
-    ): ?Stmt\Property {
+    ): ?PropertyInfo {
         $classNode = ClassFinder::findWithLocator($className, $ast, $classLocator, $parser);
         if ($classNode === null) {
             return null;
@@ -125,17 +125,13 @@ final class MemberFinder
         ?ComposerClassLocator $classLocator,
         ParserService $parser,
         bool $excludePrivate,
-    ): ?Stmt\Property {
-        foreach ($classNode->stmts as $stmt) {
-            if ($stmt instanceof Stmt\Property) {
-                if ($excludePrivate && $stmt->isPrivate()) {
+    ): ?PropertyInfo {
+        foreach (PropertyCollector::collect($classNode) as $property) {
+            if ($property->name === $propertyName) {
+                if ($excludePrivate && $property->isPrivate) {
                     continue;
                 }
-                foreach ($stmt->props as $prop) {
-                    if ($prop->name->toString() === $propertyName) {
-                        return $stmt;
-                    }
-                }
+                return $property;
             }
         }
 
