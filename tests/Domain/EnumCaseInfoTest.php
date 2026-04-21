@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp\Domain;
+
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+
+#[CoversClass(EnumCaseInfo::class)]
+class EnumCaseInfoTest extends TestCase
+{
+    public function testConstruction(): void
+    {
+        $case = new EnumCaseInfo(
+            name: new EnumCaseName('Active'),
+            docblock: null,
+            file: '/path/to/file.php',
+            line: 8,
+            declaringClass: new ClassName('App\\Status'),
+        );
+
+        self::assertSame('Active', $case->name->name);
+        self::assertNull($case->docblock);
+        self::assertSame('/path/to/file.php', $case->file);
+        self::assertSame(8, $case->line);
+        self::assertSame('App\\Status', $case->declaringClass->fqn);
+    }
+}
