@@ -9,6 +9,9 @@ namespace Firehed\PhpLsp\Domain;
  */
 final readonly class ClassName
 {
+    /**
+     * @param class-string $fqn
+     */
     public function __construct(
         public string $fqn,
     ) {
