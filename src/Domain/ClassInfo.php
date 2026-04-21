@@ -10,6 +10,8 @@ namespace Firehed\PhpLsp\Domain;
 final readonly class ClassInfo
 {
     /**
+     * @param list<ClassName> $interfaces Implemented interfaces
+     * @param list<ClassName> $traits Used traits
      * @param array<string, MethodInfo> $methods Keyed by method name
      * @param array<string, PropertyInfo> $properties Keyed by property name
      * @param array<string, ConstantInfo> $constants Keyed by constant name
@@ -22,6 +24,8 @@ final readonly class ClassInfo
         public bool $isFinal,
         public bool $isReadonly,
         public ?ClassName $parent,
+        public array $interfaces,
+        public array $traits,
         public array $methods,
         public array $properties,
         public array $constants,

@@ -17,13 +17,13 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 8,
-            declaringClass: new ClassName('App\\Status'),
+            declaringClass: new ClassName(ClassKind::class),
         );
 
         self::assertSame('Active', $case->name->name);
         self::assertNull($case->docblock);
         self::assertSame('/path/to/file.php', $case->file);
         self::assertSame(8, $case->line);
-        self::assertSame('App\\Status', $case->declaringClass->fqn);
+        self::assertSame(ClassKind::class, $case->declaringClass->fqn);
     }
 }
