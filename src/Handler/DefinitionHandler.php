@@ -127,7 +127,7 @@ final class DefinitionHandler implements HandlerInterface
      */
     private function handleNameDefinition(Name $node): ?array
     {
-        $symbolName = $this->resolveName($node);
+        $symbolName = ScopeFinder::resolveName($node);
 
         // Look up in index first (for open files)
         $symbol = $this->symbolIndex->findByFqn($symbolName);
@@ -168,13 +168,13 @@ final class DefinitionHandler implements HandlerInterface
             return null;
         }
 
-        $className = $this->resolveName($class);
+        $className = ScopeFinder::resolveName($class);
 
         // Handle parent:: - resolve to actual parent class name
         if ($className === 'parent') {
             $enclosingClass = ScopeFinder::findEnclosingClassNode($call);
             if ($enclosingClass instanceof Stmt\Class_ && $enclosingClass->extends !== null) {
-                $className = $this->resolveName($enclosingClass->extends);
+                $className = ScopeFinder::resolveName($enclosingClass->extends);
             } else {
                 return null;
             }
@@ -251,7 +251,7 @@ final class DefinitionHandler implements HandlerInterface
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
-                    $traitResult = $this->findMethodDefinition($this->resolveName($traitName), $methodName, $ast);
+                    $traitResult = $this->findMethodDefinition(ScopeFinder::resolveName($traitName), $methodName, $ast);
                     if ($traitResult !== null) {
                         return $traitResult;
                     }
@@ -261,7 +261,8 @@ final class DefinitionHandler implements HandlerInterface
 
         // Search in parent class
         if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $parentResult = $this->findMethodDefinition($this->resolveName($classNode->extends), $methodName, $ast);
+            $parentName = ScopeFinder::resolveName($classNode->extends);
+            $parentResult = $this->findMethodDefinition($parentName, $methodName, $ast);
             if ($parentResult !== null) {
                 return $parentResult;
             }
@@ -429,16 +430,5 @@ final class DefinitionHandler implements HandlerInterface
 
         // Fallback: return start of file
         return new Location($uri, 0, 0, 0, 0);
-    }
-
-    /**
-     * Get the fully qualified name from a Name node, using resolvedName if available.
-     */
-    private function resolveName(Name $node): string
-    {
-        $resolved = $node->getAttribute('resolvedName');
-        return $resolved instanceof Name
-            ? $resolved->toString()
-            : $node->toString();
     }
 }

@@ -262,10 +262,7 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        $resolvedName = $class->getAttribute('resolvedName');
-        $className = $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $class->toString();
+        $className = ScopeFinder::resolveName($class);
 
         // Handle self/static/parent
         if ($className === 'self' || $className === 'static' || $className === 'parent') {
@@ -290,10 +287,7 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        $resolvedName = $class->getAttribute('resolvedName');
-        $className = $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $class->toString();
+        $className = ScopeFinder::resolveName($class);
 
         return $this->getMethodSignatureForClass($className, '__construct', $ast, $document);
     }
