@@ -46,11 +46,9 @@ final class MemberCollector
             }
 
             if ($stmt instanceof Stmt\ClassConst) {
-                if ($memberFilter !== MemberFilter::Instance) {
-                    if (self::matchesMethodVisibility($stmt, $visibility)) {
-                        foreach ($stmt->consts as $const) {
-                            $constants[] = ['name' => $const->name->toString(), 'node' => $stmt];
-                        }
+                if ($memberFilter !== MemberFilter::Instance && $visibility->allowsConstant($stmt)) {
+                    foreach ($stmt->consts as $const) {
+                        $constants[] = ['name' => $const->name->toString(), 'node' => $stmt];
                     }
                 }
             }
@@ -81,22 +79,7 @@ final class MemberCollector
         VisibilityFilter $visibility,
         MemberFilter $memberFilter,
     ): bool {
-        if (!self::matchesMethodVisibility($stmt, $visibility)) {
-            return false;
-        }
-
-        return $memberFilter->matches($stmt->isStatic());
-    }
-
-    private static function matchesMethodVisibility(
-        Stmt\ClassMethod|Stmt\ClassConst $stmt,
-        VisibilityFilter $visibility,
-    ): bool {
-        return match ($visibility) {
-            VisibilityFilter::All => true,
-            VisibilityFilter::PublicOnly => $stmt->isPublic(),
-            VisibilityFilter::PublicProtected => $stmt->isPublic() || $stmt->isProtected(),
-        };
+        return $visibility->allowsMethod($stmt) && $memberFilter->matches($stmt->isStatic());
     }
 
     /**

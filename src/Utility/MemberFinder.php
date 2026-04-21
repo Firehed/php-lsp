@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Utility;
 
+use Firehed\PhpLsp\Completion\VisibilityFilter;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use PhpParser\Node\Stmt;
@@ -30,7 +31,14 @@ final class MemberFinder
             return null;
         }
 
-        return self::findMethodInClassNode($classNode, $methodName, $ast, $classLocator, $parser, false);
+        return self::findMethodInClassNode(
+            $classNode,
+            $methodName,
+            $ast,
+            $classLocator,
+            $parser,
+            VisibilityFilter::All,
+        );
     }
 
     /**
@@ -52,7 +60,14 @@ final class MemberFinder
             return null;
         }
 
-        return self::findPropertyInClassNode($classNode, $propertyName, $ast, $classLocator, $parser, false);
+        return self::findPropertyInClassNode(
+            $classNode,
+            $propertyName,
+            $ast,
+            $classLocator,
+            $parser,
+            VisibilityFilter::All,
+        );
     }
 
     /**
@@ -64,11 +79,11 @@ final class MemberFinder
         array $ast,
         ?ComposerClassLocator $classLocator,
         ParserService $parser,
-        bool $excludePrivate,
+        VisibilityFilter $visibility,
     ): ?Stmt\ClassMethod {
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toString() === $methodName) {
-                if ($excludePrivate && $stmt->isPrivate()) {
+                if (!$visibility->allowsMethod($stmt)) {
                     continue;
                 }
                 return $stmt;
@@ -87,7 +102,7 @@ final class MemberFinder
                             $ast,
                             $classLocator,
                             $parser,
-                            true,
+                            VisibilityFilter::PublicProtected,
                         );
                         if ($traitMethod !== null) {
                             return $traitMethod;
@@ -107,7 +122,7 @@ final class MemberFinder
                     $ast,
                     $classLocator,
                     $parser,
-                    true,
+                    VisibilityFilter::PublicProtected,
                 );
             }
         }
@@ -124,11 +139,11 @@ final class MemberFinder
         array $ast,
         ?ComposerClassLocator $classLocator,
         ParserService $parser,
-        bool $excludePrivate,
+        VisibilityFilter $visibility,
     ): ?PropertyInfo {
         foreach (PropertyCollector::collect($classNode) as $property) {
             if ($property->name === $propertyName) {
-                if ($excludePrivate && $property->isPrivate) {
+                if (!$visibility->allowsProperty($property)) {
                     continue;
                 }
                 return $property;
@@ -147,7 +162,7 @@ final class MemberFinder
                             $ast,
                             $classLocator,
                             $parser,
-                            true,
+                            VisibilityFilter::PublicProtected,
                         );
                         if ($traitProperty !== null) {
                             return $traitProperty;
@@ -167,7 +182,7 @@ final class MemberFinder
                     $ast,
                     $classLocator,
                     $parser,
-                    true,
+                    VisibilityFilter::PublicProtected,
                 );
             }
         }

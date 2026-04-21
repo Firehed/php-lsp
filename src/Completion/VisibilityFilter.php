@@ -57,6 +57,24 @@ enum VisibilityFilter
         };
     }
 
+    public function allowsMethod(Stmt\ClassMethod $method): bool
+    {
+        return match ($this) {
+            self::All => true,
+            self::PublicOnly => $method->isPublic(),
+            self::PublicProtected => $method->isPublic() || $method->isProtected(),
+        };
+    }
+
+    public function allowsConstant(Stmt\ClassConst $const): bool
+    {
+        return match ($this) {
+            self::All => true,
+            self::PublicOnly => $const->isPublic(),
+            self::PublicProtected => $const->isPublic() || $const->isProtected(),
+        };
+    }
+
     /**
      * Determine visibility filter based on the relationship between an
      * enclosing class and a target class being accessed.
