@@ -84,21 +84,28 @@ final class ScopeFinder
     }
 
     /**
-     * Resolve the parent class name from a class node's extends clause.
+     * Resolve a Name node to its fully qualified name.
      *
-     * Uses the resolved name if available (from NameResolver), otherwise
-     * falls back to the raw name.
+     * Uses the resolved name attribute if available (from NameResolver),
+     * otherwise falls back to the raw name.
+     */
+    public static function resolveName(Name $name): string
+    {
+        $resolvedName = $name->getAttribute('resolvedName');
+        return $resolvedName instanceof Name
+            ? $resolvedName->toString()
+            : $name->toString();
+    }
+
+    /**
+     * Resolve the parent class name from a class node's extends clause.
      */
     public static function resolveExtendsName(Stmt\Class_ $class): ?string
     {
         if ($class->extends === null) {
             return null;
         }
-        $resolvedName = $class->extends->getAttribute('resolvedName');
-        if ($resolvedName instanceof Name) {
-            return $resolvedName->toString();
-        }
-        return $class->extends->toString();
+        return self::resolveName($class->extends);
     }
 
     /**

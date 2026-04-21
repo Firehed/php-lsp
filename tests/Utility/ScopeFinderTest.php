@@ -395,4 +395,33 @@ PHP;
 
         self::assertSame('Other\ParentClass', ScopeFinder::resolveExtendsName($class));
     }
+
+    public function testResolveNameReturnsRawNameWhenNoResolvedAttribute(): void
+    {
+        $code = '<?php class Foo extends Bar {}';
+        $ast = self::parseWithParents($code);
+        $class = $ast[0];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+        self::assertNotNull($class->extends);
+
+        self::assertSame('Bar', ScopeFinder::resolveName($class->extends));
+    }
+
+    public function testResolveNameUsesResolvedNameWhenAvailable(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+use Other\Bar;
+class Foo extends Bar {}
+PHP;
+        $ast = self::parseWithParents($code);
+        $namespace = $ast[0];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $class = $namespace->stmts[1];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+        self::assertNotNull($class->extends);
+
+        self::assertSame('Other\Bar', ScopeFinder::resolveName($class->extends));
+    }
 }

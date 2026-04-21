@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
-use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 
 final class MemberFinder
@@ -79,7 +78,7 @@ final class MemberFinder
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
-                    $traitClassName = self::resolveName($traitName);
+                    $traitClassName = ScopeFinder::resolveName($traitName);
                     $traitNode = ClassFinder::findWithLocator($traitClassName, $ast, $classLocator, $parser);
                     if ($traitNode !== null) {
                         $traitMethod = self::findMethodInClassNode(
@@ -143,7 +142,7 @@ final class MemberFinder
         foreach ($classNode->stmts as $stmt) {
             if ($stmt instanceof Stmt\TraitUse) {
                 foreach ($stmt->traits as $traitName) {
-                    $traitClassName = self::resolveName($traitName);
+                    $traitClassName = ScopeFinder::resolveName($traitName);
                     $traitNode = ClassFinder::findWithLocator($traitClassName, $ast, $classLocator, $parser);
                     if ($traitNode !== null) {
                         $traitProperty = self::findPropertyInClassNode(
@@ -183,17 +182,9 @@ final class MemberFinder
     private static function getParentClassName(
         Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $classNode,
     ): ?string {
-        if (!$classNode instanceof Stmt\Class_ || $classNode->extends === null) {
+        if (!$classNode instanceof Stmt\Class_) {
             return null;
         }
-        return self::resolveName($classNode->extends);
-    }
-
-    private static function resolveName(Name $name): string
-    {
-        $resolvedName = $name->getAttribute('resolvedName');
-        return $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $name->toString();
+        return ScopeFinder::resolveExtendsName($classNode);
     }
 }
