@@ -79,14 +79,17 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
     private function resolveClassName(Stmt\ClassLike $node): ClassName
     {
-        $name = $node->name?->toString() ?? '';
         $namespacedName = $node->namespacedName;
 
         if ($namespacedName !== null) {
-            return new ClassName($namespacedName->toString());
+            /** @var class-string */
+            $fqn = $namespacedName->toString();
+            return new ClassName($fqn);
         }
 
-        return new ClassName($name);
+        /** @var class-string */
+        $fqn = $node->name?->toString() ?? '';
+        return new ClassName($fqn);
     }
 
     private function determineKind(Stmt\ClassLike $node): ClassKind
@@ -129,10 +132,14 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
         $resolved = $extends->getAttribute('resolvedName');
         if ($resolved instanceof \PhpParser\Node\Name\FullyQualified) {
-            return new ClassName($resolved->toString());
+            /** @var class-string */
+            $fqn = $resolved->toString();
+            return new ClassName($fqn);
         }
 
-        return new ClassName($extends->toString());
+        /** @var class-string */
+        $fqn = $extends->toString();
+        return new ClassName($fqn);
     }
 
     /**
