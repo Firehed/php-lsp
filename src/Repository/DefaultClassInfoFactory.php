@@ -41,6 +41,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isFinal: $node instanceof Stmt\Class_ && $node->isFinal(),
             isReadonly: $node instanceof Stmt\Class_ && $node->isReadonly(),
             parent: $this->resolveParent($node),
+            interfaces: $this->extractInterfaces($node),
+            traits: $this->extractTraits($node),
             methods: $this->extractMethods($node, $className, $filePath),
             properties: $this->extractProperties($node, $className, $filePath),
             constants: $this->extractConstants($node, $className, $filePath),
@@ -68,6 +70,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             parent: $class->getParentClass() !== false
                 ? new ClassName($class->getParentClass()->getName())
                 : null,
+            interfaces: $this->extractInterfacesFromReflection($class),
+            traits: $this->extractTraitsFromReflection($class),
             methods: $this->extractMethodsFromReflection($class, $className),
             properties: $this->extractPropertiesFromReflection($class, $className),
             constants: $this->extractConstantsFromReflection($class, $className),
@@ -88,8 +92,13 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             return new ClassName($fqn);
         }
 
+        $name = $node->name?->toString();
+        if ($name === null) {
+            throw new \InvalidArgumentException('Cannot create ClassInfo for anonymous class');
+        }
+
         /** @var class-string */
-        $fqn = $node->name?->toString() ?? '';
+        $fqn = $name;
         return new ClassName($fqn);
     }
 
@@ -141,6 +150,60 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
         /** @var class-string */
         $fqn = $extends->toString();
+        return new ClassName($fqn);
+    }
+
+    /**
+     * @return list<ClassName>
+     */
+    private function extractInterfaces(Stmt\ClassLike $node): array
+    {
+        $interfaces = [];
+
+        if ($node instanceof Stmt\Class_ || $node instanceof Stmt\Enum_) {
+            foreach ($node->implements as $interface) {
+                $interfaces[] = $this->resolveNameToClassName($interface);
+            }
+        }
+
+        if ($node instanceof Stmt\Interface_) {
+            foreach ($node->extends as $interface) {
+                $interfaces[] = $this->resolveNameToClassName($interface);
+            }
+        }
+
+        return $interfaces;
+    }
+
+    /**
+     * @return list<ClassName>
+     */
+    private function extractTraits(Stmt\ClassLike $node): array
+    {
+        $traits = [];
+
+        foreach ($node->stmts as $stmt) {
+            if ($stmt instanceof Stmt\TraitUse) {
+                foreach ($stmt->traits as $trait) {
+                    $traits[] = $this->resolveNameToClassName($trait);
+                }
+            }
+        }
+
+        return $traits;
+    }
+
+    private function resolveNameToClassName(\PhpParser\Node\Name $name): ClassName
+    {
+        $resolved = $name->getAttribute('resolvedName');
+        if ($resolved instanceof \PhpParser\Node\Name\FullyQualified) {
+            /** @var class-string */
+            $fqn = $resolved->toString();
+            return new ClassName($fqn);
+        }
+
+        /** @var class-string */
+        $fqn = $name->toString();
         return new ClassName($fqn);
     }
 
@@ -315,6 +378,44 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         }
 
         return $cases;
+    }
+
+    /**
+     * @template T of object
+     * @param ReflectionClass<T> $class
+     * @return list<ClassName>
+     */
+    private function extractInterfacesFromReflection(ReflectionClass $class): array
+    {
+        $interfaces = [];
+        $parentInterfaces = $class->getParentClass() !== false
+            ? $class->getParentClass()->getInterfaceNames()
+            : [];
+
+        foreach ($class->getInterfaceNames() as $interfaceName) {
+            // Only include directly implemented interfaces, not inherited ones
+            if (!in_array($interfaceName, $parentInterfaces, true)) {
+                $interfaces[] = new ClassName($interfaceName);
+            }
+        }
+
+        return $interfaces;
+    }
+
+    /**
+     * @template T of object
+     * @param ReflectionClass<T> $class
+     * @return list<ClassName>
+     */
+    private function extractTraitsFromReflection(ReflectionClass $class): array
+    {
+        $traits = [];
+
+        foreach ($class->getTraitNames() as $traitName) {
+            $traits[] = new ClassName($traitName);
+        }
+
+        return $traits;
     }
 
     /**
