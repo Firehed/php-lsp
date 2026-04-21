@@ -64,6 +64,20 @@ final class ScopeFinder
     }
 
     /**
+     * Resolve a Name node to its fully qualified name.
+     *
+     * Uses the resolved name attribute if available (from NameResolver),
+     * otherwise falls back to the raw name.
+     */
+    public static function resolveName(Name $name): string
+    {
+        $resolvedName = $name->getAttribute('resolvedName');
+        return $resolvedName instanceof Name
+            ? $resolvedName->toString()
+            : $name->toString();
+    }
+
+    /**
      * Find the fully qualified name of the enclosing class-like node.
      *
      * Returns the FQN if available, otherwise the short name, or null if not
@@ -81,20 +95,6 @@ final class ScopeFinder
             return $namespacedName->toString();
         }
         return $classNode->name->toString();
-    }
-
-    /**
-     * Resolve a Name node to its fully qualified name.
-     *
-     * Uses the resolved name attribute if available (from NameResolver),
-     * otherwise falls back to the raw name.
-     */
-    public static function resolveName(Name $name): string
-    {
-        $resolvedName = $name->getAttribute('resolvedName');
-        return $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $name->toString();
     }
 
     /**
