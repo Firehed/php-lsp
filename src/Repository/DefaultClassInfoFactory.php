@@ -60,6 +60,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     public function fromReflection(ReflectionClass $class): ClassInfo
     {
         $className = new ClassName($class->getName());
+        $parentClass = $class->getParentClass();
 
         return new ClassInfo(
             name: $className,
@@ -67,8 +68,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isAbstract: $class->isAbstract() && !$class->isInterface(),
             isFinal: $class->isFinal(),
             isReadonly: $class->isReadOnly(),
-            parent: $class->getParentClass() !== false
-                ? new ClassName($class->getParentClass()->getName())
+            parent: $parentClass !== false
+                ? new ClassName($parentClass->getName())
                 : null,
             interfaces: $this->extractInterfacesFromReflection($class),
             traits: $this->extractTraitsFromReflection($class),
@@ -84,21 +85,18 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
     private function resolveClassName(Stmt\ClassLike $node): ClassName
     {
-        $namespacedName = $node->namespacedName;
-
-        if ($namespacedName !== null) {
-            /** @var class-string */
-            $fqn = $namespacedName->toString();
-            return new ClassName($fqn);
-        }
-
-        $name = $node->name?->toString();
-        if ($name === null) {
+        if ($node->name === null) {
             throw new \InvalidArgumentException('Cannot create ClassInfo for anonymous class');
         }
 
+        if (isset($node->namespacedName)) {
+            /** @var class-string */
+            $fqn = $node->namespacedName->toString();
+            return new ClassName($fqn);
+        }
+
         /** @var class-string */
-        $fqn = $name;
+        $fqn = $node->name->toString();
         return new ClassName($fqn);
     }
 

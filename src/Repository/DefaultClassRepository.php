@@ -102,7 +102,7 @@ final class DefaultClassRepository implements ClassRepository
     private function locateAndParse(ClassName $name): ?ClassInfo
     {
         $filePath = $this->locator->locate($name);
-        if ($filePath === null) {
+        if ($filePath === null || !is_readable($filePath)) {
             return null;
         }
 

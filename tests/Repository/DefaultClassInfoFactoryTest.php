@@ -255,6 +255,27 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertNotNull($info->line);
     }
 
+    public function testFromAstNodeThrowsForAnonymousClass(): void
+    {
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $ast = $parser->parse('<?php $x = new class {};');
+        assert($ast !== null);
+
+        $expr = $ast[0];
+        assert($expr instanceof \PhpParser\Node\Stmt\Expression);
+        $assign = $expr->expr;
+        assert($assign instanceof \PhpParser\Node\Expr\Assign);
+        $new = $assign->expr;
+        assert($new instanceof \PhpParser\Node\Expr\New_);
+        $node = $new->class;
+        assert($node instanceof Stmt\Class_);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('anonymous class');
+
+        $this->factory->fromAstNode($node, 'file:///test.php');
+    }
+
     public function testFromReflectionExtractsBasicInfo(): void
     {
         $reflection = new ReflectionClass(\stdClass::class);
