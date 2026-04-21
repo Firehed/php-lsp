@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\MemberFinder;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
@@ -171,10 +172,7 @@ final class HoverHandler implements HandlerInterface
      */
     private function getClassHover(Name $node, array $ast, TextDocument $document): ?string
     {
-        $resolvedName = $node->getAttribute('resolvedName');
-        $className = $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $node->toString();
+        $className = ScopeFinder::resolveName($node);
 
         $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
 
@@ -326,10 +324,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $resolvedName = $class->getAttribute('resolvedName');
-        $className = $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $class->toString();
+        $className = ScopeFinder::resolveName($class);
 
         return $this->getMethodHoverForClass($className, $methodName->toString(), $ast, $document);
     }
@@ -367,10 +362,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $resolvedName = $class->getAttribute('resolvedName');
-        $className = $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $class->toString();
+        $className = ScopeFinder::resolveName($class);
 
         return $this->getPropertyHoverForClass($className, $propertyName->toString(), $ast, $document);
     }
