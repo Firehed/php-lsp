@@ -30,8 +30,8 @@ final class PropertyCollector
                 foreach ($stmt->props as $prop) {
                     $properties[] = new PropertyInfo(
                         name: $prop->name->toString(),
-                        type: $stmt->type,
-                        docComment: $stmt->getDocComment(),
+                        type: TypeFormatter::formatNode($stmt->type),
+                        docComment: $stmt->getDocComment()?->getText(),
                         startLine: $stmt->getStartLine(),
                         endLine: $stmt->getEndLine(),
                         isStatic: $stmt->isStatic(),
@@ -54,8 +54,8 @@ final class PropertyCollector
 
                     $properties[] = new PropertyInfo(
                         name: $param->var->name,
-                        type: $param->type,
-                        docComment: $param->getDocComment(),
+                        type: TypeFormatter::formatNode($param->type),
+                        docComment: $param->getDocComment()?->getText(),
                         startLine: $param->getStartLine(),
                         endLine: $param->getEndLine(),
                         isStatic: false,

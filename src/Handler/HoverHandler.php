@@ -444,7 +444,7 @@ final class HoverHandler implements HandlerInterface
         $parts = [];
 
         if ($property->docComment !== null) {
-            $parts[] = DocblockParser::extractDescription($property->docComment->getText());
+            $parts[] = DocblockParser::extractDescription($property->docComment);
         }
 
         $visibility = match (true) {
@@ -455,10 +455,7 @@ final class HoverHandler implements HandlerInterface
         $static = $property->isStatic ? 'static ' : '';
         $readonly = $property->isReadonly ? 'readonly ' : '';
 
-        $type = '';
-        if ($property->type !== null) {
-            $type = TypeFormatter::formatNode($property->type) . ' ';
-        }
+        $type = $property->type !== null ? $property->type . ' ' : '';
 
         $signature = $visibility . $static . $readonly . $type . '$' . $property->name;
 

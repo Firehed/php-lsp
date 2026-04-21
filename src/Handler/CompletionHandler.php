@@ -607,13 +607,13 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatPropertyCompletion(PropertyInfo $property): array
     {
-        $type = $property->type !== null ? TypeFormatter::formatNode($property->type) : 'mixed';
+        $type = $property->type ?? 'mixed';
 
         return self::withDocumentation([
             'label' => $property->name,
             'kind' => self::KIND_PROPERTY,
             'detail' => $type . ' $' . $property->name,
-        ], $property->docComment?->getText());
+        ], $property->docComment);
     }
 
     /**

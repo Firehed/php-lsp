@@ -125,7 +125,7 @@ PHP;
         self::assertNotContains('lastName', $names);
     }
 
-    public function testPropertyInfoContainsTypeNode(): void
+    public function testPropertyInfoContainsType(): void
     {
         $code = <<<'PHP'
 <?php
@@ -137,7 +137,7 @@ PHP;
         $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
-        self::assertNotNull($properties[0]->type);
+        self::assertSame('string', $properties[0]->type);
     }
 
     public function testPropertyInfoContainsLineNumbers(): void
@@ -228,7 +228,7 @@ PHP;
 
         self::assertCount(1, $properties);
         self::assertNotNull($properties[0]->docComment);
-        self::assertStringContainsString('display name', $properties[0]->docComment->getText());
+        self::assertStringContainsString('display name', $properties[0]->docComment);
     }
 
     public function testPromotedPropertyDocComment(): void
@@ -247,7 +247,7 @@ PHP;
 
         self::assertCount(1, $properties);
         self::assertNotNull($properties[0]->docComment);
-        self::assertStringContainsString('display name', $properties[0]->docComment->getText());
+        self::assertStringContainsString('display name', $properties[0]->docComment);
     }
 
     public function testReturnsEmptyForInterface(): void
