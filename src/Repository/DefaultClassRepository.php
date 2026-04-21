@@ -14,13 +14,13 @@ use ReflectionException;
 
 final class DefaultClassRepository implements ClassRepository
 {
-    /** @var array<string, ClassInfo> FQN -> ClassInfo cache */
+    /** @var array<string, ClassInfo> Lowercase FQN -> ClassInfo cache */
     private array $cache = [];
 
     /** @var array<string, list<ClassInfo>> URI -> Classes in document */
     private array $documentClasses = [];
 
-    /** @var array<string, string> FQN -> URI for open document classes */
+    /** @var array<string, string> Lowercase FQN -> URI for open document classes */
     private array $documentIndex = [];
 
     public function __construct(
@@ -32,30 +32,35 @@ final class DefaultClassRepository implements ClassRepository
 
     public function get(ClassName $name): ?ClassInfo
     {
-        $fqn = ltrim($name->fqn, '\\');
+        $key = $this->normalizeKey($name->fqn);
 
-        if (array_key_exists($fqn, $this->cache)) {
-            return $this->cache[$fqn];
+        // Check cache first for previously resolved classes
+        if (array_key_exists($key, $this->cache)) {
+            return $this->cache[$key];
         }
 
-        if (array_key_exists($fqn, $this->documentIndex)) {
-            $uri = $this->documentIndex[$fqn];
+        // Open documents take priority - updateDocument() clears cache entries
+        // for its classes, so we only reach here for classes not in open docs
+        if (array_key_exists($key, $this->documentIndex)) {
+            $uri = $this->documentIndex[$key];
             foreach ($this->documentClasses[$uri] as $classInfo) {
-                if (strcasecmp($classInfo->name->fqn, $fqn) === 0) {
+                if ($this->normalizeKey($classInfo->name->fqn) === $key) {
                     return $classInfo;
                 }
             }
         }
 
+        // Try to locate and parse from filesystem
         $classInfo = $this->locateAndParse($name);
         if ($classInfo !== null) {
-            $this->cache[$fqn] = $classInfo;
+            $this->cache[$key] = $classInfo;
             return $classInfo;
         }
 
+        // Fall back to reflection for built-in/autoloaded classes
         $classInfo = $this->fromReflection($name);
         if ($classInfo !== null) {
-            $this->cache[$fqn] = $classInfo;
+            $this->cache[$key] = $classInfo;
             return $classInfo;
         }
 
@@ -72,10 +77,11 @@ final class DefaultClassRepository implements ClassRepository
         $this->documentClasses[$uri] = $classes;
 
         foreach ($classes as $classInfo) {
-            $fqn = ltrim($classInfo->name->fqn, '\\');
-            $this->documentIndex[$fqn] = $uri;
+            $key = $this->normalizeKey($classInfo->name->fqn);
+            $this->documentIndex[$key] = $uri;
 
-            unset($this->cache[$fqn]);
+            // Invalidate cache so open document version takes precedence
+            unset($this->cache[$key]);
         }
     }
 
@@ -86,8 +92,8 @@ final class DefaultClassRepository implements ClassRepository
         }
 
         foreach ($this->documentClasses[$uri] as $classInfo) {
-            $fqn = ltrim($classInfo->name->fqn, '\\');
-            unset($this->documentIndex[$fqn]);
+            $key = $this->normalizeKey($classInfo->name->fqn);
+            unset($this->documentIndex[$key]);
         }
 
         unset($this->documentClasses[$uri]);
@@ -128,5 +134,10 @@ final class DefaultClassRepository implements ClassRepository
         } catch (ReflectionException) {
             return null;
         }
+    }
+
+    private function normalizeKey(string $fqn): string
+    {
+        return strtolower(ltrim($fqn, '\\'));
     }
 }
