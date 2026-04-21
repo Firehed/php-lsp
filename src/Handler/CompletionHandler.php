@@ -18,6 +18,7 @@ use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\MemberCollector;
+use Firehed\PhpLsp\Utility\PropertyInfo;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
@@ -339,10 +340,9 @@ final class CompletionHandler implements HandlerInterface
         }
 
         if ($includeProperties) {
-            foreach ($members['properties'] as $member) {
-                $name = $member['name'];
-                if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = $this->formatPropertyCompletion($member['node'], $name);
+            foreach ($members['properties'] as $property) {
+                if (self::matchesPrefix($property->name, $prefix)) {
+                    $items[] = $this->formatPropertyCompletion($property);
                 }
             }
         }
@@ -605,15 +605,15 @@ final class CompletionHandler implements HandlerInterface
     /**
      * @return array{label: string, kind: int, detail?: string, documentation?: string}
      */
-    private function formatPropertyCompletion(Stmt\Property $property, string $name): array
+    private function formatPropertyCompletion(PropertyInfo $property): array
     {
         $type = $property->type !== null ? TypeFormatter::formatNode($property->type) : 'mixed';
 
         return self::withDocumentation([
-            'label' => $name,
+            'label' => $property->name,
             'kind' => self::KIND_PROPERTY,
-            'detail' => $type . ' $' . $name,
-        ], $property->getDocComment()?->getText());
+            'detail' => $type . ' $' . $property->name,
+        ], $property->docComment?->getText());
     }
 
     /**

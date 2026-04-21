@@ -15,7 +15,7 @@ final class MemberCollector
      *
      * @return array{
      *   methods: list<array{name: string, node: Stmt\ClassMethod}>,
-     *   properties: list<array{name: string, node: Stmt\Property}>,
+     *   properties: list<PropertyInfo>,
      *   constants: list<array{name: string, node: Stmt\ClassConst}>,
      *   enumCases: list<array{name: string, node: Stmt\EnumCase}>,
      * }
@@ -35,7 +35,6 @@ final class MemberCollector
         }
 
         $methods = [];
-        $properties = [];
         $constants = [];
         $enumCases = [];
 
@@ -46,17 +45,9 @@ final class MemberCollector
                 }
             }
 
-            if ($stmt instanceof Stmt\Property) {
-                if (self::matchesFilters($stmt, $visibility, $memberFilter)) {
-                    foreach ($stmt->props as $prop) {
-                        $properties[] = ['name' => $prop->name->toString(), 'node' => $stmt];
-                    }
-                }
-            }
-
             if ($stmt instanceof Stmt\ClassConst) {
                 if ($memberFilter !== MemberFilter::Instance) {
-                    if (self::matchesVisibility($stmt, $visibility)) {
+                    if (self::matchesMethodVisibility($stmt, $visibility)) {
                         foreach ($stmt->consts as $const) {
                             $constants[] = ['name' => $const->name->toString(), 'node' => $stmt];
                         }
@@ -71,6 +62,12 @@ final class MemberCollector
             }
         }
 
+        $properties = self::filterProperties(
+            PropertyCollector::collect($classNode),
+            $visibility,
+            $memberFilter,
+        );
+
         return [
             'methods' => $methods,
             'properties' => $properties,
@@ -80,19 +77,19 @@ final class MemberCollector
     }
 
     private static function matchesFilters(
-        Stmt\ClassMethod|Stmt\Property $stmt,
+        Stmt\ClassMethod $stmt,
         VisibilityFilter $visibility,
         MemberFilter $memberFilter,
     ): bool {
-        if (!self::matchesVisibility($stmt, $visibility)) {
+        if (!self::matchesMethodVisibility($stmt, $visibility)) {
             return false;
         }
 
         return $memberFilter->matches($stmt->isStatic());
     }
 
-    private static function matchesVisibility(
-        Stmt\ClassMethod|Stmt\Property|Stmt\ClassConst $stmt,
+    private static function matchesMethodVisibility(
+        Stmt\ClassMethod|Stmt\ClassConst $stmt,
         VisibilityFilter $visibility,
     ): bool {
         return match ($visibility) {
@@ -100,5 +97,21 @@ final class MemberCollector
             VisibilityFilter::PublicOnly => $stmt->isPublic(),
             VisibilityFilter::PublicProtected => $stmt->isPublic() || $stmt->isProtected(),
         };
+    }
+
+    /**
+     * @param list<PropertyInfo> $properties
+     * @return list<PropertyInfo>
+     */
+    private static function filterProperties(
+        array $properties,
+        VisibilityFilter $visibility,
+        MemberFilter $memberFilter,
+    ): array {
+        return array_values(array_filter(
+            $properties,
+            static fn(PropertyInfo $p) =>
+                $visibility->allowsProperty($p) && $memberFilter->matches($p->isStatic),
+        ));
     }
 }

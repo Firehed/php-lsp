@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Utility;
 
 use Firehed\PhpLsp\Utility\PropertyCollector;
 use Firehed\PhpLsp\Utility\PropertyInfo;
+use PhpParser\Node\Stmt;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -21,6 +22,23 @@ final class PropertyCollectorTest extends TestCase
         $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
 
+    /**
+     * @return Stmt\Class_|Stmt\Interface_|Stmt\Enum_|Stmt\Trait_
+     */
+    private function getClassNode(string $code): Stmt\Class_|Stmt\Interface_|Stmt\Enum_|Stmt\Trait_
+    {
+        $ast = $this->parser->parse($code);
+        self::assertNotNull($ast);
+        $node = $ast[0];
+        self::assertTrue(
+            $node instanceof Stmt\Class_
+            || $node instanceof Stmt\Interface_
+            || $node instanceof Stmt\Enum_
+            || $node instanceof Stmt\Trait_,
+        );
+        return $node;
+    }
+
     public function testCollectsRegularProperty(): void
     {
         $code = <<<'PHP'
@@ -30,10 +48,7 @@ class User
     private string $name;
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
         self::assertSame('name', $properties[0]->name);
@@ -53,10 +68,7 @@ class User
     ) {}
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(2, $properties);
 
@@ -78,10 +90,7 @@ class User
     ) {}
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(2, $properties);
         $names = array_map(fn(PropertyInfo $p) => $p->name, $properties);
@@ -106,10 +115,7 @@ class User
     }
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(2, $properties);
         $names = array_map(fn(PropertyInfo $p) => $p->name, $properties);
@@ -128,10 +134,7 @@ class User
     private string $name;
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
         self::assertNotNull($properties[0]->type);
@@ -146,10 +149,7 @@ class User
     private string $name;
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
         self::assertSame(4, $properties[0]->startLine);
@@ -168,10 +168,7 @@ class User
     ) {}
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(3, $properties);
 
@@ -194,10 +191,7 @@ class Counter
     private static int $count = 0;
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
         self::assertTrue($properties[0]->isStatic);
@@ -214,10 +208,7 @@ class User
     ) {}
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
         self::assertTrue($properties[0]->isReadonly);
@@ -233,10 +224,7 @@ class User
     private string $name;
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
         self::assertNotNull($properties[0]->docComment);
@@ -255,10 +243,7 @@ class User
     ) {}
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(1, $properties);
         self::assertNotNull($properties[0]->docComment);
@@ -274,10 +259,7 @@ interface UserInterface
     public function getName(): string;
 }
 PHP;
-        $ast = $this->parser->parse($code);
-        self::assertNotNull($ast);
-
-        $properties = PropertyCollector::collect($ast[0]);
+        $properties = PropertyCollector::collect($this->getClassNode($code));
 
         self::assertCount(0, $properties);
     }

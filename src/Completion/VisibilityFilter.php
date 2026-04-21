@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Utility\PropertyInfo;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
@@ -44,6 +45,15 @@ enum VisibilityFilter
                 | \ReflectionClassConstant::IS_PRIVATE,
             self::PublicOnly => \ReflectionClassConstant::IS_PUBLIC,
             self::PublicProtected => \ReflectionClassConstant::IS_PUBLIC | \ReflectionClassConstant::IS_PROTECTED,
+        };
+    }
+
+    public function allowsProperty(PropertyInfo $property): bool
+    {
+        return match ($this) {
+            self::All => true,
+            self::PublicOnly => $property->isPublic,
+            self::PublicProtected => $property->isPublic || $property->isProtected,
         };
     }
 
