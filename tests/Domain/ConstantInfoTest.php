@@ -20,7 +20,7 @@ class ConstantInfoTest extends TestCase
             docblock: '/** Maximum size */',
             file: '/path/to/file.php',
             line: 5,
-            declaringClass: new ClassName('App\\MyClass'),
+            declaringClass: new ClassName(ConstantInfo::class),
         );
 
         self::assertSame('MAX_SIZE', $constant->name->name);
@@ -30,6 +30,6 @@ class ConstantInfoTest extends TestCase
         self::assertSame('/** Maximum size */', $constant->docblock);
         self::assertSame('/path/to/file.php', $constant->file);
         self::assertSame(5, $constant->line);
-        self::assertSame('App\\MyClass', $constant->declaringClass->fqn);
+        self::assertSame(ConstantInfo::class, $constant->declaringClass->fqn);
     }
 }

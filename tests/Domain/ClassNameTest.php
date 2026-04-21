@@ -13,46 +13,48 @@ class ClassNameTest extends TestCase
 {
     public function testShortNameWithNamespace(): void
     {
-        $cn = new ClassName('Vendor\\Package\\MyClass');
-        self::assertSame('MyClass', $cn->shortName());
+        $cn = new ClassName(ClassName::class);
+        self::assertSame('ClassName', $cn->shortName());
     }
 
     public function testShortNameWithoutNamespace(): void
     {
-        $cn = new ClassName('MyClass');
-        self::assertSame('MyClass', $cn->shortName());
+        $cn = new ClassName(\stdClass::class);
+        self::assertSame('stdClass', $cn->shortName());
     }
 
     public function testNamespaceWithNamespace(): void
     {
-        $cn = new ClassName('Vendor\\Package\\MyClass');
-        self::assertSame('Vendor\\Package', $cn->namespace());
+        $cn = new ClassName(ClassName::class);
+        self::assertSame('Firehed\\PhpLsp\\Domain', $cn->namespace());
     }
 
     public function testNamespaceWithoutNamespace(): void
     {
-        $cn = new ClassName('MyClass');
+        $cn = new ClassName(\stdClass::class);
         self::assertNull($cn->namespace());
     }
 
     public function testEqualsTrue(): void
     {
-        $a = new ClassName('Foo\\Bar');
-        $b = new ClassName('Foo\\Bar');
+        $a = new ClassName(ClassName::class);
+        $b = new ClassName(ClassName::class);
         self::assertTrue($a->equals($b));
     }
 
     public function testEqualsFalse(): void
     {
-        $a = new ClassName('Foo\\Bar');
-        $b = new ClassName('Foo\\Baz');
+        $a = new ClassName(ClassName::class);
+        $b = new ClassName(ClassKind::class);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsCaseInsensitive(): void
     {
-        $a = new ClassName('Foo\\Bar');
-        $b = new ClassName('FOO\\BAR');
+        $a = new ClassName(ClassName::class);
+        /** @var class-string $lowercased */
+        $lowercased = 'firehed\\phplsp\\domain\\classname';
+        $b = new ClassName($lowercased);
         self::assertTrue($a->equals($b));
     }
 }

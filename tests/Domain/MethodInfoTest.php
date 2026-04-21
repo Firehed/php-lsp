@@ -23,7 +23,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 42,
-            declaringClass: new ClassName('App\\MyClass'),
+            declaringClass: new ClassName(MethodInfo::class),
         );
 
         self::assertSame('doSomething', $method->name->name);
@@ -36,6 +36,6 @@ class MethodInfoTest extends TestCase
         self::assertNull($method->docblock);
         self::assertSame('/path/to/file.php', $method->file);
         self::assertSame(42, $method->line);
-        self::assertSame('App\\MyClass', $method->declaringClass->fqn);
+        self::assertSame(MethodInfo::class, $method->declaringClass->fqn);
     }
 }

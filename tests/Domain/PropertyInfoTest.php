@@ -22,7 +22,7 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 10,
-            declaringClass: new ClassName('App\\MyClass'),
+            declaringClass: new ClassName(PropertyInfo::class),
         );
 
         self::assertSame('value', $property->name->name);
@@ -34,6 +34,6 @@ class PropertyInfoTest extends TestCase
         self::assertNull($property->docblock);
         self::assertSame('/path/to/file.php', $property->file);
         self::assertSame(10, $property->line);
-        self::assertSame('App\\MyClass', $property->declaringClass->fqn);
+        self::assertSame(PropertyInfo::class, $property->declaringClass->fqn);
     }
 }

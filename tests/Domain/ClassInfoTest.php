@@ -13,12 +13,12 @@ class ClassInfoTest extends TestCase
     public function testConstruction(): void
     {
         $class = new ClassInfo(
-            name: new ClassName('App\\MyClass'),
+            name: new ClassName(ClassInfo::class),
             kind: ClassKind::Class_,
             isAbstract: false,
             isFinal: true,
             isReadonly: true,
-            parent: new ClassName('App\\BaseClass'),
+            parent: new ClassName(TestCase::class),
             methods: [],
             properties: [],
             constants: [],
@@ -28,12 +28,12 @@ class ClassInfoTest extends TestCase
             line: 3,
         );
 
-        self::assertSame('App\\MyClass', $class->name->fqn);
+        self::assertSame(ClassInfo::class, $class->name->fqn);
         self::assertSame(ClassKind::Class_, $class->kind);
         self::assertFalse($class->isAbstract);
         self::assertTrue($class->isFinal);
         self::assertTrue($class->isReadonly);
-        self::assertSame('App\\BaseClass', $class->parent?->fqn);
+        self::assertSame(TestCase::class, $class->parent?->fqn);
         self::assertSame([], $class->methods);
         self::assertSame([], $class->properties);
         self::assertSame([], $class->constants);
@@ -46,7 +46,7 @@ class ClassInfoTest extends TestCase
     public function testConstructionWithNullParent(): void
     {
         $class = new ClassInfo(
-            name: new ClassName('App\\MyInterface'),
+            name: new ClassName(\Stringable::class),
             kind: ClassKind::Interface_,
             isAbstract: false,
             isFinal: false,
