@@ -102,7 +102,7 @@ final class MemberFinder
                             $ast,
                             $classLocator,
                             $parser,
-                            VisibilityFilter::PublicProtected,
+                            VisibilityFilter::All,
                         );
                         if ($traitMethod !== null) {
                             return $traitMethod;
@@ -162,7 +162,7 @@ final class MemberFinder
                             $ast,
                             $classLocator,
                             $parser,
-                            VisibilityFilter::PublicProtected,
+                            VisibilityFilter::All,
                         );
                         if ($traitProperty !== null) {
                             return $traitProperty;
