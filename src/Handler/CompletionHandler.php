@@ -19,6 +19,7 @@ use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\MemberCollector;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
@@ -47,17 +48,6 @@ final class CompletionHandler implements HandlerInterface
     private static function matchesPrefix(string $name, string $prefix): bool
     {
         return $prefix === '' || str_starts_with(strtolower($name), strtolower($prefix));
-    }
-
-    public static function nodeContainsLine(Node $node, int $line): bool
-    {
-        $startLine = $node->getStartLine();
-        $endLine = $node->getEndLine();
-
-        return $startLine !== -1
-            && $endLine !== -1
-            && $line >= $startLine - 1
-            && $line <= $endLine - 1;
     }
 
     /**
@@ -193,7 +183,7 @@ final class CompletionHandler implements HandlerInterface
 
         // self:: and static:: completion - resolve to enclosing class
         if (preg_match('/\b(?:self|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $classNode = $this->findClassAtLine($ast, $line);
+            $classNode = ScopeFinder::findClassAtLine($ast, $line);
             if ($classNode !== null) {
                 $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
                 if ($className === null) {
@@ -201,7 +191,7 @@ final class CompletionHandler implements HandlerInterface
                     return [];
                 }
                 $prefix = $matches[1];
-                return $this->getStaticCompletions($className, $prefix, $ast);
+                return $this->getStaticCompletions($className, $prefix, $ast, $line);
             }
             return [];
         }
@@ -216,7 +206,7 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $className = $matches[1];
             $prefix = $matches[2];
-            return $this->getStaticCompletions($className, $prefix, $ast);
+            return $this->getStaticCompletions($className, $prefix, $ast, $line);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
@@ -488,19 +478,16 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getParentCompletions(string $prefix, array $ast, int $line): array
     {
-        $classNode = $this->findClassAtLine($ast, $line);
+        $classNode = ScopeFinder::findClassAtLine($ast, $line);
         if ($classNode === null || $classNode->extends === null) {
             return [];
         }
 
-        $parentClassName = $classNode->extends->toString();
-        $resolvedName = $parentClassName;
-        if ($classNode->extends->getAttribute('resolvedName') instanceof Name) {
-            $resolvedName = $classNode->extends->getAttribute('resolvedName')->toString();
-        }
+        $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+        assert($parentClassName !== null);
 
         return $this->getMemberCompletions(
-            $resolvedName,
+            $parentClassName,
             $ast,
             VisibilityFilter::PublicProtected,
             MemberFilter::Both,
@@ -550,15 +537,18 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
      */
-    private function getStaticCompletions(string $className, string $prefix, array $ast): array
+    private function getStaticCompletions(string $className, string $prefix, array $ast, int $line): array
     {
         // Resolve short name to FQCN using imports
         $resolvedClassName = $this->resolveClassName($className, $ast);
 
+        $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
+        $visibility = VisibilityFilter::forClassAccess($enclosingClass, $resolvedClassName);
+
         return $this->getMemberCompletions(
             $resolvedClassName,
             $ast,
-            VisibilityFilter::All,
+            $visibility,
             MemberFilter::Static,
             $prefix,
             includeConstants: true,
@@ -610,36 +600,6 @@ final class CompletionHandler implements HandlerInterface
             }
         }
         return null;
-    }
-
-    /**
-     * Find the class containing the given line.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function findClassAtLine(array $ast, int $line): ?Stmt\Class_
-    {
-        $visitor = new class ($line) extends NodeVisitorAbstract {
-            public ?Stmt\Class_ $found = null;
-
-            public function __construct(private readonly int $line)
-            {
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Class_ && CompletionHandler::nodeContainsLine($node, $this->line)) {
-                    $this->found = $node;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-
-        return $visitor->found;
     }
 
     /**
@@ -1149,7 +1109,7 @@ final class CompletionHandler implements HandlerInterface
                         || $node instanceof Stmt\ClassMethod
                         || $node instanceof Node\Expr\Closure
                         || $node instanceof Node\Expr\ArrowFunction)
-                    && CompletionHandler::nodeContainsLine($node, $this->cursorLine)
+                    && ScopeFinder::nodeContainsLine($node, $this->cursorLine)
                 ) {
                     $this->found = $node;
                 }

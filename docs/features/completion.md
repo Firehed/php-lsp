@@ -9,7 +9,7 @@ This document tracks the current state of code completion in php-lsp.
 | `$this->` member access | `$this->` or `$this->prefix` | Methods and properties from current class + inherited via reflection | ✅ Working |
 | Typed variable member access | `$user->` | Public methods and properties when type is known (parameter types, `new` expressions) | ✅ Working |
 | Variable completions | `$log` | Local variables, parameters, `$this` in methods | ✅ Working |
-| Static access | `ClassName::` | Static methods, constants, static properties | ✅ Working |
+| Static access | `ClassName::` | Static methods, constants, static properties (visibility-aware) | ✅ Working |
 | `new` expression | `new ` | Classes from composer classmap | ✅ Working |
 | Function calls | identifier at expression start | Built-in PHP functions + file-local functions | ✅ Working |
 

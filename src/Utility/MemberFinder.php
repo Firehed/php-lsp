@@ -182,9 +182,9 @@ final class MemberFinder
     private static function getParentClassName(
         Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $classNode,
     ): ?string {
-        if (!$classNode instanceof Stmt\Class_ || $classNode->extends === null) {
+        if (!$classNode instanceof Stmt\Class_) {
             return null;
         }
-        return ScopeFinder::resolveName($classNode->extends);
+        return ScopeFinder::resolveExtendsName($classNode);
     }
 }

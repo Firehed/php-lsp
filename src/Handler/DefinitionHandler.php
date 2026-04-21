@@ -260,11 +260,13 @@ final class DefinitionHandler implements HandlerInterface
         }
 
         // Search in parent class
-        if ($classNode instanceof Stmt\Class_ && $classNode->extends !== null) {
-            $parentName = ScopeFinder::resolveName($classNode->extends);
-            $parentResult = $this->findMethodDefinition($parentName, $methodName, $ast);
-            if ($parentResult !== null) {
-                return $parentResult;
+        if ($classNode instanceof Stmt\Class_) {
+            $parentName = ScopeFinder::resolveExtendsName($classNode);
+            if ($parentName !== null) {
+                $parentResult = $this->findMethodDefinition($parentName, $methodName, $ast);
+                if ($parentResult !== null) {
+                    return $parentResult;
+                }
             }
         }
 

@@ -316,6 +316,129 @@ PHP;
         self::assertContains('ROLE_ADMIN', $labels);
     }
 
+    public function testStaticCompletionShowsOnlyPublicForExternalClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Target
+{
+    public static function publicMethod(): void {}
+    protected static function protectedMethod(): void {}
+    private static function privateMethod(): void {}
+    public const PUBLIC_CONST = 'pub';
+    protected const PROTECTED_CONST = 'prot';
+    private const PRIVATE_CONST = 'priv';
+}
+
+class Other
+{
+    public function test(): void
+    {
+        Target::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 16], // Target::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('publicMethod', $labels);
+        self::assertContains('PUBLIC_CONST', $labels);
+        self::assertNotContains('protectedMethod', $labels);
+        self::assertNotContains('privateMethod', $labels);
+        self::assertNotContains('PROTECTED_CONST', $labels);
+        self::assertNotContains('PRIVATE_CONST', $labels);
+    }
+
+    public function testStaticCompletionShowsAllForSameClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    public static function publicMethod(): void {}
+    protected static function protectedMethod(): void {}
+    private static function privateMethod(): void {}
+
+    public function test(): void
+    {
+        self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 14], // self::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('publicMethod', $labels);
+        self::assertContains('protectedMethod', $labels);
+        self::assertContains('privateMethod', $labels);
+    }
+
+    public function testStaticCompletionShowsPublicProtectedForSubclass(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    public static function publicMethod(): void {}
+    protected static function protectedMethod(): void {}
+    private static function privateMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public function test(): void
+    {
+        ParentClass::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 21], // ParentClass::
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('publicMethod', $labels);
+        self::assertContains('protectedMethod', $labels);
+        self::assertNotContains('privateMethod', $labels);
+    }
+
     public function testFunctionCompletion(): void
     {
         $code = <<<'PHP'
