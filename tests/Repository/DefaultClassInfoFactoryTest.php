@@ -99,6 +99,33 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertTrue($info->isReadonly);
     }
 
+    public function testFromAstNodeExtractsInterfaces(): void
+    {
+        $node = $this->parseClass('<?php class MyClass implements \Stringable, \Countable {
+            public function __toString(): string { return ""; }
+            public function count(): int { return 0; }
+        }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertCount(2, $info->interfaces);
+        self::assertSame('Stringable', $info->interfaces[0]->fqn);
+        self::assertSame('Countable', $info->interfaces[1]->fqn);
+    }
+
+    public function testFromAstNodeExtractsTraits(): void
+    {
+        $node = $this->parseClass('<?php
+            trait MyTrait {}
+            class MyClass { use MyTrait; }
+        ', 'MyClass');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertCount(1, $info->traits);
+        self::assertSame('MyTrait', $info->traits[0]->fqn);
+    }
+
     public function testFromAstNodeExtractsMethods(): void
     {
         $node = $this->parseClass('<?php class MyClass {
@@ -300,7 +327,27 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertSame(Visibility::Public, $info->constants['TEST_CONST']->visibility);
     }
 
-    private function parseClass(string $code): Stmt\ClassLike
+    public function testFromReflectionExtractsInterfaces(): void
+    {
+        $reflection = new ReflectionClass(ClassWithInterface::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertCount(1, $info->interfaces);
+        self::assertSame(\Countable::class, $info->interfaces[0]->fqn);
+    }
+
+    public function testFromReflectionExtractsTraits(): void
+    {
+        $reflection = new ReflectionClass(TestClass::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertCount(1, $info->traits);
+        self::assertSame(TestTrait::class, $info->traits[0]->fqn);
+    }
+
+    private function parseClass(string $code, ?string $className = null): Stmt\ClassLike
     {
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
         $ast = $parser->parse($code);
@@ -314,12 +361,16 @@ final class DefaultClassInfoFactoryTest extends TestCase
             if ($stmt instanceof Stmt\Namespace_) {
                 foreach ($stmt->stmts as $nsStmt) {
                     if ($nsStmt instanceof Stmt\ClassLike) {
-                        return $nsStmt;
+                        if ($className === null || $nsStmt->name?->toString() === $className) {
+                            return $nsStmt;
+                        }
                     }
                 }
             }
             if ($stmt instanceof Stmt\ClassLike) {
-                return $stmt;
+                if ($className === null || $stmt->name?->toString() === $className) {
+                    return $stmt;
+                }
             }
         }
 

@@ -19,6 +19,8 @@ class ClassInfoTest extends TestCase
             isFinal: true,
             isReadonly: true,
             parent: new ClassName(TestCase::class),
+            interfaces: [new ClassName(\Stringable::class)],
+            traits: [],
             methods: [],
             properties: [],
             constants: [],
@@ -34,6 +36,9 @@ class ClassInfoTest extends TestCase
         self::assertTrue($class->isFinal);
         self::assertTrue($class->isReadonly);
         self::assertSame(TestCase::class, $class->parent?->fqn);
+        self::assertCount(1, $class->interfaces);
+        self::assertSame(\Stringable::class, $class->interfaces[0]->fqn);
+        self::assertSame([], $class->traits);
         self::assertSame([], $class->methods);
         self::assertSame([], $class->properties);
         self::assertSame([], $class->constants);
@@ -52,6 +57,8 @@ class ClassInfoTest extends TestCase
             isFinal: false,
             isReadonly: false,
             parent: null,
+            interfaces: [],
+            traits: [],
             methods: [],
             properties: [],
             constants: [],
