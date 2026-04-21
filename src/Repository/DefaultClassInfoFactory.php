@@ -386,9 +386,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function extractInterfacesFromReflection(ReflectionClass $class): array
     {
         $interfaces = [];
-        $parentInterfaces = $class->getParentClass() !== false
-            ? $class->getParentClass()->getInterfaceNames()
-            : [];
+        $parent = $class->getParentClass();
+        $parentInterfaces = $parent !== false ? $parent->getInterfaceNames() : [];
 
         foreach ($class->getInterfaceNames() as $interfaceName) {
             // Only include directly implemented interfaces, not inherited ones

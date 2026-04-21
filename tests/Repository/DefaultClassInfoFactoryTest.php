@@ -113,6 +113,33 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertSame('Countable', $info->interfaces[1]->fqn);
     }
 
+    public function testFromAstNodeExtractsInterfaceExtends(): void
+    {
+        $node = $this->parseClass('<?php interface MyInterface extends \Countable {}');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertSame(ClassKind::Interface_, $info->kind);
+        self::assertCount(1, $info->interfaces);
+        self::assertSame('Countable', $info->interfaces[0]->fqn);
+    }
+
+    public function testFromAstNodeExtractsEnumImplements(): void
+    {
+        $node = $this->parseClass('<?php enum Status: string implements \JsonSerializable {
+            case Active = "active";
+            public function jsonSerialize(): string { return $this->value; }
+        }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertSame(ClassKind::Enum_, $info->kind);
+        self::assertCount(1, $info->interfaces);
+        self::assertSame('JsonSerializable', $info->interfaces[0]->fqn);
+        self::assertCount(1, $info->enumCases);
+        self::assertArrayHasKey('Active', $info->enumCases);
+    }
+
     public function testFromAstNodeExtractsTraits(): void
     {
         $node = $this->parseClass('<?php
