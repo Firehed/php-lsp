@@ -14,6 +14,7 @@ use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\MemberFinder;
+use Firehed\PhpLsp\Utility\PropertyInfo;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -393,9 +394,9 @@ final class HoverHandler implements HandlerInterface
         array $ast,
         TextDocument $document,
     ): ?string {
-        $propertyNode = MemberFinder::findProperty($className, $propertyName, $ast, $this->classLocator, $this->parser);
-        if ($propertyNode !== null) {
-            return $this->formatPropertyHover($propertyNode, $propertyName);
+        $property = MemberFinder::findProperty($className, $propertyName, $ast, $this->classLocator, $this->parser);
+        if ($property !== null) {
+            return $this->formatPropertyHover($property);
         }
 
         return $this->getReflectionPropertyHover($className, $propertyName);
@@ -438,25 +439,25 @@ final class HoverHandler implements HandlerInterface
         return implode("\n\n", $parts);
     }
 
-    private function formatPropertyHover(Stmt\Property $property, string $propertyName): string
+    private function formatPropertyHover(PropertyInfo $property): string
     {
         $parts = [];
 
-        $docComment = $property->getDocComment();
-        if ($docComment !== null) {
-            $parts[] = DocblockParser::extractDescription($docComment->getText());
+        if ($property->docComment !== null) {
+            $parts[] = DocblockParser::extractDescription($property->docComment);
         }
 
-        $visibility = $this->getPropertyVisibility($property);
-        $static = $property->isStatic() ? 'static ' : '';
-        $readonly = $property->isReadonly() ? 'readonly ' : '';
+        $visibility = match (true) {
+            $property->isPrivate => 'private ',
+            $property->isProtected => 'protected ',
+            default => 'public ',
+        };
+        $static = $property->isStatic ? 'static ' : '';
+        $readonly = $property->isReadonly ? 'readonly ' : '';
 
-        $type = '';
-        if ($property->type !== null) {
-            $type = TypeFormatter::formatNode($property->type) . ' ';
-        }
+        $type = $property->type !== null ? $property->type . ' ' : '';
 
-        $signature = $visibility . $static . $readonly . $type . '$' . $propertyName;
+        $signature = $visibility . $static . $readonly . $type . '$' . $property->name;
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
 
@@ -469,17 +470,6 @@ final class HoverHandler implements HandlerInterface
             return 'private ';
         }
         if ($method->isProtected()) {
-            return 'protected ';
-        }
-        return 'public ';
-    }
-
-    private function getPropertyVisibility(Stmt\Property $property): string
-    {
-        if ($property->isPrivate()) {
-            return 'private ';
-        }
-        if ($property->isProtected()) {
             return 'protected ';
         }
         return 'public ';
