@@ -25,13 +25,23 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Run PHPUnit
-        run: composer phpunit -- --coverage-clover coverage.xml
+        run: composer phpunit
+          --
+          --coverage-clover coverage.xml
+          --log-junit junit.xml
 
       - name: Upload coverage reports to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test reports to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
 
       - name: PHPStan
         run: composer phpstan
