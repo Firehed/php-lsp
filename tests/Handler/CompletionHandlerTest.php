@@ -2590,4 +2590,108 @@ PHP;
         self::assertIsArray($result);
         self::assertEmpty($result['items']);
     }
+
+    public function testStaticCompletionFromAnonymousClassContext(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Target
+{
+    public static function publicMethod(): void {}
+    protected static function protectedMethod(): void {}
+}
+
+$x = new class {
+    public function foo(): void {
+        Target::
+    }
+};
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('publicMethod', $labels);
+        self::assertNotContains('protectedMethod', $labels);
+    }
+
+    public function testStaticCompletionWithDeeperInheritance(): void
+    {
+        // InheritanceChild extends InheritanceParent extends InheritanceGrandparent
+        // Test that Child can access protected members of Grandparent via reflection
+        $code = <<<'PHP'
+<?php
+namespace Firehed\PhpLsp\Tests\Repository;
+
+use Firehed\PhpLsp\Tests\Repository\InheritanceGrandparent;
+
+class InheritanceChild extends InheritanceParent
+{
+    public function foo(): void
+    {
+        InheritanceGrandparent::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 32],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('grandparentPublic', $labels);
+        self::assertContains('grandparentProtected', $labels);
+    }
+
+    public function testStaticCompletionInClassWithoutNamespace(): void
+    {
+        $code = <<<'PHP'
+<?php
+class NoNamespace
+{
+    public static function test(): void {
+        self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('test', $labels);
+    }
 }
