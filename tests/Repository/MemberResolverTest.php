@@ -72,6 +72,21 @@ final class MemberResolverTest extends TestCase
         self::assertNull($result);
     }
 
+    public function testFindEnumCaseReturnsNullForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findEnumCase(
+            new ClassName(self::fakeClass()),
+            new EnumCaseName('Foo'),
+        );
+
+        self::assertNull($result);
+    }
+
     public function testGetMethodsReturnsEmptyForUnknownClass(): void
     {
         $repo = self::createStub(ClassRepository::class);
@@ -718,6 +733,42 @@ final class MemberResolverTest extends TestCase
         self::assertCount(2, $result);
         self::assertContains($case1, $result);
         self::assertContains($case2, $result);
+    }
+
+    public function testFindEnumCaseReturnsCase(): void
+    {
+        $enumName = new ClassName(self::fakeClass());
+        $case1 = $this->createEnumCaseInfo('Case1', $enumName);
+        $case2 = $this->createEnumCaseInfo('Case2', $enumName);
+
+        $enumInfo = $this->createClassInfo($enumName, kind: ClassKind::Enum_, enumCases: [
+            'Case1' => $case1,
+            'Case2' => $case2,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($enumInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findEnumCase($enumName, new EnumCaseName('Case2'));
+
+        self::assertSame($case2, $result);
+    }
+
+    public function testFindEnumCaseReturnsNullWhenNotFound(): void
+    {
+        $enumName = new ClassName(self::fakeClass());
+        $enumInfo = $this->createClassInfo($enumName, kind: ClassKind::Enum_);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($enumInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findEnumCase($enumName, new EnumCaseName('NonExistent'));
+
+        self::assertNull($result);
     }
 
     public function testDiamondInheritanceNoDuplicates(): void

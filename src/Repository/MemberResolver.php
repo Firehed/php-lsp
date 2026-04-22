@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
@@ -65,6 +66,12 @@ final class MemberResolver
 
         $seen = [];
         return $this->findConstantInHierarchy($classInfo, $constant, $minVisibility, $seen, true);
+    }
+
+    public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo
+    {
+        $classInfo = $this->classes->get($class);
+        return $classInfo?->enumCases[$case->name] ?? null;
     }
 
     /**
