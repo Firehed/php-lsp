@@ -827,4 +827,108 @@ PHP;
         self::assertStringContainsString('Child property', $result['contents']);
         self::assertStringNotContainsString('Parent property', $result['contents']);
     }
+
+    public function testHoverOnStaticProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Config
+{
+    /**
+     * Application name.
+     */
+    public static string $appName = 'MyApp';
+}
+
+$name = Config::$appName;
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 18],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$appName', $result['contents']);
+        self::assertStringContainsString('static', $result['contents']);
+        self::assertStringContainsString('Application name', $result['contents']);
+    }
+
+    public function testHoverOnBuiltinClassMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(ArrayObject $obj): void
+{
+    $obj->getArrayCopy();
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handlerWithResolver = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->memberResolver,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 12],
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('getArrayCopy', $result['contents']);
+    }
+
+    public function testHoverOnBuiltinClassProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(Exception $e): void
+{
+    $e->message;
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handlerWithResolver = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->memberResolver,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 9],
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$message', $result['contents']);
+    }
 }

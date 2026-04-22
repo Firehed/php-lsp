@@ -21,7 +21,6 @@ use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
-use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
@@ -37,8 +36,6 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use ReflectionException;
 use ReflectionFunction;
-use ReflectionMethod;
-use ReflectionProperty;
 
 final class HoverHandler implements HandlerInterface
 {
@@ -377,11 +374,11 @@ final class HoverHandler implements HandlerInterface
         $methodName = new MethodName($methodNameStr);
 
         $methodInfo = $this->memberResolver->findMethod($className, $methodName, Visibility::Private);
-        if ($methodInfo !== null) {
-            return $this->formatMethodHover($methodInfo);
+        if ($methodInfo === null) {
+            return null;
         }
 
-        return $this->getReflectionMethodHover($classNameStr, $methodNameStr);
+        return $this->formatMethodHover($methodInfo);
     }
 
     private function getPropertyHoverForClass(string $classNameStr, string $propertyNameStr): ?string
@@ -391,11 +388,11 @@ final class HoverHandler implements HandlerInterface
         $propertyName = new PropertyName($propertyNameStr);
 
         $propertyInfo = $this->memberResolver->findProperty($className, $propertyName, Visibility::Private);
-        if ($propertyInfo !== null) {
-            return $this->formatPropertyHover($propertyInfo);
+        if ($propertyInfo === null) {
+            return null;
         }
 
-        return $this->getReflectionPropertyHover($classNameStr, $propertyNameStr);
+        return $this->formatPropertyHover($propertyInfo);
     }
 
     private function formatMethodHover(MethodInfo $method): string
@@ -470,26 +467,6 @@ final class HoverHandler implements HandlerInterface
         }
     }
 
-    private function getReflectionMethodHover(string $className, string $methodName): ?string
-    {
-        $classReflection = ReflectionHelper::getClass($className);
-        if ($classReflection === null || !$classReflection->hasMethod($methodName)) {
-            return null;
-        }
-        $reflection = $classReflection->getMethod($methodName);
-        return $this->formatReflectionMethod($reflection);
-    }
-
-    private function getReflectionPropertyHover(string $className, string $propertyName): ?string
-    {
-        $classReflection = ReflectionHelper::getClass($className);
-        if ($classReflection === null || !$classReflection->hasProperty($propertyName)) {
-            return null;
-        }
-        $reflection = $classReflection->getProperty($propertyName);
-        return $this->formatReflectionProperty($reflection);
-    }
-
     private function formatReflectionFunction(ReflectionFunction $func): string
     {
         $parts = [];
@@ -522,78 +499,6 @@ final class HoverHandler implements HandlerInterface
         if ($returnType !== null) {
             $signature .= ': ' . TypeFormatter::formatReflection($returnType);
         }
-
-        $parts[] = '```php' . "\n" . $signature . "\n```";
-
-        return implode("\n\n", $parts);
-    }
-
-    private function formatReflectionMethod(ReflectionMethod $method): string
-    {
-        $parts = [];
-
-        $docComment = $method->getDocComment();
-        if ($docComment !== false) {
-            $parts[] = DocblockParser::extractDescription($docComment);
-        }
-
-        $visibility = match (true) {
-            $method->isPrivate() => 'private ',
-            $method->isProtected() => 'protected ',
-            default => 'public ',
-        };
-        $static = $method->isStatic() ? 'static ' : '';
-
-        $params = [];
-        foreach ($method->getParameters() as $param) {
-            $paramStr = '';
-            $type = $param->getType();
-            if ($type !== null) {
-                $paramStr .= TypeFormatter::formatReflection($type) . ' ';
-            }
-            if ($param->isVariadic()) {
-                $paramStr .= '...';
-            }
-            $paramStr .= '$' . $param->getName();
-            if ($param->isOptional() && !$param->isVariadic()) {
-                $paramStr .= ' = ...';
-            }
-            $params[] = $paramStr;
-        }
-
-        $signature = $visibility . $static . 'function ' . $method->getName() . '(' . implode(', ', $params) . ')';
-
-        $returnType = $method->getReturnType();
-        if ($returnType !== null) {
-            $signature .= ': ' . TypeFormatter::formatReflection($returnType);
-        }
-
-        $parts[] = '```php' . "\n" . $signature . "\n```";
-
-        return implode("\n\n", $parts);
-    }
-
-    private function formatReflectionProperty(ReflectionProperty $property): string
-    {
-        $parts = [];
-
-        $docComment = $property->getDocComment();
-        if ($docComment !== false) {
-            $parts[] = DocblockParser::extractDescription($docComment);
-        }
-
-        $visibility = match (true) {
-            $property->isPrivate() => 'private ',
-            $property->isProtected() => 'protected ',
-            default => 'public ',
-        };
-        $static = $property->isStatic() ? 'static ' : '';
-        $readonly = $property->isReadOnly() ? 'readonly ' : '';
-
-        $type = $property->getType();
-        $typeStr = $type !== null ? TypeFormatter::formatReflection($type) . ' ' : '';
-
-        $signature = $visibility . $static . $readonly . $typeStr . '$' . $property->getName();
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
 
