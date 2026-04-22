@@ -367,6 +367,7 @@ final class HoverHandler implements HandlerInterface
         $className = new ClassName($classNameStr);
         $methodName = new MethodName($methodNameStr);
 
+        // Hover shows all members regardless of caller context
         $methodInfo = $this->memberResolver->findMethod($className, $methodName, Visibility::Private);
         if ($methodInfo === null) {
             return null;
@@ -381,6 +382,7 @@ final class HoverHandler implements HandlerInterface
         $className = new ClassName($classNameStr);
         $propertyName = new PropertyName($propertyNameStr);
 
+        // Hover shows all members regardless of caller context
         $propertyInfo = $this->memberResolver->findProperty($className, $propertyName, Visibility::Private);
         if ($propertyInfo === null) {
             return null;
