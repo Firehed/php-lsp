@@ -400,6 +400,105 @@ final class MemberResolverTest extends TestCase
         self::assertSame($childMethod, $result);
     }
 
+    public function testFindMethodFromGrandparent(): void
+    {
+        $grandparentName = new ClassName(self::fakeClass());
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $grandparentMethod = $this->createMethodInfo('deepMethod', Visibility::Public, $grandparentName);
+
+        $grandparentInfo = $this->createClassInfo(
+            $grandparentName,
+            methods: ['deepMethod' => $grandparentMethod],
+        );
+        $parentInfo = $this->createClassInfo($parentName, parent: $grandparentName);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $grandparentName->fqn => $grandparentInfo,
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($childName, new MethodName('deepMethod'), Visibility::Public);
+
+        self::assertSame($grandparentMethod, $result);
+    }
+
+    public function testFindConstantFromInterface(): void
+    {
+        $interfaceName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+
+        $interfaceConst = $this->createConstantInfo('INTERFACE_CONST', Visibility::Public, $interfaceName);
+
+        $interfaceInfo = $this->createClassInfo(
+            $interfaceName,
+            kind: ClassKind::Interface_,
+            constants: ['INTERFACE_CONST' => $interfaceConst],
+        );
+        $classInfo = $this->createClassInfo($className, interfaces: [$interfaceName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $interfaceName->fqn => $interfaceInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($className, new ConstantName('INTERFACE_CONST'), Visibility::Public);
+
+        self::assertSame($interfaceConst, $result);
+    }
+
+    public function testGetConstantsIncludesInterfaceConstants(): void
+    {
+        $interfaceName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+
+        $classConst = $this->createConstantInfo('CLASS_CONST', Visibility::Public, $className);
+        $interfaceConst = $this->createConstantInfo('INTERFACE_CONST', Visibility::Public, $interfaceName);
+
+        $interfaceInfo = $this->createClassInfo(
+            $interfaceName,
+            kind: ClassKind::Interface_,
+            constants: ['INTERFACE_CONST' => $interfaceConst],
+        );
+        $classInfo = $this->createClassInfo(
+            $className,
+            constants: ['CLASS_CONST' => $classConst],
+            interfaces: [$interfaceName],
+        );
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $interfaceName->fqn => $interfaceInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($className, Visibility::Public);
+
+        self::assertCount(2, $result);
+        self::assertContains($classConst, $result);
+        self::assertContains($interfaceConst, $result);
+    }
+
     /**
      * @return class-string
      */
@@ -415,6 +514,7 @@ final class MemberResolverTest extends TestCase
      * @param array<string, ConstantInfo> $constants
      * @param array<string, EnumCaseInfo> $enumCases
      * @param list<ClassName> $traits
+     * @param list<ClassName> $interfaces
      */
     private function createClassInfo(
         ClassName $name,
@@ -425,6 +525,7 @@ final class MemberResolverTest extends TestCase
         array $constants = [],
         array $enumCases = [],
         array $traits = [],
+        array $interfaces = [],
     ): ClassInfo {
         return new ClassInfo(
             name: $name,
@@ -433,7 +534,7 @@ final class MemberResolverTest extends TestCase
             isFinal: false,
             isReadonly: false,
             parent: $parent,
-            interfaces: [],
+            interfaces: $interfaces,
             traits: $traits,
             methods: $methods,
             properties: $properties,
