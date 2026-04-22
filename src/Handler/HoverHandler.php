@@ -5,16 +5,22 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
+use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Repository\ClassInfoFactory;
+use Firehed\PhpLsp\Repository\ClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
-use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
-use Firehed\PhpLsp\Utility\MemberFinder;
-use Firehed\PhpLsp\Utility\PropertyInfo;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -25,7 +31,6 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
-use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
@@ -41,7 +46,9 @@ final class HoverHandler implements HandlerInterface
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
-        private readonly ?ComposerClassLocator $classLocator,
+        private readonly ClassRepository $classRepository,
+        private readonly ClassInfoFactory $classInfoFactory,
+        private readonly MemberResolver $memberResolver,
         private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
@@ -87,6 +94,9 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
+        // Register document classes with repository for member resolution
+        $this->registerDocumentClasses($uri, $ast);
+
         $offset = $document->offsetAt($line, $character);
         $nodeFinder = new NodeAtPosition();
         $node = $nodeFinder->find($ast, $offset);
@@ -95,7 +105,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $hoverContent = $this->getHoverContent($node, $ast, $document);
+        $hoverContent = $this->getHoverContent($node, $ast);
 
         if ($hoverContent === null) {
             return null;
@@ -107,7 +117,7 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function getHoverContent(Node $node, array $ast, TextDocument $document): ?string
+    private function getHoverContent(Node $node, array $ast): ?string
     {
         // Name node - could be class reference or function call
         if ($node instanceof Name) {
@@ -124,16 +134,16 @@ final class HoverHandler implements HandlerInterface
 
             // Static method call: ClassName::method()
             if ($parent instanceof StaticCall) {
-                return $this->getClassHover($node, $ast, $document);
+                return $this->getClassHover($node);
             }
 
             // Static property fetch: ClassName::$property
             if ($parent instanceof StaticPropertyFetch) {
-                return $this->getClassHover($node, $ast, $document);
+                return $this->getClassHover($node);
             }
 
             // Fall through to class hover for class references
-            return $this->getClassHover($node, $ast, $document);
+            return $this->getClassHover($node);
         }
 
         // Identifier node - could be method name, property name, or function call
@@ -142,22 +152,22 @@ final class HoverHandler implements HandlerInterface
 
             // Method call: $obj->method() or $this->method()
             if ($parent instanceof MethodCall) {
-                return $this->getMethodHover($parent, $ast, $document);
+                return $this->getMethodHover($parent, $ast);
             }
 
             // Static method call: ClassName::method()
             if ($parent instanceof StaticCall) {
-                return $this->getStaticMethodHover($parent, $ast, $document);
+                return $this->getStaticMethodHover($parent, $ast);
             }
 
             // Property fetch: $obj->property or $this->property
             if ($parent instanceof PropertyFetch) {
-                return $this->getPropertyHover($parent, $ast, $document);
+                return $this->getPropertyHover($parent, $ast);
             }
 
             // Static property fetch: ClassName::$property
             if ($parent instanceof StaticPropertyFetch) {
-                return $this->getStaticPropertyHover($parent, $ast, $document);
+                return $this->getStaticPropertyHover($parent, $ast);
             }
 
             if ($parent instanceof FuncCall) {
@@ -168,54 +178,51 @@ final class HoverHandler implements HandlerInterface
         return null;
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function getClassHover(Name $node, array $ast, TextDocument $document): ?string
+    private function getClassHover(Name $node): ?string
     {
-        $className = ScopeFinder::resolveName($node);
+        $classNameStr = ScopeFinder::resolveName($node);
 
-        $classNode = ClassFinder::findWithLocator($className, $ast, $this->classLocator, $this->parser);
+        /** @var class-string $classNameStr */
+        $classInfo = $this->classRepository->get(new ClassName($classNameStr));
 
-        if ($classNode === null) {
+        if ($classInfo === null) {
             return null;
         }
 
-        return $this->formatClassHover($classNode);
+        return $this->formatClassHover($classInfo);
     }
 
-    private function formatClassHover(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): string
+    private function formatClassHover(ClassInfo $classInfo): string
     {
         $parts = [];
 
         // Add docblock if present
-        $docComment = $node->getDocComment();
-        if ($docComment !== null) {
-            $parts[] = DocblockParser::extractDescription($docComment->getText());
+        if ($classInfo->docblock !== null) {
+            $parts[] = DocblockParser::extractDescription($classInfo->docblock);
         }
 
         // Add signature
-        $keyword = match (true) {
-            $node instanceof Stmt\Interface_ => 'interface',
-            $node instanceof Stmt\Trait_ => 'trait',
-            $node instanceof Stmt\Enum_ => 'enum',
+        $keyword = match ($classInfo->kind) {
+            ClassKind::Interface_ => 'interface',
+            ClassKind::Trait_ => 'trait',
+            ClassKind::Enum_ => 'enum',
             default => 'class',
         };
 
-        $signature = $keyword . ' ' . $node->name;
+        $signature = $keyword . ' ' . $classInfo->name->shortName();
 
-        if ($node instanceof Stmt\Class_) {
-            if ($node->extends !== null) {
-                $signature .= ' extends ' . $node->extends->toString();
+        if ($classInfo->kind === ClassKind::Class_) {
+            if ($classInfo->parent !== null) {
+                $signature .= ' extends ' . $classInfo->parent->shortName();
             }
-            if ($node->implements !== []) {
-                $implements = array_map(fn($n) => $n->toString(), $node->implements);
+            if ($classInfo->interfaces !== []) {
+                $implements = array_map(fn($n) => $n->shortName(), $classInfo->interfaces);
                 $signature .= ' implements ' . implode(', ', $implements);
             }
         }
 
-        if ($node instanceof Stmt\Interface_ && $node->extends !== []) {
-            $extends = array_map(fn($n) => $n->toString(), $node->extends);
+        if ($classInfo->kind === ClassKind::Interface_ && $classInfo->interfaces !== []) {
+            $extends = array_map(fn($n) => $n->shortName(), $classInfo->interfaces);
             $signature .= ' extends ' . implode(', ', $extends);
         }
 
@@ -295,7 +302,7 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function getMethodHover(MethodCall $call, array $ast, TextDocument $document): ?string
+    private function getMethodHover(MethodCall $call, array $ast): ?string
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
@@ -307,13 +314,13 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        return $this->getMethodHoverForClass($className, $methodName->toString(), $ast, $document);
+        return $this->getMethodHoverForClass($className, $methodName->toString());
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function getStaticMethodHover(StaticCall $call, array $ast, TextDocument $document): ?string
+    private function getStaticMethodHover(StaticCall $call, array $ast): ?string
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
@@ -327,13 +334,13 @@ final class HoverHandler implements HandlerInterface
 
         $className = ScopeFinder::resolveName($class);
 
-        return $this->getMethodHoverForClass($className, $methodName->toString(), $ast, $document);
+        return $this->getMethodHoverForClass($className, $methodName->toString());
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function getPropertyHover(PropertyFetch $fetch, array $ast, TextDocument $document): ?string
+    private function getPropertyHover(PropertyFetch $fetch, array $ast): ?string
     {
         $propertyName = $fetch->name;
         if (!$propertyName instanceof Identifier) {
@@ -345,13 +352,13 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        return $this->getPropertyHoverForClass($className, $propertyName->toString(), $ast, $document);
+        return $this->getPropertyHoverForClass($className, $propertyName->toString());
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function getStaticPropertyHover(StaticPropertyFetch $fetch, array $ast, TextDocument $document): ?string
+    private function getStaticPropertyHover(StaticPropertyFetch $fetch, array $ast): ?string
     {
         $propertyName = $fetch->name;
         if (!$propertyName instanceof Node\VarLikeIdentifier) {
@@ -365,73 +372,67 @@ final class HoverHandler implements HandlerInterface
 
         $className = ScopeFinder::resolveName($class);
 
-        return $this->getPropertyHoverForClass($className, $propertyName->toString(), $ast, $document);
+        return $this->getPropertyHoverForClass($className, $propertyName->toString());
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function getMethodHoverForClass(
-        string $className,
-        string $methodName,
-        array $ast,
-        TextDocument $document,
-    ): ?string {
-        $methodNode = MemberFinder::findMethod($className, $methodName, $ast, $this->classLocator, $this->parser);
-        if ($methodNode !== null) {
-            return $this->formatMethodHover($methodNode);
+    private function getMethodHoverForClass(string $classNameStr, string $methodNameStr): ?string
+    {
+        /** @var class-string $classNameStr */
+        $className = new ClassName($classNameStr);
+        $methodName = new MethodName($methodNameStr);
+
+        $methodInfo = $this->memberResolver->findMethod($className, $methodName, Visibility::Private);
+        if ($methodInfo !== null) {
+            return $this->formatMethodHover($methodInfo);
         }
 
-        return $this->getReflectionMethodHover($className, $methodName);
+        return $this->getReflectionMethodHover($classNameStr, $methodNameStr);
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function getPropertyHoverForClass(
-        string $className,
-        string $propertyName,
-        array $ast,
-        TextDocument $document,
-    ): ?string {
-        $property = MemberFinder::findProperty($className, $propertyName, $ast, $this->classLocator, $this->parser);
-        if ($property !== null) {
-            return $this->formatPropertyHover($property);
+    private function getPropertyHoverForClass(string $classNameStr, string $propertyNameStr): ?string
+    {
+        /** @var class-string $classNameStr */
+        $className = new ClassName($classNameStr);
+        $propertyName = new PropertyName($propertyNameStr);
+
+        $propertyInfo = $this->memberResolver->findProperty($className, $propertyName, Visibility::Private);
+        if ($propertyInfo !== null) {
+            return $this->formatPropertyHover($propertyInfo);
         }
 
-        return $this->getReflectionPropertyHover($className, $propertyName);
+        return $this->getReflectionPropertyHover($classNameStr, $propertyNameStr);
     }
 
-    private function formatMethodHover(Stmt\ClassMethod $method): string
+    private function formatMethodHover(MethodInfo $method): string
     {
         $parts = [];
 
-        $docComment = $method->getDocComment();
-        if ($docComment !== null) {
-            $parts[] = DocblockParser::extractDescription($docComment->getText());
+        if ($method->docblock !== null) {
+            $parts[] = DocblockParser::extractDescription($method->docblock);
         }
 
-        $visibility = $this->getVisibility($method);
-        $static = $method->isStatic() ? 'static ' : '';
+        $visibility = match ($method->visibility) {
+            Visibility::Private => 'private ',
+            Visibility::Protected => 'protected ',
+            Visibility::Public => 'public ',
+        };
+        $static = $method->isStatic ? 'static ' : '';
 
         $params = [];
-        foreach ($method->params as $param) {
+        foreach ($method->parameters as $param) {
             $paramStr = '';
             if ($param->type !== null) {
-                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
+                $paramStr .= $param->type . ' ';
             }
-            $var = $param->var;
-            if ($var instanceof Variable && is_string($var->name)) {
-                $paramStr .= '$' . $var->name;
-            }
+            $paramStr .= '$' . $param->name;
             $params[] = $paramStr;
         }
 
-        $signature = $visibility . $static . 'function ' . $method->name->toString()
+        $signature = $visibility . $static . 'function ' . $method->name->name
             . '(' . implode(', ', $params) . ')';
 
         if ($method->returnType !== null) {
-            $signature .= ': ' . TypeFormatter::formatNode($method->returnType);
+            $signature .= ': ' . $method->returnType;
         }
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
@@ -439,40 +440,29 @@ final class HoverHandler implements HandlerInterface
         return implode("\n\n", $parts);
     }
 
-    private function formatPropertyHover(PropertyInfo $property): string
+    private function formatPropertyHover(DomainPropertyInfo $property): string
     {
         $parts = [];
 
-        if ($property->docComment !== null) {
-            $parts[] = DocblockParser::extractDescription($property->docComment);
+        if ($property->docblock !== null) {
+            $parts[] = DocblockParser::extractDescription($property->docblock);
         }
 
-        $visibility = match (true) {
-            $property->isPrivate => 'private ',
-            $property->isProtected => 'protected ',
-            default => 'public ',
+        $visibility = match ($property->visibility) {
+            Visibility::Private => 'private ',
+            Visibility::Protected => 'protected ',
+            Visibility::Public => 'public ',
         };
         $static = $property->isStatic ? 'static ' : '';
         $readonly = $property->isReadonly ? 'readonly ' : '';
 
         $type = $property->type !== null ? $property->type . ' ' : '';
 
-        $signature = $visibility . $static . $readonly . $type . '$' . $property->name;
+        $signature = $visibility . $static . $readonly . $type . '$' . $property->name->name;
 
         $parts[] = '```php' . "\n" . $signature . "\n```";
 
         return implode("\n\n", $parts);
-    }
-
-    private function getVisibility(Stmt\ClassMethod $method): string
-    {
-        if ($method->isPrivate()) {
-            return 'private ';
-        }
-        if ($method->isProtected()) {
-            return 'protected ';
-        }
-        return 'public ';
     }
 
     private function getBuiltinFunctionHover(string $functionName): ?string
@@ -613,5 +603,38 @@ final class HoverHandler implements HandlerInterface
         $parts[] = '```php' . "\n" . $signature . "\n```";
 
         return implode("\n\n", $parts);
+    }
+
+    /**
+     * Register all classes from the document with the class repository.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function registerDocumentClasses(string $uri, array $ast): void
+    {
+        $classes = [];
+        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
+            if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
+                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
+            }
+        }
+        $this->classRepository->updateDocument($uri, $classes);
+    }
+
+    /**
+     * Iterate top-level statements, flattening namespace contents.
+     *
+     * @param array<Stmt> $ast
+     * @return \Generator<Stmt>
+     */
+    private function iterateTopLevelStatements(array $ast): \Generator
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                yield from $stmt->stmts;
+            } else {
+                yield $stmt;
+            }
+        }
     }
 }

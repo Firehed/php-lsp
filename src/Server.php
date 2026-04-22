@@ -70,7 +70,14 @@ final class Server
             $classLocator,
             $typeResolver,
         );
-        $this->handlers[] = new HoverHandler($this->documentManager, $parser, $classLocator, $typeResolver);
+        $this->handlers[] = new HoverHandler(
+            $this->documentManager,
+            $parser,
+            $classRepository,
+            $classInfoFactory,
+            $memberResolver,
+            $typeResolver,
+        );
         $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator, $typeResolver);
         $this->handlers[] = new CompletionHandler(
             $this->documentManager,

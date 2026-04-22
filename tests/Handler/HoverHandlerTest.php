@@ -6,9 +6,12 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HoverHandler;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -18,13 +21,30 @@ class HoverHandlerTest extends TestCase
 {
     private DocumentManager $documents;
     private ParserService $parser;
+    private DefaultClassRepository $classRepository;
+    private DefaultClassInfoFactory $classInfoFactory;
+    private MemberResolver $memberResolver;
     private HoverHandler $handler;
 
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
-        $this->handler = new HoverHandler($this->documents, $this->parser, null);
+        $this->classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $this->classRepository = new DefaultClassRepository(
+            $this->classInfoFactory,
+            $locator,
+            $this->parser,
+        );
+        $this->memberResolver = new MemberResolver($this->classRepository);
+        $this->handler = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
+        );
     }
 
     public function testSupports(): void
@@ -312,7 +332,9 @@ PHP;
         $handlerWithResolver = new HoverHandler(
             $this->documents,
             $this->parser,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -359,7 +381,9 @@ PHP;
         $handlerWithResolver = new HoverHandler(
             $this->documents,
             $this->parser,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
