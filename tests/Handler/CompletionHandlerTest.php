@@ -2538,4 +2538,56 @@ PHP;
         self::assertNotContains('PHP_VERSION', $labels);
         self::assertNotContains('PHP_INT_MAX', $labels);
     }
+
+    public function testThisCompletionOutsideClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+$this->
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 1, 'character' => 7],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testThisCompletionInAnonymousClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+$x = new class {
+    public function foo(): void {
+        $this->
+    }
+};
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
 }
