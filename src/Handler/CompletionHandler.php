@@ -72,7 +72,6 @@ final class CompletionHandler implements HandlerInterface
         return $item;
     }
 
-
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,

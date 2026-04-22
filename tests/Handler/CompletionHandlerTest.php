@@ -17,6 +17,8 @@ use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Utility\ScopeFinder;
+use PhpParser\Node\Stmt\ClassLike;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -60,14 +62,8 @@ class CompletionHandlerTest extends TestCase
         $ast = $this->parser->parse($document);
         if ($ast !== null) {
             $classes = [];
-            foreach ($ast as $stmt) {
-                if ($stmt instanceof \PhpParser\Node\Stmt\Namespace_) {
-                    foreach ($stmt->stmts as $inner) {
-                        if ($inner instanceof \PhpParser\Node\Stmt\ClassLike && $inner->name !== null) {
-                            $classes[] = $this->classInfoFactory->fromAstNode($inner, $uri);
-                        }
-                    }
-                } elseif ($stmt instanceof \PhpParser\Node\Stmt\ClassLike && $stmt->name !== null) {
+            foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
+                if ($stmt instanceof ClassLike && $stmt->name !== null) {
                     $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
                 }
             }
