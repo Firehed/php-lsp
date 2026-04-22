@@ -6,11 +6,13 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
+use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
@@ -30,6 +32,7 @@ class CompletionHandlerTest extends TestCase
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
     private CompletionHandler $handler;
+    private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
@@ -48,10 +51,30 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
         );
+        $this->syncHandler = new TextDocumentSyncHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->classInfoFactory,
+        );
+    }
+
+    private function openDocument(string $uri, string $code): void
+    {
+        $this->syncHandler->handle(NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didOpen',
+            'params' => [
+                'textDocument' => [
+                    'uri' => $uri,
+                    'languageId' => 'php',
+                    'version' => 1,
+                    'text' => $code,
+                ],
+            ],
+        ]));
     }
 
     public function testSupports(): void
@@ -82,7 +105,7 @@ class MyClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -120,7 +143,7 @@ class MyClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -155,7 +178,7 @@ class MyClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -194,7 +217,7 @@ class Math
 
 $result = Math::
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -228,7 +251,7 @@ class Status
 
 $status = Status::
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -273,7 +296,7 @@ class UserController
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -318,7 +341,7 @@ class Controller
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -360,7 +383,7 @@ class Other
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -400,7 +423,7 @@ class MyClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -440,7 +463,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -469,7 +492,7 @@ function myCustomFunction(): void {}
 
 $x = arr
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -501,7 +524,7 @@ function foo() {
     $x = Us
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -538,7 +561,7 @@ function foo() {
     $x = Rep
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -575,7 +598,7 @@ function foo() {
     $x = Us
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -613,7 +636,7 @@ PHP;
         ));
 
         $code = '<?php $x = new MyIn';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -649,7 +672,7 @@ PHP;
         ));
 
         $code = '<?php $x = new My';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -695,7 +718,7 @@ PHP;
 
         // Expression context (not `new`)
         $code = '<?php $x = My';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -720,7 +743,7 @@ PHP;
     public function testTypeHintCompletionInReturnType(): void
     {
         $code = '<?php function foo(): str';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -745,7 +768,7 @@ PHP;
     public function testTypeHintCompletionInParameter(): void
     {
         $code = '<?php function foo(str';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -767,7 +790,7 @@ PHP;
     public function testTypeHintCompletionIncludesBuiltinTypes(): void
     {
         $code = '<?php function foo(): ';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -794,7 +817,7 @@ PHP;
     public function testTypeHintCompletionForPropertyType(): void
     {
         $code = '<?php class Foo { private str';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -817,7 +840,7 @@ PHP;
     {
         // Nullable type context (after ?)
         $code = '<?php trait MyTrait {} class Foo { private ?';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -852,7 +875,7 @@ PHP;
     {
         // Union type context (after |)
         $code = '<?php trait MyTrait {} class Foo { private int|';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -887,7 +910,7 @@ PHP;
     {
         // Intersection type context (after &)
         $code = '<?php trait MyTrait {} class Foo { private Countable&';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -921,7 +944,7 @@ PHP;
     public function testParameterTypeExcludesInvalidTypes(): void
     {
         $code = '<?php trait MyTrait {} function foo(';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -957,7 +980,7 @@ PHP;
     public function testReturnTypeIncludesAllValidTypes(): void
     {
         $code = '<?php trait MyTrait {} function foo(): ';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -991,7 +1014,7 @@ PHP;
     public function testReturnTypeUnionIncludesAllReturnTypes(): void
     {
         $code = '<?php trait MyTrait {} function foo(): int|';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1025,7 +1048,7 @@ PHP;
     public function testReturnTypeIntersectionIncludesAllReturnTypes(): void
     {
         $code = '<?php trait MyTrait {} function foo(): Countable&';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1060,7 +1083,7 @@ PHP;
     {
         // Nullable return type context (after ?)
         $code = '<?php function foo(): ?';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1092,7 +1115,7 @@ PHP;
     {
         // Edge case: space after ? in nullable return type (cursor after space, before typing)
         $code = '<?php function foo(): ? ';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1120,7 +1143,7 @@ PHP;
     public function testKeywordCompletions(): void
     {
         $code = '<?php fore';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1142,7 +1165,7 @@ PHP;
     public function testKeywordCompletionsIncludeControlFlow(): void
     {
         $code = '<?php ret';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1164,7 +1187,7 @@ PHP;
     public function testKeywordCompletionsIncludeDeclarations(): void
     {
         $code = '<?php cla';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1186,7 +1209,7 @@ PHP;
     public function testClassBodyOnlySuggestsClassLevelKeywords(): void
     {
         $code = '<?php class Foo { p';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1214,7 +1237,7 @@ PHP;
     public function testAfterVisibilityKeywordSuggestsFunction(): void
     {
         $code = '<?php class Foo { public f';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1236,7 +1259,7 @@ PHP;
     public function testAfterVisibilityKeywordSuggestsModifiers(): void
     {
         $code = '<?php class Foo { public s';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1259,7 +1282,7 @@ PHP;
     public function testKeywordsNotSuggestedInTypeHintContext(): void
     {
         $code = '<?php function foo(): ret';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1282,7 +1305,7 @@ PHP;
     public function testVariableCompletionSuggestsParameters(): void
     {
         $code = '<?php function foo(string $name, int $age) { $n; }';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1305,7 +1328,7 @@ PHP;
     public function testVariableCompletionSuggestsLocalVariables(): void
     {
         $code = '<?php function foo() { $logger = new Logger(); $l; }';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1327,7 +1350,7 @@ PHP;
     public function testVariableCompletionSuggestsThisInMethod(): void
     {
         $code = '<?php class Foo { public function bar() { $t; } }';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1349,7 +1372,7 @@ PHP;
     public function testVariableCompletionWorksInClosures(): void
     {
         $code = '<?php $fn = function ($param) { $localVar = 1; $l; };';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1371,7 +1394,7 @@ PHP;
     public function testVariableCompletionSuggestsForeachVariables(): void
     {
         $code = '<?php function foo() { foreach ([1,2] as $item) { $i; } }';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1400,7 +1423,7 @@ $a = [
     'y' => function () { $siteDir = 2; $s; },
 ];
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1423,7 +1446,7 @@ PHP;
     public function testVariableCompletionShowsTypeInDetail(): void
     {
         $code = '<?php function foo(string $name) { $x; }';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1447,7 +1470,7 @@ PHP;
     public function testCompletionReturnsEmptyForUnknownContext(): void
     {
         $code = '<?php $x = 1;';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1478,7 +1501,7 @@ enum Status
 
 $status = Status::A
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1511,7 +1534,7 @@ enum Status
 
 $status = Status::
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1550,7 +1573,7 @@ enum Status
 
 $cases = Status::c
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1583,7 +1606,7 @@ enum Priority: int
 
 $p = Priority::
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1636,7 +1659,7 @@ enum Color: string
 
 $c = Color::
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1686,7 +1709,7 @@ enum Priority: int
 
 $p = Priority::f
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -1725,14 +1748,12 @@ function processUser(User $user): void
     $user->
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -1773,14 +1794,12 @@ function foo(): void
     $logger->
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -1819,14 +1838,12 @@ function processUser(User $user): void
     $user->get
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -1859,14 +1876,12 @@ function foo(): void
     $unknown->
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -1896,14 +1911,12 @@ function foo(ArrayObject $obj): void
     $obj->
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -1948,14 +1961,12 @@ function foo(User $user): void
     $user->
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -1999,7 +2010,7 @@ class Foo
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2038,7 +2049,7 @@ class Foo
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2075,7 +2086,7 @@ class Foo
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2112,7 +2123,7 @@ class Foo
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2147,7 +2158,7 @@ $obj = new class {
     }
 };
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2185,7 +2196,7 @@ class Second
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2221,7 +2232,7 @@ class Foo
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2257,7 +2268,7 @@ class Foo
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2287,7 +2298,7 @@ function foo(): void
     self::
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2324,7 +2335,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2357,7 +2368,7 @@ class MyClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2395,7 +2406,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2430,7 +2441,7 @@ function foo(User $user): void
     $user->
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         // Handler without type resolver (uses default from setUp)
         $request = RequestMessage::fromArray([
@@ -2545,7 +2556,7 @@ PHP;
 <?php
 $this->
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2573,7 +2584,7 @@ $x = new class {
     }
 };
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2607,7 +2618,7 @@ $x = new class {
     }
 };
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2645,7 +2656,7 @@ class InheritanceChild extends InheritanceParent
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -2676,7 +2687,7 @@ class NoNamespace
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',

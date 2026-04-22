@@ -62,7 +62,13 @@ final class Server
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
-        $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer);
+        $this->handlers[] = new TextDocumentSyncHandler(
+            $this->documentManager,
+            $parser,
+            $classRepository,
+            $classInfoFactory,
+            $indexer,
+        );
         $this->handlers[] = new DefinitionHandler(
             $this->documentManager,
             $parser,
@@ -83,8 +89,6 @@ final class Server
             $this->documentManager,
             $parser,
             $symbolIndex,
-            $classRepository,
-            $classInfoFactory,
             $memberResolver,
             $typeResolver,
         );
