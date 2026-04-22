@@ -80,7 +80,6 @@ final class Server
             $this->documentManager,
             $parser,
             $classRepository,
-            $classInfoFactory,
             $memberResolver,
             $typeResolver,
         );

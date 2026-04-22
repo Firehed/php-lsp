@@ -16,7 +16,6 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
@@ -47,7 +46,6 @@ final class HoverHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly ClassRepository $classRepository,
-        private readonly ClassInfoFactory $classInfoFactory,
         private readonly MemberResolver $memberResolver,
         private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
@@ -93,9 +91,6 @@ final class HoverHandler implements HandlerInterface
         if ($ast === null) {
             return null;
         }
-
-        // Register document classes with repository for member resolution
-        $this->registerDocumentClasses($uri, $ast);
 
         $offset = $document->offsetAt($line, $character);
         $nodeFinder = new NodeAtPosition();
@@ -603,38 +598,5 @@ final class HoverHandler implements HandlerInterface
         $parts[] = '```php' . "\n" . $signature . "\n```";
 
         return implode("\n\n", $parts);
-    }
-
-    /**
-     * Register all classes from the document with the class repository.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function registerDocumentClasses(string $uri, array $ast): void
-    {
-        $classes = [];
-        foreach ($this->iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
-                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
-            }
-        }
-        $this->classRepository->updateDocument($uri, $classes);
-    }
-
-    /**
-     * Iterate top-level statements, flattening namespace contents.
-     *
-     * @param array<Stmt> $ast
-     * @return \Generator<Stmt>
-     */
-    private function iterateTopLevelStatements(array $ast): \Generator
-    {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                yield from $stmt->stmts;
-            } else {
-                yield $stmt;
-            }
-        }
     }
 }
