@@ -42,7 +42,9 @@ final class Server
         if ($projectRoot === null) {
             $cwd = getcwd();
             if ($cwd === false) {
-                throw new \RuntimeException('Unable to determine project root: getcwd() failed');
+                // @codeCoverageIgnoreStart
+                throw new \LogicException('Unable to determine project root: getcwd() failed');
+                // @codeCoverageIgnoreEnd
             }
             $projectRoot = $cwd;
         }

@@ -152,7 +152,9 @@ final class CompletionHandler implements HandlerInterface
 
         $ast = $this->parser->parse($document);
         if ($ast === null) {
-            return null;
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Parser returned null with error-collecting handler');
+            // @codeCoverageIgnoreEnd
         }
 
         // Register document classes with repository for member resolution
@@ -306,7 +308,9 @@ final class CompletionHandler implements HandlerInterface
 
         $classNameStr = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
         if ($classNameStr === null) {
-            return [];
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Top-level class found without name');
+            // @codeCoverageIgnoreEnd
         }
 
         /** @var class-string $classNameStr */
