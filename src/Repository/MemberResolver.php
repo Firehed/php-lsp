@@ -157,7 +157,7 @@ final class MemberResolver
             if (!$methodInfo->name->equals($method)) {
                 continue;
             }
-            if ($this->isAccessible($methodInfo->visibility, $minVisibility, $isOriginClass, false)) {
+            if ($this->isAccessible($methodInfo->visibility, $minVisibility, $isOriginClass)) {
                 return $methodInfo;
             }
         }
@@ -200,7 +200,7 @@ final class MemberResolver
 
         if (array_key_exists($property->name, $classInfo->properties)) {
             $propInfo = $classInfo->properties[$property->name];
-            if ($this->isAccessible($propInfo->visibility, $minVisibility, $isOriginClass, false)) {
+            if ($this->isAccessible($propInfo->visibility, $minVisibility, $isOriginClass)) {
                 return $propInfo;
             }
         }
@@ -243,7 +243,7 @@ final class MemberResolver
 
         if (array_key_exists($constant->name, $classInfo->constants)) {
             $constInfo = $classInfo->constants[$constant->name];
-            if ($this->isAccessible($constInfo->visibility, $minVisibility, $isOriginClass, false)) {
+            if ($this->isAccessible($constInfo->visibility, $minVisibility, $isOriginClass)) {
                 return $constInfo;
             }
         }
@@ -261,7 +261,20 @@ final class MemberResolver
         if ($classInfo->parent !== null) {
             $parentInfo = $this->classes->get($classInfo->parent);
             if ($parentInfo !== null) {
-                return $this->findConstantInHierarchy($parentInfo, $constant, $minVisibility, $seen, false);
+                $result = $this->findConstantInHierarchy($parentInfo, $constant, $minVisibility, $seen, false);
+                if ($result !== null) {
+                    return $result;
+                }
+            }
+        }
+
+        foreach ($classInfo->interfaces as $interfaceName) {
+            $interfaceInfo = $this->classes->get($interfaceName);
+            if ($interfaceInfo !== null) {
+                $result = $this->findConstantInHierarchy($interfaceInfo, $constant, $minVisibility, $seen, false);
+                if ($result !== null) {
+                    return $result;
+                }
             }
         }
 
@@ -294,7 +307,7 @@ final class MemberResolver
             if ($static !== null && $methodInfo->isStatic !== $static) {
                 continue;
             }
-            if (!$this->isAccessible($methodInfo->visibility, $minVisibility, $isOriginClass, false)) {
+            if (!$this->isAccessible($methodInfo->visibility, $minVisibility, $isOriginClass)) {
                 continue;
             }
             $methods[$key] = $methodInfo;
@@ -340,7 +353,7 @@ final class MemberResolver
             if ($static !== null && $propInfo->isStatic !== $static) {
                 continue;
             }
-            if (!$this->isAccessible($propInfo->visibility, $minVisibility, $isOriginClass, false)) {
+            if (!$this->isAccessible($propInfo->visibility, $minVisibility, $isOriginClass)) {
                 continue;
             }
             $properties[$key] = $propInfo;
@@ -382,7 +395,7 @@ final class MemberResolver
             if (array_key_exists($key, $constants)) {
                 continue;
             }
-            if (!$this->isAccessible($constInfo->visibility, $minVisibility, $isOriginClass, false)) {
+            if (!$this->isAccessible($constInfo->visibility, $minVisibility, $isOriginClass)) {
                 continue;
             }
             $constants[$key] = $constInfo;
@@ -401,20 +414,26 @@ final class MemberResolver
                 $this->collectConstants($parentInfo, $minVisibility, $constants, $seen, false);
             }
         }
+
+        foreach ($classInfo->interfaces as $interfaceName) {
+            $interfaceInfo = $this->classes->get($interfaceName);
+            if ($interfaceInfo !== null) {
+                $this->collectConstants($interfaceInfo, $minVisibility, $constants, $seen, false);
+            }
+        }
     }
 
     private function isAccessible(
         Visibility $memberVisibility,
         Visibility $minVisibility,
         bool $isOriginClass,
-        bool $isTrait,
     ): bool {
         if (!$memberVisibility->isAccessibleFrom($minVisibility)) {
             return false;
         }
 
         if ($memberVisibility === Visibility::Private) {
-            return $isOriginClass || $isTrait;
+            return $isOriginClass;
         }
 
         return true;
