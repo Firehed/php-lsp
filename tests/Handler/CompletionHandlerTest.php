@@ -6,19 +6,19 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
+use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
-use Firehed\PhpLsp\Utility\ScopeFinder;
-use PhpParser\Node\Stmt\ClassLike;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -32,6 +32,7 @@ class CompletionHandlerTest extends TestCase
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
     private CompletionHandler $handler;
+    private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
@@ -52,23 +53,28 @@ class CompletionHandlerTest extends TestCase
             $this->symbolIndex,
             $this->memberResolver,
         );
+        $this->syncHandler = new TextDocumentSyncHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->classInfoFactory,
+        );
     }
 
     private function openDocument(string $uri, string $code): void
     {
-        $this->documents->open($uri, 'php', 1, $code);
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-        $ast = $this->parser->parse($document);
-        if ($ast !== null) {
-            $classes = [];
-            foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
-                if ($stmt instanceof ClassLike && $stmt->name !== null) {
-                    $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
-                }
-            }
-            $this->classRepository->updateDocument($uri, $classes);
-        }
+        $this->syncHandler->handle(NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didOpen',
+            'params' => [
+                'textDocument' => [
+                    'uri' => $uri,
+                    'languageId' => 'php',
+                    'version' => 1,
+                    'text' => $code,
+                ],
+            ],
+        ]));
     }
 
     public function testSupports(): void
