@@ -12,6 +12,9 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -22,6 +25,9 @@ class CompletionHandlerTest extends TestCase
     private DocumentManager $documents;
     private ParserService $parser;
     private SymbolIndex $symbolIndex;
+    private DefaultClassRepository $classRepository;
+    private DefaultClassInfoFactory $classInfoFactory;
+    private MemberResolver $memberResolver;
     private CompletionHandler $handler;
 
     protected function setUp(): void
@@ -29,7 +35,17 @@ class CompletionHandlerTest extends TestCase
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
         $this->symbolIndex = new SymbolIndex();
-        $this->handler = new CompletionHandler($this->documents, $this->parser, $this->symbolIndex, null);
+        $this->classInfoFactory = new DefaultClassInfoFactory();
+        $this->classRepository = new DefaultClassRepository($this->classInfoFactory, null, $this->parser);
+        $this->memberResolver = new MemberResolver($this->classRepository);
+        $this->handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
+        );
     }
 
     public function testSupports(): void
@@ -1709,7 +1725,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1755,7 +1773,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1799,7 +1819,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1837,7 +1859,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1872,7 +1896,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1922,7 +1948,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 

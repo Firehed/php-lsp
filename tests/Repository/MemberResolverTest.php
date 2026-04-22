@@ -1327,6 +1327,7 @@ final class MemberResolverTest extends TestCase
     {
         return new EnumCaseInfo(
             name: new EnumCaseName($name),
+            backingValue: null,
             docblock: null,
             file: null,
             line: null,

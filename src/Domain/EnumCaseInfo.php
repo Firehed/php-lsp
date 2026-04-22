@@ -11,6 +11,7 @@ final readonly class EnumCaseInfo
 {
     public function __construct(
         public EnumCaseName $name,
+        public int|string|null $backingValue,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,

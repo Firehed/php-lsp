@@ -17,6 +17,9 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -47,6 +50,10 @@ final class Server
         $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
         $typeResolver = new BasicTypeResolver();
 
+        $classInfoFactory = new DefaultClassInfoFactory();
+        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
+        $memberResolver = new MemberResolver($classRepository);
+
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
         $this->handlers[] = new TextDocumentSyncHandler($this->documentManager, $indexer);
@@ -63,7 +70,9 @@ final class Server
             $this->documentManager,
             $parser,
             $symbolIndex,
-            $classLocator,
+            $classRepository,
+            $classInfoFactory,
+            $memberResolver,
             $typeResolver,
         );
     }

@@ -233,6 +233,85 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             );
         }
 
+        // Add built-in enum methods
+        if ($node instanceof Stmt\Enum_) {
+            $methods = array_merge($methods, $this->getEnumBuiltinMethods($node, $className));
+        }
+
+        return $methods;
+    }
+
+    /**
+     * @return array<string, MethodInfo>
+     */
+    private function getEnumBuiltinMethods(Stmt\Enum_ $enum, ClassName $className): array
+    {
+        $methods = [];
+
+        // cases() is available on all enums
+        $methods['cases'] = new MethodInfo(
+            name: new MethodName('cases'),
+            visibility: Visibility::Public,
+            isStatic: true,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: 'array',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: $className,
+        );
+
+        // from() and tryFrom() are only available on backed enums
+        if ($enum->scalarType !== null) {
+            $scalarType = $enum->scalarType->toString();
+
+            $methods['from'] = new MethodInfo(
+                name: new MethodName('from'),
+                visibility: Visibility::Public,
+                isStatic: true,
+                isAbstract: false,
+                isFinal: false,
+                parameters: [
+                    new ParameterInfo(
+                        name: 'value',
+                        type: $scalarType,
+                        hasDefault: false,
+                        isVariadic: false,
+                        isPassedByReference: false,
+                    ),
+                ],
+                returnType: 'static',
+                docblock: null,
+                file: null,
+                line: null,
+                declaringClass: $className,
+            );
+
+            $methods['tryFrom'] = new MethodInfo(
+                name: new MethodName('tryFrom'),
+                visibility: Visibility::Public,
+                isStatic: true,
+                isAbstract: false,
+                isFinal: false,
+                parameters: [
+                    new ParameterInfo(
+                        name: 'value',
+                        type: $scalarType,
+                        hasDefault: false,
+                        isVariadic: false,
+                        isPassedByReference: false,
+                    ),
+                ],
+                returnType: '?static',
+                docblock: null,
+                file: null,
+                line: null,
+                declaringClass: $className,
+            );
+        }
+
         return $methods;
     }
 
@@ -368,6 +447,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             $name = $stmt->name->toString();
             $cases[$name] = new EnumCaseInfo(
                 name: new EnumCaseName($name),
+                backingValue: $this->extractEnumCaseBackingValue($stmt),
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
                 line: $stmt->getStartLine(),
@@ -376,6 +456,18 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         }
 
         return $cases;
+    }
+
+    private function extractEnumCaseBackingValue(Stmt\EnumCase $case): int|string|null
+    {
+        $expr = $case->expr;
+        if ($expr instanceof \PhpParser\Node\Scalar\Int_) {
+            return $expr->value;
+        }
+        if ($expr instanceof \PhpParser\Node\Scalar\String_) {
+            return $expr->value;
+        }
+        return null;
     }
 
     /**
@@ -555,8 +647,12 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             }
 
             $name = $constant->getName();
+            $enumCase = $constant->getValue();
+            $backingValue = $enumCase instanceof \BackedEnum ? $enumCase->value : null;
+
             $cases[$name] = new EnumCaseInfo(
                 name: new EnumCaseName($name),
+                backingValue: $backingValue,
                 docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
