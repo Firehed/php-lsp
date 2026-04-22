@@ -14,6 +14,7 @@ class EnumCaseInfoTest extends TestCase
     {
         $case = new EnumCaseInfo(
             name: new EnumCaseName('Active'),
+            backingValue: 1,
             docblock: null,
             file: '/path/to/file.php',
             line: 8,
@@ -21,6 +22,7 @@ class EnumCaseInfoTest extends TestCase
         );
 
         self::assertSame('Active', $case->name->name);
+        self::assertSame(1, $case->backingValue);
         self::assertNull($case->docblock);
         self::assertSame('/path/to/file.php', $case->file);
         self::assertSame(8, $case->line);

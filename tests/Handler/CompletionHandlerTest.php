@@ -12,6 +12,10 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -22,6 +26,9 @@ class CompletionHandlerTest extends TestCase
     private DocumentManager $documents;
     private ParserService $parser;
     private SymbolIndex $symbolIndex;
+    private DefaultClassRepository $classRepository;
+    private DefaultClassInfoFactory $classInfoFactory;
+    private MemberResolver $memberResolver;
     private CompletionHandler $handler;
 
     protected function setUp(): void
@@ -29,7 +36,22 @@ class CompletionHandlerTest extends TestCase
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
         $this->symbolIndex = new SymbolIndex();
-        $this->handler = new CompletionHandler($this->documents, $this->parser, $this->symbolIndex, null);
+        $this->classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $this->classRepository = new DefaultClassRepository(
+            $this->classInfoFactory,
+            $locator,
+            $this->parser,
+        );
+        $this->memberResolver = new MemberResolver($this->classRepository);
+        $this->handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
+        );
     }
 
     public function testSupports(): void
@@ -1709,7 +1731,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1755,7 +1779,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1799,7 +1825,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1837,7 +1865,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1872,7 +1902,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -1922,7 +1954,9 @@ PHP;
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            null,
+            $this->classRepository,
+            $this->classInfoFactory,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -2503,5 +2537,161 @@ PHP;
         // PHP constants
         self::assertNotContains('PHP_VERSION', $labels);
         self::assertNotContains('PHP_INT_MAX', $labels);
+    }
+
+    public function testThisCompletionOutsideClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+$this->
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 1, 'character' => 7],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testThisCompletionInAnonymousClassReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+$x = new class {
+    public function foo(): void {
+        $this->
+    }
+};
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testStaticCompletionFromAnonymousClassContext(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Target
+{
+    public static function publicMethod(): void {}
+    protected static function protectedMethod(): void {}
+}
+
+$x = new class {
+    public function foo(): void {
+        Target::
+    }
+};
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('publicMethod', $labels);
+        self::assertNotContains('protectedMethod', $labels);
+    }
+
+    public function testStaticCompletionWithDeeperInheritance(): void
+    {
+        // InheritanceChild extends InheritanceParent extends InheritanceGrandparent
+        // Test that Child can access protected members of Grandparent via reflection
+        $code = <<<'PHP'
+<?php
+namespace Firehed\PhpLsp\Tests\Repository;
+
+use Firehed\PhpLsp\Tests\Repository\InheritanceGrandparent;
+
+class InheritanceChild extends InheritanceParent
+{
+    public function foo(): void
+    {
+        InheritanceGrandparent::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 32],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('grandparentPublic', $labels);
+        self::assertContains('grandparentProtected', $labels);
+    }
+
+    public function testStaticCompletionInClassWithoutNamespace(): void
+    {
+        $code = <<<'PHP'
+<?php
+class NoNamespace
+{
+    public static function test(): void {
+        self::
+    }
+}
+PHP;
+        $this->documents->open('file:///test.php', 'php', 1, $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('test', $labels);
     }
 }

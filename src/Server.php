@@ -17,6 +17,9 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -36,16 +39,26 @@ final class Server
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
     ) {
-        // Use provided root, or fall back to cwd
-        $cwd = getcwd();
-        $projectRoot ??= $cwd !== false ? $cwd : null;
+        if ($projectRoot === null) {
+            $cwd = getcwd();
+            if ($cwd === false) {
+                // @codeCoverageIgnoreStart
+                throw new \LogicException('Unable to determine project root: getcwd() failed');
+                // @codeCoverageIgnoreEnd
+            }
+            $projectRoot = $cwd;
+        }
 
         $this->documentManager = new DocumentManager();
         $parser = new ParserService();
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
-        $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
+        $classLocator = new ComposerClassLocator($projectRoot);
         $typeResolver = new BasicTypeResolver();
+
+        $classInfoFactory = new DefaultClassInfoFactory();
+        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
+        $memberResolver = new MemberResolver($classRepository);
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
@@ -63,7 +76,9 @@ final class Server
             $this->documentManager,
             $parser,
             $symbolIndex,
-            $classLocator,
+            $classRepository,
+            $classInfoFactory,
+            $memberResolver,
             $typeResolver,
         );
     }

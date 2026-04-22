@@ -138,6 +138,65 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertSame('JsonSerializable', $info->interfaces[0]->fqn);
         self::assertCount(1, $info->enumCases);
         self::assertArrayHasKey('Active', $info->enumCases);
+        self::assertSame('active', $info->enumCases['Active']->backingValue);
+    }
+
+    public function testFromAstNodeExtractsIntBackedEnumCases(): void
+    {
+        $node = $this->parseClass('<?php enum Priority: int {
+            case Low = 1;
+            case High = 10;
+        }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertCount(2, $info->enumCases);
+        self::assertArrayHasKey('Low', $info->enumCases);
+        self::assertArrayHasKey('High', $info->enumCases);
+        self::assertSame(1, $info->enumCases['Low']->backingValue);
+        self::assertSame(10, $info->enumCases['High']->backingValue);
+    }
+
+    public function testFromAstNodeExtractsPureEnumCasesWithNullBackingValue(): void
+    {
+        $node = $this->parseClass('<?php enum Status { case Active; case Inactive; }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertCount(2, $info->enumCases);
+        self::assertNull($info->enumCases['Active']->backingValue);
+        self::assertNull($info->enumCases['Inactive']->backingValue);
+    }
+
+    public function testFromAstNodeSynthesizesEnumBuiltinMethods(): void
+    {
+        $node = $this->parseClass('<?php enum Status { case Active; }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertArrayHasKey('cases', $info->methods);
+        self::assertTrue($info->methods['cases']->isStatic);
+        self::assertSame('array', $info->methods['cases']->returnType);
+    }
+
+    public function testFromAstNodeSynthesizesBackedEnumMethods(): void
+    {
+        $node = $this->parseClass('<?php enum Priority: int {
+            case Low = 1;
+        }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertArrayHasKey('cases', $info->methods);
+        self::assertArrayHasKey('from', $info->methods);
+        self::assertArrayHasKey('tryFrom', $info->methods);
+
+        self::assertTrue($info->methods['from']->isStatic);
+        self::assertSame('static', $info->methods['from']->returnType);
+        self::assertCount(1, $info->methods['from']->parameters);
+        self::assertSame('int', $info->methods['from']->parameters[0]->type);
+
+        self::assertSame('?static', $info->methods['tryFrom']->returnType);
     }
 
     public function testFromAstNodeExtractsTraits(): void
@@ -341,6 +400,31 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertCount(2, $info->enumCases);
         self::assertArrayHasKey('Foo', $info->enumCases);
         self::assertArrayHasKey('Bar', $info->enumCases);
+        self::assertNull($info->enumCases['Foo']->backingValue);
+    }
+
+    public function testFromReflectionExtractsBackedEnum(): void
+    {
+        $reflection = new ReflectionClass(TestBackedEnum::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertSame(ClassKind::Enum_, $info->kind);
+        self::assertCount(2, $info->enumCases);
+        self::assertSame(1, $info->enumCases['Low']->backingValue);
+        self::assertSame(10, $info->enumCases['High']->backingValue);
+    }
+
+    public function testFromReflectionExtractsEnumBuiltinMethods(): void
+    {
+        $reflection = new ReflectionClass(TestBackedEnum::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertArrayHasKey('cases', $info->methods);
+        self::assertArrayHasKey('from', $info->methods);
+        self::assertArrayHasKey('tryFrom', $info->methods);
+        self::assertTrue($info->methods['cases']->isStatic);
     }
 
     public function testFromReflectionExtractsMethods(): void

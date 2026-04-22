@@ -5,32 +5,40 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Completion\ContextDetector;
-use Firehed\PhpLsp\Completion\MemberFilter;
 use Firehed\PhpLsp\Completion\TypeHintContext;
-use Firehed\PhpLsp\Completion\VisibilityFilter;
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
+use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Repository\ClassInfoFactory;
+use Firehed\PhpLsp\Repository\ClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
-use Firehed\PhpLsp\Utility\ClassFinder;
 use Firehed\PhpLsp\Utility\DocblockParser;
-use Firehed\PhpLsp\Utility\MemberCollector;
-use Firehed\PhpLsp\Utility\PropertyInfo;
 use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
-use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
-use ReflectionMethod;
-use ReflectionProperty;
 
+/**
+ * @phpstan-type CompletionItem array{
+ *   label: string,
+ *   kind?: int,
+ *   detail?: string,
+ *   documentation?: string,
+ * }
+ */
 final class CompletionHandler implements HandlerInterface
 {
     // LSP CompletionItemKind constants
@@ -52,8 +60,8 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * @param array{label: string, kind: int, detail?: string, documentation?: string} $item
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
+     * @param CompletionItem $item
+     * @return CompletionItem
      */
     private static function withDocumentation(array $item, string|false|null $docText): array
     {
@@ -87,7 +95,9 @@ final class CompletionHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
-        private readonly ?ComposerClassLocator $classLocator,
+        private readonly ClassRepository $classRepository,
+        private readonly ClassInfoFactory $classInfoFactory,
+        private readonly MemberResolver $memberResolver,
         private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
@@ -100,7 +110,7 @@ final class CompletionHandler implements HandlerInterface
     /**
      * @return array{
      *   isIncomplete: bool,
-     *   items: list<array{label: string, kind?: int, detail?: string, documentation?: string}>,
+     *   items: list<CompletionItem>,
      * }|null
      */
     public function handle(Message $message): ?array
@@ -142,8 +152,13 @@ final class CompletionHandler implements HandlerInterface
 
         $ast = $this->parser->parse($document);
         if ($ast === null) {
-            return null;
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Parser returned null with error-collecting handler');
+            // @codeCoverageIgnoreEnd
         }
+
+        // Register document classes with repository for member resolution
+        $this->registerDocumentClasses($uri, $ast);
 
         // Get text before cursor to determine completion context
         $lineText = $document->getLine($line);
@@ -159,7 +174,7 @@ final class CompletionHandler implements HandlerInterface
 
     /**
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @return list<CompletionItem>
      */
     private function getCompletionItems(string $textBeforeCursor, array $ast, int $line): array
     {
@@ -282,7 +297,7 @@ final class CompletionHandler implements HandlerInterface
 
     /**
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @return list<CompletionItem>
      */
     private function getThisMemberCompletions(string $prefix, array $ast): array
     {
@@ -291,16 +306,18 @@ final class CompletionHandler implements HandlerInterface
             return [];
         }
 
-        $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
-        if ($className === null) {
-            return [];
+        $classNameStr = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
+        if ($classNameStr === null) {
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Top-level class found without name');
+            // @codeCoverageIgnoreEnd
         }
 
+        /** @var class-string $classNameStr */
         return $this->getMemberCompletions(
-            $className,
-            $ast,
-            VisibilityFilter::All,
-            MemberFilter::Instance,
+            new ClassName($classNameStr),
+            Visibility::Private,
+            false,
             $prefix,
         );
     }
@@ -308,14 +325,12 @@ final class CompletionHandler implements HandlerInterface
     /**
      * Unified method to collect member completions with visibility and static/instance filters.
      *
-     * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @return list<CompletionItem>
      */
     private function getMemberCompletions(
-        string $className,
-        array $ast,
-        VisibilityFilter $visibility,
-        MemberFilter $memberFilter,
+        ClassName $className,
+        Visibility $minVisibility,
+        ?bool $static,
         string $prefix,
         bool $includeProperties = true,
         bool $includeConstants = false,
@@ -323,42 +338,29 @@ final class CompletionHandler implements HandlerInterface
     ): array {
         $items = [];
 
-        $classNode = ClassFinder::findWithLocator(
-            $className,
-            $ast,
-            $this->classLocator,
-            $this->parser,
-        );
-
-        $members = MemberCollector::collect($classNode, $visibility, $memberFilter);
-
-        foreach ($members['methods'] as $member) {
-            $name = $member['name'];
-            if (self::matchesPrefix($name, $prefix)) {
-                $items[] = $this->formatCallableCompletion($member['node'], self::KIND_METHOD);
+        foreach ($this->memberResolver->getMethods($className, $minVisibility, $static) as $method) {
+            if (self::matchesPrefix($method->name->name, $prefix)) {
+                $items[] = $this->formatMethodInfoCompletion($method);
             }
         }
 
         if ($includeProperties) {
-            foreach ($members['properties'] as $property) {
-                if (self::matchesPrefix($property->name, $prefix)) {
-                    $items[] = $this->formatPropertyCompletion($property);
+            foreach ($this->memberResolver->getProperties($className, $minVisibility, $static) as $property) {
+                if (self::matchesPrefix($property->name->name, $prefix)) {
+                    $items[] = $this->formatPropertyInfoCompletion($property);
                 }
             }
         }
 
         if ($includeConstants) {
-            foreach ($members['constants'] as $member) {
-                $name = $member['name'];
-                if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = $this->formatConstantCompletion($member['node'], $name);
+            foreach ($this->memberResolver->getConstants($className, $minVisibility) as $constant) {
+                if (self::matchesPrefix($constant->name->name, $prefix)) {
+                    $items[] = $this->formatConstantInfoCompletion($constant);
                 }
             }
 
             // ::class magic constant is always available for static access
-            if (
-                $memberFilter === MemberFilter::Static || $memberFilter === MemberFilter::Both
-            ) {
+            if ($static === true || $static === null) {
                 if (self::matchesPrefix('class', $prefix)) {
                     $items[] = [
                         'label' => 'class',
@@ -370,99 +372,9 @@ final class CompletionHandler implements HandlerInterface
         }
 
         if ($includeEnumCases) {
-            foreach ($members['enumCases'] as $member) {
-                $name = $member['name'];
-                if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = $this->formatEnumCaseCompletion($member['node']);
-                }
-            }
-
-            // Enum built-in methods
-            if ($classNode instanceof Stmt\Enum_) {
-                $items = array_merge($items, $this->getEnumBuiltinMethods($classNode, $prefix));
-            }
-        }
-
-        // Add inherited members via reflection
-        $items = array_merge(
-            $items,
-            $this->getReflectionMemberCompletions(
-                $className,
-                $prefix,
-                $visibility,
-                $memberFilter,
-                $items,
-                $includeConstants,
-                $includeProperties,
-            ),
-        );
-
-        return $items;
-    }
-
-    /**
-     * Get members via reflection for inherited/built-in classes.
-     *
-     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $existingItems
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
-     */
-    private function getReflectionMemberCompletions(
-        string $className,
-        string $prefix,
-        VisibilityFilter $visibility,
-        MemberFilter $memberFilter,
-        array $existingItems,
-        bool $includeConstants = false,
-        bool $includeProperties = true,
-    ): array {
-        $reflection = ReflectionHelper::getClass($className);
-        if ($reflection === null) {
-            return [];
-        }
-
-        $existingLabels = array_column($existingItems, 'label');
-        $items = [];
-
-        foreach ($reflection->getMethods($visibility->getMethodFlags()) as $method) {
-            if (!$memberFilter->matches($method->isStatic())) {
-                continue;
-            }
-            $name = $method->getName();
-            if (in_array($name, $existingLabels, true)) {
-                continue;
-            }
-            if (self::matchesPrefix($name, $prefix)) {
-                $items[] = $this->formatReflectionMethodCompletion($method);
-            }
-        }
-
-        if ($includeProperties) {
-            foreach ($reflection->getProperties($visibility->getPropertyFlags()) as $prop) {
-                if (!$memberFilter->matches($prop->isStatic())) {
-                    continue;
-                }
-                $name = $prop->getName();
-                if (in_array($name, $existingLabels, true)) {
-                    continue;
-                }
-                if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = $this->formatReflectionPropertyCompletion($prop);
-                }
-            }
-        }
-
-        if ($includeConstants) {
-            foreach ($reflection->getReflectionConstants($visibility->getConstantFlags()) as $const) {
-                $name = $const->getName();
-                if (in_array($name, $existingLabels, true)) {
-                    continue;
-                }
-                if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = [
-                        'label' => $name,
-                        'kind' => self::KIND_CONSTANT,
-                        'detail' => 'const ' . $name,
-                    ];
+            foreach ($this->memberResolver->getEnumCases($className) as $enumCase) {
+                if (self::matchesPrefix($enumCase->name->name, $prefix)) {
+                    $items[] = $this->formatEnumCaseInfoCompletion($enumCase);
                 }
             }
         }
@@ -474,7 +386,7 @@ final class CompletionHandler implements HandlerInterface
      * Get completions for parent:: - methods from the parent class.
      *
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @return list<CompletionItem>
      */
     private function getParentCompletions(string $prefix, array $ast, int $line): array
     {
@@ -486,11 +398,11 @@ final class CompletionHandler implements HandlerInterface
         $parentClassName = ScopeFinder::resolveExtendsName($classNode);
         assert($parentClassName !== null);
 
+        /** @var class-string $parentClassName */
         return $this->getMemberCompletions(
-            $parentClassName,
-            $ast,
-            VisibilityFilter::PublicProtected,
-            MemberFilter::Both,
+            new ClassName($parentClassName),
+            Visibility::Protected,
+            null,
             $prefix,
             includeProperties: false,
         );
@@ -500,7 +412,7 @@ final class CompletionHandler implements HandlerInterface
      * Get completions for a typed variable: $user-> where $user has a known type.
      *
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @return list<CompletionItem>
      */
     private function getTypedVariableMemberCompletions(
         string $variableName,
@@ -519,23 +431,23 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Resolve the variable's type
-        $className = $this->typeResolver->resolveVariableType($variableName, $scope, $line, $ast);
-        if ($className === null) {
+        $classNameStr = $this->typeResolver->resolveVariableType($variableName, $scope, $line, $ast);
+        if ($classNameStr === null) {
             return [];
         }
 
+        /** @var class-string $classNameStr */
         return $this->getMemberCompletions(
-            $className,
-            $ast,
-            VisibilityFilter::PublicOnly,
-            MemberFilter::Instance,
+            new ClassName($classNameStr),
+            Visibility::Public,
+            false,
             $prefix,
         );
     }
 
     /**
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @return list<CompletionItem>
      */
     private function getStaticCompletions(string $className, string $prefix, array $ast, int $line): array
     {
@@ -543,13 +455,13 @@ final class CompletionHandler implements HandlerInterface
         $resolvedClassName = $this->resolveClassName($className, $ast);
 
         $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
-        $visibility = VisibilityFilter::forClassAccess($enclosingClass, $resolvedClassName);
+        $minVisibility = $this->getMinVisibilityForAccess($enclosingClass, $resolvedClassName);
 
+        /** @var class-string $resolvedClassName */
         return $this->getMemberCompletions(
-            $resolvedClassName,
-            $ast,
-            $visibility,
-            MemberFilter::Static,
+            new ClassName($resolvedClassName),
+            $minVisibility,
+            true,
             $prefix,
             includeConstants: true,
             includeEnumCases: true,
@@ -557,8 +469,40 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
+     * Determine minimum visibility for accessing members of target class from enclosing class.
+     */
+    private function getMinVisibilityForAccess(?Stmt\Class_ $enclosingClass, string $targetClassName): Visibility
+    {
+        if ($enclosingClass === null) {
+            return Visibility::Public;
+        }
+
+        $enclosingClassName = $enclosingClass->namespacedName?->toString()
+            ?? $enclosingClass->name?->toString();
+        if ($enclosingClassName === null) {
+            return Visibility::Public;
+        }
+
+        if ($enclosingClassName === $targetClassName) {
+            return Visibility::Private;
+        }
+
+        // Check direct extends in AST
+        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
+            return Visibility::Protected;
+        }
+
+        // Check deeper inheritance via reflection
+        if (ReflectionHelper::getClass($enclosingClassName)?->isSubclassOf($targetClassName) === true) {
+            return Visibility::Protected;
+        }
+
+        return Visibility::Public;
+    }
+
+    /**
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @return list<CompletionItem>
      */
     private function getFunctionCompletions(string $prefix, array $ast): array
     {
@@ -603,94 +547,95 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
+     * Register all classes from the document with the class repository.
+     *
+     * @param array<Stmt> $ast
      */
-    private function formatPropertyCompletion(PropertyInfo $property): array
+    private function registerDocumentClasses(string $uri, array $ast): void
+    {
+        $classes = [];
+        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
+            if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
+                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
+            }
+        }
+        $this->classRepository->updateDocument($uri, $classes);
+    }
+
+    /**
+     * @return CompletionItem
+     */
+    private function formatMethodInfoCompletion(MethodInfo $method): array
+    {
+        $params = [];
+        foreach ($method->parameters as $param) {
+            $paramStr = '';
+            if ($param->type !== null) {
+                $paramStr .= $param->type . ' ';
+            }
+            $paramStr .= '$' . $param->name;
+            $params[] = $paramStr;
+        }
+
+        $detail = $method->name->name . '(' . implode(', ', $params) . ')';
+        if ($method->returnType !== null) {
+            $detail .= ': ' . $method->returnType;
+        }
+
+        return self::withDocumentation([
+            'label' => $method->name->name,
+            'kind' => self::KIND_METHOD,
+            'detail' => $detail,
+        ], $method->docblock);
+    }
+
+    /**
+     * @return CompletionItem
+     */
+    private function formatPropertyInfoCompletion(DomainPropertyInfo $property): array
     {
         $type = $property->type ?? 'mixed';
 
         return self::withDocumentation([
-            'label' => $property->name,
+            'label' => $property->name->name,
             'kind' => self::KIND_PROPERTY,
-            'detail' => $type . ' $' . $property->name,
-        ], $property->docComment);
+            'detail' => $type . ' $' . $property->name->name,
+        ], $property->docblock);
     }
 
     /**
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
+     * @return CompletionItem
      */
-    private function formatConstantCompletion(Stmt\ClassConst $const, string $name): array
+    private function formatConstantInfoCompletion(ConstantInfo $constant): array
     {
         return self::withDocumentation([
-            'label' => $name,
+            'label' => $constant->name->name,
             'kind' => self::KIND_CONSTANT,
-            'detail' => 'const ' . $name,
-        ], $const->getDocComment()?->getText());
+            'detail' => 'const ' . $constant->name->name,
+        ], $constant->docblock);
     }
 
     /**
-     * @return array{label: string, kind: int, detail: string}
+     * @return CompletionItem
      */
-    private function formatEnumCaseCompletion(Stmt\EnumCase $case): array
+    private function formatEnumCaseInfoCompletion(EnumCaseInfo $enumCase): array
     {
-        $name = $case->name->toString();
-        $detail = 'case ' . $name;
-
-        if ($case->expr instanceof Node\Scalar\Int_) {
-            $detail .= ' = ' . $case->expr->value;
-        } elseif ($case->expr instanceof Node\Scalar\String_) {
-            $detail .= " = '" . $case->expr->value . "'";
+        $detail = 'case ' . $enumCase->name->name;
+        if ($enumCase->backingValue !== null) {
+            $detail .= is_string($enumCase->backingValue)
+                ? " = '" . $enumCase->backingValue . "'"
+                : ' = ' . $enumCase->backingValue;
         }
 
-        return [
-            'label' => $name,
+        return self::withDocumentation([
+            'label' => $enumCase->name->name,
             'kind' => self::KIND_ENUM_MEMBER,
             'detail' => $detail,
-        ];
+        ], $enumCase->docblock);
     }
 
     /**
-     * @return list<array{label: string, kind: int, detail: string}>
-     */
-    private function getEnumBuiltinMethods(Stmt\Enum_ $enum, string $prefix): array
-    {
-        $items = [];
-
-        // cases() is available on all enums
-        if (self::matchesPrefix('cases', $prefix)) {
-            $items[] = [
-                'label' => 'cases',
-                'kind' => self::KIND_METHOD,
-                'detail' => 'cases(): array',
-            ];
-        }
-
-        // from() and tryFrom() are only available on backed enums
-        if ($enum->scalarType !== null) {
-            $scalarType = $enum->scalarType->toString();
-
-            if (self::matchesPrefix('from', $prefix)) {
-                $items[] = [
-                    'label' => 'from',
-                    'kind' => self::KIND_METHOD,
-                    'detail' => "from($scalarType \$value): static",
-                ];
-            }
-
-            if (self::matchesPrefix('tryFrom', $prefix)) {
-                $items[] = [
-                    'label' => 'tryFrom',
-                    'kind' => self::KIND_METHOD,
-                    'detail' => "tryFrom($scalarType \$value): ?static",
-                ];
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
+     * @return CompletionItem
      */
     private function formatCallableCompletion(
         Stmt\ClassMethod|Stmt\Function_ $callable,
@@ -723,50 +668,6 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
-     */
-    private function formatReflectionMethodCompletion(ReflectionMethod $method): array
-    {
-        $params = [];
-        foreach ($method->getParameters() as $param) {
-            $paramStr = '';
-            $type = $param->getType();
-            if ($type !== null) {
-                $paramStr .= TypeFormatter::formatReflection($type) . ' ';
-            }
-            $paramStr .= '$' . $param->getName();
-            $params[] = $paramStr;
-        }
-
-        $detail = $method->getName() . '(' . implode(', ', $params) . ')';
-        $returnType = $method->getReturnType();
-        if ($returnType !== null) {
-            $detail .= ': ' . TypeFormatter::formatReflection($returnType);
-        }
-
-        return self::withDocumentation([
-            'label' => $method->getName(),
-            'kind' => self::KIND_METHOD,
-            'detail' => $detail,
-        ], $method->getDocComment());
-    }
-
-    /**
-     * @return array{label: string, kind: int, detail?: string, documentation?: string}
-     */
-    private function formatReflectionPropertyCompletion(ReflectionProperty $prop): array
-    {
-        $type = $prop->getType();
-        $typeStr = $type !== null ? TypeFormatter::formatReflection($type) : 'mixed';
-
-        return self::withDocumentation([
-            'label' => $prop->getName(),
-            'kind' => self::KIND_PROPERTY,
-            'detail' => $typeStr . ' $' . $prop->getName(),
-        ], $prop->getDocComment());
-    }
-
-    /**
      * Resolve a short class name to its FQCN using use statements.
      *
      * @param array<Stmt> $ast
@@ -781,7 +682,7 @@ final class CompletionHandler implements HandlerInterface
      * Get completions for imported classes (from use statements).
      *
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind: int, detail: string}>
+     * @return list<CompletionItem>
      */
     private function getImportedClassCompletions(string $prefix, array $ast): array
     {
@@ -843,7 +744,7 @@ final class CompletionHandler implements HandlerInterface
      * Get class completions from the workspace symbol index.
      *
      * @param list<SymbolKind> $kinds
-     * @return list<array{label: string, kind: int, detail: string}>
+     * @return list<CompletionItem>
      */
     private function getIndexedClassCompletions(string $prefix, array $kinds): array
     {
@@ -864,8 +765,8 @@ final class CompletionHandler implements HandlerInterface
     /**
      * Remove duplicate completions, preferring items that appear earlier.
      *
-     * @param list<array{label: string, kind?: int, detail?: string, documentation?: string}> $items
-     * @return list<array{label: string, kind?: int, detail?: string, documentation?: string}>
+     * @param list<CompletionItem> $items
+     * @return list<CompletionItem>
      */
     private function deduplicateCompletions(array $items): array
     {
@@ -887,7 +788,7 @@ final class CompletionHandler implements HandlerInterface
      * Get completions for type hint positions.
      *
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind?: int, detail?: string}>
+     * @return list<CompletionItem>
      */
     private function getTypeHintCompletions(string $prefix, array $ast, TypeHintContext $context): array
     {
@@ -961,7 +862,7 @@ final class CompletionHandler implements HandlerInterface
 
     /**
      * @param list<string> $keywords
-     * @return list<array{label: string, kind: int}>
+     * @return list<CompletionItem>
      */
     private function filterKeywords(array $keywords, string $prefix): array
     {
@@ -1036,7 +937,7 @@ final class CompletionHandler implements HandlerInterface
      * Get variable completions for the current scope.
      *
      * @param array<Stmt> $ast
-     * @return list<array{label: string, kind: int, detail?: string}>
+     * @return list<CompletionItem>
      */
     private function getVariableCompletions(string $prefix, array $ast, int $cursorLine): array
     {
