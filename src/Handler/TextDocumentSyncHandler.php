@@ -120,9 +120,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
     private function indexDocument(string $uri): void
     {
         $document = $this->documentManager->get($uri);
-        if ($document === null) {
-            return;
-        }
+        assert($document !== null);
 
         $ast = $this->parser->parse($document);
         if ($ast !== null) {
