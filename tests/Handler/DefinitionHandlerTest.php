@@ -6,10 +6,14 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
-use Firehed\PhpLsp\Index\SymbolExtractor;
+use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -17,22 +21,42 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(DefinitionHandler::class)]
 class DefinitionHandlerTest extends TestCase
 {
+    use OpensDocumentsTrait;
+
     private DocumentManager $documents;
     private SymbolIndex $index;
     private ParserService $parser;
+    private DefaultClassRepository $classRepository;
+    private MemberResolver $memberResolver;
     private DefinitionHandler $handler;
+    private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
         $this->index = new SymbolIndex();
         $this->parser = new ParserService();
+        $classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $this->classRepository = new DefaultClassRepository(
+            $classInfoFactory,
+            $locator,
+            $this->parser,
+        );
+        $this->memberResolver = new MemberResolver($this->classRepository);
         $this->handler = new DefinitionHandler(
             $this->documents,
             $this->parser,
             $this->index,
-            classLocator: null,
-            typeResolver: new BasicTypeResolver(),
+            $this->memberResolver,
+            $this->classRepository,
+            new BasicTypeResolver(),
+        );
+        $this->syncHandler = new TextDocumentSyncHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $classInfoFactory,
         );
     }
 
@@ -44,21 +68,8 @@ class DefinitionHandlerTest extends TestCase
 
     public function testGoToClassDefinition(): void
     {
-        // Set up a class definition
-        $classCode = '<?php class MyClass {}';
-        $this->documents->open('file:///MyClass.php', 'php', 1, $classCode);
-        $classDoc = $this->documents->get('file:///MyClass.php');
-        self::assertNotNull($classDoc);
-        $ast = $this->parser->parse($classDoc);
-        self::assertNotNull($ast);
-        $symbols = (new SymbolExtractor())->extract($classDoc, $ast);
-        foreach ($symbols as $symbol) {
-            $this->index->add($symbol);
-        }
-
-        // Set up usage
-        $usageCode = '<?php new MyClass();';
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///MyClass.php', '<?php class MyClass {}');
+        $this->openDocument('file:///usage.php', '<?php new MyClass();');
 
         // Request definition at "MyClass" in usage (position after "new ")
         $request = RequestMessage::fromArray([
@@ -80,8 +91,7 @@ class DefinitionHandlerTest extends TestCase
 
     public function testReturnsNullForUnknownSymbol(): void
     {
-        $code = '<?php new UnknownClass();';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', '<?php new UnknownClass();');
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -117,26 +127,14 @@ class DefinitionHandlerTest extends TestCase
 
     public function testGoToStaticMethodDefinition(): void
     {
-        // Class with a static method
         $classCode = <<<'PHP'
 <?php
 class MyClass {
     public static function myStaticMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///MyClass.php', 'php', 1, $classCode);
-        $classDoc = $this->documents->get('file:///MyClass.php');
-        self::assertNotNull($classDoc);
-        $ast = $this->parser->parse($classDoc);
-        self::assertNotNull($ast);
-        $symbols = (new SymbolExtractor())->extract($classDoc, $ast);
-        foreach ($symbols as $symbol) {
-            $this->index->add($symbol);
-        }
-
-        // Usage: MyClass::myStaticMethod()
-        $usageCode = '<?php MyClass::myStaticMethod();';
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///MyClass.php', $classCode);
+        $this->openDocument('file:///usage.php', '<?php MyClass::myStaticMethod();');
 
         // Request definition at "myStaticMethod" (character 15 is on the method name)
         $request = RequestMessage::fromArray([
@@ -159,31 +157,21 @@ PHP;
 
     public function testGoToInstanceMethodDefinition(): void
     {
-        // Class with an instance method
         $classCode = <<<'PHP'
 <?php
 class MyClass {
     public function myMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///MyClass.php', 'php', 1, $classCode);
-        $classDoc = $this->documents->get('file:///MyClass.php');
-        self::assertNotNull($classDoc);
-        $ast = $this->parser->parse($classDoc);
-        self::assertNotNull($ast);
-        $symbols = (new SymbolExtractor())->extract($classDoc, $ast);
-        foreach ($symbols as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///MyClass.php', $classCode);
 
-        // Usage: $obj->myMethod() where $obj is typed
         $usageCode = <<<'PHP'
 <?php
 function test(MyClass $obj): void {
     $obj->myMethod();
 }
 PHP;
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///usage.php', $usageCode);
 
         // Request definition at "myMethod" on line 2 (0-indexed)
         // "$obj->myMethod()" - "myMethod" starts at character 10
@@ -206,24 +194,14 @@ PHP;
 
     public function testGoToMethodDefinitionViaAssignment(): void
     {
-        // Class with an instance method
         $classCode = <<<'PHP'
 <?php
 class MyClass {
     public function myMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///MyClass.php', 'php', 1, $classCode);
-        $classDoc = $this->documents->get('file:///MyClass.php');
-        self::assertNotNull($classDoc);
-        $ast = $this->parser->parse($classDoc);
-        self::assertNotNull($ast);
-        $symbols = (new SymbolExtractor())->extract($classDoc, $ast);
-        foreach ($symbols as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///MyClass.php', $classCode);
 
-        // Usage: $obj = new MyClass(); $obj->myMethod();
         $usageCode = <<<'PHP'
 <?php
 function test(): void {
@@ -231,7 +209,7 @@ function test(): void {
     $obj->myMethod();
 }
 PHP;
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///usage.php', $usageCode);
 
         // Request definition at "myMethod" on line 3 (0-indexed)
         $request = RequestMessage::fromArray([
@@ -259,7 +237,7 @@ function test($obj): void {
     $obj->unknownMethod();
 }
 PHP;
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///usage.php', $usageCode);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -278,45 +256,28 @@ PHP;
 
     public function testGoToInheritedMethodDefinition(): void
     {
-        // Parent class with method
         $parentCode = <<<'PHP'
 <?php
 class ParentClass {
     public function inheritedMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///ParentClass.php', 'php', 1, $parentCode);
-        $parentDoc = $this->documents->get('file:///ParentClass.php');
-        self::assertNotNull($parentDoc);
-        $parentAst = $this->parser->parse($parentDoc);
-        self::assertNotNull($parentAst);
-        foreach ((new SymbolExtractor())->extract($parentDoc, $parentAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ParentClass.php', $parentCode);
 
-        // Child class that extends parent
         $childCode = <<<'PHP'
 <?php
 class ChildClass extends ParentClass {
 }
 PHP;
-        $this->documents->open('file:///ChildClass.php', 'php', 1, $childCode);
-        $childDoc = $this->documents->get('file:///ChildClass.php');
-        self::assertNotNull($childDoc);
-        $childAst = $this->parser->parse($childDoc);
-        self::assertNotNull($childAst);
-        foreach ((new SymbolExtractor())->extract($childDoc, $childAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ChildClass.php', $childCode);
 
-        // Usage: $child->inheritedMethod()
         $usageCode = <<<'PHP'
 <?php
 function test(ChildClass $child): void {
     $child->inheritedMethod();
 }
 PHP;
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///usage.php', $usageCode);
 
         // Request definition at "inheritedMethod"
         $request = RequestMessage::fromArray([
@@ -339,46 +300,29 @@ PHP;
 
     public function testGoToOverriddenMethodDefinition(): void
     {
-        // Parent class with method
         $parentCode = <<<'PHP'
 <?php
 class ParentClass {
     public function overriddenMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///ParentClass.php', 'php', 1, $parentCode);
-        $parentDoc = $this->documents->get('file:///ParentClass.php');
-        self::assertNotNull($parentDoc);
-        $parentAst = $this->parser->parse($parentDoc);
-        self::assertNotNull($parentAst);
-        foreach ((new SymbolExtractor())->extract($parentDoc, $parentAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ParentClass.php', $parentCode);
 
-        // Child class that overrides the method
         $childCode = <<<'PHP'
 <?php
 class ChildClass extends ParentClass {
     public function overriddenMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///ChildClass.php', 'php', 1, $childCode);
-        $childDoc = $this->documents->get('file:///ChildClass.php');
-        self::assertNotNull($childDoc);
-        $childAst = $this->parser->parse($childDoc);
-        self::assertNotNull($childAst);
-        foreach ((new SymbolExtractor())->extract($childDoc, $childAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ChildClass.php', $childCode);
 
-        // Usage: $child->overriddenMethod()
         $usageCode = <<<'PHP'
 <?php
 function test(ChildClass $child): void {
     $child->overriddenMethod();
 }
 PHP;
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///usage.php', $usageCode);
 
         // Request definition at "overriddenMethod"
         $request = RequestMessage::fromArray([
@@ -401,23 +345,14 @@ PHP;
 
     public function testGoToParentMethodDefinition(): void
     {
-        // Parent class with method
         $parentCode = <<<'PHP'
 <?php
 class ParentClass {
     public function doFoo(): void {}
 }
 PHP;
-        $this->documents->open('file:///ParentClass.php', 'php', 1, $parentCode);
-        $parentDoc = $this->documents->get('file:///ParentClass.php');
-        self::assertNotNull($parentDoc);
-        $parentAst = $this->parser->parse($parentDoc);
-        self::assertNotNull($parentAst);
-        foreach ((new SymbolExtractor())->extract($parentDoc, $parentAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ParentClass.php', $parentCode);
 
-        // Child class that calls parent::doFoo()
         $childCode = <<<'PHP'
 <?php
 class ChildClass extends ParentClass {
@@ -426,14 +361,7 @@ class ChildClass extends ParentClass {
     }
 }
 PHP;
-        $this->documents->open('file:///ChildClass.php', 'php', 1, $childCode);
-        $childDoc = $this->documents->get('file:///ChildClass.php');
-        self::assertNotNull($childDoc);
-        $childAst = $this->parser->parse($childDoc);
-        self::assertNotNull($childAst);
-        foreach ((new SymbolExtractor())->extract($childDoc, $childAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ChildClass.php', $childCode);
 
         // Request definition at "doFoo" in parent::doFoo() on line 3
         // "        parent::doFoo();" - doFoo starts at character 16
@@ -457,46 +385,29 @@ PHP;
 
     public function testGoToTraitMethodDefinition(): void
     {
-        // Trait with method
         $traitCode = <<<'PHP'
 <?php
 trait MyTrait {
     public function traitMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///MyTrait.php', 'php', 1, $traitCode);
-        $traitDoc = $this->documents->get('file:///MyTrait.php');
-        self::assertNotNull($traitDoc);
-        $traitAst = $this->parser->parse($traitDoc);
-        self::assertNotNull($traitAst);
-        foreach ((new SymbolExtractor())->extract($traitDoc, $traitAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///MyTrait.php', $traitCode);
 
-        // Class that uses the trait
         $classCode = <<<'PHP'
 <?php
 class MyClass {
     use MyTrait;
 }
 PHP;
-        $this->documents->open('file:///MyClass.php', 'php', 1, $classCode);
-        $classDoc = $this->documents->get('file:///MyClass.php');
-        self::assertNotNull($classDoc);
-        $classAst = $this->parser->parse($classDoc);
-        self::assertNotNull($classAst);
-        foreach ((new SymbolExtractor())->extract($classDoc, $classAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///MyClass.php', $classCode);
 
-        // Usage: $obj->traitMethod()
         $usageCode = <<<'PHP'
 <?php
 function test(MyClass $obj): void {
     $obj->traitMethod();
 }
 PHP;
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///usage.php', $usageCode);
 
         // Request definition at "traitMethod"
         $request = RequestMessage::fromArray([
@@ -519,62 +430,37 @@ PHP;
 
     public function testTraitMethodTakesPrecedenceOverParent(): void
     {
-        // Parent class with method
         $parentCode = <<<'PHP'
 <?php
 class ParentClass {
     public function sharedMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///ParentClass.php', 'php', 1, $parentCode);
-        $parentDoc = $this->documents->get('file:///ParentClass.php');
-        self::assertNotNull($parentDoc);
-        $parentAst = $this->parser->parse($parentDoc);
-        self::assertNotNull($parentAst);
-        foreach ((new SymbolExtractor())->extract($parentDoc, $parentAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ParentClass.php', $parentCode);
 
-        // Trait with same method
         $traitCode = <<<'PHP'
 <?php
 trait MyTrait {
     public function sharedMethod(): void {}
 }
 PHP;
-        $this->documents->open('file:///MyTrait.php', 'php', 1, $traitCode);
-        $traitDoc = $this->documents->get('file:///MyTrait.php');
-        self::assertNotNull($traitDoc);
-        $traitAst = $this->parser->parse($traitDoc);
-        self::assertNotNull($traitAst);
-        foreach ((new SymbolExtractor())->extract($traitDoc, $traitAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///MyTrait.php', $traitCode);
 
-        // Child class extends ParentClass and uses MyTrait
         $childCode = <<<'PHP'
 <?php
 class ChildClass extends ParentClass {
     use MyTrait;
 }
 PHP;
-        $this->documents->open('file:///ChildClass.php', 'php', 1, $childCode);
-        $childDoc = $this->documents->get('file:///ChildClass.php');
-        self::assertNotNull($childDoc);
-        $childAst = $this->parser->parse($childDoc);
-        self::assertNotNull($childAst);
-        foreach ((new SymbolExtractor())->extract($childDoc, $childAst) as $symbol) {
-            $this->index->add($symbol);
-        }
+        $this->openDocument('file:///ChildClass.php', $childCode);
 
-        // Usage: $obj->sharedMethod()
         $usageCode = <<<'PHP'
 <?php
 function test(ChildClass $obj): void {
     $obj->sharedMethod();
 }
 PHP;
-        $this->documents->open('file:///usage.php', 'php', 1, $usageCode);
+        $this->openDocument('file:///usage.php', $usageCode);
 
         // Request definition at "sharedMethod"
         $request = RequestMessage::fromArray([
