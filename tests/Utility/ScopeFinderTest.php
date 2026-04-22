@@ -424,4 +424,42 @@ PHP;
 
         self::assertSame('Other\Bar', ScopeFinder::resolveName($class->extends));
     }
+
+    public function testIterateTopLevelStatementsYieldsStatementsDirectly(): void
+    {
+        $code = <<<'PHP'
+<?php
+class First {}
+class Second {}
+function myFunc() {}
+PHP;
+        $ast = self::parseWithParents($code);
+
+        $statements = iterator_to_array(ScopeFinder::iterateTopLevelStatements($ast));
+
+        self::assertCount(3, $statements);
+        self::assertInstanceOf(Stmt\Class_::class, $statements[0]);
+        self::assertInstanceOf(Stmt\Class_::class, $statements[1]);
+        self::assertInstanceOf(Stmt\Function_::class, $statements[2]);
+    }
+
+    public function testIterateTopLevelStatementsFlattensNamespace(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class First {}
+class Second {}
+PHP;
+        $ast = self::parseWithParents($code);
+
+        $statements = iterator_to_array(ScopeFinder::iterateTopLevelStatements($ast));
+
+        self::assertCount(2, $statements);
+        self::assertInstanceOf(Stmt\Class_::class, $statements[0]);
+        self::assertSame('First', $statements[0]->name?->toString());
+        self::assertInstanceOf(Stmt\Class_::class, $statements[1]);
+        self::assertSame('Second', $statements[1]->name?->toString());
+    }
 }

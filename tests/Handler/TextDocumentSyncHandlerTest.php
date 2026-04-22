@@ -18,30 +18,37 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
 {
-    private function createHandler(DocumentManager $manager): TextDocumentSyncHandler
+    private DocumentManager $manager;
+    private ParserService $parser;
+    private DefaultClassInfoFactory $classInfoFactory;
+    private DefaultClassRepository $classRepository;
+    private TextDocumentSyncHandler $handler;
+
+    protected function setUp(): void
     {
-        $parser = new ParserService();
-        $classInfoFactory = new DefaultClassInfoFactory();
+        $this->manager = new DocumentManager();
+        $this->parser = new ParserService();
+        $this->classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
-        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
-        return new TextDocumentSyncHandler($manager, $parser, $classRepository, $classInfoFactory);
+        $this->classRepository = new DefaultClassRepository($this->classInfoFactory, $locator, $this->parser);
+        $this->handler = new TextDocumentSyncHandler(
+            $this->manager,
+            $this->parser,
+            $this->classRepository,
+            $this->classInfoFactory,
+        );
     }
 
     public function testSupports(): void
     {
-        $handler = $this->createHandler(new DocumentManager());
-
-        self::assertTrue($handler->supports('textDocument/didOpen'));
-        self::assertTrue($handler->supports('textDocument/didChange'));
-        self::assertTrue($handler->supports('textDocument/didClose'));
-        self::assertFalse($handler->supports('textDocument/hover'));
+        self::assertTrue($this->handler->supports('textDocument/didOpen'));
+        self::assertTrue($this->handler->supports('textDocument/didChange'));
+        self::assertTrue($this->handler->supports('textDocument/didClose'));
+        self::assertFalse($this->handler->supports('textDocument/hover'));
     }
 
     public function testDidOpen(): void
     {
-        $manager = new DocumentManager();
-        $handler = $this->createHandler($manager);
-
         $notification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didOpen',
@@ -55,22 +62,17 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
 
-        $handler->handle($notification);
+        $this->handler->handle($notification);
 
-        $doc = $manager->get('file:///test.php');
+        $doc = $this->manager->get('file:///test.php');
         self::assertNotNull($doc);
         self::assertSame('<?php echo "hello";', $doc->getContent());
     }
 
     public function testDidChange(): void
     {
-        $manager = new DocumentManager();
-        $handler = $this->createHandler($manager);
+        $this->manager->open('file:///test.php', 'php', 1, '<?php echo "v1";');
 
-        // First open
-        $manager->open('file:///test.php', 'php', 1, '<?php echo "v1";');
-
-        // Then change (full sync)
         $notification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didChange',
@@ -85,9 +87,9 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
 
-        $handler->handle($notification);
+        $this->handler->handle($notification);
 
-        $doc = $manager->get('file:///test.php');
+        $doc = $this->manager->get('file:///test.php');
         self::assertNotNull($doc);
         self::assertSame('<?php echo "v2";', $doc->getContent());
         self::assertSame(2, $doc->version);
@@ -95,10 +97,7 @@ class TextDocumentSyncHandlerTest extends TestCase
 
     public function testDidClose(): void
     {
-        $manager = new DocumentManager();
-        $handler = $this->createHandler($manager);
-
-        $manager->open('file:///test.php', 'php', 1, '<?php');
+        $this->manager->open('file:///test.php', 'php', 1, '<?php');
 
         $notification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -110,21 +109,13 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
 
-        $handler->handle($notification);
+        $this->handler->handle($notification);
 
-        self::assertNull($manager->get('file:///test.php'));
+        self::assertNull($this->manager->get('file:///test.php'));
     }
 
     public function testDidOpenRegistersClasses(): void
     {
-        $manager = new DocumentManager();
-        $parser = new ParserService();
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
-        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
-
-        $handler = new TextDocumentSyncHandler($manager, $parser, $classRepository, $classInfoFactory);
-
         $notification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didOpen',
@@ -138,35 +129,26 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
 
-        $handler->handle($notification);
+        $this->handler->handle($notification);
 
         /** @var class-string $className */
         $className = 'MyTestClass'; // @phpstan-ignore varTag.nativeType
-        $classInfo = $classRepository->get(new ClassName($className));
+        $classInfo = $this->classRepository->get(new ClassName($className));
         self::assertNotNull($classInfo);
         self::assertSame('MyTestClass', $classInfo->name->shortName());
     }
 
     public function testDidChangeUpdatesClasses(): void
     {
-        $manager = new DocumentManager();
-        $parser = new ParserService();
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
-        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
-
-        $handler = new TextDocumentSyncHandler($manager, $parser, $classRepository, $classInfoFactory);
-
         // Open with initial class
-        $manager->open('file:///test.php', 'php', 1, '<?php class OldClass {}');
-        $classRepository->updateDocument('file:///test.php', [
-            $classInfoFactory->fromAstNode(
+        $this->manager->open('file:///test.php', 'php', 1, '<?php class OldClass {}');
+        $this->classRepository->updateDocument('file:///test.php', [
+            $this->classInfoFactory->fromAstNode(
                 new \PhpParser\Node\Stmt\Class_('OldClass'),
                 'file:///test.php',
             ),
         ]);
 
-        // Change to new class
         $notification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didChange',
@@ -181,32 +163,23 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
 
-        $handler->handle($notification);
+        $this->handler->handle($notification);
 
         /** @var class-string $oldClassName */
         $oldClassName = 'OldClass'; // @phpstan-ignore varTag.nativeType
         /** @var class-string $newClassName */
         $newClassName = 'NewClass'; // @phpstan-ignore varTag.nativeType
-        self::assertNull($classRepository->get(new ClassName($oldClassName)));
-        $newClass = $classRepository->get(new ClassName($newClassName));
+        self::assertNull($this->classRepository->get(new ClassName($oldClassName)));
+        $newClass = $this->classRepository->get(new ClassName($newClassName));
         self::assertNotNull($newClass);
         self::assertSame('NewClass', $newClass->name->shortName());
     }
 
     public function testDidCloseRemovesClasses(): void
     {
-        $manager = new DocumentManager();
-        $parser = new ParserService();
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
-        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
-
-        $handler = new TextDocumentSyncHandler($manager, $parser, $classRepository, $classInfoFactory);
-
         /** @var class-string $className */
         $className = 'ToBeRemoved'; // @phpstan-ignore varTag.nativeType
 
-        // Open with a class
         $openNotification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didOpen',
@@ -219,10 +192,9 @@ class TextDocumentSyncHandlerTest extends TestCase
                 ],
             ],
         ]);
-        $handler->handle($openNotification);
-        self::assertNotNull($classRepository->get(new ClassName($className)));
+        $this->handler->handle($openNotification);
+        self::assertNotNull($this->classRepository->get(new ClassName($className)));
 
-        // Close
         $closeNotification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didClose',
@@ -232,8 +204,8 @@ class TextDocumentSyncHandlerTest extends TestCase
                 ],
             ],
         ]);
-        $handler->handle($closeNotification);
+        $this->handler->handle($closeNotification);
 
-        self::assertNull($classRepository->get(new ClassName($className)));
+        self::assertNull($this->classRepository->get(new ClassName($className)));
     }
 }
