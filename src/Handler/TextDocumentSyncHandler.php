@@ -6,7 +6,12 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Index\DocumentIndexer;
+use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Repository\ClassInfoFactory;
+use Firehed\PhpLsp\Repository\ClassRepository;
+use Firehed\PhpLsp\Utility\ScopeFinder;
+use PhpParser\Node\Stmt;
 
 final class TextDocumentSyncHandler implements HandlerInterface
 {
@@ -18,6 +23,9 @@ final class TextDocumentSyncHandler implements HandlerInterface
 
     public function __construct(
         private readonly DocumentManager $documentManager,
+        private readonly ParserService $parser,
+        private readonly ClassRepository $classRepository,
+        private readonly ClassInfoFactory $classInfoFactory,
         private readonly ?DocumentIndexer $indexer = null,
     ) {
     }
@@ -103,6 +111,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         assert(is_string($uri));
 
         $this->indexer?->remove($uri);
+        $this->classRepository->removeDocument($uri);
         $this->documentManager->close($uri);
 
         return null;
@@ -111,8 +120,29 @@ final class TextDocumentSyncHandler implements HandlerInterface
     private function indexDocument(string $uri): void
     {
         $document = $this->documentManager->get($uri);
-        if ($document !== null && $this->indexer !== null) {
-            $this->indexer->index($document);
+        if ($document === null) {
+            return;
         }
+
+        $ast = $this->parser->parse($document);
+        if ($ast !== null) {
+            $this->registerDocumentClasses($uri, $ast);
+        }
+
+        $this->indexer?->index($document);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function registerDocumentClasses(string $uri, array $ast): void
+    {
+        $classes = [];
+        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
+            if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
+                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
+            }
+        }
+        $this->classRepository->updateDocument($uri, $classes);
     }
 }
