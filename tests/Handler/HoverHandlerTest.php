@@ -931,4 +931,72 @@ PHP;
         self::assertIsArray($result);
         self::assertStringContainsString('$message', $result['contents']);
     }
+
+    public function testHoverOnMethodWithVariadicParameter(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Logger
+{
+    public function log(string $level, string ...$messages): void {}
+
+    public function test(): void
+    {
+        $this->log('info', 'a', 'b');
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('...$messages', $result['contents']);
+    }
+
+    public function testHoverOnMethodWithOptionalParameter(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Greeter
+{
+    public function greet(string $name, string $prefix = 'Hello'): string
+    {
+        return "$prefix, $name!";
+    }
+
+    public function test(): void
+    {
+        $this->greet('World');
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$prefix = ...', $result['contents']);
+        self::assertStringNotContainsString('$name = ...', $result['contents']);
+    }
 }
