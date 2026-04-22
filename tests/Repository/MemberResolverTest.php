@@ -198,6 +198,60 @@ final class MemberResolverTest extends TestCase
         self::assertSame($propInfo, $result);
     }
 
+    public function testFindPropertyReturnsPropertyFromParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $propInfo = $this->createPropertyInfo('parentProp', Visibility::Public, $parentName);
+
+        $parentInfo = $this->createClassInfo($parentName, properties: ['parentProp' => $propInfo]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($childName, new PropertyName('parentProp'), Visibility::Public);
+
+        self::assertSame($propInfo, $result);
+    }
+
+    public function testFindPropertyReturnsPropertyFromTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $propInfo = $this->createPropertyInfo('traitProp', Visibility::Public, $traitName);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            properties: ['traitProp' => $propInfo],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($className, new PropertyName('traitProp'), Visibility::Public);
+
+        self::assertSame($propInfo, $result);
+    }
+
     public function testFindConstantReturnsConstantFromClass(): void
     {
         $className = new ClassName(self::fakeClass());
@@ -210,6 +264,60 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         $result = $resolver->findConstant($className, new ConstantName('MY_CONST'), Visibility::Public);
+
+        self::assertSame($constInfo, $result);
+    }
+
+    public function testFindConstantReturnsConstantFromParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $constInfo = $this->createConstantInfo('PARENT_CONST', Visibility::Public, $parentName);
+
+        $parentInfo = $this->createClassInfo($parentName, constants: ['PARENT_CONST' => $constInfo]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($childName, new ConstantName('PARENT_CONST'), Visibility::Public);
+
+        self::assertSame($constInfo, $result);
+    }
+
+    public function testFindConstantReturnsConstantFromTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $constInfo = $this->createConstantInfo('TRAIT_CONST', Visibility::Public, $traitName);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            constants: ['TRAIT_CONST' => $constInfo],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($className, new ConstantName('TRAIT_CONST'), Visibility::Public);
 
         self::assertSame($constInfo, $result);
     }
@@ -296,6 +404,46 @@ final class MemberResolverTest extends TestCase
         $result = $resolver->getProperties($className, Visibility::Protected);
 
         self::assertCount(2, $result);
+    }
+
+    public function testGetPropertiesIncludesParentProperties(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentPublic = $this->createPropertyInfo('parentPublic', Visibility::Public, $parentName);
+        $parentProtected = $this->createPropertyInfo('parentProtected', Visibility::Protected, $parentName);
+        $parentPrivate = $this->createPropertyInfo('parentPrivate', Visibility::Private, $parentName);
+
+        $childProp = $this->createPropertyInfo('childProp', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, properties: [
+            'parentPublic' => $parentPublic,
+            'parentProtected' => $parentProtected,
+            'parentPrivate' => $parentPrivate,
+        ]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, properties: [
+            'childProp' => $childProp,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getProperties($childName, Visibility::Private);
+
+        self::assertCount(3, $result);
+        self::assertContains($childProp, $result);
+        self::assertContains($parentPublic, $result);
+        self::assertContains($parentProtected, $result);
+        self::assertNotContains($parentPrivate, $result);
     }
 
     public function testGetConstantsReturnsAllAccessibleConstants(): void
