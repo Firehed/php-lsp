@@ -6,9 +6,11 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HoverHandler;
-use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -19,12 +21,15 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(HoverHandler::class)]
 class HoverHandlerTest extends TestCase
 {
+    use OpensDocumentsTrait;
+
     private DocumentManager $documents;
     private ParserService $parser;
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
     private HoverHandler $handler;
+    private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
@@ -42,8 +47,13 @@ class HoverHandlerTest extends TestCase
             $this->documents,
             $this->parser,
             $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
+        );
+        $this->syncHandler = new TextDocumentSyncHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->classInfoFactory,
         );
     }
 
@@ -67,7 +77,7 @@ class MyClass
 
 $x = new MyClass();
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -99,7 +109,7 @@ class User {}
 
 $u = new User();
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -120,7 +130,7 @@ PHP;
     public function testHoverReturnsNullForUnknownPosition(): void
     {
         $code = '<?php // just a comment';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -151,7 +161,7 @@ function add(int $a, int $b): int
 
 $sum = add(1, 2);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -190,7 +200,7 @@ class Calculator
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -226,7 +236,7 @@ class Person
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -252,7 +262,7 @@ PHP;
 $arr = [3, 1, 2];
 sort($arr);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -287,7 +297,7 @@ class Math
 
 $result = Math::abs(-5);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -326,14 +336,13 @@ function useCalculator(Calculator $calc): void
     $calc->add(1, 2);
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         // Create handler with type resolver
         $handlerWithResolver = new HoverHandler(
             $this->documents,
             $this->parser,
             $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -376,13 +385,12 @@ function test(): void
     $greeter->greet("World");
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handlerWithResolver = new HoverHandler(
             $this->documents,
             $this->parser,
             $this->classRepository,
-            $this->classInfoFactory,
             $this->memberResolver,
             new BasicTypeResolver(),
         );
@@ -424,7 +432,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -463,7 +471,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -506,7 +514,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -549,7 +557,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -590,7 +598,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -635,7 +643,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -674,7 +682,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -712,7 +720,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -755,7 +763,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -800,7 +808,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',

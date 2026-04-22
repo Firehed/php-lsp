@@ -25,6 +25,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CompletionHandler::class)]
 class CompletionHandlerTest extends TestCase
 {
+    use OpensDocumentsTrait;
+
     private DocumentManager $documents;
     private ParserService $parser;
     private SymbolIndex $symbolIndex;
@@ -59,22 +61,6 @@ class CompletionHandlerTest extends TestCase
             $this->classRepository,
             $this->classInfoFactory,
         );
-    }
-
-    private function openDocument(string $uri, string $code): void
-    {
-        $this->syncHandler->handle(NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didOpen',
-            'params' => [
-                'textDocument' => [
-                    'uri' => $uri,
-                    'languageId' => 'php',
-                    'version' => 1,
-                    'text' => $code,
-                ],
-            ],
-        ]));
     }
 
     public function testSupports(): void
