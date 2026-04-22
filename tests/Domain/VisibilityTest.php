@@ -37,4 +37,23 @@ class VisibilityTest extends TestCase
     ): void {
         self::assertSame($expected, $member->isAccessibleFrom($required));
     }
+
+    /**
+     * @return array<string, array{Visibility, string}>
+     * @codeCoverageIgnore
+     */
+    public static function keywordProvider(): array
+    {
+        return [
+            'private' => [Visibility::Private, 'private'],
+            'protected' => [Visibility::Protected, 'protected'],
+            'public' => [Visibility::Public, 'public'],
+        ];
+    }
+
+    #[DataProvider('keywordProvider')]
+    public function testToKeyword(Visibility $visibility, string $expected): void
+    {
+        self::assertSame($expected, $visibility->toKeyword());
+    }
 }

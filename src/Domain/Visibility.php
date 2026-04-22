@@ -17,4 +17,13 @@ enum Visibility: int
     {
         return $this->value >= $minimumRequired->value;
     }
+
+    public function toKeyword(): string
+    {
+        return match ($this) {
+            self::Private => 'private',
+            self::Protected => 'protected',
+            self::Public => 'public',
+        };
+    }
 }

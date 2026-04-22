@@ -6,9 +6,14 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HoverHandler;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -16,15 +21,40 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(HoverHandler::class)]
 class HoverHandlerTest extends TestCase
 {
+    use OpensDocumentsTrait;
+
     private DocumentManager $documents;
     private ParserService $parser;
+    private DefaultClassRepository $classRepository;
+    private DefaultClassInfoFactory $classInfoFactory;
+    private MemberResolver $memberResolver;
     private HoverHandler $handler;
+    private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
-        $this->handler = new HoverHandler($this->documents, $this->parser, null);
+        $this->classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $this->classRepository = new DefaultClassRepository(
+            $this->classInfoFactory,
+            $locator,
+            $this->parser,
+        );
+        $this->memberResolver = new MemberResolver($this->classRepository);
+        $this->handler = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->memberResolver,
+        );
+        $this->syncHandler = new TextDocumentSyncHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->classInfoFactory,
+        );
     }
 
     public function testSupports(): void
@@ -47,7 +77,7 @@ class MyClass
 
 $x = new MyClass();
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -79,7 +109,7 @@ class User {}
 
 $u = new User();
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -100,7 +130,7 @@ PHP;
     public function testHoverReturnsNullForUnknownPosition(): void
     {
         $code = '<?php // just a comment';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -131,7 +161,7 @@ function add(int $a, int $b): int
 
 $sum = add(1, 2);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -170,7 +200,7 @@ class Calculator
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -206,7 +236,7 @@ class Person
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -232,7 +262,7 @@ PHP;
 $arr = [3, 1, 2];
 sort($arr);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -267,7 +297,7 @@ class Math
 
 $result = Math::abs(-5);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -306,13 +336,14 @@ function useCalculator(Calculator $calc): void
     $calc->add(1, 2);
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         // Create handler with type resolver
         $handlerWithResolver = new HoverHandler(
             $this->documents,
             $this->parser,
-            null,
+            $this->classRepository,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -354,12 +385,13 @@ function test(): void
     $greeter->greet("World");
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $handlerWithResolver = new HoverHandler(
             $this->documents,
             $this->parser,
-            null,
+            $this->classRepository,
+            $this->memberResolver,
             new BasicTypeResolver(),
         );
 
@@ -400,7 +432,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -439,7 +471,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -482,7 +514,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -525,7 +557,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -566,7 +598,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -611,7 +643,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -650,7 +682,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -688,7 +720,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -731,7 +763,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -776,7 +808,7 @@ class ChildClass extends ParentClass
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -794,5 +826,177 @@ PHP;
         self::assertStringContainsString('$sharedProperty', $result['contents']);
         self::assertStringContainsString('Child property', $result['contents']);
         self::assertStringNotContainsString('Parent property', $result['contents']);
+    }
+
+    public function testHoverOnStaticProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Config
+{
+    /**
+     * Application name.
+     */
+    public static string $appName = 'MyApp';
+}
+
+$name = Config::$appName;
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 18],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$appName', $result['contents']);
+        self::assertStringContainsString('static', $result['contents']);
+        self::assertStringContainsString('Application name', $result['contents']);
+    }
+
+    public function testHoverOnBuiltinClassMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(ArrayObject $obj): void
+{
+    $obj->getArrayCopy();
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handlerWithResolver = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->memberResolver,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 12],
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('getArrayCopy', $result['contents']);
+    }
+
+    public function testHoverOnBuiltinClassProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(Exception $e): void
+{
+    $e->message;
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handlerWithResolver = new HoverHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->memberResolver,
+            new BasicTypeResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 9],
+            ],
+        ]);
+
+        $result = $handlerWithResolver->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$message', $result['contents']);
+    }
+
+    public function testHoverOnMethodWithVariadicParameter(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Logger
+{
+    public function log(string $level, string ...$messages): void {}
+
+    public function test(): void
+    {
+        $this->log('info', 'a', 'b');
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('...$messages', $result['contents']);
+    }
+
+    public function testHoverOnMethodWithOptionalParameter(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Greeter
+{
+    public function greet(string $name, string $prefix = 'Hello'): string
+    {
+        return "$prefix, $name!";
+    }
+
+    public function test(): void
+    {
+        $this->greet('World');
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$prefix = ...', $result['contents']);
+        self::assertStringNotContainsString('$name = ...', $result['contents']);
     }
 }
