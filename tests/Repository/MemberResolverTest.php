@@ -1,0 +1,1336 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp\Tests\Repository;
+
+use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Repository\ClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+
+#[CoversClass(MemberResolver::class)]
+final class MemberResolverTest extends TestCase
+{
+    public function testFindMethodReturnsNullForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod(
+            new ClassName(self::fakeClass()),
+            new MethodName('foo'),
+            Visibility::Public,
+        );
+
+        self::assertNull($result);
+    }
+
+    public function testFindPropertyReturnsNullForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty(
+            new ClassName(self::fakeClass()),
+            new PropertyName('foo'),
+            Visibility::Public,
+        );
+
+        self::assertNull($result);
+    }
+
+    public function testFindConstantReturnsNullForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant(
+            new ClassName(self::fakeClass()),
+            new ConstantName('FOO'),
+            Visibility::Public,
+        );
+
+        self::assertNull($result);
+    }
+
+    public function testFindEnumCaseReturnsNullForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findEnumCase(
+            new ClassName(self::fakeClass()),
+            new EnumCaseName('Foo'),
+        );
+
+        self::assertNull($result);
+    }
+
+    public function testGetMethodsReturnsEmptyForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getMethods(new ClassName(self::fakeClass()), Visibility::Public);
+
+        self::assertSame([], $result);
+    }
+
+    public function testGetPropertiesReturnsEmptyForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getProperties(new ClassName(self::fakeClass()), Visibility::Public);
+
+        self::assertSame([], $result);
+    }
+
+    public function testGetConstantsReturnsEmptyForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants(new ClassName(self::fakeClass()), Visibility::Public);
+
+        self::assertSame([], $result);
+    }
+
+    public function testGetEnumCasesReturnsEmptyForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getEnumCases(new ClassName(self::fakeClass()));
+
+        self::assertSame([], $result);
+    }
+
+    public function testFindMethodReturnsMethodFromClass(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $methodInfo = $this->createMethodInfo('doSomething', Visibility::Public, $className);
+        $classInfo = $this->createClassInfo($className, methods: ['doSomething' => $methodInfo]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnMap([
+            [$className, $classInfo],
+        ]);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($className, new MethodName('doSomething'), Visibility::Public);
+
+        self::assertSame($methodInfo, $result);
+    }
+
+    public function testFindMethodReturnsMethodFromParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $methodInfo = $this->createMethodInfo('parentMethod', Visibility::Public, $parentName);
+
+        $parentInfo = $this->createClassInfo($parentName, methods: ['parentMethod' => $methodInfo]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($childName, new MethodName('parentMethod'), Visibility::Public);
+
+        self::assertSame($methodInfo, $result);
+    }
+
+    public function testFindMethodReturnsMethodFromTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $methodInfo = $this->createMethodInfo('traitMethod', Visibility::Public, $traitName);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            methods: ['traitMethod' => $methodInfo],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($className, new MethodName('traitMethod'), Visibility::Public);
+
+        self::assertSame($methodInfo, $result);
+    }
+
+    public function testFindMethodFiltersVisibility(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $privateMethod = $this->createMethodInfo('privateMethod', Visibility::Private, $className);
+        $classInfo = $this->createClassInfo($className, methods: ['privateMethod' => $privateMethod]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($className, new MethodName('privateMethod'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testFindMethodExcludesParentPrivateMethods(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $privateMethod = $this->createMethodInfo('privateMethod', Visibility::Private, $parentName);
+
+        $parentInfo = $this->createClassInfo($parentName, methods: ['privateMethod' => $privateMethod]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($childName, new MethodName('privateMethod'), Visibility::Private);
+
+        self::assertNull($result);
+    }
+
+    public function testFindMethodIncludesTraitPrivateMethods(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $privateMethod = $this->createMethodInfo('privateMethod', Visibility::Private, $traitName);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            methods: ['privateMethod' => $privateMethod],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($className, new MethodName('privateMethod'), Visibility::Private);
+
+        self::assertSame($privateMethod, $result);
+    }
+
+    public function testFindPropertyReturnsPropertyFromClass(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $propInfo = $this->createPropertyInfo('myProp', Visibility::Public, $className);
+        $classInfo = $this->createClassInfo($className, properties: ['myProp' => $propInfo]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($className, new PropertyName('myProp'), Visibility::Public);
+
+        self::assertSame($propInfo, $result);
+    }
+
+    public function testFindPropertyReturnsPropertyFromParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $propInfo = $this->createPropertyInfo('parentProp', Visibility::Public, $parentName);
+
+        $parentInfo = $this->createClassInfo($parentName, properties: ['parentProp' => $propInfo]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($childName, new PropertyName('parentProp'), Visibility::Public);
+
+        self::assertSame($propInfo, $result);
+    }
+
+    public function testFindPropertyReturnsPropertyFromTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $propInfo = $this->createPropertyInfo('traitProp', Visibility::Public, $traitName);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            properties: ['traitProp' => $propInfo],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($className, new PropertyName('traitProp'), Visibility::Public);
+
+        self::assertSame($propInfo, $result);
+    }
+
+    public function testFindPropertyReturnsNullWhenNotFound(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $classInfo = $this->createClassInfo($className);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($className, new PropertyName('nonexistent'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testFindConstantReturnsConstantFromClass(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $constInfo = $this->createConstantInfo('MY_CONST', Visibility::Public, $className);
+        $classInfo = $this->createClassInfo($className, constants: ['MY_CONST' => $constInfo]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($className, new ConstantName('MY_CONST'), Visibility::Public);
+
+        self::assertSame($constInfo, $result);
+    }
+
+    public function testFindConstantReturnsConstantFromParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $constInfo = $this->createConstantInfo('PARENT_CONST', Visibility::Public, $parentName);
+
+        $parentInfo = $this->createClassInfo($parentName, constants: ['PARENT_CONST' => $constInfo]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($childName, new ConstantName('PARENT_CONST'), Visibility::Public);
+
+        self::assertSame($constInfo, $result);
+    }
+
+    public function testFindConstantReturnsConstantFromTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $constInfo = $this->createConstantInfo('TRAIT_CONST', Visibility::Public, $traitName);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            constants: ['TRAIT_CONST' => $constInfo],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($className, new ConstantName('TRAIT_CONST'), Visibility::Public);
+
+        self::assertSame($constInfo, $result);
+    }
+
+    public function testFindConstantReturnsNullWhenNotFound(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $classInfo = $this->createClassInfo($className);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($className, new ConstantName('NONEXISTENT'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testGetMethodsReturnsAllAccessibleMethods(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentPublic = $this->createMethodInfo('parentPublic', Visibility::Public, $parentName);
+        $parentProtected = $this->createMethodInfo('parentProtected', Visibility::Protected, $parentName);
+        $parentPrivate = $this->createMethodInfo('parentPrivate', Visibility::Private, $parentName);
+
+        $childMethod = $this->createMethodInfo('childMethod', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, methods: [
+            'parentPublic' => $parentPublic,
+            'parentProtected' => $parentProtected,
+            'parentPrivate' => $parentPrivate,
+        ]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, methods: [
+            'childMethod' => $childMethod,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getMethods($childName, Visibility::Private);
+
+        self::assertCount(3, $result);
+        self::assertContains($childMethod, $result);
+        self::assertContains($parentPublic, $result);
+        self::assertContains($parentProtected, $result);
+        self::assertNotContains($parentPrivate, $result);
+    }
+
+    public function testGetMethodsFiltersStatic(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $instanceMethod = $this->createMethodInfo('instance', Visibility::Public, $className, isStatic: false);
+        $staticMethod = $this->createMethodInfo('static', Visibility::Public, $className, isStatic: true);
+
+        $classInfo = $this->createClassInfo($className, methods: [
+            'instance' => $instanceMethod,
+            'static' => $staticMethod,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $staticOnly = $resolver->getMethods($className, Visibility::Public, static: true);
+        $instanceOnly = $resolver->getMethods($className, Visibility::Public, static: false);
+
+        self::assertSame([$staticMethod], $staticOnly);
+        self::assertSame([$instanceMethod], $instanceOnly);
+    }
+
+    public function testGetPropertiesReturnsAllAccessibleProperties(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $prop1 = $this->createPropertyInfo('prop1', Visibility::Public, $className);
+        $prop2 = $this->createPropertyInfo('prop2', Visibility::Protected, $className);
+
+        $classInfo = $this->createClassInfo($className, properties: [
+            'prop1' => $prop1,
+            'prop2' => $prop2,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getProperties($className, Visibility::Protected);
+
+        self::assertCount(2, $result);
+    }
+
+    public function testGetPropertiesIncludesParentProperties(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentPublic = $this->createPropertyInfo('parentPublic', Visibility::Public, $parentName);
+        $parentProtected = $this->createPropertyInfo('parentProtected', Visibility::Protected, $parentName);
+        $parentPrivate = $this->createPropertyInfo('parentPrivate', Visibility::Private, $parentName);
+
+        $childProp = $this->createPropertyInfo('childProp', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, properties: [
+            'parentPublic' => $parentPublic,
+            'parentProtected' => $parentProtected,
+            'parentPrivate' => $parentPrivate,
+        ]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, properties: [
+            'childProp' => $childProp,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getProperties($childName, Visibility::Private);
+
+        self::assertCount(3, $result);
+        self::assertContains($childProp, $result);
+        self::assertContains($parentPublic, $result);
+        self::assertContains($parentProtected, $result);
+        self::assertNotContains($parentPrivate, $result);
+    }
+
+    public function testGetPropertiesFiltersStatic(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $instanceProp = $this->createPropertyInfo('instance', Visibility::Public, $className, isStatic: false);
+        $staticProp = $this->createPropertyInfo('static', Visibility::Public, $className, isStatic: true);
+
+        $classInfo = $this->createClassInfo($className, properties: [
+            'instance' => $instanceProp,
+            'static' => $staticProp,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $staticOnly = $resolver->getProperties($className, Visibility::Public, static: true);
+        $instanceOnly = $resolver->getProperties($className, Visibility::Public, static: false);
+
+        self::assertSame([$staticProp], $staticOnly);
+        self::assertSame([$instanceProp], $instanceOnly);
+    }
+
+    public function testGetPropertiesIncludesTraitProperties(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+
+        $traitProp = $this->createPropertyInfo('traitProp', Visibility::Public, $traitName);
+        $classProp = $this->createPropertyInfo('classProp', Visibility::Public, $className);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            properties: ['traitProp' => $traitProp],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName], properties: [
+            'classProp' => $classProp,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getProperties($className, Visibility::Public);
+
+        self::assertCount(2, $result);
+        self::assertContains($classProp, $result);
+        self::assertContains($traitProp, $result);
+    }
+
+    public function testGetConstantsReturnsAllAccessibleConstants(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $const1 = $this->createConstantInfo('CONST1', Visibility::Public, $className);
+
+        $classInfo = $this->createClassInfo($className, constants: ['CONST1' => $const1]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($className, Visibility::Public);
+
+        self::assertSame([$const1], $result);
+    }
+
+    public function testGetConstantsIncludesParentConstants(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentConst = $this->createConstantInfo('PARENT_CONST', Visibility::Public, $parentName);
+        $childConst = $this->createConstantInfo('CHILD_CONST', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, constants: ['PARENT_CONST' => $parentConst]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, constants: [
+            'CHILD_CONST' => $childConst,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($childName, Visibility::Public);
+
+        self::assertCount(2, $result);
+        self::assertContains($childConst, $result);
+        self::assertContains($parentConst, $result);
+    }
+
+    public function testGetConstantsIncludesTraitConstants(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+
+        $traitConst = $this->createConstantInfo('TRAIT_CONST', Visibility::Public, $traitName);
+        $classConst = $this->createConstantInfo('CLASS_CONST', Visibility::Public, $className);
+
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            kind: ClassKind::Trait_,
+            constants: ['TRAIT_CONST' => $traitConst],
+        );
+        $classInfo = $this->createClassInfo($className, traits: [$traitName], constants: [
+            'CLASS_CONST' => $classConst,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($className, Visibility::Public);
+
+        self::assertCount(2, $result);
+        self::assertContains($classConst, $result);
+        self::assertContains($traitConst, $result);
+    }
+
+    public function testGetEnumCasesReturnsAllCases(): void
+    {
+        $enumName = new ClassName(self::fakeClass());
+        $case1 = $this->createEnumCaseInfo('Case1', $enumName);
+        $case2 = $this->createEnumCaseInfo('Case2', $enumName);
+
+        $enumInfo = $this->createClassInfo($enumName, kind: ClassKind::Enum_, enumCases: [
+            'Case1' => $case1,
+            'Case2' => $case2,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($enumInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getEnumCases($enumName);
+
+        self::assertCount(2, $result);
+        self::assertContains($case1, $result);
+        self::assertContains($case2, $result);
+    }
+
+    public function testFindEnumCaseReturnsCase(): void
+    {
+        $enumName = new ClassName(self::fakeClass());
+        $case1 = $this->createEnumCaseInfo('Case1', $enumName);
+        $case2 = $this->createEnumCaseInfo('Case2', $enumName);
+
+        $enumInfo = $this->createClassInfo($enumName, kind: ClassKind::Enum_, enumCases: [
+            'Case1' => $case1,
+            'Case2' => $case2,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($enumInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findEnumCase($enumName, new EnumCaseName('Case2'));
+
+        self::assertSame($case2, $result);
+    }
+
+    public function testFindEnumCaseReturnsNullWhenNotFound(): void
+    {
+        $enumName = new ClassName(self::fakeClass());
+        $enumInfo = $this->createClassInfo($enumName, kind: ClassKind::Enum_);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($enumInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findEnumCase($enumName, new EnumCaseName('NonExistent'));
+
+        self::assertNull($result);
+    }
+
+    public function testDiamondInheritanceNoDuplicates(): void
+    {
+        // Diamond: Child uses Trait1 and Trait2, both use BaseTrait
+        $baseTrait = new ClassName(self::fakeClass());
+        $trait1 = new ClassName(self::fakeClass());
+        $trait2 = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $sharedMethod = $this->createMethodInfo('sharedMethod', Visibility::Public, $baseTrait);
+
+        $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_, methods: [
+            'sharedMethod' => $sharedMethod,
+        ]);
+        $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $baseTrait->fqn => $baseTraitInfo,
+                $trait1->fqn => $trait1Info,
+                $trait2->fqn => $trait2Info,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getMethods($childName, Visibility::Public);
+
+        self::assertCount(1, $result);
+    }
+
+    public function testFindMethodWithDiamondInheritanceHitsSeenCheck(): void
+    {
+        // Diamond where the method doesn't exist anywhere, forcing full traversal
+        // This hits the $seen check when trait2 tries to traverse baseTrait (already seen via trait1)
+        $baseTrait = new ClassName(self::fakeClass());
+        $trait1 = new ClassName(self::fakeClass());
+        $trait2 = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_);
+        $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $baseTrait->fqn => $baseTraitInfo,
+                $trait1->fqn => $trait1Info,
+                $trait2->fqn => $trait2Info,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($childName, new MethodName('nonexistent'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testFindPropertyWithDiamondInheritanceHitsSeenCheck(): void
+    {
+        $baseTrait = new ClassName(self::fakeClass());
+        $trait1 = new ClassName(self::fakeClass());
+        $trait2 = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_);
+        $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $baseTrait->fqn => $baseTraitInfo,
+                $trait1->fqn => $trait1Info,
+                $trait2->fqn => $trait2Info,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($childName, new PropertyName('nonexistent'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testFindConstantWithDiamondInheritanceHitsSeenCheck(): void
+    {
+        $baseTrait = new ClassName(self::fakeClass());
+        $trait1 = new ClassName(self::fakeClass());
+        $trait2 = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_);
+        $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $baseTrait->fqn => $baseTraitInfo,
+                $trait1->fqn => $trait1Info,
+                $trait2->fqn => $trait2Info,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($childName, new ConstantName('NONEXISTENT'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testFindMethodSkipsNonMatchingMethods(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $method1 = $this->createMethodInfo('method1', Visibility::Public, $className);
+        $method2 = $this->createMethodInfo('method2', Visibility::Public, $className);
+
+        $classInfo = $this->createClassInfo($className, methods: [
+            'method1' => $method1,
+            'method2' => $method2,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($className, new MethodName('method2'), Visibility::Public);
+
+        self::assertSame($method2, $result);
+    }
+
+    public function testGetConstantsFiltersInaccessibleConstants(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $publicConst = $this->createConstantInfo('PUBLIC', Visibility::Public, $className);
+        $privateConst = $this->createConstantInfo('PRIVATE', Visibility::Private, $className);
+
+        $classInfo = $this->createClassInfo($className, constants: [
+            'PUBLIC' => $publicConst,
+            'PRIVATE' => $privateConst,
+        ]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($className, Visibility::Public);
+
+        self::assertSame([$publicConst], $result);
+    }
+
+    public function testGetMethodsChildOverridesParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentMethod = $this->createMethodInfo('method', Visibility::Public, $parentName);
+        $childMethod = $this->createMethodInfo('method', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, methods: ['method' => $parentMethod]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, methods: ['method' => $childMethod]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getMethods($childName, Visibility::Public);
+
+        self::assertCount(1, $result);
+        self::assertSame($childMethod, $result[0]);
+    }
+
+    public function testGetPropertiesChildOverridesParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentProp = $this->createPropertyInfo('prop', Visibility::Public, $parentName);
+        $childProp = $this->createPropertyInfo('prop', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, properties: ['prop' => $parentProp]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, properties: ['prop' => $childProp]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getProperties($childName, Visibility::Public);
+
+        self::assertCount(1, $result);
+        self::assertSame($childProp, $result[0]);
+    }
+
+    public function testGetConstantsChildOverridesParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentConst = $this->createConstantInfo('CONST', Visibility::Public, $parentName);
+        $childConst = $this->createConstantInfo('CONST', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, constants: ['CONST' => $parentConst]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, constants: ['CONST' => $childConst]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($childName, Visibility::Public);
+
+        self::assertCount(1, $result);
+        self::assertSame($childConst, $result[0]);
+    }
+
+    public function testGetPropertiesDiamondInheritance(): void
+    {
+        $baseTrait = new ClassName(self::fakeClass());
+        $trait1 = new ClassName(self::fakeClass());
+        $trait2 = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $sharedProp = $this->createPropertyInfo('sharedProp', Visibility::Public, $baseTrait);
+
+        $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_, properties: [
+            'sharedProp' => $sharedProp,
+        ]);
+        $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $baseTrait->fqn => $baseTraitInfo,
+                $trait1->fqn => $trait1Info,
+                $trait2->fqn => $trait2Info,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getProperties($childName, Visibility::Public);
+
+        self::assertCount(1, $result);
+    }
+
+    public function testGetConstantsDiamondInheritance(): void
+    {
+        $baseTrait = new ClassName(self::fakeClass());
+        $trait1 = new ClassName(self::fakeClass());
+        $trait2 = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $sharedConst = $this->createConstantInfo('SHARED', Visibility::Public, $baseTrait);
+
+        $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_, constants: [
+            'SHARED' => $sharedConst,
+        ]);
+        $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
+        $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $baseTrait->fqn => $baseTraitInfo,
+                $trait1->fqn => $trait1Info,
+                $trait2->fqn => $trait2Info,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($childName, Visibility::Public);
+
+        self::assertCount(1, $result);
+    }
+
+    public function testChildMethodOverridesParent(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $parentMethod = $this->createMethodInfo('method', Visibility::Public, $parentName);
+        $childMethod = $this->createMethodInfo('method', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, methods: ['method' => $parentMethod]);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName, methods: ['method' => $childMethod]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($childName, new MethodName('method'), Visibility::Public);
+
+        self::assertSame($childMethod, $result);
+    }
+
+    public function testFindMethodFromGrandparent(): void
+    {
+        $grandparentName = new ClassName(self::fakeClass());
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+
+        $grandparentMethod = $this->createMethodInfo('deepMethod', Visibility::Public, $grandparentName);
+
+        $grandparentInfo = $this->createClassInfo(
+            $grandparentName,
+            methods: ['deepMethod' => $grandparentMethod],
+        );
+        $parentInfo = $this->createClassInfo($parentName, parent: $grandparentName);
+        $childInfo = $this->createClassInfo($childName, parent: $parentName);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $grandparentName->fqn => $grandparentInfo,
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($childName, new MethodName('deepMethod'), Visibility::Public);
+
+        self::assertSame($grandparentMethod, $result);
+    }
+
+    public function testFindConstantFromInterface(): void
+    {
+        $interfaceName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+
+        $interfaceConst = $this->createConstantInfo('INTERFACE_CONST', Visibility::Public, $interfaceName);
+
+        $interfaceInfo = $this->createClassInfo(
+            $interfaceName,
+            kind: ClassKind::Interface_,
+            constants: ['INTERFACE_CONST' => $interfaceConst],
+        );
+        $classInfo = $this->createClassInfo($className, interfaces: [$interfaceName]);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $interfaceName->fqn => $interfaceInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($className, new ConstantName('INTERFACE_CONST'), Visibility::Public);
+
+        self::assertSame($interfaceConst, $result);
+    }
+
+    public function testGetConstantsIncludesInterfaceConstants(): void
+    {
+        $interfaceName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+
+        $classConst = $this->createConstantInfo('CLASS_CONST', Visibility::Public, $className);
+        $interfaceConst = $this->createConstantInfo('INTERFACE_CONST', Visibility::Public, $interfaceName);
+
+        $interfaceInfo = $this->createClassInfo(
+            $interfaceName,
+            kind: ClassKind::Interface_,
+            constants: ['INTERFACE_CONST' => $interfaceConst],
+        );
+        $classInfo = $this->createClassInfo(
+            $className,
+            constants: ['CLASS_CONST' => $classConst],
+            interfaces: [$interfaceName],
+        );
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $interfaceName->fqn => $interfaceInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($className, Visibility::Public);
+
+        self::assertCount(2, $result);
+        self::assertContains($classConst, $result);
+        self::assertContains($interfaceConst, $result);
+    }
+
+    /**
+     * @return class-string
+     */
+    private static function fakeClass(): string
+    {
+        // @phpstan-ignore return.type
+        return 'Fake\\Class' . random_int(0, PHP_INT_MAX);
+    }
+
+    /**
+     * @param array<string, MethodInfo> $methods
+     * @param array<string, PropertyInfo> $properties
+     * @param array<string, ConstantInfo> $constants
+     * @param array<string, EnumCaseInfo> $enumCases
+     * @param list<ClassName> $traits
+     * @param list<ClassName> $interfaces
+     */
+    private function createClassInfo(
+        ClassName $name,
+        ClassKind $kind = ClassKind::Class_,
+        ?ClassName $parent = null,
+        array $methods = [],
+        array $properties = [],
+        array $constants = [],
+        array $enumCases = [],
+        array $traits = [],
+        array $interfaces = [],
+    ): ClassInfo {
+        return new ClassInfo(
+            name: $name,
+            kind: $kind,
+            isAbstract: false,
+            isFinal: false,
+            isReadonly: false,
+            parent: $parent,
+            interfaces: $interfaces,
+            traits: $traits,
+            methods: $methods,
+            properties: $properties,
+            constants: $constants,
+            enumCases: $enumCases,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
+    private function createMethodInfo(
+        string $name,
+        Visibility $visibility,
+        ClassName $declaringClass,
+        bool $isStatic = false,
+    ): MethodInfo {
+        return new MethodInfo(
+            name: new MethodName($name),
+            visibility: $visibility,
+            isStatic: $isStatic,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: $declaringClass,
+        );
+    }
+
+    private function createPropertyInfo(
+        string $name,
+        Visibility $visibility,
+        ClassName $declaringClass,
+        bool $isStatic = false,
+    ): PropertyInfo {
+        return new PropertyInfo(
+            name: new PropertyName($name),
+            visibility: $visibility,
+            isStatic: $isStatic,
+            isReadonly: false,
+            isPromoted: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: $declaringClass,
+        );
+    }
+
+    private function createConstantInfo(
+        string $name,
+        Visibility $visibility,
+        ClassName $declaringClass,
+    ): ConstantInfo {
+        return new ConstantInfo(
+            name: new ConstantName($name),
+            visibility: $visibility,
+            isFinal: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: $declaringClass,
+        );
+    }
+
+    private function createEnumCaseInfo(string $name, ClassName $declaringClass): EnumCaseInfo
+    {
+        return new EnumCaseInfo(
+            name: new EnumCaseName($name),
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: $declaringClass,
+        );
+    }
+}
