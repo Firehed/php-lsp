@@ -149,7 +149,7 @@ final class HoverHandler implements HandlerInterface
 
             // Static method call: ClassName::method()
             if ($parent instanceof StaticCall) {
-                return $this->getStaticMethodHover($parent, $ast);
+                return $this->getStaticMethodHover($parent);
             }
 
             // Property fetch: $obj->property or $this->property
@@ -159,7 +159,7 @@ final class HoverHandler implements HandlerInterface
 
             // Static property fetch: ClassName::$property
             if ($parent instanceof StaticPropertyFetch) {
-                return $this->getStaticPropertyHover($parent, $ast);
+                return $this->getStaticPropertyHover($parent);
             }
 
             if ($parent instanceof FuncCall) {
@@ -309,10 +309,7 @@ final class HoverHandler implements HandlerInterface
         return $this->getMethodHoverForClass($className, $methodName->toString());
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function getStaticMethodHover(StaticCall $call, array $ast): ?string
+    private function getStaticMethodHover(StaticCall $call): ?string
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
@@ -347,10 +344,7 @@ final class HoverHandler implements HandlerInterface
         return $this->getPropertyHoverForClass($className, $propertyName->toString());
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function getStaticPropertyHover(StaticPropertyFetch $fetch, array $ast): ?string
+    private function getStaticPropertyHover(StaticPropertyFetch $fetch): ?string
     {
         $propertyName = $fetch->name;
         if (!$propertyName instanceof Node\VarLikeIdentifier) {
@@ -416,7 +410,13 @@ final class HoverHandler implements HandlerInterface
             if ($param->type !== null) {
                 $paramStr .= $param->type . ' ';
             }
+            if ($param->isVariadic) {
+                $paramStr .= '...';
+            }
             $paramStr .= '$' . $param->name;
+            if ($param->hasDefault && !$param->isVariadic) {
+                $paramStr .= ' = ...';
+            }
             $params[] = $paramStr;
         }
 
