@@ -6,16 +6,29 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
+use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
 {
+    private function createHandler(DocumentManager $manager): TextDocumentSyncHandler
+    {
+        $parser = new ParserService();
+        $classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
+        return new TextDocumentSyncHandler($manager, $parser, $classRepository, $classInfoFactory);
+    }
+
     public function testSupports(): void
     {
-        $handler = new TextDocumentSyncHandler(new DocumentManager());
+        $handler = $this->createHandler(new DocumentManager());
 
         self::assertTrue($handler->supports('textDocument/didOpen'));
         self::assertTrue($handler->supports('textDocument/didChange'));
@@ -26,7 +39,7 @@ class TextDocumentSyncHandlerTest extends TestCase
     public function testDidOpen(): void
     {
         $manager = new DocumentManager();
-        $handler = new TextDocumentSyncHandler($manager);
+        $handler = $this->createHandler($manager);
 
         $notification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -51,7 +64,7 @@ class TextDocumentSyncHandlerTest extends TestCase
     public function testDidChange(): void
     {
         $manager = new DocumentManager();
-        $handler = new TextDocumentSyncHandler($manager);
+        $handler = $this->createHandler($manager);
 
         // First open
         $manager->open('file:///test.php', 'php', 1, '<?php echo "v1";');
@@ -82,7 +95,7 @@ class TextDocumentSyncHandlerTest extends TestCase
     public function testDidClose(): void
     {
         $manager = new DocumentManager();
-        $handler = new TextDocumentSyncHandler($manager);
+        $handler = $this->createHandler($manager);
 
         $manager->open('file:///test.php', 'php', 1, '<?php');
 
