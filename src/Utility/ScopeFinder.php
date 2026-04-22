@@ -151,4 +151,21 @@ final class ScopeFinder
 
         return $visitor->found;
     }
+
+    /**
+     * Iterate top-level statements, flattening namespace contents.
+     *
+     * @param array<Stmt> $ast
+     * @return \Generator<Stmt>
+     */
+    public static function iterateTopLevelStatements(array $ast): \Generator
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                yield from $stmt->stmts;
+            } else {
+                yield $stmt;
+            }
+        }
+    }
 }

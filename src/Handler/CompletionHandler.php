@@ -13,8 +13,6 @@ use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
-use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
@@ -74,29 +72,10 @@ final class CompletionHandler implements HandlerInterface
         return $item;
     }
 
-    /**
-     * Iterate top-level statements, flattening namespace contents.
-     *
-     * @param array<Stmt> $ast
-     * @return \Generator<Stmt>
-     */
-    private static function iterateTopLevelStatements(array $ast): \Generator
-    {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                yield from $stmt->stmts;
-            } else {
-                yield $stmt;
-            }
-        }
-    }
-
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
-        private readonly ClassRepository $classRepository,
-        private readonly ClassInfoFactory $classInfoFactory,
         private readonly MemberResolver $memberResolver,
         private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
@@ -156,9 +135,6 @@ final class CompletionHandler implements HandlerInterface
             throw new \LogicException('Parser returned null with error-collecting handler');
             // @codeCoverageIgnoreEnd
         }
-
-        // Register document classes with repository for member resolution
-        $this->registerDocumentClasses($uri, $ast);
 
         // Get text before cursor to determine completion context
         $lineText = $document->getLine($line);
@@ -538,28 +514,12 @@ final class CompletionHandler implements HandlerInterface
      */
     private function findFirstClass(array $ast): ?Stmt\Class_
     {
-        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
+        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
             if ($stmt instanceof Stmt\Class_) {
                 return $stmt;
             }
         }
         return null;
-    }
-
-    /**
-     * Register all classes from the document with the class repository.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function registerDocumentClasses(string $uri, array $ast): void
-    {
-        $classes = [];
-        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
-                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
-            }
-        }
-        $this->classRepository->updateDocument($uri, $classes);
     }
 
     /**
@@ -712,7 +672,7 @@ final class CompletionHandler implements HandlerInterface
     {
         $imports = [];
 
-        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
+        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
             $this->extractImportsFromUse($stmt, $imports);
         }
 
