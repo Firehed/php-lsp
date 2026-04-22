@@ -25,7 +25,7 @@ final class DefaultClassRepository implements ClassRepository
 
     public function __construct(
         private readonly ClassInfoFactory $factory,
-        private readonly ?ClassLocator $locator,
+        private readonly ClassLocator $locator,
         private readonly ParserService $parser,
     ) {
     }
@@ -101,10 +101,6 @@ final class DefaultClassRepository implements ClassRepository
 
     private function locateAndParse(ClassName $name): ?ClassInfo
     {
-        if ($this->locator === null) {
-            return null;
-        }
-
         $filePath = $this->locator->locate($name);
         if ($filePath === null || !is_readable($filePath)) {
             return null;

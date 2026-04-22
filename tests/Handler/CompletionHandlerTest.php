@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -36,7 +37,12 @@ class CompletionHandlerTest extends TestCase
         $this->parser = new ParserService();
         $this->symbolIndex = new SymbolIndex();
         $this->classInfoFactory = new DefaultClassInfoFactory();
-        $this->classRepository = new DefaultClassRepository($this->classInfoFactory, null, $this->parser);
+        $locator = self::createStub(ClassLocator::class);
+        $this->classRepository = new DefaultClassRepository(
+            $this->classInfoFactory,
+            $locator,
+            $this->parser,
+        );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $this->handler = new CompletionHandler(
             $this->documents,

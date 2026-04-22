@@ -39,15 +39,19 @@ final class Server
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
     ) {
-        // Use provided root, or fall back to cwd
-        $cwd = getcwd();
-        $projectRoot ??= $cwd !== false ? $cwd : null;
+        if ($projectRoot === null) {
+            $cwd = getcwd();
+            if ($cwd === false) {
+                throw new \RuntimeException('Unable to determine project root: getcwd() failed');
+            }
+            $projectRoot = $cwd;
+        }
 
         $this->documentManager = new DocumentManager();
         $parser = new ParserService();
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
-        $classLocator = $projectRoot !== null ? new ComposerClassLocator($projectRoot) : null;
+        $classLocator = new ComposerClassLocator($projectRoot);
         $typeResolver = new BasicTypeResolver();
 
         $classInfoFactory = new DefaultClassInfoFactory();
