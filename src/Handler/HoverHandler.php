@@ -397,11 +397,7 @@ final class HoverHandler implements HandlerInterface
             $parts[] = DocblockParser::extractDescription($method->docblock);
         }
 
-        $visibility = match ($method->visibility) {
-            Visibility::Private => 'private ',
-            Visibility::Protected => 'protected ',
-            Visibility::Public => 'public ',
-        };
+        $visibility = $method->visibility->toKeyword() . ' ';
         $static = $method->isStatic ? 'static ' : '';
 
         $params = [];
@@ -440,11 +436,7 @@ final class HoverHandler implements HandlerInterface
             $parts[] = DocblockParser::extractDescription($property->docblock);
         }
 
-        $visibility = match ($property->visibility) {
-            Visibility::Private => 'private ',
-            Visibility::Protected => 'protected ',
-            Visibility::Public => 'public ',
-        };
+        $visibility = $property->visibility->toKeyword() . ' ';
         $static = $property->isStatic ? 'static ' : '';
         $readonly = $property->isReadonly ? 'readonly ' : '';
 
