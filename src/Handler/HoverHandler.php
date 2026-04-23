@@ -8,9 +8,9 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
-use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -23,7 +23,6 @@ use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
-use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -259,35 +258,14 @@ final class HoverHandler implements HandlerInterface
 
     private function formatFunctionHover(Stmt\Function_ $node): string
     {
+        $funcInfo = FunctionInfo::fromNode($node);
         $parts = [];
 
-        // Add docblock if present
-        $docComment = $node->getDocComment();
-        if ($docComment !== null) {
-            $parts[] = DocblockParser::extractDescription($docComment->getText());
+        if ($funcInfo->docblock !== null) {
+            $parts[] = DocblockParser::extractDescription($funcInfo->docblock);
         }
 
-        // Build signature
-        $params = [];
-        foreach ($node->params as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
-            }
-            $var = $param->var;
-            if ($var instanceof Node\Expr\Variable && is_string($var->name)) {
-                $paramStr .= '$' . $var->name;
-            }
-            $params[] = $paramStr;
-        }
-
-        $signature = 'function ' . $node->name->toString() . '(' . implode(', ', $params) . ')';
-
-        if ($node->returnType !== null) {
-            $signature .= ': ' . TypeFormatter::formatNode($node->returnType);
-        }
-
-        $parts[] = '```php' . "\n" . $signature . "\n```";
+        $parts[] = '```php' . "\n" . $funcInfo->format() . "\n```";
 
         return implode("\n\n", $parts);
     }
@@ -453,26 +431,14 @@ final class HoverHandler implements HandlerInterface
 
     private function formatReflectionFunction(ReflectionFunction $func): string
     {
+        $funcInfo = FunctionInfo::fromReflection($func);
         $parts = [];
 
-        $docComment = $func->getDocComment();
-        if ($docComment !== false) {
-            $parts[] = DocblockParser::extractDescription($docComment);
+        if ($funcInfo->docblock !== null) {
+            $parts[] = DocblockParser::extractDescription($funcInfo->docblock);
         }
 
-        $params = array_map(
-            fn($p) => ParameterInfo::fromReflection($p)->format(showDefault: true),
-            $func->getParameters(),
-        );
-
-        $signature = 'function ' . $func->getName() . '(' . implode(', ', $params) . ')';
-
-        $returnType = $func->getReturnType();
-        if ($returnType !== null) {
-            $signature .= ': ' . TypeFormatter::formatReflection($returnType);
-        }
-
-        $parts[] = '```php' . "\n" . $signature . "\n```";
+        $parts[] = '```php' . "\n" . $funcInfo->format() . "\n```";
 
         return implode("\n\n", $parts);
     }
