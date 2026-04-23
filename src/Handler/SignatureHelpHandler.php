@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
@@ -35,11 +36,11 @@ use ReflectionMethod;
 use ReflectionParameter;
 
 /**
- * @phpstan-type ParameterInfo array{label: string, documentation?: string}
+ * @phpstan-type ParameterInfoShape array{label: string, documentation?: string}
  * @phpstan-type SignatureInfo array{
  *   label: string,
  *   documentation?: string,
- *   parameters?: list<ParameterInfo>,
+ *   parameters?: list<ParameterInfoShape>,
  * }
  */
 final class SignatureHelpHandler implements HandlerInterface
@@ -449,16 +450,6 @@ final class SignatureHelpHandler implements HandlerInterface
 
     private function formatReflectionParameter(ReflectionParameter $param): string
     {
-        $paramStr = '';
-        $type = $param->getType();
-        if ($type !== null) {
-            $paramStr .= TypeFormatter::formatReflection($type) . ' ';
-        }
-        if ($param->isVariadic()) {
-            $paramStr .= '...';
-        }
-        $paramStr .= '$' . $param->getName();
-
-        return $paramStr;
+        return ParameterInfo::fromReflection($param)->format();
     }
 }
