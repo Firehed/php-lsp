@@ -404,18 +404,7 @@ final class HoverHandler implements HandlerInterface
 
         $params = [];
         foreach ($method->parameters as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= $param->type . ' ';
-            }
-            if ($param->isVariadic) {
-                $paramStr .= '...';
-            }
-            $paramStr .= '$' . $param->name;
-            if ($param->hasDefault && !$param->isVariadic) {
-                $paramStr .= ' = ...';
-            }
-            $params[] = $paramStr;
+            $params[] = $param->format(showDefault: true);
         }
 
         $signature = $visibility . $static . 'function ' . $method->name->name
