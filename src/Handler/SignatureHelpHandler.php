@@ -371,22 +371,13 @@ final class SignatureHelpHandler implements HandlerInterface
      */
     private function formatMethodInfoSignature(MethodInfo $method): array
     {
-        $params = [];
-        $paramLabels = [];
-
-        foreach ($method->parameters as $param) {
-            $paramStr = $param->format();
-            $paramLabels[] = $paramStr;
-            $params[] = ['label' => $paramStr];
-        }
-
-        $label = $method->name->name . '(' . implode(', ', $paramLabels) . ')';
-        if ($method->returnType !== null) {
-            $label .= ': ' . $method->returnType;
-        }
+        $params = array_map(
+            fn($p) => ['label' => $p->format()],
+            $method->parameters,
+        );
 
         $result = [
-            'label' => $label,
+            'label' => $method->format(),
             'parameters' => $params,
         ];
 
