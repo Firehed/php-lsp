@@ -32,4 +32,68 @@ class ConstantInfoTest extends TestCase
         self::assertSame(5, $constant->line);
         self::assertSame(ConstantInfo::class, $constant->declaringClass->fqn);
     }
+
+    public function testFormatSimple(): void
+    {
+        $constant = new ConstantInfo(
+            name: new ConstantName('FOO'),
+            visibility: Visibility::Public,
+            isFinal: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('public const FOO', $constant->format());
+    }
+
+    public function testFormatWithType(): void
+    {
+        $constant = new ConstantInfo(
+            name: new ConstantName('MAX_SIZE'),
+            visibility: Visibility::Public,
+            isFinal: false,
+            type: 'int',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('public const int MAX_SIZE', $constant->format());
+    }
+
+    public function testFormatFinal(): void
+    {
+        $constant = new ConstantInfo(
+            name: new ConstantName('VERSION'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: 'string',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('public final const string VERSION', $constant->format());
+    }
+
+    public function testFormatPrivate(): void
+    {
+        $constant = new ConstantInfo(
+            name: new ConstantName('INTERNAL'),
+            visibility: Visibility::Private,
+            isFinal: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('private const INTERNAL', $constant->format());
+    }
 }
