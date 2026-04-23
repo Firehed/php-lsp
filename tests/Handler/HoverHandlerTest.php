@@ -178,6 +178,7 @@ PHP;
         self::assertIsArray($result);
         self::assertStringContainsString('add', $result['contents']);
         self::assertStringContainsString('int', $result['contents']);
+        self::assertStringContainsString('Adds two numbers together', $result['contents']);
     }
 
     public function testHoverOnMethod(): void
