@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\Location;
@@ -232,20 +231,6 @@ final class DefinitionHandler implements HandlerInterface
             Visibility::Public,
         );
 
-        return $this->methodInfoToLocation($methodInfo);
-    }
-
-    /**
-     * @return array{
-     *   uri: string,
-     *   range: array{
-     *     start: array{line: int, character: int},
-     *     end: array{line: int, character: int},
-     *   },
-     * }|null
-     */
-    private function methodInfoToLocation(?MethodInfo $methodInfo): ?array
-    {
         if ($methodInfo === null) {
             return null;
         }
