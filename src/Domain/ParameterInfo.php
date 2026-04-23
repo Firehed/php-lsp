@@ -17,4 +17,20 @@ final readonly class ParameterInfo
         public bool $isPassedByReference,
     ) {
     }
+
+    public function format(bool $showDefault = false): string
+    {
+        $str = '';
+        if ($this->type !== null) {
+            $str .= $this->type . ' ';
+        }
+        if ($this->isVariadic) {
+            $str .= '...';
+        }
+        $str .= '$' . $this->name;
+        if ($showDefault && $this->hasDefault && !$this->isVariadic) {
+            $str .= ' = ...';
+        }
+        return $str;
+    }
 }
