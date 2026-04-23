@@ -80,7 +80,9 @@ final class DefinitionHandler implements HandlerInterface
         // Parse the document
         $ast = $this->parser->parse($document);
         if ($ast === null) {
-            return null;
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Parser returned null with error-collecting handler');
+            // @codeCoverageIgnoreEnd
         }
 
         // Find node at position
@@ -152,7 +154,9 @@ final class DefinitionHandler implements HandlerInterface
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
-            return null;
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('handleStaticMethodDefinition called with non-Identifier method name');
+            // @codeCoverageIgnoreEnd
         }
 
         $class = $call->class;
@@ -200,7 +204,9 @@ final class DefinitionHandler implements HandlerInterface
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
-            return null;
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('handleInstanceMethodDefinition called with non-Identifier method name');
+            // @codeCoverageIgnoreEnd
         }
 
         $className = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
