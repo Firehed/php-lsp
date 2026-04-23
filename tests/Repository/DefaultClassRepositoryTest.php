@@ -223,15 +223,13 @@ final class DefaultClassRepositoryTest extends TestCase
     {
         $repo = $this->createRepoWithClasses([
             $this->createClassInfoWithParent('App\\Child', 'App\\Parent'),
-            $this->createClassInfo('App\\Parent'),
+            $this->createClassInfoForTest('App\\Parent'),
         ]);
 
-        /** @var class-string $child */
-        $child = 'App\\Child';
-        /** @var class-string $parent */
-        $parent = 'App\\Parent';
-
-        self::assertTrue($repo->isSubclassOf(new ClassName($child), new ClassName($parent)));
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\Child'), // @phpstan-ignore argument.type
+            new ClassName('App\\Parent'), // @phpstan-ignore argument.type
+        ));
     }
 
     public function testIsSubclassOfTransitiveParent(): void
@@ -239,30 +237,26 @@ final class DefaultClassRepositoryTest extends TestCase
         $repo = $this->createRepoWithClasses([
             $this->createClassInfoWithParent('App\\Grandchild', 'App\\Child'),
             $this->createClassInfoWithParent('App\\Child', 'App\\Parent'),
-            $this->createClassInfo('App\\Parent'),
+            $this->createClassInfoForTest('App\\Parent'),
         ]);
 
-        /** @var class-string $grandchild */
-        $grandchild = 'App\\Grandchild';
-        /** @var class-string $parent */
-        $parent = 'App\\Parent';
-
-        self::assertTrue($repo->isSubclassOf(new ClassName($grandchild), new ClassName($parent)));
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\Grandchild'), // @phpstan-ignore argument.type
+            new ClassName('App\\Parent'), // @phpstan-ignore argument.type
+        ));
     }
 
     public function testIsSubclassOfImplementedInterface(): void
     {
         $repo = $this->createRepoWithClasses([
             $this->createClassInfoWithInterfaces('App\\MyClass', ['App\\MyInterface']),
-            $this->createClassInfo('App\\MyInterface', ClassKind::Interface_),
+            $this->createClassInfoForTest('App\\MyInterface', ClassKind::Interface_),
         ]);
 
-        /** @var class-string $class */
-        $class = 'App\\MyClass';
-        /** @var class-string $interface */
-        $interface = 'App\\MyInterface';
-
-        self::assertTrue($repo->isSubclassOf(new ClassName($class), new ClassName($interface)));
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+            new ClassName('App\\MyInterface'), // @phpstan-ignore argument.type
+        ));
     }
 
     public function testIsSubclassOfInheritedInterface(): void
@@ -270,42 +264,38 @@ final class DefaultClassRepositoryTest extends TestCase
         $repo = $this->createRepoWithClasses([
             $this->createClassInfoWithInterfaces('App\\MyClass', ['App\\ChildInterface']),
             $this->createClassInfoWithInterfaces('App\\ChildInterface', ['App\\ParentInterface'], ClassKind::Interface_),
-            $this->createClassInfo('App\\ParentInterface', ClassKind::Interface_),
+            $this->createClassInfoForTest('App\\ParentInterface', ClassKind::Interface_),
         ]);
 
-        /** @var class-string $class */
-        $class = 'App\\MyClass';
-        /** @var class-string $interface */
-        $interface = 'App\\ParentInterface';
-
-        self::assertTrue($repo->isSubclassOf(new ClassName($class), new ClassName($interface)));
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+            new ClassName('App\\ParentInterface'), // @phpstan-ignore argument.type
+        ));
     }
 
     public function testIsSubclassOfReturnsFalseForUnrelatedClasses(): void
     {
         $repo = $this->createRepoWithClasses([
-            $this->createClassInfo('App\\ClassA'),
-            $this->createClassInfo('App\\ClassB'),
+            $this->createClassInfoForTest('App\\ClassA'),
+            $this->createClassInfoForTest('App\\ClassB'),
         ]);
 
-        /** @var class-string $a */
-        $a = 'App\\ClassA';
-        /** @var class-string $b */
-        $b = 'App\\ClassB';
-
-        self::assertFalse($repo->isSubclassOf(new ClassName($a), new ClassName($b)));
+        self::assertFalse($repo->isSubclassOf(
+            new ClassName('App\\ClassA'), // @phpstan-ignore argument.type
+            new ClassName('App\\ClassB'), // @phpstan-ignore argument.type
+        ));
     }
 
     public function testIsSubclassOfReturnsFalseForSameClass(): void
     {
         $repo = $this->createRepoWithClasses([
-            $this->createClassInfo('App\\MyClass'),
+            $this->createClassInfoForTest('App\\MyClass'),
         ]);
 
-        /** @var class-string $class */
-        $class = 'App\\MyClass';
-
-        self::assertFalse($repo->isSubclassOf(new ClassName($class), new ClassName($class)));
+        self::assertFalse($repo->isSubclassOf(
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+        ));
     }
 
     public function testIsSubclassOfReturnsFalseForUnknownClass(): void
@@ -317,12 +307,10 @@ final class DefaultClassRepositoryTest extends TestCase
 
         $repo = new DefaultClassRepository($factory, $locator, $parser);
 
-        /** @var class-string $unknown */
-        $unknown = 'App\\Unknown';
-        /** @var class-string $other */
-        $other = 'App\\Other';
-
-        self::assertFalse($repo->isSubclassOf(new ClassName($unknown), new ClassName($other)));
+        self::assertFalse($repo->isSubclassOf(
+            new ClassName('App\\Unknown'), // @phpstan-ignore argument.type
+            new ClassName('App\\Other'), // @phpstan-ignore argument.type
+        ));
     }
 
     /**
@@ -340,19 +328,15 @@ final class DefaultClassRepositoryTest extends TestCase
         return $repo;
     }
 
-    /**
-     * @param class-string $fqn
-     * @param class-string $parentFqn
-     */
     private function createClassInfoWithParent(string $fqn, string $parentFqn): ClassInfo
     {
         return new ClassInfo(
-            name: new ClassName($fqn),
+            name: new ClassName($fqn), // @phpstan-ignore argument.type
             kind: ClassKind::Class_,
             isAbstract: false,
             isFinal: false,
             isReadonly: false,
-            parent: new ClassName($parentFqn),
+            parent: new ClassName($parentFqn), // @phpstan-ignore argument.type
             interfaces: [],
             traits: [],
             methods: [],
@@ -366,8 +350,7 @@ final class DefaultClassRepositoryTest extends TestCase
     }
 
     /**
-     * @param class-string $fqn
-     * @param list<class-string> $interfaceFqns
+     * @param list<string> $interfaceFqns
      */
     private function createClassInfoWithInterfaces(
         string $fqn,
@@ -375,13 +358,34 @@ final class DefaultClassRepositoryTest extends TestCase
         ClassKind $kind = ClassKind::Class_,
     ): ClassInfo {
         return new ClassInfo(
-            name: new ClassName($fqn),
+            name: new ClassName($fqn), // @phpstan-ignore argument.type
             kind: $kind,
             isAbstract: false,
             isFinal: false,
             isReadonly: false,
             parent: null,
-            interfaces: array_map(fn($i) => new ClassName($i), $interfaceFqns),
+            interfaces: array_map(fn($i) => new ClassName($i), $interfaceFqns), // @phpstan-ignore argument.type
+            traits: [],
+            methods: [],
+            properties: [],
+            constants: [],
+            enumCases: [],
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
+    private function createClassInfoForTest(string $fqn, ClassKind $kind = ClassKind::Class_): ClassInfo
+    {
+        return new ClassInfo(
+            name: new ClassName($fqn), // @phpstan-ignore argument.type
+            kind: $kind,
+            isAbstract: false,
+            isFinal: false,
+            isReadonly: false,
+            parent: null,
+            interfaces: [],
             traits: [],
             methods: [],
             properties: [],
