@@ -131,18 +131,11 @@ final class DefinitionHandler implements HandlerInterface
 
         /** @var class-string $symbolName */
         $classInfo = $this->classRepository->get(new ClassName($symbolName));
-        if ($classInfo !== null && $classInfo->file !== null && $classInfo->line !== null) {
-            $location = new Location(
-                $this->pathToUri($classInfo->file),
-                $classInfo->line - 1,
-                0,
-                $classInfo->line - 1,
-                0,
-            );
-            return $location->toLspLocation();
+        if ($classInfo === null) {
+            return null;
         }
 
-        return null;
+        return $this->createLocationFromFileLine($classInfo->file, $classInfo->line);
     }
 
     /**
@@ -253,26 +246,31 @@ final class DefinitionHandler implements HandlerInterface
      */
     private function methodInfoToLocation(?MethodInfo $methodInfo): ?array
     {
-        if ($methodInfo === null || $methodInfo->file === null || $methodInfo->line === null) {
+        if ($methodInfo === null) {
             return null;
         }
 
-        $location = new Location(
-            $this->pathToUri($methodInfo->file),
-            $methodInfo->line - 1,
-            0,
-            $methodInfo->line - 1,
-            0,
-        );
-
-        return $location->toLspLocation();
+        return $this->createLocationFromFileLine($methodInfo->file, $methodInfo->line);
     }
 
-    private function pathToUri(string $path): string
+    /**
+     * @return array{
+     *   uri: string,
+     *   range: array{
+     *     start: array{line: int, character: int},
+     *     end: array{line: int, character: int},
+     *   },
+     * }|null
+     */
+    private function createLocationFromFileLine(?string $file, ?int $line): ?array
     {
-        if (str_starts_with($path, 'file://')) {
-            return $path;
+        if ($file === null || $line === null) {
+            return null;
         }
-        return 'file://' . $path;
+
+        $uri = str_starts_with($file, 'file://') ? $file : 'file://' . $file;
+        $location = new Location($uri, $line - 1, 0, $line - 1, 0);
+
+        return $location->toLspLocation();
     }
 }
