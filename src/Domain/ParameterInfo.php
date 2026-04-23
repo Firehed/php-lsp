@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a method or function parameter.
  */
-final readonly class ParameterInfo
+final readonly class ParameterInfo implements Formattable
 {
     public function __construct(
         public string $name,
