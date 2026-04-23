@@ -24,6 +24,9 @@ final readonly class ParameterInfo
         if ($this->type !== null) {
             $str .= $this->type . ' ';
         }
+        if ($this->isPassedByReference) {
+            $str .= '&';
+        }
         if ($this->isVariadic) {
             $str .= '...';
         }
