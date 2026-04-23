@@ -118,4 +118,30 @@ class ParameterInfoTest extends TestCase
 
         self::assertSame('string ...$args', $param->format(showDefault: true));
     }
+
+    public function testFormatPassedByReference(): void
+    {
+        $param = new ParameterInfo(
+            name: 'value',
+            type: 'string',
+            hasDefault: false,
+            isVariadic: false,
+            isPassedByReference: true,
+        );
+
+        self::assertSame('string &$value', $param->format());
+    }
+
+    public function testFormatVariadicByReference(): void
+    {
+        $param = new ParameterInfo(
+            name: 'args',
+            type: 'array',
+            hasDefault: false,
+            isVariadic: true,
+            isPassedByReference: true,
+        );
+
+        self::assertSame('array &...$args', $param->format());
+    }
 }
