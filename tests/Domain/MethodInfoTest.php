@@ -55,7 +55,7 @@ class MethodInfoTest extends TestCase
             declaringClass: new ClassName(self::class),
         );
 
-        self::assertSame('doSomething()', $method->format());
+        self::assertSame('public function doSomething()', $method->format());
     }
 
     public function testFormatWithReturnType(): void
@@ -74,7 +74,7 @@ class MethodInfoTest extends TestCase
             declaringClass: new ClassName(self::class),
         );
 
-        self::assertSame('getName(): string', $method->format());
+        self::assertSame('public function getName(): string', $method->format());
     }
 
     public function testFormatWithParameters(): void
@@ -95,7 +95,7 @@ class MethodInfoTest extends TestCase
             declaringClass: new ClassName(self::class),
         );
 
-        self::assertSame('setName(string $name)', $method->format());
+        self::assertSame('public function setName(string $name)', $method->format());
     }
 
     public function testFormatWithMultipleParametersAndReturnType(): void
@@ -117,7 +117,7 @@ class MethodInfoTest extends TestCase
             declaringClass: new ClassName(self::class),
         );
 
-        self::assertSame('calculate(int $a, int $b): int', $method->format());
+        self::assertSame('public function calculate(int $a, int $b): int', $method->format());
     }
 
     public function testFormatWithVariadicParameter(): void
@@ -138,7 +138,7 @@ class MethodInfoTest extends TestCase
             declaringClass: new ClassName(self::class),
         );
 
-        self::assertSame('merge(array ...$arrays): array', $method->format());
+        self::assertSame('public function merge(array ...$arrays): array', $method->format());
     }
 
     public function testFormatWithReferenceParameter(): void
@@ -160,6 +160,44 @@ class MethodInfoTest extends TestCase
             declaringClass: new ClassName(self::class),
         );
 
-        self::assertSame('swap(mixed &$a, mixed &$b): void', $method->format());
+        self::assertSame('public static function swap(mixed &$a, mixed &$b): void', $method->format());
+    }
+
+    public function testFormatAbstractMethod(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('handle'),
+            visibility: Visibility::Protected,
+            isStatic: false,
+            isAbstract: true,
+            isFinal: false,
+            parameters: [],
+            returnType: 'void',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('protected abstract function handle(): void', $method->format());
+    }
+
+    public function testFormatFinalMethod(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('getInstance'),
+            visibility: Visibility::Private,
+            isStatic: true,
+            isAbstract: false,
+            isFinal: true,
+            parameters: [],
+            returnType: 'self',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('private static final function getInstance(): self', $method->format());
     }
 }

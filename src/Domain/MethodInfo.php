@@ -27,10 +27,24 @@ final readonly class MethodInfo implements Formattable
     ) {
     }
 
-    public function format(): string
+    public function format(bool $showDefaults = false): string
     {
-        $params = array_map(fn($p) => $p->format(), $this->parameters);
-        $sig = $this->name->name . '(' . implode(', ', $params) . ')';
+        $parts = [$this->visibility->format()];
+        if ($this->isStatic) {
+            $parts[] = 'static';
+        }
+        if ($this->isAbstract) {
+            $parts[] = 'abstract';
+        }
+        if ($this->isFinal) {
+            $parts[] = 'final';
+        }
+        $parts[] = 'function';
+
+        $params = array_map(fn($p) => $p->format(showDefault: $showDefaults), $this->parameters);
+        $parts[] = $this->name->name . '(' . implode(', ', $params) . ')';
+
+        $sig = implode(' ', $parts);
         if ($this->returnType !== null) {
             $sig .= ': ' . $this->returnType;
         }

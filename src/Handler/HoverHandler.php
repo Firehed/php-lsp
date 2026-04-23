@@ -378,22 +378,7 @@ final class HoverHandler implements HandlerInterface
             $parts[] = DocblockParser::extractDescription($method->docblock);
         }
 
-        $visibility = $method->visibility->format() . ' ';
-        $static = $method->isStatic ? 'static ' : '';
-
-        $params = [];
-        foreach ($method->parameters as $param) {
-            $params[] = $param->format(showDefault: true);
-        }
-
-        $signature = $visibility . $static . 'function ' . $method->name->name
-            . '(' . implode(', ', $params) . ')';
-
-        if ($method->returnType !== null) {
-            $signature .= ': ' . $method->returnType;
-        }
-
-        $parts[] = '```php' . "\n" . $signature . "\n```";
+        $parts[] = '```php' . "\n" . $method->format(showDefaults: true) . "\n```";
 
         return implode("\n\n", $parts);
     }
@@ -406,15 +391,7 @@ final class HoverHandler implements HandlerInterface
             $parts[] = DocblockParser::extractDescription($property->docblock);
         }
 
-        $visibility = $property->visibility->format() . ' ';
-        $static = $property->isStatic ? 'static ' : '';
-        $readonly = $property->isReadonly ? 'readonly ' : '';
-
-        $type = $property->type !== null ? $property->type . ' ' : '';
-
-        $signature = $visibility . $static . $readonly . $type . '$' . $property->name->name;
-
-        $parts[] = '```php' . "\n" . $signature . "\n```";
+        $parts[] = '```php' . "\n" . $property->format() . "\n```";
 
         return implode("\n\n", $parts);
     }
