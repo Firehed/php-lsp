@@ -234,7 +234,7 @@ final class DefinitionHandler implements HandlerInterface
         $methodInfo = $this->memberResolver->findMethod(
             new ClassName($className),
             new MethodName($methodName),
-            Visibility::Public,
+            Visibility::Private,
         );
 
         if ($methodInfo === null) {
