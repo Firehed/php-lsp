@@ -6,9 +6,9 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
-use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
@@ -17,13 +17,11 @@ use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
-use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
@@ -31,9 +29,6 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use ReflectionException;
 use ReflectionFunction;
-use ReflectionFunctionAbstract;
-use ReflectionMethod;
-use ReflectionParameter;
 
 /**
  * @phpstan-type ParameterInfoShape array{label: string, documentation?: string}
@@ -222,8 +217,8 @@ final class SignatureHelpHandler implements HandlerInterface
 
         // Fall back to built-in function
         try {
-            $reflection = new ReflectionFunction($functionName);
-            return $this->formatReflectionSignature($reflection);
+            $funcInfo = FunctionInfo::fromReflection(new ReflectionFunction($functionName));
+            return $this->formatFunctionInfoSignature($funcInfo);
         } catch (ReflectionException) {
             return null;
         }
@@ -345,35 +340,27 @@ final class SignatureHelpHandler implements HandlerInterface
      */
     private function formatFunctionNodeSignature(Stmt\Function_ $func): array
     {
-        $params = [];
-        $paramLabels = [];
+        $funcInfo = FunctionInfo::fromNode($func);
+        return $this->formatFunctionInfoSignature($funcInfo);
+    }
 
-        foreach ($func->params as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
-            }
-            $var = $param->var;
-            if ($var instanceof Variable && is_string($var->name)) {
-                $paramStr .= '$' . $var->name;
-            }
-            $paramLabels[] = $paramStr;
-            $params[] = ['label' => $paramStr];
-        }
-
-        $label = 'function ' . $func->name->toString() . '(' . implode(', ', $paramLabels) . ')';
-        if ($func->returnType !== null) {
-            $label .= ': ' . TypeFormatter::formatNode($func->returnType);
-        }
+    /**
+     * @return SignatureInfo
+     */
+    private function formatFunctionInfoSignature(FunctionInfo $func): array
+    {
+        $params = array_map(
+            fn($p) => ['label' => $p->format()],
+            $func->parameters,
+        );
 
         $result = [
-            'label' => $label,
+            'label' => $func->format(),
             'parameters' => $params,
         ];
 
-        $docComment = $func->getDocComment();
-        if ($docComment !== null) {
-            $result['documentation'] = DocblockParser::extractDescription($docComment->getText());
+        if ($func->docblock !== null) {
+            $result['documentation'] = DocblockParser::extractDescription($func->docblock);
         }
 
         return $result;
@@ -408,48 +395,5 @@ final class SignatureHelpHandler implements HandlerInterface
         }
 
         return $result;
-    }
-
-    /**
-     * @return SignatureInfo
-     */
-    private function formatReflectionSignature(ReflectionFunctionAbstract $func): array
-    {
-        $params = [];
-        $paramLabels = [];
-
-        foreach ($func->getParameters() as $param) {
-            $paramStr = $this->formatReflectionParameter($param);
-            $paramLabels[] = $paramStr;
-            $params[] = ['label' => $paramStr];
-        }
-
-        $name = $func instanceof ReflectionMethod
-            ? $func->getName()
-            : 'function ' . $func->getName();
-
-        $label = $name . '(' . implode(', ', $paramLabels) . ')';
-
-        $returnType = $func->getReturnType();
-        if ($returnType !== null) {
-            $label .= ': ' . TypeFormatter::formatReflection($returnType);
-        }
-
-        $result = [
-            'label' => $label,
-            'parameters' => $params,
-        ];
-
-        $docComment = $func->getDocComment();
-        if ($docComment !== false) {
-            $result['documentation'] = DocblockParser::extractDescription($docComment);
-        }
-
-        return $result;
-    }
-
-    private function formatReflectionParameter(ReflectionParameter $param): string
-    {
-        return ParameterInfo::fromReflection($param)->format();
     }
 }
