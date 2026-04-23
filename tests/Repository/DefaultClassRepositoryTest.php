@@ -219,14 +219,188 @@ final class DefaultClassRepositoryTest extends TestCase
         self::assertSame($documentInfo, $result);
     }
 
+    public function testIsSubclassOfDirectParent(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithParent('App\\Child', 'App\\Parent'),
+            $this->createClassInfo('App\\Parent'),
+        ]);
+
+        /** @var class-string $child */
+        $child = 'App\\Child';
+        /** @var class-string $parent */
+        $parent = 'App\\Parent';
+
+        self::assertTrue($repo->isSubclassOf(new ClassName($child), new ClassName($parent)));
+    }
+
+    public function testIsSubclassOfTransitiveParent(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithParent('App\\Grandchild', 'App\\Child'),
+            $this->createClassInfoWithParent('App\\Child', 'App\\Parent'),
+            $this->createClassInfo('App\\Parent'),
+        ]);
+
+        /** @var class-string $grandchild */
+        $grandchild = 'App\\Grandchild';
+        /** @var class-string $parent */
+        $parent = 'App\\Parent';
+
+        self::assertTrue($repo->isSubclassOf(new ClassName($grandchild), new ClassName($parent)));
+    }
+
+    public function testIsSubclassOfImplementedInterface(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithInterfaces('App\\MyClass', ['App\\MyInterface']),
+            $this->createClassInfo('App\\MyInterface', ClassKind::Interface_),
+        ]);
+
+        /** @var class-string $class */
+        $class = 'App\\MyClass';
+        /** @var class-string $interface */
+        $interface = 'App\\MyInterface';
+
+        self::assertTrue($repo->isSubclassOf(new ClassName($class), new ClassName($interface)));
+    }
+
+    public function testIsSubclassOfInheritedInterface(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithInterfaces('App\\MyClass', ['App\\ChildInterface']),
+            $this->createClassInfoWithInterfaces('App\\ChildInterface', ['App\\ParentInterface'], ClassKind::Interface_),
+            $this->createClassInfo('App\\ParentInterface', ClassKind::Interface_),
+        ]);
+
+        /** @var class-string $class */
+        $class = 'App\\MyClass';
+        /** @var class-string $interface */
+        $interface = 'App\\ParentInterface';
+
+        self::assertTrue($repo->isSubclassOf(new ClassName($class), new ClassName($interface)));
+    }
+
+    public function testIsSubclassOfReturnsFalseForUnrelatedClasses(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfo('App\\ClassA'),
+            $this->createClassInfo('App\\ClassB'),
+        ]);
+
+        /** @var class-string $a */
+        $a = 'App\\ClassA';
+        /** @var class-string $b */
+        $b = 'App\\ClassB';
+
+        self::assertFalse($repo->isSubclassOf(new ClassName($a), new ClassName($b)));
+    }
+
+    public function testIsSubclassOfReturnsFalseForSameClass(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfo('App\\MyClass'),
+        ]);
+
+        /** @var class-string $class */
+        $class = 'App\\MyClass';
+
+        self::assertFalse($repo->isSubclassOf(new ClassName($class), new ClassName($class)));
+    }
+
+    public function testIsSubclassOfReturnsFalseForUnknownClass(): void
+    {
+        $factory = self::createStub(ClassInfoFactory::class);
+        $locator = self::createStub(ClassLocator::class);
+        $locator->method('locate')->willReturn(null);
+        $parser = new ParserService();
+
+        $repo = new DefaultClassRepository($factory, $locator, $parser);
+
+        /** @var class-string $unknown */
+        $unknown = 'App\\Unknown';
+        /** @var class-string $other */
+        $other = 'App\\Other';
+
+        self::assertFalse($repo->isSubclassOf(new ClassName($unknown), new ClassName($other)));
+    }
+
+    /**
+     * @param list<ClassInfo> $classes
+     */
+    private function createRepoWithClasses(array $classes): DefaultClassRepository
+    {
+        $factory = self::createStub(ClassInfoFactory::class);
+        $locator = self::createStub(ClassLocator::class);
+        $parser = new ParserService();
+
+        $repo = new DefaultClassRepository($factory, $locator, $parser);
+        $repo->updateDocument('file:///test.php', $classes);
+
+        return $repo;
+    }
+
     /**
      * @param class-string $fqn
+     * @param class-string $parentFqn
      */
-    private function createClassInfo(string $fqn): ClassInfo
+    private function createClassInfoWithParent(string $fqn, string $parentFqn): ClassInfo
     {
         return new ClassInfo(
             name: new ClassName($fqn),
             kind: ClassKind::Class_,
+            isAbstract: false,
+            isFinal: false,
+            isReadonly: false,
+            parent: new ClassName($parentFqn),
+            interfaces: [],
+            traits: [],
+            methods: [],
+            properties: [],
+            constants: [],
+            enumCases: [],
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
+    /**
+     * @param class-string $fqn
+     * @param list<class-string> $interfaceFqns
+     */
+    private function createClassInfoWithInterfaces(
+        string $fqn,
+        array $interfaceFqns,
+        ClassKind $kind = ClassKind::Class_,
+    ): ClassInfo {
+        return new ClassInfo(
+            name: new ClassName($fqn),
+            kind: $kind,
+            isAbstract: false,
+            isFinal: false,
+            isReadonly: false,
+            parent: null,
+            interfaces: array_map(fn($i) => new ClassName($i), $interfaceFqns),
+            traits: [],
+            methods: [],
+            properties: [],
+            constants: [],
+            enumCases: [],
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
+    /**
+     * @param class-string $fqn
+     */
+    private function createClassInfo(string $fqn, ClassKind $kind = ClassKind::Class_): ClassInfo
+    {
+        return new ClassInfo(
+            name: new ClassName($fqn),
+            kind: $kind,
             isAbstract: false,
             isFinal: false,
             isReadonly: false,
