@@ -643,7 +643,7 @@ PHP;
         self::assertSame(2, $result['range']['start']['line']);
     }
 
-    public function testGoToStaticMethodDefinition2(): void
+    public function testGoToStaticKeywordMethodDefinition(): void
     {
         $code = <<<'PHP'
 <?php
