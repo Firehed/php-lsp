@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -489,7 +490,7 @@ final class CompletionHandler implements HandlerInterface
             if ($stmt instanceof Stmt\Function_) {
                 $name = $stmt->name->toString();
                 if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = $this->formatCallableCompletion($stmt, self::KIND_FUNCTION, 'function ');
+                    $items[] = $this->formatFunctionCompletion($stmt);
                 }
             }
         }
@@ -527,20 +528,10 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatMethodInfoCompletion(MethodInfo $method): array
     {
-        $params = [];
-        foreach ($method->parameters as $param) {
-            $params[] = $param->format();
-        }
-
-        $detail = $method->name->name . '(' . implode(', ', $params) . ')';
-        if ($method->returnType !== null) {
-            $detail .= ': ' . $method->returnType;
-        }
-
         return self::withDocumentation([
             'label' => $method->name->name,
             'kind' => self::KIND_METHOD,
-            'detail' => $detail,
+            'detail' => $method->format(),
         ], $method->docblock);
     }
 
@@ -549,12 +540,10 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatPropertyInfoCompletion(DomainPropertyInfo $property): array
     {
-        $type = $property->type ?? 'mixed';
-
         return self::withDocumentation([
             'label' => $property->name->name,
             'kind' => self::KIND_PROPERTY,
-            'detail' => $type . ' $' . $property->name->name,
+            'detail' => $property->format(),
         ], $property->docblock);
     }
 
@@ -566,7 +555,7 @@ final class CompletionHandler implements HandlerInterface
         return self::withDocumentation([
             'label' => $constant->name->name,
             'kind' => self::KIND_CONSTANT,
-            'detail' => 'const ' . $constant->name->name,
+            'detail' => $constant->format(),
         ], $constant->docblock);
     }
 
@@ -575,51 +564,25 @@ final class CompletionHandler implements HandlerInterface
      */
     private function formatEnumCaseInfoCompletion(EnumCaseInfo $enumCase): array
     {
-        $detail = 'case ' . $enumCase->name->name;
-        if ($enumCase->backingValue !== null) {
-            $detail .= is_string($enumCase->backingValue)
-                ? " = '" . $enumCase->backingValue . "'"
-                : ' = ' . $enumCase->backingValue;
-        }
-
         return self::withDocumentation([
             'label' => $enumCase->name->name,
             'kind' => self::KIND_ENUM_MEMBER,
-            'detail' => $detail,
+            'detail' => $enumCase->format(),
         ], $enumCase->docblock);
     }
 
     /**
      * @return CompletionItem
      */
-    private function formatCallableCompletion(
-        Stmt\ClassMethod|Stmt\Function_ $callable,
-        int $kind,
-        string $detailPrefix = '',
-    ): array {
-        $params = [];
-        foreach ($callable->params as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
-            }
-            $var = $param->var;
-            if ($var instanceof Variable && is_string($var->name)) {
-                $paramStr .= '$' . $var->name;
-            }
-            $params[] = $paramStr;
-        }
-
-        $detail = $detailPrefix . $callable->name->toString() . '(' . implode(', ', $params) . ')';
-        if ($callable->returnType !== null) {
-            $detail .= ': ' . TypeFormatter::formatNode($callable->returnType);
-        }
+    private function formatFunctionCompletion(Stmt\Function_ $func): array
+    {
+        $funcInfo = FunctionInfo::fromNode($func);
 
         return self::withDocumentation([
-            'label' => $callable->name->toString(),
-            'kind' => $kind,
-            'detail' => $detail,
-        ], $callable->getDocComment()?->getText());
+            'label' => $funcInfo->name,
+            'kind' => self::KIND_FUNCTION,
+            'detail' => $funcInfo->format(),
+        ], $funcInfo->docblock);
     }
 
     /**
