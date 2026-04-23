@@ -30,4 +30,12 @@ interface ClassRepository
      * Remove all classes associated with a closed document.
      */
     public function removeDocument(string $uri): void;
+
+    /**
+     * Check if a class is a subclass of another.
+     *
+     * Traverses the parent chain and implemented interfaces.
+     * Returns false if the classes are the same or unrelated.
+     */
+    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool;
 }
