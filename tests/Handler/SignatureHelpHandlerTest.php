@@ -6,24 +6,52 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
+use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(SignatureHelpHandler::class)]
 class SignatureHelpHandlerTest extends TestCase
 {
+    use OpensDocumentsTrait;
+
     private DocumentManager $documents;
     private ParserService $parser;
+    private DefaultClassRepository $classRepository;
+    private DefaultClassInfoFactory $classInfoFactory;
+    private MemberResolver $memberResolver;
     private SignatureHelpHandler $handler;
+    private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
-        $this->handler = new SignatureHelpHandler($this->documents, $this->parser, null);
+        $this->classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $this->classRepository = new DefaultClassRepository(
+            $this->classInfoFactory,
+            $locator,
+            $this->parser,
+        );
+        $this->memberResolver = new MemberResolver($this->classRepository);
+        $this->handler = new SignatureHelpHandler(
+            $this->documents,
+            $this->parser,
+            $this->memberResolver,
+        );
+        $this->syncHandler = new TextDocumentSyncHandler(
+            $this->documents,
+            $this->parser,
+            $this->classRepository,
+            $this->classInfoFactory,
+        );
     }
 
     public function testSupports(): void
@@ -46,7 +74,7 @@ function add(int $a, int $b): int
 
 $sum = add(1, 2);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -79,7 +107,7 @@ function greet(string $name, int $age): string
 
 greet("Alice", 30);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -104,7 +132,7 @@ PHP;
 $arr = [3, 1, 2];
 array_map(fn($x) => $x * 2, $arr);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -142,7 +170,7 @@ class Calculator
     }
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -175,7 +203,7 @@ class Math
 
 $result = Math::abs(-5);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -207,7 +235,7 @@ class User
 
 $user = new User("Alice", 30);
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -229,7 +257,7 @@ PHP;
     public function testSignatureHelpReturnsNullOutsideCall(): void
     {
         $code = '<?php $x = 1;';
-        $this->documents->open('file:///test.php', 'php', 1, $code);
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -266,15 +294,7 @@ function useCalculator(Calculator $calc): void
     $calc->multiply(2, 3);
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
-
-        // Create handler with type resolver
-        $handlerWithResolver = new SignatureHelpHandler(
-            $this->documents,
-            $this->parser,
-            null,
-            new BasicTypeResolver(),
-        );
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -286,7 +306,7 @@ PHP;
             ],
         ]);
 
-        $result = $handlerWithResolver->handle($request);
+        $result = $this->handler->handle($request);
 
         self::assertIsArray($result);
         self::assertStringContainsString('multiply', $result['signatures'][0]['label']);
@@ -314,14 +334,7 @@ function test(): void
     $greeter->greet("World");
 }
 PHP;
-        $this->documents->open('file:///test.php', 'php', 1, $code);
-
-        $handlerWithResolver = new SignatureHelpHandler(
-            $this->documents,
-            $this->parser,
-            null,
-            new BasicTypeResolver(),
-        );
+        $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -333,7 +346,7 @@ PHP;
             ],
         ]);
 
-        $result = $handlerWithResolver->handle($request);
+        $result = $this->handler->handle($request);
 
         self::assertIsArray($result);
         self::assertStringContainsString('greet', $result['signatures'][0]['label']);
