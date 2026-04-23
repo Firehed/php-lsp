@@ -387,14 +387,7 @@ final class SignatureHelpHandler implements HandlerInterface
         $paramLabels = [];
 
         foreach ($method->parameters as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= $param->type . ' ';
-            }
-            if ($param->isVariadic) {
-                $paramStr .= '...';
-            }
-            $paramStr .= '$' . $param->name;
+            $paramStr = $param->format();
             $paramLabels[] = $paramStr;
             $params[] = ['label' => $paramStr];
         }
