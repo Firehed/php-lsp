@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class constant.
  */
-final readonly class ConstantInfo
+final readonly class ConstantInfo implements Formattable
 {
     public function __construct(
         public ConstantName $name,
@@ -19,5 +19,19 @@ final readonly class ConstantInfo
         public ?int $line,
         public ClassName $declaringClass,
     ) {
+    }
+
+    public function format(): string
+    {
+        $parts = [$this->visibility->format()];
+        if ($this->isFinal) {
+            $parts[] = 'final';
+        }
+        $parts[] = 'const';
+        if ($this->type !== null) {
+            $parts[] = $this->type;
+        }
+        $parts[] = $this->name->name;
+        return implode(' ', $parts);
     }
 }
