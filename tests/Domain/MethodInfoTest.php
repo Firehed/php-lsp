@@ -38,4 +38,128 @@ class MethodInfoTest extends TestCase
         self::assertSame(42, $method->line);
         self::assertSame(MethodInfo::class, $method->declaringClass->fqn);
     }
+
+    public function testFormatNoParamsNoReturnType(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('doSomething'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('doSomething()', $method->format());
+    }
+
+    public function testFormatWithReturnType(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('getName'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: 'string',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('getName(): string', $method->format());
+    }
+
+    public function testFormatWithParameters(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('setName'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [
+                new ParameterInfo('name', 'string', false, false, false),
+            ],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('setName(string $name)', $method->format());
+    }
+
+    public function testFormatWithMultipleParametersAndReturnType(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('calculate'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [
+                new ParameterInfo('a', 'int', false, false, false),
+                new ParameterInfo('b', 'int', false, false, false),
+            ],
+            returnType: 'int',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('calculate(int $a, int $b): int', $method->format());
+    }
+
+    public function testFormatWithVariadicParameter(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('merge'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [
+                new ParameterInfo('arrays', 'array', false, true, false),
+            ],
+            returnType: 'array',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('merge(array ...$arrays): array', $method->format());
+    }
+
+    public function testFormatWithReferenceParameter(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName('swap'),
+            visibility: Visibility::Public,
+            isStatic: true,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [
+                new ParameterInfo('a', 'mixed', false, false, true),
+                new ParameterInfo('b', 'mixed', false, false, true),
+            ],
+            returnType: 'void',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(self::class),
+        );
+
+        self::assertSame('swap(mixed &$a, mixed &$b): void', $method->format());
+    }
 }
