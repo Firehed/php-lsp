@@ -2691,4 +2691,56 @@ PHP;
         $labels = array_column($result['items'], 'label');
         self::assertContains('test', $labels);
     }
+
+    public function testUserDefinedFunctionCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+/**
+ * Adds two numbers.
+ */
+function calculateSum(int $a, int $b): int
+{
+    return $a + $b;
+}
+
+$result = calc
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $items = $result['items'];
+        $labels = array_column($items, 'label');
+
+        self::assertContains('calculateSum', $labels, 'calculateSum should be in completions');
+
+        $functionItem = null;
+        foreach ($items as $item) {
+            if ($item['label'] === 'calculateSum') {
+                $functionItem = $item;
+                break;
+            }
+        }
+
+        self::assertNotNull($functionItem);
+        self::assertSame(3, $functionItem['kind'] ?? null); // KIND_FUNCTION
+        $detail = $functionItem['detail'] ?? '';
+        self::assertStringContainsString('function calculateSum', $detail);
+        self::assertStringContainsString('int $a', $detail);
+        self::assertStringContainsString('int $b', $detail);
+        self::assertStringContainsString(': int', $detail);
+        self::assertStringContainsString('Adds two numbers', $functionItem['documentation'] ?? '');
+    }
 }
