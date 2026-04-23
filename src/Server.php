@@ -72,8 +72,8 @@ final class Server
         $this->handlers[] = new DefinitionHandler(
             $this->documentManager,
             $parser,
-            $symbolIndex,
-            $classLocator,
+            $memberResolver,
+            $classRepository,
             $typeResolver,
         );
         $this->handlers[] = new HoverHandler(
