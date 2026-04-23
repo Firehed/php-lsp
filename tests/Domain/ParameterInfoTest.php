@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Param;
+use PhpParser\Node\Scalar\Int_;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -143,5 +147,96 @@ class ParameterInfoTest extends TestCase
         );
 
         self::assertSame('array &...$args', $param->format());
+    }
+
+    public function testFromNodeSimple(): void
+    {
+        $node = new Param(
+            var: new Variable('name'),
+            default: null,
+            type: new Identifier('string'),
+        );
+
+        $param = ParameterInfo::fromNode($node);
+
+        self::assertNotNull($param);
+        self::assertSame('name', $param->name);
+        self::assertSame('string', $param->type);
+        self::assertFalse($param->hasDefault);
+        self::assertFalse($param->isVariadic);
+        self::assertFalse($param->isPassedByReference);
+    }
+
+    public function testFromNodeWithDefault(): void
+    {
+        $node = new Param(
+            var: new Variable('count'),
+            default: new Int_(0),
+            type: new Identifier('int'),
+        );
+
+        $param = ParameterInfo::fromNode($node);
+
+        self::assertNotNull($param);
+        self::assertSame('count', $param->name);
+        self::assertTrue($param->hasDefault);
+    }
+
+    public function testFromNodeVariadic(): void
+    {
+        $node = new Param(
+            var: new Variable('args'),
+            default: null,
+            type: new Identifier('string'),
+            variadic: true,
+        );
+
+        $param = ParameterInfo::fromNode($node);
+
+        self::assertNotNull($param);
+        self::assertTrue($param->isVariadic);
+    }
+
+    public function testFromNodeByReference(): void
+    {
+        $node = new Param(
+            var: new Variable('value'),
+            default: null,
+            type: new Identifier('int'),
+            byRef: true,
+        );
+
+        $param = ParameterInfo::fromNode($node);
+
+        self::assertNotNull($param);
+        self::assertTrue($param->isPassedByReference);
+    }
+
+    public function testFromNodeNoType(): void
+    {
+        $node = new Param(
+            var: new Variable('data'),
+            default: null,
+            type: null,
+        );
+
+        $param = ParameterInfo::fromNode($node);
+
+        self::assertNotNull($param);
+        self::assertNull($param->type);
+    }
+
+    public function testFromNodeReturnsNullForNonStringVariableName(): void
+    {
+        $var = new Variable(new Int_(0));
+        $node = new Param(
+            var: $var,
+            default: null,
+            type: null,
+        );
+
+        $param = ParameterInfo::fromNode($node);
+
+        self::assertNull($param);
     }
 }
