@@ -83,7 +83,12 @@ final class Server
             $memberResolver,
             $typeResolver,
         );
-        $this->handlers[] = new SignatureHelpHandler($this->documentManager, $parser, $classLocator, $typeResolver);
+        $this->handlers[] = new SignatureHelpHandler(
+            $this->documentManager,
+            $parser,
+            $memberResolver,
+            $typeResolver,
+        );
         $this->handlers[] = new CompletionHandler(
             $this->documentManager,
             $parser,

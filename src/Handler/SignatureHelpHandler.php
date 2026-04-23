@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
-use Firehed\PhpLsp\Utility\MemberFinder;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
-use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
@@ -46,7 +47,7 @@ final class SignatureHelpHandler implements HandlerInterface
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
-        private readonly ?ComposerClassLocator $classLocator,
+        private readonly MemberResolver $memberResolver,
         private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
@@ -102,7 +103,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
         [$callNode, $activeParameter] = $callInfo;
 
-        $signature = $this->getSignature($callNode, $ast, $document);
+        $signature = $this->getSignature($callNode, $ast);
         if ($signature === null) {
             return null;
         }
@@ -181,22 +182,22 @@ final class SignatureHelpHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return SignatureInfo|null
      */
-    private function getSignature(Node $call, array $ast, TextDocument $document): ?array
+    private function getSignature(Node $call, array $ast): ?array
     {
         if ($call instanceof FuncCall) {
             return $this->getFunctionSignature($call, $ast);
         }
 
         if ($call instanceof MethodCall) {
-            return $this->getMethodSignature($call, $ast, $document);
+            return $this->getMethodSignature($call, $ast);
         }
 
         if ($call instanceof StaticCall) {
-            return $this->getStaticMethodSignature($call, $ast, $document);
+            return $this->getStaticMethodSignature($call);
         }
 
         // Must be New_ at this point based on the type hint
-        return $this->getConstructorSignature($call, $ast, $document);
+        return $this->getConstructorSignature($call);
     }
 
     /**
@@ -231,7 +232,7 @@ final class SignatureHelpHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return SignatureInfo|null
      */
-    private function getMethodSignature(MethodCall $call, array $ast, TextDocument $document): ?array
+    private function getMethodSignature(MethodCall $call, array $ast): ?array
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
@@ -243,14 +244,13 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        return $this->getMethodSignatureForClass($className, $methodName->toString(), $ast, $document);
+        return $this->getMethodSignatureForClass($className, $methodName->toString());
     }
 
     /**
-     * @param array<Stmt> $ast
      * @return SignatureInfo|null
      */
-    private function getStaticMethodSignature(StaticCall $call, array $ast, TextDocument $document): ?array
+    private function getStaticMethodSignature(StaticCall $call): ?array
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
@@ -273,14 +273,13 @@ final class SignatureHelpHandler implements HandlerInterface
             $className = $enclosingClass;
         }
 
-        return $this->getMethodSignatureForClass($className, $methodName->toString(), $ast, $document);
+        return $this->getMethodSignatureForClass($className, $methodName->toString());
     }
 
     /**
-     * @param array<Stmt> $ast
      * @return SignatureInfo|null
      */
-    private function getConstructorSignature(New_ $call, array $ast, TextDocument $document): ?array
+    private function getConstructorSignature(New_ $call): ?array
     {
         $class = $call->class;
         if (!$class instanceof Name) {
@@ -289,30 +288,26 @@ final class SignatureHelpHandler implements HandlerInterface
 
         $className = ScopeFinder::resolveName($class);
 
-        return $this->getMethodSignatureForClass($className, '__construct', $ast, $document);
+        return $this->getMethodSignatureForClass($className, '__construct');
     }
 
     /**
-     * @param array<Stmt> $ast
      * @return SignatureInfo|null
      */
     private function getMethodSignatureForClass(
-        string $className,
-        string $methodName,
-        array $ast,
-        TextDocument $document,
+        string $classNameStr,
+        string $methodNameStr,
     ): ?array {
-        $methodNode = MemberFinder::findMethod($className, $methodName, $ast, $this->classLocator, $this->parser);
-        if ($methodNode !== null) {
-            return $this->formatMethodNodeSignature($methodNode);
+        /** @var class-string $classNameStr */
+        $className = new ClassName($classNameStr);
+        $methodName = new MethodName($methodNameStr);
+
+        $methodInfo = $this->memberResolver->findMethod($className, $methodName, Visibility::Private);
+        if ($methodInfo !== null) {
+            return $this->formatMethodInfoSignature($methodInfo);
         }
 
-        $classReflection = ReflectionHelper::getClass($className);
-        if ($classReflection === null || !$classReflection->hasMethod($methodName)) {
-            return null;
-        }
-        $reflection = $classReflection->getMethod($methodName);
-        return $this->formatReflectionSignature($reflection);
+        return null;
     }
 
     /**
@@ -386,27 +381,20 @@ final class SignatureHelpHandler implements HandlerInterface
     /**
      * @return SignatureInfo
      */
-    private function formatMethodNodeSignature(Stmt\ClassMethod $method): array
+    private function formatMethodInfoSignature(MethodInfo $method): array
     {
         $params = [];
         $paramLabels = [];
 
-        foreach ($method->params as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= TypeFormatter::formatNode($param->type) . ' ';
-            }
-            $var = $param->var;
-            if ($var instanceof Variable && is_string($var->name)) {
-                $paramStr .= '$' . $var->name;
-            }
+        foreach ($method->parameters as $param) {
+            $paramStr = $param->format();
             $paramLabels[] = $paramStr;
             $params[] = ['label' => $paramStr];
         }
 
-        $label = $method->name->toString() . '(' . implode(', ', $paramLabels) . ')';
+        $label = $method->name->name . '(' . implode(', ', $paramLabels) . ')';
         if ($method->returnType !== null) {
-            $label .= ': ' . TypeFormatter::formatNode($method->returnType);
+            $label .= ': ' . $method->returnType;
         }
 
         $result = [
@@ -414,9 +402,8 @@ final class SignatureHelpHandler implements HandlerInterface
             'parameters' => $params,
         ];
 
-        $docComment = $method->getDocComment();
-        if ($docComment !== null) {
-            $result['documentation'] = DocblockParser::extractDescription($docComment->getText());
+        if ($method->docblock !== null) {
+            $result['documentation'] = DocblockParser::extractDescription($method->docblock);
         }
 
         return $result;

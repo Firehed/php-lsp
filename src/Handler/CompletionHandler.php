@@ -529,12 +529,7 @@ final class CompletionHandler implements HandlerInterface
     {
         $params = [];
         foreach ($method->parameters as $param) {
-            $paramStr = '';
-            if ($param->type !== null) {
-                $paramStr .= $param->type . ' ';
-            }
-            $paramStr .= '$' . $param->name;
-            $params[] = $paramStr;
+            $params[] = $param->format();
         }
 
         $detail = $method->name->name . '(' . implode(', ', $params) . ')';
