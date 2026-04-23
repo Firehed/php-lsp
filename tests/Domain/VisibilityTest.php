@@ -42,7 +42,7 @@ class VisibilityTest extends TestCase
      * @return array<string, array{Visibility, string}>
      * @codeCoverageIgnore
      */
-    public static function keywordProvider(): array
+    public static function formatProvider(): array
     {
         return [
             'private' => [Visibility::Private, 'private'],
@@ -51,9 +51,9 @@ class VisibilityTest extends TestCase
         ];
     }
 
-    #[DataProvider('keywordProvider')]
-    public function testToKeyword(Visibility $visibility, string $expected): void
+    #[DataProvider('formatProvider')]
+    public function testFormat(Visibility $visibility, string $expected): void
     {
-        self::assertSame($expected, $visibility->toKeyword());
+        self::assertSame($expected, $visibility->format());
     }
 }

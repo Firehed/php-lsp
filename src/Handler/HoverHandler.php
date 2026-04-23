@@ -399,7 +399,7 @@ final class HoverHandler implements HandlerInterface
             $parts[] = DocblockParser::extractDescription($method->docblock);
         }
 
-        $visibility = $method->visibility->toKeyword() . ' ';
+        $visibility = $method->visibility->format() . ' ';
         $static = $method->isStatic ? 'static ' : '';
 
         $params = [];
@@ -427,7 +427,7 @@ final class HoverHandler implements HandlerInterface
             $parts[] = DocblockParser::extractDescription($property->docblock);
         }
 
-        $visibility = $property->visibility->toKeyword() . ' ';
+        $visibility = $property->visibility->format() . ' ';
         $static = $property->isStatic ? 'static ' : '';
         $readonly = $property->isReadonly ? 'readonly ' : '';
 
