@@ -476,4 +476,346 @@ PHP;
         self::assertSame('file:///MyTrait.php', $result['uri']);
         self::assertSame(2, $result['range']['start']['line']);
     }
+
+    public function testReturnsNullForInvalidTextDocumentParam(): void
+    {
+        $this->openDocument('file:///test.php', '<?php class Foo {}');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => 'not-an-array',
+                'position' => ['line' => 0, 'character' => 10],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForInvalidUriParam(): void
+    {
+        $this->openDocument('file:///test.php', '<?php class Foo {}');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 123],
+                'position' => ['line' => 0, 'character' => 10],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForInvalidPositionParam(): void
+    {
+        $this->openDocument('file:///test.php', '<?php class Foo {}');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => 'not-an-array',
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForInvalidLineCharacterParams(): void
+    {
+        $this->openDocument('file:///test.php', '<?php class Foo {}');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 'not-int', 'character' => 0],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForPositionOutsideCode(): void
+    {
+        $this->openDocument('file:///test.php', '<?php class Foo {}');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 0],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForDynamicStaticMethodName(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    public static function test(): void {
+        $method = 'foo';
+        self::$method();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        // Position on $method in self::$method()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 15],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForDynamicClassName(): void
+    {
+        $code = <<<'PHP'
+<?php
+$class = 'MyClass';
+$class::method();
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        // Position on ::method
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 2, 'character' => 10],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testGoToSelfMethodDefinition(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    public static function foo(): void {}
+    public static function bar(): void {
+        self::foo();
+    }
+}
+PHP;
+        $this->openDocument('file:///MyClass.php', $code);
+
+        // Position on foo in self::foo()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///MyClass.php'],
+                'position' => ['line' => 4, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertSame('file:///MyClass.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
+
+    public function testGoToStaticMethodDefinition2(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    public static function foo(): void {}
+    public function bar(): void {
+        static::foo();
+    }
+}
+PHP;
+        $this->openDocument('file:///MyClass.php', $code);
+
+        // Position on foo in static::foo()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///MyClass.php'],
+                'position' => ['line' => 4, 'character' => 17],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertSame('file:///MyClass.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
+
+    public function testReturnsNullForUnknownMethod(): void
+    {
+        $classCode = <<<'PHP'
+<?php
+class MyClass {
+    public function existingMethod(): void {}
+}
+PHP;
+        $this->openDocument('file:///MyClass.php', $classCode);
+
+        $usageCode = <<<'PHP'
+<?php
+function test(MyClass $obj): void {
+    $obj->nonExistentMethod();
+}
+PHP;
+        $this->openDocument('file:///usage.php', $usageCode);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///usage.php'],
+                'position' => ['line' => 2, 'character' => 12],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForDynamicInstanceMethodName(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {}
+function test(MyClass $obj): void {
+    $method = 'foo';
+    $obj->$method();
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        // Position on $method in $obj->$method()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 11],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForParentWithoutExtends(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    public function test(): void {
+        parent::foo();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        // Position on foo in parent::foo()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 17],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForSelfOutsideClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+self::foo();
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        // Position on foo in self::foo()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 1, 'character' => 7],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForBuiltInClassMethod(): void
+    {
+        // Built-in classes from reflection have no file location
+        $code = '<?php DateTime::createFromFormat("Y", "2024");';
+        $this->openDocument('file:///test.php', $code);
+
+        // Position on createFromFormat
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 18],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
+
+    public function testReturnsNullForBuiltInClass(): void
+    {
+        // Built-in classes from reflection have no file location
+        $code = '<?php new DateTime();';
+        $this->openDocument('file:///test.php', $code);
+
+        // Position on DateTime
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 12],
+            ],
+        ]);
+
+        self::assertNull($this->handler->handle($request));
+    }
 }
