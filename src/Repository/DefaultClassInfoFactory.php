@@ -547,21 +547,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
      */
     private function extractParametersFromReflection(ReflectionMethod $method): array
     {
-        $result = [];
-
-        foreach ($method->getParameters() as $param) {
-            $result[] = new ParameterInfo(
-                name: $param->getName(),
-                type: $param->getType() !== null
-                    ? TypeFormatter::formatReflection($param->getType())
-                    : null,
-                hasDefault: $param->isDefaultValueAvailable(),
-                isVariadic: $param->isVariadic(),
-                isPassedByReference: $param->isPassedByReference(),
-            );
-        }
-
-        return $result;
+        return array_map(
+            ParameterInfo::fromReflection(...),
+            $method->getParameters(),
+        );
     }
 
     /**
