@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -459,22 +460,10 @@ final class HoverHandler implements HandlerInterface
             $parts[] = DocblockParser::extractDescription($docComment);
         }
 
-        $params = [];
-        foreach ($func->getParameters() as $param) {
-            $paramStr = '';
-            $type = $param->getType();
-            if ($type !== null) {
-                $paramStr .= TypeFormatter::formatReflection($type) . ' ';
-            }
-            if ($param->isVariadic()) {
-                $paramStr .= '...';
-            }
-            $paramStr .= '$' . $param->getName();
-            if ($param->isOptional() && !$param->isVariadic()) {
-                $paramStr .= ' = ...';
-            }
-            $params[] = $paramStr;
-        }
+        $params = array_map(
+            fn($p) => ParameterInfo::fromReflection($p)->format(showDefault: true),
+            $func->getParameters(),
+        );
 
         $signature = 'function ' . $func->getName() . '(' . implode(', ', $params) . ')';
 

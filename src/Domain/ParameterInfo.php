@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
+use ReflectionParameter;
 
 /**
  * Metadata about a method or function parameter.
@@ -34,6 +35,19 @@ final readonly class ParameterInfo implements Formattable
             hasDefault: $param->default !== null,
             isVariadic: $param->variadic,
             isPassedByReference: $param->byRef,
+        );
+    }
+
+    public static function fromReflection(ReflectionParameter $param): self
+    {
+        return new self(
+            name: $param->getName(),
+            type: $param->getType() !== null
+                ? TypeFormatter::formatReflection($param->getType())
+                : null,
+            hasDefault: $param->isDefaultValueAvailable(),
+            isVariadic: $param->isVariadic(),
+            isPassedByReference: $param->isPassedByReference(),
         );
     }
 

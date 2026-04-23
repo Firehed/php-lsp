@@ -10,6 +10,7 @@ use PhpParser\Node\Param;
 use PhpParser\Node\Scalar\Int_;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use ReflectionFunction;
 
 #[CoversClass(ParameterInfo::class)]
 class ParameterInfoTest extends TestCase
@@ -167,6 +168,21 @@ class ParameterInfoTest extends TestCase
         self::assertFalse($param->isPassedByReference);
     }
 
+    public function testFromReflectionSimple(): void
+    {
+        $fn = function (string $value) {
+        };
+        $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
+
+        $param = ParameterInfo::fromReflection($reflectionParam);
+
+        self::assertSame('value', $param->name);
+        self::assertSame('string', $param->type);
+        self::assertFalse($param->hasDefault);
+        self::assertFalse($param->isVariadic);
+        self::assertFalse($param->isPassedByReference);
+    }
+
     public function testFromNodeWithDefault(): void
     {
         $node = new Param(
@@ -238,5 +254,80 @@ class ParameterInfoTest extends TestCase
         $param = ParameterInfo::fromNode($node);
 
         self::assertNull($param);
+    }
+
+    public function testFromReflectionWithDefault(): void
+    {
+        $fn = function (int $count = 10) {
+        };
+        $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
+
+        $param = ParameterInfo::fromReflection($reflectionParam);
+
+        self::assertSame('count', $param->name);
+        self::assertSame('int', $param->type);
+        self::assertTrue($param->hasDefault);
+        self::assertFalse($param->isVariadic);
+        self::assertFalse($param->isPassedByReference);
+    }
+
+    public function testFromReflectionVariadic(): void
+    {
+        $fn = function (string ...$args) {
+        };
+        $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
+
+        $param = ParameterInfo::fromReflection($reflectionParam);
+
+        self::assertSame('args', $param->name);
+        self::assertSame('string', $param->type);
+        self::assertFalse($param->hasDefault);
+        self::assertTrue($param->isVariadic);
+        self::assertFalse($param->isPassedByReference);
+    }
+
+    public function testFromReflectionByReference(): void
+    {
+        $fn = function (array &$data) {
+        };
+        $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
+
+        $param = ParameterInfo::fromReflection($reflectionParam);
+
+        self::assertSame('data', $param->name);
+        self::assertSame('array', $param->type);
+        self::assertFalse($param->hasDefault);
+        self::assertFalse($param->isVariadic);
+        self::assertTrue($param->isPassedByReference);
+    }
+
+    public function testFromReflectionNoType(): void
+    {
+        $fn = function ($untyped) {
+        };
+        $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
+
+        $param = ParameterInfo::fromReflection($reflectionParam);
+
+        self::assertSame('untyped', $param->name);
+        self::assertNull($param->type);
+        self::assertFalse($param->hasDefault);
+        self::assertFalse($param->isVariadic);
+        self::assertFalse($param->isPassedByReference);
+    }
+
+    public function testFromReflectionNullable(): void
+    {
+        $fn = function (?string $nullable) {
+        };
+        $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
+
+        $param = ParameterInfo::fromReflection($reflectionParam);
+
+        self::assertSame('nullable', $param->name);
+        self::assertSame('?string', $param->type);
+        self::assertFalse($param->hasDefault);
+        self::assertFalse($param->isVariadic);
+        self::assertFalse($param->isPassedByReference);
     }
 }
