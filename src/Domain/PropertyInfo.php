@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class property.
  */
-final readonly class PropertyInfo
+final readonly class PropertyInfo implements Formattable
 {
     public function __construct(
         public PropertyName $name,
@@ -21,5 +21,21 @@ final readonly class PropertyInfo
         public ?int $line,
         public ClassName $declaringClass,
     ) {
+    }
+
+    public function format(): string
+    {
+        $parts = [$this->visibility->format()];
+        if ($this->isStatic) {
+            $parts[] = 'static';
+        }
+        if ($this->isReadonly) {
+            $parts[] = 'readonly';
+        }
+        if ($this->type !== null) {
+            $parts[] = $this->type;
+        }
+        $parts[] = '$' . $this->name->name;
+        return implode(' ', $parts);
     }
 }
