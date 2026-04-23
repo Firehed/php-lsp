@@ -148,7 +148,8 @@ class ParameterInfoTest extends TestCase
 
     public function testFromReflectionSimple(): void
     {
-        $fn = function (string $value) {};
+        $fn = function (string $value) {
+        };
         $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
 
         $param = ParameterInfo::fromReflection($reflectionParam);
@@ -162,7 +163,8 @@ class ParameterInfoTest extends TestCase
 
     public function testFromReflectionWithDefault(): void
     {
-        $fn = function (int $count = 10) {};
+        $fn = function (int $count = 10) {
+        };
         $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
 
         $param = ParameterInfo::fromReflection($reflectionParam);
@@ -176,7 +178,8 @@ class ParameterInfoTest extends TestCase
 
     public function testFromReflectionVariadic(): void
     {
-        $fn = function (string ...$args) {};
+        $fn = function (string ...$args) {
+        };
         $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
 
         $param = ParameterInfo::fromReflection($reflectionParam);
@@ -190,7 +193,8 @@ class ParameterInfoTest extends TestCase
 
     public function testFromReflectionByReference(): void
     {
-        $fn = function (array &$data) {};
+        $fn = function (array &$data) {
+        };
         $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
 
         $param = ParameterInfo::fromReflection($reflectionParam);
@@ -204,7 +208,8 @@ class ParameterInfoTest extends TestCase
 
     public function testFromReflectionNoType(): void
     {
-        $fn = function ($untyped) {};
+        $fn = function ($untyped) {
+        };
         $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
 
         $param = ParameterInfo::fromReflection($reflectionParam);
@@ -218,7 +223,8 @@ class ParameterInfoTest extends TestCase
 
     public function testFromReflectionNullable(): void
     {
-        $fn = function (?string $nullable) {};
+        $fn = function (?string $nullable) {
+        };
         $reflectionParam = (new ReflectionFunction($fn))->getParameters()[0];
 
         $param = ParameterInfo::fromReflection($reflectionParam);
