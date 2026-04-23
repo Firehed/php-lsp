@@ -281,6 +281,33 @@ PHP;
         self::assertStringContainsString('sort', $result['contents']);
     }
 
+    public function testHoverOnExternalFunctionWithDocblock(): void
+    {
+        require_once __DIR__ . '/../Domain/Fixtures/documented_function.php';
+
+        $code = <<<'PHP'
+<?php
+testDocumentedFunction();
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 1, 'character' => 5],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('testDocumentedFunction', $result['contents']);
+        self::assertStringContainsString('A test function with documentation', $result['contents']);
+    }
+
     public function testHoverOnStaticMethod(): void
     {
         $code = <<<'PHP'
