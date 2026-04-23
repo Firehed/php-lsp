@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Member visibility level.
  */
-enum Visibility: int
+enum Visibility: int implements Formattable
 {
     case Private = 0;
     case Protected = 1;
@@ -18,7 +18,7 @@ enum Visibility: int
         return $this->value >= $minimumRequired->value;
     }
 
-    public function toKeyword(): string
+    public function format(): string
     {
         return match ($this) {
             self::Private => 'private',
