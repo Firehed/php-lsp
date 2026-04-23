@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use PhpParser\Comment\Doc;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Param;
@@ -179,6 +180,24 @@ class FunctionInfoTest extends TestCase
         self::assertSame('int', $func->returnType);
     }
 
+    public function testFromNodeWithDocblock(): void
+    {
+        $node = new Stmt\Function_(
+            name: new Identifier('documented'),
+            subNodes: [
+                'params' => [],
+                'returnType' => null,
+            ],
+            attributes: [
+                'comments' => [new Doc('/** This function does something. */')],
+            ],
+        );
+
+        $func = FunctionInfo::fromNode($node);
+
+        self::assertSame('/** This function does something. */', $func->docblock);
+    }
+
     public function testFromReflectionSimple(): void
     {
         $fn = function () {
@@ -232,5 +251,15 @@ class FunctionInfoTest extends TestCase
         self::assertCount(1, $func->parameters);
         self::assertTrue($func->parameters[0]->isVariadic);
         self::assertSame('int', $func->returnType);
+    }
+
+    public function testFromReflectionWithDocblock(): void
+    {
+        require_once __DIR__ . '/Fixtures/documented_function.php';
+        $reflection = new ReflectionFunction('testDocumentedFunction');
+
+        $func = FunctionInfo::fromReflection($reflection);
+
+        self::assertSame("/**\n * A test function with documentation.\n */", $func->docblock);
     }
 }
