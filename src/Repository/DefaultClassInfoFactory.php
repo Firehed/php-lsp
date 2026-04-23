@@ -323,17 +323,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     {
         $result = [];
         foreach ($params as $param) {
-            if (!$param->var instanceof Variable || !is_string($param->var->name)) {
-                continue;
+            $info = ParameterInfo::fromNode($param);
+            if ($info !== null) {
+                $result[] = $info;
             }
-
-            $result[] = new ParameterInfo(
-                name: $param->var->name,
-                type: TypeFormatter::formatNode($param->type),
-                hasDefault: $param->default !== null,
-                isVariadic: $param->variadic,
-                isPassedByReference: $param->byRef,
-            );
         }
         return $result;
     }
