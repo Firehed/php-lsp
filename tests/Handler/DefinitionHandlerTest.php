@@ -818,4 +818,66 @@ PHP;
 
         self::assertNull($this->handler->handle($request));
     }
+
+    public function testGoToPrivateMethodDefinition(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    private function privateMethod(): void {}
+    public function publicMethod(): void {
+        $this->privateMethod();
+    }
+}
+PHP;
+        $this->openDocument('file:///MyClass.php', $code);
+
+        // Position on privateMethod in $this->privateMethod()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///MyClass.php'],
+                'position' => ['line' => 4, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertSame('file:///MyClass.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
+
+    public function testGoToProtectedMethodDefinition(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    protected function protectedMethod(): void {}
+    public function publicMethod(): void {
+        $this->protectedMethod();
+    }
+}
+PHP;
+        $this->openDocument('file:///MyClass.php', $code);
+
+        // Position on protectedMethod in $this->protectedMethod()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///MyClass.php'],
+                'position' => ['line' => 4, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertSame('file:///MyClass.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
 }
