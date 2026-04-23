@@ -28,4 +28,46 @@ class EnumCaseInfoTest extends TestCase
         self::assertSame(8, $case->line);
         self::assertSame(ClassKind::class, $case->declaringClass->fqn);
     }
+
+    public function testFormatUnitEnum(): void
+    {
+        $case = new EnumCaseInfo(
+            name: new EnumCaseName('Pending'),
+            backingValue: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(ClassKind::class),
+        );
+
+        self::assertSame('case Pending', $case->format());
+    }
+
+    public function testFormatIntBackedEnum(): void
+    {
+        $case = new EnumCaseInfo(
+            name: new EnumCaseName('Active'),
+            backingValue: 1,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(ClassKind::class),
+        );
+
+        self::assertSame('case Active = 1', $case->format());
+    }
+
+    public function testFormatStringBackedEnum(): void
+    {
+        $case = new EnumCaseInfo(
+            name: new EnumCaseName('Draft'),
+            backingValue: 'draft',
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: new ClassName(ClassKind::class),
+        );
+
+        self::assertSame("case Draft = 'draft'", $case->format());
+    }
 }
