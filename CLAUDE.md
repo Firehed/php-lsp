@@ -52,7 +52,7 @@ Domain objects implement `Formattable` for consistent signature formatting acros
 
 ### Remaining Utilities
 
-- `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names
+- `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names, finds functions
 - `TypeFormatter` — Formats AST type nodes as strings
 - `DocblockParser` — Extracts description from docblocks
 - `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
