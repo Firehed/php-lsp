@@ -191,6 +191,44 @@ PHP;
         self::assertContains('age', $labels);
     }
 
+    public function testThisCompletionIncludesInheritedMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyException extends \Exception
+{
+    private string $ownProperty;
+
+    public function test(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Own members
+        self::assertContains('ownProperty', $labels);
+        self::assertContains('test', $labels);
+        // Inherited members from Exception
+        self::assertContains('getMessage', $labels);
+        self::assertContains('getCode', $labels);
+    }
+
     public function testStaticMethodCompletion(): void
     {
         $code = <<<'PHP'
@@ -475,6 +513,51 @@ PHP;
         self::assertContains('publicMethod', $labels);
         self::assertContains('protectedMethod', $labels);
         self::assertNotContains('privateMethod', $labels);
+    }
+
+    public function testSelfCompletionIncludesInheritedStaticMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    public static string $inheritedProperty = 'value';
+    public const INHERITED_CONST = 'const';
+    public static function inheritedMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public static string $ownProperty = 'child';
+    public static function ownMethod(): void
+    {
+        self::
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Own static members
+        self::assertContains('ownProperty', $labels);
+        self::assertContains('ownMethod', $labels);
+        // Inherited static members from ParentClass
+        self::assertContains('inheritedProperty', $labels);
+        self::assertContains('inheritedMethod', $labels);
+        self::assertContains('INHERITED_CONST', $labels);
     }
 
     public function testFunctionCompletion(): void
