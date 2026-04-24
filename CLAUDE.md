@@ -13,9 +13,48 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ## Project Structure
 
 - `src/Handler/` — LSP request handlers (completion, hover, definition, etc.)
+- `src/Repository/` — Class and member resolution (see Architecture below)
+- `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
+- `src/Utility/` — AST helpers (ScopeFinder, TypeFormatter, DocblockParser)
 - `docs/features/` — Feature status documentation
+
+## Architecture
+
+### Repository Pattern
+
+Class and member information flows through a repository layer:
+
+- **ClassRepository** (`DefaultClassRepository`) — Resolves `ClassInfo` by FQN. Resolution order: open documents → locate & parse from filesystem → reflection fallback for built-in classes.
+- **MemberResolver** — Finds methods/properties on a class, traversing inheritance chain. Returns domain objects (`MethodInfo`, `PropertyInfo`).
+- **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
+
+### Domain Objects
+
+Typed representations of code constructs in `src/Domain/`:
+
+- `ClassInfo` — Class/interface/trait/enum metadata (methods, properties, constants, inheritance)
+- `MethodInfo`, `PropertyInfo`, `ConstantInfo`, `EnumCaseInfo` — Member metadata
+- `ParameterInfo`, `FunctionInfo` — Function/method parameter details
+- `Visibility` enum — Public/protected/private with comparison logic
+- `ClassName`, `MethodName`, `PropertyName` — Typed identifiers
+
+Domain objects implement `Formattable` for consistent signature formatting across handlers.
+
+### Guidelines for New Code
+
+- **Use repositories, not direct reflection.** `MemberResolver::findMethod()` handles inheritance; raw `ReflectionClass` does not integrate with open documents.
+- **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
+- **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
+- **Utilities are for AST traversal only.** `ScopeFinder`, `TypeFormatter`, `DocblockParser` operate on syntax; they don't resolve types or members.
+
+### Remaining Utilities
+
+- `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names
+- `TypeFormatter` — Formats AST type nodes as strings
+- `DocblockParser` — Extracts description from docblocks
+- `ExpressionTypeResolver` — Resolves expression types using TypeResolver
 
 ## Development Workflow
 
