@@ -462,4 +462,47 @@ PHP;
         self::assertInstanceOf(Stmt\Class_::class, $statements[1]);
         self::assertSame('Second', $statements[1]->name?->toString());
     }
+
+    public function testFindFunctionReturnsNullWhenNotFound(): void
+    {
+        $code = <<<'PHP'
+<?php
+function other(): void {}
+PHP;
+        $ast = self::parseWithParents($code);
+
+        self::assertNull(ScopeFinder::findFunction('nonexistent', $ast));
+    }
+
+    public function testFindFunctionReturnsMatchingFunction(): void
+    {
+        $code = <<<'PHP'
+<?php
+function first(): void {}
+function second(): int { return 1; }
+function third(): string { return ''; }
+PHP;
+        $ast = self::parseWithParents($code);
+
+        $found = ScopeFinder::findFunction('second', $ast);
+
+        self::assertNotNull($found);
+        self::assertSame('second', $found->name->toString());
+    }
+
+    public function testFindFunctionWorksWithNamespace(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Utils;
+
+function helper(): void {}
+PHP;
+        $ast = self::parseWithParents($code);
+
+        $found = ScopeFinder::findFunction('helper', $ast);
+
+        self::assertNotNull($found);
+        self::assertSame('helper', $found->name->toString());
+    }
 }
