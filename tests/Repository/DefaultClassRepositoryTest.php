@@ -263,7 +263,11 @@ final class DefaultClassRepositoryTest extends TestCase
     {
         $repo = $this->createRepoWithClasses([
             $this->createClassInfoWithInterfaces('App\\MyClass', ['App\\ChildInterface']),
-            $this->createClassInfoWithInterfaces('App\\ChildInterface', ['App\\ParentInterface'], ClassKind::Interface_),
+            $this->createClassInfoWithInterfaces(
+                'App\\ChildInterface',
+                ['App\\ParentInterface'],
+                ClassKind::Interface_,
+            ),
             $this->createClassInfoForTest('App\\ParentInterface', ClassKind::Interface_),
         ]);
 
