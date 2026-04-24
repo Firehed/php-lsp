@@ -645,6 +645,88 @@ PHP;
         self::assertStringContainsString('Namespaced parent method', $result['contents']);
     }
 
+    public function testHoverOnTraitMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+trait Greeter
+{
+    /**
+     * Says hello.
+     */
+    public function greet(): void {}
+}
+
+class Foo
+{
+    use Greeter;
+
+    public function test(): void
+    {
+        $this->greet();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('greet', $result['contents']);
+        self::assertStringContainsString('Says hello', $result['contents']);
+    }
+
+    public function testHoverOnTraitProperty(): void
+    {
+        $code = <<<'PHP'
+<?php
+trait HasName
+{
+    /**
+     * The name value.
+     */
+    protected string $name;
+}
+
+class Person
+{
+    use HasName;
+
+    public function test(): void
+    {
+        $this->name;
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$name', $result['contents']);
+        self::assertStringContainsString('The name value', $result['contents']);
+    }
+
     public function testHoverOnInheritedMethodAcrossNamespaces(): void
     {
         $code = <<<'PHP'
