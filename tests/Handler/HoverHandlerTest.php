@@ -734,6 +734,42 @@ PHP;
         self::assertStringContainsString('The name value', $result['contents']);
     }
 
+    public function testHoverOnInterfaceMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+interface Greeter
+{
+    /**
+     * Says hello.
+     */
+    public function greet(): void;
+}
+
+function test(Greeter $g): void
+{
+    $g->greet();
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 8],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('greet', $result['contents']);
+        self::assertStringContainsString('Says hello', $result['contents']);
+    }
+
     public function testHoverOnInheritedMethodAcrossNamespaces(): void
     {
         $code = <<<'PHP'
