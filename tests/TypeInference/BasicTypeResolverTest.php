@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\TypeInference;
 
+use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
@@ -20,7 +25,13 @@ class BasicTypeResolverTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->resolver = new BasicTypeResolver();
+        $classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $parser = new ParserService();
+        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
+        $memberResolver = new MemberResolver($classRepository);
+
+        $this->resolver = new BasicTypeResolver($memberResolver);
     }
 
     public function testResolveNewExpression(): void
