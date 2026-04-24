@@ -876,7 +876,10 @@ final class CompletionHandler implements HandlerInterface
 
         // Add $this if we're in a method
         if ($inMethod && self::matchesPrefix('this', $prefix)) {
-            $className = $this->typeResolver?->resolveVariableType('this', $enclosingScope, $cursorLine, $ast);
+            // Use ScopeFinder directly for $this - TypeResolverInterface::resolveVariableType
+            // doesn't handle $this (it only checks parameters, use() vars, and assignments)
+            $classNode = ScopeFinder::findClassAtLine($ast, $cursorLine);
+            $className = $classNode?->namespacedName?->toString() ?? $classNode?->name?->toString();
             $items[] = [
                 'label' => '$this',
                 'kind' => self::KIND_VARIABLE,
