@@ -79,7 +79,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly SymbolIndex $symbolIndex,
         private readonly MemberResolver $memberResolver,
         private readonly ClassRepository $classRepository,
-        private readonly ?TypeResolverInterface $typeResolver = null,
+        private readonly TypeResolverInterface $typeResolver,
     ) {
     }
 
@@ -398,10 +398,6 @@ final class CompletionHandler implements HandlerInterface
         array $ast,
         int $line,
     ): array {
-        if ($this->typeResolver === null) {
-            return [];
-        }
-
         // Find the enclosing scope
         $scope = $this->findEnclosingScope($ast, $line);
         if ($scope === null) {
@@ -889,8 +885,7 @@ final class CompletionHandler implements HandlerInterface
 
         foreach ($variables as $name => $basicType) {
             if (self::matchesPrefix($name, $prefix)) {
-                // Use type resolver if available, fall back to basic type
-                $resolvedType = $this->typeResolver?->resolveVariableType($name, $enclosingScope, $cursorLine, $ast);
+                $resolvedType = $this->typeResolver->resolveVariableType($name, $enclosingScope, $cursorLine, $ast);
                 $items[] = [
                     'label' => '$' . $name,
                     'kind' => self::KIND_VARIABLE,

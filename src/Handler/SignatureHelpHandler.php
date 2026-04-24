@@ -44,7 +44,7 @@ final class SignatureHelpHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly MemberResolver $memberResolver,
-        private readonly ?TypeResolverInterface $typeResolver = null,
+        private readonly TypeResolverInterface $typeResolver,
     ) {
     }
 

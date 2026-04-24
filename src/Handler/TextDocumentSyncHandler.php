@@ -26,7 +26,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         private readonly ParserService $parser,
         private readonly ClassRepository $classRepository,
         private readonly ClassInfoFactory $classInfoFactory,
-        private readonly ?DocumentIndexer $indexer = null,
+        private readonly DocumentIndexer $indexer,
     ) {
     }
 
@@ -110,7 +110,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         $uri = $textDocument['uri'] ?? '';
         assert(is_string($uri));
 
-        $this->indexer?->remove($uri);
+        $this->indexer->remove($uri);
         $this->classRepository->removeDocument($uri);
         $this->documentManager->close($uri);
 
@@ -127,7 +127,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
             $this->registerDocumentClasses($uri, $ast);
         }
 
-        $this->indexer?->index($document);
+        $this->indexer->index($document);
     }
 
     /**

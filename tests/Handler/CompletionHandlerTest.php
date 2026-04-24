@@ -7,8 +7,10 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
+use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -49,18 +51,22 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
+        $typeResolver = new BasicTypeResolver($this->memberResolver);
+        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
             $this->classRepository,
+            $typeResolver,
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
             $this->parser,
             $this->classRepository,
             $this->classInfoFactory,
+            $indexer,
         );
     }
 
@@ -2562,7 +2568,7 @@ PHP;
         self::assertNotContains('__construct', $labels);
     }
 
-    public function testTypedVariableCompletionReturnsEmptyWithoutTypeResolver(): void
+    public function testTypedVariableCompletionResolvesParameterType(): void
     {
         $code = <<<'PHP'
 <?php
@@ -2578,7 +2584,6 @@ function foo(User $user): void
 PHP;
         $this->openDocument('file:///test.php', $code);
 
-        // Handler without type resolver (uses default from setUp)
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
             'id' => 1,
@@ -2592,8 +2597,8 @@ PHP;
         $result = $this->handler->handle($request);
 
         self::assertIsArray($result);
-        // Without type resolver, no completions for typed variables
-        self::assertEmpty($result['items']);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels);
     }
 
     /**
