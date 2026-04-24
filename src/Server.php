@@ -54,11 +54,11 @@ final class Server
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
         $classLocator = new ComposerClassLocator($projectRoot);
-        $typeResolver = new BasicTypeResolver();
 
         $classInfoFactory = new DefaultClassInfoFactory();
         $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
         $memberResolver = new MemberResolver($classRepository);
+        $typeResolver = new BasicTypeResolver($memberResolver);
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;

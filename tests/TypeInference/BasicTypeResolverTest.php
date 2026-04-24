@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\TypeInference;
 
+use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
@@ -20,7 +25,13 @@ class BasicTypeResolverTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->resolver = new BasicTypeResolver();
+        $classInfoFactory = new DefaultClassInfoFactory();
+        $locator = self::createStub(ClassLocator::class);
+        $parser = new ParserService();
+        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
+        $memberResolver = new MemberResolver($classRepository);
+
+        $this->resolver = new BasicTypeResolver($memberResolver);
     }
 
     public function testResolveNewExpression(): void
@@ -88,18 +99,77 @@ PHP;
         self::assertSame('DateTime', $objectType);
     }
 
-    public function testResolveStaticMethodCallExtractsClassName(): void
+    public function testResolveMethodReturnType(): void
     {
-        // Note: Static method return type resolution depends on reflection,
-        // which may not have return types for built-in classes.
-        // This test verifies the class name is correctly extracted from the call.
-        $code = '<?php $result = DateTime::createFromFormat("Y-m-d", "2024-01-01");';
+        // Exception::getMessage() has return type string
+        $code = <<<'PHP'
+<?php
+function test() {
+    $ex = new Exception();
+    $result = $ex->getMessage();
+}
+PHP;
         $ast = $this->parse($code);
-        $staticCall = $this->findFirstExprOfType($ast, Expr\StaticCall::class);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
 
-        // Verify we can at least extract the class name from the static call
-        self::assertInstanceOf(Name::class, $staticCall->class);
-        self::assertSame('DateTime', $staticCall->class->toString());
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        self::assertSame('string', $type);
+    }
+
+    public function testResolveMethodReturnTypeReturnsNullForUnknownMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test() {
+    $ex = new Exception();
+    $result = $ex->nonExistentMethod();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        self::assertNull($type);
+    }
+
+    public function testResolveMethodReturnTypeInt(): void
+    {
+        // Exception::getLine() returns int
+        $code = <<<'PHP'
+<?php
+function test() {
+    $ex = new Exception();
+    $result = $ex->getLine();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        self::assertSame('int', $type);
+    }
+
+    public function testResolvePropertyTypeReturnsNullForUnknownClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(UnknownClass $obj) {
+    $result = $obj->name;
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $propertyFetch = $this->findFirstExprOfType($ast, Expr\PropertyFetch::class);
+
+        $type = $this->resolver->resolveExpressionType($propertyFetch, $function, $ast);
+
+        self::assertNull($type);
     }
 
     public function testResolveCloneExpression(): void

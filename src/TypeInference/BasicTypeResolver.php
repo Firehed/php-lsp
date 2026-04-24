@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\TypeInference;
 
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
-use Firehed\PhpLsp\Utility\ReflectionHelper;
-use Firehed\PhpLsp\Utility\TypeFormatter;
-use ReflectionNamedType;
 
 /**
  * Basic type resolver using simple heuristics.
@@ -25,6 +28,10 @@ use ReflectionNamedType;
  */
 final class BasicTypeResolver implements TypeResolverInterface
 {
+    public function __construct(
+        private readonly MemberResolver $memberResolver,
+    ) {
+    }
     public function resolveExpressionType(
         Expr $expr,
         Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction|null $scope,
@@ -198,30 +205,26 @@ final class BasicTypeResolver implements TypeResolverInterface
 
     private function getMethodReturnType(string $className, string $methodName): ?string
     {
-        $reflection = ReflectionHelper::getClass($className);
-        if ($reflection === null || !$reflection->hasMethod($methodName)) {
-            return null;
-        }
-        $method = $reflection->getMethod($methodName);
-        $returnType = $method->getReturnType();
-        if (!$returnType instanceof ReflectionNamedType) {
-            return null;
-        }
-        return $returnType->getName();
+        /** @var class-string $className */
+        $methodInfo = $this->memberResolver->findMethod(
+            new ClassName($className),
+            new MethodName($methodName),
+            Visibility::Public,
+        );
+
+        return $methodInfo?->returnType;
     }
 
     private function getPropertyType(string $className, string $propertyName): ?string
     {
-        $reflection = ReflectionHelper::getClass($className);
-        if ($reflection === null || !$reflection->hasProperty($propertyName)) {
-            return null;
-        }
-        $property = $reflection->getProperty($propertyName);
-        $type = $property->getType();
-        if (!$type instanceof ReflectionNamedType) {
-            return null;
-        }
-        return $type->getName();
+        /** @var class-string $className */
+        $propertyInfo = $this->memberResolver->findProperty(
+            new ClassName($className),
+            new PropertyName($propertyName),
+            Visibility::Public,
+        );
+
+        return $propertyInfo?->type;
     }
 
     /**
