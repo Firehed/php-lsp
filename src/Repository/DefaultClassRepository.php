@@ -136,6 +136,57 @@ final class DefaultClassRepository implements ClassRepository
         }
     }
 
+    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool
+    {
+        $classInfo = $this->get($class);
+        if ($classInfo === null) {
+            return false;
+        }
+
+        $targetKey = $this->normalizeKey($potentialParent->fqn);
+        $visited = [$this->normalizeKey($class->fqn) => true];
+
+        return $this->checkInheritance($classInfo, $targetKey, $visited);
+    }
+
+    /**
+     * @param array<string, true> $visited
+     */
+    private function checkInheritance(ClassInfo $classInfo, string $targetKey, array &$visited): bool
+    {
+        // Check parent
+        if ($classInfo->parent !== null) {
+            $parentKey = $this->normalizeKey($classInfo->parent->fqn);
+            if ($parentKey === $targetKey) {
+                return true;
+            }
+            if (!array_key_exists($parentKey, $visited)) {
+                $visited[$parentKey] = true;
+                $parentInfo = $this->get($classInfo->parent);
+                if ($parentInfo !== null && $this->checkInheritance($parentInfo, $targetKey, $visited)) {
+                    return true;
+                }
+            }
+        }
+
+        // Check interfaces
+        foreach ($classInfo->interfaces as $interface) {
+            $interfaceKey = $this->normalizeKey($interface->fqn);
+            if ($interfaceKey === $targetKey) {
+                return true;
+            }
+            if (!array_key_exists($interfaceKey, $visited)) {
+                $visited[$interfaceKey] = true;
+                $interfaceInfo = $this->get($interface);
+                if ($interfaceInfo !== null && $this->checkInheritance($interfaceInfo, $targetKey, $visited)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private function normalizeKey(string $fqn): string
     {
         return strtolower(ltrim($fqn, '\\'));

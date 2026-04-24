@@ -94,6 +94,7 @@ final class Server
             $parser,
             $symbolIndex,
             $memberResolver,
+            $classRepository,
             $typeResolver,
         );
     }

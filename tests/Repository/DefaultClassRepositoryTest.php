@@ -219,14 +219,196 @@ final class DefaultClassRepositoryTest extends TestCase
         self::assertSame($documentInfo, $result);
     }
 
+    public function testIsSubclassOfDirectParent(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithParent('App\\Child', 'App\\Parent'),
+            $this->createClassInfoForTest('App\\Parent'),
+        ]);
+
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\Child'), // @phpstan-ignore argument.type
+            new ClassName('App\\Parent'), // @phpstan-ignore argument.type
+        ));
+    }
+
+    public function testIsSubclassOfTransitiveParent(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithParent('App\\Grandchild', 'App\\Child'),
+            $this->createClassInfoWithParent('App\\Child', 'App\\Parent'),
+            $this->createClassInfoForTest('App\\Parent'),
+        ]);
+
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\Grandchild'), // @phpstan-ignore argument.type
+            new ClassName('App\\Parent'), // @phpstan-ignore argument.type
+        ));
+    }
+
+    public function testIsSubclassOfImplementedInterface(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithInterfaces('App\\MyClass', ['App\\MyInterface']),
+            $this->createClassInfoForTest('App\\MyInterface', ClassKind::Interface_),
+        ]);
+
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+            new ClassName('App\\MyInterface'), // @phpstan-ignore argument.type
+        ));
+    }
+
+    public function testIsSubclassOfInheritedInterface(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoWithInterfaces('App\\MyClass', ['App\\ChildInterface']),
+            $this->createClassInfoWithInterfaces(
+                'App\\ChildInterface',
+                ['App\\ParentInterface'],
+                ClassKind::Interface_,
+            ),
+            $this->createClassInfoForTest('App\\ParentInterface', ClassKind::Interface_),
+        ]);
+
+        self::assertTrue($repo->isSubclassOf(
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+            new ClassName('App\\ParentInterface'), // @phpstan-ignore argument.type
+        ));
+    }
+
+    public function testIsSubclassOfReturnsFalseForUnrelatedClasses(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoForTest('App\\ClassA'),
+            $this->createClassInfoForTest('App\\ClassB'),
+        ]);
+
+        self::assertFalse($repo->isSubclassOf(
+            new ClassName('App\\ClassA'), // @phpstan-ignore argument.type
+            new ClassName('App\\ClassB'), // @phpstan-ignore argument.type
+        ));
+    }
+
+    public function testIsSubclassOfReturnsFalseForSameClass(): void
+    {
+        $repo = $this->createRepoWithClasses([
+            $this->createClassInfoForTest('App\\MyClass'),
+        ]);
+
+        self::assertFalse($repo->isSubclassOf(
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+            new ClassName('App\\MyClass'), // @phpstan-ignore argument.type
+        ));
+    }
+
+    public function testIsSubclassOfReturnsFalseForUnknownClass(): void
+    {
+        $factory = self::createStub(ClassInfoFactory::class);
+        $locator = self::createStub(ClassLocator::class);
+        $locator->method('locate')->willReturn(null);
+        $parser = new ParserService();
+
+        $repo = new DefaultClassRepository($factory, $locator, $parser);
+
+        self::assertFalse($repo->isSubclassOf(
+            new ClassName('App\\Unknown'), // @phpstan-ignore argument.type
+            new ClassName('App\\Other'), // @phpstan-ignore argument.type
+        ));
+    }
+
+    /**
+     * @param list<ClassInfo> $classes
+     */
+    private function createRepoWithClasses(array $classes): DefaultClassRepository
+    {
+        $factory = self::createStub(ClassInfoFactory::class);
+        $locator = self::createStub(ClassLocator::class);
+        $parser = new ParserService();
+
+        $repo = new DefaultClassRepository($factory, $locator, $parser);
+        $repo->updateDocument('file:///test.php', $classes);
+
+        return $repo;
+    }
+
+    private function createClassInfoWithParent(string $fqn, string $parentFqn): ClassInfo
+    {
+        return new ClassInfo(
+            name: new ClassName($fqn), // @phpstan-ignore argument.type
+            kind: ClassKind::Class_,
+            isAbstract: false,
+            isFinal: false,
+            isReadonly: false,
+            parent: new ClassName($parentFqn), // @phpstan-ignore argument.type
+            interfaces: [],
+            traits: [],
+            methods: [],
+            properties: [],
+            constants: [],
+            enumCases: [],
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
+    /**
+     * @param list<string> $interfaceFqns
+     */
+    private function createClassInfoWithInterfaces(
+        string $fqn,
+        array $interfaceFqns,
+        ClassKind $kind = ClassKind::Class_,
+    ): ClassInfo {
+        return new ClassInfo(
+            name: new ClassName($fqn), // @phpstan-ignore argument.type
+            kind: $kind,
+            isAbstract: false,
+            isFinal: false,
+            isReadonly: false,
+            parent: null,
+            interfaces: array_map(fn($i) => new ClassName($i), $interfaceFqns), // @phpstan-ignore argument.type
+            traits: [],
+            methods: [],
+            properties: [],
+            constants: [],
+            enumCases: [],
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
+    private function createClassInfoForTest(string $fqn, ClassKind $kind = ClassKind::Class_): ClassInfo
+    {
+        return new ClassInfo(
+            name: new ClassName($fqn), // @phpstan-ignore argument.type
+            kind: $kind,
+            isAbstract: false,
+            isFinal: false,
+            isReadonly: false,
+            parent: null,
+            interfaces: [],
+            traits: [],
+            methods: [],
+            properties: [],
+            constants: [],
+            enumCases: [],
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
     /**
      * @param class-string $fqn
      */
-    private function createClassInfo(string $fqn): ClassInfo
+    private function createClassInfo(string $fqn, ClassKind $kind = ClassKind::Class_): ClassInfo
     {
         return new ClassInfo(
             name: new ClassName($fqn),
-            kind: ClassKind::Class_,
+            kind: $kind,
             isAbstract: false,
             isFinal: false,
             isReadonly: false,

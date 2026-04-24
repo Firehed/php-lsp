@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
@@ -21,7 +22,6 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
-use Firehed\PhpLsp\Utility\ReflectionHelper;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node;
@@ -78,6 +78,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
         private readonly MemberResolver $memberResolver,
+        private readonly ClassRepository $classRepository,
         private readonly ?TypeResolverInterface $typeResolver = null,
     ) {
     }
@@ -469,8 +470,10 @@ final class CompletionHandler implements HandlerInterface
             return Visibility::Protected;
         }
 
-        // Check deeper inheritance via reflection
-        if (ReflectionHelper::getClass($enclosingClassName)?->isSubclassOf($targetClassName) === true) {
+        // Check deeper inheritance via ClassRepository
+        /** @var class-string $enclosingClassName */
+        /** @var class-string $targetClassName */
+        if ($this->classRepository->isSubclassOf(new ClassName($enclosingClassName), new ClassName($targetClassName))) {
             return Visibility::Protected;
         }
 
