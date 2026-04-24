@@ -54,6 +54,7 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
+            $this->classRepository,
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -1741,6 +1742,7 @@ PHP;
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
+            $this->classRepository,
             new BasicTypeResolver(),
         );
 
@@ -1787,6 +1789,7 @@ PHP;
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
+            $this->classRepository,
             new BasicTypeResolver(),
         );
 
@@ -1831,6 +1834,7 @@ PHP;
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
+            $this->classRepository,
             new BasicTypeResolver(),
         );
 
@@ -1869,6 +1873,7 @@ PHP;
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
+            $this->classRepository,
             new BasicTypeResolver(),
         );
 
@@ -1904,6 +1909,7 @@ PHP;
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
+            $this->classRepository,
             new BasicTypeResolver(),
         );
 
@@ -1954,6 +1960,7 @@ PHP;
             $this->parser,
             $this->symbolIndex,
             $this->memberResolver,
+            $this->classRepository,
             new BasicTypeResolver(),
         );
 
