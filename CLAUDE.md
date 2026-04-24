@@ -47,14 +47,15 @@ Domain objects implement `Formattable` for consistent signature formatting acros
 - **Use repositories, not direct reflection.** `MemberResolver::findMethod()` handles inheritance; raw `ReflectionClass` does not integrate with open documents.
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
-- **Utilities are for AST traversal only.** `ScopeFinder`, `TypeFormatter`, `DocblockParser` operate on syntax; they don't resolve types or members.
+- **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
+- **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Handlers should use it consistently rather than calling `TypeResolverInterface` directly.
 
 ### Remaining Utilities
 
 - `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names
 - `TypeFormatter` — Formats AST type nodes as strings
 - `DocblockParser` — Extracts description from docblocks
-- `ExpressionTypeResolver` — Resolves expression types using TypeResolver
+- `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
 
 ## Development Workflow
 
