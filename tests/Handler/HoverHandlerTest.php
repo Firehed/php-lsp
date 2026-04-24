@@ -46,11 +46,13 @@ class HoverHandlerTest extends TestCase
             $this->parser,
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
+        $typeResolver = new BasicTypeResolver($this->memberResolver);
         $this->handler = new HoverHandler(
             $this->documents,
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
+            $typeResolver,
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
