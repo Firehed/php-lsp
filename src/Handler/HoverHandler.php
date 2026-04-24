@@ -42,7 +42,7 @@ final class HoverHandler implements HandlerInterface
         private readonly ParserService $parser,
         private readonly ClassRepository $classRepository,
         private readonly MemberResolver $memberResolver,
-        private readonly ?TypeResolverInterface $typeResolver = null,
+        private readonly TypeResolverInterface $typeResolver,
     ) {
     }
 
