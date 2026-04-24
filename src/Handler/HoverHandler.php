@@ -32,8 +32,6 @@ use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 use ReflectionException;
 use ReflectionFunction;
 
@@ -228,32 +226,12 @@ final class HoverHandler implements HandlerInterface
      */
     private function getFunctionHover(string $functionName, array $ast): ?string
     {
-        $finder = new class ($functionName) extends NodeVisitorAbstract {
-            public ?Stmt\Function_ $found = null;
-
-            public function __construct(private readonly string $functionName)
-            {
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Function_ && $node->name->toString() === $this->functionName) {
-                    $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        if ($finder->found === null) {
+        $funcNode = ScopeFinder::findFunction($functionName, $ast);
+        if ($funcNode === null) {
             return null;
         }
 
-        return $this->formatFunctionHover($finder->found);
+        return $this->formatFunctionHover($funcNode);
     }
 
     private function formatFunctionHover(Stmt\Function_ $node): string

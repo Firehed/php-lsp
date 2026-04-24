@@ -1356,6 +1356,65 @@ PHP;
         self::assertContains('$this', $labels);
     }
 
+    public function testVariableCompletionThisShowsClassName(): void
+    {
+        $code = '<?php class MyClass { public function bar() { $t; } }';
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 48], // After $t
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $thisItems = array_filter($result['items'], fn($item) => $item['label'] === '$this');
+        self::assertNotEmpty($thisItems);
+        $thisItem = reset($thisItems);
+        self::assertSame('MyClass', $thisItem['detail'] ?? null);
+    }
+
+    public function testVariableCompletionThisShowsNamespacedClassName(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Models;
+
+class User
+{
+    public function getName(): void
+    {
+        $t
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 10], // After $t
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $thisItems = array_filter($result['items'], fn($item) => $item['label'] === '$this');
+        self::assertNotEmpty($thisItems);
+        $thisItem = reset($thisItems);
+        self::assertSame('App\Models\User', $thisItem['detail'] ?? null);
+    }
+
     public function testVariableCompletionWorksInClosures(): void
     {
         $code = '<?php $fn = function ($param) { $localVar = 1; $l; };';

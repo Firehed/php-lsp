@@ -168,4 +168,35 @@ final class ScopeFinder
             }
         }
     }
+
+    /**
+     * Find a user-defined function by name in the AST.
+     *
+     * @param array<Stmt> $ast
+     */
+    public static function findFunction(string $functionName, array $ast): ?Stmt\Function_
+    {
+        $visitor = new class ($functionName) extends NodeVisitorAbstract {
+            public ?Stmt\Function_ $found = null;
+
+            public function __construct(private readonly string $functionName)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Stmt\Function_ && $node->name->toString() === $this->functionName) {
+                    $this->found = $node;
+                    return NodeTraverser::STOP_TRAVERSAL;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
+    }
 }
