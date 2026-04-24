@@ -471,6 +471,51 @@ PHP;
         self::assertNotContains('privateMethod', $labels);
     }
 
+    public function testSelfCompletionIncludesInheritedStaticMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    public static string $inheritedProperty = 'value';
+    public const INHERITED_CONST = 'const';
+    public static function inheritedMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    public static string $ownProperty = 'child';
+    public static function ownMethod(): void
+    {
+        self::
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Own static members
+        self::assertContains('ownProperty', $labels);
+        self::assertContains('ownMethod', $labels);
+        // Inherited static members from ParentClass
+        self::assertContains('inheritedProperty', $labels);
+        self::assertContains('inheritedMethod', $labels);
+        self::assertContains('INHERITED_CONST', $labels);
+    }
+
     public function testFunctionCompletion(): void
     {
         $code = <<<'PHP'
