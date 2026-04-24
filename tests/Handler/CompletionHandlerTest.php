@@ -185,6 +185,44 @@ PHP;
         self::assertContains('age', $labels);
     }
 
+    public function testThisCompletionIncludesInheritedMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyException extends \Exception
+{
+    private string $ownProperty;
+
+    public function test(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Own members
+        self::assertContains('ownProperty', $labels);
+        self::assertContains('test', $labels);
+        // Inherited members from Exception
+        self::assertContains('getMessage', $labels);
+        self::assertContains('getCode', $labels);
+    }
+
     public function testStaticMethodCompletion(): void
     {
         $code = <<<'PHP'
