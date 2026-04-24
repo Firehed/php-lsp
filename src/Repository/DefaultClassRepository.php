@@ -8,7 +8,10 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Utility\ClassFinder;
+use PhpParser\Node;
+use PhpParser\Node\Stmt;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
 use ReflectionClass;
 use ReflectionException;
 
@@ -118,12 +121,63 @@ final class DefaultClassRepository implements ClassRepository
             return null;
         }
 
-        $node = ClassFinder::findInAst($name->fqn, $ast);
+        $node = $this->findClassInAst($name->fqn, $ast);
         if ($node === null) {
             return null;
         }
 
         return $this->factory->fromAstNode($node, $uri);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function findClassInAst(
+        string $className,
+        array $ast,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        $finder = new class ($className) extends NodeVisitorAbstract {
+            public Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found = null;
+            private string $namespace = '';
+
+            public function __construct(private readonly string $className)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Stmt\Namespace_) {
+                    $this->namespace = $node->name?->toString() ?? '';
+                    return null;
+                }
+
+                if (
+                    $node instanceof Stmt\Class_
+                    || $node instanceof Stmt\Interface_
+                    || $node instanceof Stmt\Trait_
+                    || $node instanceof Stmt\Enum_
+                ) {
+                    $name = $node->name?->toString();
+                    if ($name === null) {
+                        return null;
+                    }
+                    $fqn = $this->namespace !== '' ? $this->namespace . '\\' . $name : $name;
+
+                    if ($fqn === $this->className || $name === $this->className) {
+                        $this->found = $node;
+                        return NodeTraverser::STOP_TRAVERSAL;
+                    }
+                }
+
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($finder);
+        $traverser->traverse($ast);
+
+        return $finder->found;
     }
 
     private function fromReflection(ClassName $name): ?ClassInfo
