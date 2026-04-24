@@ -7,6 +7,9 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Index\DocumentIndexer;
+use Firehed\PhpLsp\Index\SymbolExtractor;
+use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -49,11 +52,13 @@ class HoverHandlerTest extends TestCase
             $this->classRepository,
             $this->memberResolver,
         );
+        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
             $this->parser,
             $this->classRepository,
             $this->classInfoFactory,
+            $indexer,
         );
     }
 
