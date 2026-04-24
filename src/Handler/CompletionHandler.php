@@ -212,6 +212,13 @@ final class CompletionHandler implements HandlerInterface
             return $this->deduplicateCompletions($items);
         }
 
+        // Method definition context - suggest missing abstract methods from interfaces/abstract parent
+        $methodDefPattern = '/(?:public|private|protected)\s+(?:static\s+)?function\s+(\w*)$/';
+        if (preg_match($methodDefPattern, $textBeforeCursor, $matches) === 1) {
+            $prefix = $matches[1];
+            return $this->getMissingAbstractMethodCompletions($prefix, $ast, $line);
+        }
+
         // After visibility keyword - suggest function, static, readonly, const, or types
         // Must check before general type hint context since both patterns overlap
         if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
@@ -417,6 +424,38 @@ final class CompletionHandler implements HandlerInterface
             false,
             $prefix,
         );
+    }
+
+    /**
+     * Get completions for missing abstract methods from interfaces and abstract parents.
+     *
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function getMissingAbstractMethodCompletions(string $prefix, array $ast, int $line): array
+    {
+        $classNode = ScopeFinder::findClassAtLine($ast, $line);
+        if ($classNode === null) {
+            return [];
+        }
+
+        $classNameStr = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
+        if ($classNameStr === null) {
+            return [];
+        }
+
+        /** @var class-string $classNameStr */
+        $className = new ClassName($classNameStr);
+        $unimplementedMethods = $this->memberResolver->getUnimplementedAbstractMethods($className);
+
+        $items = [];
+        foreach ($unimplementedMethods as $method) {
+            if (self::matchesPrefix($method->name->name, $prefix)) {
+                $items[] = $this->formatMethodInfoCompletion($method);
+            }
+        }
+
+        return $items;
     }
 
     /**

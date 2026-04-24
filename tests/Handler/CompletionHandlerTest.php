@@ -2897,4 +2897,166 @@ PHP;
         self::assertStringContainsString(': int', $detail);
         self::assertStringContainsString('Adds two numbers', $functionItem['documentation'] ?? '');
     }
+
+    public function testMissingAbstractMethodsFromInterface(): void
+    {
+        // Note: the trailing space after "function " is required for the pattern to match
+        $code = <<<'PHP'
+<?php
+interface MyInterface
+{
+    public function doThing(): void;
+
+    public function useOther(string $var): int;
+}
+
+class Bar implements MyInterface
+{
+    public function d
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                // Line 10: "    public function d" - cursor at position 21 (after 'd')
+                'position' => ['line' => 10, 'character' => 21],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        // With prefix 'd', only doThing should match (not useOther)
+        self::assertContains('doThing', $labels);
+        self::assertNotContains('useOther', $labels);
+    }
+
+    public function testMissingAbstractMethodsFromInterfaceAllMethods(): void
+    {
+        // Use prefix 'd' to trigger method completion, then check both methods appear
+        // (doThing matches 'd', useOther doesn't - we test with empty prefix via concat)
+        $codeBase = <<<'PHP'
+<?php
+interface MyInterface
+{
+    public function doThing(): void;
+
+    public function useOther(string $var): int;
+}
+
+class Bar implements MyInterface
+{
+    public function
+PHP;
+        // Add trailing space explicitly since heredoc may strip trailing whitespace
+        $code = $codeBase . " \n}";
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                // Line 10: "    public function " - cursor at position 20 (after space)
+                'position' => ['line' => 10, 'character' => 20],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        // With no prefix, both methods should appear
+        self::assertContains('doThing', $labels, 'Missing interface method doThing should appear');
+        self::assertContains('useOther', $labels, 'Missing interface method useOther should appear');
+    }
+
+    public function testMissingAbstractMethodsFromAbstractParent(): void
+    {
+        $codeBase = <<<'PHP'
+<?php
+abstract class BaseHandler
+{
+    abstract public function handle(): void;
+
+    public function log(): void {}
+}
+
+class MyHandler extends BaseHandler
+{
+    public function
+PHP;
+        $code = $codeBase . " \n}";
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 20],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        // Abstract method should appear, but not the concrete method
+        self::assertContains('handle', $labels, 'Abstract parent method should appear');
+        self::assertNotContains('log', $labels, 'Concrete parent method should not appear');
+    }
+
+    public function testMissingAbstractMethodsExcludesAlreadyImplemented(): void
+    {
+        $codeBase = <<<'PHP'
+<?php
+interface MyInterface
+{
+    public function methodA(): void;
+    public function methodB(): void;
+    public function methodC(): void;
+}
+
+class Impl implements MyInterface
+{
+    public function methodA(): void {}
+
+    public function
+PHP;
+        $code = $codeBase . " \n}";
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 12, 'character' => 20],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        // methodA is already implemented, should not appear
+        self::assertNotContains('methodA', $labels);
+        // methodB and methodC are not implemented, should appear
+        self::assertContains('methodB', $labels);
+        self::assertContains('methodC', $labels);
+    }
 }
