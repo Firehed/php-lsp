@@ -30,7 +30,7 @@ final class DefinitionHandler implements HandlerInterface
         private readonly ParserService $parser,
         private readonly MemberResolver $memberResolver,
         private readonly ClassRepository $classRepository,
-        private readonly ?TypeResolverInterface $typeResolver = null,
+        private readonly TypeResolverInterface $typeResolver,
     ) {
     }
 
