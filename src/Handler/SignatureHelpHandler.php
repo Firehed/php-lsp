@@ -210,7 +210,7 @@ final class SignatureHelpHandler implements HandlerInterface
         $functionName = $name->toString();
 
         // Try user-defined function first
-        $funcNode = $this->findFunctionInAst($functionName, $ast);
+        $funcNode = ScopeFinder::findFunction($functionName, $ast);
         if ($funcNode !== null) {
             return $this->formatFunctionNodeSignature($funcNode);
         }
@@ -306,34 +306,6 @@ final class SignatureHelpHandler implements HandlerInterface
         return null;
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findFunctionInAst(string $functionName, array $ast): ?Stmt\Function_
-    {
-        $finder = new class ($functionName) extends NodeVisitorAbstract {
-            public ?Stmt\Function_ $found = null;
-
-            public function __construct(private readonly string $functionName)
-            {
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Function_ && $node->name->toString() === $this->functionName) {
-                    $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        return $finder->found;
-    }
 
     /**
      * @return SignatureInfo
