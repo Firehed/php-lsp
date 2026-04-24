@@ -28,6 +28,7 @@ class HoverHandlerTest extends TestCase
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
+    private BasicTypeResolver $typeResolver;
     private HoverHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -43,11 +44,13 @@ class HoverHandlerTest extends TestCase
             $this->parser,
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
+        $this->typeResolver = new BasicTypeResolver($this->memberResolver);
         $this->handler = new HoverHandler(
             $this->documents,
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
+            $this->typeResolver,
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -643,6 +646,42 @@ PHP;
         self::assertIsArray($result);
         self::assertStringContainsString('parentMethod', $result['contents']);
         self::assertStringContainsString('Namespaced parent method', $result['contents']);
+    }
+
+    public function testHoverOnInterfaceMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+interface Greeter
+{
+    /**
+     * Says hello.
+     */
+    public function greet(): void;
+}
+
+function test(Greeter $g): void
+{
+    $g->greet();
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 8],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('greet', $result['contents']);
+        self::assertStringContainsString('Says hello', $result['contents']);
     }
 
     public function testHoverOnInheritedMethodAcrossNamespaces(): void
