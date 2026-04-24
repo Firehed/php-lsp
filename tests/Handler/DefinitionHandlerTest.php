@@ -46,7 +46,7 @@ class DefinitionHandlerTest extends TestCase
             $this->parser,
             $this->memberResolver,
             $this->classRepository,
-            new BasicTypeResolver(),
+            new BasicTypeResolver($this->memberResolver),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,

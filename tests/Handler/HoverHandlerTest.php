@@ -372,7 +372,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver(),
+            new BasicTypeResolver($this->memberResolver),
         );
 
         $request = RequestMessage::fromArray([
@@ -420,7 +420,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver(),
+            new BasicTypeResolver($this->memberResolver),
         );
 
         $request = RequestMessage::fromArray([
@@ -906,7 +906,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver(),
+            new BasicTypeResolver($this->memberResolver),
         );
 
         $request = RequestMessage::fromArray([
@@ -941,7 +941,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver(),
+            new BasicTypeResolver($this->memberResolver),
         );
 
         $request = RequestMessage::fromArray([
