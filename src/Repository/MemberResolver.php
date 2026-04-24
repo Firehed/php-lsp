@@ -145,6 +145,79 @@ final class MemberResolver
     }
 
     /**
+     * Get abstract methods from interfaces and parent classes that the class
+     * must implement but hasn't yet.
+     *
+     * @return list<MethodInfo>
+     */
+    public function getUnimplementedAbstractMethods(ClassName $class): array
+    {
+        $classInfo = $this->classes->get($class);
+        if ($classInfo === null) {
+            return [];
+        }
+
+        $implementedMethods = [];
+        foreach ($classInfo->methods as $method) {
+            $implementedMethods[strtolower($method->name->name)] = true;
+        }
+
+        $abstractMethods = [];
+        $seen = [];
+
+        $this->collectAbstractMethods($classInfo, $abstractMethods, $implementedMethods, $seen);
+
+        return array_values($abstractMethods);
+    }
+
+    /**
+     * @param array<string, MethodInfo> $abstractMethods
+     * @param array<string, true> $implementedMethods
+     * @param array<string, true> $seen
+     */
+    private function collectAbstractMethods(
+        ClassInfo $classInfo,
+        array &$abstractMethods,
+        array $implementedMethods,
+        array &$seen,
+    ): void {
+        $fqn = $classInfo->name->fqn;
+        if (array_key_exists($fqn, $seen)) {
+            return;
+        }
+        $seen[$fqn] = true;
+
+        $isInterface = $classInfo->kind === \Firehed\PhpLsp\Domain\ClassKind::Interface_;
+
+        foreach ($classInfo->methods as $method) {
+            $key = strtolower($method->name->name);
+            if (array_key_exists($key, $implementedMethods)) {
+                continue;
+            }
+            if (array_key_exists($key, $abstractMethods)) {
+                continue;
+            }
+            if ($isInterface || $method->isAbstract) {
+                $abstractMethods[$key] = $method;
+            }
+        }
+
+        foreach ($classInfo->interfaces as $interfaceName) {
+            $interfaceInfo = $this->classes->get($interfaceName);
+            if ($interfaceInfo !== null) {
+                $this->collectAbstractMethods($interfaceInfo, $abstractMethods, $implementedMethods, $seen);
+            }
+        }
+
+        if ($classInfo->parent !== null) {
+            $parentInfo = $this->classes->get($classInfo->parent);
+            if ($parentInfo !== null) {
+                $this->collectAbstractMethods($parentInfo, $abstractMethods, $implementedMethods, $seen);
+            }
+        }
+    }
+
+    /**
      * @param array<string, true> $seen
      */
     private function findMethodInHierarchy(
