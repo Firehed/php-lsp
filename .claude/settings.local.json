@@ -3,7 +3,7 @@
     "allow": [
       "Bash(composer check:*)",
       "Bash(composer install:*)",
-      "Bash(composer phpcs: *)",
+      "Bash(composer phpcs:*)",
       "Bash(composer phpstan:*)",
       "Bash(composer phpunit:*)",
       "Bash(composer test:*)",
