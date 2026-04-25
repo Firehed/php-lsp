@@ -89,6 +89,22 @@ final class ScopeFinder
     }
 
     /**
+     * Get the fully qualified name of a class-like node.
+     *
+     * @return ?class-string
+     */
+    public static function getClassLikeName(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): ?string
+    {
+        if ($node->name === null) {
+            return null;
+        }
+        /** @var class-string */
+        return isset($node->namespacedName)
+            ? $node->namespacedName->toString()
+            : $node->name->toString();
+    }
+
+    /**
      * Find the fully qualified name of the enclosing class-like node.
      *
      * Returns the FQN if available, otherwise the short name, or null if not
@@ -99,15 +115,10 @@ final class ScopeFinder
     public static function findEnclosingClassName(Node $node): ?string
     {
         $classNode = self::findEnclosingClassNode($node);
-        if ($classNode === null || $classNode->name === null) {
+        if ($classNode === null) {
             return null;
         }
-
-        $namespacedName = $classNode->namespacedName;
-        /** @var class-string */
-        return $namespacedName instanceof Name
-            ? $namespacedName->toString()
-            : $classNode->name->toString();
+        return self::getClassLikeName($classNode);
     }
 
     /**

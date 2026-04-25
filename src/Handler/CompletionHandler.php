@@ -284,14 +284,13 @@ final class CompletionHandler implements HandlerInterface
             return [];
         }
 
-        $classNameStr = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
+        $classNameStr = ScopeFinder::getClassLikeName($classNode);
         if ($classNameStr === null) {
             // @codeCoverageIgnoreStart
             throw new \LogicException('Top-level class found without name');
             // @codeCoverageIgnoreEnd
         }
 
-        /** @var class-string $classNameStr */
         return $this->getMemberCompletions(
             new ClassName($classNameStr),
             Visibility::Private,
@@ -451,8 +450,7 @@ final class CompletionHandler implements HandlerInterface
             return Visibility::Public;
         }
 
-        $enclosingClassName = $enclosingClass->namespacedName?->toString()
-            ?? $enclosingClass->name?->toString();
+        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
         if ($enclosingClassName === null) {
             return Visibility::Public;
         }
@@ -467,7 +465,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Check deeper inheritance via ClassRepository
-        /** @var class-string $enclosingClassName */
         if ($this->classRepository->isSubclassOf(new ClassName($enclosingClassName), new ClassName($targetClassName))) {
             return Visibility::Protected;
         }
