@@ -128,9 +128,8 @@ final class DefinitionHandler implements HandlerInterface
      */
     private function handleNameDefinition(Name $node): ?array
     {
-        $symbolName = ScopeFinder::resolveName($node);
+        $symbolName = ScopeFinder::resolveClassName($node);
 
-        /** @var class-string $symbolName */
         $classInfo = $this->classRepository->get(new ClassName($symbolName));
         if ($classInfo === null) {
             return null;
@@ -164,25 +163,23 @@ final class DefinitionHandler implements HandlerInterface
             return null;
         }
 
-        $className = ScopeFinder::resolveName($class);
+        $rawName = $class->toString();
 
         // Handle parent:: - resolve to actual parent class name
-        if ($className === 'parent') {
+        if ($rawName === 'parent') {
             $enclosingClass = ScopeFinder::findEnclosingClassNode($call);
-            if ($enclosingClass instanceof Stmt\Class_ && $enclosingClass->extends !== null) {
-                $className = ScopeFinder::resolveName($enclosingClass->extends);
-            } else {
+            if (!$enclosingClass instanceof Stmt\Class_ || $enclosingClass->extends === null) {
                 return null;
             }
-        }
-
-        // Handle self:: and static:: - resolve to enclosing class
-        if ($className === 'self' || $className === 'static') {
-            $enclosingClassName = ScopeFinder::findEnclosingClassName($call);
-            if ($enclosingClassName === null) {
+            $className = ScopeFinder::resolveClassName($enclosingClass->extends);
+        } elseif ($rawName === 'self' || $rawName === 'static') {
+            // Handle self:: and static:: - resolve to enclosing class
+            $className = ScopeFinder::findEnclosingClassName($call);
+            if ($className === null) {
                 return null;
             }
-            $className = $enclosingClassName;
+        } else {
+            $className = ScopeFinder::resolveClassName($class);
         }
 
         return $this->findMethodDefinition($className, $methodName->toString());
@@ -220,6 +217,7 @@ final class DefinitionHandler implements HandlerInterface
     /**
      * Find the definition of a method in a class.
      *
+     * @param class-string $className
      * @return array{
      *   uri: string,
      *   range: array{
@@ -230,7 +228,6 @@ final class DefinitionHandler implements HandlerInterface
      */
     private function findMethodDefinition(string $className, string $methodName): ?array
     {
-        /** @var class-string $className */
         $methodInfo = $this->memberResolver->findMethod(
             new ClassName($className),
             new MethodName($methodName),
