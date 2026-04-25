@@ -52,4 +52,28 @@ final class ComposerClassLocatorTest extends TestCase
         self::assertNotNull($path);
         self::assertStringContainsString('phpunit/phpunit', $path);
     }
+
+    public function testDoesNotRegisterAutoloader(): void
+    {
+        $autoloadersBefore = spl_autoload_functions();
+
+        new ComposerClassLocator(self::PROJECT_ROOT);
+
+        $autoloadersAfter = spl_autoload_functions();
+
+        self::assertSame(
+            count($autoloadersBefore),
+            count($autoloadersAfter),
+            'ComposerClassLocator should not register additional autoloaders',
+        );
+    }
+
+    public function testMissingComposerDirectoryReturnsNull(): void
+    {
+        $locator = new ComposerClassLocator('/nonexistent/path');
+
+        $path = $locator->locateClass(TestCase::class);
+
+        self::assertNull($path);
+    }
 }
