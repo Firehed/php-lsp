@@ -53,6 +53,16 @@ final class ComposerClassLocatorTest extends TestCase
         self::assertStringContainsString('phpunit/phpunit', $path);
     }
 
+    public function testLocateClassFromPsr0(): void
+    {
+        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+
+        $path = $locator->locateClass(\Psr0\Psr0Fixture::class);
+
+        self::assertNotNull($path);
+        self::assertStringEndsWith('tests/Fixtures/Autoload/Psr0/Psr0Fixture.php', $path);
+    }
+
     public function testDoesNotRegisterAutoloader(): void
     {
         $autoloadersBefore = spl_autoload_functions();
