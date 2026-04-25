@@ -258,15 +258,16 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        $className = ScopeFinder::resolveName($class);
+        $rawName = $class->toString();
 
         // Handle self/static/parent
-        if ($className === 'self' || $className === 'static' || $className === 'parent') {
-            $enclosingClass = ScopeFinder::findEnclosingClassName($call);
-            if ($enclosingClass === null) {
+        if ($rawName === 'self' || $rawName === 'static' || $rawName === 'parent') {
+            $className = ScopeFinder::findEnclosingClassName($call);
+            if ($className === null) {
                 return null;
             }
-            $className = $enclosingClass;
+        } else {
+            $className = ScopeFinder::resolveClassName($class);
         }
 
         return $this->getMethodSignatureForClass($className, $methodName->toString());
@@ -282,19 +283,19 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        $className = ScopeFinder::resolveName($class);
+        $className = ScopeFinder::resolveClassName($class);
 
         return $this->getMethodSignatureForClass($className, '__construct');
     }
 
     /**
+     * @param class-string $classNameStr
      * @return SignatureInfo|null
      */
     private function getMethodSignatureForClass(
         string $classNameStr,
         string $methodNameStr,
     ): ?array {
-        /** @var class-string $classNameStr */
         $className = new ClassName($classNameStr);
         $methodName = new MethodName($methodNameStr);
 
