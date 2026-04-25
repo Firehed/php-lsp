@@ -25,6 +25,7 @@ final class ExpressionTypeResolver
      * - Typed variables → delegated to TypeResolver
      *
      * @param array<Stmt> $ast
+     * @return ?class-string
      */
     public static function resolveExpressionType(
         Expr $expr,
@@ -44,6 +45,7 @@ final class ExpressionTypeResolver
             return null;
         }
 
+        /** @var ?class-string */
         return $typeResolver->resolveExpressionType($expr, $scope, $ast);
     }
 }
