@@ -505,4 +505,133 @@ PHP;
         self::assertNotNull($found);
         self::assertSame('helper', $found->name->toString());
     }
+
+    public function testResolveClassNameDelegatesToResolveName(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+use Other\Bar;
+class Foo extends Bar {}
+PHP;
+        $ast = self::parseWithParents($code);
+        $namespace = $ast[0];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $class = $namespace->stmts[1];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+        self::assertNotNull($class->extends);
+
+        self::assertSame('Other\Bar', ScopeFinder::resolveClassName($class->extends));
+    }
+
+    public function testGetClassLikeNameReturnsNamespacedName(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Models;
+
+class User {}
+PHP;
+        $ast = self::parseWithParents($code);
+        $namespace = $ast[0];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $class = $namespace->stmts[0];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+
+        self::assertSame('App\Models\User', ScopeFinder::getClassLikeName($class));
+    }
+
+    public function testGetClassLikeNameReturnsShortNameWhenNoNamespace(): void
+    {
+        $code = '<?php class MyClass {}';
+        $ast = self::parseWithParents($code);
+        $class = $ast[0];
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+
+        self::assertSame('MyClass', ScopeFinder::getClassLikeName($class));
+    }
+
+    public function testGetClassLikeNameReturnsNullForAnonymousClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+$obj = new class {
+    public function test(): void {}
+};
+PHP;
+        $ast = self::parseWithParents($code);
+
+        $visitor = new class () extends \PhpParser\NodeVisitorAbstract {
+            public ?Stmt\Class_ $found = null;
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Stmt\Class_ && $node->name === null) {
+                    $this->found = $node;
+                    return NodeTraverser::STOP_TRAVERSAL;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        self::assertNotNull($visitor->found);
+        self::assertNull(ScopeFinder::getClassLikeName($visitor->found));
+    }
+
+    public function testGetClassLikeNameWorksWithInterface(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Contracts;
+
+interface Renderable {}
+PHP;
+        $ast = self::parseWithParents($code);
+        $namespace = $ast[0];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $interface = $namespace->stmts[0];
+        self::assertInstanceOf(Stmt\Interface_::class, $interface);
+
+        self::assertSame('App\Contracts\Renderable', ScopeFinder::getClassLikeName($interface));
+    }
+
+    public function testGetClassLikeNameWorksWithTrait(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Concerns;
+
+trait Loggable {}
+PHP;
+        $ast = self::parseWithParents($code);
+        $namespace = $ast[0];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $trait = $namespace->stmts[0];
+        self::assertInstanceOf(Stmt\Trait_::class, $trait);
+
+        self::assertSame('App\Concerns\Loggable', ScopeFinder::getClassLikeName($trait));
+    }
+
+    public function testGetClassLikeNameWorksWithEnum(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App\Enums;
+
+enum Status: string {
+    case Active = 'active';
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $namespace = $ast[0];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $enum = $namespace->stmts[0];
+        self::assertInstanceOf(Stmt\Enum_::class, $enum);
+
+        self::assertSame('App\Enums\Status', ScopeFinder::getClassLikeName($enum));
+    }
 }
