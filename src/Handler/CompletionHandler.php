@@ -177,17 +177,13 @@ final class CompletionHandler implements HandlerInterface
 
         // self:: and static:: completion - resolve to enclosing class
         if (preg_match('/\b(?:self|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $classNode = ScopeFinder::findClassAtLine($ast, $line);
-            if ($classNode !== null) {
-                $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
-                if ($className === null) {
-                    // Anonymous class - no completions available
-                    return [];
-                }
-                $prefix = $matches[1];
-                return $this->getStaticCompletions($className, $prefix, $ast, $line);
+            $classNode = ScopeFinder::findClassLikeAtLine($ast, $line);
+            $className = $classNode !== null ? ScopeFinder::getClassLikeName($classNode) : null;
+            if ($className === null) {
+                return [];
             }
-            return [];
+            $prefix = $matches[1];
+            return $this->getStaticCompletions($className, $prefix, $ast, $line);
         }
 
         // parent:: completion - methods from parent class
@@ -279,7 +275,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getThisMemberCompletions(string $prefix, array $ast, int $line): array
     {
-        $classNode = ScopeFinder::findClassAtLine($ast, $line);
+        $classNode = ScopeFinder::findClassLikeAtLine($ast, $line);
         if ($classNode === null) {
             return [];
         }
@@ -366,8 +362,8 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getParentCompletions(string $prefix, array $ast, int $line): array
     {
-        $classNode = ScopeFinder::findClassAtLine($ast, $line);
-        if ($classNode === null || $classNode->extends === null) {
+        $classNode = ScopeFinder::findClassLikeAtLine($ast, $line);
+        if (!$classNode instanceof Stmt\Class_ || $classNode->extends === null) {
             return [];
         }
 
@@ -425,7 +421,7 @@ final class CompletionHandler implements HandlerInterface
         // Resolve short name to FQCN using imports
         $resolvedClassName = $this->resolveClassName($className, $ast);
 
-        $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
+        $enclosingClass = ScopeFinder::findClassLikeAtLine($ast, $line);
         $minVisibility = $this->getMinVisibilityForAccess($enclosingClass, $resolvedClassName);
 
         return $this->getMemberCompletions(
@@ -443,13 +439,15 @@ final class CompletionHandler implements HandlerInterface
      *
      * @param class-string $targetClassName
      */
-    private function getMinVisibilityForAccess(?Stmt\Class_ $enclosingClass, string $targetClassName): Visibility
-    {
-        if ($enclosingClass === null) {
+    private function getMinVisibilityForAccess(
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
+        string $targetClassName,
+    ): Visibility {
+        if ($enclosingClassLike === null) {
             return Visibility::Public;
         }
 
-        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
+        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClassLike);
         if ($enclosingClassName === null) {
             return Visibility::Public;
         }
@@ -458,8 +456,11 @@ final class CompletionHandler implements HandlerInterface
             return Visibility::Private;
         }
 
-        // Check direct extends in AST
-        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
+        // Check direct extends in AST (only classes have extends)
+        if (
+            $enclosingClassLike instanceof Stmt\Class_
+            && ScopeFinder::resolveExtendsName($enclosingClassLike) === $targetClassName
+        ) {
             return Visibility::Protected;
         }
 
@@ -856,10 +857,8 @@ final class CompletionHandler implements HandlerInterface
 
         // Add $this if we're in a method
         if ($inMethod && self::matchesPrefix('this', $prefix)) {
-            // Use ScopeFinder directly for $this - TypeResolverInterface::resolveVariableType
-            // doesn't handle $this (it only checks parameters, use() vars, and assignments)
-            $classNode = ScopeFinder::findClassAtLine($ast, $cursorLine);
-            $className = $classNode?->namespacedName?->toString() ?? $classNode?->name?->toString();
+            $classNode = ScopeFinder::findClassLikeAtLine($ast, $cursorLine);
+            $className = $classNode !== null ? ScopeFinder::getClassLikeName($classNode) : null;
             $items[] = [
                 'label' => '$this',
                 'kind' => self::KIND_VARIABLE,

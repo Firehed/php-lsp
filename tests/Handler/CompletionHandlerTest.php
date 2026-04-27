@@ -2742,6 +2742,85 @@ PHP;
         self::assertEmpty($result['items']);
     }
 
+    public function testThisCompletionInTrait(): void
+    {
+        $code = <<<'PHP'
+<?php
+trait MyTrait {
+    private string $traitProperty;
+
+    public function traitMethod(): void {}
+
+    public function test(): void {
+        $this->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContains('traitProperty', $labels);
+        self::assertContains('traitMethod', $labels);
+        self::assertContains('test', $labels);
+    }
+
+    public function testThisCompletionInEnum(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Status: string {
+    case Active = 'active';
+    case Inactive = 'inactive';
+
+    public function label(): string {
+        return match($this) {
+            self::Active => 'Active',
+            self::Inactive => 'Inactive',
+        };
+    }
+
+    public function test(): void {
+        $this->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContains('label', $labels);
+        self::assertContains('test', $labels);
+    }
+
     public function testStaticCompletionFromAnonymousClassContext(): void
     {
         $code = <<<'PHP'
