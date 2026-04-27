@@ -356,6 +356,7 @@ PHP;
 
         $trait = ScopeFinder::findClassLikeAtLine($ast, 2);
         self::assertInstanceOf(Stmt\Trait_::class, $trait);
+        self::assertNotNull($trait->name);
         self::assertSame('MyTrait', $trait->name->toString());
     }
 
@@ -371,6 +372,7 @@ PHP;
 
         $enum = ScopeFinder::findClassLikeAtLine($ast, 2);
         self::assertInstanceOf(Stmt\Enum_::class, $enum);
+        self::assertNotNull($enum->name);
         self::assertSame('Status', $enum->name->toString());
     }
 
