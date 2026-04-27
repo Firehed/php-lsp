@@ -2897,4 +2897,108 @@ PHP;
         self::assertStringContainsString(': int', $detail);
         self::assertStringContainsString('Adds two numbers', $functionItem['documentation'] ?? '');
     }
+
+    public function testThisCompletionTargetsEnclosingClassNotFirstClass(): void
+    {
+        // Issue #173: When multiple classes in file, $this-> should complete
+        // members of the enclosing class, not the first class in the file
+        $code = <<<'PHP'
+<?php
+class ParentClass
+{
+    protected string $inheritedProperty;
+    public function inheritedMethod(): void {}
+}
+
+class ChildClass extends ParentClass
+{
+    private string $ownProperty;
+
+    public function ownMethod(): void {}
+
+    public function test(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should have ChildClass's own members
+        self::assertContains('ownProperty', $labels);
+        self::assertContains('ownMethod', $labels);
+        self::assertContains('test', $labels);
+
+        // Should also have inherited members
+        self::assertContains('inheritedProperty', $labels);
+        self::assertContains('inheritedMethod', $labels);
+    }
+
+    public function testThisCompletionWithUnrelatedClassesInFile(): void
+    {
+        // Two unrelated classes in the same file - cursor in second class
+        // should get its members, not the first class's
+        $code = <<<'PHP'
+<?php
+class FirstClass
+{
+    public string $firstProperty;
+    public function firstMethod(): void {}
+}
+
+class SecondClass
+{
+    public string $secondProperty;
+
+    public function secondMethod(): void {}
+
+    public function test(): void
+    {
+        $this->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 15],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should have SecondClass's members
+        self::assertContains('secondProperty', $labels);
+        self::assertContains('secondMethod', $labels);
+        self::assertContains('test', $labels);
+
+        // Should NOT have FirstClass's members
+        self::assertNotContains('firstProperty', $labels);
+        self::assertNotContains('firstMethod', $labels);
+    }
 }
