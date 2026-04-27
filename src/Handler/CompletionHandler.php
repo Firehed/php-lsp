@@ -178,16 +178,12 @@ final class CompletionHandler implements HandlerInterface
         // self:: and static:: completion - resolve to enclosing class
         if (preg_match('/\b(?:self|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $classNode = ScopeFinder::findClassLikeAtLine($ast, $line);
-            if ($classNode !== null) {
-                $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
-                if ($className === null) {
-                    // Anonymous class - no completions available
-                    return [];
-                }
-                $prefix = $matches[1];
-                return $this->getStaticCompletions($className, $prefix, $ast, $line);
+            $className = $classNode !== null ? ScopeFinder::getClassLikeName($classNode) : null;
+            if ($className === null) {
+                return [];
             }
-            return [];
+            $prefix = $matches[1];
+            return $this->getStaticCompletions($className, $prefix, $ast, $line);
         }
 
         // parent:: completion - methods from parent class
@@ -861,10 +857,8 @@ final class CompletionHandler implements HandlerInterface
 
         // Add $this if we're in a method
         if ($inMethod && self::matchesPrefix('this', $prefix)) {
-            // Use ScopeFinder directly for $this - TypeResolverInterface::resolveVariableType
-            // doesn't handle $this (it only checks parameters, use() vars, and assignments)
             $classNode = ScopeFinder::findClassLikeAtLine($ast, $cursorLine);
-            $className = $classNode?->namespacedName?->toString() ?? $classNode?->name?->toString();
+            $className = $classNode !== null ? ScopeFinder::getClassLikeName($classNode) : null;
             $items[] = [
                 'label' => '$this',
                 'kind' => self::KIND_VARIABLE,
