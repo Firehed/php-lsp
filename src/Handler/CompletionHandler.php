@@ -284,14 +284,13 @@ final class CompletionHandler implements HandlerInterface
             return [];
         }
 
-        $classNameStr = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
+        $classNameStr = ScopeFinder::getClassLikeName($classNode);
         if ($classNameStr === null) {
             // @codeCoverageIgnoreStart
             throw new \LogicException('Top-level class found without name');
             // @codeCoverageIgnoreEnd
         }
 
-        /** @var class-string $classNameStr */
         return $this->getMemberCompletions(
             new ClassName($classNameStr),
             Visibility::Private,
@@ -376,7 +375,6 @@ final class CompletionHandler implements HandlerInterface
         $parentClassName = ScopeFinder::resolveExtendsName($classNode);
         assert($parentClassName !== null);
 
-        /** @var class-string $parentClassName */
         return $this->getMemberCompletions(
             new ClassName($parentClassName),
             Visibility::Protected,
@@ -431,7 +429,6 @@ final class CompletionHandler implements HandlerInterface
         $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
         $minVisibility = $this->getMinVisibilityForAccess($enclosingClass, $resolvedClassName);
 
-        /** @var class-string $resolvedClassName */
         return $this->getMemberCompletions(
             new ClassName($resolvedClassName),
             $minVisibility,
@@ -444,6 +441,8 @@ final class CompletionHandler implements HandlerInterface
 
     /**
      * Determine minimum visibility for accessing members of target class from enclosing class.
+     *
+     * @param class-string $targetClassName
      */
     private function getMinVisibilityForAccess(?Stmt\Class_ $enclosingClass, string $targetClassName): Visibility
     {
@@ -451,8 +450,7 @@ final class CompletionHandler implements HandlerInterface
             return Visibility::Public;
         }
 
-        $enclosingClassName = $enclosingClass->namespacedName?->toString()
-            ?? $enclosingClass->name?->toString();
+        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
         if ($enclosingClassName === null) {
             return Visibility::Public;
         }
@@ -467,8 +465,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Check deeper inheritance via ClassRepository
-        /** @var class-string $enclosingClassName */
-        /** @var class-string $targetClassName */
         if ($this->classRepository->isSubclassOf(new ClassName($enclosingClassName), new ClassName($targetClassName))) {
             return Visibility::Protected;
         }
@@ -588,10 +584,12 @@ final class CompletionHandler implements HandlerInterface
      * Resolve a short class name to its FQCN using use statements.
      *
      * @param array<Stmt> $ast
+     * @return class-string
      */
     private function resolveClassName(string $shortName, array $ast): string
     {
         $imports = $this->getImports($ast);
+        /** @var class-string */
         return $imports[$shortName] ?? $shortName;
     }
 

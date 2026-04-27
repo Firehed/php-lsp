@@ -89,14 +89,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             throw new \InvalidArgumentException('Cannot create ClassInfo for anonymous class');
         }
 
-        if (isset($node->namespacedName)) {
-            /** @var class-string */
-            $fqn = $node->namespacedName->toString();
-            return new ClassName($fqn);
-        }
-
         /** @var class-string */
-        $fqn = $node->name->toString();
+        $fqn = isset($node->namespacedName)
+            ? $node->namespacedName->toString()
+            : $node->name->toString();
         return new ClassName($fqn);
     }
 
@@ -130,25 +126,11 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
     private function resolveParent(Stmt\ClassLike $node): ?ClassName
     {
-        if (!$node instanceof Stmt\Class_) {
+        if (!$node instanceof Stmt\Class_ || $node->extends === null) {
             return null;
         }
 
-        $extends = $node->extends;
-        if ($extends === null) {
-            return null;
-        }
-
-        $resolved = $extends->getAttribute('resolvedName');
-        if ($resolved instanceof \PhpParser\Node\Name\FullyQualified) {
-            /** @var class-string */
-            $fqn = $resolved->toString();
-            return new ClassName($fqn);
-        }
-
-        /** @var class-string */
-        $fqn = $extends->toString();
-        return new ClassName($fqn);
+        return $this->resolveNameToClassName($node->extends);
     }
 
     /**
@@ -194,14 +176,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function resolveNameToClassName(\PhpParser\Node\Name $name): ClassName
     {
         $resolved = $name->getAttribute('resolvedName');
-        if ($resolved instanceof \PhpParser\Node\Name\FullyQualified) {
-            /** @var class-string */
-            $fqn = $resolved->toString();
-            return new ClassName($fqn);
-        }
-
         /** @var class-string */
-        $fqn = $name->toString();
+        $fqn = $resolved instanceof \PhpParser\Node\Name\FullyQualified
+            ? $resolved->toString()
+            : $name->toString();
         return new ClassName($fqn);
     }
 

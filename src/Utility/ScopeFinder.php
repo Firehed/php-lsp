@@ -78,34 +78,60 @@ final class ScopeFinder
     }
 
     /**
+     * Resolve a class Name node to its fully qualified class name.
+     *
+     * @return class-string
+     */
+    public static function resolveClassName(Name $name): string
+    {
+        /** @var class-string */
+        return self::resolveName($name);
+    }
+
+    /**
+     * Get the fully qualified name of a class-like node.
+     *
+     * @return ?class-string
+     */
+    public static function getClassLikeName(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): ?string
+    {
+        if ($node->name === null) {
+            return null;
+        }
+        /** @var class-string */
+        return isset($node->namespacedName)
+            ? $node->namespacedName->toString()
+            : $node->name->toString();
+    }
+
+    /**
      * Find the fully qualified name of the enclosing class-like node.
      *
      * Returns the FQN if available, otherwise the short name, or null if not
      * in a class context.
+     *
+     * @return ?class-string
      */
     public static function findEnclosingClassName(Node $node): ?string
     {
         $classNode = self::findEnclosingClassNode($node);
-        if ($classNode === null || $classNode->name === null) {
+        if ($classNode === null) {
             return null;
         }
-
-        $namespacedName = $classNode->namespacedName;
-        if ($namespacedName instanceof Name) {
-            return $namespacedName->toString();
-        }
-        return $classNode->name->toString();
+        return self::getClassLikeName($classNode);
     }
 
     /**
      * Resolve the parent class name from a class node's extends clause.
+     *
+     * @return ?class-string
      */
     public static function resolveExtendsName(Stmt\Class_ $class): ?string
     {
         if ($class->extends === null) {
             return null;
         }
-        return self::resolveName($class->extends);
+        return self::resolveClassName($class->extends);
     }
 
     /**

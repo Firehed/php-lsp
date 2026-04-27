@@ -170,9 +170,8 @@ final class HoverHandler implements HandlerInterface
 
     private function getClassHover(Name $node): ?string
     {
-        $classNameStr = ScopeFinder::resolveName($node);
+        $classNameStr = ScopeFinder::resolveClassName($node);
 
-        /** @var class-string $classNameStr */
         $classInfo = $this->classRepository->get(new ClassName($classNameStr));
 
         if ($classInfo === null) {
@@ -278,7 +277,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = ScopeFinder::resolveName($class);
+        $className = ScopeFinder::resolveClassName($class);
 
         return $this->getMethodHoverForClass($className, $methodName->toString());
     }
@@ -313,14 +312,16 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = ScopeFinder::resolveName($class);
+        $className = ScopeFinder::resolveClassName($class);
 
         return $this->getPropertyHoverForClass($className, $propertyName->toString());
     }
 
+    /**
+     * @param class-string $classNameStr
+     */
     private function getMethodHoverForClass(string $classNameStr, string $methodNameStr): ?string
     {
-        /** @var class-string $classNameStr */
         $className = new ClassName($classNameStr);
         $methodName = new MethodName($methodNameStr);
 
@@ -333,9 +334,11 @@ final class HoverHandler implements HandlerInterface
         return $this->formatMethodHover($methodInfo);
     }
 
+    /**
+     * @param class-string $classNameStr
+     */
     private function getPropertyHoverForClass(string $classNameStr, string $propertyNameStr): ?string
     {
-        /** @var class-string $classNameStr */
         $className = new ClassName($classNameStr);
         $propertyName = new PropertyName($propertyNameStr);
 
