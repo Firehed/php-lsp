@@ -229,6 +229,42 @@ PHP;
         self::assertStringContainsString('int $n', $result['signatures'][0]['label']);
     }
 
+    public function testSignatureHelpOnSelfStaticMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    public static function add(int $a, int $b): int
+    {
+        return $a + $b;
+    }
+
+    public function useAdd(): int
+    {
+        return self::add(1, 2);
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/signatureHelp',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 24], // Inside self::add(|1, 2)
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('add', $result['signatures'][0]['label']);
+        self::assertStringContainsString('int $a', $result['signatures'][0]['label']);
+    }
+
     public function testSignatureHelpOnConstructor(): void
     {
         $code = <<<'PHP'

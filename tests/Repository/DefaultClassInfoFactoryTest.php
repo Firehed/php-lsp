@@ -33,6 +33,15 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertSame(ClassKind::Class_, $info->kind);
     }
 
+    public function testFromAstNodeExtractsClassNameWithoutNameResolver(): void
+    {
+        $node = $this->parseClassWithoutNameResolver('<?php class SimpleClass {}');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertSame('SimpleClass', $info->name->fqn);
+    }
+
     public function testFromAstNodeExtractsInterface(): void
     {
         $node = $this->parseClass('<?php interface MyInterface {}');
@@ -70,6 +79,22 @@ final class DefaultClassInfoFactoryTest extends TestCase
 
         self::assertNotNull($info->parent);
         self::assertSame('App\\Parent_', $info->parent->fqn);
+    }
+
+    public function testFromAstNodeExtractsImportedParentClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+use External\BaseClass;
+class Child extends BaseClass {}
+PHP;
+        $node = $this->parseClass($code);
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertNotNull($info->parent);
+        self::assertSame('External\\BaseClass', $info->parent->fqn);
     }
 
     public function testFromAstNodeExtractsAbstractClass(): void
@@ -481,13 +506,25 @@ final class DefaultClassInfoFactoryTest extends TestCase
 
     private function parseClass(string $code, ?string $className = null): Stmt\ClassLike
     {
+        return $this->parseClassInternal($code, $className, useNameResolver: true);
+    }
+
+    private function parseClassWithoutNameResolver(string $code, ?string $className = null): Stmt\ClassLike
+    {
+        return $this->parseClassInternal($code, $className, useNameResolver: false);
+    }
+
+    private function parseClassInternal(string $code, ?string $className, bool $useNameResolver): Stmt\ClassLike
+    {
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
         $ast = $parser->parse($code);
         assert($ast !== null);
 
-        $traverser = new \PhpParser\NodeTraverser();
-        $traverser->addVisitor(new \PhpParser\NodeVisitor\NameResolver());
-        $ast = $traverser->traverse($ast);
+        if ($useNameResolver) {
+            $traverser = new \PhpParser\NodeTraverser();
+            $traverser->addVisitor(new \PhpParser\NodeVisitor\NameResolver());
+            $ast = $traverser->traverse($ast);
+        }
 
         foreach ($ast as $stmt) {
             if ($stmt instanceof Stmt\Namespace_) {
