@@ -159,7 +159,7 @@ final class CompletionHandler implements HandlerInterface
         // $this-> completion
         if (preg_match('/\$this->(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
-            return $this->getThisMemberCompletions($prefix, $ast);
+            return $this->getThisMemberCompletions($prefix, $ast, $line);
         }
 
         // $variable-> completion (typed variables, not $this)
@@ -277,18 +277,17 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getThisMemberCompletions(string $prefix, array $ast): array
+    private function getThisMemberCompletions(string $prefix, array $ast, int $line): array
     {
-        $classNode = $this->findFirstClass($ast);
+        $classNode = ScopeFinder::findClassAtLine($ast, $line);
         if ($classNode === null) {
             return [];
         }
 
         $classNameStr = ScopeFinder::getClassLikeName($classNode);
         if ($classNameStr === null) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('Top-level class found without name');
-            // @codeCoverageIgnoreEnd
+            // Anonymous class - no completions available
+            return [];
         }
 
         return $this->getMemberCompletions(
@@ -503,19 +502,6 @@ final class CompletionHandler implements HandlerInterface
 
         // Limit results
         return array_slice($items, 0, 100);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findFirstClass(array $ast): ?Stmt\Class_
-    {
-        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\Class_) {
-                return $stmt;
-            }
-        }
-        return null;
     }
 
     /**
