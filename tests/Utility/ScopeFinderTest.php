@@ -326,7 +326,7 @@ PHP;
         self::assertFalse(ScopeFinder::nodeContainsLine($classNode, 10));
     }
 
-    public function testFindClassAtLineReturnsClassContainingLine(): void
+    public function testFindClassLikeAtLineReturnsClassContainingLine(): void
     {
         $code = <<<'PHP'
 <?php
@@ -339,12 +339,42 @@ PHP;
         $ast = self::parseWithParents($code);
 
         // Line 4 (0-indexed) is inside Second class
-        $class = ScopeFinder::findClassAtLine($ast, 4);
-        self::assertNotNull($class);
+        $class = ScopeFinder::findClassLikeAtLine($ast, 4);
+        self::assertInstanceOf(Stmt\Class_::class, $class);
         self::assertSame('Second', $class->name?->toString());
     }
 
-    public function testFindClassAtLineReturnsNullWhenNotInClass(): void
+    public function testFindClassLikeAtLineReturnsTraitContainingLine(): void
+    {
+        $code = <<<'PHP'
+<?php
+trait MyTrait {
+    public function test(): void {}
+}
+PHP;
+        $ast = self::parseWithParents($code);
+
+        $trait = ScopeFinder::findClassLikeAtLine($ast, 2);
+        self::assertInstanceOf(Stmt\Trait_::class, $trait);
+        self::assertSame('MyTrait', $trait->name->toString());
+    }
+
+    public function testFindClassLikeAtLineReturnsEnumContainingLine(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Status: string {
+    case Active = 'active';
+}
+PHP;
+        $ast = self::parseWithParents($code);
+
+        $enum = ScopeFinder::findClassLikeAtLine($ast, 2);
+        self::assertInstanceOf(Stmt\Enum_::class, $enum);
+        self::assertSame('Status', $enum->name->toString());
+    }
+
+    public function testFindClassLikeAtLineReturnsNullWhenNotInClassLike(): void
     {
         $code = <<<'PHP'
 <?php
@@ -355,7 +385,7 @@ PHP;
         $ast = self::parseWithParents($code);
 
         // Line 3 (0-indexed) is after the class
-        $class = ScopeFinder::findClassAtLine($ast, 3);
+        $class = ScopeFinder::findClassLikeAtLine($ast, 3);
         self::assertNull($class);
     }
 

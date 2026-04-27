@@ -149,14 +149,16 @@ final class ScopeFinder
     }
 
     /**
-     * Find the class containing the given line (0-indexed).
+     * Find the class-like (class, interface, trait, enum) containing the given line (0-indexed).
      *
      * @param array<Stmt> $ast
      */
-    public static function findClassAtLine(array $ast, int $line): ?Stmt\Class_
-    {
+    public static function findClassLikeAtLine(
+        array $ast,
+        int $line,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
         $visitor = new class ($line) extends NodeVisitorAbstract {
-            public ?Stmt\Class_ $found = null;
+            public Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found = null;
 
             public function __construct(private readonly int $line)
             {
@@ -164,7 +166,13 @@ final class ScopeFinder
 
             public function enterNode(Node $node): ?int
             {
-                if ($node instanceof Stmt\Class_ && ScopeFinder::nodeContainsLine($node, $this->line)) {
+                if (
+                    ($node instanceof Stmt\Class_
+                        || $node instanceof Stmt\Interface_
+                        || $node instanceof Stmt\Trait_
+                        || $node instanceof Stmt\Enum_)
+                    && ScopeFinder::nodeContainsLine($node, $this->line)
+                ) {
                     $this->found = $node;
                 }
                 return null;
