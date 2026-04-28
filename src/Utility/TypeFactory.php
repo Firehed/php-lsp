@@ -50,8 +50,11 @@ final class TypeFactory
         }
 
         if ($node instanceof Name) {
+            $resolvedName = $node->getAttribute('resolvedName');
             /** @var class-string $fqn */
-            $fqn = $node->toString();
+            $fqn = $resolvedName instanceof Name
+                ? $resolvedName->toString()
+                : $node->toString();
             return new ClassName($fqn);
         }
 
