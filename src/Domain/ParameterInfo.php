@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Utility\TypeFactory;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
@@ -24,8 +25,15 @@ final readonly class ParameterInfo implements Formattable
     ) {
     }
 
-    public static function fromNode(Param $param): ?self
-    {
+    /**
+     * @param class-string|null $selfContext
+     * @param class-string|null $parentContext
+     */
+    public static function fromNode(
+        Param $param,
+        ?string $selfContext = null,
+        ?string $parentContext = null,
+    ): ?self {
         if (!$param->var instanceof Variable || !is_string($param->var->name)) {
             return null;
         }
@@ -33,7 +41,7 @@ final readonly class ParameterInfo implements Formattable
         return new self(
             name: $param->var->name,
             type: TypeFormatter::formatNode($param->type),
-            typeInfo: null,
+            typeInfo: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
             hasDefault: $param->default !== null,
             isVariadic: $param->variadic,
             isPassedByReference: $param->byRef,
@@ -47,7 +55,7 @@ final readonly class ParameterInfo implements Formattable
             type: $param->getType() !== null
                 ? TypeFormatter::formatReflection($param->getType())
                 : null,
-            typeInfo: null,
+            typeInfo: TypeFactory::fromReflection($param->getType()),
             hasDefault: $param->isDefaultValueAvailable(),
             isVariadic: $param->isVariadic(),
             isPassedByReference: $param->isPassedByReference(),
