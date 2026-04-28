@@ -44,6 +44,7 @@ Domain objects implement `Formattable` for consistent signature formatting acros
 
 ### Guidelines for New Code
 
+- **Keep code DRY.** Be on the lookout for existing tools that will solve your problem; NEVER copy-and-paste. Extract repeated logic aggressively.
 - **Use repositories, not direct reflection.** `MemberResolver::findMethod()` handles inheritance; raw `ReflectionClass` does not integrate with open documents.
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
