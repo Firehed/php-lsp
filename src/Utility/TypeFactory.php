@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\UnionType;
+use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
@@ -79,15 +80,18 @@ final class TypeFactory
                 return new PrimitiveType($name);
             }
 
-            /** @var class-string $name */
-            return new ClassName($name);
+            // @codeCoverageIgnoreStart
+            throw new LogicException("Unexpected Identifier in type context: $name");
+            // @codeCoverageIgnoreEnd
         }
 
         if ($node instanceof Node\NullableType) {
             $inner = self::fromNode($node->type, $selfContext, $parentContext);
+            // @codeCoverageIgnoreStart
             if ($inner === null) {
-                return null;
+                throw new LogicException('NullableType inner type resolved to null');
             }
+            // @codeCoverageIgnoreEnd
             return new UnionType([$inner, new PrimitiveType('null')]);
         }
 
@@ -105,7 +109,9 @@ final class TypeFactory
             return new IntersectionType($members);
         }
 
-        return null;
+        // @codeCoverageIgnoreStart
+        throw new LogicException('Unexpected node type: ' . $node::class);
+        // @codeCoverageIgnoreEnd
     }
 
     public static function fromReflection(?ReflectionType $type): ?Type
@@ -147,6 +153,8 @@ final class TypeFactory
             return new IntersectionType($members);
         }
 
-        return null;
+        // @codeCoverageIgnoreStart
+        throw new LogicException('Unexpected ReflectionType: ' . $type::class);
+        // @codeCoverageIgnoreEnd
     }
 }
