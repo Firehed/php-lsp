@@ -16,6 +16,7 @@ final readonly class PropertyInfo implements Formattable
         public bool $isReadonly,
         public bool $isPromoted,
         public ?string $type,
+        public ?Type $typeInfo,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
