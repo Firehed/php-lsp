@@ -14,9 +14,12 @@ use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Utility\TypeFactory;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Modifiers;
 use PhpParser\Node\Expr\Variable;
@@ -189,6 +192,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function extractMethods(Stmt\ClassLike $node, ClassName $className, string $filePath): array
     {
         $methods = [];
+        $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
             if (!$stmt instanceof Stmt\ClassMethod) {
@@ -202,9 +206,13 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                 isStatic: $stmt->isStatic(),
                 isAbstract: $stmt->isAbstract(),
                 isFinal: $stmt->isFinal(),
-                parameters: $this->extractParameters($stmt->params),
+                parameters: $this->extractParameters($stmt->params, $className, $parentClass),
                 returnType: TypeFormatter::formatNode($stmt->returnType),
-                returnTypeInfo: null,
+                returnTypeInfo: TypeFactory::fromNode(
+                    $stmt->returnType,
+                    $className->fqn,
+                    $parentClass?->fqn,
+                ),
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
                 line: $stmt->getStartLine(),
@@ -236,7 +244,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isFinal: false,
             parameters: [],
             returnType: 'array',
-            returnTypeInfo: null,
+            returnTypeInfo: new PrimitiveType('array'),
             docblock: null,
             file: null,
             line: null,
@@ -246,6 +254,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         // from() and tryFrom() are only available on backed enums
         if ($enum->scalarType !== null) {
             $scalarType = $enum->scalarType->toString();
+            $scalarTypeInfo = new PrimitiveType($scalarType);
 
             $methods['from'] = new MethodInfo(
                 name: new MethodName('from'),
@@ -257,14 +266,14 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                     new ParameterInfo(
                         name: 'value',
                         type: $scalarType,
-                        typeInfo: null,
+                        typeInfo: $scalarTypeInfo,
                         hasDefault: false,
                         isVariadic: false,
                         isPassedByReference: false,
                     ),
                 ],
                 returnType: 'static',
-                returnTypeInfo: null,
+                returnTypeInfo: $className,
                 docblock: null,
                 file: null,
                 line: null,
@@ -281,14 +290,14 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                     new ParameterInfo(
                         name: 'value',
                         type: $scalarType,
-                        typeInfo: null,
+                        typeInfo: $scalarTypeInfo,
                         hasDefault: false,
                         isVariadic: false,
                         isPassedByReference: false,
                     ),
                 ],
                 returnType: '?static',
-                returnTypeInfo: null,
+                returnTypeInfo: new UnionType([$className, new PrimitiveType('null')]),
                 docblock: null,
                 file: null,
                 line: null,
@@ -303,11 +312,11 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
      * @param array<Param> $params
      * @return list<ParameterInfo>
      */
-    private function extractParameters(array $params): array
+    private function extractParameters(array $params, ClassName $className, ?ClassName $parentClass): array
     {
         $result = [];
         foreach ($params as $param) {
-            $info = ParameterInfo::fromNode($param);
+            $info = ParameterInfo::fromNode($param, $className->fqn, $parentClass?->fqn);
             if ($info !== null) {
                 $result[] = $info;
             }
@@ -321,6 +330,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function extractProperties(Stmt\ClassLike $node, ClassName $className, string $filePath): array
     {
         $properties = [];
+        $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
             if ($stmt instanceof Stmt\Property) {
@@ -333,7 +343,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
                         type: TypeFormatter::formatNode($stmt->type),
-                        typeInfo: null,
+                        typeInfo: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
                         line: $stmt->getStartLine(),
@@ -359,7 +369,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
                         isPromoted: true,
                         type: TypeFormatter::formatNode($param->type),
-                        typeInfo: null,
+                        typeInfo: TypeFactory::fromNode($param->type, $className->fqn, $parentClass?->fqn),
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
                         line: $param->getStartLine(),
@@ -511,7 +521,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                 returnType: $method->getReturnType() !== null
                     ? TypeFormatter::formatReflection($method->getReturnType())
                     : null,
-                returnTypeInfo: null,
+                returnTypeInfo: TypeFactory::fromReflection($method->getReturnType()),
                 docblock: $method->getDocComment() !== false ? $method->getDocComment() : null,
                 file: $method->getFileName() !== false ? $method->getFileName() : null,
                 line: $method->getStartLine() !== false ? $method->getStartLine() : null,
@@ -557,7 +567,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                 type: $property->getType() !== null
                     ? TypeFormatter::formatReflection($property->getType())
                     : null,
-                typeInfo: null,
+                typeInfo: TypeFactory::fromReflection($property->getType()),
                 docblock: $property->getDocComment() !== false ? $property->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
