@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Utility\TypeFactory;
 use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node\Stmt;
 use ReflectionFunction;
@@ -40,7 +41,7 @@ final readonly class FunctionInfo implements Formattable
             returnType: $node->returnType !== null
                 ? TypeFormatter::formatNode($node->returnType)
                 : null,
-            returnTypeInfo: null,
+            returnTypeInfo: TypeFactory::fromNode($node->returnType),
             docblock: $node->getDocComment()?->getText(),
             file: null,
             line: $node->getStartLine(),
@@ -58,7 +59,7 @@ final readonly class FunctionInfo implements Formattable
             returnType: $func->getReturnType() !== null
                 ? TypeFormatter::formatReflection($func->getReturnType())
                 : null,
-            returnTypeInfo: null,
+            returnTypeInfo: TypeFactory::fromReflection($func->getReturnType()),
             docblock: $func->getDocComment() !== false
                 ? $func->getDocComment()
                 : null,
