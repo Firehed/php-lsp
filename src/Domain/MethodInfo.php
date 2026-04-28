@@ -20,6 +20,7 @@ final readonly class MethodInfo implements Formattable
         public bool $isFinal,
         public array $parameters,
         public ?string $returnType,
+        public ?Type $returnTypeInfo,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
