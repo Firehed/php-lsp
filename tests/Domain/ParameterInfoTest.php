@@ -20,6 +20,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'string',
+            typeInfo: null,
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
@@ -37,6 +38,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: null,
+            typeInfo: null,
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: false,
@@ -51,6 +53,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'string',
+            typeInfo: null,
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: false,
@@ -64,6 +67,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: null,
+            typeInfo: null,
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: false,
@@ -77,6 +81,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: 'string',
+            typeInfo: null,
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: false,
@@ -90,6 +95,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'int',
+            typeInfo: null,
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
@@ -103,6 +109,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'int',
+            typeInfo: null,
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
@@ -116,6 +123,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: 'string',
+            typeInfo: null,
             hasDefault: true,
             isVariadic: true,
             isPassedByReference: false,
@@ -129,6 +137,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'string',
+            typeInfo: null,
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: true,
@@ -142,6 +151,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: 'array',
+            typeInfo: null,
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: true,

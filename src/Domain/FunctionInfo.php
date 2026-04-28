@@ -20,6 +20,7 @@ final readonly class FunctionInfo implements Formattable
         public string $name,
         public array $parameters,
         public ?string $returnType,
+        public ?Type $returnTypeInfo,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -39,6 +40,7 @@ final readonly class FunctionInfo implements Formattable
             returnType: $node->returnType !== null
                 ? TypeFormatter::formatNode($node->returnType)
                 : null,
+            returnTypeInfo: null,
             docblock: $node->getDocComment()?->getText(),
             file: null,
             line: $node->getStartLine(),
@@ -56,6 +58,7 @@ final readonly class FunctionInfo implements Formattable
             returnType: $func->getReturnType() !== null
                 ? TypeFormatter::formatReflection($func->getReturnType())
                 : null,
+            returnTypeInfo: null,
             docblock: $func->getDocComment() !== false
                 ? $func->getDocComment()
                 : null,

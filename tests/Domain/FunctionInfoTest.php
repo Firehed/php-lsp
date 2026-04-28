@@ -22,6 +22,7 @@ class FunctionInfoTest extends TestCase
             name: 'myFunction',
             parameters: [],
             returnType: 'void',
+            returnTypeInfo: null,
             docblock: '/** Does something */',
             file: '/path/to/file.php',
             line: 10,
@@ -41,6 +42,7 @@ class FunctionInfoTest extends TestCase
             name: 'doSomething',
             parameters: [],
             returnType: null,
+            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -55,6 +57,7 @@ class FunctionInfoTest extends TestCase
             name: 'getName',
             parameters: [],
             returnType: 'string',
+            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -68,9 +71,10 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'greet',
             parameters: [
-                new ParameterInfo('name', 'string', false, false, false),
+                new ParameterInfo('name', 'string', null, false, false, false),
             ],
             returnType: null,
+            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -84,10 +88,11 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'add',
             parameters: [
-                new ParameterInfo('a', 'int', false, false, false),
-                new ParameterInfo('b', 'int', false, false, false),
+                new ParameterInfo('a', 'int', null, false, false, false),
+                new ParameterInfo('b', 'int', null, false, false, false),
             ],
             returnType: 'int',
+            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -101,9 +106,10 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'sum',
             parameters: [
-                new ParameterInfo('numbers', 'int', false, true, false),
+                new ParameterInfo('numbers', 'int', null, false, true, false),
             ],
             returnType: 'int',
+            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,

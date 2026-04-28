@@ -17,6 +17,7 @@ final readonly class ParameterInfo implements Formattable
     public function __construct(
         public string $name,
         public ?string $type,
+        public ?Type $typeInfo,
         public bool $hasDefault,
         public bool $isVariadic,
         public bool $isPassedByReference,
@@ -32,6 +33,7 @@ final readonly class ParameterInfo implements Formattable
         return new self(
             name: $param->var->name,
             type: TypeFormatter::formatNode($param->type),
+            typeInfo: null,
             hasDefault: $param->default !== null,
             isVariadic: $param->variadic,
             isPassedByReference: $param->byRef,
@@ -45,6 +47,7 @@ final readonly class ParameterInfo implements Formattable
             type: $param->getType() !== null
                 ? TypeFormatter::formatReflection($param->getType())
                 : null,
+            typeInfo: null,
             hasDefault: $param->isDefaultValueAvailable(),
             isVariadic: $param->isVariadic(),
             isPassedByReference: $param->isPassedByReference(),
