@@ -41,9 +41,6 @@ final readonly class UnionType implements Type
             if ($member->isNullable()) {
                 return true;
             }
-            if ($member instanceof NamedType && $member->format() === 'null') {
-                return true;
-            }
         }
         return false;
     }
