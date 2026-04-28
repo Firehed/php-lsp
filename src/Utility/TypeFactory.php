@@ -36,17 +36,15 @@ final class TypeFactory
         'false',
     ];
 
-    private const CONTEXTUAL = [
-        'self',
-        'static',
-        'parent',
-    ];
-
     /**
-     * @param class-string|null $classContext
+     * @param class-string|null $selfContext
+     * @param class-string|null $parentContext
      */
-    public static function fromNode(?Node $node, ?string $classContext = null): ?Type
-    {
+    public static function fromNode(
+        ?Node $node,
+        ?string $selfContext = null,
+        ?string $parentContext = null,
+    ): ?Type {
         if ($node === null) {
             return null;
         }
@@ -60,11 +58,21 @@ final class TypeFactory
         if ($node instanceof Identifier) {
             $name = $node->toString();
 
-            if (in_array($name, self::CONTEXTUAL, true) && $classContext !== null) {
-                return new ClassName($classContext);
+            if ($name === 'self' || $name === 'static') {
+                if ($selfContext !== null) {
+                    return new ClassName($selfContext);
+                }
+                return new PrimitiveType($name);
             }
 
-            if (in_array($name, self::PRIMITIVES, true) || in_array($name, self::CONTEXTUAL, true)) {
+            if ($name === 'parent') {
+                if ($parentContext !== null) {
+                    return new ClassName($parentContext);
+                }
+                return new PrimitiveType($name);
+            }
+
+            if (in_array($name, self::PRIMITIVES, true)) {
                 return new PrimitiveType($name);
             }
 
@@ -73,7 +81,7 @@ final class TypeFactory
         }
 
         if ($node instanceof Node\NullableType) {
-            $inner = self::fromNode($node->type, $classContext);
+            $inner = self::fromNode($node->type, $selfContext, $parentContext);
             if ($inner === null) {
                 return null;
             }
@@ -82,14 +90,14 @@ final class TypeFactory
 
         if ($node instanceof Node\UnionType) {
             $members = array_values(array_filter(
-                array_map(fn (Node $n) => self::fromNode($n, $classContext), $node->types),
+                array_map(fn (Node $n) => self::fromNode($n, $selfContext, $parentContext), $node->types),
             ));
             return new UnionType($members);
         }
 
         if ($node instanceof Node\IntersectionType) {
             $members = array_values(array_filter(
-                array_map(fn (Node $n) => self::fromNode($n, $classContext), $node->types),
+                array_map(fn (Node $n) => self::fromNode($n, $selfContext, $parentContext), $node->types),
             ));
             return new IntersectionType($members);
         }

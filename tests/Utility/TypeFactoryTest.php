@@ -71,7 +71,7 @@ class TypeFactoryTest extends TestCase
     public function testFromNodeWithSelfAndContextCreatesClassName(): void
     {
         $node = new Identifier('self');
-        $type = TypeFactory::fromNode($node, \stdClass::class);
+        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(\stdClass::class, $type->fqn);
@@ -80,10 +80,19 @@ class TypeFactoryTest extends TestCase
     public function testFromNodeWithStaticAndContextCreatesClassName(): void
     {
         $node = new Identifier('static');
-        $type = TypeFactory::fromNode($node, \ArrayObject::class);
+        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(\ArrayObject::class, $type->fqn);
+    }
+
+    public function testFromNodeWithParentAndContextCreatesClassName(): void
+    {
+        $node = new Identifier('parent');
+        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(\Throwable::class, $type->fqn);
     }
 
     public function testFromNodeWithSelfWithoutContextCreatesPrimitiveType(): void
