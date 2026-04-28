@@ -36,6 +36,16 @@ class TypeFactoryTest extends TestCase
         self::assertSame(\stdClass::class, $type->fqn);
     }
 
+    public function testFromNodeWithNameUsesResolvedName(): void
+    {
+        $node = new Name('User');
+        $node->setAttribute('resolvedName', new Name('App\\Models\\User'));
+        $type = TypeFactory::fromNode($node);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('App\\Models\\User', $type->fqn);
+    }
+
     /**
      * @return iterable<string, array{string}>
      * @codeCoverageIgnore
@@ -104,6 +114,15 @@ class TypeFactoryTest extends TestCase
         self::assertSame('self', $type->format());
     }
 
+    public function testFromNodeWithParentWithoutContextCreatesPrimitiveType(): void
+    {
+        $node = new Identifier('parent');
+        $type = TypeFactory::fromNode($node);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('parent', $type->format());
+    }
+
     public function testFromNodeWithNullableTypeCreatesUnionType(): void
     {
         $node = new NullableType(new Name(\stdClass::class));
@@ -166,6 +185,16 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('string', $type->format());
+    }
+
+    public function testFromReflectionWithNullableBuiltinCreatesUnionType(): void
+    {
+        $func = new ReflectionFunction(fn (): ?string => null);
+        $type = TypeFactory::fromReflection($func->getReturnType());
+
+        self::assertInstanceOf(UnionType::class, $type);
+        self::assertTrue($type->isNullable());
+        self::assertSame('string|null', $type->format());
     }
 
     public function testFromReflectionWithClassCreatesClassName(): void
