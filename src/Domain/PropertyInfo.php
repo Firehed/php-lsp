@@ -33,8 +33,8 @@ final readonly class PropertyInfo implements Formattable
         if ($this->isReadonly) {
             $parts[] = 'readonly';
         }
-        if ($this->type !== null) {
-            $parts[] = $this->type;
+        if ($this->typeInfo !== null) {
+            $parts[] = $this->typeInfo->format();
         }
         $parts[] = '$' . $this->name->name;
         return implode(' ', $parts);
