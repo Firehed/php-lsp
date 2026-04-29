@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Completion\CompletionContext;
+use Firehed\PhpLsp\Completion\CompletionContextResolver;
 use Firehed\PhpLsp\Completion\ContextDetector;
+use Firehed\PhpLsp\Completion\MemberAccessContext;
+use Firehed\PhpLsp\Completion\StaticAccessContext;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -73,6 +77,8 @@ final class CompletionHandler implements HandlerInterface
         return $item;
     }
 
+    private readonly CompletionContextResolver $contextResolver;
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
@@ -81,6 +87,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly ClassRepository $classRepository,
         private readonly TypeResolverInterface $typeResolver,
     ) {
+        $this->contextResolver = new CompletionContextResolver();
     }
 
     public function supports(string $method): bool
@@ -142,7 +149,7 @@ final class CompletionHandler implements HandlerInterface
         $lineText = $document->getLine($line);
         $textBeforeCursor = substr($lineText, 0, $character);
 
-        $items = $this->getCompletionItems($textBeforeCursor, $ast, $line);
+        $items = $this->getCompletionItems($textBeforeCursor, $ast, $line, $offset);
 
         return [
             'isIncomplete' => false,
@@ -154,53 +161,19 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getCompletionItems(string $textBeforeCursor, array $ast, int $line): array
+    private function getCompletionItems(string $textBeforeCursor, array $ast, int $line, int $offset): array
     {
-        // $this-> completion
-        if (preg_match('/\$this->(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            return $this->getThisMemberCompletions($prefix, $ast, $line);
-        }
-
-        // $variable-> completion (typed variables, not $this)
-        if (preg_match('/\$(\w+)->(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $variableName = $matches[1];
-            $prefix = $matches[2];
-            return $this->getTypedVariableMemberCompletions($variableName, $prefix, $ast, $line);
+        // AST-based context detection for member/static access
+        // Handles both -> and ?-> automatically
+        $astContext = $this->contextResolver->resolve($ast, $offset);
+        if ($astContext !== null) {
+            return $this->handleAstContext($astContext, $ast, $line);
         }
 
         // Variable completion ($var)
         if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             return $this->getVariableCompletions($prefix, $ast, $line);
-        }
-
-        // self:: and static:: completion - resolve to enclosing class
-        if (preg_match('/\b(?:self|static)::(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $classNode = ScopeFinder::findClassAtLine($ast, $line);
-            if ($classNode !== null) {
-                $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
-                if ($className === null) {
-                    // Anonymous class - no completions available
-                    return [];
-                }
-                $prefix = $matches[1];
-                return $this->getStaticCompletions($className, $prefix, $ast, $line);
-            }
-            return [];
-        }
-
-        // parent:: completion - methods from parent class
-        if (preg_match('/\bparent::(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            return $this->getParentCompletions($prefix, $ast, $line);
-        }
-
-        // ClassName:: completion (static) - also match single : for mid-typing
-        if (preg_match('/([A-Z]\w*)::?(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $className = $matches[1];
-            $prefix = $matches[2];
-            return $this->getStaticCompletions($className, $prefix, $ast, $line);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
@@ -271,6 +244,80 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return [];
+    }
+
+    /**
+     * Handle completion context detected via AST analysis.
+     *
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function handleAstContext(
+        MemberAccessContext|StaticAccessContext $context,
+        array $ast,
+        int $line,
+    ): array {
+        if ($context instanceof MemberAccessContext) {
+            return $this->handleMemberAccessContext($context, $ast, $line);
+        }
+
+        return $this->handleStaticAccessContext($context, $ast, $line);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function handleMemberAccessContext(MemberAccessContext $context, array $ast, int $line): array
+    {
+        return match ($context->context) {
+            CompletionContext::ThisMember => $this->getThisMemberCompletions($context->prefix, $ast, $line),
+            CompletionContext::VariableMember => $this->handleVariableMemberContext($context, $ast, $line),
+            default => [],
+        };
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function handleVariableMemberContext(MemberAccessContext $context, array $ast, int $line): array
+    {
+        $var = $context->var;
+        if (!$var instanceof Node\Expr\Variable || !is_string($var->name)) {
+            return [];
+        }
+
+        return $this->getTypedVariableMemberCompletions($var->name, $context->prefix, $ast, $line);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function handleStaticAccessContext(StaticAccessContext $context, array $ast, int $line): array
+    {
+        $rawName = $context->class->toString();
+
+        if ($rawName === 'parent') {
+            return $this->getParentCompletions($context->prefix, $ast, $line);
+        }
+
+        if ($rawName === 'self' || $rawName === 'static') {
+            $classNode = ScopeFinder::findClassAtLine($ast, $line);
+            if ($classNode === null) {
+                return [];
+            }
+            $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
+            if ($className === null) {
+                return [];
+            }
+            return $this->getStaticCompletions($className, $context->prefix, $ast, $line);
+        }
+
+        // ClassName:: - resolve via imports
+        $resolvedName = ScopeFinder::resolveClassName($context->class);
+        return $this->getStaticCompletions($resolvedName, $context->prefix, $ast, $line);
     }
 
     /**
