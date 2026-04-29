@@ -17,7 +17,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
-- `src/Utility/` — AST helpers (ScopeFinder, TypeFormatter, DocblockParser)
+- `src/Utility/` — AST helpers (ScopeFinder, TypeFactory, DocblockParser)
 - `docs/features/` — Feature status documentation
 
 ## Architecture
@@ -42,6 +42,22 @@ Typed representations of code constructs in `src/Domain/`:
 
 Domain objects implement `Formattable` for consistent signature formatting across handlers.
 
+### Type System
+
+The `Type` interface represents PHP types throughout the codebase. Implementations:
+
+- `ClassName` — Class/interface/trait/enum types (also serves as class identity)
+- `PrimitiveType` — Built-in types (`string`, `int`, `bool`, `null`, `mixed`, etc.)
+- `UnionType` — Union types (`A|B`); nullable types stored internally as `[A, null]` but format as `?A`
+- `IntersectionType` — Intersection types (`A&B`)
+
+Key methods:
+- `format(): string` — Display representation (`?User` for nullable, `User|Admin` for unions)
+- `getResolvableClassNames(): list<ClassName>` — Classes for member lookup (filters out primitives)
+- `isNullable(): bool` — Whether the type includes null
+
+**Never store types as strings.** Use `TypeFactory::fromNode()` or `TypeFactory::fromReflection()` to create Type objects at parse time. Use `Type::format()` only for display.
+
 ### Guidelines for New Code
 
 - **Keep code DRY.** Be on the lookout for existing tools that will solve your problem; NEVER copy-and-paste. Extract repeated logic aggressively.
@@ -50,13 +66,14 @@ Domain objects implement `Formattable` for consistent signature formatting acros
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
 - **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Handlers should use it consistently rather than calling `TypeResolverInterface` directly.
+- **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 
 ### Remaining Utilities
 
 - `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names, finds functions
-- `TypeFormatter` — Formats AST type nodes as strings
 - `DocblockParser` — Extracts description from docblocks
 - `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
+- `TypeFactory` — Creates Type domain objects from AST nodes and reflection
 
 ## Development Workflow
 
@@ -81,4 +98,5 @@ Server communicates over stdio. Test with any LSP client; `docs/vim-ale.md` has 
 
 - Aggressively, proactively refactor. Consistent behavior is paramount to long-term success.
 - ALWAYS follow TDD.
+- Test coverage MUST be 100% for all new code. NO EXCEPTIONS. If a branch should be unreachable, it should either be rewritten to be eliminated or, if impractical, throw a logic exception and marked for coverage ignore. Prefer to eliminate the dead branch.
 - Update documentation and guidelines when making changes. It is critical to keep this up to date to avoid drift and redundant work.
