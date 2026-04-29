@@ -185,6 +185,42 @@ PHP;
         self::assertNull($type);
     }
 
+    public function testResolveThisInFunctionReturnsNull(): void
+    {
+        // $this used in a function (not a method) - findEnclosingClassName returns null
+        $code = <<<'PHP'
+<?php
+function test() {
+    $x = $this;
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $thisVar = $this->findThisVariable($ast);
+
+        $type = $this->resolver->resolveExpressionType($thisVar, $function, $ast);
+
+        self::assertNull($type);
+    }
+
+    public function testResolveMethodCallOnUnresolvedTypeReturnsNull(): void
+    {
+        // Method call on a variable whose type can't be resolved
+        $code = <<<'PHP'
+<?php
+function test() {
+    $result = $unknown->someMethod();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        self::assertNull($type);
+    }
+
     public function testResolveCloneExpression(): void
     {
         $code = <<<'PHP'
