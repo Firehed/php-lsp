@@ -99,9 +99,9 @@ PHP;
         self::assertSame('DateTime', $objectType);
     }
 
-    public function testResolveMethodReturnType(): void
+    public function testResolveMethodReturnTypePrimitiveReturnsNull(): void
     {
-        // Exception::getMessage() has return type string
+        // Exception::getMessage() has return type string - not a class, so null
         $code = <<<'PHP'
 <?php
 function test() {
@@ -115,7 +115,7 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
 
-        self::assertSame('string', $type);
+        self::assertNull($type);
     }
 
     public function testResolveMethodReturnTypeReturnsNullForUnknownMethod(): void
@@ -136,9 +136,9 @@ PHP;
         self::assertNull($type);
     }
 
-    public function testResolveMethodReturnTypeInt(): void
+    public function testResolveMethodReturnTypeIntReturnsNull(): void
     {
-        // Exception::getLine() returns int
+        // Exception::getLine() returns int - not a class, so null
         $code = <<<'PHP'
 <?php
 function test() {
@@ -152,7 +152,7 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
 
-        self::assertSame('int', $type);
+        self::assertNull($type);
     }
 
     public function testResolvePropertyTypeReturnsNullForUnknownClass(): void
@@ -220,8 +220,8 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($coalesce, $function, $ast);
 
-        // The left side is ?DateTime parameter, so that's what we get
-        self::assertSame('?DateTime', $type);
+        // The left side is ?DateTime parameter, returns DateTime class
+        self::assertSame('DateTime', $type);
     }
 
     public function testResolveThisInClassMethod(): void
@@ -256,7 +256,8 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
 
-        self::assertSame('?DateTime', $type);
+        // Returns the class name, stripped of nullable
+        self::assertSame('DateTime', $type);
     }
 
     public function testResolveUnionParameterType(): void
@@ -272,7 +273,8 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
 
-        self::assertSame('DateTime|DateTimeImmutable', $type);
+        // Returns the first class from the union
+        self::assertSame('DateTime', $type);
     }
 
     public function testResolveUnknownVariableReturnsNull(): void
@@ -316,6 +318,127 @@ PHP;
         $type = $this->resolver->resolveVariableType('dt', $arrow, 0, $ast);
 
         self::assertSame('DateTime', $type);
+    }
+
+    public function testResolveNullableMethodReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Container {
+    public function getUser(): ?User { return null; }
+}
+class User {
+    public function getName(): string { return ''; }
+}
+function test(Container $c) {
+    $user = $c->getUser();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        // Returns the class name, stripped of nullable
+        self::assertSame('User', $type);
+    }
+
+    public function testResolveUnionMethodReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Container {
+    public function getItem(): User|Admin { return new User(); }
+}
+class User {}
+class Admin {}
+function test(Container $c) {
+    $item = $c->getItem();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        // Returns the first class from the union
+        self::assertSame('User', $type);
+    }
+
+    public function testResolveNullablePropertyType(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Container {
+    public ?User $user;
+}
+class User {}
+function test(Container $c) {
+    $user = $c->user;
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $propertyFetch = $this->findFirstExprOfType($ast, Expr\PropertyFetch::class);
+
+        $type = $this->resolver->resolveExpressionType($propertyFetch, $function, $ast);
+
+        // Returns the class name, stripped of nullable
+        self::assertSame('User', $type);
+    }
+
+    public function testChainWithNullableIntermediate(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Container {
+    public function getUser(): ?User { return null; }
+}
+class User {
+    public function getProfile(): Profile { return new Profile(); }
+}
+class Profile {}
+function test(Container $c) {
+    $profile = $c->getUser()->getProfile();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        // Find the outer method call (getProfile)
+        $methodCalls = [];
+        $finder = new class ($methodCalls) extends \PhpParser\NodeVisitorAbstract {
+            /** @var list<Expr\MethodCall> */
+            public array $methodCalls = [];
+
+            /**
+             * @param list<Expr\MethodCall> $methodCalls
+             */
+            public function __construct(array &$methodCalls)
+            {
+                $this->methodCalls = &$methodCalls;
+            }
+
+            public function enterNode(\PhpParser\Node $node): ?int
+            {
+                if ($node instanceof Expr\MethodCall) {
+                    $this->methodCalls[] = $node;
+                }
+                return null;
+            }
+        };
+        $traverser = new \PhpParser\NodeTraverser();
+        $traverser->addVisitor($finder);
+        $traverser->traverse($ast);
+
+        // The last method call is getProfile()
+        $profileCall = $finder->methodCalls[count($finder->methodCalls) - 1];
+
+        $type = $this->resolver->resolveExpressionType($profileCall, $function, $ast);
+
+        // Chain resolution works through nullable intermediate
+        self::assertSame('Profile', $type);
     }
 
     /**
