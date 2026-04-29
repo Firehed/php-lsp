@@ -6,8 +6,8 @@ This document tracks the current state of code completion in php-lsp.
 
 | Context | Trigger | What's Suggested | Status |
 |---------|---------|------------------|--------|
-| `$this->` member access | `$this->` or `$this->prefix` | Methods and properties from current class + inherited via reflection | ✅ Working |
-| Typed variable member access | `$user->` | Public methods and properties when type is known (parameter types, `new` expressions) | ✅ Working |
+| `$this->` member access | `$this->` or `$this?->` | Methods and properties from current class + inherited via reflection | ✅ Working |
+| Typed variable member access | `$user->` or `$user?->` | Public methods and properties when type is known (parameter types, `new` expressions) | ✅ Working |
 | Variable completions | `$log` | Local variables, parameters, `$this` in methods | ✅ Working |
 | Static access | `ClassName::` | Static methods, constants, static properties (visibility-aware) | ✅ Working |
 | `new` expression | `new ` | Classes from composer classmap | ✅ Working |
@@ -31,13 +31,16 @@ This document tracks the current state of code completion in php-lsp.
 
 ```
 CompletionHandler
-└── Regex-based context detection in getCompletionItems()
-    ├── $this-> member completions
-    ├── $variable-> typed variable completions (via TypeResolverInterface)
+├── AST-based context detection (via CompletionContextResolver)
+│   ├── $this-> and $this?-> member completions
+│   ├── $variable-> and $variable?-> typed variable completions
+│   ├── ClassName:: static completions
+│   └── self::/static::/parent:: completions
+└── Regex-based fallback for other contexts
     ├── $var variable completions
-    ├── ClassName:: static completions
     ├── new ClassName completions
-    └── Function name completions
+    ├── Type hint completions
+    └── Function/keyword completions
 ```
 
 ## Testing
