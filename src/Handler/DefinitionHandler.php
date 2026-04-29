@@ -15,9 +15,10 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
-use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
@@ -25,13 +26,16 @@ use PhpParser\Node\Stmt;
 
 final class DefinitionHandler implements HandlerInterface
 {
+    private readonly MemberAccessResolver $memberAccessResolver;
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly MemberResolver $memberResolver,
         private readonly ClassRepository $classRepository,
-        private readonly TypeResolverInterface $typeResolver,
+        TypeResolverInterface $typeResolver,
     ) {
+        $this->memberAccessResolver = new MemberAccessResolver($memberResolver, $typeResolver);
     }
 
     public function supports(string $method): bool
@@ -103,8 +107,9 @@ final class DefinitionHandler implements HandlerInterface
                 return $this->handleStaticMethodDefinition($parent);
             }
 
-            // Instance method call: $obj->method()
-            if ($parent instanceof MethodCall) {
+            // Instance method call: $obj->method() or $obj?->method()
+            if (MemberAccessResolver::isMethodCall($parent)) {
+                /** @var MethodCall|NullsafeMethodCall $parent */
                 return $this->handleInstanceMethodDefinition($parent, $ast);
             }
         }
@@ -186,7 +191,7 @@ final class DefinitionHandler implements HandlerInterface
     }
 
     /**
-     * Handle definition for instance method call: $obj->method()
+     * Handle definition for instance method call: $obj->method() or $obj?->method()
      *
      * @param array<Stmt> $ast
      * @return array{
@@ -197,7 +202,7 @@ final class DefinitionHandler implements HandlerInterface
      *   },
      * }|null
      */
-    private function handleInstanceMethodDefinition(MethodCall $call, array $ast): ?array
+    private function handleInstanceMethodDefinition(MethodCall|NullsafeMethodCall $call, array $ast): ?array
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
@@ -206,13 +211,12 @@ final class DefinitionHandler implements HandlerInterface
             // @codeCoverageIgnoreEnd
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        if ($classNames === []) {
+        $className = $this->memberAccessResolver->resolveObjectClassName($call->var, $ast);
+        if ($className === null) {
             return null;
         }
 
-        return $this->findMethodDefinition($classNames[0]->fqn, $methodName->toString());
+        return $this->findMethodDefinition($className->fqn, $methodName->toString());
     }
 
     /**
