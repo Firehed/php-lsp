@@ -343,6 +343,7 @@ PHP;
 
         self::assertSame(Visibility::Protected, $info->constants['PROTECTED_CONST']->visibility);
         self::assertSame(Visibility::Private, $info->constants['PRIVATE_CONST']->visibility);
+        self::assertNull($info->constants['PRIVATE_CONST']->type);
     }
 
     public function testFromAstNodeExtractsDocblock(): void
@@ -482,6 +483,16 @@ PHP;
 
         self::assertArrayHasKey('TEST_CONST', $info->constants);
         self::assertSame(Visibility::Public, $info->constants['TEST_CONST']->visibility);
+    }
+
+    public function testFromReflectionExtractsTypedConstants(): void
+    {
+        $reflection = new ReflectionClass(TestClass::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertArrayHasKey('TYPED_CONST', $info->constants);
+        self::assertSame('string', $info->constants['TYPED_CONST']->type?->format());
     }
 
     public function testFromReflectionExtractsInterfaces(): void

@@ -583,7 +583,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                 name: new ConstantName($name),
                 visibility: $this->visibilityFromReflectionConstant($constant),
                 isFinal: $constant->isFinal(),
-                type: null,
+                type: TypeFactory::fromReflection($constant->getType()),
                 docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
