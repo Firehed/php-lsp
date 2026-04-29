@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Utility\TypeFormatter;
+use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
@@ -115,7 +115,9 @@ final class BasicTypeResolver implements TypeResolverInterface
                 && is_string($param->var->name)
                 && $param->var->name === $variableName
             ) {
-                return TypeFormatter::formatNode($param->type);
+                $type = TypeFactory::fromNode($param->type);
+                $classNames = $type?->getResolvableClassNames() ?? [];
+                return $classNames !== [] ? $classNames[0]->fqn : null;
             }
         }
 
@@ -212,7 +214,8 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Public,
         );
 
-        return $methodInfo?->returnType;
+        $classNames = $methodInfo?->returnTypeInfo?->getResolvableClassNames() ?? [];
+        return $classNames !== [] ? $classNames[0]->fqn : null;
     }
 
     private function getPropertyType(string $className, string $propertyName): ?string
@@ -224,7 +227,8 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Public,
         );
 
-        return $propertyInfo?->type;
+        $classNames = $propertyInfo?->typeInfo?->getResolvableClassNames() ?? [];
+        return $classNames !== [] ? $classNames[0]->fqn : null;
     }
 
     /**
