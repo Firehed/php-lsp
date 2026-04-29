@@ -63,8 +63,8 @@ final class BasicTypeResolver implements TypeResolverInterface
             return $this->resolveVariableType($expr->name, $scope, $expr->getStartLine() - 1, $ast);
         }
 
-        // Method call: $obj->method()
-        if ($expr instanceof Expr\MethodCall) {
+        // Method call: $obj->method() or $obj?->method()
+        if ($expr instanceof Expr\MethodCall || $expr instanceof Expr\NullsafeMethodCall) {
             $objectType = $this->resolveExpressionType($expr->var, $scope, $ast);
             $className = $this->extractClassName($objectType);
             if ($className !== null && $expr->name instanceof Node\Identifier) {
@@ -82,8 +82,8 @@ final class BasicTypeResolver implements TypeResolverInterface
             return null;
         }
 
-        // Property fetch: $obj->property
-        if ($expr instanceof Expr\PropertyFetch) {
+        // Property fetch: $obj->property or $obj?->property
+        if ($expr instanceof Expr\PropertyFetch || $expr instanceof Expr\NullsafePropertyFetch) {
             $objectType = $this->resolveExpressionType($expr->var, $scope, $ast);
             $className = $this->extractClassName($objectType);
             if ($className !== null && $expr->name instanceof Node\Identifier) {

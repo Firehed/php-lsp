@@ -21,6 +21,8 @@ use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Completion\CompletionContextResolver;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
@@ -59,6 +61,8 @@ final class Server
         $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver);
+        $memberAccessResolver = new MemberAccessResolver($typeResolver);
+        $completionContextResolver = new CompletionContextResolver();
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
@@ -74,20 +78,20 @@ final class Server
             $parser,
             $memberResolver,
             $classRepository,
-            $typeResolver,
+            $memberAccessResolver,
         );
         $this->handlers[] = new HoverHandler(
             $this->documentManager,
             $parser,
             $classRepository,
             $memberResolver,
-            $typeResolver,
+            $memberAccessResolver,
         );
         $this->handlers[] = new SignatureHelpHandler(
             $this->documentManager,
             $parser,
             $memberResolver,
-            $typeResolver,
+            $memberAccessResolver,
         );
         $this->handlers[] = new CompletionHandler(
             $this->documentManager,
@@ -96,6 +100,7 @@ final class Server
             $memberResolver,
             $classRepository,
             $typeResolver,
+            $completionContextResolver,
         );
     }
 

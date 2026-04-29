@@ -13,14 +13,14 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
-use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
@@ -44,7 +44,7 @@ final class SignatureHelpHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly MemberResolver $memberResolver,
-        private readonly TypeResolverInterface $typeResolver,
+        private readonly MemberAccessResolver $memberAccessResolver,
     ) {
     }
 
@@ -115,12 +115,12 @@ final class SignatureHelpHandler implements HandlerInterface
      * Find the function/method call at the given position and determine active parameter.
      *
      * @param array<Stmt> $ast
-     * @return array{0: FuncCall|MethodCall|StaticCall|New_, 1: int}|null
+     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int}|null
      */
     private function findCallAtPosition(array $ast, int $offset): ?array
     {
         $finder = new class ($offset) extends NodeVisitorAbstract {
-            /** @var FuncCall|MethodCall|StaticCall|New_|null */
+            /** @var FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null */
             public ?Node $found = null;
             public int $activeParameter = 0;
 
@@ -133,6 +133,7 @@ final class SignatureHelpHandler implements HandlerInterface
                 if (
                     !$node instanceof FuncCall
                     && !$node instanceof MethodCall
+                    && !$node instanceof NullsafeMethodCall
                     && !$node instanceof StaticCall
                     && !$node instanceof New_
                 ) {
@@ -174,7 +175,7 @@ final class SignatureHelpHandler implements HandlerInterface
     }
 
     /**
-     * @param FuncCall|MethodCall|StaticCall|New_ $call
+     * @param FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_ $call
      * @param array<Stmt> $ast
      * @return SignatureInfo|null
      */
@@ -184,7 +185,7 @@ final class SignatureHelpHandler implements HandlerInterface
             return $this->getFunctionSignature($call, $ast);
         }
 
-        if ($call instanceof MethodCall) {
+        if ($call instanceof MethodCall || $call instanceof NullsafeMethodCall) {
             return $this->getMethodSignature($call, $ast);
         }
 
@@ -228,20 +229,19 @@ final class SignatureHelpHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return SignatureInfo|null
      */
-    private function getMethodSignature(MethodCall $call, array $ast): ?array
+    private function getMethodSignature(MethodCall|NullsafeMethodCall $call, array $ast): ?array
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
             return null;
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        if ($classNames === []) {
+        $className = $this->memberAccessResolver->resolveObjectClassName($call->var, $ast);
+        if ($className === null) {
             return null;
         }
 
-        return $this->getMethodSignatureForClass($classNames[0]->fqn, $methodName->toString());
+        return $this->getMethodSignatureForClass($className->fqn, $methodName->toString());
     }
 
     /**

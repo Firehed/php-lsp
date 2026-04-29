@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Completion\CompletionContextResolver;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\DocumentIndexer;
@@ -60,6 +61,7 @@ class CompletionHandlerTest extends TestCase
             $this->memberResolver,
             $this->classRepository,
             $typeResolver,
+            new CompletionContextResolver(),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -1892,6 +1894,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -1939,6 +1942,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -1984,6 +1988,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -2023,6 +2028,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -2032,6 +2038,43 @@ PHP;
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
                 'position' => ['line' => 3, 'character' => 14], // After $unknown->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testDynamicVariableNameReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(): void
+{
+    $$dynamic->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->memberResolver,
+            $this->classRepository,
+            new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 15], // After $$dynamic->
             ],
         ]);
 
@@ -2059,6 +2102,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -2110,6 +2154,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -3000,5 +3045,115 @@ PHP;
         // Should NOT have FirstClass's members
         self::assertNotContains('firstProperty', $labels);
         self::assertNotContains('firstMethod', $labels);
+    }
+
+    public function testNullsafeThisMemberCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    public function greet(): string
+    {
+        return "Hello";
+    }
+
+    public function test(): void
+    {
+        $this?->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 10, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('greet', $labels);
+        self::assertContains('test', $labels);
+    }
+
+    public function testNullsafeVariableMemberCompletion(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User
+{
+    public function getName(): string
+    {
+        return 'name';
+    }
+}
+
+function test(?User $user): void
+{
+    $user?->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 12],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels);
+    }
+
+    public function testNullsafeThisMemberCompletionWithPrefix(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass
+{
+    public function greet(): string { return "Hello"; }
+    public function goodbye(): string { return "Bye"; }
+    public function test(): void
+    {
+        $this?->gr
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 18],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('greet', $labels);
+        self::assertNotContains('goodbye', $labels);
     }
 }

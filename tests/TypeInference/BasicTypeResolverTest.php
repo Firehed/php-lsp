@@ -548,6 +548,60 @@ PHP;
         return $finder->found;
     }
 
+    public function testResolveNullsafeMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(?Exception $ex) {
+    $msg = $ex?->getMessage();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\NullsafeMethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('string', $type->format());
+    }
+
+    public function testResolveNullsafePropertyFetch(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(?Exception $ex) {
+    $msg = $ex?->message;
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $propertyFetch = $this->findFirstExprOfType($ast, Expr\NullsafePropertyFetch::class);
+
+        // Exception::$message is a protected property - type resolution returns null
+        $type = $this->resolver->resolveExpressionType($propertyFetch, $function, $ast);
+        self::assertNull($type);
+    }
+
+    public function testResolveNullsafeMethodCallChain(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(?Exception $ex) {
+    $prev = $ex?->getPrevious();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\NullsafeMethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        // getPrevious returns ?Throwable
+        self::assertInstanceOf(UnionType::class, $type);
+        self::assertTrue($type->isNullable());
+    }
+
     /**
      * @param array<Stmt> $ast
      */

@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -52,7 +53,7 @@ class HoverHandlerTest extends TestCase
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            $typeResolver,
+            new MemberAccessResolver($typeResolver),
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
@@ -379,7 +380,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver($this->memberResolver),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -427,7 +428,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver($this->memberResolver),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -1031,7 +1032,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver($this->memberResolver),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -1066,7 +1067,7 @@ PHP;
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
-            new BasicTypeResolver($this->memberResolver),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([

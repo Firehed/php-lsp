@@ -19,13 +19,14 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
-use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
@@ -42,7 +43,7 @@ final class HoverHandler implements HandlerInterface
         private readonly ParserService $parser,
         private readonly ClassRepository $classRepository,
         private readonly MemberResolver $memberResolver,
-        private readonly TypeResolverInterface $typeResolver,
+        private readonly MemberAccessResolver $memberAccessResolver,
     ) {
     }
 
@@ -140,8 +141,9 @@ final class HoverHandler implements HandlerInterface
         if ($node instanceof Identifier) {
             $parent = $node->getAttribute('parent');
 
-            // Method call: $obj->method() or $this->method()
-            if ($parent instanceof MethodCall) {
+            // Method call: $obj->method() or $obj?->method()
+            if (MemberAccessResolver::isMethodCall($parent)) {
+                /** @var MethodCall|NullsafeMethodCall $parent */
                 return $this->getMethodHover($parent, $ast);
             }
 
@@ -150,8 +152,9 @@ final class HoverHandler implements HandlerInterface
                 return $this->getStaticMethodHover($parent);
             }
 
-            // Property fetch: $obj->property or $this->property
-            if ($parent instanceof PropertyFetch) {
+            // Property fetch: $obj->property or $obj?->property
+            if (MemberAccessResolver::isPropertyFetch($parent)) {
+                /** @var PropertyFetch|NullsafePropertyFetch $parent */
                 return $this->getPropertyHover($parent, $ast);
             }
 
@@ -250,20 +253,19 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function getMethodHover(MethodCall $call, array $ast): ?string
+    private function getMethodHover(MethodCall|NullsafeMethodCall $call, array $ast): ?string
     {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
             return null;
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        if ($classNames === []) {
+        $className = $this->memberAccessResolver->resolveObjectClassName($call->var, $ast);
+        if ($className === null) {
             return null;
         }
 
-        return $this->getMethodHoverForClass($classNames[0]->fqn, $methodName->toString());
+        return $this->getMethodHoverForClass($className->fqn, $methodName->toString());
     }
 
     private function getStaticMethodHover(StaticCall $call): ?string
@@ -286,20 +288,19 @@ final class HoverHandler implements HandlerInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function getPropertyHover(PropertyFetch $fetch, array $ast): ?string
+    private function getPropertyHover(PropertyFetch|NullsafePropertyFetch $fetch, array $ast): ?string
     {
         $propertyName = $fetch->name;
         if (!$propertyName instanceof Identifier) {
             return null;
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        if ($classNames === []) {
+        $className = $this->memberAccessResolver->resolveObjectClassName($fetch->var, $ast);
+        if ($className === null) {
             return null;
         }
 
-        return $this->getPropertyHoverForClass($classNames[0]->fqn, $propertyName->toString());
+        return $this->getPropertyHoverForClass($className->fqn, $propertyName->toString());
     }
 
     private function getStaticPropertyHover(StaticPropertyFetch $fetch): ?string

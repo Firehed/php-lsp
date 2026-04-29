@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -45,11 +46,12 @@ class SignatureHelpHandlerTest extends TestCase
             $this->parser,
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
+        $typeResolver = new BasicTypeResolver($this->memberResolver);
         $this->handler = new SignatureHelpHandler(
             $this->documents,
             $this->parser,
             $this->memberResolver,
-            new BasicTypeResolver($this->memberResolver),
+            new MemberAccessResolver($typeResolver),
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
