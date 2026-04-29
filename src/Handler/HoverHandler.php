@@ -48,7 +48,7 @@ final class HoverHandler implements HandlerInterface
         private readonly MemberResolver $memberResolver,
         TypeResolverInterface $typeResolver,
     ) {
-        $this->memberAccessResolver = new MemberAccessResolver($memberResolver, $typeResolver);
+        $this->memberAccessResolver = new MemberAccessResolver($typeResolver);
     }
 
     public function supports(string $method): bool

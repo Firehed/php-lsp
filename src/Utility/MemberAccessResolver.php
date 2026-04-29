@@ -5,19 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\MethodName;
-use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
-use PhpParser\Node\Identifier;
 use PhpParser\Node\Stmt;
 
 /**
@@ -27,53 +20,8 @@ use PhpParser\Node\Stmt;
 final class MemberAccessResolver
 {
     public function __construct(
-        private readonly MemberResolver $memberResolver,
         private readonly TypeResolverInterface $typeResolver,
     ) {
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    public function resolveMethodCall(MethodCall|NullsafeMethodCall $call, array $ast): ?MethodInfo
-    {
-        $methodName = $call->name;
-        if (!$methodName instanceof Identifier) {
-            return null;
-        }
-
-        $className = $this->resolveObjectClassName($call->var, $ast);
-        if ($className === null) {
-            return null;
-        }
-
-        return $this->memberResolver->findMethod(
-            $className,
-            new MethodName($methodName->toString()),
-            Visibility::Public,
-        );
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    public function resolvePropertyFetch(PropertyFetch|NullsafePropertyFetch $fetch, array $ast): ?PropertyInfo
-    {
-        $propertyName = $fetch->name;
-        if (!$propertyName instanceof Identifier) {
-            return null;
-        }
-
-        $className = $this->resolveObjectClassName($fetch->var, $ast);
-        if ($className === null) {
-            return null;
-        }
-
-        return $this->memberResolver->findProperty(
-            $className,
-            new PropertyName($propertyName->toString()),
-            Visibility::Public,
-        );
     }
 
     /**

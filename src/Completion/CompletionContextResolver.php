@@ -130,8 +130,6 @@ final class CompletionContextResolver
         $prefix = '';
         if ($name instanceof Identifier) {
             $prefix = $name->toString();
-        } elseif ($name instanceof Error) {
-            $prefix = '';
         }
 
         $rawName = $class->toString();

@@ -35,7 +35,7 @@ final class DefinitionHandler implements HandlerInterface
         private readonly ClassRepository $classRepository,
         TypeResolverInterface $typeResolver,
     ) {
-        $this->memberAccessResolver = new MemberAccessResolver($memberResolver, $typeResolver);
+        $this->memberAccessResolver = new MemberAccessResolver($typeResolver);
     }
 
     public function supports(string $method): bool

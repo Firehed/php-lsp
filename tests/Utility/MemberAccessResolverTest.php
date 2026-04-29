@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Utility;
 
-use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
@@ -17,10 +15,10 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
-use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -39,10 +37,10 @@ class MemberAccessResolverTest extends TestCase
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver);
 
-        $this->resolver = new MemberAccessResolver($memberResolver, $typeResolver);
+        $this->resolver = new MemberAccessResolver($typeResolver);
     }
 
-    public function testResolveMethodCall(): void
+    public function testResolveObjectClassName(): void
     {
         $code = <<<'PHP'
 <?php
@@ -51,61 +49,24 @@ function test(\Exception $e) {
 }
 PHP;
         $ast = $this->parse($code);
-        $call = $this->findFirst($ast, MethodCall::class);
+        $methodCall = $this->findFirst($ast, MethodCall::class);
 
-        $result = $this->resolver->resolveMethodCall($call, $ast);
+        $result = $this->resolver->resolveObjectClassName($methodCall->var, $ast);
 
-        self::assertInstanceOf(MethodInfo::class, $result);
-        self::assertSame('getMessage', $result->name->name);
+        self::assertNotNull($result);
+        self::assertSame('Exception', $result->fqn);
     }
 
-    public function testResolveNullsafeMethodCall(): void
+    public function testResolveObjectClassNameReturnsNullForUnknownVariable(): void
     {
         $code = <<<'PHP'
 <?php
-function test(?\Exception $e) {
-    $e?->getMessage();
-}
+$unknown->foo();
 PHP;
         $ast = $this->parse($code);
-        $call = $this->findFirst($ast, NullsafeMethodCall::class);
+        $methodCall = $this->findFirst($ast, MethodCall::class);
 
-        $result = $this->resolver->resolveMethodCall($call, $ast);
-
-        self::assertInstanceOf(MethodInfo::class, $result);
-        self::assertSame('getMessage', $result->name->name);
-    }
-
-    public function testResolvePropertyFetch(): void
-    {
-        $code = <<<'PHP'
-<?php
-function test(\Exception $e) {
-    $e->message;
-}
-PHP;
-        $ast = $this->parse($code);
-        $fetch = $this->findFirst($ast, PropertyFetch::class);
-
-        // Exception::$message is protected, so null expected with Public visibility
-        $result = $this->resolver->resolvePropertyFetch($fetch, $ast);
-
-        self::assertNull($result);
-    }
-
-    public function testResolveNullsafePropertyFetch(): void
-    {
-        $code = <<<'PHP'
-<?php
-function test(?\Exception $e) {
-    $e?->message;
-}
-PHP;
-        $ast = $this->parse($code);
-        $fetch = $this->findFirst($ast, NullsafePropertyFetch::class);
-
-        // Exception::$message is protected, so null expected with Public visibility
-        $result = $this->resolver->resolvePropertyFetch($fetch, $ast);
+        $result = $this->resolver->resolveObjectClassName($methodCall->var, $ast);
 
         self::assertNull($result);
     }
@@ -113,15 +74,15 @@ PHP;
     public function testIsMethodCall(): void
     {
         self::assertTrue(MemberAccessResolver::isMethodCall(new MethodCall(
-            new \PhpParser\Node\Expr\Variable('x'),
+            new Variable('x'),
             'foo'
         )));
         self::assertTrue(MemberAccessResolver::isMethodCall(new NullsafeMethodCall(
-            new \PhpParser\Node\Expr\Variable('x'),
+            new Variable('x'),
             'foo'
         )));
         self::assertFalse(MemberAccessResolver::isMethodCall(new PropertyFetch(
-            new \PhpParser\Node\Expr\Variable('x'),
+            new Variable('x'),
             'foo'
         )));
     }
@@ -129,95 +90,17 @@ PHP;
     public function testIsPropertyFetch(): void
     {
         self::assertTrue(MemberAccessResolver::isPropertyFetch(new PropertyFetch(
-            new \PhpParser\Node\Expr\Variable('x'),
+            new Variable('x'),
             'foo'
         )));
         self::assertTrue(MemberAccessResolver::isPropertyFetch(new NullsafePropertyFetch(
-            new \PhpParser\Node\Expr\Variable('x'),
+            new Variable('x'),
             'foo'
         )));
         self::assertFalse(MemberAccessResolver::isPropertyFetch(new MethodCall(
-            new \PhpParser\Node\Expr\Variable('x'),
+            new Variable('x'),
             'foo'
         )));
-    }
-
-    public function testDynamicMethodNameReturnsNull(): void
-    {
-        $code = <<<'PHP'
-<?php
-function test(\Exception $e, string $method) {
-    $e->$method();
-}
-PHP;
-        $ast = $this->parse($code);
-        $call = $this->findFirst($ast, MethodCall::class);
-
-        $result = $this->resolver->resolveMethodCall($call, $ast);
-
-        self::assertNull($result);
-    }
-
-    public function testDynamicPropertyNameReturnsNull(): void
-    {
-        $code = <<<'PHP'
-<?php
-function test(\Exception $e, string $prop) {
-    $e->$prop;
-}
-PHP;
-        $ast = $this->parse($code);
-        $fetch = $this->findFirst($ast, PropertyFetch::class);
-
-        $result = $this->resolver->resolvePropertyFetch($fetch, $ast);
-
-        self::assertNull($result);
-    }
-
-    public function testPrimitiveTypeReturnsNull(): void
-    {
-        $code = <<<'PHP'
-<?php
-function test(string $str) {
-    $str->foo;
-}
-PHP;
-        $ast = $this->parse($code);
-        $fetch = $this->findFirst($ast, PropertyFetch::class);
-
-        $result = $this->resolver->resolvePropertyFetch($fetch, $ast);
-
-        self::assertNull($result);
-    }
-
-    public function testMethodCallOnPrimitiveTypeReturnsNull(): void
-    {
-        $code = <<<'PHP'
-<?php
-function test(string $str) {
-    $str->foo();
-}
-PHP;
-        $ast = $this->parse($code);
-        $call = $this->findFirst($ast, MethodCall::class);
-
-        $result = $this->resolver->resolveMethodCall($call, $ast);
-
-        self::assertNull($result);
-    }
-
-    public function testUnresolvedVariableTypeReturnsNull(): void
-    {
-        $code = <<<'PHP'
-<?php
-$unknown->foo();
-PHP;
-        $ast = $this->parse($code);
-        $call = $this->findFirst($ast, MethodCall::class);
-
-        $result = $this->resolver->resolveMethodCall($call, $ast);
-
-        self::assertNull($result);
     }
 
     /**
@@ -242,14 +125,12 @@ PHP;
      */
     private function findFirst(array $ast, string $type): \PhpParser\Node
     {
-        $finder = new class ($type) extends NodeVisitorAbstract {
+        $finder = new class ($type) extends \PhpParser\NodeVisitorAbstract {
             public ?\PhpParser\Node $found = null;
             /** @var class-string */
             private string $type;
 
-            /**
-             * @param class-string $type
-             */
+            /** @param class-string $type */
             public function __construct(string $type)
             {
                 $this->type = $type;
