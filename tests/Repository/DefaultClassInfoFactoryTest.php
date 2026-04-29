@@ -339,7 +339,7 @@ PHP;
         self::assertCount(3, $info->constants);
         self::assertArrayHasKey('PUBLIC_CONST', $info->constants);
         self::assertSame(Visibility::Public, $info->constants['PUBLIC_CONST']->visibility);
-        self::assertSame('string', $info->constants['PUBLIC_CONST']->type);
+        self::assertSame('string', $info->constants['PUBLIC_CONST']->type?->format());
 
         self::assertSame(Visibility::Protected, $info->constants['PROTECTED_CONST']->visibility);
         self::assertSame(Visibility::Private, $info->constants['PRIVATE_CONST']->visibility);

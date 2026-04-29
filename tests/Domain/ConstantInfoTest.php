@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ConstantInfo::class)]
+#[CoversClass(PrimitiveType::class)]
 class ConstantInfoTest extends TestCase
 {
     public function testConstruction(): void
@@ -16,7 +17,7 @@ class ConstantInfoTest extends TestCase
             name: new ConstantName('MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: true,
-            type: 'int',
+            type: new PrimitiveType('int'),
             docblock: '/** Maximum size */',
             file: '/path/to/file.php',
             line: 5,
@@ -26,7 +27,7 @@ class ConstantInfoTest extends TestCase
         self::assertSame('MAX_SIZE', $constant->name->name);
         self::assertSame(Visibility::Public, $constant->visibility);
         self::assertTrue($constant->isFinal);
-        self::assertSame('int', $constant->type);
+        self::assertSame('int', $constant->type?->format());
         self::assertSame('/** Maximum size */', $constant->docblock);
         self::assertSame('/path/to/file.php', $constant->file);
         self::assertSame(5, $constant->line);
@@ -55,7 +56,7 @@ class ConstantInfoTest extends TestCase
             name: new ConstantName('MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: false,
-            type: 'int',
+            type: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
@@ -71,7 +72,7 @@ class ConstantInfoTest extends TestCase
             name: new ConstantName('VERSION'),
             visibility: Visibility::Public,
             isFinal: true,
-            type: 'string',
+            type: new PrimitiveType('string'),
             docblock: null,
             file: null,
             line: null,

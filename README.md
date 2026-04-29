@@ -22,12 +22,10 @@ The server communicates via stdio:
 
 ## Current Capabilities
 
-This is an MVP implementation supporting only the basic LSP lifecycle:
-
-- `initialize` - Returns server capabilities and info
-- `initialized` - Notification acknowledgment
-- `shutdown` - Prepares server for exit
-- `exit` - Terminates the server
+- **Completion** - Member access (`$this->`, `$var->`), static access (`Class::`), `new` expressions, function calls, variable names
+- **Hover** - Type information and docblocks for methods, properties, functions, and classes
+- **Go to Definition** - Jump to method, property, function, and class definitions
+- **Signature Help** - Parameter hints when calling functions and methods
 
 ## Development
 
