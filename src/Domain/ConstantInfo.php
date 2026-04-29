@@ -13,7 +13,7 @@ final readonly class ConstantInfo implements Formattable
         public ConstantName $name,
         public Visibility $visibility,
         public bool $isFinal,
-        public ?string $type,
+        public ?Type $type,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -29,7 +29,7 @@ final readonly class ConstantInfo implements Formattable
         }
         $parts[] = 'const';
         if ($this->type !== null) {
-            $parts[] = $this->type;
+            $parts[] = $this->type->format();
         }
         $parts[] = $this->name->name;
         return implode(' ', $parts);

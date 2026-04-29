@@ -20,7 +20,6 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Utility\TypeFactory;
-use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Modifiers;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
@@ -385,6 +384,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function extractConstants(Stmt\ClassLike $node, ClassName $className, string $filePath): array
     {
         $constants = [];
+        $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
             if (!$stmt instanceof Stmt\ClassConst) {
@@ -397,7 +397,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                     name: new ConstantName($name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: TypeFormatter::formatNode($stmt->type),
+                    type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),
