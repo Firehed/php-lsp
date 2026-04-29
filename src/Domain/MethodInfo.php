@@ -46,8 +46,8 @@ final readonly class MethodInfo implements Formattable
         $parts[] = $this->name->name . '(' . implode(', ', $params) . ')';
 
         $sig = implode(' ', $parts);
-        if ($this->returnType !== null) {
-            $sig .= ': ' . $this->returnType;
+        if ($this->returnTypeInfo !== null) {
+            $sig .= ': ' . $this->returnTypeInfo->format();
         }
         return $sig;
     }
