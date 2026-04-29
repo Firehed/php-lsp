@@ -1153,4 +1153,221 @@ PHP;
         self::assertStringContainsString('$prefix = ...', $result['contents']);
         self::assertStringNotContainsString('$name = ...', $result['contents']);
     }
+
+    public function testHoverOnNullsafeMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    /**
+     * Multiplies two numbers.
+     */
+    public function multiply(int $a, int $b): int
+    {
+        return $a * $b;
+    }
+}
+
+class Container
+{
+    private ?Calculator $calc;
+
+    public function test(): void
+    {
+        $this->calc?->multiply(2, 3);
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 18, 'character' => 23], // On "multiply"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('multiply', $result['contents']);
+        self::assertStringContainsString('Multiplies two numbers', $result['contents']);
+    }
+
+    public function testHoverOnNullsafePropertyFetch(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Person
+{
+    /**
+     * The person's full name.
+     */
+    public string $name;
+}
+
+class Container
+{
+    private ?Person $person;
+
+    public function test(): string
+    {
+        return $this->person?->name ?? 'Unknown';
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 32], // On "name"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$name', $result['contents']);
+        self::assertStringContainsString('string', $result['contents']);
+    }
+
+    public function testHoverOnNullsafeTypedVariableMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    /**
+     * Adds two numbers.
+     */
+    public function add(int $a, int $b): int
+    {
+        return $a + $b;
+    }
+}
+
+function useCalculator(?Calculator $calc): void
+{
+    $calc?->add(1, 2);
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 13], // On "add"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('add', $result['contents']);
+        self::assertStringContainsString('Adds two numbers', $result['contents']);
+    }
+
+    public function testHoverOnNullsafeProtectedPropertyMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    /**
+     * Divides two numbers.
+     */
+    public function divide(int $a, int $b): float
+    {
+        return $a / $b;
+    }
+}
+
+class Container
+{
+    protected ?Calculator $calc;
+
+    public function test(): void
+    {
+        $this->calc?->divide(10, 2);
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 18, 'character' => 23], // On "divide"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('divide', $result['contents']);
+        self::assertStringContainsString('Divides two numbers', $result['contents']);
+    }
+
+    public function testHoverOnChainedNullsafeMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Inner
+{
+    /**
+     * Returns the value.
+     */
+    public function getValue(): int
+    {
+        return 42;
+    }
+}
+
+class Middle
+{
+    public ?Inner $inner;
+}
+
+class Outer
+{
+    private ?Middle $middle;
+
+    public function test(): void
+    {
+        $this->middle?->inner?->getValue();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 23, 'character' => 33], // On "getValue"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('getValue', $result['contents']);
+        self::assertStringContainsString('Returns the value', $result['contents']);
+    }
 }

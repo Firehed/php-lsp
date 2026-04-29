@@ -218,7 +218,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         $methodInfo = $this->memberResolver->findMethod(
             new ClassName($className),
             new MethodName($methodName),
-            Visibility::Public,
+            Visibility::Private,
         );
 
         return $methodInfo?->returnType;
@@ -230,7 +230,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         $propertyInfo = $this->memberResolver->findProperty(
             new ClassName($className),
             new PropertyName($propertyName),
-            Visibility::Public,
+            Visibility::Private,
         );
 
         return $propertyInfo?->type;

@@ -887,4 +887,75 @@ PHP;
         self::assertSame('file:///MyClass.php', $result['uri']);
         self::assertSame(2, $result['range']['start']['line']);
     }
+
+    public function testGoToNullsafeMethodDefinition(): void
+    {
+        $classCode = <<<'PHP'
+<?php
+class MyClass {
+    public function myMethod(): void {}
+}
+PHP;
+        $this->openDocument('file:///MyClass.php', $classCode);
+
+        $usageCode = <<<'PHP'
+<?php
+function test(?MyClass $obj): void {
+    $obj?->myMethod();
+}
+PHP;
+        $this->openDocument('file:///usage.php', $usageCode);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///usage.php'],
+                'position' => ['line' => 2, 'character' => 13], // On "myMethod"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertSame('file:///MyClass.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
+
+    public function testGoToNullsafeMethodDefinitionViaAssignment(): void
+    {
+        $classCode = <<<'PHP'
+<?php
+class MyClass {
+    public function myMethod(): void {}
+}
+PHP;
+        $this->openDocument('file:///MyClass.php', $classCode);
+
+        $usageCode = <<<'PHP'
+<?php
+function test(): void {
+    $obj = rand() ? new MyClass() : null;
+    $obj?->myMethod();
+}
+PHP;
+        $this->openDocument('file:///usage.php', $usageCode);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///usage.php'],
+                'position' => ['line' => 3, 'character' => 13], // On "myMethod"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertSame('file:///MyClass.php', $result['uri']);
+        self::assertSame(2, $result['range']['start']['line']);
+    }
 }
