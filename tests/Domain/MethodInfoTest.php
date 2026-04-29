@@ -19,8 +19,7 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: true,
             parameters: [],
-            returnType: 'void',
-            returnTypeInfo: null,
+            returnType: new PrimitiveType('void'),
             docblock: null,
             file: '/path/to/file.php',
             line: 42,
@@ -33,7 +32,7 @@ class MethodInfoTest extends TestCase
         self::assertFalse($method->isAbstract);
         self::assertTrue($method->isFinal);
         self::assertSame([], $method->parameters);
-        self::assertSame('void', $method->returnType);
+        self::assertSame('void', $method->returnType?->format());
         self::assertNull($method->docblock);
         self::assertSame('/path/to/file.php', $method->file);
         self::assertSame(42, $method->line);
@@ -50,7 +49,6 @@ class MethodInfoTest extends TestCase
             isFinal: false,
             parameters: [],
             returnType: null,
-            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -69,8 +67,7 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [],
-            returnType: 'string',
-            returnTypeInfo: new PrimitiveType('string'),
+            returnType: new PrimitiveType('string'),
             docblock: null,
             file: null,
             line: null,
@@ -89,10 +86,9 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('name', 'string', new PrimitiveType('string'), false, false, false),
+                new ParameterInfo('name', new PrimitiveType('string'), false, false, false),
             ],
             returnType: null,
-            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -111,11 +107,10 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('a', 'int', new PrimitiveType('int'), false, false, false),
-                new ParameterInfo('b', 'int', new PrimitiveType('int'), false, false, false),
+                new ParameterInfo('a', new PrimitiveType('int'), false, false, false),
+                new ParameterInfo('b', new PrimitiveType('int'), false, false, false),
             ],
-            returnType: 'int',
-            returnTypeInfo: new PrimitiveType('int'),
+            returnType: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
@@ -134,10 +129,9 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('arrays', 'array', new PrimitiveType('array'), false, true, false),
+                new ParameterInfo('arrays', new PrimitiveType('array'), false, true, false),
             ],
-            returnType: 'array',
-            returnTypeInfo: new PrimitiveType('array'),
+            returnType: new PrimitiveType('array'),
             docblock: null,
             file: null,
             line: null,
@@ -156,11 +150,10 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('a', 'mixed', new PrimitiveType('mixed'), false, false, true),
-                new ParameterInfo('b', 'mixed', new PrimitiveType('mixed'), false, false, true),
+                new ParameterInfo('a', new PrimitiveType('mixed'), false, false, true),
+                new ParameterInfo('b', new PrimitiveType('mixed'), false, false, true),
             ],
-            returnType: 'void',
-            returnTypeInfo: new PrimitiveType('void'),
+            returnType: new PrimitiveType('void'),
             docblock: null,
             file: null,
             line: null,
@@ -179,8 +172,7 @@ class MethodInfoTest extends TestCase
             isAbstract: true,
             isFinal: false,
             parameters: [],
-            returnType: 'void',
-            returnTypeInfo: new PrimitiveType('void'),
+            returnType: new PrimitiveType('void'),
             docblock: null,
             file: null,
             line: null,
@@ -199,8 +191,7 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: true,
             parameters: [],
-            returnType: 'self',
-            returnTypeInfo: new PrimitiveType('self'),
+            returnType: new PrimitiveType('self'),
             docblock: null,
             file: null,
             line: null,

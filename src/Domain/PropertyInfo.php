@@ -15,8 +15,7 @@ final readonly class PropertyInfo implements Formattable
         public bool $isStatic,
         public bool $isReadonly,
         public bool $isPromoted,
-        public ?string $type,
-        public ?Type $typeInfo,
+        public ?Type $type,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -33,8 +32,8 @@ final readonly class PropertyInfo implements Formattable
         if ($this->isReadonly) {
             $parts[] = 'readonly';
         }
-        if ($this->typeInfo !== null) {
-            $parts[] = $this->typeInfo->format();
+        if ($this->type !== null) {
+            $parts[] = $this->type->format();
         }
         $parts[] = '$' . $this->name->name;
         return implode(' ', $parts);

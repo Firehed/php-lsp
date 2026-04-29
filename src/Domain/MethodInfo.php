@@ -19,8 +19,7 @@ final readonly class MethodInfo implements Formattable
         public bool $isAbstract,
         public bool $isFinal,
         public array $parameters,
-        public ?string $returnType,
-        public ?Type $returnTypeInfo,
+        public ?Type $returnType,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -46,8 +45,8 @@ final readonly class MethodInfo implements Formattable
         $parts[] = $this->name->name . '(' . implode(', ', $params) . ')';
 
         $sig = implode(' ', $parts);
-        if ($this->returnTypeInfo !== null) {
-            $sig .= ': ' . $this->returnTypeInfo->format();
+        if ($this->returnType !== null) {
+            $sig .= ': ' . $this->returnType->format();
         }
         return $sig;
     }

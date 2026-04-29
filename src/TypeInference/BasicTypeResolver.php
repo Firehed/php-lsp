@@ -221,7 +221,7 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Public,
         );
 
-        return $methodInfo?->returnTypeInfo;
+        return $methodInfo?->returnType;
     }
 
     private function getPropertyType(string $className, string $propertyName): ?Type
@@ -233,7 +233,7 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Public,
         );
 
-        return $propertyInfo?->typeInfo;
+        return $propertyInfo?->type;
     }
 
     private function extractClassName(?Type $type): ?string

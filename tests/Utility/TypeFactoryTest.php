@@ -130,7 +130,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
-        self::assertSame('stdClass|null', $type->format());
+        self::assertSame('?stdClass', $type->format());
     }
 
     public function testFromNodeWithUnionTypeCreatesUnionType(): void
@@ -194,7 +194,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
-        self::assertSame('string|null', $type->format());
+        self::assertSame('?string', $type->format());
     }
 
     public function testFromReflectionWithClassCreatesClassName(): void
@@ -213,7 +213,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
-        self::assertSame('stdClass|null', $type->format());
+        self::assertSame('?stdClass', $type->format());
     }
 
     public function testFromReflectionWithUnionCreatesUnionType(): void

@@ -18,8 +18,7 @@ class PropertyInfoTest extends TestCase
             isStatic: false,
             isReadonly: true,
             isPromoted: true,
-            type: 'string',
-            typeInfo: new PrimitiveType('string'),
+            type: new PrimitiveType('string'),
             docblock: null,
             file: '/path/to/file.php',
             line: 10,
@@ -31,7 +30,7 @@ class PropertyInfoTest extends TestCase
         self::assertFalse($property->isStatic);
         self::assertTrue($property->isReadonly);
         self::assertTrue($property->isPromoted);
-        self::assertSame('string', $property->type);
+        self::assertSame('string', $property->type?->format());
         self::assertNull($property->docblock);
         self::assertSame('/path/to/file.php', $property->file);
         self::assertSame(10, $property->line);
@@ -46,8 +45,7 @@ class PropertyInfoTest extends TestCase
             isStatic: false,
             isReadonly: false,
             isPromoted: false,
-            type: 'string',
-            typeInfo: new PrimitiveType('string'),
+            type: new PrimitiveType('string'),
             docblock: null,
             file: null,
             line: null,
@@ -65,8 +63,7 @@ class PropertyInfoTest extends TestCase
             isStatic: true,
             isReadonly: false,
             isPromoted: false,
-            type: 'self',
-            typeInfo: new PrimitiveType('self'),
+            type: new PrimitiveType('self'),
             docblock: null,
             file: null,
             line: null,
@@ -84,8 +81,7 @@ class PropertyInfoTest extends TestCase
             isStatic: false,
             isReadonly: true,
             isPromoted: false,
-            type: 'int',
-            typeInfo: new PrimitiveType('int'),
+            type: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
@@ -104,7 +100,6 @@ class PropertyInfoTest extends TestCase
             isReadonly: false,
             isPromoted: false,
             type: null,
-            typeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -122,8 +117,7 @@ class PropertyInfoTest extends TestCase
             isStatic: true,
             isReadonly: true,
             isPromoted: false,
-            type: 'array',
-            typeInfo: new PrimitiveType('array'),
+            type: new PrimitiveType('array'),
             docblock: null,
             file: null,
             line: null,

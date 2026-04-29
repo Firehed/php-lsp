@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 use Firehed\PhpLsp\Utility\TypeFactory;
-use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
 use ReflectionParameter;
@@ -17,8 +16,7 @@ final readonly class ParameterInfo implements Formattable
 {
     public function __construct(
         public string $name,
-        public ?string $type,
-        public ?Type $typeInfo,
+        public ?Type $type,
         public bool $hasDefault,
         public bool $isVariadic,
         public bool $isPassedByReference,
@@ -40,8 +38,7 @@ final readonly class ParameterInfo implements Formattable
 
         return new self(
             name: $param->var->name,
-            type: TypeFormatter::formatNode($param->type),
-            typeInfo: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
+            type: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
             hasDefault: $param->default !== null,
             isVariadic: $param->variadic,
             isPassedByReference: $param->byRef,
@@ -52,10 +49,7 @@ final readonly class ParameterInfo implements Formattable
     {
         return new self(
             name: $param->getName(),
-            type: $param->getType() !== null
-                ? TypeFormatter::formatReflection($param->getType())
-                : null,
-            typeInfo: TypeFactory::fromReflection($param->getType()),
+            type: TypeFactory::fromReflection($param->getType()),
             hasDefault: $param->isDefaultValueAvailable(),
             isVariadic: $param->isVariadic(),
             isPassedByReference: $param->isPassedByReference(),
@@ -65,8 +59,8 @@ final readonly class ParameterInfo implements Formattable
     public function format(bool $showDefault = false): string
     {
         $str = '';
-        if ($this->typeInfo !== null) {
-            $str .= $this->typeInfo->format() . ' ';
+        if ($this->type !== null) {
+            $str .= $this->type->format() . ' ';
         }
         if ($this->isPassedByReference) {
             $str .= '&';
