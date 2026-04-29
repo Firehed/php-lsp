@@ -415,7 +415,7 @@ class Calculator
 
 class Container
 {
-    public ?Calculator $calc;
+    private ?Calculator $calc;
 
     public function test(): void
     {

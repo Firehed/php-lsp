@@ -1171,7 +1171,7 @@ class Calculator
 
 class Container
 {
-    public ?Calculator $calc;
+    private ?Calculator $calc;
 
     public function test(): void
     {
@@ -1212,7 +1212,7 @@ class Person
 
 class Container
 {
-    public ?Person $person;
+    private ?Person $person;
 
     public function test(): string
     {
