@@ -19,6 +19,24 @@ class UnionTypeTest extends TestCase
         self::assertSame('Iterator|Countable', $type->format());
     }
 
+    public function testFormatNullableAsQuestionMark(): void
+    {
+        $type = new UnionType([
+            new ClassName(\stdClass::class),
+            new PrimitiveType('null'),
+        ]);
+        self::assertSame('?stdClass', $type->format());
+    }
+
+    public function testFormatNullableWithNullFirst(): void
+    {
+        $type = new UnionType([
+            new PrimitiveType('null'),
+            new ClassName(\stdClass::class),
+        ]);
+        self::assertSame('?stdClass', $type->format());
+    }
+
     public function testFormatWrapsIntersectionInParentheses(): void
     {
         $type = new UnionType([
