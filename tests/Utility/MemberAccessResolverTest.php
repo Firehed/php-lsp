@@ -190,6 +190,22 @@ PHP;
         self::assertNull($result);
     }
 
+    public function testMethodCallOnPrimitiveTypeReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(string $str) {
+    $str->foo();
+}
+PHP;
+        $ast = $this->parse($code);
+        $call = $this->findFirst($ast, MethodCall::class);
+
+        $result = $this->resolver->resolveMethodCall($call, $ast);
+
+        self::assertNull($result);
+    }
+
     /**
      * @return array<Stmt>
      */

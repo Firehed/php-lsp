@@ -2041,6 +2041,42 @@ PHP;
         self::assertEmpty($result['items']);
     }
 
+    public function testDynamicVariableNameReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(): void
+{
+    $$dynamic->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->memberResolver,
+            $this->classRepository,
+            new BasicTypeResolver($this->memberResolver),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 15], // After $$dynamic->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
     public function testTypedVariableCompletionIncludesInheritedMembers(): void
     {
         $code = <<<'PHP'

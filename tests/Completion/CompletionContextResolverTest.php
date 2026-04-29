@@ -235,7 +235,9 @@ class CompletionContextResolverTest extends TestCase
     {
         $code = '<?php $obj->$prop';
         $ast = $this->parse($code);
-        $offset = strlen($code);
+        // Position right after '->' (offset 11), before the dynamic $prop
+        // This ensures PropertyFetch is found, not the Variable node for $prop
+        $offset = 11;
 
         $result = $this->resolver->resolve($ast, $offset);
 
@@ -263,6 +265,32 @@ class CompletionContextResolverTest extends TestCase
         $result = $this->resolver->resolve($ast, $offset);
 
         self::assertNull($result);
+    }
+
+    public function testEmptyAstReturnsNull(): void
+    {
+        $ast = [];
+        $offset = 0;
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        self::assertNull($result);
+    }
+
+    public function testMethodCallWithPrefix(): void
+    {
+        $code = '<?php $obj->getUser()';
+        $ast = $this->parse($code);
+        // Position cursor inside method name (before parentheses)
+        $pos = strpos($code, 'getUser');
+        self::assertIsInt($pos);
+        $offset = $pos + 3;
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::VariableMember, $result->context);
+        self::assertSame('getUser', $result->prefix);
     }
 
     /**
