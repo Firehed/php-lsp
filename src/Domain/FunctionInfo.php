@@ -76,8 +76,8 @@ final readonly class FunctionInfo implements Formattable
     {
         $params = array_map(fn($p) => $p->format(), $this->parameters);
         $sig = 'function ' . $this->name . '(' . implode(', ', $params) . ')';
-        if ($this->returnType !== null) {
-            $sig .= ': ' . $this->returnType;
+        if ($this->returnTypeInfo !== null) {
+            $sig .= ': ' . $this->returnTypeInfo->format();
         }
         return $sig;
     }
