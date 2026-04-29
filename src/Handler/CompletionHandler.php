@@ -23,7 +23,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ScopeFinder;
-use Firehed\PhpLsp\Utility\TypeFormatter;
+use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Stmt;
@@ -941,7 +941,7 @@ final class CompletionHandler implements HandlerInterface
         // Collect parameters
         foreach ($scope->params as $param) {
             if ($param->var instanceof Variable && is_string($param->var->name)) {
-                $variables[$param->var->name] = TypeFormatter::formatNode($param->type) ?? 'mixed';
+                $variables[$param->var->name] = TypeFactory::fromNode($param->type)?->format() ?? 'mixed';
             }
         }
 
