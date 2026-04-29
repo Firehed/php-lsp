@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -41,15 +40,12 @@ use ReflectionFunction;
  */
 final class SignatureHelpHandler implements HandlerInterface
 {
-    private readonly MemberAccessResolver $memberAccessResolver;
-
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly MemberResolver $memberResolver,
-        TypeResolverInterface $typeResolver,
+        private readonly MemberAccessResolver $memberAccessResolver,
     ) {
-        $this->memberAccessResolver = new MemberAccessResolver($typeResolver);
     }
 
     public function supports(string $method): bool

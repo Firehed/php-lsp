@@ -77,8 +77,6 @@ final class CompletionHandler implements HandlerInterface
         return $item;
     }
 
-    private readonly CompletionContextResolver $contextResolver;
-
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
@@ -86,8 +84,8 @@ final class CompletionHandler implements HandlerInterface
         private readonly MemberResolver $memberResolver,
         private readonly ClassRepository $classRepository,
         private readonly TypeResolverInterface $typeResolver,
+        private readonly CompletionContextResolver $contextResolver,
     ) {
-        $this->contextResolver = new CompletionContextResolver();
     }
 
     public function supports(string $method): bool

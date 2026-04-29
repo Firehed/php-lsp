@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Completion\CompletionContextResolver;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\DocumentIndexer;
@@ -60,6 +61,7 @@ class CompletionHandlerTest extends TestCase
             $this->memberResolver,
             $this->classRepository,
             $typeResolver,
+            new CompletionContextResolver(),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -1892,6 +1894,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -1939,6 +1942,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -1984,6 +1988,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -2023,6 +2028,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -2059,6 +2065,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -2095,6 +2102,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
@@ -2146,6 +2154,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
         );
 
         $request = RequestMessage::fromArray([
