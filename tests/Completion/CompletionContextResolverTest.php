@@ -205,6 +205,66 @@ class CompletionContextResolverTest extends TestCase
         self::assertNull($result);
     }
 
+    public function testStaticPropertyFetch(): void
+    {
+        $code = '<?php self::$staticProp';
+        $ast = $this->parse($code);
+        $offset = strlen($code);
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        self::assertInstanceOf(StaticAccessContext::class, $result);
+        self::assertSame(CompletionContext::StaticMember, $result->context);
+        self::assertSame('staticProp', $result->prefix);
+    }
+
+    public function testClassConstFetch(): void
+    {
+        $code = '<?php DateTime::ATOM';
+        $ast = $this->parse($code);
+        $offset = strlen($code);
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        self::assertInstanceOf(StaticAccessContext::class, $result);
+        self::assertSame(CompletionContext::StaticMember, $result->context);
+        self::assertSame('ATOM', $result->prefix);
+    }
+
+    public function testDynamicMemberNameReturnsNull(): void
+    {
+        $code = '<?php $obj->$prop';
+        $ast = $this->parse($code);
+        $offset = strlen($code);
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        self::assertNull($result);
+    }
+
+    public function testChainedMethodCallReturnsNull(): void
+    {
+        $code = '<?php $obj->method()->';
+        $ast = $this->parse($code);
+        $offset = strlen($code);
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        // Returns null because the var is a MethodCall, not a Variable
+        self::assertNull($result);
+    }
+
+    public function testDynamicClassReturnsNull(): void
+    {
+        $code = '<?php $class::method()';
+        $ast = $this->parse($code);
+        $offset = strlen($code);
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        self::assertNull($result);
+    }
+
     /**
      * @return array<Stmt>
      */

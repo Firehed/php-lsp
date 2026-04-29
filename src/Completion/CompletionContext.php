@@ -12,8 +12,6 @@ enum CompletionContext
     case VariableMember;
     case StaticMember;
     case ParentMember;
-    case Variable;
-    case NewExpression;
     case Unknown;
 
     public static function fromMemberAccess(Expr $var): self

@@ -142,6 +142,54 @@ PHP;
         )));
     }
 
+    public function testDynamicMethodNameReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(\Exception $e, string $method) {
+    $e->$method();
+}
+PHP;
+        $ast = $this->parse($code);
+        $call = $this->findFirst($ast, MethodCall::class);
+
+        $result = $this->resolver->resolveMethodCall($call, $ast);
+
+        self::assertNull($result);
+    }
+
+    public function testDynamicPropertyNameReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(\Exception $e, string $prop) {
+    $e->$prop;
+}
+PHP;
+        $ast = $this->parse($code);
+        $fetch = $this->findFirst($ast, PropertyFetch::class);
+
+        $result = $this->resolver->resolvePropertyFetch($fetch, $ast);
+
+        self::assertNull($result);
+    }
+
+    public function testPrimitiveTypeReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(string $str) {
+    $str->foo;
+}
+PHP;
+        $ast = $this->parse($code);
+        $fetch = $this->findFirst($ast, PropertyFetch::class);
+
+        $result = $this->resolver->resolvePropertyFetch($fetch, $ast);
+
+        self::assertNull($result);
+    }
+
     /**
      * @return array<Stmt>
      */
@@ -164,8 +212,7 @@ PHP;
      */
     private function findFirst(array $ast, string $type): \PhpParser\Node
     {
-        $found = null;
-        $finder = new class ($type, $found) extends NodeVisitorAbstract {
+        $finder = new class ($type) extends NodeVisitorAbstract {
             public ?\PhpParser\Node $found = null;
             /** @var class-string */
             private string $type;
@@ -173,10 +220,9 @@ PHP;
             /**
              * @param class-string $type
              */
-            public function __construct(string $type, ?\PhpParser\Node &$found)
+            public function __construct(string $type)
             {
                 $this->type = $type;
-                $this->found = &$found;
             }
 
             public function enterNode(\PhpParser\Node $node): ?int
