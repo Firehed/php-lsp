@@ -1261,14 +1261,6 @@ function useCalculator(?Calculator $calc): void
 PHP;
         $this->openDocument('file:///test.php', $code);
 
-        $handlerWithResolver = new HoverHandler(
-            $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $this->memberResolver,
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
             'id' => 1,
@@ -1279,7 +1271,7 @@ PHP;
             ],
         ]);
 
-        $result = $handlerWithResolver->handle($request);
+        $result = $this->handler->handle($request);
 
         self::assertIsArray($result);
         self::assertStringContainsString('add', $result['contents']);
