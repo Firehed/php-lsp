@@ -168,6 +168,15 @@ class TypeFactoryTest extends TestCase
         self::assertSame('parent', $type->format());
     }
 
+    public function testFromNodeWithNameStaticWithoutContextCreatesPrimitiveType(): void
+    {
+        $node = new Name('static');
+        $type = TypeFactory::fromNode($node);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('static', $type->format());
+    }
+
     public function testFromNodeWithNullableTypeCreatesUnionType(): void
     {
         $node = new NullableType(new Name(\stdClass::class));
