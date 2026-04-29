@@ -260,6 +260,40 @@ PHP;
         self::assertSame('string', $info->methods['protectedMethod']->returnType?->format());
     }
 
+    public function testFromAstNodeResolvesSelfReturnType(): void
+    {
+        $node = $this->parseClass('<?php class SomeClass {
+            public static function create(): ?self { return new self(); }
+        }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertArrayHasKey('create', $info->methods);
+        $returnType = $info->methods['create']->returnType;
+        self::assertNotNull($returnType);
+        self::assertSame('?SomeClass', $returnType->format());
+        $classNames = $returnType->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame('SomeClass', $classNames[0]->fqn);
+    }
+
+    public function testFromAstNodeResolvesStaticReturnType(): void
+    {
+        $node = $this->parseClass('<?php class Builder {
+            public function build(): static { return $this; }
+        }');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertArrayHasKey('build', $info->methods);
+        $returnType = $info->methods['build']->returnType;
+        self::assertNotNull($returnType);
+        self::assertSame('Builder', $returnType->format());
+        $classNames = $returnType->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame('Builder', $classNames[0]->fqn);
+    }
+
     public function testFromAstNodeExtractsMethodParameters(): void
     {
         $node = $this->parseClass('<?php class MyClass {
