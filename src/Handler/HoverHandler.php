@@ -257,12 +257,13 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        if ($className === null) {
+        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        if ($classNames === []) {
             return null;
         }
 
-        return $this->getMethodHoverForClass($className, $methodName->toString());
+        return $this->getMethodHoverForClass($classNames[0]->fqn, $methodName->toString());
     }
 
     private function getStaticMethodHover(StaticCall $call): ?string
@@ -292,12 +293,13 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
-        if ($className === null) {
+        $type = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        if ($classNames === []) {
             return null;
         }
 
-        return $this->getPropertyHoverForClass($className, $propertyName->toString());
+        return $this->getPropertyHoverForClass($classNames[0]->fqn, $propertyName->toString());
     }
 
     private function getStaticPropertyHover(StaticPropertyFetch $fetch): ?string

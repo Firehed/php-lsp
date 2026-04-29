@@ -235,12 +235,13 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        $className = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        if ($className === null) {
+        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        if ($classNames === []) {
             return null;
         }
 
-        return $this->getMethodSignatureForClass($className, $methodName->toString());
+        return $this->getMethodSignatureForClass($classNames[0]->fqn, $methodName->toString());
     }
 
     /**
