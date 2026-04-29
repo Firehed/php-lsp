@@ -15,7 +15,6 @@ This document tracks the current state of code completion in php-lsp.
 
 ## Limitations
 
-- **Union types**: For parameters typed as `User|Admin`, no completions are suggested. Only single-type parameters are supported.
 - **Visibility**: Typed variable completions only show public members. Use `$this->` for protected/private access within the class.
 
 ## Not Yet Supported
