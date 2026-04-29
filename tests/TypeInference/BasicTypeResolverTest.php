@@ -4,7 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\TypeInference;
 
+use DateTime;
+use DateTimeImmutable;
+use Exception;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Parser\ParserService;
+use Throwable;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
@@ -42,7 +49,8 @@ class BasicTypeResolverTest extends TestCase
 
         $type = $this->resolver->resolveExpressionType($expr, null, $ast);
 
-        self::assertSame('DateTime', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(DateTime::class, $type->fqn);
     }
 
     public function testResolveParameterType(): void
@@ -58,7 +66,8 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
 
-        self::assertSame('DateTime', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(DateTime::class, $type->fqn);
     }
 
     public function testResolveAssignmentFromNew(): void
@@ -75,7 +84,8 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('x', $function, 3, $ast);
 
-        self::assertSame('DateTime', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(DateTime::class, $type->fqn);
     }
 
     public function testResolveMethodReturnTypeResolvesObjectType(): void
@@ -96,12 +106,13 @@ PHP;
 
         // The object type is resolved, even if method return type isn't
         $objectType = $this->resolver->resolveExpressionType($methodCall->var, $function, $ast);
-        self::assertSame('DateTime', $objectType);
+        self::assertInstanceOf(ClassName::class, $objectType);
+        self::assertSame(DateTime::class, $objectType->fqn);
     }
 
-    public function testResolveMethodReturnTypePrimitiveReturnsNull(): void
+    public function testResolveMethodReturnTypePrimitive(): void
     {
-        // Exception::getMessage() has return type string - not a class, so null
+        // Exception::getMessage() has return type string
         $code = <<<'PHP'
 <?php
 function test() {
@@ -115,7 +126,8 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
 
-        self::assertNull($type);
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('string', $type->format());
     }
 
     public function testResolveMethodReturnTypeReturnsNullForUnknownMethod(): void
@@ -136,9 +148,9 @@ PHP;
         self::assertNull($type);
     }
 
-    public function testResolveMethodReturnTypeIntReturnsNull(): void
+    public function testResolveMethodReturnTypeInt(): void
     {
-        // Exception::getLine() returns int - not a class, so null
+        // Exception::getLine() returns int
         $code = <<<'PHP'
 <?php
 function test() {
@@ -152,7 +164,8 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
 
-        self::assertNull($type);
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('int', $type->format());
     }
 
     public function testResolvePropertyTypeReturnsNullForUnknownClass(): void
@@ -172,6 +185,42 @@ PHP;
         self::assertNull($type);
     }
 
+    public function testResolveThisInFunctionReturnsNull(): void
+    {
+        // $this used in a function (not a method) - findEnclosingClassName returns null
+        $code = <<<'PHP'
+<?php
+function test() {
+    $x = $this;
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $thisVar = $this->findThisVariable($ast);
+
+        $type = $this->resolver->resolveExpressionType($thisVar, $function, $ast);
+
+        self::assertNull($type);
+    }
+
+    public function testResolveMethodCallOnUnresolvedTypeReturnsNull(): void
+    {
+        // Method call on a variable whose type can't be resolved
+        $code = <<<'PHP'
+<?php
+function test() {
+    $result = $unknown->someMethod();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+
+        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+
+        self::assertNull($type);
+    }
+
     public function testResolveCloneExpression(): void
     {
         $code = <<<'PHP'
@@ -186,7 +235,8 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($clone, $function, $ast);
 
-        self::assertSame('DateTime', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(DateTime::class, $type->fqn);
     }
 
     public function testResolveTernaryExpression(): void
@@ -203,7 +253,8 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($ternary, $function, $ast);
 
-        self::assertSame('DateTime', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(DateTime::class, $type->fqn);
     }
 
     public function testResolveNullCoalesceExpression(): void
@@ -220,8 +271,9 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($coalesce, $function, $ast);
 
-        // The left side is ?DateTime parameter, returns DateTime class
-        self::assertSame('DateTime', $type);
+        // The left side is ?DateTime|null, full UnionType returned
+        self::assertInstanceOf(UnionType::class, $type);
+        self::assertTrue($type->isNullable());
     }
 
     public function testResolveThisInClassMethod(): void
@@ -240,7 +292,8 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($thisVar, $method, $ast);
 
-        self::assertSame('MyClass', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('MyClass', $type->fqn);
     }
 
     public function testResolveNullableParameterType(): void
@@ -256,8 +309,12 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
 
-        // Returns the class name, stripped of nullable
-        self::assertSame('DateTime', $type);
+        // Returns full UnionType with DateTime|null
+        self::assertInstanceOf(UnionType::class, $type);
+        self::assertTrue($type->isNullable());
+        $classNames = $type->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame(DateTime::class, $classNames[0]->fqn);
     }
 
     public function testResolveUnionParameterType(): void
@@ -273,8 +330,12 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
 
-        // Returns the first class from the union
-        self::assertSame('DateTime', $type);
+        // Returns full UnionType with both classes
+        self::assertInstanceOf(UnionType::class, $type);
+        $classNames = $type->getResolvableClassNames();
+        self::assertCount(2, $classNames);
+        self::assertSame(DateTime::class, $classNames[0]->fqn);
+        self::assertSame(DateTimeImmutable::class, $classNames[1]->fqn);
     }
 
     public function testResolveUnknownVariableReturnsNull(): void
@@ -306,7 +367,8 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('dt', $closure, 2, $ast);
 
-        self::assertSame('DateTime', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(DateTime::class, $type->fqn);
     }
 
     public function testResolveArrowFunctionParameter(): void
@@ -317,7 +379,8 @@ PHP;
 
         $type = $this->resolver->resolveVariableType('dt', $arrow, 0, $ast);
 
-        self::assertSame('DateTime', $type);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(DateTime::class, $type->fqn);
     }
 
     public function testResolveNullableMethodReturnType(): void
@@ -336,8 +399,12 @@ PHP;
 
         $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
 
-        // Returns the class name, stripped of nullable
-        self::assertSame('Throwable', $type);
+        // Returns full nullable type
+        self::assertInstanceOf(UnionType::class, $type);
+        self::assertTrue($type->isNullable());
+        $classNames = $type->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame(Throwable::class, $classNames[0]->fqn);
     }
 
     public function testChainWithNullableIntermediate(): void
@@ -384,14 +451,18 @@ PHP;
         $getMessageCall = $finder->methodCalls[0];
         $getPreviousCall = $finder->methodCalls[1];
 
-        // Verify getPrevious() returns Throwable (class extracted from ?Throwable)
+        // getPrevious() returns ?Throwable as a UnionType
         $prevType = $this->resolver->resolveExpressionType($getPreviousCall, $function, $ast);
-        self::assertSame('Throwable', $prevType);
+        self::assertInstanceOf(UnionType::class, $prevType);
+        self::assertTrue($prevType->isNullable());
+        $classNames = $prevType->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame(Throwable::class, $classNames[0]->fqn);
 
-        // getMessage() returns string (null for class-based resolution)
-        // The chain works because getPrevious() resolved to Throwable
+        // getMessage() returns string as PrimitiveType
         $msgType = $this->resolver->resolveExpressionType($getMessageCall, $function, $ast);
-        self::assertNull($msgType);
+        self::assertInstanceOf(PrimitiveType::class, $msgType);
+        self::assertSame('string', $msgType->format());
     }
 
     /**

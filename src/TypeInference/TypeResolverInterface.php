@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\TypeInference;
 
+use Firehed\PhpLsp\Domain\Type;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
 
@@ -22,13 +23,12 @@ interface TypeResolverInterface
      * @param Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction|null $scope
      *        The enclosing scope, if any
      * @param array<Stmt> $ast The full AST for context (class lookups, etc.)
-     * @return string|null The resolved type, or null if unknown
      */
     public function resolveExpressionType(
         Expr $expr,
         Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction|null $scope,
         array $ast,
-    ): ?string;
+    ): ?Type;
 
     /**
      * Resolve the type of a variable at a given position.
@@ -38,12 +38,11 @@ interface TypeResolverInterface
      *        The enclosing scope
      * @param int $line The line number (0-based) where the variable is used
      * @param array<Stmt> $ast The full AST for context
-     * @return string|null The resolved type, or null if unknown
      */
     public function resolveVariableType(
         string $variableName,
         Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction $scope,
         int $line,
         array $ast,
-    ): ?string;
+    ): ?Type;
 }

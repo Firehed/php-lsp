@@ -206,12 +206,13 @@ final class DefinitionHandler implements HandlerInterface
             // @codeCoverageIgnoreEnd
         }
 
-        $className = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        if ($className === null) {
+        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        if ($classNames === []) {
             return null;
         }
 
-        return $this->findMethodDefinition($className, $methodName->toString());
+        return $this->findMethodDefinition($classNames[0]->fqn, $methodName->toString());
     }
 
     /**

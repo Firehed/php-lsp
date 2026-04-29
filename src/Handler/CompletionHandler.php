@@ -402,14 +402,14 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Resolve the variable's type
-        $classNameStr = $this->typeResolver->resolveVariableType($variableName, $scope, $line, $ast);
-        if ($classNameStr === null) {
+        $type = $this->typeResolver->resolveVariableType($variableName, $scope, $line, $ast);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        if ($classNames === []) {
             return [];
         }
 
-        /** @var class-string $classNameStr */
         return $this->getMemberCompletions(
-            new ClassName($classNameStr),
+            $classNames[0],
             Visibility::Public,
             false,
             $prefix,
@@ -873,7 +873,7 @@ final class CompletionHandler implements HandlerInterface
                 $items[] = [
                     'label' => '$' . $name,
                     'kind' => self::KIND_VARIABLE,
-                    'detail' => $resolvedType ?? $basicType,
+                    'detail' => $resolvedType?->format() ?? $basicType,
                 ];
             }
         }

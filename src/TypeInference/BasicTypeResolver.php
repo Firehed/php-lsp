@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\TypeInference;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\TypeFactory;
@@ -36,11 +37,13 @@ final class BasicTypeResolver implements TypeResolverInterface
         Expr $expr,
         Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction|null $scope,
         array $ast,
-    ): ?string {
+    ): ?Type {
         // new ClassName()
         if ($expr instanceof Expr\New_) {
             if ($expr->class instanceof Node\Name) {
-                return $expr->class->toString();
+                /** @var class-string */
+                $fqn = $expr->class->toString();
+                return new ClassName($fqn);
             }
             return null;
         }
@@ -48,7 +51,11 @@ final class BasicTypeResolver implements TypeResolverInterface
         // $this - check before generic variable handling
         if ($expr instanceof Expr\Variable && $expr->name === 'this') {
             $className = $this->findEnclosingClassName($ast, $scope);
-            return $className;
+            if ($className === null) {
+                return null;
+            }
+            /** @var class-string $className */
+            return new ClassName($className);
         }
 
         // Variable reference - delegate to resolveVariableType
@@ -59,8 +66,9 @@ final class BasicTypeResolver implements TypeResolverInterface
         // Method call: $obj->method()
         if ($expr instanceof Expr\MethodCall) {
             $objectType = $this->resolveExpressionType($expr->var, $scope, $ast);
-            if ($objectType !== null && $expr->name instanceof Node\Identifier) {
-                return $this->getMethodReturnType($objectType, $expr->name->toString());
+            $className = $this->extractClassName($objectType);
+            if ($className !== null && $expr->name instanceof Node\Identifier) {
+                return $this->getMethodReturnType($className, $expr->name->toString());
             }
             return null;
         }
@@ -77,8 +85,9 @@ final class BasicTypeResolver implements TypeResolverInterface
         // Property fetch: $obj->property
         if ($expr instanceof Expr\PropertyFetch) {
             $objectType = $this->resolveExpressionType($expr->var, $scope, $ast);
-            if ($objectType !== null && $expr->name instanceof Node\Identifier) {
-                return $this->getPropertyType($objectType, $expr->name->toString());
+            $className = $this->extractClassName($objectType);
+            if ($className !== null && $expr->name instanceof Node\Identifier) {
+                return $this->getPropertyType($className, $expr->name->toString());
             }
             return null;
         }
@@ -107,7 +116,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction $scope,
         int $line,
         array $ast,
-    ): ?string {
+    ): ?Type {
         // Check parameters first
         foreach ($scope->params as $param) {
             if (
@@ -115,9 +124,7 @@ final class BasicTypeResolver implements TypeResolverInterface
                 && is_string($param->var->name)
                 && $param->var->name === $variableName
             ) {
-                $type = TypeFactory::fromNode($param->type);
-                $classNames = $type?->getResolvableClassNames() ?? [];
-                return $classNames !== [] ? $classNames[0]->fqn : null;
+                return TypeFactory::fromNode($param->type);
             }
         }
 
@@ -136,7 +143,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         $stmts = $scope instanceof Expr\ArrowFunction ? [] : ($scope->stmts ?? []);
 
         $visitor = new class ($variableName, $line, $foundType, $this, $scope, $ast) extends NodeVisitorAbstract {
-            public ?string $foundType = null;
+            public ?Type $foundType = null;
             private string $variableName;
             private int $line;
             private BasicTypeResolver $resolver;
@@ -152,7 +159,7 @@ final class BasicTypeResolver implements TypeResolverInterface
             public function __construct(
                 string $variableName,
                 int $line,
-                ?string &$foundType,
+                ?Type &$foundType,
                 BasicTypeResolver $resolver,
                 $scope,
                 array $ast,
@@ -205,7 +212,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         return $visitor->foundType;
     }
 
-    private function getMethodReturnType(string $className, string $methodName): ?string
+    private function getMethodReturnType(string $className, string $methodName): ?Type
     {
         /** @var class-string $className */
         $methodInfo = $this->memberResolver->findMethod(
@@ -214,11 +221,10 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Public,
         );
 
-        $classNames = $methodInfo?->returnTypeInfo?->getResolvableClassNames() ?? [];
-        return $classNames !== [] ? $classNames[0]->fqn : null;
+        return $methodInfo?->returnTypeInfo;
     }
 
-    private function getPropertyType(string $className, string $propertyName): ?string
+    private function getPropertyType(string $className, string $propertyName): ?Type
     {
         /** @var class-string $className */
         $propertyInfo = $this->memberResolver->findProperty(
@@ -227,7 +233,15 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Public,
         );
 
-        $classNames = $propertyInfo?->typeInfo?->getResolvableClassNames() ?? [];
+        return $propertyInfo?->typeInfo;
+    }
+
+    private function extractClassName(?Type $type): ?string
+    {
+        if ($type === null) {
+            return null;
+        }
+        $classNames = $type->getResolvableClassNames();
         return $classNames !== [] ? $classNames[0]->fqn : null;
     }
 

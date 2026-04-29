@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Utility;
 
+use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -32,7 +33,8 @@ PHP;
         self::assertNotNull($thisNode);
         $result = ExpressionTypeResolver::resolveExpressionType($thisNode, $ast, null);
 
-        self::assertSame('App\Models\User', $result);
+        self::assertInstanceOf(ClassName::class, $result);
+        self::assertSame('App\Models\User', $result->fqn);
     }
 
     public function testResolveExpressionTypeReturnsNullForThisOutsideClass(): void
@@ -70,11 +72,13 @@ PHP;
         $typeResolver = $this->createMock(TypeResolverInterface::class);
         $typeResolver->expects(self::once())
             ->method('resolveExpressionType')
-            ->willReturn('App\Models\User');
+            // @phpstan-ignore argument.type (test class doesn't exist)
+            ->willReturn(new ClassName('App\Models\User'));
 
         $result = ExpressionTypeResolver::resolveExpressionType($userNode, $ast, $typeResolver);
 
-        self::assertSame('App\Models\User', $result);
+        self::assertInstanceOf(ClassName::class, $result);
+        self::assertSame('App\Models\User', $result->fqn);
     }
 
     public function testResolveExpressionTypeReturnsNullWithoutTypeResolver(): void
