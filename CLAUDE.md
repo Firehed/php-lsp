@@ -67,6 +67,7 @@ Key methods:
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
 - **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Handlers should use it consistently rather than calling `TypeResolverInterface` directly.
+- **Use `MemberAccessResolver` for member access.** It handles both `->` and `?->` operators and resolves types via the shared utilities. Handlers should use it instead of duplicating type resolution logic.
 - **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 
 ### Remaining Utilities
@@ -75,6 +76,7 @@ Key methods:
 - `DocblockParser` — Extracts description from docblocks
 - `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
 - `TypeFactory` — Creates Type domain objects from AST nodes and reflection
+- `MemberAccessResolver` — Resolves method calls and property fetches to domain objects; handles both `->` and `?->` operators
 
 ## Development Workflow
 
