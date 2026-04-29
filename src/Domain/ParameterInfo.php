@@ -65,8 +65,8 @@ final readonly class ParameterInfo implements Formattable
     public function format(bool $showDefault = false): string
     {
         $str = '';
-        if ($this->type !== null) {
-            $str .= $this->type . ' ';
+        if ($this->typeInfo !== null) {
+            $str .= $this->typeInfo->format() . ' ';
         }
         if ($this->isPassedByReference) {
             $str .= '&';

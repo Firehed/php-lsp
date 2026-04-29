@@ -53,7 +53,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'string',
-            typeInfo: null,
+            typeInfo: new PrimitiveType('string'),
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: false,
@@ -81,7 +81,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: 'string',
-            typeInfo: null,
+            typeInfo: new PrimitiveType('string'),
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: false,
@@ -95,7 +95,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'int',
-            typeInfo: null,
+            typeInfo: new PrimitiveType('int'),
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
@@ -109,7 +109,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'int',
-            typeInfo: null,
+            typeInfo: new PrimitiveType('int'),
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
@@ -123,7 +123,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: 'string',
-            typeInfo: null,
+            typeInfo: new PrimitiveType('string'),
             hasDefault: true,
             isVariadic: true,
             isPassedByReference: false,
@@ -137,7 +137,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: 'string',
-            typeInfo: null,
+            typeInfo: new PrimitiveType('string'),
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: true,
@@ -151,7 +151,7 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: 'array',
-            typeInfo: null,
+            typeInfo: new PrimitiveType('array'),
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: true,
