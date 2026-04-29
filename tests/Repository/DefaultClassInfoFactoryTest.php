@@ -343,6 +343,7 @@ PHP;
 
         self::assertSame(Visibility::Protected, $info->constants['PROTECTED_CONST']->visibility);
         self::assertSame(Visibility::Private, $info->constants['PRIVATE_CONST']->visibility);
+        self::assertNull($info->constants['PRIVATE_CONST']->type);
     }
 
     public function testFromAstNodeExtractsDocblock(): void
