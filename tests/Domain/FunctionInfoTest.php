@@ -21,8 +21,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'myFunction',
             parameters: [],
-            returnType: 'void',
-            returnTypeInfo: null,
+            returnType: new PrimitiveType('void'),
             docblock: '/** Does something */',
             file: '/path/to/file.php',
             line: 10,
@@ -30,7 +29,7 @@ class FunctionInfoTest extends TestCase
 
         self::assertSame('myFunction', $func->name);
         self::assertSame([], $func->parameters);
-        self::assertSame('void', $func->returnType);
+        self::assertSame('void', $func->returnType?->format());
         self::assertSame('/** Does something */', $func->docblock);
         self::assertSame('/path/to/file.php', $func->file);
         self::assertSame(10, $func->line);
@@ -42,7 +41,6 @@ class FunctionInfoTest extends TestCase
             name: 'doSomething',
             parameters: [],
             returnType: null,
-            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -56,8 +54,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'getName',
             parameters: [],
-            returnType: 'string',
-            returnTypeInfo: new PrimitiveType('string'),
+            returnType: new PrimitiveType('string'),
             docblock: null,
             file: null,
             line: null,
@@ -71,10 +68,9 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'greet',
             parameters: [
-                new ParameterInfo('name', 'string', new PrimitiveType('string'), false, false, false),
+                new ParameterInfo('name', new PrimitiveType('string'), false, false, false),
             ],
             returnType: null,
-            returnTypeInfo: null,
             docblock: null,
             file: null,
             line: null,
@@ -88,11 +84,10 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'add',
             parameters: [
-                new ParameterInfo('a', 'int', new PrimitiveType('int'), false, false, false),
-                new ParameterInfo('b', 'int', new PrimitiveType('int'), false, false, false),
+                new ParameterInfo('a', new PrimitiveType('int'), false, false, false),
+                new ParameterInfo('b', new PrimitiveType('int'), false, false, false),
             ],
-            returnType: 'int',
-            returnTypeInfo: new PrimitiveType('int'),
+            returnType: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
@@ -106,10 +101,9 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'sum',
             parameters: [
-                new ParameterInfo('numbers', 'int', new PrimitiveType('int'), false, true, false),
+                new ParameterInfo('numbers', new PrimitiveType('int'), false, true, false),
             ],
-            returnType: 'int',
-            returnTypeInfo: new PrimitiveType('int'),
+            returnType: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
@@ -156,8 +150,8 @@ class FunctionInfoTest extends TestCase
         self::assertSame('greet', $func->name);
         self::assertCount(1, $func->parameters);
         self::assertSame('name', $func->parameters[0]->name);
-        self::assertSame('string', $func->parameters[0]->type);
-        self::assertSame('void', $func->returnType);
+        self::assertSame('string', $func->parameters[0]->type?->format());
+        self::assertSame('void', $func->returnType?->format());
     }
 
     public function testFromNodeWithMultipleParams(): void
@@ -183,7 +177,7 @@ class FunctionInfoTest extends TestCase
 
         self::assertSame('add', $func->name);
         self::assertCount(2, $func->parameters);
-        self::assertSame('int', $func->returnType);
+        self::assertSame('int', $func->returnType?->format());
     }
 
     public function testFromNodeWithDocblock(): void
@@ -226,8 +220,8 @@ class FunctionInfoTest extends TestCase
 
         self::assertCount(1, $func->parameters);
         self::assertSame('name', $func->parameters[0]->name);
-        self::assertSame('string', $func->parameters[0]->type);
-        self::assertSame('void', $func->returnType);
+        self::assertSame('string', $func->parameters[0]->type?->format());
+        self::assertSame('void', $func->returnType?->format());
     }
 
     public function testFromReflectionWithMultipleParams(): void
@@ -242,7 +236,7 @@ class FunctionInfoTest extends TestCase
         self::assertCount(2, $func->parameters);
         self::assertSame('a', $func->parameters[0]->name);
         self::assertSame('b', $func->parameters[1]->name);
-        self::assertSame('int', $func->returnType);
+        self::assertSame('int', $func->returnType?->format());
     }
 
     public function testFromReflectionVariadic(): void
@@ -256,7 +250,7 @@ class FunctionInfoTest extends TestCase
 
         self::assertCount(1, $func->parameters);
         self::assertTrue($func->parameters[0]->isVariadic);
-        self::assertSame('int', $func->returnType);
+        self::assertSame('int', $func->returnType?->format());
     }
 
     public function testFromReflectionWithDocblock(): void

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 use Firehed\PhpLsp\Utility\TypeFactory;
-use Firehed\PhpLsp\Utility\TypeFormatter;
 use PhpParser\Node\Stmt;
 use ReflectionFunction;
 
@@ -20,8 +19,7 @@ final readonly class FunctionInfo implements Formattable
     public function __construct(
         public string $name,
         public array $parameters,
-        public ?string $returnType,
-        public ?Type $returnTypeInfo,
+        public ?Type $returnType,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -38,10 +36,7 @@ final readonly class FunctionInfo implements Formattable
         return new self(
             name: $node->name->toString(),
             parameters: array_values($params),
-            returnType: $node->returnType !== null
-                ? TypeFormatter::formatNode($node->returnType)
-                : null,
-            returnTypeInfo: TypeFactory::fromNode($node->returnType),
+            returnType: TypeFactory::fromNode($node->returnType),
             docblock: $node->getDocComment()?->getText(),
             file: null,
             line: $node->getStartLine(),
@@ -56,10 +51,7 @@ final readonly class FunctionInfo implements Formattable
                 ParameterInfo::fromReflection(...),
                 $func->getParameters(),
             ),
-            returnType: $func->getReturnType() !== null
-                ? TypeFormatter::formatReflection($func->getReturnType())
-                : null,
-            returnTypeInfo: TypeFactory::fromReflection($func->getReturnType()),
+            returnType: TypeFactory::fromReflection($func->getReturnType()),
             docblock: $func->getDocComment() !== false
                 ? $func->getDocComment()
                 : null,
@@ -76,8 +68,8 @@ final readonly class FunctionInfo implements Formattable
     {
         $params = array_map(fn($p) => $p->format(), $this->parameters);
         $sig = 'function ' . $this->name . '(' . implode(', ', $params) . ')';
-        if ($this->returnTypeInfo !== null) {
-            $sig .= ': ' . $this->returnTypeInfo->format();
+        if ($this->returnType !== null) {
+            $sig .= ': ' . $this->returnType->format();
         }
         return $sig;
     }
