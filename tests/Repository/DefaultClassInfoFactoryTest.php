@@ -201,7 +201,7 @@ PHP;
 
         self::assertArrayHasKey('cases', $info->methods);
         self::assertTrue($info->methods['cases']->isStatic);
-        self::assertSame('array', $info->methods['cases']->returnType);
+        self::assertSame('array', $info->methods['cases']->returnType?->format());
     }
 
     public function testFromAstNodeSynthesizesBackedEnumMethods(): void
@@ -217,11 +217,11 @@ PHP;
         self::assertArrayHasKey('tryFrom', $info->methods);
 
         self::assertTrue($info->methods['from']->isStatic);
-        self::assertSame('static', $info->methods['from']->returnType);
+        self::assertSame('static', $info->methods['from']->returnType?->format());
         self::assertCount(1, $info->methods['from']->parameters);
-        self::assertSame('int', $info->methods['from']->parameters[0]->type);
+        self::assertSame('int', $info->methods['from']->parameters[0]->type?->format());
 
-        self::assertSame('?static', $info->methods['tryFrom']->returnType);
+        self::assertSame('?static', $info->methods['tryFrom']->returnType?->format());
     }
 
     public function testFromAstNodeExtractsTraits(): void
@@ -256,8 +256,8 @@ PHP;
         self::assertSame(Visibility::Protected, $info->methods['protectedMethod']->visibility);
         self::assertSame(Visibility::Private, $info->methods['privateStaticMethod']->visibility);
         self::assertTrue($info->methods['privateStaticMethod']->isStatic);
-        self::assertSame('void', $info->methods['publicMethod']->returnType);
-        self::assertSame('string', $info->methods['protectedMethod']->returnType);
+        self::assertSame('void', $info->methods['publicMethod']->returnType?->format());
+        self::assertSame('string', $info->methods['protectedMethod']->returnType?->format());
     }
 
     public function testFromAstNodeExtractsMethodParameters(): void
@@ -271,7 +271,7 @@ PHP;
 
         self::assertCount(3, $method->parameters);
         self::assertSame('name', $method->parameters[0]->name);
-        self::assertSame('string', $method->parameters[0]->type);
+        self::assertSame('string', $method->parameters[0]->type?->format());
         self::assertFalse($method->parameters[0]->hasDefault);
         self::assertFalse($method->parameters[0]->isVariadic);
 
@@ -296,7 +296,7 @@ PHP;
         self::assertCount(4, $info->properties);
         self::assertArrayHasKey('publicProp', $info->properties);
         self::assertSame(Visibility::Public, $info->properties['publicProp']->visibility);
-        self::assertSame('string', $info->properties['publicProp']->type);
+        self::assertSame('string', $info->properties['publicProp']->type?->format());
         self::assertFalse($info->properties['publicProp']->isPromoted);
 
         self::assertTrue($info->properties['privateStaticProp']->isStatic);
@@ -460,7 +460,7 @@ PHP;
 
         self::assertArrayHasKey('publicMethod', $info->methods);
         self::assertSame(Visibility::Public, $info->methods['publicMethod']->visibility);
-        self::assertSame('void', $info->methods['publicMethod']->returnType);
+        self::assertSame('void', $info->methods['publicMethod']->returnType?->format());
     }
 
     public function testFromReflectionExtractsProperties(): void
@@ -471,7 +471,7 @@ PHP;
 
         self::assertArrayHasKey('publicProp', $info->properties);
         self::assertSame(Visibility::Public, $info->properties['publicProp']->visibility);
-        self::assertSame('string', $info->properties['publicProp']->type);
+        self::assertSame('string', $info->properties['publicProp']->type?->format());
     }
 
     public function testFromReflectionExtractsConstants(): void
