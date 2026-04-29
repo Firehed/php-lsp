@@ -2010,6 +2010,110 @@ PHP;
         self::assertNotContains('setName', $labels);
     }
 
+    public function testTypedVariableCompletionFromStaticMethodReturningSelf(): void
+    {
+        $code = <<<'PHP'
+<?php
+class SomeClass
+{
+    public static function create(): ?self
+    {
+        return new self();
+    }
+
+    public function doSomething(): void {}
+}
+
+function test(): void
+{
+    $foo = SomeClass::create();
+    $foo->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->memberResolver,
+            $this->classRepository,
+            new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 10], // After $foo->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Static method 'create' should not appear in instance completions
+        self::assertNotContains('create', $labels);
+        self::assertContains('doSomething', $labels);
+    }
+
+    public function testTypedVariableCompletionFromStaticMethodReturningSelfNullsafe(): void
+    {
+        $code = <<<'PHP'
+<?php
+class SomeClass
+{
+    public static function create(): ?self
+    {
+        return new self();
+    }
+
+    public function doSomething(): void {}
+}
+
+function test(): void
+{
+    $foo = SomeClass::create();
+    $foo?->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->memberResolver,
+            $this->classRepository,
+            new BasicTypeResolver($this->memberResolver),
+            new CompletionContextResolver(),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 14, 'character' => 11], // After $foo?->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Static method 'create' should not appear in instance completions
+        self::assertNotContains('create', $labels);
+        self::assertContains('doSomething', $labels);
+    }
+
     public function testTypedVariableCompletionReturnsEmptyWhenTypeUnknown(): void
     {
         $code = <<<'PHP'

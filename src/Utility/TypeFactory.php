@@ -51,11 +51,27 @@ final class TypeFactory
         }
 
         if ($node instanceof Name) {
+            $name = $node->toString();
+
+            if ($name === 'self' || $name === 'static') {
+                if ($selfContext !== null) {
+                    return new ClassName($selfContext);
+                }
+                return new PrimitiveType($name);
+            }
+
+            if ($name === 'parent') {
+                if ($parentContext !== null) {
+                    return new ClassName($parentContext);
+                }
+                return new PrimitiveType($name);
+            }
+
             $resolvedName = $node->getAttribute('resolvedName');
             /** @var class-string $fqn */
             $fqn = $resolvedName instanceof Name
                 ? $resolvedName->toString()
-                : $node->toString();
+                : $name;
             return new ClassName($fqn);
         }
 

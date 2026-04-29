@@ -123,6 +123,60 @@ class TypeFactoryTest extends TestCase
         self::assertSame('parent', $type->format());
     }
 
+    public function testFromNodeWithNameSelfAndContextCreatesClassName(): void
+    {
+        $node = new Name('self');
+        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(\stdClass::class, $type->fqn);
+    }
+
+    public function testFromNodeWithNameStaticAndContextCreatesClassName(): void
+    {
+        $node = new Name('static');
+        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(\ArrayObject::class, $type->fqn);
+    }
+
+    public function testFromNodeWithNameParentAndContextCreatesClassName(): void
+    {
+        $node = new Name('parent');
+        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(\Throwable::class, $type->fqn);
+    }
+
+    public function testFromNodeWithNameSelfWithoutContextCreatesPrimitiveType(): void
+    {
+        $node = new Name('self');
+        $type = TypeFactory::fromNode($node);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('self', $type->format());
+    }
+
+    public function testFromNodeWithNameParentWithoutContextCreatesPrimitiveType(): void
+    {
+        $node = new Name('parent');
+        $type = TypeFactory::fromNode($node);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('parent', $type->format());
+    }
+
+    public function testFromNodeWithNameStaticWithoutContextCreatesPrimitiveType(): void
+    {
+        $node = new Name('static');
+        $type = TypeFactory::fromNode($node);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('static', $type->format());
+    }
+
     public function testFromNodeWithNullableTypeCreatesUnionType(): void
     {
         $node = new NullableType(new Name(\stdClass::class));
