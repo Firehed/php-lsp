@@ -19,15 +19,14 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: 'string',
-            typeInfo: null,
+            type: new PrimitiveType('string'),
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
         );
 
         self::assertSame('value', $param->name);
-        self::assertSame('string', $param->type);
+        self::assertSame('string', $param->type?->format());
         self::assertTrue($param->hasDefault);
         self::assertFalse($param->isVariadic);
         self::assertFalse($param->isPassedByReference);
@@ -38,7 +37,6 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'args',
             type: null,
-            typeInfo: null,
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: false,
@@ -52,8 +50,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: 'string',
-            typeInfo: new PrimitiveType('string'),
+            type: new PrimitiveType('string'),
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: false,
@@ -67,7 +64,6 @@ class ParameterInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: null,
-            typeInfo: null,
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: false,
@@ -80,8 +76,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'args',
-            type: 'string',
-            typeInfo: new PrimitiveType('string'),
+            type: new PrimitiveType('string'),
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: false,
@@ -94,8 +89,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: 'int',
-            typeInfo: new PrimitiveType('int'),
+            type: new PrimitiveType('int'),
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
@@ -108,8 +102,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: 'int',
-            typeInfo: new PrimitiveType('int'),
+            type: new PrimitiveType('int'),
             hasDefault: true,
             isVariadic: false,
             isPassedByReference: false,
@@ -122,8 +115,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'args',
-            type: 'string',
-            typeInfo: new PrimitiveType('string'),
+            type: new PrimitiveType('string'),
             hasDefault: true,
             isVariadic: true,
             isPassedByReference: false,
@@ -136,8 +128,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: 'string',
-            typeInfo: new PrimitiveType('string'),
+            type: new PrimitiveType('string'),
             hasDefault: false,
             isVariadic: false,
             isPassedByReference: true,
@@ -150,8 +141,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'args',
-            type: 'array',
-            typeInfo: new PrimitiveType('array'),
+            type: new PrimitiveType('array'),
             hasDefault: false,
             isVariadic: true,
             isPassedByReference: true,
@@ -172,7 +162,7 @@ class ParameterInfoTest extends TestCase
 
         self::assertNotNull($param);
         self::assertSame('name', $param->name);
-        self::assertSame('string', $param->type);
+        self::assertSame('string', $param->type?->format());
         self::assertFalse($param->hasDefault);
         self::assertFalse($param->isVariadic);
         self::assertFalse($param->isPassedByReference);
@@ -187,7 +177,7 @@ class ParameterInfoTest extends TestCase
         $param = ParameterInfo::fromReflection($reflectionParam);
 
         self::assertSame('value', $param->name);
-        self::assertSame('string', $param->type);
+        self::assertSame('string', $param->type?->format());
         self::assertFalse($param->hasDefault);
         self::assertFalse($param->isVariadic);
         self::assertFalse($param->isPassedByReference);
@@ -275,7 +265,7 @@ class ParameterInfoTest extends TestCase
         $param = ParameterInfo::fromReflection($reflectionParam);
 
         self::assertSame('count', $param->name);
-        self::assertSame('int', $param->type);
+        self::assertSame('int', $param->type?->format());
         self::assertTrue($param->hasDefault);
         self::assertFalse($param->isVariadic);
         self::assertFalse($param->isPassedByReference);
@@ -290,7 +280,7 @@ class ParameterInfoTest extends TestCase
         $param = ParameterInfo::fromReflection($reflectionParam);
 
         self::assertSame('args', $param->name);
-        self::assertSame('string', $param->type);
+        self::assertSame('string', $param->type?->format());
         self::assertFalse($param->hasDefault);
         self::assertTrue($param->isVariadic);
         self::assertFalse($param->isPassedByReference);
@@ -305,7 +295,7 @@ class ParameterInfoTest extends TestCase
         $param = ParameterInfo::fromReflection($reflectionParam);
 
         self::assertSame('data', $param->name);
-        self::assertSame('array', $param->type);
+        self::assertSame('array', $param->type?->format());
         self::assertFalse($param->hasDefault);
         self::assertFalse($param->isVariadic);
         self::assertTrue($param->isPassedByReference);
@@ -335,7 +325,7 @@ class ParameterInfoTest extends TestCase
         $param = ParameterInfo::fromReflection($reflectionParam);
 
         self::assertSame('nullable', $param->name);
-        self::assertSame('?string', $param->type);
+        self::assertSame('?string', $param->type?->format());
         self::assertFalse($param->hasDefault);
         self::assertFalse($param->isVariadic);
         self::assertFalse($param->isPassedByReference);
