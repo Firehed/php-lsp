@@ -206,6 +206,20 @@ PHP;
         self::assertNull($result);
     }
 
+    public function testUnresolvedVariableTypeReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+$unknown->foo();
+PHP;
+        $ast = $this->parse($code);
+        $call = $this->findFirst($ast, MethodCall::class);
+
+        $result = $this->resolver->resolveMethodCall($call, $ast);
+
+        self::assertNull($result);
+    }
+
     /**
      * @return array<Stmt>
      */

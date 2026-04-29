@@ -267,6 +267,17 @@ class CompletionContextResolverTest extends TestCase
         self::assertNull($result);
     }
 
+    public function testDynamicClassStaticPropertyReturnsNull(): void
+    {
+        $code = '<?php $class::$prop';
+        $ast = $this->parse($code);
+        $offset = strlen($code);
+
+        $result = $this->resolver->resolve($ast, $offset);
+
+        self::assertNull($result);
+    }
+
     public function testEmptyAstReturnsNull(): void
     {
         $ast = [];
