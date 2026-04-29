@@ -217,11 +217,11 @@ PHP;
         self::assertArrayHasKey('tryFrom', $info->methods);
 
         self::assertTrue($info->methods['from']->isStatic);
-        self::assertSame('static', $info->methods['from']->returnType?->format());
+        self::assertSame('Priority', $info->methods['from']->returnType?->format());
         self::assertCount(1, $info->methods['from']->parameters);
         self::assertSame('int', $info->methods['from']->parameters[0]->type?->format());
 
-        self::assertSame('?static', $info->methods['tryFrom']->returnType?->format());
+        self::assertSame('?Priority', $info->methods['tryFrom']->returnType?->format());
     }
 
     public function testFromAstNodeExtractsTraits(): void
