@@ -9,6 +9,7 @@ class TestClass
     use TestTrait;
 
     public const TEST_CONST = 'value';
+    public const string TYPED_CONST = 'typed';
 
     public string $publicProp;
 

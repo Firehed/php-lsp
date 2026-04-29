@@ -484,6 +484,16 @@ PHP;
         self::assertSame(Visibility::Public, $info->constants['TEST_CONST']->visibility);
     }
 
+    public function testFromReflectionExtractsTypedConstants(): void
+    {
+        $reflection = new ReflectionClass(TestClass::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertArrayHasKey('TYPED_CONST', $info->constants);
+        self::assertSame('string', $info->constants['TYPED_CONST']->type?->format());
+    }
+
     public function testFromReflectionExtractsInterfaces(): void
     {
         $reflection = new ReflectionClass(ClassWithInterface::class);
