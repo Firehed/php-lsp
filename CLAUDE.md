@@ -18,6 +18,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
 - `src/Utility/` — AST helpers (ScopeFinder, TypeFactory, DocblockParser)
+- `src/Completion/` — Completion context detection (CompletionContextResolver)
 - `docs/features/` — Feature status documentation
 
 ## Architecture
@@ -88,7 +89,9 @@ Key methods:
 
 See `docs/features/completion.md` for current capabilities.
 
-Architecture: regex-based context detection in `CompletionHandler`. Determines completion type ($this->, static, new, function) and delegates to internal methods.
+Architecture: `CompletionContextResolver` uses AST analysis to detect member/static access contexts (handles both `->` and `?->` automatically). Regex-based detection remains for other contexts (variables, type hints, keywords).
+
+**Prefer AST-based context detection over regex.** The parser's error recovery produces usable AST even for incomplete code like `$this->`. AST detection handles operator variants (e.g., `->` vs `?->`) automatically without pattern duplication.
 
 ## LSP Protocol
 
