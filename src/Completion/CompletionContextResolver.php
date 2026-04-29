@@ -13,35 +13,21 @@ use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
-/**
- * @phpstan-type MemberAccessResult array{
- *   context: CompletionContext,
- *   var: Expr,
- *   prefix: string,
- * }
- * @phpstan-type StaticAccessResult array{
- *   context: CompletionContext,
- *   class: Name,
- *   prefix: string,
- * }
- * @phpstan-type ContextResult MemberAccessResult|StaticAccessResult|null
- */
 final class CompletionContextResolver
 {
     /**
      * Find completion context at the given offset using AST analysis.
      *
      * @param array<Stmt> $ast
-     * @return ContextResult
      */
-    public function resolve(array $ast, int $offset): ?array
+    public function resolve(array $ast, int $offset): MemberAccessContext|StaticAccessContext|null
     {
         $node = $this->findNodeAtOffset($ast, $offset);
         if ($node === null) {
             return null;
         }
 
-        return $this->analyzeNode($node, $offset);
+        return $this->analyzeNode($node);
     }
 
     /**
@@ -78,10 +64,7 @@ final class CompletionContextResolver
         return $finder->found;
     }
 
-    /**
-     * @return ContextResult
-     */
-    private function analyzeNode(Node $node, int $offset): ?array
+    private function analyzeNode(Node $node): MemberAccessContext|StaticAccessContext|null
     {
         if ($node instanceof Expr\PropertyFetch || $node instanceof Expr\NullsafePropertyFetch) {
             return $this->analyzeMemberAccess($node);
@@ -107,7 +90,7 @@ final class CompletionContextResolver
         if ($node instanceof Identifier || $node instanceof Error) {
             $parent = $node->getAttribute('parent');
             if ($parent instanceof Node) {
-                return $this->analyzeNode($parent, $offset);
+                return $this->analyzeNode($parent);
             }
         }
 
@@ -116,9 +99,8 @@ final class CompletionContextResolver
 
     /**
      * @param Expr\PropertyFetch|Expr\NullsafePropertyFetch|Expr\MethodCall|Expr\NullsafeMethodCall $node
-     * @return MemberAccessResult|null
      */
-    private function analyzeMemberAccess(Expr $node): ?array
+    private function analyzeMemberAccess(Expr $node): ?MemberAccessContext
     {
         $name = $node->name;
         $prefix = '';
@@ -136,19 +118,10 @@ final class CompletionContextResolver
             return null;
         }
 
-        return [
-            'context' => $context,
-            'var' => $node->var,
-            'prefix' => $prefix,
-        ];
+        return new MemberAccessContext($context, $node->var, $prefix);
     }
 
-    /**
-     * @param Node $class
-     * @param Node $name
-     * @return StaticAccessResult|null
-     */
-    private function analyzeStaticAccess(Node $class, Node $name): ?array
+    private function analyzeStaticAccess(Node $class, Node $name): ?StaticAccessContext
     {
         if (!$class instanceof Name) {
             return null;
@@ -168,10 +141,6 @@ final class CompletionContextResolver
             default => CompletionContext::StaticMember,
         };
 
-        return [
-            'context' => $context,
-            'class' => $class,
-            'prefix' => $prefix,
-        ];
+        return new StaticAccessContext($context, $class, $prefix);
     }
 }

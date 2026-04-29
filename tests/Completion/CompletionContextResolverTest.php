@@ -6,18 +6,21 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\CompletionContextResolver;
+use Firehed\PhpLsp\Completion\MemberAccessContext;
+use Firehed\PhpLsp\Completion\StaticAccessContext;
 use PhpParser\ErrorHandler;
 use PhpParser\Node\Expr\Variable;
-use PhpParser\Node\Name;
+use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompletionContextResolver::class)]
 #[CoversClass(CompletionContext::class)]
+#[CoversClass(MemberAccessContext::class)]
+#[CoversClass(StaticAccessContext::class)]
 class CompletionContextResolverTest extends TestCase
 {
     private CompletionContextResolver $resolver;
@@ -35,10 +38,10 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::ThisMember, $result['context']);
-        self::assertInstanceOf(Variable::class, $result['var']);
-        self::assertSame('', $result['prefix']);
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::ThisMember, $result->context);
+        self::assertInstanceOf(Variable::class, $result->var);
+        self::assertSame('', $result->prefix);
     }
 
     public function testThisMemberAccessNullsafe(): void
@@ -49,10 +52,10 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::ThisMember, $result['context']);
-        self::assertInstanceOf(Variable::class, $result['var']);
-        self::assertSame('', $result['prefix']);
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::ThisMember, $result->context);
+        self::assertInstanceOf(Variable::class, $result->var);
+        self::assertSame('', $result->prefix);
     }
 
     public function testThisMemberAccessWithPrefix(): void
@@ -63,9 +66,9 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::ThisMember, $result['context']);
-        self::assertSame('get', $result['prefix']);
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::ThisMember, $result->context);
+        self::assertSame('get', $result->prefix);
     }
 
     public function testThisMemberAccessNullsafeWithPrefix(): void
@@ -76,9 +79,9 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::ThisMember, $result['context']);
-        self::assertSame('get', $result['prefix']);
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::ThisMember, $result->context);
+        self::assertSame('get', $result->prefix);
     }
 
     public function testVariableMemberAccessArrow(): void
@@ -89,11 +92,11 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::VariableMember, $result['context']);
-        self::assertInstanceOf(Variable::class, $result['var']);
-        self::assertSame('obj', $result['var']->name);
-        self::assertSame('', $result['prefix']);
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::VariableMember, $result->context);
+        self::assertInstanceOf(Variable::class, $result->var);
+        self::assertSame('obj', $result->var->name);
+        self::assertSame('', $result->prefix);
     }
 
     public function testVariableMemberAccessNullsafe(): void
@@ -104,11 +107,11 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::VariableMember, $result['context']);
-        self::assertInstanceOf(Variable::class, $result['var']);
-        self::assertSame('obj', $result['var']->name);
-        self::assertSame('', $result['prefix']);
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::VariableMember, $result->context);
+        self::assertInstanceOf(Variable::class, $result->var);
+        self::assertSame('obj', $result->var->name);
+        self::assertSame('', $result->prefix);
     }
 
     public function testVariableMemberAccessWithPrefix(): void
@@ -119,10 +122,11 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::VariableMember, $result['context']);
-        self::assertSame('user', $result['var']->name);
-        self::assertSame('getName', $result['prefix']);
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(CompletionContext::VariableMember, $result->context);
+        self::assertInstanceOf(Variable::class, $result->var);
+        self::assertSame('user', $result->var->name);
+        self::assertSame('getName', $result->prefix);
     }
 
     public function testStaticAccessSelf(): void
@@ -133,10 +137,9 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::StaticMember, $result['context']);
-        self::assertInstanceOf(Name::class, $result['class']);
-        self::assertSame('self', $result['class']->toString());
+        self::assertInstanceOf(StaticAccessContext::class, $result);
+        self::assertSame(CompletionContext::StaticMember, $result->context);
+        self::assertSame('self', $result->class->toString());
     }
 
     public function testStaticAccessStatic(): void
@@ -147,9 +150,9 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::StaticMember, $result['context']);
-        self::assertSame('static', $result['class']->toString());
+        self::assertInstanceOf(StaticAccessContext::class, $result);
+        self::assertSame(CompletionContext::StaticMember, $result->context);
+        self::assertSame('static', $result->class->toString());
     }
 
     public function testStaticAccessParent(): void
@@ -160,9 +163,9 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::ParentMember, $result['context']);
-        self::assertSame('parent', $result['class']->toString());
+        self::assertInstanceOf(StaticAccessContext::class, $result);
+        self::assertSame(CompletionContext::ParentMember, $result->context);
+        self::assertSame('parent', $result->class->toString());
     }
 
     public function testStaticAccessClassName(): void
@@ -173,9 +176,9 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::StaticMember, $result['context']);
-        self::assertSame('DateTime', $result['class']->toString());
+        self::assertInstanceOf(StaticAccessContext::class, $result);
+        self::assertSame(CompletionContext::StaticMember, $result->context);
+        self::assertSame('DateTime', $result->class->toString());
     }
 
     public function testStaticAccessWithPrefix(): void
@@ -186,9 +189,9 @@ class CompletionContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($ast, $offset);
 
-        self::assertNotNull($result);
-        self::assertSame(CompletionContext::StaticMember, $result['context']);
-        self::assertSame('create', $result['prefix']);
+        self::assertInstanceOf(StaticAccessContext::class, $result);
+        self::assertSame(CompletionContext::StaticMember, $result->context);
+        self::assertSame('create', $result->prefix);
     }
 
     public function testNoContextForPlainCode(): void
@@ -203,7 +206,7 @@ class CompletionContextResolverTest extends TestCase
     }
 
     /**
-     * @return array<\PhpParser\Node\Stmt>
+     * @return array<Stmt>
      */
     private function parse(string $code): array
     {
@@ -213,6 +216,7 @@ class CompletionContextResolverTest extends TestCase
 
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ParentConnectingVisitor());
+        /** @var array<Stmt> */
         return $traverser->traverse($ast);
     }
 }
