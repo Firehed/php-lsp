@@ -1277,4 +1277,97 @@ PHP;
         self::assertStringContainsString('add', $result['contents']);
         self::assertStringContainsString('Adds two numbers', $result['contents']);
     }
+
+    public function testHoverOnNullsafeProtectedPropertyMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Calculator
+{
+    /**
+     * Divides two numbers.
+     */
+    public function divide(int $a, int $b): float
+    {
+        return $a / $b;
+    }
+}
+
+class Container
+{
+    protected ?Calculator $calc;
+
+    public function test(): void
+    {
+        $this->calc?->divide(10, 2);
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 18, 'character' => 23], // On "divide"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('divide', $result['contents']);
+        self::assertStringContainsString('Divides two numbers', $result['contents']);
+    }
+
+    public function testHoverOnChainedNullsafeMethodCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Inner
+{
+    /**
+     * Returns the value.
+     */
+    public function getValue(): int
+    {
+        return 42;
+    }
+}
+
+class Middle
+{
+    public ?Inner $inner;
+}
+
+class Outer
+{
+    private ?Middle $middle;
+
+    public function test(): void
+    {
+        $this->middle?->inner?->getValue();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 23, 'character' => 33], // On "getValue"
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('getValue', $result['contents']);
+        self::assertStringContainsString('Returns the value', $result['contents']);
+    }
 }
