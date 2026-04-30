@@ -61,4 +61,30 @@ class MethodAccess
     {
         $result = $this->getName()->/*|chain_on_string*/
     }
+
+    public function triggerNullsafeThis(): void
+    {
+        $this?->/*|nullsafe_this_empty*/
+    }
+
+    public function triggerNullsafeThisPrefix(): void
+    {
+        $this?->get/*|nullsafe_this_prefix*/
+    }
+}
+
+class NullsafeUser
+{
+    public function getName(): string
+    {
+        return 'name';
+    }
+}
+
+class NullsafeUsage
+{
+    public function withNullableParam(?NullsafeUser $user): void
+    {
+        $user?->/*|nullsafe_var_empty*/
+    }
 }
