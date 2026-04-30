@@ -41,4 +41,34 @@ trait OpensDocumentsTrait
 
         return $uri;
     }
+
+    /**
+     * Opens a fixture and returns the cursor position for the named marker.
+     *
+     * @return array{uri: string, line: int, character: int}
+     */
+    private function openFixtureAtCursor(string $fixturePath, string $cursorName): array
+    {
+        $fullPath = dirname(__DIR__) . '/Fixtures/' . $fixturePath;
+        $content = file_get_contents($fullPath);
+        assert($content !== false, "Fixture not found: $fixturePath");
+
+        $uri = 'file:///fixtures/' . $fixturePath;
+        $this->openDocument($uri, $content);
+
+        $marker = "/*|{$cursorName}*/";
+        $pos = strpos($content, $marker);
+        assert($pos !== false, "Cursor marker not found: $cursorName in $fixturePath");
+
+        $beforeMarker = substr($content, 0, $pos);
+        $lines = explode("\n", $beforeMarker);
+        $line = count($lines) - 1;
+        $character = strlen($lines[$line]);
+
+        return [
+            'uri' => $uri,
+            'line' => $line,
+            'character' => $character,
+        ];
+    }
 }
