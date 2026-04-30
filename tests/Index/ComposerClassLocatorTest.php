@@ -13,15 +13,17 @@ use PHPUnit\Framework\TestCase;
 final class ComposerClassLocatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../..';
+    private const FIXTURES_ROOT = __DIR__ . '/../Fixtures';
 
     public function testLocateClassFromClassmap(): void
     {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+        $locator = new ComposerClassLocator(self::FIXTURES_ROOT);
 
+        // @phpstan-ignore class.notFound
         $path = $locator->locateClass(ClassmapFixture::class);
 
         self::assertNotNull($path);
-        self::assertStringEndsWith('tests/Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
+        self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
     }
 
     public function testLocateClassReturnsNullForNonexistentClass(): void
@@ -55,12 +57,13 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testLocateClassFromPsr0(): void
     {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+        $locator = new ComposerClassLocator(self::FIXTURES_ROOT);
 
+        // @phpstan-ignore class.notFound
         $path = $locator->locateClass(\Psr0\Psr0Fixture::class);
 
         self::assertNotNull($path);
-        self::assertStringEndsWith('tests/Fixtures/Autoload/Psr0/Psr0Fixture.php', $path);
+        self::assertStringEndsWith('Fixtures/Autoload/Psr0/Psr0Fixture.php', $path);
     }
 
     public function testDoesNotRegisterAutoloader(): void
