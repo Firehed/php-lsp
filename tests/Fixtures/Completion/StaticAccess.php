@@ -38,6 +38,11 @@ class StaticAccess
         self::get/*|self_prefix*/
     }
 
+    public function triggerSelfConstantPrefix(): void
+    {
+        self::NA/*|self_const_prefix*/
+    }
+
     public function triggerStaticKeyword(): void
     {
         static::/*|static_keyword*/
