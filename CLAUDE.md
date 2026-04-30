@@ -20,6 +20,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Utility/` — AST helpers (ScopeFinder, TypeFactory, DocblockParser)
 - `src/Completion/` — Completion context detection (CompletionContextResolver)
 - `docs/features/` — Feature status documentation
+- `tests/Fixtures/` — Test fixture files (see Testing section)
 
 ## Architecture
 
@@ -94,6 +95,77 @@ See `docs/features/completion.md` for current capabilities.
 Architecture: `CompletionContextResolver` uses AST analysis to detect member/static access contexts (handles both `->` and `?->` automatically). Regex-based detection remains for other contexts (variables, type hints, keywords).
 
 **Prefer AST-based context detection over regex.** The parser's error recovery produces usable AST even for incomplete code like `$this->`. AST detection handles operator variants (e.g., `->` vs `?->`) automatically without pattern duplication.
+
+## Testing
+
+### Test Fixtures
+
+Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Structure:
+
+- `src/` — PSR-4 domain model (`Fixtures\` namespace): User, Entity, enums, traits, services
+- `Completion/`, `Hover/`, `Definition/`, `SignatureHelp/` — Handler-specific fixtures
+- `Legacy/` — Code quality variations (docblock-only, untyped)
+- `Namespacing/` — Namespace syntax variations
+- `Mixed/` — Procedural + OOP mixes
+
+### Fixture Helpers
+
+`OpensDocumentsTrait` provides helpers for handler tests:
+
+```php
+// Open a fixture file
+$uri = $this->openFixture('src/Domain/User.php');
+
+// Open fixture and get cursor position from marker
+$cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
+
+// Build request from cursor position
+$result = $this->handler->handle($this->completionRequestAt($cursor));
+```
+
+### Cursor Markers
+
+For tests needing specific cursor positions (completion, signature help), use markers:
+
+```php
+public function triggerCompletion(): void
+{
+    $this->/*|method_access*/
+}
+```
+
+The marker `/*|name*/` is a comment the parser ignores. `openFixtureAtCursor()` finds it and returns the position immediately before it.
+
+**Limitation:** Each incomplete statement needs its own method. Multiple incomplete statements in one method confuse parser error recovery:
+
+```php
+// Works - separate methods
+public function a(): void { $this->/*|a*/ }
+public function b(): void { $this->/*|b*/ }
+
+// Broken - parser fails
+public function bad(): void {
+    $this->/*|a*/
+    $this->/*|b*/
+}
+```
+
+### Multi-file Tests
+
+For go-to-definition and similar tests needing multiple files:
+
+```php
+$defUri = $this->openFixture('Definition/MyClass.php');
+$cursor = $this->openFixtureAtCursor('Definition/usage.php', 'on_class');
+$result = $this->handler->handle($this->definitionRequestAt($cursor));
+self::assertSame($defUri, $result['uri']);
+```
+
+### Shared Fixtures
+
+Fixtures in `src/Domain/`, `src/Inheritance/`, etc. are shared across tests. Rules:
+- **Additive changes OK:** Adding methods, properties, classes
+- **Breaking changes require coordination:** Don't rename, remove, or change signatures
 
 ## LSP Protocol
 
