@@ -12,6 +12,7 @@ class StaticAccess
 
     public static string $instance;
     private static int $counter = 0;
+    public string $instanceProp = 'instance';
 
     public static function create(): self
     {
