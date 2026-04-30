@@ -30,11 +30,14 @@ class MethodAccess
         return $this->active;
     }
 
-    public function process(): void
+    public function triggerThisEmpty(): void
     {
         $this->/*|this_empty*/
+    }
+
+    public function triggerThisPrefix(): void
+    {
         $this->get/*|this_prefix*/
-        $this->getName()/*|after_call*/
     }
 
     public function withVariable(): void

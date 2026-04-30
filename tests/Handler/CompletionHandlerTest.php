@@ -81,35 +81,15 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function greet(): string
-    {
-        return "Hello";
-    }
-
-    public function farewell(): string
-    {
-        return "Goodbye";
-    }
-
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
             'id' => 1,
             'method' => 'textDocument/completion',
             'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 15], // After $this->
+                'textDocument' => ['uri' => $cursor['uri']],
+                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
             ],
         ]);
 
@@ -120,34 +100,23 @@ PHP;
         self::assertNotEmpty($result['items']);
 
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertContains('farewell', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('getName', $labels);
+        self::assertContains('setName', $labels);
+        self::assertContains('getCount', $labels);
+        self::assertContains('isActive', $labels);
     }
 
     public function testThisMethodCompletionWithPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function greet(): string { return "Hello"; }
-    public function goodbye(): string { return "Bye"; }
-    public function test(): void
-    {
-        $this->gr
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_prefix');
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
             'id' => 1,
             'method' => 'textDocument/completion',
             'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 17], // After $this->gr
+                'textDocument' => ['uri' => $cursor['uri']],
+                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
             ],
         ]);
 
@@ -155,8 +124,10 @@ PHP;
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertNotContains('goodbye', $labels);
+        self::assertContains('getName', $labels);
+        self::assertContains('getCount', $labels);
+        self::assertNotContains('setName', $labels);
+        self::assertNotContains('isActive', $labels);
     }
 
     public function testThisPropertyCompletion(): void
