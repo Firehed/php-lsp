@@ -105,3 +105,11 @@ class ChildWithPrefix extends ParentWithMethods
         parent::gr/*|parent_prefix*/
     }
 }
+
+class NoParent
+{
+    public function test(): void
+    {
+        parent::/*|parent_no_parent*/
+    }
+}
