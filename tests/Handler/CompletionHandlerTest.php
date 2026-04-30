@@ -1419,36 +1419,15 @@ PHP;
 
     public function testEnumCaseCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status
-{
-    case Active;
-    case Inactive;
-    case Pending;
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'unit_enum_prefix');
 
-$status = Status::A
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 19], // After Status::A
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('Active', $labels);
-        self::assertNotContains('Inactive', $labels); // doesn't match prefix
-        self::assertNotContains('Pending', $labels); // doesn't match prefix
+        self::assertNotContains('Inactive', $labels);
+        self::assertNotContains('Pending', $labels);
     }
 
     public function testEnumCaseCompletionNoPrefix(): void
