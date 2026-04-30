@@ -100,13 +100,22 @@ Architecture: `CompletionContextResolver` uses AST analysis to detect member/sta
 
 ### Test Fixtures
 
-Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Structure:
+Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own autoloading — run `composer dump-autoload` in `tests/Fixtures/` after adding files.
 
-- `src/` — PSR-4 domain model (`Fixtures\` namespace): User, Entity, enums, traits, services
-- `Completion/`, `Hover/`, `Definition/`, `SignatureHelp/` — Handler-specific fixtures
+Structure (all under `tests/Fixtures/src/` with `Fixtures\` namespace):
+
+- `Domain/` — Core domain model: User, Entity
+- `Enum/` — Enum fixtures: Status, Priority
+- `Traits/`, `Inheritance/`, `Services/` — OOP patterns
+- `Repository/` — Repository pattern examples
+- `Completion/`, `Hover/`, `Definition/`, `SignatureHelp/` — Handler-specific fixtures with cursor markers
 - `Legacy/` — Code quality variations (docblock-only, untyped)
-- `Namespacing/` — Namespace syntax variations
 - `Mixed/` — Procedural + OOP mixes
+
+Non-PSR-4 fixtures (for autoload testing):
+- `Autoload/Psr0/` — PSR-0 style classes
+- `Autoload/Classmap/` — Classmap-loaded classes
+- `Namespacing/` — Namespace syntax variations (not currently autoloaded)
 
 ### Fixture Helpers
 
