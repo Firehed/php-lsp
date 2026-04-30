@@ -2544,48 +2544,18 @@ PHP;
     {
         // Issue #173: When multiple classes in file, $this-> should complete
         // members of the enclosing class, not the first class in the file
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    protected string $inheritedProperty;
-    public function inheritedMethod(): void {}
-}
+        $cursor = $this->openFixtureAtCursor('Completion/MultiClass.php', 'this_in_second_class');
 
-class ChildClass extends ParentClass
-{
-    private string $ownProperty;
-
-    public function ownMethod(): void {}
-
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
 
-        // Should have ChildClass's own members
+        // Should have ChildInMultiFile's own members
         self::assertContains('ownProperty', $labels);
         self::assertContains('ownMethod', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('triggerThisInChild', $labels);
 
         // Should also have inherited members
         self::assertContains('inheritedProperty', $labels);
@@ -2596,50 +2566,20 @@ PHP;
     {
         // Two unrelated classes in the same file - cursor in second class
         // should get its members, not the first class's
-        $code = <<<'PHP'
-<?php
-class FirstClass
-{
-    public string $firstProperty;
-    public function firstMethod(): void {}
-}
+        $cursor = $this->openFixtureAtCursor('Completion/MultiClass.php', 'this_in_unrelated_second');
 
-class SecondClass
-{
-    public string $secondProperty;
-
-    public function secondMethod(): void {}
-
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
 
-        // Should have SecondClass's members
+        // Should have SecondUnrelated's members
         self::assertContains('secondProperty', $labels);
         self::assertContains('secondMethod', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('triggerThisInSecond', $labels);
 
-        // Should NOT have FirstClass's members
+        // Should NOT have FirstUnrelated's members
         self::assertNotContains('firstProperty', $labels);
         self::assertNotContains('firstMethod', $labels);
     }
