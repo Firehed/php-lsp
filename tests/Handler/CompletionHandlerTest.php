@@ -3562,4 +3562,77 @@ PHP;
         $labels = array_column($result['items'], 'label');
         self::assertContains('getCity', $labels);
     }
+
+    public function testChainCompletionNamespacedFunctionReturn(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class Config {
+    public function get(string $key): mixed { return null; }
+}
+
+function getConfig(): Config { return new Config(); }
+
+function test(): void {
+    $config = getConfig();
+    $config->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 13],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('get', $labels);
+    }
+
+    public function testSameClassVisibilityShowsPrivateMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo {
+    private function secret(): void {}
+    protected function hidden(): void {}
+    public function visible(): void {}
+
+    public function test(Foo $other): void {
+        $other->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('secret', $labels);
+        self::assertContains('hidden', $labels);
+        self::assertContains('visible', $labels);
+    }
 }
