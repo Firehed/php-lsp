@@ -2286,38 +2286,16 @@ PHP;
 
     public function testSelfConstantCompletionWithPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo
-{
-    public const FOO = 'foo';
-    public const BAR = 'bar';
+        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_const_prefix');
 
-    public function thing(): string
-    {
-        return self::FO
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 23], // After self::FO
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('FOO', $labels);
-        self::assertNotContains('BAR', $labels);
+        self::assertContains('NAME', $labels);
+        self::assertNotContains('INTERNAL', $labels);
+        self::assertNotContains('SECRET', $labels);
         self::assertNotContains('class', $labels);
     }
 
