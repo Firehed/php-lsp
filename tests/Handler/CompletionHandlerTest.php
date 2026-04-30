@@ -2646,72 +2646,22 @@ PHP;
 
     public function testNullsafeThisMemberCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function greet(): string
-    {
-        return "Hello";
-    }
+        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'nullsafe_this_empty');
 
-    public function test(): void
-    {
-        $this?->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('getName', $labels);
+        self::assertContains('setName', $labels);
     }
 
     public function testNullsafeVariableMemberCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public function getName(): string
-    {
-        return 'name';
-    }
-}
+        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'nullsafe_var_empty');
 
-function test(?User $user): void
-{
-    $user?->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 11, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -2721,37 +2671,16 @@ PHP;
 
     public function testNullsafeThisMemberCompletionWithPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function greet(): string { return "Hello"; }
-    public function goodbye(): string { return "Bye"; }
-    public function test(): void
-    {
-        $this?->gr
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'nullsafe_this_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertNotContains('goodbye', $labels);
+        self::assertContains('getName', $labels);
+        self::assertContains('getCount', $labels);
+        self::assertNotContains('setName', $labels);
     }
 
     // Chain completion tests (issue #11)
