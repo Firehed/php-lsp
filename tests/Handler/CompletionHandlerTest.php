@@ -125,37 +125,15 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisCompletionIncludesInheritedMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyException extends \Exception
-{
-    private string $ownProperty;
+        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'this_inherited');
 
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         // Own members
         self::assertContains('ownProperty', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('ownMethod', $labels);
         // Inherited members from Exception
         self::assertContains('getMessage', $labels);
         self::assertContains('getCode', $labels);
