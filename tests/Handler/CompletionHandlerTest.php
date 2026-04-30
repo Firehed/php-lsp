@@ -1335,20 +1335,9 @@ PHP;
 
     public function testVariableCompletionSuggestsThisInMethod(): void
     {
-        $code = '<?php class Foo { public function bar() { $t; } }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'this_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 44], // After $t
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1357,79 +1346,35 @@ PHP;
 
     public function testVariableCompletionThisShowsClassName(): void
     {
-        $code = '<?php class MyClass { public function bar() { $t; } }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'this_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 48], // After $t
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $thisItems = array_filter($result['items'], fn($item) => $item['label'] === '$this');
         self::assertNotEmpty($thisItems);
         $thisItem = reset($thisItems);
-        self::assertSame('MyClass', $thisItem['detail'] ?? null);
+        self::assertSame('Fixtures\Completion\Variables', $thisItem['detail'] ?? null);
     }
 
     public function testVariableCompletionThisShowsNamespacedClassName(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Models;
+        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'namespaced_this_prefix');
 
-class User
-{
-    public function getName(): void
-    {
-        $t
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 10], // After $t
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $thisItems = array_filter($result['items'], fn($item) => $item['label'] === '$this');
         self::assertNotEmpty($thisItems);
         $thisItem = reset($thisItems);
-        self::assertSame('App\Models\User', $thisItem['detail'] ?? null);
+        self::assertSame('Fixtures\Completion\NamespacedVariables', $thisItem['detail'] ?? null);
     }
 
     public function testVariableCompletionWorksInClosures(): void
     {
-        $code = '<?php $fn = function ($param) { $localVar = 1; $l; };';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'closure_local');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 49], // After $l
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1438,20 +1383,9 @@ PHP;
 
     public function testVariableCompletionSuggestsForeachVariables(): void
     {
-        $code = '<?php function foo() { foreach ([1,2] as $item) { $i; } }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'foreach_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 52], // After $i
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
