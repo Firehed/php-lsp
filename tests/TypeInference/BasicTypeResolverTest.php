@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\TypeInference;
 use DateTime;
 use DateTimeImmutable;
 use Exception;
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
@@ -20,7 +21,6 @@ use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
-use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -470,8 +470,8 @@ PHP;
      */
     private function parse(string $code): array
     {
-        $parser = (new ParserFactory())->createForHostVersion();
-        return $parser->parse($code) ?? [];
+        $parser = new ParserService();
+        return $parser->parse(new TextDocument('file:///test.php', 'php', 1, $code)) ?? [];
     }
 
     /**
@@ -545,6 +545,48 @@ PHP;
             throw new \RuntimeException("Could not find expression of type $type");
         }
         assert($finder->found instanceof $type);
+        return $finder->found;
+    }
+
+    /**
+     * @template T of Expr
+     * @param array<Stmt> $ast
+     * @param class-string<T> $type
+     * @return list<T>
+     */
+    private function findAllExprsOfType(array $ast, string $type): array
+    {
+        $found = [];
+        $finder = new class ($type, $found) extends \PhpParser\NodeVisitorAbstract {
+            /** @var list<Expr> */
+            public array $found = [];
+            /** @var class-string<Expr> */
+            private string $type;
+
+            /**
+             * @param class-string<Expr> $type
+             * @param list<Expr> $found
+             */
+            public function __construct(string $type, array &$found)
+            {
+                $this->type = $type;
+                $this->found = &$found;
+            }
+
+            public function enterNode(\PhpParser\Node $node): ?int
+            {
+                if ($node instanceof $this->type) {
+                    $this->found[] = $node;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new \PhpParser\NodeTraverser();
+        $traverser->addVisitor($finder);
+        $traverser->traverse($ast);
+
+        // @phpstan-ignore return.type
         return $finder->found;
     }
 
@@ -638,5 +680,141 @@ PHP;
             throw new \RuntimeException('Could not find $this variable');
         }
         return $finder->found;
+    }
+
+    public function testResolveNamespacedFunctionReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class Config {
+    public function get(string $key): mixed { return null; }
+}
+
+function getConfig(): Config { return new Config(); }
+
+function test(): void {
+    $config = getConfig();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('App\\Config', $type->fqn);
+    }
+
+    public function testResolveVariableFromNamespacedFunctionCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class Config {
+    public function get(string $key): mixed { return null; }
+}
+
+function getConfig(): Config { return new Config(); }
+
+function test(): void {
+    $config = getConfig();
+    echo $config;
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+
+        $type = $this->resolver->resolveVariableType('config', $function, 11, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('App\\Config', $type->fqn);
+    }
+
+    public function testResolveBuiltinFunctionReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(): void {
+    $len = strlen("hello");
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('int', $type->format());
+    }
+
+    public function testResolveTopLevelFunctionReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Config {
+    public function get(): string { return ''; }
+}
+
+function getConfig(): Config {
+    return new Config();
+}
+
+function test(): void {
+    $config = getConfig();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Config', $type->fqn);
+    }
+
+    public function testResolveDynamicFunctionCallReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(): void {
+    $func = 'strlen';
+    $result = $func("hello");
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCalls = $this->findAllExprsOfType($ast, Expr\FuncCall::class);
+        // Get the second FuncCall ($func("hello")), not $func = 'strlen'
+        $dynamicCall = $funcCalls[0];
+
+        $type = $this->resolver->resolveExpressionType($dynamicCall, $function, $ast);
+
+        self::assertNull($type);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function findFunctionByName(array $ast, string $name): Stmt\Function_
+    {
+        foreach ($ast as $node) {
+            if ($node instanceof Stmt\Function_ && $node->name->toString() === $name) {
+                return $node;
+            }
+            if ($node instanceof Stmt\Namespace_) {
+                foreach ($node->stmts as $stmt) {
+                    if ($stmt instanceof Stmt\Function_ && $stmt->name->toString() === $name) {
+                        return $stmt;
+                    }
+                }
+            }
+        }
+        throw new \RuntimeException("Could not find function $name");
     }
 }

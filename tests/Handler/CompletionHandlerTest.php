@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Completion\CompletionContextResolver;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\DocumentIndexer;
@@ -22,6 +21,7 @@ use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -53,6 +53,7 @@ class CompletionHandlerTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
+        $memberAccessResolver = new MemberAccessResolver($typeResolver);
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->handler = new CompletionHandler(
             $this->documents,
@@ -61,7 +62,7 @@ class CompletionHandlerTest extends TestCase
             $this->memberResolver,
             $this->classRepository,
             $typeResolver,
-            new CompletionContextResolver(),
+            $memberAccessResolver,
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -1894,7 +1895,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -1942,7 +1943,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -1988,7 +1989,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -2039,7 +2040,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -2091,7 +2092,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -2132,7 +2133,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -2169,7 +2170,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -2179,6 +2180,44 @@ PHP;
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
                 'position' => ['line' => 3, 'character' => 15], // After $$dynamic->
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
+    public function testDynamicStaticAccessReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(): void
+{
+    $class = 'DateTime';
+    $class::
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->memberResolver,
+            $this->classRepository,
+            new BasicTypeResolver($this->memberResolver),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 12], // After $class::
             ],
         ]);
 
@@ -2206,7 +2245,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -2258,7 +2297,7 @@ PHP;
             $this->memberResolver,
             $this->classRepository,
             new BasicTypeResolver($this->memberResolver),
-            new CompletionContextResolver(),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
         );
 
         $request = RequestMessage::fromArray([
@@ -3259,5 +3298,379 @@ PHP;
         $labels = array_column($result['items'], 'label');
         self::assertContains('greet', $labels);
         self::assertNotContains('goodbye', $labels);
+    }
+
+    // Chain completion tests (issue #11)
+
+    public function testChainCompletionPropertyChain(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User {
+    public function getName(): string { return ''; }
+}
+
+class Service {
+    private User $user;
+
+    public function test(): void {
+        $this->user->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 21],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels);
+    }
+
+    public function testChainCompletionMethodChain(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User {
+    public function getName(): string { return ''; }
+}
+
+class Service {
+    public function getUser(): User { return new User(); }
+
+    public function test(): void {
+        $this->getUser()->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 26],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels);
+    }
+
+    public function testChainCompletionMultiLevel(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Name {
+    public function toUpper(): string { return ''; }
+}
+
+class User {
+    public function getName(): Name { return new Name(); }
+}
+
+class Service {
+    public function getUser(): User { return new User(); }
+
+    public function test(): void {
+        $this->getUser()->getName()->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 37],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('toUpper', $labels);
+    }
+
+    public function testChainCompletionFromStaticMethod(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Builder {
+    public static function create(): self { return new self(); }
+    public function build(): void {}
+}
+
+function test(): void {
+    $builder = Builder::create();
+    $builder->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 8, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('build', $labels);
+    }
+
+    public function testChainCompletionFromFunctionCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Config {
+    public function get(string $key): mixed { return null; }
+}
+
+function getConfig(): Config { return new Config(); }
+
+function test(): void {
+    $config = getConfig();
+    $config->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 13],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('get', $labels);
+    }
+
+    public function testChainCompletionMultiLine(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Name {
+    public function toUpper(): string { return ''; }
+}
+
+class User {
+    public function getName(): Name { return new Name(); }
+}
+
+class Service {
+    public function getUser(): User { return new User(); }
+
+    public function test(): void {
+        $this->getUser()
+            ->getName()
+            ->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 15, 'character' => 14],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('toUpper', $labels);
+    }
+
+    public function testChainCompletionNullsafePropertyChain(): void
+    {
+        $code = <<<'PHP'
+<?php
+class User {
+    public function getName(): string { return ''; }
+}
+
+class Service {
+    private ?User $user;
+
+    public function test(): void {
+        $this->user?->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 9, 'character' => 22],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels);
+    }
+
+    public function testChainCompletionMixedNullsafe(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Address {
+    public function getCity(): string { return ''; }
+}
+
+class User {
+    public ?Address $address;
+}
+
+class Service {
+    private User $user;
+
+    public function test(): void {
+        $this->user->address?->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 13, 'character' => 31],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getCity', $labels);
+    }
+
+    public function testChainCompletionNamespacedFunctionReturn(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class Config {
+    public function get(string $key): mixed { return null; }
+}
+
+function getConfig(): Config { return new Config(); }
+
+function test(): void {
+    $config = getConfig();
+    $config->
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 11, 'character' => 13],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('get', $labels);
+    }
+
+    public function testSameClassVisibilityShowsPrivateMembers(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Foo {
+    private function secret(): void {}
+    protected function hidden(): void {}
+    public function visible(): void {}
+
+    public function test(Foo $other): void {
+        $other->
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 7, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('secret', $labels);
+        self::assertContains('hidden', $labels);
+        self::assertContains('visible', $labels);
     }
 }

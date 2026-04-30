@@ -82,6 +82,14 @@ final class BasicTypeResolver implements TypeResolverInterface
             return null;
         }
 
+        // Function call: functionName()
+        if ($expr instanceof Expr\FuncCall) {
+            if ($expr->name instanceof Node\Name) {
+                return $this->getFunctionReturnType($expr->name->toString(), $ast);
+            }
+            return null;
+        }
+
         // Property fetch: $obj->property or $obj?->property
         if ($expr instanceof Expr\PropertyFetch || $expr instanceof Expr\NullsafePropertyFetch) {
             $objectType = $this->resolveExpressionType($expr->var, $scope, $ast);
@@ -234,6 +242,45 @@ final class BasicTypeResolver implements TypeResolverInterface
         );
 
         return $propertyInfo?->type;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function getFunctionReturnType(string $functionName, array $ast): ?Type
+    {
+        $func = $this->findFunctionInAst($functionName, $ast);
+        if ($func !== null) {
+            return TypeFactory::fromNode($func->returnType);
+        }
+
+        // Try reflection for built-in functions
+        try {
+            $reflection = new \ReflectionFunction($functionName);
+            return TypeFactory::fromReflection($reflection->getReturnType());
+        } catch (\ReflectionException) {
+            return null;
+        }
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function findFunctionInAst(string $functionName, array $ast): ?Stmt\Function_
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Function_ && $stmt->name->toString() === $functionName) {
+                return $stmt;
+            }
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $nsStmt) {
+                    if ($nsStmt instanceof Stmt\Function_ && $nsStmt->name->toString() === $functionName) {
+                        return $nsStmt;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private function extractClassName(?Type $type): ?string

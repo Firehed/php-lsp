@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Completion\CompletionContext;
-use Firehed\PhpLsp\Completion\CompletionContextResolver;
 use Firehed\PhpLsp\Completion\ContextDetector;
-use Firehed\PhpLsp\Completion\MemberAccessContext;
-use Firehed\PhpLsp\Completion\StaticAccessContext;
 use Firehed\PhpLsp\Completion\TypeHintContext;
+use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
@@ -26,10 +23,20 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node;
+use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\NullsafePropertyFetch;
+use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -84,7 +91,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly MemberResolver $memberResolver,
         private readonly ClassRepository $classRepository,
         private readonly TypeResolverInterface $typeResolver,
-        private readonly CompletionContextResolver $contextResolver,
+        private readonly MemberAccessResolver $memberAccessResolver,
     ) {
     }
 
@@ -161,11 +168,15 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getCompletionItems(string $textBeforeCursor, array $ast, int $line, int $offset): array
     {
-        // AST-based context detection for member/static access
-        // Handles both -> and ?-> automatically
-        $astContext = $this->contextResolver->resolve($ast, $offset);
-        if ($astContext !== null) {
-            return $this->handleAstContext($astContext, $ast, $line);
+        // AST-based member/static access detection
+        // Use offset - 1 because cursor is after the -> and we want the member access node
+        $nodeFinder = new NodeAtPosition();
+        $node = $nodeFinder->find($ast, $offset > 0 ? $offset - 1 : 0);
+        if ($node !== null) {
+            $result = $this->handleMemberAccessNode($node, $ast, $line);
+            if ($result !== null) {
+                return $result;
+            }
         }
 
         // Variable completion ($var)
@@ -245,60 +256,82 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * Handle completion context detected via AST analysis.
+     * Handle member/static access detected via AST analysis.
      *
      * @param array<Stmt> $ast
-     * @return list<CompletionItem>
+     * @return list<CompletionItem>|null
      */
-    private function handleAstContext(
-        MemberAccessContext|StaticAccessContext $context,
-        array $ast,
-        int $line,
-    ): array {
-        if ($context instanceof MemberAccessContext) {
-            return $this->handleMemberAccessContext($context, $ast, $line);
+    private function handleMemberAccessNode(Node $node, array $ast, int $line): ?array
+    {
+        // Handle identifier/error by checking parent
+        if ($node instanceof Identifier || $node instanceof Node\Expr\Error) {
+            $parent = $node->getAttribute('parent');
+            if ($parent instanceof Node) {
+                $node = $parent;
+            } else {
+                // @codeCoverageIgnoreStart
+                // ParserService always sets parent via NodeConnectingVisitor
+                return null;
+                // @codeCoverageIgnoreEnd
+            }
         }
 
-        return $this->handleStaticAccessContext($context, $ast, $line);
+        // Member access: $obj->member or $obj?->member
+        if (MemberAccessResolver::isMethodCall($node) || MemberAccessResolver::isPropertyFetch($node)) {
+            /** @var MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node */
+            return $this->handleMemberAccess($node, $ast);
+        }
+
+        // Static access: ClassName::member
+        if ($node instanceof StaticPropertyFetch || $node instanceof StaticCall || $node instanceof ClassConstFetch) {
+            return $this->handleStaticAccess($node, $ast, $line);
+        }
+
+        return null;
     }
 
     /**
      * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function handleMemberAccessContext(MemberAccessContext $context, array $ast, int $line): array
-    {
-        return match ($context->context) {
-            CompletionContext::ThisMember => $this->getThisMemberCompletions($context->prefix, $ast, $line),
-            CompletionContext::VariableMember => $this->handleVariableMemberContext($context, $ast, $line),
-            default => [],
-        };
-    }
+    private function handleMemberAccess(
+        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
+        array $ast,
+    ): array {
+        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
 
-    /**
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function handleVariableMemberContext(MemberAccessContext $context, array $ast, int $line): array
-    {
-        $var = $context->var;
-        if (!$var instanceof Node\Expr\Variable || !is_string($var->name)) {
+        $className = $this->memberAccessResolver->resolveObjectClassName($node->var, $ast);
+        if ($className === null) {
             return [];
         }
 
-        return $this->getTypedVariableMemberCompletions($var->name, $context->prefix, $ast, $line);
+        $isThis = $node->var instanceof Variable && $node->var->name === 'this';
+        $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
+        $isSameClass = $enclosingClassName !== null && $enclosingClassName === $className->fqn;
+        $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
+
+        return $this->getMemberCompletions($className, $visibility, false, $prefix);
     }
 
     /**
      * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function handleStaticAccessContext(StaticAccessContext $context, array $ast, int $line): array
-    {
-        $rawName = $context->class->toString();
+    private function handleStaticAccess(
+        StaticPropertyFetch|StaticCall|ClassConstFetch $node,
+        array $ast,
+        int $line,
+    ): array {
+        $class = $node->class;
+        if (!$class instanceof Name) {
+            return [];
+        }
+
+        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
+        $rawName = $class->toString();
 
         if ($rawName === 'parent') {
-            return $this->getParentCompletions($context->prefix, $ast, $line);
+            return $this->getParentCompletions($prefix, $ast, $line);
         }
 
         if ($rawName === 'self' || $rawName === 'static') {
@@ -310,37 +343,12 @@ final class CompletionHandler implements HandlerInterface
             if ($className === null) {
                 return [];
             }
-            return $this->getStaticCompletions($className, $context->prefix, $ast, $line);
+            return $this->getStaticCompletions($className, $prefix, $ast, $line);
         }
 
         // ClassName:: - resolve via imports
-        $resolvedName = ScopeFinder::resolveClassName($context->class);
-        return $this->getStaticCompletions($resolvedName, $context->prefix, $ast, $line);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function getThisMemberCompletions(string $prefix, array $ast, int $line): array
-    {
-        $classNode = ScopeFinder::findClassAtLine($ast, $line);
-        if ($classNode === null) {
-            return [];
-        }
-
-        $classNameStr = ScopeFinder::getClassLikeName($classNode);
-        if ($classNameStr === null) {
-            // Anonymous class - no completions available
-            return [];
-        }
-
-        return $this->getMemberCompletions(
-            new ClassName($classNameStr),
-            Visibility::Private,
-            false,
-            $prefix,
-        );
+        $resolvedName = ScopeFinder::resolveClassName($class);
+        return $this->getStaticCompletions($resolvedName, $prefix, $ast, $line);
     }
 
     /**
@@ -425,39 +433,6 @@ final class CompletionHandler implements HandlerInterface
             null,
             $prefix,
             includeProperties: false,
-        );
-    }
-
-    /**
-     * Get completions for a typed variable: $user-> where $user has a known type.
-     *
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function getTypedVariableMemberCompletions(
-        string $variableName,
-        string $prefix,
-        array $ast,
-        int $line,
-    ): array {
-        // Find the enclosing scope
-        $scope = $this->findEnclosingScope($ast, $line);
-        if ($scope === null) {
-            return [];
-        }
-
-        // Resolve the variable's type
-        $type = $this->typeResolver->resolveVariableType($variableName, $scope, $line, $ast);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        if ($classNames === []) {
-            return [];
-        }
-
-        return $this->getMemberCompletions(
-            $classNames[0],
-            Visibility::Public,
-            false,
-            $prefix,
         );
     }
 
