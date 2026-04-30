@@ -83,17 +83,7 @@ class CompletionHandlerTest extends TestCase
     {
         $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => $cursor['uri']],
-                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -110,17 +100,7 @@ class CompletionHandlerTest extends TestCase
     {
         $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => $cursor['uri']],
-                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');

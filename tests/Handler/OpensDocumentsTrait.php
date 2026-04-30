@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
+use Firehed\PhpLsp\Protocol\RequestMessage;
 
 /**
  * Provides document opening helper for handler tests.
@@ -70,5 +71,21 @@ trait OpensDocumentsTrait
             'line' => $line,
             'character' => $character,
         ];
+    }
+
+    /**
+     * @param array{uri: string, line: int, character: int} $cursor
+     */
+    private function completionRequestAt(array $cursor): RequestMessage
+    {
+        return RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => $cursor['uri']],
+                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
+            ],
+        ]);
     }
 }
