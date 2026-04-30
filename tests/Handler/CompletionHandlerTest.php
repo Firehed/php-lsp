@@ -1324,20 +1324,9 @@ PHP;
 
     public function testVariableCompletionSuggestsLocalVariables(): void
     {
-        $code = '<?php function foo() { $logger = new Logger(); $l; }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'local_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 49], // After $l
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
