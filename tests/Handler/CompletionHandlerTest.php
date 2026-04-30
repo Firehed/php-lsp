@@ -2297,35 +2297,9 @@ PHP;
 
     public function testParentMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    public function __construct(string $name) {}
-    protected function greet(): string { return 'Hello'; }
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'parent_access');
 
-class ChildClass extends ParentClass
-{
-    public function __construct(string $name)
-    {
-        parent::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 11, 'character' => 16], // After parent::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -2336,29 +2310,9 @@ PHP;
 
     public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function test(): void
-    {
-        parent::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'parent_no_parent');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 5, 'character' => 16], // After parent::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -2367,36 +2321,9 @@ PHP;
 
     public function testParentMethodCompletionWithPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    public function __construct() {}
-    protected function greet(): string { return 'Hello'; }
-    protected function goodbye(): string { return 'Bye'; }
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'parent_prefix');
 
-class ChildClass extends ParentClass
-{
-    public function test(): void
-    {
-        parent::gr
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 12, 'character' => 18], // After parent::gr
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
