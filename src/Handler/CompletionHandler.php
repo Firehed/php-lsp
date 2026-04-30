@@ -303,7 +303,9 @@ final class CompletionHandler implements HandlerInterface
         }
 
         $isThis = $node->var instanceof Variable && $node->var->name === 'this';
-        $visibility = $isThis ? Visibility::Private : Visibility::Public;
+        $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
+        $isSameClass = $enclosingClassName !== null && $enclosingClassName === $className->fqn;
+        $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
 
         return $this->getMemberCompletions($className, $visibility, false, $prefix);
     }
