@@ -112,37 +112,15 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisPropertyCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    private string $name;
-    protected int $age;
+        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
 
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('name', $labels);
-        self::assertContains('age', $labels);
+        self::assertContains('count', $labels);
+        self::assertContains('active', $labels);
     }
 
     public function testThisCompletionIncludesInheritedMembers(): void
