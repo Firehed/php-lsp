@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\TypeInference;
 use DateTime;
 use DateTimeImmutable;
 use Exception;
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
@@ -20,7 +21,6 @@ use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
-use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -470,8 +470,8 @@ PHP;
      */
     private function parse(string $code): array
     {
-        $parser = (new ParserFactory())->createForHostVersion();
-        return $parser->parse($code) ?? [];
+        $parser = new ParserService();
+        return $parser->parse(new TextDocument('file:///test.php', 'php', 1, $code)) ?? [];
     }
 
     /**
@@ -638,5 +638,77 @@ PHP;
             throw new \RuntimeException('Could not find $this variable');
         }
         return $finder->found;
+    }
+
+    public function testResolveNamespacedFunctionReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class Config {
+    public function get(string $key): mixed { return null; }
+}
+
+function getConfig(): Config { return new Config(); }
+
+function test(): void {
+    $config = getConfig();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('App\\Config', $type->fqn);
+    }
+
+    public function testResolveVariableFromNamespacedFunctionCall(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class Config {
+    public function get(string $key): mixed { return null; }
+}
+
+function getConfig(): Config { return new Config(); }
+
+function test(): void {
+    $config = getConfig();
+    echo $config;
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+
+        $type = $this->resolver->resolveVariableType('config', $function, 11, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('App\\Config', $type->fqn);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function findFunctionByName(array $ast, string $name): Stmt\Function_
+    {
+        foreach ($ast as $node) {
+            if ($node instanceof Stmt\Function_ && $node->name->toString() === $name) {
+                return $node;
+            }
+            if ($node instanceof Stmt\Namespace_) {
+                foreach ($node->stmts as $stmt) {
+                    if ($stmt instanceof Stmt\Function_ && $stmt->name->toString() === $name) {
+                        return $stmt;
+                    }
+                }
+            }
+        }
+        throw new \RuntimeException("Could not find function $name");
     }
 }
