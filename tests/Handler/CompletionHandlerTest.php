@@ -1312,25 +1312,14 @@ PHP;
 
     public function testVariableCompletionSuggestsParameters(): void
     {
-        $code = '<?php function foo(string $name, int $age) { $n; }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'param_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 47], // After $n
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('$name', $labels);
-        self::assertNotContains('$age', $labels); // doesn't match prefix
+        self::assertNotContains('$age', $labels);
     }
 
     public function testVariableCompletionSuggestsLocalVariables(): void
