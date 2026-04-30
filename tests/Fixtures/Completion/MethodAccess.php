@@ -40,10 +40,15 @@ class MethodAccess
         $this->get/*|this_prefix*/
     }
 
-    public function withVariable(): void
+    public function triggerVarEmpty(): void
     {
         $obj = new self();
         $obj->/*|var_empty*/
+    }
+
+    public function triggerVarPrefix(): void
+    {
+        $obj = new self();
         $obj->get/*|var_prefix*/
     }
 
