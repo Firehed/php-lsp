@@ -2270,40 +2270,16 @@ PHP;
 
     public function testSelfConstantCompletionNamespaced(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Models;
+        // StaticAccess.php is in Fixtures\Completion namespace - same coverage
+        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_empty');
 
-class Foo
-{
-    public const FOO = 'foo';
-    public const BAR = 'bar';
-
-    public function thing(): string
-    {
-        return self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 21], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('FOO', $labels);
-        self::assertContains('BAR', $labels);
+        self::assertContains('NAME', $labels);
+        self::assertContains('INTERNAL', $labels);
         self::assertContains('class', $labels);
     }
 
