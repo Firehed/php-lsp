@@ -269,7 +269,10 @@ final class CompletionHandler implements HandlerInterface
             if ($parent instanceof Node) {
                 $node = $parent;
             } else {
+                // @codeCoverageIgnoreStart
+                // ParserService always sets parent via NodeConnectingVisitor
                 return null;
+                // @codeCoverageIgnoreEnd
             }
         }
 
