@@ -2268,20 +2268,6 @@ PHP;
         self::assertContains('class', $labels);
     }
 
-    public function testSelfConstantCompletionNamespaced(): void
-    {
-        // StaticAccess.php is in Fixtures\Completion namespace - same coverage
-        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_empty');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('NAME', $labels);
-        self::assertContains('INTERNAL', $labels);
-        self::assertContains('class', $labels);
-    }
 
     public function testStaticConstantCompletion(): void
     {
