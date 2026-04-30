@@ -34,9 +34,17 @@ class TypeHints
     }
 }
 
-class PropertyTypes
+class PropertyTypeEmpty
 {
     public /*|property_type*/ $untyped;
+}
+
+class PropertyTypePrefix
+{
     public Us/*|property_prefix*/ $user;
+}
+
+class PropertyTypeNullable
+{
     public ?/*|nullable_property*/ $nullable;
 }

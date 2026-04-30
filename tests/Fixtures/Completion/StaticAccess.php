@@ -28,19 +28,31 @@ class StaticAccess
         self::$counter = 0;
     }
 
-    public function example(): void
+    public function triggerSelfEmpty(): void
     {
         self::/*|self_empty*/
+    }
+
+    public function triggerSelfPrefix(): void
+    {
         self::get/*|self_prefix*/
+    }
+
+    public function triggerStaticKeyword(): void
+    {
         static::/*|static_keyword*/
     }
 }
 
 class StaticCaller
 {
-    public function call(): void
+    public function triggerExternalStatic(): void
     {
         StaticAccess::/*|external_static*/
+    }
+
+    public function triggerConstAccess(): void
+    {
         StaticAccess::NAME/*|const_access*/
     }
 }
