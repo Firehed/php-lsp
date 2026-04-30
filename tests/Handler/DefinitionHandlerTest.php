@@ -958,4 +958,44 @@ PHP;
         self::assertSame('file:///MyClass.php', $result['uri']);
         self::assertSame(2, $result['range']['start']['line']);
     }
+
+    public function testGoToEnumMethodFromWithinEnum(): void
+    {
+        $code = <<<'PHP'
+<?php
+enum Status: string {
+    case Active = 'active';
+    case Inactive = 'inactive';
+
+    public function label(): string {
+        return match($this) {
+            self::Active => 'Active',
+            self::Inactive => 'Inactive',
+        };
+    }
+
+    public function description(): string {
+        return $this->label() . ' status';
+    }
+}
+PHP;
+        $this->openDocument('file:///Status.php', $code);
+
+        // Position on "label" in $this->label()
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///Status.php'],
+                'position' => ['line' => 13, 'character' => 22],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertSame('file:///Status.php', $result['uri']);
+        self::assertSame(5, $result['range']['start']['line']);
+    }
 }
