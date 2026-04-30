@@ -11,12 +11,10 @@ class ParentClass extends Grandparent
 
     public string $parentProperty = 'parent';
     protected int $protectedProperty = 0;
-    /** @phpstan-ignore property.onlyWritten */
     private bool $privateProperty = false;
 
     public static string $staticProperty = 'static';
 
-    /** @phpstan-ignore constructor.unusedParameter */
     public function __construct(string $name = '')
     {
     }
@@ -33,7 +31,6 @@ class ParentClass extends Grandparent
     {
     }
 
-    /** @phpstan-ignore method.unused */
     private function privateMethod(): void
     {
     }
