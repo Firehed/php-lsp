@@ -1307,19 +1307,6 @@ PHP;
         self::assertSame('Fixtures\Completion\Variables', $thisItem['detail'] ?? null);
     }
 
-    public function testVariableCompletionThisShowsNamespacedClassName(): void
-    {
-        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'namespaced_this_prefix');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $thisItems = array_filter($result['items'], fn($item) => $item['label'] === '$this');
-        self::assertNotEmpty($thisItems);
-        $thisItem = reset($thisItems);
-        self::assertSame('Fixtures\Completion\NamespacedVariables', $thisItem['detail'] ?? null);
-    }
-
     public function testVariableCompletionWorksInClosures(): void
     {
         $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'closure_local');

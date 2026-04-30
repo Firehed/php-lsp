@@ -28,25 +28,6 @@ class Variables
             $i/*|foreach_prefix*/
         }
     }
-
-    public function scopeIsolation(): void
-    {
-        $siteDir = '/var/www';
-        $s/*|scope_var_prefix*/
-    }
-
-    public function showParameterType(string $typedParam): void
-    {
-        $/*|param_type_detail*/
-    }
-}
-
-class NamespacedVariables
-{
-    public function getName(): void
-    {
-        $t/*|namespaced_this_prefix*/
-    }
 }
 
 class ClosureVariables

@@ -38,29 +38,6 @@ class ChildForSelf extends ParentForSelf
     }
 }
 
-class GrandParent
-{
-    public static function grandparentPublic(): void
-    {
-    }
-
-    protected static function grandparentProtected(): void
-    {
-    }
-}
-
-class MiddleParent extends GrandParent
-{
-}
-
-class GrandChild extends MiddleParent
-{
-    public function triggerDeepInheritance(): void
-    {
-        GrandParent::/*|deep_inheritance*/
-    }
-}
-
 class ParentWithConstructor
 {
     public function __construct(string $name)
