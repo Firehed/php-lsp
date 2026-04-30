@@ -2189,6 +2189,44 @@ PHP;
         self::assertEmpty($result['items']);
     }
 
+    public function testDynamicStaticAccessReturnsEmpty(): void
+    {
+        $code = <<<'PHP'
+<?php
+function foo(): void
+{
+    $class = 'DateTime';
+    $class::
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $handler = new CompletionHandler(
+            $this->documents,
+            $this->parser,
+            $this->symbolIndex,
+            $this->memberResolver,
+            $this->classRepository,
+            new BasicTypeResolver($this->memberResolver),
+            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
+        );
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 4, 'character' => 12], // After $class::
+            ],
+        ]);
+
+        $result = $handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertEmpty($result['items']);
+    }
+
     public function testTypedVariableCompletionIncludesInheritedMembers(): void
     {
         $code = <<<'PHP'

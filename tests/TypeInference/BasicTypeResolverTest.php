@@ -548,6 +548,48 @@ PHP;
         return $finder->found;
     }
 
+    /**
+     * @template T of Expr
+     * @param array<Stmt> $ast
+     * @param class-string<T> $type
+     * @return list<T>
+     */
+    private function findAllExprsOfType(array $ast, string $type): array
+    {
+        $found = [];
+        $finder = new class ($type, $found) extends \PhpParser\NodeVisitorAbstract {
+            /** @var list<Expr> */
+            public array $found = [];
+            /** @var class-string<Expr> */
+            private string $type;
+
+            /**
+             * @param class-string<Expr> $type
+             * @param list<Expr> $found
+             */
+            public function __construct(string $type, array &$found)
+            {
+                $this->type = $type;
+                $this->found = &$found;
+            }
+
+            public function enterNode(\PhpParser\Node $node): ?int
+            {
+                if ($node instanceof $this->type) {
+                    $this->found[] = $node;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new \PhpParser\NodeTraverser();
+        $traverser->addVisitor($finder);
+        $traverser->traverse($ast);
+
+        // @phpstan-ignore return.type
+        return $finder->found;
+    }
+
     public function testResolveNullsafeMethodCall(): void
     {
         $code = <<<'PHP'
@@ -690,6 +732,70 @@ PHP;
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('App\\Config', $type->fqn);
+    }
+
+    public function testResolveBuiltinFunctionReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(): void {
+    $len = strlen("hello");
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(PrimitiveType::class, $type);
+        self::assertSame('int', $type->format());
+    }
+
+    public function testResolveTopLevelFunctionReturnType(): void
+    {
+        $code = <<<'PHP'
+<?php
+class Config {
+    public function get(): string { return ''; }
+}
+
+function getConfig(): Config {
+    return new Config();
+}
+
+function test(): void {
+    $config = getConfig();
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Config', $type->fqn);
+    }
+
+    public function testResolveDynamicFunctionCallReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(): void {
+    $func = 'strlen';
+    $result = $func("hello");
+}
+PHP;
+        $ast = $this->parse($code);
+        $function = $this->findFunctionByName($ast, 'test');
+        $funcCalls = $this->findAllExprsOfType($ast, Expr\FuncCall::class);
+        // Get the second FuncCall ($func("hello")), not $func = 'strlen'
+        $dynamicCall = $funcCalls[0];
+
+        $type = $this->resolver->resolveExpressionType($dynamicCall, $function, $ast);
+
+        self::assertNull($type);
     }
 
     /**
