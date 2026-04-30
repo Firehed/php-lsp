@@ -15,6 +15,8 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
  * 1. Inline code: openDocument($uri, $code) for simple one-off tests
  * 2. Fixture files: openFixture() / openFixtureAtCursor() for reusable scenarios
  *
+ * @phpstan-type CursorPosition array{uri: string, line: int, character: int}
+ *
  * @property TextDocumentSyncHandler $syncHandler
  */
 trait OpensDocumentsTrait
@@ -73,7 +75,8 @@ trait OpensDocumentsTrait
      *
      * @param string $fixturePath Path relative to tests/Fixtures/
      * @param string $cursorName The marker name (without delimiters)
-     * @return array{uri: string, line: int, character: int} Position for LSP requests
+     * @return CursorPosition
+     * @phpstan-ignore missingType.iterableValue
      */
     private function openFixtureAtCursor(string $fixturePath, string $cursorName): array
     {
@@ -108,7 +111,8 @@ trait OpensDocumentsTrait
      *     $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
      *     $result = $this->handler->handle($this->completionRequestAt($cursor));
      *
-     * @param array{uri: string, line: int, character: int} $cursor From openFixtureAtCursor()
+     * @param CursorPosition $cursor From openFixtureAtCursor()
+     * @phpstan-ignore missingType.iterableValue
      */
     private function completionRequestAt(array $cursor): RequestMessage
     {
