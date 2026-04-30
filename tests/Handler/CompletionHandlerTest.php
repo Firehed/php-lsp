@@ -2373,38 +2373,20 @@ PHP;
 
     public function testSelfStaticMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo
-{
-    public static function staticMethod(): void {}
-    public function instanceMethod(): void {}
+        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_empty');
 
-    public function thing(): void
-    {
-        self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 14], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('staticMethod', $labels);
-        self::assertNotContains('instanceMethod', $labels);
+        // Static methods should appear
+        self::assertContains('create', $labels);
+        self::assertContains('getInstance', $labels);
+        self::assertContains('reset', $labels);
+        // Instance methods should NOT appear
+        self::assertNotContains('triggerSelfEmpty', $labels);
+        self::assertNotContains('triggerSelfPrefix', $labels);
     }
 
     public function testSelfStaticPropertyCompletion(): void
