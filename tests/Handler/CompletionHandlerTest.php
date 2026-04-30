@@ -1432,34 +1432,15 @@ PHP;
 
     public function testEnumCaseCompletionNoPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status
-{
-    case Active;
-    case Inactive;
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'unit_enum_empty');
 
-$status = Status::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18], // After Status::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('Active', $labels);
         self::assertContains('Inactive', $labels);
+        self::assertContains('Pending', $labels);
         self::assertContains('class', $labels);
 
         // Check unit enum case detail
@@ -1471,29 +1452,9 @@ PHP;
 
     public function testEnumBuiltinMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status
-{
-    case Active;
-    case Inactive;
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'unit_enum_builtin');
 
-$cases = Status::c
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18], // After Status::c
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1503,30 +1464,9 @@ PHP;
 
     public function testBackedEnumCompletionInt(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Priority: int
-{
-    case Low = 1;
-    case Medium = 2;
-    case High = 3;
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'backed_int_empty');
 
-$p = Priority::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 15], // After Priority::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1556,30 +1496,9 @@ PHP;
 
     public function testBackedEnumCompletionString(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Color: string
-{
-    case Red = 'red';
-    case Green = 'green';
-    case Blue = 'blue';
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'backed_string_empty');
 
-$c = Color::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 12], // After Color::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1607,29 +1526,9 @@ PHP;
 
     public function testBackedEnumMethodPrefixFiltering(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Priority: int
-{
-    case Low = 1;
-    case High = 2;
-}
+        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'backed_int_prefix');
 
-$p = Priority::f
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 16], // After Priority::f
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
