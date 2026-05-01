@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Fixtures\Domain;
 
-use Fixtures\Completion\Address;
 use Fixtures\Enum\Status;
 use Fixtures\Traits\HasTimestamps;
 
@@ -27,7 +26,7 @@ class User implements Entity, Person
         private string $email,
         private int $age = 0,
         private Status $status = Status::Active,
-        public ?Address $nullableAddress = null,
+        public ?self $manager = null,
     ) {
         self::$instanceCount++;
     }

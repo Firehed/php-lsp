@@ -1961,7 +1961,7 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('getCity', $labels);
+        self::assertContains('getName', $labels);
     }
 
     public function testChainCompletionNamespacedFunctionReturn(): void

@@ -24,11 +24,6 @@ class FunctionCompletionTriggers
         $x = arr/*|builtin_function*/
     }
 
-    public function triggerUserDefinedFunction(): void
-    {
-        $result = calc/*|user_defined_function*/
-    }
-
     public function triggerFunctionReturnChain(): void
     {
         $config = getConfig();

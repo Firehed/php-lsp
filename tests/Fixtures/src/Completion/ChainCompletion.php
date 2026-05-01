@@ -10,7 +10,6 @@ class ChainCompletion
 {
     private User $user;
     private ?User $nullableUser;
-    private ?Address $nullableAddress;
     private ChainableUser $chainableUser;
 
     public function getUser(): User
@@ -63,6 +62,6 @@ class ChainCompletion
 
     public function triggerMixedNullsafeChain(): void
     {
-        $this->user->nullableAddress?->/*|mixed_nullsafe_chain*/
+        $this->user->manager?->/*|mixed_nullsafe_chain*/
     }
 }
