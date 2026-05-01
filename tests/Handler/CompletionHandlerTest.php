@@ -1717,58 +1717,19 @@ PHP;
 
     public function testTypedVariableCompletionExcludesNonPublicMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public string $name;
-    protected string $email;
-    private string $password;
+        $cursor = $this->openFixtureAtCursor('src/Completion/ExternalAccess.php', 'external_method_access');
 
-    public function getName(): string { return $this->name; }
-    protected function getEmail(): string { return $this->email; }
-    private function getPassword(): string { return $this->password; }
-}
-
-function foo(User $user): void
-{
-    $user->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 11], // After $user->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         // Public members should be included
-        self::assertContains('name', $labels);
+        self::assertContains('active', $labels);
         self::assertContains('getName', $labels);
-        // Protected and private members should be excluded
-        self::assertNotContains('email', $labels);
-        self::assertNotContains('password', $labels);
-        self::assertNotContains('getEmail', $labels);
-        self::assertNotContains('getPassword', $labels);
+        self::assertContains('getCount', $labels);
+        // Protected and private properties should be excluded
+        self::assertNotContains('name', $labels);
+        self::assertNotContains('count', $labels);
     }
 
     public function testSelfConstantCompletion(): void
