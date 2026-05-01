@@ -5,6 +5,9 @@ declare(strict_types=1);
 use Fixtures\Domain\User;
 use Fixtures\Enum\Priority;
 
+/**
+ * Adds two numbers together.
+ */
 function signatureHelpAdd(int $a, int $b): int
 {
     return $a + $b;

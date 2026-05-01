@@ -79,6 +79,8 @@ class SignatureHelpHandlerTest extends TestCase
         self::assertStringContainsString('signatureHelpAdd', $result['signatures'][0]['label']);
         self::assertStringContainsString('int $a', $result['signatures'][0]['label']);
         self::assertEquals(0, $result['activeParameter']);
+        $doc = $result['signatures'][0]['documentation'] ?? '';
+        self::assertStringContainsString('Adds two numbers', $doc);
     }
 
     public function testSignatureHelpSecondParameter(): void
