@@ -70,20 +70,20 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnUserDefinedFunction(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'first_param');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'first_param');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('signatures', $result);
         self::assertCount(1, $result['signatures']);
-        self::assertStringContainsString('add', $result['signatures'][0]['label']);
+        self::assertStringContainsString('signatureHelpAdd', $result['signatures'][0]['label']);
         self::assertStringContainsString('int $a', $result['signatures'][0]['label']);
         self::assertEquals(0, $result['activeParameter']);
     }
 
     public function testSignatureHelpSecondParameter(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'second_param');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'second_param');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -92,7 +92,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnBuiltinFunction(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'builtin');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'builtin');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -101,7 +101,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnMethod(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'this_call');
+        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Triggers.php', 'this_call');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -112,7 +112,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnStaticMethod(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'static_call');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'static_call');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -122,17 +122,17 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnSelfStaticMethod(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'self_call');
+        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Triggers.php', 'self_call');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('staticAdd', $result['signatures'][0]['label']);
+        self::assertStringContainsString('staticMethod', $result['signatures'][0]['label']);
         self::assertStringContainsString('int $a', $result['signatures'][0]['label']);
     }
 
     public function testSignatureHelpOnConstructor(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'constructor');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'constructor');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -142,7 +142,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpReturnsNullOutsideCall(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'outside_call');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'outside_call');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertNull($result);
@@ -150,7 +150,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnTypedVariableMethodCall(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'typed_param');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'typed_param');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -161,7 +161,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnAssignedVariableMethodCall(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'assigned_var');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'assigned_var');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -172,7 +172,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnNullsafeMethodCall(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'nullsafe_property');
+        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Triggers.php', 'nullsafe_property');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
@@ -183,7 +183,7 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnNullsafeTypedVariableMethodCall(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/SignatureHelp/Calls.php', 'nullsafe_param');
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'nullsafe_param');
         $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
