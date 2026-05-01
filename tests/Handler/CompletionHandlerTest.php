@@ -1765,26 +1765,9 @@ PHP;
 
     public function testSelfCompletionOutsideClassReturnsEmpty(): void
     {
-        $code = <<<'PHP'
-<?php
-function foo(): void
-{
-    self::
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'self_outside_class');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 10], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);

@@ -64,3 +64,8 @@ function triggerDynamicStatic(): void
     $class = 'DateTime';
     $class::/*|dynamic_static*/
 }
+
+function triggerSelfOutsideClass(): void
+{
+    self::/*|self_outside_class*/
+}
