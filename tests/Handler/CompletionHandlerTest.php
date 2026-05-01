@@ -1504,74 +1504,26 @@ PHP;
 
     public function testTypedVariableCompletionFromNewExpression(): void
     {
-        $code = <<<'PHP'
-<?php
-class Logger
-{
-    public function info(string $message): void {}
-    public function error(string $message): void {}
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'var_empty');
 
-function foo(): void
-{
-    $logger = new Logger();
-    $logger->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 13],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('info', $labels);
-        self::assertContains('error', $labels);
-    }
-
-    public function testTypedVariableCompletionWithPrefix(): void
-    {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public function getName(): string { return ''; }
-    public function getEmail(): string { return ''; }
-    public function setName(string $name): void {}
-}
-
-function processUser(User $user): void
-{
-    $user->get
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 14],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('getName', $labels);
-        self::assertContains('getEmail', $labels);
+        self::assertContains('setName', $labels);
+    }
+
+    public function testTypedVariableCompletionWithPrefix(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'var_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels);
+        self::assertContains('getCount', $labels);
         self::assertNotContains('setName', $labels);
     }
 
