@@ -84,6 +84,7 @@ class User implements Entity, Person
         return self::$instanceCount;
     }
 
+    /** Creates a new user instance. */
     public static function create(string $id, string $name, string $email): self
     {
         return new self($id, $name, $email);
@@ -116,7 +117,7 @@ class User implements Entity, Person
 
     public function triggerHoverStaticMethod(): self
     {
-        return self::create("id", "name", "email"); //hover:create
+        return User::create("id", "name", "email"); //hover:create
     }
 
     public function triggerHoverNullsafeMethod(): void
