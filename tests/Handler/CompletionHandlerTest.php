@@ -1659,30 +1659,9 @@ PHP;
 
     public function testSelfCompletionInAnonymousClassReturnsEmpty(): void
     {
-        $code = <<<'PHP'
-<?php
-$obj = new class {
-    public const FOO = 'foo';
+        $cursor = $this->openFixtureAtCursor('AnonymousClass.php', 'self_in_anonymous');
 
-    public function thing(): string
-    {
-        return self::
-    }
-};
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 6, 'character' => 21], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -1691,36 +1670,9 @@ PHP;
 
     public function testSelfCompletionInMultiClassFile(): void
     {
-        $code = <<<'PHP'
-<?php
-class First
-{
-    public const FIRST_CONST = 1;
-}
+        $cursor = $this->openFixtureAtCursor('MultiClass/MultiClass.php', 'self_in_second_class');
 
-class Second
-{
-    public const SECOND_CONST = 2;
-
-    public function thing(): int
-    {
-        return self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 12, 'character' => 21], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -1925,27 +1877,9 @@ PHP;
 
     public function testThisCompletionInAnonymousClassReturnsEmpty(): void
     {
-        $code = <<<'PHP'
-<?php
-$x = new class {
-    public function foo(): void {
-        $this->
-    }
-};
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('AnonymousClass.php', 'this_in_anonymous');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertEmpty($result['items']);
@@ -1953,38 +1887,15 @@ PHP;
 
     public function testStaticCompletionFromAnonymousClassContext(): void
     {
-        $code = <<<'PHP'
-<?php
-class Target
-{
-    public static function publicMethod(): void {}
-    protected static function protectedMethod(): void {}
-}
+        $cursor = $this->openFixtureAtCursor('AnonymousClass.php', 'static_from_anonymous');
 
-$x = new class {
-    public function foo(): void {
-        Target::
-    }
-};
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('publicMethod', $labels);
-        self::assertNotContains('protectedMethod', $labels);
+        // External static access from anonymous class - only public visible
+        self::assertContains('create', $labels);
+        self::assertNotContains('reset', $labels);
     }
 
     public function testStaticCompletionWithDeeperInheritance(): void
