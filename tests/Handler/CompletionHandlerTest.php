@@ -1460,140 +1460,39 @@ PHP;
 
     public function testTypedVariableCompletionFromStaticMethodReturningSelf(): void
     {
-        $code = <<<'PHP'
-<?php
-class SomeClass
-{
-    public static function create(): ?self
-    {
-        return new self();
-    }
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'var_from_static_call');
 
-    public function doSomething(): void {}
-}
-
-function test(): void
-{
-    $foo = SomeClass::create();
-    $foo->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 10], // After $foo->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
         // Static method 'create' should not appear in instance completions
         self::assertNotContains('create', $labels);
-        self::assertContains('doSomething', $labels);
+        // Instance methods should appear
+        self::assertContains('triggerSelfEmpty', $labels);
     }
 
     public function testTypedVariableCompletionFromStaticMethodReturningSelfNullsafe(): void
     {
-        $code = <<<'PHP'
-<?php
-class SomeClass
-{
-    public static function create(): ?self
-    {
-        return new self();
-    }
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'var_from_static_call_nullsafe');
 
-    public function doSomething(): void {}
-}
-
-function test(): void
-{
-    $foo = SomeClass::create();
-    $foo?->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 11], // After $foo?->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
         // Static method 'create' should not appear in instance completions
         self::assertNotContains('create', $labels);
-        self::assertContains('doSomething', $labels);
+        // Instance methods should appear
+        self::assertContains('triggerSelfEmpty', $labels);
     }
 
     public function testTypedVariableCompletionReturnsEmptyWhenTypeUnknown(): void
     {
-        $code = <<<'PHP'
-<?php
-function foo(): void
-{
-    $unknown->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'unknown_var');
 
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 14], // After $unknown->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertEmpty($result['items']);

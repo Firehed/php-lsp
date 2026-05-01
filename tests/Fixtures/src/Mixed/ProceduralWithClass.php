@@ -36,3 +36,20 @@ function triggerStaticAccess(): void
 {
     StaticAccess::/*|standalone_static_access*/
 }
+
+function triggerVarFromStaticCall(): void
+{
+    $obj = StaticAccess::create();
+    $obj->/*|var_from_static_call*/
+}
+
+function triggerVarFromStaticCallNullsafe(): void
+{
+    $obj = StaticAccess::create();
+    $obj?->/*|var_from_static_call_nullsafe*/
+}
+
+function triggerUnknownVar(): void
+{
+    $unknown->/*|unknown_var*/
+}
