@@ -49,16 +49,3 @@ class StaticAccess
         static::/*|static_keyword*/
     }
 }
-
-class StaticCaller
-{
-    public function triggerExternalStatic(): void
-    {
-        StaticAccess::/*|external_static*/
-    }
-
-    public function triggerConstAccess(): void
-    {
-        StaticAccess::NAME/*|const_access*/
-    }
-}
