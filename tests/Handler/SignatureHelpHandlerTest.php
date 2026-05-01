@@ -11,8 +11,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -39,7 +38,7 @@ class SignatureHelpHandlerTest extends TestCase
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
         $this->classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
+        $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
         $this->classRepository = new DefaultClassRepository(
             $this->classInfoFactory,
             $locator,
@@ -71,64 +70,23 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnUserDefinedFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-/**
- * Adds two numbers together.
- */
-function add(int $a, int $b): int
-{
-    return $a + $b;
-}
-
-$sum = add(1, 2);
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 11], // Inside add(|1, 2)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'first_param');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('signatures', $result);
         self::assertCount(1, $result['signatures']);
-        self::assertStringContainsString('add', $result['signatures'][0]['label']);
+        self::assertStringContainsString('signatureHelpAdd', $result['signatures'][0]['label']);
         self::assertStringContainsString('int $a', $result['signatures'][0]['label']);
         self::assertEquals(0, $result['activeParameter']);
+        $doc = $result['signatures'][0]['documentation'] ?? '';
+        self::assertStringContainsString('Adds two numbers', $doc);
     }
 
     public function testSignatureHelpSecondParameter(): void
     {
-        $code = <<<'PHP'
-<?php
-function greet(string $name, int $age): string
-{
-    return "Hello $name, age $age";
-}
-
-greet("Alice", 30);
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 6, 'character' => 16], // After the comma: greet("Alice",| 30)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'second_param');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertEquals(1, $result['activeParameter']);
@@ -136,24 +94,8 @@ PHP;
 
     public function testSignatureHelpOnBuiltinFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-$arr = [3, 1, 2];
-array_map(fn($x) => $x * 2, $arr);
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 2, 'character' => 10], // Inside array_map(|
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'builtin');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertStringContainsString('array_map', $result['signatures'][0]['label']);
@@ -161,323 +103,94 @@ PHP;
 
     public function testSignatureHelpOnMethod(): void
     {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    /**
-     * Multiplies two numbers.
-     */
-    public function multiply(int $a, int $b): int
-    {
-        return $a * $b;
-    }
-
-    public function test(): void
-    {
-        $this->multiply(2, 3);
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 13, 'character' => 24], // Inside multiply(|2, 3)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_this_call');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('multiply', $result['signatures'][0]['label']);
-        self::assertStringContainsString('Multiplies two numbers', $result['signatures'][0]['documentation'] ?? '');
+        self::assertStringContainsString('setName', $result['signatures'][0]['label']);
+        $doc = $result['signatures'][0]['documentation'] ?? '';
+        self::assertStringContainsString("Updates the user's display name", $doc);
     }
 
     public function testSignatureHelpOnStaticMethod(): void
     {
-        $code = <<<'PHP'
-<?php
-class Math
-{
-    public static function abs(int $n): int
-    {
-        return $n < 0 ? -$n : $n;
-    }
-}
-
-$result = Math::abs(-5);
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 19], // Inside abs(|-5)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'static_call');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('abs', $result['signatures'][0]['label']);
-        self::assertStringContainsString('int $n', $result['signatures'][0]['label']);
+        self::assertStringContainsString('fromScore', $result['signatures'][0]['label']);
+        self::assertStringContainsString('int $score', $result['signatures'][0]['label']);
     }
 
     public function testSignatureHelpOnSelfStaticMethod(): void
     {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    public static function add(int $a, int $b): int
-    {
-        return $a + $b;
-    }
-
-    public function useAdd(): int
-    {
-        return self::add(1, 2);
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 24], // Inside self::add(|1, 2)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_self_call');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('add', $result['signatures'][0]['label']);
-        self::assertStringContainsString('int $a', $result['signatures'][0]['label']);
+        self::assertStringContainsString('create', $result['signatures'][0]['label']);
+        self::assertStringContainsString('string $id', $result['signatures'][0]['label']);
     }
 
     public function testSignatureHelpOnConstructor(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public function __construct(string $name, int $age)
-    {
-    }
-}
-
-$user = new User("Alice", 30);
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 17], // Inside new User(|"Alice", 30)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'constructor');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertStringContainsString('__construct', $result['signatures'][0]['label']);
-        self::assertStringContainsString('string $name', $result['signatures'][0]['label']);
+        self::assertStringContainsString('string $id', $result['signatures'][0]['label']);
     }
 
     public function testSignatureHelpReturnsNullOutsideCall(): void
     {
-        $code = '<?php $x = 1;';
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 10],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'outside_call');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertNull($result);
     }
 
     public function testSignatureHelpOnTypedVariableMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    /**
-     * Multiplies two numbers.
-     */
-    public function multiply(int $a, int $b): int
-    {
-        return $a * $b;
-    }
-}
-
-function useCalculator(Calculator $calc): void
-{
-    $calc->multiply(2, 3);
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 21], // Inside multiply(|2, 3)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'typed_param');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('multiply', $result['signatures'][0]['label']);
-        self::assertStringContainsString('Multiplies two numbers', $result['signatures'][0]['documentation'] ?? '');
+        self::assertStringContainsString('setName', $result['signatures'][0]['label']);
+        $doc = $result['signatures'][0]['documentation'] ?? '';
+        self::assertStringContainsString("Updates the user's display name", $doc);
     }
 
     public function testSignatureHelpOnAssignedVariableMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-class Greeter
-{
-    /**
-     * Greets a person by name.
-     */
-    public function greet(string $name, string $greeting = 'Hello'): string
-    {
-        return "$greeting, $name!";
-    }
-}
-
-function test(): void
-{
-    $greeter = new Greeter();
-    $greeter->greet("World");
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 21], // Inside greet(|"World")
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'assigned_var');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('greet', $result['signatures'][0]['label']);
-        self::assertStringContainsString('Greets a person', $result['signatures'][0]['documentation'] ?? '');
+        self::assertStringContainsString('setName', $result['signatures'][0]['label']);
+        $doc = $result['signatures'][0]['documentation'] ?? '';
+        self::assertStringContainsString("Updates the user's display name", $doc);
     }
 
     public function testSignatureHelpOnNullsafeMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    /**
-     * Multiplies two numbers.
-     */
-    public function multiply(int $a, int $b): int
-    {
-        return $a * $b;
-    }
-}
-
-class Container
-{
-    private ?Calculator $calc;
-
-    public function test(): void
-    {
-        $this->calc?->multiply(2, 3);
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 18, 'character' => 31], // Inside multiply(|2, 3)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_nullsafe_property');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('multiply', $result['signatures'][0]['label']);
-        self::assertStringContainsString('Multiplies two numbers', $result['signatures'][0]['documentation'] ?? '');
+        self::assertStringContainsString('setName', $result['signatures'][0]['label']);
+        $doc = $result['signatures'][0]['documentation'] ?? '';
+        self::assertStringContainsString("Updates the user's display name", $doc);
     }
 
     public function testSignatureHelpOnNullsafeTypedVariableMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    /**
-     * Adds two numbers.
-     */
-    public function add(int $a, int $b): int
-    {
-        return $a + $b;
-    }
-}
-
-function useCalculator(?Calculator $calc): void
-{
-    $calc?->add(1, 2);
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 17], // Inside add(|1, 2)
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'nullsafe_param');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('add', $result['signatures'][0]['label']);
-        self::assertStringContainsString('Adds two numbers', $result['signatures'][0]['documentation'] ?? '');
+        self::assertStringContainsString('setName', $result['signatures'][0]['label']);
+        $doc = $result['signatures'][0]['documentation'] ?? '';
+        self::assertStringContainsString("Updates the user's display name", $doc);
     }
 }
