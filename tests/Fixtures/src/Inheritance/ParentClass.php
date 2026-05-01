@@ -59,4 +59,9 @@ class ParentClass extends Grandparent
     private function privateMethod(): void
     {
     }
+
+    public function triggerHoverStaticProperty(): void
+    {
+        echo ParentClass::$staticProperty; //hover:staticProperty
+    }
 }

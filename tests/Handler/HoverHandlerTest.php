@@ -553,36 +553,15 @@ PHP;
 
     public function testHoverOnStaticProperty(): void
     {
-        $code = <<<'PHP'
-<?php
-class Config
-{
-    /**
-     * Application name.
-     */
-    public static string $appName = 'MyApp';
-}
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'staticProperty');
 
-$name = Config::$appName;
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 18],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$appName', $result['contents']);
+        self::assertStringContainsString('$staticProperty', $result['contents']);
         self::assertStringContainsString('static', $result['contents']);
-        self::assertStringContainsString('Application name', $result['contents']);
+        self::assertStringContainsString('Static property documentation', $result['contents']);
     }
 
     public function testHoverOnBuiltinClassMethod(): void
