@@ -53,3 +53,14 @@ function triggerUnknownVar(): void
 {
     $unknown->/*|unknown_var*/
 }
+
+function triggerDynamicVar(): void
+{
+    $$dynamic->/*|dynamic_var*/
+}
+
+function triggerDynamicStatic(): void
+{
+    $class = 'DateTime';
+    $class::/*|dynamic_static*/
+}

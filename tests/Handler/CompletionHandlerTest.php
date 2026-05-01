@@ -1500,36 +1500,9 @@ PHP;
 
     public function testDynamicVariableNameReturnsEmpty(): void
     {
-        $code = <<<'PHP'
-<?php
-function foo(): void
-{
-    $$dynamic->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'dynamic_var');
 
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 15], // After $$dynamic->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertEmpty($result['items']);
@@ -1537,37 +1510,9 @@ PHP;
 
     public function testDynamicStaticAccessReturnsEmpty(): void
     {
-        $code = <<<'PHP'
-<?php
-function foo(): void
-{
-    $class = 'DateTime';
-    $class::
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'dynamic_static');
 
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 4, 'character' => 12], // After $class::
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertEmpty($result['items']);
