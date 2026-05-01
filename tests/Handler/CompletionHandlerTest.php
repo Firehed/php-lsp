@@ -307,125 +307,50 @@ PHP;
 
     public function testStaticCompletionShowsOnlyPublicForExternalClass(): void
     {
-        $code = <<<'PHP'
-<?php
-class Target
-{
-    public static function publicMethod(): void {}
-    protected static function protectedMethod(): void {}
-    private static function privateMethod(): void {}
-    public const PUBLIC_CONST = 'pub';
-    protected const PROTECTED_CONST = 'prot';
-    private const PRIVATE_CONST = 'priv';
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticCaller.php', 'external_static');
 
-class Other
-{
-    public function test(): void
-    {
-        Target::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 16], // Target::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('publicMethod', $labels);
-        self::assertContains('PUBLIC_CONST', $labels);
-        self::assertNotContains('protectedMethod', $labels);
-        self::assertNotContains('privateMethod', $labels);
-        self::assertNotContains('PROTECTED_CONST', $labels);
-        self::assertNotContains('PRIVATE_CONST', $labels);
+        // Public members visible
+        self::assertContains('create', $labels);
+        self::assertContains('getInstance', $labels);
+        self::assertContains('NAME', $labels);
+        // Protected/private not visible from external class
+        self::assertNotContains('reset', $labels);
+        self::assertNotContains('INTERNAL', $labels);
+        self::assertNotContains('SECRET', $labels);
     }
 
     public function testStaticCompletionShowsAllForSameClass(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public static function publicMethod(): void {}
-    protected static function protectedMethod(): void {}
-    private static function privateMethod(): void {}
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
 
-    public function test(): void
-    {
-        self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 14], // self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('publicMethod', $labels);
-        self::assertContains('protectedMethod', $labels);
-        self::assertContains('privateMethod', $labels);
+        // All visibility levels visible from within same class
+        self::assertContains('create', $labels);
+        self::assertContains('getInstance', $labels);
+        self::assertContains('reset', $labels);
+        self::assertContains('NAME', $labels);
+        self::assertContains('INTERNAL', $labels);
+        self::assertContains('SECRET', $labels);
     }
 
     public function testStaticCompletionShowsPublicProtectedForSubclass(): void
     {
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    public static function publicMethod(): void {}
-    protected static function protectedMethod(): void {}
-    private static function privateMethod(): void {}
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_class_static');
 
-class ChildClass extends ParentClass
-{
-    public function test(): void
-    {
-        ParentClass::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 12, 'character' => 21], // ParentClass::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('publicMethod', $labels);
-        self::assertContains('protectedMethod', $labels);
-        self::assertNotContains('privateMethod', $labels);
+        self::assertContains('staticMethod', $labels);
+        self::assertContains('protectedStaticMethod', $labels);
+        self::assertNotContains('privateStaticMethod', $labels);
     }
 
     public function testSelfCompletionIncludesInheritedStaticMembers(): void
