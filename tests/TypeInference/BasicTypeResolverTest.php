@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
@@ -28,6 +29,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(BasicTypeResolver::class)]
 class BasicTypeResolverTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private BasicTypeResolver $resolver;
 
     protected function setUp(): void
@@ -816,5 +819,93 @@ PHP;
             }
         }
         throw new \RuntimeException("Could not find function $name");
+    }
+
+    /**
+     * @return array<Stmt>
+     */
+    private function parseFixture(string $fixturePath): array
+    {
+        return $this->parse($this->loadFixture($fixturePath));
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function findMethodByName(array $ast, string $methodName): Stmt\ClassMethod
+    {
+        $finder = new \PhpParser\NodeFinder();
+        $method = $finder->findFirst($ast, fn($node) =>
+            $node instanceof Stmt\ClassMethod && $node->name->toString() === $methodName);
+        assert($method instanceof Stmt\ClassMethod, "Could not find method $methodName");
+        return $method;
+    }
+
+    public function testResolveNewSelfInClass(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/NewKeywords.php');
+        $method = $this->findMethodByName($ast, 'createSelf');
+        $finder = new \PhpParser\NodeFinder();
+        $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
+        assert($newExpr !== null);
+
+        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
+    }
+
+    public function testResolveNewStaticInClass(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/NewKeywords.php');
+        $method = $this->findMethodByName($ast, 'createStatic');
+        $finder = new \PhpParser\NodeFinder();
+        $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
+        assert($newExpr !== null);
+
+        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
+    }
+
+    public function testResolveNewParentInClass(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/NewKeywords.php');
+        $method = $this->findMethodByName($ast, 'createParent');
+        $finder = new \PhpParser\NodeFinder();
+        $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
+        assert($newExpr !== null);
+
+        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\Inheritance\\ParentClass', $type->fqn);
+    }
+
+    public function testResolveNewParentInTraitReturnsNull(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/ParentInTrait.php');
+        $method = $this->findMethodByName($ast, 'createFromTrait');
+        $finder = new \PhpParser\NodeFinder();
+        $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
+        assert($newExpr !== null);
+
+        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+
+        self::assertNull($type);
+    }
+
+    public function testResolveNewSelfInAnonymousClassReturnsNull(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/AnonymousClass.php');
+        $method = $this->findMethodByName($ast, 'createSelf');
+        $finder = new \PhpParser\NodeFinder();
+        $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
+        assert($newExpr !== null);
+
+        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+
+        self::assertNull($type);
     }
 }

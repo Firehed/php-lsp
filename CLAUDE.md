@@ -109,6 +109,7 @@ Structure (all under `tests/Fixtures/src/` with `Fixtures\` namespace):
 - `Traits/`, `Inheritance/`, `Services/` — OOP patterns
 - `Repository/` — Repository pattern examples
 - `Completion/`, `Hover/`, `Definition/`, `SignatureHelp/` — Handler-specific fixtures with cursor markers
+- `TypeInference/` — Type resolver test fixtures
 - `Legacy/` — Code quality variations (docblock-only, untyped)
 - `Mixed/` — Procedural + OOP mixes
 
@@ -159,6 +160,14 @@ $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_em
 
 // Build request from cursor position
 $result = $this->handler->handle($this->completionRequestAt($cursor));
+```
+
+`LoadsFixturesTrait` provides fixture loading for unit tests (no handler infrastructure):
+
+```php
+// Load fixture content and parse
+$content = $this->loadFixture('src/TypeInference/NewKeywords.php');
+$ast = $this->parse($content);
 ```
 
 ### Cursor Markers
