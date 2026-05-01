@@ -1420,50 +1420,17 @@ PHP;
 
     public function testTypedVariableCompletionFromParameter(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public string $name;
-    public function getName(): string { return $this->name; }
-    public function setName(string $name): void { $this->name = $name; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'param_access');
 
-function processUser(User $user): void
-{
-    $user->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 11], // After $user->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('name', $labels);
+        // Same class access - all members visible
         self::assertContains('getName', $labels);
         self::assertContains('setName', $labels);
+        self::assertContains('active', $labels);
     }
 
     public function testTypedVariableCompletionFromNewExpression(): void
