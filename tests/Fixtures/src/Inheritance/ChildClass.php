@@ -18,4 +18,9 @@ class ChildClass extends ParentClass
     {
         parent::parentMethod();
     }
+
+    public function triggerDirectParentStatic(): void
+    {
+        ParentClass::/*|direct_parent_static*/
+    }
 }

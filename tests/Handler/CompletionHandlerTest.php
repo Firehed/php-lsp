@@ -353,6 +353,19 @@ PHP;
         self::assertNotContains('privateStaticMethod', $labels);
     }
 
+    public function testStaticCompletionShowsPublicProtectedForDirectChild(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'direct_parent_static');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('staticMethod', $labels);
+        self::assertContains('protectedStaticMethod', $labels);
+        self::assertNotContains('privateStaticMethod', $labels);
+    }
+
     public function testSelfCompletionIncludesInheritedStaticMembers(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'self_inherited');
