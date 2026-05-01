@@ -164,4 +164,46 @@ trait OpensDocumentsTrait
             ],
         ]);
     }
+
+    /**
+     * Opens a fixture and returns cursor position ON a symbol for hover tests.
+     *
+     * Uses a marker comment at end of line: //hover:marker_name
+     * Returns position of the last method/property access target on that line.
+     *
+     * @param string $fixturePath Path relative to tests/Fixtures/
+     * @param string $markerName The marker name
+     * @return CursorPosition
+     * @phpstan-ignore missingType.iterableValue
+     */
+    private function openFixtureAtHoverMarker(string $fixturePath, string $markerName): array
+    {
+        $fullPath = dirname(__DIR__) . '/Fixtures/' . $fixturePath;
+        $content = file_get_contents($fullPath);
+        assert($content !== false, "Fixture not found: $fixturePath");
+
+        $uri = 'file:///fixtures/' . $fixturePath;
+        $this->openDocument($uri, $content);
+
+        $marker = "//hover:$markerName";
+        $lines = explode("\n", $content);
+        foreach ($lines as $lineNum => $line) {
+            if (strpos($line, $marker) === false) {
+                continue;
+            }
+
+            $symbolMatch = [];
+            preg_match_all('/(?:->|\?->|::)\$?([a-zA-Z_][a-zA-Z0-9_]*)/', $line, $symbolMatch, PREG_OFFSET_CAPTURE);
+            assert(!empty($symbolMatch[1]), "No member access found on line with marker '$markerName' in $fixturePath");
+
+            $lastMatch = end($symbolMatch[1]);
+            return [
+                'uri' => $uri,
+                'line' => $lineNum,
+                'character' => $lastMatch[1],
+            ];
+        }
+
+        throw new \RuntimeException("Hover marker '$markerName' not found in $fixturePath");
+    }
 }

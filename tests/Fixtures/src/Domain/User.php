@@ -103,4 +103,34 @@ class User implements Entity, Person
     {
         $this->manager?->setName(/*|sig_nullsafe_property*/"name");
     }
+
+    public function triggerHoverMethod(): void
+    {
+        $this->setName("name"); //hover:setName
+    }
+
+    public function triggerHoverProperty(): void
+    {
+        echo $this->manager; //hover:manager
+    }
+
+    public function triggerHoverStaticMethod(): self
+    {
+        return self::create("id", "name", "email"); //hover:create
+    }
+
+    public function triggerHoverNullsafeMethod(): void
+    {
+        $this->manager?->setName("name"); //hover:setName_nullsafe
+    }
+
+    public function triggerHoverNullsafeProperty(): void
+    {
+        echo $this->manager?->manager; //hover:manager_nullsafe
+    }
+
+    public function triggerHoverTraitMethod(): void
+    {
+        $this->markCreated(); //hover:markCreated
+    }
 }
