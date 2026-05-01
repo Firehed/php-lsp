@@ -1520,27 +1520,17 @@ function foo(): void
 PHP;
         $this->openDocument('file:///test.php', $code);
 
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
             'id' => 1,
             'method' => 'textDocument/completion',
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 13], // After $logger->
+                'position' => ['line' => 10, 'character' => 13],
             ],
         ]);
 
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($request);
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1566,27 +1556,17 @@ function processUser(User $user): void
 PHP;
         $this->openDocument('file:///test.php', $code);
 
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
             'id' => 1,
             'method' => 'textDocument/completion',
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 14], // After $user->get
+                'position' => ['line' => 10, 'character' => 14],
             ],
         ]);
 
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($request);
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
