@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fixtures\Completion;
 
+use Fixtures\Domain\User;
+
 class MethodAccess
 {
     private string $name;
@@ -60,5 +62,20 @@ class MethodAccess
     public function chainExample(): void
     {
         $result = $this->getName()->/*|chain_on_string*/
+    }
+
+    public function triggerNullsafeThis(): void
+    {
+        $this?->/*|nullsafe_this_empty*/
+    }
+
+    public function triggerNullsafeThisPrefix(): void
+    {
+        $this?->get/*|nullsafe_this_prefix*/
+    }
+
+    public function triggerNullsafeVar(?User $user): void
+    {
+        $user?->/*|nullsafe_var_empty*/
     }
 }

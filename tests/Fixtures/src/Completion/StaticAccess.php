@@ -12,6 +12,7 @@ class StaticAccess
 
     public static string $instance;
     private static int $counter = 0;
+    public string $instanceProp = 'instance';
 
     public static function create(): self
     {
@@ -36,6 +37,11 @@ class StaticAccess
     public function triggerSelfPrefix(): void
     {
         self::get/*|self_prefix*/
+    }
+
+    public function triggerSelfConstantPrefix(): void
+    {
+        self::NA/*|self_const_prefix*/
     }
 
     public function triggerStaticKeyword(): void

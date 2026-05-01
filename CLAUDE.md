@@ -105,17 +105,46 @@ Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code.
 Structure (all under `tests/Fixtures/src/` with `Fixtures\` namespace):
 
 - `Domain/` — Core domain model: User, Entity
-- `Enum/` — Enum fixtures: Status, Priority
+- `Enum/` — Enum fixtures: Status, Priority, Color
 - `Traits/`, `Inheritance/`, `Services/` — OOP patterns
 - `Repository/` — Repository pattern examples
 - `Completion/`, `Hover/`, `Definition/`, `SignatureHelp/` — Handler-specific fixtures with cursor markers
 - `Legacy/` — Code quality variations (docblock-only, untyped)
 - `Mixed/` — Procedural + OOP mixes
 
-Non-PSR-4 fixtures (for autoload testing):
+Non-PSR-4 fixtures (outside `src/`):
 - `Autoload/Psr0/` — PSR-0 style classes
 - `Autoload/Classmap/` — Classmap-loaded classes
-- `Namespacing/` — Namespace syntax variations (not currently autoloaded)
+- `MultiClass/` — Multi-class file scenarios
+- `Namespacing/` — Namespace syntax variations
+
+### Fixture Guidelines
+
+**Reuse existing fixtures.** Before creating new classes/enums, check if `Domain/`, `Enum/`, `Inheritance/`, etc. already have what you need. Import and extend them:
+
+```php
+use Fixtures\Inheritance\ChildClass;
+use Fixtures\Enum\Status;
+
+class MyCompletionTest extends ChildClass { ... }
+```
+
+**One class per file (PSR-4).** Each `.php` file in `src/` must contain exactly one class matching the filename. Multiple classes in one file breaks autoloading.
+
+**Multiple markers in one class.** Put related cursor markers in different methods of the same class, not separate files:
+
+```php
+class InheritanceCompletion extends ChildClass
+{
+    public function triggerThis(): void { $this->/*|this_inherited*/ }
+    public function triggerSelf(): void { self::/*|self_inherited*/ }
+    public function triggerParent(): void { parent::/*|parent_access*/ }
+}
+```
+
+**Domain objects go in domain directories.** New enums → `Enum/`, new classes → `Domain/`, etc. Don't duplicate domain concepts in handler-specific directories.
+
+**Non-autoloaded fixtures go outside `src/`.** Files that intentionally violate PSR-4 (multi-class files, namespace syntax tests) belong in top-level directories like `MultiClass/`, not in `src/`.
 
 ### Fixture Helpers
 
@@ -126,7 +155,7 @@ Non-PSR-4 fixtures (for autoload testing):
 $uri = $this->openFixture('src/Domain/User.php');
 
 // Open fixture and get cursor position from marker
-$cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
+$cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
 
 // Build request from cursor position
 $result = $this->handler->handle($this->completionRequestAt($cursor));

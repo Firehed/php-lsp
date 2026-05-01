@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -45,7 +45,7 @@ class CompletionHandlerTest extends TestCase
         $this->parser = new ParserService();
         $this->symbolIndex = new SymbolIndex();
         $this->classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
+        $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
         $this->classRepository = new DefaultClassRepository(
             $this->classInfoFactory,
             $locator,
@@ -112,75 +112,34 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisPropertyCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    private string $name;
-    protected int $age;
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
 
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('name', $labels);
-        self::assertContains('age', $labels);
+        self::assertContains('count', $labels);
+        self::assertContains('active', $labels);
     }
 
     public function testThisCompletionIncludesInheritedMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyException extends \Exception
-{
-    private string $ownProperty;
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'this_inherited');
 
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         // Own members
         self::assertContains('ownProperty', $labels);
-        self::assertContains('test', $labels);
-        // Inherited members from Exception
-        self::assertContains('getMessage', $labels);
-        self::assertContains('getCode', $labels);
+        self::assertContains('ownMethod', $labels);
+        // Inherited from ChildClass
+        self::assertContains('childMethod', $labels);
+        // Inherited from ParentClass
+        self::assertContains('parentMethod', $labels);
+        // Inherited from Grandparent
+        self::assertContains('grandparentMethod', $labels);
     }
 
     public function testStaticMethodCompletion(): void
@@ -471,47 +430,19 @@ PHP;
 
     public function testSelfCompletionIncludesInheritedStaticMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    public static string $inheritedProperty = 'value';
-    public const INHERITED_CONST = 'const';
-    public static function inheritedMethod(): void {}
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'self_inherited');
 
-class ChildClass extends ParentClass
-{
-    public static string $ownProperty = 'child';
-    public static function ownMethod(): void
-    {
-        self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 13, 'character' => 14],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         // Own static members
-        self::assertContains('ownProperty', $labels);
-        self::assertContains('ownMethod', $labels);
+        self::assertContains('ownStaticProperty', $labels);
+        self::assertContains('ownStaticMethod', $labels);
         // Inherited static members from ParentClass
-        self::assertContains('inheritedProperty', $labels);
-        self::assertContains('inheritedMethod', $labels);
-        self::assertContains('INHERITED_CONST', $labels);
+        self::assertContains('staticProperty', $labels);
+        self::assertContains('staticMethod', $labels);
+        self::assertContains('PARENT_CONST', $labels);
     }
 
     public function testFunctionCompletion(): void
@@ -1334,43 +1265,21 @@ PHP;
 
     public function testVariableCompletionSuggestsParameters(): void
     {
-        $code = '<?php function foo(string $name, int $age) { $n; }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'param_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 47], // After $n
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('$name', $labels);
-        self::assertNotContains('$age', $labels); // doesn't match prefix
+        self::assertNotContains('$age', $labels);
     }
 
     public function testVariableCompletionSuggestsLocalVariables(): void
     {
-        $code = '<?php function foo() { $logger = new Logger(); $l; }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'local_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 49], // After $l
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1379,20 +1288,9 @@ PHP;
 
     public function testVariableCompletionSuggestsThisInMethod(): void
     {
-        $code = '<?php class Foo { public function bar() { $t; } }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'this_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 44], // After $t
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1401,79 +1299,22 @@ PHP;
 
     public function testVariableCompletionThisShowsClassName(): void
     {
-        $code = '<?php class MyClass { public function bar() { $t; } }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'this_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 48], // After $t
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $thisItems = array_filter($result['items'], fn($item) => $item['label'] === '$this');
         self::assertNotEmpty($thisItems);
         $thisItem = reset($thisItems);
-        self::assertSame('MyClass', $thisItem['detail'] ?? null);
-    }
-
-    public function testVariableCompletionThisShowsNamespacedClassName(): void
-    {
-        $code = <<<'PHP'
-<?php
-namespace App\Models;
-
-class User
-{
-    public function getName(): void
-    {
-        $t
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 10], // After $t
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        $thisItems = array_filter($result['items'], fn($item) => $item['label'] === '$this');
-        self::assertNotEmpty($thisItems);
-        $thisItem = reset($thisItems);
-        self::assertSame('App\Models\User', $thisItem['detail'] ?? null);
+        self::assertSame('Fixtures\Completion\Variables', $thisItem['detail'] ?? null);
     }
 
     public function testVariableCompletionWorksInClosures(): void
     {
-        $code = '<?php $fn = function ($param) { $localVar = 1; $l; };';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'closure_local');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 49], // After $l
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1482,20 +1323,9 @@ PHP;
 
     public function testVariableCompletionSuggestsForeachVariables(): void
     {
-        $code = '<?php function foo() { foreach ([1,2] as $item) { $i; } }';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'foreach_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 52], // After $i
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1579,68 +1409,28 @@ PHP;
 
     public function testEnumCaseCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status
-{
-    case Active;
-    case Inactive;
-    case Pending;
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'unit_enum_prefix');
 
-$status = Status::A
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 19], // After Status::A
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('Active', $labels);
-        self::assertNotContains('Inactive', $labels); // doesn't match prefix
-        self::assertNotContains('Pending', $labels); // doesn't match prefix
+        self::assertNotContains('Inactive', $labels);
+        self::assertNotContains('Pending', $labels);
     }
 
     public function testEnumCaseCompletionNoPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status
-{
-    case Active;
-    case Inactive;
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'unit_enum_empty');
 
-$status = Status::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18], // After Status::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('Active', $labels);
         self::assertContains('Inactive', $labels);
+        self::assertContains('Pending', $labels);
         self::assertContains('class', $labels);
 
         // Check unit enum case detail
@@ -1652,29 +1442,9 @@ PHP;
 
     public function testEnumBuiltinMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status
-{
-    case Active;
-    case Inactive;
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'unit_enum_builtin');
 
-$cases = Status::c
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18], // After Status::c
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1684,30 +1454,9 @@ PHP;
 
     public function testBackedEnumCompletionInt(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Priority: int
-{
-    case Low = 1;
-    case Medium = 2;
-    case High = 3;
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'backed_int_empty');
 
-$p = Priority::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 15], // After Priority::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1737,30 +1486,9 @@ PHP;
 
     public function testBackedEnumCompletionString(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Color: string
-{
-    case Red = 'red';
-    case Green = 'green';
-    case Blue = 'blue';
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'backed_string_empty');
 
-$c = Color::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 12], // After Color::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1788,29 +1516,9 @@ PHP;
 
     public function testBackedEnumMethodPrefixFiltering(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Priority: int
-{
-    case Low = 1;
-    case High = 2;
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'backed_int_prefix');
 
-$p = Priority::f
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 16], // After Priority::f
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -2277,151 +1985,47 @@ PHP;
 
     public function testSelfConstantCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo
-{
-    public const FOO = 'foo';
-    public const BAR = 'bar';
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
 
-    public function thing(): string
-    {
-        return self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 21], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('FOO', $labels);
-        self::assertContains('BAR', $labels);
+        self::assertContains('NAME', $labels);
+        self::assertContains('INTERNAL', $labels);
+        self::assertContains('SECRET', $labels);
         self::assertContains('class', $labels);
     }
 
-    public function testSelfConstantCompletionNamespaced(): void
-    {
-        $code = <<<'PHP'
-<?php
-namespace App\Models;
-
-class Foo
-{
-    public const FOO = 'foo';
-    public const BAR = 'bar';
-
-    public function thing(): string
-    {
-        return self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 21], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('FOO', $labels);
-        self::assertContains('BAR', $labels);
-        self::assertContains('class', $labels);
-    }
 
     public function testStaticConstantCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo
-{
-    public const FOO = 'foo';
-    public const BAR = 'bar';
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'static_keyword');
 
-    public function thing(): string
-    {
-        return static::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 23], // After static::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('FOO', $labels);
-        self::assertContains('BAR', $labels);
+        self::assertContains('NAME', $labels);
+        self::assertContains('INTERNAL', $labels);
+        self::assertContains('SECRET', $labels);
         self::assertContains('class', $labels);
     }
 
     public function testSelfConstantCompletionWithPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo
-{
-    public const FOO = 'foo';
-    public const BAR = 'bar';
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_const_prefix');
 
-    public function thing(): string
-    {
-        return self::FO
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 23], // After self::FO
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('FOO', $labels);
-        self::assertNotContains('BAR', $labels);
+        self::assertContains('NAME', $labels);
+        self::assertNotContains('INTERNAL', $labels);
+        self::assertNotContains('SECRET', $labels);
         self::assertNotContains('class', $labels);
     }
 
@@ -2499,73 +2103,35 @@ PHP;
 
     public function testSelfStaticMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo
-{
-    public static function staticMethod(): void {}
-    public function instanceMethod(): void {}
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
 
-    public function thing(): void
-    {
-        self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 14], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('staticMethod', $labels);
-        self::assertNotContains('instanceMethod', $labels);
+        // Static methods should appear
+        self::assertContains('create', $labels);
+        self::assertContains('getInstance', $labels);
+        self::assertContains('reset', $labels);
+        // Instance methods should NOT appear
+        self::assertNotContains('triggerSelfEmpty', $labels);
+        self::assertNotContains('triggerSelfPrefix', $labels);
     }
 
     public function testSelfStaticPropertyCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo
-{
-    public static string $staticProp = 'static';
-    public string $instanceProp = 'instance';
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
 
-    public function thing(): void
-    {
-        self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 14], // After self::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('staticProp', $labels);
+        // Static properties should appear
+        self::assertContains('instance', $labels);
+        self::assertContains('counter', $labels);
+        // Instance properties should NOT appear
         self::assertNotContains('instanceProp', $labels);
     }
 
@@ -2599,68 +2165,23 @@ PHP;
 
     public function testParentMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    public function __construct(string $name) {}
-    protected function greet(): string { return 'Hello'; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_access');
 
-class ChildClass extends ParentClass
-{
-    public function __construct(string $name)
-    {
-        parent::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 11, 'character' => 16], // After parent::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('__construct', $labels);
-        self::assertContains('greet', $labels);
+        self::assertContains('parentMethod', $labels);
+        self::assertContains('protectedMethod', $labels);
     }
 
     public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function test(): void
-    {
-        parent::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/NoParent.php', 'parent_no_parent');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 5, 'character' => 16], // After parent::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -2669,41 +2190,15 @@ PHP;
 
     public function testParentMethodCompletionWithPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    public function __construct() {}
-    protected function greet(): string { return 'Hello'; }
-    protected function goodbye(): string { return 'Bye'; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_prefix');
 
-class ChildClass extends ParentClass
-{
-    public function test(): void
-    {
-        parent::gr
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 12, 'character' => 18], // After parent::gr
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertNotContains('goodbye', $labels);
+        self::assertContains('parentMethod', $labels);
+        self::assertContains('protectedMethod', $labels);
+        self::assertNotContains('staticMethod', $labels);
         self::assertNotContains('__construct', $labels);
     }
 
@@ -3041,48 +2536,18 @@ PHP;
     {
         // Issue #173: When multiple classes in file, $this-> should complete
         // members of the enclosing class, not the first class in the file
-        $code = <<<'PHP'
-<?php
-class ParentClass
-{
-    protected string $inheritedProperty;
-    public function inheritedMethod(): void {}
-}
+        $cursor = $this->openFixtureAtCursor('MultiClass/MultiClass.php', 'this_in_second_class');
 
-class ChildClass extends ParentClass
-{
-    private string $ownProperty;
-
-    public function ownMethod(): void {}
-
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
 
-        // Should have ChildClass's own members
+        // Should have ChildInMultiFile's own members
         self::assertContains('ownProperty', $labels);
         self::assertContains('ownMethod', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('triggerThisInChild', $labels);
 
         // Should also have inherited members
         self::assertContains('inheritedProperty', $labels);
@@ -3093,122 +2558,42 @@ PHP;
     {
         // Two unrelated classes in the same file - cursor in second class
         // should get its members, not the first class's
-        $code = <<<'PHP'
-<?php
-class FirstClass
-{
-    public string $firstProperty;
-    public function firstMethod(): void {}
-}
+        $cursor = $this->openFixtureAtCursor('MultiClass/MultiClass.php', 'this_in_unrelated_second');
 
-class SecondClass
-{
-    public string $secondProperty;
-
-    public function secondMethod(): void {}
-
-    public function test(): void
-    {
-        $this->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
 
-        // Should have SecondClass's members
+        // Should have SecondUnrelated's members
         self::assertContains('secondProperty', $labels);
         self::assertContains('secondMethod', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('triggerThisInSecond', $labels);
 
-        // Should NOT have FirstClass's members
+        // Should NOT have FirstUnrelated's members
         self::assertNotContains('firstProperty', $labels);
         self::assertNotContains('firstMethod', $labels);
     }
 
     public function testNullsafeThisMemberCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function greet(): string
-    {
-        return "Hello";
-    }
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_this_empty');
 
-    public function test(): void
-    {
-        $this?->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertContains('test', $labels);
+        self::assertContains('getName', $labels);
+        self::assertContains('setName', $labels);
     }
 
     public function testNullsafeVariableMemberCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public function getName(): string
-    {
-        return 'name';
-    }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_var_empty');
 
-function test(?User $user): void
-{
-    $user?->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 11, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -3218,37 +2603,16 @@ PHP;
 
     public function testNullsafeThisMemberCompletionWithPrefix(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass
-{
-    public function greet(): string { return "Hello"; }
-    public function goodbye(): string { return "Bye"; }
-    public function test(): void
-    {
-        $this?->gr
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_this_prefix');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertNotContains('goodbye', $labels);
+        self::assertContains('getName', $labels);
+        self::assertContains('getCount', $labels);
+        self::assertNotContains('setName', $labels);
     }
 
     // Chain completion tests (issue #11)
