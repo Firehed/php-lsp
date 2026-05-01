@@ -1427,7 +1427,7 @@ PHP;
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        // Same class access - all members visible
+        // Members available via typed parameter
         self::assertContains('getName', $labels);
         self::assertContains('setName', $labels);
         self::assertContains('active', $labels);
@@ -1727,9 +1727,11 @@ PHP;
         self::assertContains('active', $labels);
         self::assertContains('getName', $labels);
         self::assertContains('getCount', $labels);
-        // Protected and private properties should be excluded
+        // Protected and private members should be excluded
         self::assertNotContains('name', $labels);
         self::assertNotContains('count', $labels);
+        self::assertNotContains('secretMethod', $labels);
+        self::assertNotContains('hiddenMethod', $labels);
     }
 
     public function testSelfConstantCompletion(): void
@@ -2388,6 +2390,17 @@ PHP;
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('getName', $labels);
+    }
+
+    public function testChainCompletionOnPrimitiveReturnsEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'multi_level_chain');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertSame([], $result['items']);
     }
 
     public function testChainCompletionMultiLevel(): void
