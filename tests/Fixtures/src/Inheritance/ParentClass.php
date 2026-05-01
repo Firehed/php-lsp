@@ -27,6 +27,14 @@ class ParentClass extends Grandparent
     {
     }
 
+    protected static function protectedStaticMethod(): void
+    {
+    }
+
+    private static function privateStaticMethod(): void
+    {
+    }
+
     protected function protectedMethod(): void
     {
     }
