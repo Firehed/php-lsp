@@ -125,7 +125,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisCompletionIncludesInheritedMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ThisInherited.php', 'this_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'this_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -430,7 +430,7 @@ PHP;
 
     public function testSelfCompletionIncludesInheritedStaticMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/SelfInherited.php', 'self_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'self_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2165,7 +2165,7 @@ PHP;
 
     public function testParentMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ParentAccess.php', 'parent_access');
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_access');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2190,7 +2190,7 @@ PHP;
 
     public function testParentMethodCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ParentPrefix.php', 'parent_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 

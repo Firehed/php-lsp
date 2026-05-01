@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fixtures\Completion;
 
+use Fixtures\Domain\User;
+
 class MethodAccess
 {
     private string $name;
@@ -71,19 +73,8 @@ class MethodAccess
     {
         $this?->get/*|nullsafe_this_prefix*/
     }
-}
 
-class NullsafeUser
-{
-    public function getName(): string
-    {
-        return 'name';
-    }
-}
-
-class NullsafeUsage
-{
-    public function withNullableParam(?NullsafeUser $user): void
+    public function triggerNullsafeVar(?User $user): void
     {
         $user?->/*|nullsafe_var_empty*/
     }
