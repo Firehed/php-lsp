@@ -1312,7 +1312,7 @@ PHP;
 
     public function testVariableCompletionWorksInClosures(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ClosureVariables.php', 'closure_local');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'closure_local');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 

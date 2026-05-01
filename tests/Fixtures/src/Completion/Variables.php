@@ -28,4 +28,12 @@ class Variables
             $i/*|foreach_prefix*/
         }
     }
+
+    public function withClosure(): void
+    {
+        $fn = function ($param) {
+            $localVar = 1;
+            $l/*|closure_local*/
+        };
+    }
 }
