@@ -100,7 +100,7 @@ Architecture: `CompletionContextResolver` uses AST analysis to detect member/sta
 
 ### Test Fixtures
 
-Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own autoloading — run `composer dump-autoload` in `tests/Fixtures/` after adding files.
+Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own autoloading — run `composer dump-autoload` in `tests/Fixtures/` after adding files outside of the PSR-4 or PSR-0 paths.
 
 Structure (all under `tests/Fixtures/src/` with `Fixtures\` namespace):
 
