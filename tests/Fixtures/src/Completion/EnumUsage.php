@@ -4,15 +4,9 @@ declare(strict_types=1);
 
 namespace Fixtures\Completion;
 
+use Fixtures\Enum\Color;
 use Fixtures\Enum\Priority;
 use Fixtures\Enum\Status;
-
-enum StringColor: string
-{
-    case Red = 'red';
-    case Green = 'green';
-    case Blue = 'blue';
-}
 
 class EnumUsage
 {
@@ -43,6 +37,6 @@ class EnumUsage
 
     public function triggerBackedStringEmpty(): void
     {
-        StringColor::/*|backed_string_empty*/
+        Color::/*|backed_string_empty*/
     }
 }

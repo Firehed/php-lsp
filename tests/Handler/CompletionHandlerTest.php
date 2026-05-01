@@ -125,7 +125,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisCompletionIncludesInheritedMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'this_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceChild.php', 'this_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -427,7 +427,7 @@ PHP;
 
     public function testSelfCompletionIncludesInheritedStaticMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'self_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChildForSelf.php', 'self_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1309,7 +1309,7 @@ PHP;
 
     public function testVariableCompletionWorksInClosures(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'closure_local');
+        $cursor = $this->openFixtureAtCursor('src/Completion/ClosureVariables.php', 'closure_local');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1406,7 +1406,7 @@ PHP;
 
     public function testEnumCaseCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'unit_enum_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'unit_enum_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1419,7 +1419,7 @@ PHP;
 
     public function testEnumCaseCompletionNoPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'unit_enum_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'unit_enum_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1439,7 +1439,7 @@ PHP;
 
     public function testEnumBuiltinMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'unit_enum_builtin');
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'unit_enum_builtin');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1451,7 +1451,7 @@ PHP;
 
     public function testBackedEnumCompletionInt(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'backed_int_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'backed_int_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1483,7 +1483,7 @@ PHP;
 
     public function testBackedEnumCompletionString(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'backed_string_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'backed_string_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1513,7 +1513,7 @@ PHP;
 
     public function testBackedEnumMethodPrefixFiltering(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'backed_int_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/EnumUsage.php', 'backed_int_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2162,7 +2162,7 @@ PHP;
 
     public function testParentMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'parent_access');
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChildWithConstructor.php', 'parent_access');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2175,7 +2175,7 @@ PHP;
 
     public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'parent_no_parent');
+        $cursor = $this->openFixtureAtCursor('src/Completion/NoParent.php', 'parent_no_parent');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2186,7 +2186,7 @@ PHP;
 
     public function testParentMethodCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'parent_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChildWithPrefix.php', 'parent_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 

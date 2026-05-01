@@ -29,14 +29,3 @@ class Variables
         }
     }
 }
-
-class ClosureVariables
-{
-    public function withClosure(): void
-    {
-        $fn = function ($param) {
-            $localVar = 1;
-            $l/*|closure_local*/
-        };
-    }
-}
