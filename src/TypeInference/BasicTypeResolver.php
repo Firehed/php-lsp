@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
@@ -41,8 +42,18 @@ final class BasicTypeResolver implements TypeResolverInterface
         // new ClassName()
         if ($expr instanceof Expr\New_) {
             if ($expr->class instanceof Node\Name) {
-                /** @var class-string */
-                $fqn = $expr->class->toString();
+                $name = $expr->class->toString();
+                $fqn = match ($name) {
+                    'self', 'static' => ScopeFinder::findEnclosingClassName($expr),
+                    'parent' => ($classNode = ScopeFinder::findEnclosingClassNode($expr)) instanceof Stmt\Class_
+                        ? ScopeFinder::resolveExtendsName($classNode)
+                        : null,
+                    default => $name,
+                };
+                if ($fqn === null) {
+                    return null;
+                }
+                /** @var class-string $fqn */
                 return new ClassName($fqn);
             }
             return null;
@@ -50,7 +61,7 @@ final class BasicTypeResolver implements TypeResolverInterface
 
         // $this - check before generic variable handling
         if ($expr instanceof Expr\Variable && $expr->name === 'this') {
-            $className = $this->findEnclosingClassName($ast, $scope);
+            $className = ScopeFinder::findEnclosingClassName($expr);
             if ($className === null) {
                 return null;
             }
@@ -290,70 +301,5 @@ final class BasicTypeResolver implements TypeResolverInterface
         }
         $classNames = $type->getResolvableClassNames();
         return $classNames !== [] ? $classNames[0]->fqn : null;
-    }
-
-    /**
-     * Find the class name that contains the given scope.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function findEnclosingClassName(
-        array $ast,
-        Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction|null $scope,
-    ): ?string {
-        if ($scope === null) {
-            return null;
-        }
-
-        $found = null;
-        $visitor = new class ($scope, $found) extends NodeVisitorAbstract {
-            public ?string $found = null;
-            private ?string $currentClass = null;
-            /** @var Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction */
-            private $targetScope;
-
-            /**
-             * @param Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction $targetScope
-             */
-            public function __construct($targetScope, ?string &$found)
-            {
-                $this->targetScope = $targetScope;
-                $this->found = &$found;
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Class_ && $node->name !== null) {
-                    // namespacedName is only set when NameResolver visitor is used
-                    // and may throw if accessed before initialization
-                    try {
-                        $nsName = $node->namespacedName;
-                        $this->currentClass = $nsName !== null ? $nsName->toString() : $node->name->toString();
-                    } catch (\Error) {
-                        $this->currentClass = $node->name->toString();
-                    }
-                }
-
-                if ($node === $this->targetScope && $this->currentClass !== null) {
-                    $this->found = $this->currentClass;
-                }
-
-                return null;
-            }
-
-            public function leaveNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Class_) {
-                    $this->currentClass = null;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-
-        return $visitor->found;
     }
 }
