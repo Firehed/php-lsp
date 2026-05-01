@@ -144,75 +144,26 @@ class CompletionHandlerTest extends TestCase
 
     public function testStaticMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Math
-{
-    public static function add(int $a, int $b): int
-    {
-        return $a + $b;
-    }
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticCaller.php', 'external_static');
 
-    public static function multiply(int $a, int $b): int
-    {
-        return $a * $b;
-    }
-}
-
-$result = Math::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 16], // After Math::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('add', $labels);
-        self::assertContains('multiply', $labels);
-        // ::class magic constant should always be suggested
+        self::assertContains('create', $labels);
+        self::assertContains('getInstance', $labels);
         self::assertContains('class', $labels);
     }
 
     public function testClassConstantCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Status
-{
-    public const ACTIVE = 'active';
-    public const INACTIVE = 'inactive';
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticCaller.php', 'external_static');
 
-$status = Status::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('ACTIVE', $labels);
-        self::assertContains('INACTIVE', $labels);
+        self::assertContains('NAME', $labels);
     }
 
     public function testStaticCompletionResolvesImportedClassName(): void
