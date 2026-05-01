@@ -17,4 +17,12 @@ class Grandparent
     protected function protectedGrandparentMethod(): void
     {
     }
+
+    public static function grandparentStaticPublic(): void
+    {
+    }
+
+    protected static function grandparentStaticProtected(): void
+    {
+    }
 }

@@ -29,6 +29,7 @@ class ChildInMultiFile extends ParentInMultiFile
 
 class FirstUnrelated
 {
+    public const FIRST_CONST = 1;
     public string $firstProperty = '';
 
     public function firstMethod(): void
@@ -38,6 +39,7 @@ class FirstUnrelated
 
 class SecondUnrelated
 {
+    public const SECOND_CONST = 2;
     public string $secondProperty = '';
 
     public function secondMethod(): void
@@ -47,5 +49,10 @@ class SecondUnrelated
     public function triggerThisInSecond(): void
     {
         $this->/*|this_in_unrelated_second*/
+    }
+
+    public function triggerSelfInSecond(): int
+    {
+        return self::/*|self_in_second_class*/
     }
 }

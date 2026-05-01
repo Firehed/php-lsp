@@ -4,6 +4,7 @@ namespace Fixtures\Mixed;
 
 use Fixtures\Completion\MethodAccess;
 use Fixtures\Completion\StaticAccess;
+use Fixtures\Domain\User;
 
 $config = [
     'debug' => true,
@@ -73,4 +74,14 @@ function triggerSelfOutsideClass(): void
 function triggerThisOutsideClass(): void
 {
     $this->/*|this_outside_class*/
+}
+
+function processUser(User $user): void
+{
+    $user->/*|user_param_access*/
+}
+
+function processArrayObject(\ArrayObject $obj): void
+{
+    $obj->/*|array_object_access*/
 }

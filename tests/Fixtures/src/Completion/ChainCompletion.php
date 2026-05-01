@@ -10,10 +10,16 @@ class ChainCompletion
 {
     private User $user;
     private ?User $nullableUser;
+    private ChainableUser $chainableUser;
 
     public function getUser(): User
     {
         return $this->user;
+    }
+
+    public function getChainableUser(): ChainableUser
+    {
+        return $this->chainableUser;
     }
 
     public function triggerPropertyChain(): void
@@ -26,13 +32,36 @@ class ChainCompletion
         $this->getUser()->/*|method_chain*/
     }
 
+    public function triggerPrimitiveChain(): void
+    {
+        $this->getUser()->getName()->/*|primitive_chain*/
+    }
+
     public function triggerMultiLevelChain(): void
     {
-        $this->getUser()->getName()->/*|multi_level_chain*/
+        $this->getChainableUser()->getName()->/*|multi_level_chain*/
     }
 
     public function triggerNullsafePropertyChain(): void
     {
         $this->nullableUser?->/*|nullsafe_property_chain*/
+    }
+
+    public function triggerStaticMethodChain(): void
+    {
+        $builder = Builder::create();
+        $builder->/*|static_method_chain*/
+    }
+
+    public function triggerMultiLineChain(): void
+    {
+        $this->getChainableUser()
+            ->getName()
+            ->/*|multi_line_chain*/
+    }
+
+    public function triggerMixedNullsafeChain(): void
+    {
+        $this->user->manager?->/*|mixed_nullsafe_chain*/
     }
 }

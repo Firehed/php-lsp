@@ -28,4 +28,9 @@ class ChildClass extends ParentClass
     {
         $x = $obj;
     }
+
+    public function triggerGrandparentAccess(): void
+    {
+        Grandparent::/*|grandparent_access*/
+    }
 }

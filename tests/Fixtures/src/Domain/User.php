@@ -26,6 +26,7 @@ class User implements Entity, Person
         private string $email,
         private int $age = 0,
         private Status $status = Status::Active,
+        public ?self $manager = null,
     ) {
         self::$instanceCount++;
     }
