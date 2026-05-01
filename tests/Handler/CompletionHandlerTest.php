@@ -81,7 +81,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -98,7 +98,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisMethodCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 

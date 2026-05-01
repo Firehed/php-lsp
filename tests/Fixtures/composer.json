@@ -1,0 +1,15 @@
+{
+    "name": "fixtures/fixtures",
+    "description": "Test fixtures for php-lsp",
+    "autoload": {
+        "psr-0": {
+            "Psr0": "Autoload/"
+        },
+        "psr-4": {
+            "Fixtures\\": "src/"
+        },
+        "classmap": [
+            "Autoload/Classmap/"
+        ]
+    }
+}
