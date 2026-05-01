@@ -1815,31 +1815,9 @@ PHP;
 
     public function testTypedVariableCompletionResolvesParameterType(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public function getName(): string { return ''; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'user_param_access');
 
-function foo(User $user): void
-{
-    $user->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 11], // After $user->
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
