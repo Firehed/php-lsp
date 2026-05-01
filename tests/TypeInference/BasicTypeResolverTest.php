@@ -895,4 +895,17 @@ PHP;
 
         self::assertNull($type);
     }
+
+    public function testResolveNewSelfInAnonymousClassReturnsNull(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/AnonymousClass.php');
+        $method = $this->findMethodByName($ast, 'createSelf');
+        $finder = new \PhpParser\NodeFinder();
+        $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
+        assert($newExpr !== null);
+
+        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+
+        self::assertNull($type);
+    }
 }
