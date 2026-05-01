@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fixtures\SignatureHelp;
 
 use Fixtures\Domain\User;
-use Fixtures\Mixed\Helper;
+use Fixtures\Enum\Priority;
 
 /**
  * Adds two numbers together.
@@ -66,5 +66,5 @@ $greeting = greet("Alice", /*|second_param*/30);
 $arr = [3, 1, 2];
 $mapped = array_map(/*|builtin*/fn($x) => $x * 2, $arr);
 $user = new User(/*|constructor*/"id", "name", "email@example.com");
-$formatted = Helper::formatName(/*|static_call*/"John", "Doe");
+$priority = Priority::fromScore(/*|static_call*/50);
 $x/*|outside_call*/ = 1;
