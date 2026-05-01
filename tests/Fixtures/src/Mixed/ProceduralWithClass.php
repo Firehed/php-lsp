@@ -36,3 +36,41 @@ function triggerStaticAccess(): void
 {
     StaticAccess::/*|standalone_static_access*/
 }
+
+function triggerVarFromStaticCall(): void
+{
+    $obj = StaticAccess::create();
+    $obj->/*|var_from_static_call*/
+}
+
+function triggerVarFromStaticCallNullsafe(): void
+{
+    $obj = StaticAccess::create();
+    $obj?->/*|var_from_static_call_nullsafe*/
+}
+
+function triggerUnknownVar(): void
+{
+    $unknown->/*|unknown_var*/
+}
+
+function triggerDynamicVar(): void
+{
+    $$dynamic->/*|dynamic_var*/
+}
+
+function triggerDynamicStatic(): void
+{
+    $class = 'DateTime';
+    $class::/*|dynamic_static*/
+}
+
+function triggerSelfOutsideClass(): void
+{
+    self::/*|self_outside_class*/
+}
+
+function triggerThisOutsideClass(): void
+{
+    $this->/*|this_outside_class*/
+}
