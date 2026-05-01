@@ -136,6 +136,16 @@ final class BasicTypeResolver implements TypeResolverInterface
         int $line,
         array $ast,
     ): ?Type {
+        // Determine class context for self/static/parent resolution
+        $selfContext = ScopeFinder::findEnclosingClassName($scope);
+        $parentContext = null;
+        if ($selfContext !== null) {
+            $classNode = ScopeFinder::findEnclosingClassNode($scope);
+            if ($classNode instanceof Stmt\Class_) {
+                $parentContext = ScopeFinder::resolveExtendsName($classNode);
+            }
+        }
+
         // Check parameters first
         foreach ($scope->params as $param) {
             if (
@@ -143,7 +153,7 @@ final class BasicTypeResolver implements TypeResolverInterface
                 && is_string($param->var->name)
                 && $param->var->name === $variableName
             ) {
-                return TypeFactory::fromNode($param->type);
+                return TypeFactory::fromNode($param->type, $selfContext, $parentContext);
             }
         }
 

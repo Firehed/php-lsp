@@ -23,4 +23,9 @@ class ChildClass extends ParentClass
     {
         ParentClass::/*|direct_parent_static*/
     }
+
+    public function withParentParam(parent $obj): void
+    {
+        $x = $obj;
+    }
 }
