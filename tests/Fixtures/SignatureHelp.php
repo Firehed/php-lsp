@@ -15,21 +15,22 @@ function signatureHelpAdd(int $a, int $b): int
 
 function useTypedUser(User $user): void
 {
-    $user->setName(/*|typed_param*/"name");
+    $user->setName(/*|typed_param*/"name"); //hover:typedVarMethod
 }
 
 function useAssignedUser(): void
 {
     $user = new User("id", "name", "email@example.com");
-    $user->setName(/*|assigned_var*/"new name");
+    $user->setName(/*|assigned_var*/"new name"); //hover:assignedVarMethod
 }
 
 function useNullsafeParam(?User $user): void
 {
-    $user?->setName(/*|nullsafe_param*/"name");
+    $user?->setName(/*|nullsafe_param*/"name"); //hover:nullsafeTypedVar
 }
 
 $sum = signatureHelpAdd(/*|first_param*/1, 2);
+$sumHover = signatureHelpAdd(1, 2); //hover:signatureHelpAdd
 $greeting = signatureHelpAdd(1, /*|second_param*/2);
 $mapped = array_map(/*|builtin*/fn($x) => $x * 2, [1, 2, 3]);
 $user = new User(/*|constructor*/"id", "name", "email@example.com");

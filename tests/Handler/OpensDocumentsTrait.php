@@ -169,7 +169,7 @@ trait OpensDocumentsTrait
      * Opens a fixture and returns cursor position ON a symbol for hover tests.
      *
      * Uses a marker comment at end of line: //hover:marker_name
-     * Returns position of the last method/property access target on that line.
+     * Returns position of the last method/property access or function call on that line.
      *
      * @param string $fixturePath Path relative to tests/Fixtures/
      * @param string $markerName The marker name
@@ -194,9 +194,21 @@ trait OpensDocumentsTrait
 
             $symbolMatch = [];
             preg_match_all('/(?:->|\?->|::)\$?([a-zA-Z_][a-zA-Z0-9_]*)/', $line, $symbolMatch, PREG_OFFSET_CAPTURE);
-            assert(!empty($symbolMatch[1]), "No member access found on line with marker '$markerName' in $fixturePath");
 
-            $lastMatch = end($symbolMatch[1]);
+            if (count($symbolMatch[1]) > 0) {
+                $lastMatch = end($symbolMatch[1]);
+                return [
+                    'uri' => $uri,
+                    'line' => $lineNum,
+                    'character' => $lastMatch[1],
+                ];
+            }
+
+            $funcMatch = [];
+            preg_match_all('/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/', $line, $funcMatch, PREG_OFFSET_CAPTURE);
+            assert(count($funcMatch[1]) > 0, "No callable found on line with marker '$markerName' in $fixturePath");
+
+            $lastMatch = end($funcMatch[1]);
             return [
                 'uri' => $uri,
                 'line' => $lineNum,

@@ -157,34 +157,12 @@ PHP;
 
     public function testHoverOnFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-/**
- * Adds two numbers together.
- */
-function add(int $a, int $b): int
-{
-    return $a + $b;
-}
+        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'signatureHelpAdd');
 
-$sum = add(1, 2);
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 8], // On "add"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('add', $result['contents']);
+        self::assertStringContainsString('signatureHelpAdd', $result['contents']);
         self::assertStringContainsString('int', $result['contents']);
         self::assertStringContainsString('Adds two numbers together', $result['contents']);
     }
@@ -275,98 +253,26 @@ PHP;
 
     public function testHoverOnTypedVariableMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    /**
-     * Adds two numbers.
-     */
-    public function add(int $a, int $b): int
-    {
-        return $a + $b;
-    }
-}
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'typedVarMethod');
 
-function useCalculator(Calculator $calc): void
-{
-    $calc->add(1, 2);
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        // Create handler with type resolver
-        $handlerWithResolver = new HoverHandler(
-            $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $this->memberResolver,
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 12], // On "add"
-            ],
-        ]);
-
-        $result = $handlerWithResolver->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('add', $result['contents']);
-        self::assertStringContainsString('Adds two numbers', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']);
+        self::assertStringContainsString('Updates the user', $result['contents']);
     }
 
     public function testHoverOnAssignedVariableMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-class Greeter
-{
-    /**
-     * Greets a person.
-     */
-    public function greet(string $name): string
-    {
-        return "Hello, $name!";
-    }
-}
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'assignedVarMethod');
 
-function test(): void
-{
-    $greeter = new Greeter();
-    $greeter->greet("World");
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $handlerWithResolver = new HoverHandler(
-            $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $this->memberResolver,
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 15], // On "greet"
-            ],
-        ]);
-
-        $result = $handlerWithResolver->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('greet', $result['contents']);
-        self::assertStringContainsString('Greets a person', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']);
+        self::assertStringContainsString('Updates the user', $result['contents']);
     }
 
     public function testHoverOnInheritedMethod(): void
@@ -841,41 +747,14 @@ PHP;
 
     public function testHoverOnNullsafeTypedVariableMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    /**
-     * Adds two numbers.
-     */
-    public function add(int $a, int $b): int
-    {
-        return $a + $b;
-    }
-}
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'nullsafeTypedVar');
 
-function useCalculator(?Calculator $calc): void
-{
-    $calc?->add(1, 2);
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 13], // On "add"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('add', $result['contents']);
-        self::assertStringContainsString('Adds two numbers', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']);
+        self::assertStringContainsString('Updates the user', $result['contents']);
     }
 
     public function testHoverOnNullsafeProtectedPropertyMethodCall(): void
