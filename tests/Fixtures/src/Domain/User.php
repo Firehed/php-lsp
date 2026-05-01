@@ -41,6 +41,9 @@ class User implements Entity, Person
         return $this->name;
     }
 
+    /**
+     * Updates the user's display name.
+     */
     public function setName(string $name): void
     {
         $this->name = $name;
