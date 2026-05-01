@@ -81,7 +81,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -98,7 +98,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisMethodCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -112,7 +112,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisPropertyCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'this_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -125,7 +125,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisCompletionIncludesInheritedMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'this_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'this_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -427,7 +427,7 @@ PHP;
 
     public function testSelfCompletionIncludesInheritedStaticMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'self_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'self_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1262,7 +1262,7 @@ PHP;
 
     public function testVariableCompletionSuggestsParameters(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'param_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'param_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1274,7 +1274,7 @@ PHP;
 
     public function testVariableCompletionSuggestsLocalVariables(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'local_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'local_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1285,7 +1285,7 @@ PHP;
 
     public function testVariableCompletionSuggestsThisInMethod(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'this_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'this_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1296,7 +1296,7 @@ PHP;
 
     public function testVariableCompletionThisShowsClassName(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'this_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'this_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1309,7 +1309,7 @@ PHP;
 
     public function testVariableCompletionWorksInClosures(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'closure_local');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'closure_local');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1320,7 +1320,7 @@ PHP;
 
     public function testVariableCompletionSuggestsForeachVariables(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Variables.php', 'foreach_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'foreach_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1406,7 +1406,7 @@ PHP;
 
     public function testEnumCaseCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'unit_enum_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'unit_enum_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1419,7 +1419,7 @@ PHP;
 
     public function testEnumCaseCompletionNoPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'unit_enum_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'unit_enum_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1439,7 +1439,7 @@ PHP;
 
     public function testEnumBuiltinMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'unit_enum_builtin');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'unit_enum_builtin');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1451,7 +1451,7 @@ PHP;
 
     public function testBackedEnumCompletionInt(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'backed_int_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'backed_int_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1483,7 +1483,7 @@ PHP;
 
     public function testBackedEnumCompletionString(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'backed_string_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'backed_string_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1513,7 +1513,7 @@ PHP;
 
     public function testBackedEnumMethodPrefixFiltering(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Enums.php', 'backed_int_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Enums.php', 'backed_int_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1982,7 +1982,7 @@ PHP;
 
     public function testSelfConstantCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -1998,7 +1998,7 @@ PHP;
 
     public function testStaticConstantCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'static_keyword');
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'static_keyword');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2013,7 +2013,7 @@ PHP;
 
     public function testSelfConstantCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_const_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_const_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2100,7 +2100,7 @@ PHP;
 
     public function testSelfStaticMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2118,7 +2118,7 @@ PHP;
 
     public function testSelfStaticPropertyCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/StaticAccess.php', 'self_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2162,7 +2162,7 @@ PHP;
 
     public function testParentMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'parent_access');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'parent_access');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2175,7 +2175,7 @@ PHP;
 
     public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'parent_no_parent');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'parent_no_parent');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2186,7 +2186,7 @@ PHP;
 
     public function testParentMethodCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/Inheritance.php', 'parent_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/Inheritance.php', 'parent_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2531,7 +2531,7 @@ PHP;
     {
         // Issue #173: When multiple classes in file, $this-> should complete
         // members of the enclosing class, not the first class in the file
-        $cursor = $this->openFixtureAtCursor('Completion/MultiClass.php', 'this_in_second_class');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MultiClass.php', 'this_in_second_class');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2553,7 +2553,7 @@ PHP;
     {
         // Two unrelated classes in the same file - cursor in second class
         // should get its members, not the first class's
-        $cursor = $this->openFixtureAtCursor('Completion/MultiClass.php', 'this_in_unrelated_second');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MultiClass.php', 'this_in_unrelated_second');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2573,7 +2573,7 @@ PHP;
 
     public function testNullsafeThisMemberCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'nullsafe_this_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_this_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2586,7 +2586,7 @@ PHP;
 
     public function testNullsafeVariableMemberCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'nullsafe_var_empty');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_var_empty');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2598,7 +2598,7 @@ PHP;
 
     public function testNullsafeThisMemberCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('Completion/MethodAccess.php', 'nullsafe_this_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_this_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 

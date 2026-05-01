@@ -33,14 +33,17 @@ The server communicates via stdio:
 # Install dependencies
 composer install
 
+# Generate test fixture autoload
+composer dump-autoload --working-dir=tests/Fixtures
+
 # Run tests and static analysis
 composer check
 
 # Run just tests
-composer test
+composer phpunit
 
 # Run just static analysis
-composer analyze
+composer phpstan
 ```
 
 ## Editor Integration

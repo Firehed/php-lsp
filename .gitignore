@@ -1,4 +1,5 @@
 /vendor/
+/tests/Fixtures/vendor/
 /composer.lock
 /.phpunit.cache/
 /phpcs.xml
