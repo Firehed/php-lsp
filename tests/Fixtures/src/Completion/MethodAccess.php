@@ -32,6 +32,14 @@ class MethodAccess
         return $this->active;
     }
 
+    private function secretMethod(): void
+    {
+    }
+
+    protected function hiddenMethod(): void
+    {
+    }
+
     public function triggerThisEmpty(): void
     {
         $this->/*|this_empty*/

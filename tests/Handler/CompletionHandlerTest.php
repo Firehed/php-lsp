@@ -2632,37 +2632,16 @@ PHP;
 
     public function testSameClassVisibilityShowsPrivateMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo {
-    private function secret(): void {}
-    protected function hidden(): void {}
-    public function visible(): void {}
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'param_access');
 
-    public function test(Foo $other): void {
-        $other->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('secret', $labels);
-        self::assertContains('hidden', $labels);
-        self::assertContains('visible', $labels);
+        // Same-class access shows all visibility levels
+        self::assertContains('secretMethod', $labels);
+        self::assertContains('hiddenMethod', $labels);
+        self::assertContains('getName', $labels);
     }
 }
