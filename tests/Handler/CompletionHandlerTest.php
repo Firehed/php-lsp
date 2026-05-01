@@ -2368,33 +2368,9 @@ PHP;
 
     public function testChainCompletionPropertyChain(): void
     {
-        $code = <<<'PHP'
-<?php
-class User {
-    public function getName(): string { return ''; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'property_chain');
 
-class Service {
-    private User $user;
-
-    public function test(): void {
-        $this->user->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 21],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -2404,33 +2380,9 @@ PHP;
 
     public function testChainCompletionMethodChain(): void
     {
-        $code = <<<'PHP'
-<?php
-class User {
-    public function getName(): string { return ''; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'method_chain');
 
-class Service {
-    public function getUser(): User { return new User(); }
-
-    public function test(): void {
-        $this->getUser()->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 26],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
