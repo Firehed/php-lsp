@@ -83,4 +83,24 @@ class User implements Entity, Person
     {
         return self::$instanceCount;
     }
+
+    public static function create(string $id, string $name, string $email): self
+    {
+        return new self($id, $name, $email);
+    }
+
+    public function triggerSigThis(): void
+    {
+        $this->setName(/*|sig_this_call*/"name");
+    }
+
+    public function triggerSigSelf(): self
+    {
+        return self::create(/*|sig_self_call*/"id", "name", "email");
+    }
+
+    public function triggerSigNullsafe(): void
+    {
+        $this->manager?->setName(/*|sig_nullsafe_property*/"name");
+    }
 }
