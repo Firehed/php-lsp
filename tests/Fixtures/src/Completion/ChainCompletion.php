@@ -9,6 +9,7 @@ use Fixtures\Domain\User;
 class ChainCompletion
 {
     private User $user;
+    private ?User $nullableUser;
 
     public function getUser(): User
     {
@@ -28,5 +29,10 @@ class ChainCompletion
     public function triggerMultiLevelChain(): void
     {
         $this->getUser()->getName()->/*|multi_level_chain*/
+    }
+
+    public function triggerNullsafePropertyChain(): void
+    {
+        $this->nullableUser?->/*|nullsafe_property_chain*/
     }
 }

@@ -2543,33 +2543,9 @@ PHP;
 
     public function testChainCompletionNullsafePropertyChain(): void
     {
-        $code = <<<'PHP'
-<?php
-class User {
-    public function getName(): string { return ''; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'nullsafe_property_chain');
 
-class Service {
-    private ?User $user;
-
-    public function test(): void {
-        $this->user?->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 22],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
