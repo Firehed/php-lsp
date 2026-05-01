@@ -2,6 +2,9 @@
 
 namespace Fixtures\Mixed;
 
+use Fixtures\Completion\MethodAccess;
+use Fixtures\Completion\StaticAccess;
+
 $config = [
     'debug' => true,
     'version' => '1.0.0',
@@ -23,3 +26,13 @@ class Helper
 
 $helper = new Helper();
 echo Helper::formatName('John', 'Doe');
+
+function processMethodAccess(MethodAccess $obj): void
+{
+    $obj->/*|standalone_function_access*/
+}
+
+function triggerStaticAccess(): void
+{
+    StaticAccess::/*|standalone_static_access*/
+}

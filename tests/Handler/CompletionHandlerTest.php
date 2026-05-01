@@ -1734,6 +1734,39 @@ PHP;
         self::assertNotContains('hiddenMethod', $labels);
     }
 
+    public function testStandaloneFunctionAccessExcludesNonPublicMembers(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'standalone_function_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Public members should be included
+        self::assertContains('active', $labels);
+        self::assertContains('getName', $labels);
+        // Non-public members should be excluded (no enclosing class context)
+        self::assertNotContains('name', $labels);
+        self::assertNotContains('secretMethod', $labels);
+    }
+
+    public function testStandaloneFunctionStaticAccessExcludesNonPublicMembers(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'standalone_static_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Public static members should be included
+        self::assertContains('create', $labels);
+        self::assertContains('NAME', $labels);
+        // Non-public members should be excluded (no enclosing class context)
+        self::assertNotContains('INTERNAL', $labels);
+        self::assertNotContains('SECRET', $labels);
+        self::assertNotContains('reset', $labels);
+    }
+
     public function testSelfConstantCompletion(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
