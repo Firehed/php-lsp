@@ -144,75 +144,26 @@ class CompletionHandlerTest extends TestCase
 
     public function testStaticMethodCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Math
-{
-    public static function add(int $a, int $b): int
-    {
-        return $a + $b;
-    }
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticCaller.php', 'external_static');
 
-    public static function multiply(int $a, int $b): int
-    {
-        return $a * $b;
-    }
-}
-
-$result = Math::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 16], // After Math::
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('add', $labels);
-        self::assertContains('multiply', $labels);
-        // ::class magic constant should always be suggested
+        self::assertContains('create', $labels);
+        self::assertContains('getInstance', $labels);
         self::assertContains('class', $labels);
     }
 
     public function testClassConstantCompletion(): void
     {
-        $code = <<<'PHP'
-<?php
-class Status
-{
-    public const ACTIVE = 'active';
-    public const INACTIVE = 'inactive';
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticCaller.php', 'external_static');
 
-$status = Status::
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 18],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('ACTIVE', $labels);
-        self::assertContains('INACTIVE', $labels);
+        self::assertContains('NAME', $labels);
     }
 
     public function testStaticCompletionResolvesImportedClassName(): void
@@ -1469,50 +1420,17 @@ PHP;
 
     public function testTypedVariableCompletionFromParameter(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public string $name;
-    public function getName(): string { return $this->name; }
-    public function setName(string $name): void { $this->name = $name; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'param_access');
 
-function processUser(User $user): void
-{
-    $user->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 11], // After $user->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('name', $labels);
+        // Members available via typed parameter
         self::assertContains('getName', $labels);
         self::assertContains('setName', $labels);
+        self::assertContains('active', $labels);
     }
 
     public function testTypedVariableCompletionFromNewExpression(): void
@@ -1799,58 +1717,54 @@ PHP;
 
     public function testTypedVariableCompletionExcludesNonPublicMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-class User
-{
-    public string $name;
-    protected string $email;
-    private string $password;
+        $cursor = $this->openFixtureAtCursor('src/Completion/ExternalAccess.php', 'external_method_access');
 
-    public function getName(): string { return $this->name; }
-    protected function getEmail(): string { return $this->email; }
-    private function getPassword(): string { return $this->password; }
-}
-
-function foo(User $user): void
-{
-    $user->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 14, 'character' => 11], // After $user->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         // Public members should be included
-        self::assertContains('name', $labels);
+        self::assertContains('active', $labels);
         self::assertContains('getName', $labels);
+        self::assertContains('getCount', $labels);
         // Protected and private members should be excluded
-        self::assertNotContains('email', $labels);
-        self::assertNotContains('password', $labels);
-        self::assertNotContains('getEmail', $labels);
-        self::assertNotContains('getPassword', $labels);
+        self::assertNotContains('name', $labels);
+        self::assertNotContains('count', $labels);
+        self::assertNotContains('secretMethod', $labels);
+        self::assertNotContains('hiddenMethod', $labels);
+    }
+
+    public function testStandaloneFunctionAccessExcludesNonPublicMembers(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'standalone_function_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Public members should be included
+        self::assertContains('active', $labels);
+        self::assertContains('getName', $labels);
+        // Non-public members should be excluded (no enclosing class context)
+        self::assertNotContains('name', $labels);
+        self::assertNotContains('secretMethod', $labels);
+    }
+
+    public function testStandaloneFunctionStaticAccessExcludesNonPublicMembers(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'standalone_static_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Public static members should be included
+        self::assertContains('create', $labels);
+        self::assertContains('NAME', $labels);
+        // Non-public members should be excluded (no enclosing class context)
+        self::assertNotContains('INTERNAL', $labels);
+        self::assertNotContains('SECRET', $labels);
+        self::assertNotContains('reset', $labels);
     }
 
     public function testSelfConstantCompletion(): void
@@ -2489,33 +2403,9 @@ PHP;
 
     public function testChainCompletionPropertyChain(): void
     {
-        $code = <<<'PHP'
-<?php
-class User {
-    public function getName(): string { return ''; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'property_chain');
 
-class Service {
-    private User $user;
-
-    public function test(): void {
-        $this->user->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 21],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -2525,38 +2415,25 @@ PHP;
 
     public function testChainCompletionMethodChain(): void
     {
-        $code = <<<'PHP'
-<?php
-class User {
-    public function getName(): string { return ''; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'method_chain');
 
-class Service {
-    public function getUser(): User { return new User(); }
-
-    public function test(): void {
-        $this->getUser()->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 26],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('getName', $labels);
+    }
+
+    public function testChainCompletionOnPrimitiveReturnsEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'multi_level_chain');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertSame([], $result['items']);
     }
 
     public function testChainCompletionMultiLevel(): void
@@ -2712,33 +2589,9 @@ PHP;
 
     public function testChainCompletionNullsafePropertyChain(): void
     {
-        $code = <<<'PHP'
-<?php
-class User {
-    public function getName(): string { return ''; }
-}
+        $cursor = $this->openFixtureAtCursor('src/Completion/ChainCompletion.php', 'nullsafe_property_chain');
 
-class Service {
-    private ?User $user;
-
-    public function test(): void {
-        $this->user?->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 22],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
@@ -2825,37 +2678,16 @@ PHP;
 
     public function testSameClassVisibilityShowsPrivateMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-class Foo {
-    private function secret(): void {}
-    protected function hidden(): void {}
-    public function visible(): void {}
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'param_access');
 
-    public function test(Foo $other): void {
-        $other->
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('secret', $labels);
-        self::assertContains('hidden', $labels);
-        self::assertContains('visible', $labels);
+        // Same-class access shows all visibility levels
+        self::assertContains('secretMethod', $labels);
+        self::assertContains('hiddenMethod', $labels);
+        self::assertContains('getName', $labels);
     }
 }
