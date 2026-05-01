@@ -2531,7 +2531,7 @@ PHP;
     {
         // Issue #173: When multiple classes in file, $this-> should complete
         // members of the enclosing class, not the first class in the file
-        $cursor = $this->openFixtureAtCursor('src/Completion/MultiClass.php', 'this_in_second_class');
+        $cursor = $this->openFixtureAtCursor('MultiClass/MultiClass.php', 'this_in_second_class');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2553,7 +2553,7 @@ PHP;
     {
         // Two unrelated classes in the same file - cursor in second class
         // should get its members, not the first class's
-        $cursor = $this->openFixtureAtCursor('src/Completion/MultiClass.php', 'this_in_unrelated_second');
+        $cursor = $this->openFixtureAtCursor('MultiClass/MultiClass.php', 'this_in_unrelated_second');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
