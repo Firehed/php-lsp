@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Fixtures\Completion;
 
-class ChildWithPrefix extends ParentWithMethods
+use Fixtures\Inheritance\ParentClass;
+
+class ParentPrefix extends ParentClass
 {
     public function test(): void
     {
-        parent::gr/*|parent_prefix*/
+        parent::p/*|parent_prefix*/
     }
 }

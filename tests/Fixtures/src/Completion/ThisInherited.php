@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Fixtures\Completion;
 
-class InheritanceChild extends \Exception
+use Fixtures\Inheritance\ChildClass;
+
+class ThisInherited extends ChildClass
 {
     private string $ownProperty = '';
 
@@ -12,7 +14,7 @@ class InheritanceChild extends \Exception
     {
     }
 
-    public function triggerThisInherited(): void
+    public function triggerThis(): void
     {
         $this->/*|this_inherited*/
     }

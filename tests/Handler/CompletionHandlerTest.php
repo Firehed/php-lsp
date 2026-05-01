@@ -125,7 +125,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testThisCompletionIncludesInheritedMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceChild.php', 'this_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/ThisInherited.php', 'this_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -134,9 +134,12 @@ class CompletionHandlerTest extends TestCase
         // Own members
         self::assertContains('ownProperty', $labels);
         self::assertContains('ownMethod', $labels);
-        // Inherited members from Exception
-        self::assertContains('getMessage', $labels);
-        self::assertContains('getCode', $labels);
+        // Inherited from ChildClass
+        self::assertContains('childMethod', $labels);
+        // Inherited from ParentClass
+        self::assertContains('parentMethod', $labels);
+        // Inherited from Grandparent
+        self::assertContains('grandparentMethod', $labels);
     }
 
     public function testStaticMethodCompletion(): void
@@ -427,19 +430,19 @@ PHP;
 
     public function testSelfCompletionIncludesInheritedStaticMembers(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ChildForSelf.php', 'self_inherited');
+        $cursor = $this->openFixtureAtCursor('src/Completion/SelfInherited.php', 'self_inherited');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         // Own static members
-        self::assertContains('ownProperty', $labels);
-        self::assertContains('ownMethod', $labels);
-        // Inherited static members from ParentForSelf
-        self::assertContains('inheritedProperty', $labels);
-        self::assertContains('inheritedMethod', $labels);
-        self::assertContains('INHERITED_CONST', $labels);
+        self::assertContains('ownStaticProperty', $labels);
+        self::assertContains('ownStaticMethod', $labels);
+        // Inherited static members from ParentClass
+        self::assertContains('staticProperty', $labels);
+        self::assertContains('staticMethod', $labels);
+        self::assertContains('PARENT_CONST', $labels);
     }
 
     public function testFunctionCompletion(): void
@@ -2162,7 +2165,7 @@ PHP;
 
     public function testParentMethodCompletion(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ChildWithConstructor.php', 'parent_access');
+        $cursor = $this->openFixtureAtCursor('src/Completion/ParentAccess.php', 'parent_access');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2170,7 +2173,8 @@ PHP;
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('__construct', $labels);
-        self::assertContains('greet', $labels);
+        self::assertContains('parentMethod', $labels);
+        self::assertContains('protectedMethod', $labels);
     }
 
     public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
@@ -2186,14 +2190,15 @@ PHP;
 
     public function testParentMethodCompletionWithPrefix(): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ChildWithPrefix.php', 'parent_prefix');
+        $cursor = $this->openFixtureAtCursor('src/Completion/ParentPrefix.php', 'parent_prefix');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('greet', $labels);
-        self::assertNotContains('goodbye', $labels);
+        self::assertContains('parentMethod', $labels);
+        self::assertContains('protectedMethod', $labels);
+        self::assertNotContains('staticMethod', $labels);
         self::assertNotContains('__construct', $labels);
     }
 

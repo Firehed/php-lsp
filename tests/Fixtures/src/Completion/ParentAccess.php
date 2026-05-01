@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Fixtures\Completion;
 
-class ParentWithConstructor
+use Fixtures\Inheritance\ParentClass;
+
+class ParentAccess extends ParentClass
 {
     public function __construct(string $name)
     {
-    }
-
-    protected function greet(): string
-    {
-        return 'Hello';
+        parent::/*|parent_access*/
     }
 }
