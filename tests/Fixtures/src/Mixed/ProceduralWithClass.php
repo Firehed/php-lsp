@@ -80,3 +80,8 @@ function processUser(User $user): void
 {
     $user->/*|user_param_access*/
 }
+
+function processArrayObject(\ArrayObject $obj): void
+{
+    $obj->/*|array_object_access*/
+}

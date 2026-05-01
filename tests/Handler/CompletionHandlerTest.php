@@ -1520,36 +1520,9 @@ PHP;
 
     public function testTypedVariableCompletionIncludesInheritedMembers(): void
     {
-        $code = <<<'PHP'
-<?php
-function foo(ArrayObject $obj): void
-{
-    $obj->
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'array_object_access');
 
-        $handler = new CompletionHandler(
-            $this->documents,
-            $this->parser,
-            $this->symbolIndex,
-            $this->memberResolver,
-            $this->classRepository,
-            new BasicTypeResolver($this->memberResolver),
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 10], // After $obj->
-            ],
-        ]);
-
-        $result = $handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
@@ -1938,32 +1911,13 @@ PHP;
 
     public function testStaticCompletionInClassWithoutNamespace(): void
     {
-        $code = <<<'PHP'
-<?php
-class NoNamespace
-{
-    public static function test(): void {
-        self::
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('NoNamespace.php', 'self_no_namespace');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 4, 'character' => 14],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('test', $labels);
+        self::assertContains('staticMethod', $labels);
     }
 
     public function testUserDefinedFunctionCompletion(): void
