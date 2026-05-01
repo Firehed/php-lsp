@@ -73,6 +73,28 @@ PHP;
         self::assertSame(DateTime::class, $type->fqn);
     }
 
+    public function testResolveParameterTypeSelf(): void
+    {
+        $ast = $this->parseFixture('src/Completion/MethodAccess.php');
+        $method = $this->findMethodByName($ast, 'withParameter');
+
+        $type = $this->resolver->resolveVariableType('param', $method, $method->getStartLine(), $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\Completion\\MethodAccess', $type->fqn);
+    }
+
+    public function testResolveParameterTypeParent(): void
+    {
+        $ast = $this->parseFixture('src/Inheritance/ChildClass.php');
+        $method = $this->findMethodByName($ast, 'withParentParam');
+
+        $type = $this->resolver->resolveVariableType('obj', $method, $method->getStartLine(), $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\Inheritance\\ParentClass', $type->fqn);
+    }
+
     public function testResolveAssignmentFromNew(): void
     {
         $code = <<<'PHP'
