@@ -145,4 +145,23 @@ trait OpensDocumentsTrait
             ],
         ]);
     }
+
+    /**
+     * Builds a textDocument/hover request for the given cursor position.
+     *
+     * @param CursorPosition $cursor From openFixtureAtCursor()
+     * @phpstan-ignore missingType.iterableValue
+     */
+    private function hoverRequestAt(array $cursor): RequestMessage
+    {
+        return RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => $cursor['uri']],
+                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
+            ],
+        ]);
+    }
 }
