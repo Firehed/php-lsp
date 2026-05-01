@@ -7,97 +7,103 @@ namespace Fixtures\Hover;
 use Fixtures\Domain\Entity;
 use Fixtures\Domain\User;
 use Fixtures\Inheritance\ChildClass;
-use Fixtures\Traits\HasTimestamps;
 
-/**
- * A sample class for hover testing.
- */
-class HoverScenarios
+class HoverScenarios extends ChildClass
 {
-    use HasTimestamps;
-
-    /** The person's full name. */
-    public string $name = '';
-
-    /** Static application name. */
-    public static string $appName = 'MyApp';
-
-    private ?Calculator $calc = null;
-    private ?HoverScenarios $person = null;
-    protected ?Calculator $protectedCalc = null;
-    private ?Middle $middle = null;
-
     public function triggerClassHover(): void
     {
         $x = new /*|class_hover*/User("id", "name", "email");
     }
 
+    public function triggerMethodHover(): void
+    {
+        $user = new User("id", "name", "email");
+        $user->/*|method_hover*/setName("new");
+    }
+
     public function triggerPropertyHover(): void
     {
-        echo $this->/*|property_hover*/name;
+        $user = new User("id", "name", "email");
+        echo $user->/*|property_hover*/manager;
     }
 
-    public function useTypedCalculator(Calculator $calc): void
+    public function triggerStaticMethodHover(): void
     {
-        $calc->/*|typed_var_method*/add(1, 2);
+        User::/*|static_method_hover*/create("id", "name", "email");
     }
 
-    public function useAssignedGreeter(): void
+    public function useTypedUser(User $user): void
     {
-        $greeter = new Greeter();
-        $greeter->/*|assigned_var_method*/greet("World");
+        $user->/*|typed_param_method*/setName("name");
     }
 
-    public function triggerVariadicMethod(): void
+    public function useAssignedUser(): void
     {
-        $logger = new Logger();
-        $logger->/*|variadic_method*/log('info', 'a', 'b');
-    }
-
-    public function triggerOptionalMethod(): void
-    {
-        $greeter = new Greeter();
-        $greeter->/*|optional_param_method*/greet('World');
+        $user = new User("id", "name", "email");
+        $user->/*|assigned_var_method*/setName("name");
     }
 
     public function triggerNullsafeMethod(): void
     {
-        $this->calc?->/*|nullsafe_method*/multiply(2, 3);
+        $user = new User("id", "name", "email");
+        $user->manager?->/*|nullsafe_method*/setName("name");
     }
 
-    public function triggerNullsafeProperty(): string
+    public function triggerNullsafeProperty(): void
     {
-        return $this->person?->/*|nullsafe_property*/name ?? 'Unknown';
+        $user = new User("id", "name", "email");
+        echo $user->manager?->/*|nullsafe_property*/manager;
     }
 
-    public function useNullsafeTypedVar(?Calculator $calc): void
+    public function useNullsafeTypedUser(?User $user): void
     {
-        $calc?->/*|nullsafe_typed_var*/add(1, 2);
+        $user?->/*|nullsafe_typed_param*/setName("name");
     }
 
-    public function triggerNullsafeProtected(): void
+    public function triggerInheritedMethod(): void
     {
-        $this->protectedCalc?->/*|nullsafe_protected*/divide(10, 2);
+        $this->/*|inherited_method*/parentMethod();
     }
 
-    public function triggerChainedNullsafe(): void
+    public function triggerInheritedProperty(): void
     {
-        $this->middle?->inner?->/*|chained_nullsafe*/getValue();
+        echo $this->/*|inherited_property*/parentProperty;
     }
 
-    public function triggerStaticProperty(): void
+    public function triggerGrandparentMethod(): void
     {
-        $name = self::$/*|static_property*/appName;
+        $this->/*|grandparent_method*/grandparentMethod();
     }
 
-    public function triggerTraitProperty(): void
+    public function triggerGrandparentProperty(): void
     {
-        echo $this->/*|trait_property*/createdAt;
+        echo $this->/*|grandparent_property*/grandparentProperty;
+    }
+
+    public function triggerOverriddenMethod(): void
+    {
+        $this->/*|overridden_method*/overriddenMethod();
+    }
+
+    public function triggerSharedProperty(): void
+    {
+        echo $this->/*|shared_property*/sharedProperty;
+    }
+
+    public function triggerPrivateMethod(): void
+    {
+        $this->/*|private_inherited_method*/privateMethod();
+    }
+
+    public function triggerPrivateProperty(): void
+    {
+        echo $this->/*|private_inherited_property*/privateProperty;
     }
 
     public function triggerTraitMethod(): void
     {
-        $this->/*|trait_method*/markCreated();
+        $user = new User("id", "name", "email");
+        $user->/*|trait_method*/markCreated();
     }
 
     public function useInterface(Entity $entity): void
