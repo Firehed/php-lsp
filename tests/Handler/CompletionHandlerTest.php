@@ -1937,23 +1937,9 @@ PHP;
 
     public function testThisCompletionOutsideClassReturnsEmpty(): void
     {
-        $code = <<<'PHP'
-<?php
-$this->
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'this_outside_class');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 1, 'character' => 7],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertEmpty($result['items']);

@@ -69,3 +69,8 @@ function triggerSelfOutsideClass(): void
 {
     self::/*|self_outside_class*/
 }
+
+function triggerThisOutsideClass(): void
+{
+    $this->/*|this_outside_class*/
+}
