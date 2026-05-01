@@ -8,12 +8,17 @@ class ChildClass extends ParentClass
 {
     public const CHILD_CONST = 'child';
 
+    /** Child property. */
     public string $childProperty = 'child';
+    /** Child override of shared property. */
+    protected string $sharedProperty = 'child';
 
+    /** Child method documentation. */
     public function childMethod(): void
     {
     }
 
+    /** Child implementation of overridden method. */
     public function overriddenMethod(): void
     {
         parent::parentMethod();
