@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fixtures\Completion;
 
 use Fixtures\Inheritance\ChildClass;
+use Fixtures\Inheritance\ParentClass;
 
 class InheritanceCompletion extends ChildClass
 {
@@ -34,5 +35,10 @@ class InheritanceCompletion extends ChildClass
     public function triggerParentPrefix(): void
     {
         parent::p/*|parent_prefix*/
+    }
+
+    public function triggerParentClassStatic(): void
+    {
+        ParentClass::/*|parent_class_static*/
     }
 }
