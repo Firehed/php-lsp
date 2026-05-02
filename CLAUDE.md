@@ -172,7 +172,11 @@ $ast = $this->parse($content);
 
 ### Cursor Markers
 
-For tests needing specific cursor positions (completion, signature help), use markers:
+Two marker conventions exist for different test scenarios:
+
+**`/*|marker*/` — cursor BEFORE marker (incomplete expressions)**
+
+For completion and signature help where the cursor is mid-expression:
 
 ```php
 public function triggerCompletion(): void
@@ -181,7 +185,21 @@ public function triggerCompletion(): void
 }
 ```
 
-The marker `/*|name*/` is a comment the parser ignores. `openFixtureAtCursor()` finds it and returns the position immediately before it.
+`openFixtureAtCursor()` returns the position immediately before the marker. Use for incomplete statements that need parser error recovery.
+
+**`//hover:marker` — cursor ON symbol (complete expressions)**
+
+For hover tests where the cursor must be on an existing symbol:
+
+```php
+$user->getName(); //hover:method_call
+```
+
+`openFixtureAtHoverMarker()` finds the line and positions the cursor on the last member access or function call. Use for complete, parseable statements.
+
+**Which to use:**
+- Incomplete code (`$this->`) → `/*|marker*/`
+- Complete code (`$this->method()`) → `//hover:marker`
 
 **Limitation:** Each incomplete statement needs its own method. Multiple incomplete statements in one method confuse parser error recovery:
 
