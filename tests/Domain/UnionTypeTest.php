@@ -95,4 +95,20 @@ class UnionTypeTest extends TestCase
         ]);
         self::assertFalse($type->isNullable());
     }
+
+    public function testResolveLateBoundResolvesMembers(): void
+    {
+        $type = new UnionType([
+            new LateStaticType(LateBindingKeyword::Static, new ClassName(\Traversable::class)),
+            new PrimitiveType('null'),
+        ]);
+
+        $resolved = $type->resolveLateBound(\ArrayIterator::class);
+
+        self::assertInstanceOf(UnionType::class, $resolved);
+        self::assertSame('?ArrayIterator', $resolved->format());
+        $classNames = $resolved->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame(\ArrayIterator::class, $classNames[0]->fqn);
+    }
 }

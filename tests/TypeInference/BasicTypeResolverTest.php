@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use Exception;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -985,6 +986,85 @@ PHP;
         $type = $this->resolver->resolveExpressionType($staticCall, $method, $ast);
 
         self::assertNull($type);
+    }
+
+    public function testResolveTraitStaticReturnTypeToCallingClass(): void
+    {
+        $resolver = $this->createResolverWithFixtures();
+        $ast = $this->parseFixture('src/TypeInference/TraitStaticReturn.php');
+        $method = $this->findMethodByName($ast, 'callTraitStaticMethod');
+        $finder = new \PhpParser\NodeFinder();
+        $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
+        assert($staticCall !== null);
+
+        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+
+        // The trait method returns `static`, which should resolve to ConcreteService
+        // (the class the method was called on), not SingletonTrait (where it's defined)
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\Traits\\ConcreteService', $type->fqn);
+    }
+
+    public function testResolveNullableTraitStaticReturnTypeToCallingClass(): void
+    {
+        $resolver = $this->createResolverWithFixtures();
+        $ast = $this->parseFixture('src/TypeInference/TraitStaticReturn.php');
+        $method = $this->findMethodByName($ast, 'callNullableTraitStaticMethod');
+        $finder = new \PhpParser\NodeFinder();
+        $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
+        assert($staticCall !== null);
+
+        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+
+        // The trait method returns `?static`, which should resolve to ?ConcreteService
+        self::assertInstanceOf(UnionType::class, $type);
+        self::assertTrue($type->isNullable());
+        $classNames = $type->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame('Fixtures\\Traits\\ConcreteService', $classNames[0]->fqn);
+    }
+
+    public function testResolveTraitSelfReturnTypeToCallingClass(): void
+    {
+        $resolver = $this->createResolverWithFixtures();
+        $ast = $this->parseFixture('src/TypeInference/TraitStaticReturn.php');
+        // getInstance() returns `self`, testing that self in traits resolves to the using class
+        $method = $this->findMethodByName($ast, 'callTraitStaticMethod');
+
+        $type = $resolver->resolveExpressionType(
+            new Expr\StaticCall(
+                new Name\FullyQualified('Fixtures\\Traits\\ConcreteService'),
+                'getInstance',
+            ),
+            $method,
+            $ast,
+        );
+
+        // `self` in trait resolves to the using class
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\Traits\\ConcreteService', $type->fqn);
+    }
+
+    public function testResolveIntersectionReturnType(): void
+    {
+        $resolver = $this->createResolverWithFixtures();
+        $ast = $this->parseFixture('src/TypeInference/IntersectionReturn.php');
+        $method = $this->findMethodByName($ast, 'getIterableCounter');
+
+        $type = $resolver->resolveExpressionType(
+            new Expr\StaticCall(
+                new Name\FullyQualified('Fixtures\\TypeInference\\IntersectionReturn'),
+                'getIterableCounter',
+            ),
+            $method,
+            $ast,
+        );
+
+        self::assertInstanceOf(IntersectionType::class, $type);
+        $classNames = $type->getResolvableClassNames();
+        self::assertCount(2, $classNames);
+        self::assertSame('Iterator', $classNames[0]->fqn);
+        self::assertSame('Countable', $classNames[1]->fqn);
     }
 
     private function createResolverWithFixtures(): BasicTypeResolver

@@ -1218,6 +1218,42 @@ final class MemberResolverTest extends TestCase
         self::assertContains($interfaceConst, $result);
     }
 
+    public function testIsTraitClassReturnsTrueForTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($traitInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertTrue($resolver->isTraitClass($traitName));
+    }
+
+    public function testIsTraitClassReturnsFalseForClass(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $classInfo = $this->createClassInfo($className, ClassKind::Class_);
+
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse($resolver->isTraitClass($className));
+    }
+
+    public function testIsTraitClassReturnsFalseForUnknownClass(): void
+    {
+        $repo = self::createStub(ClassRepository::class);
+        $repo->method('get')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse($resolver->isTraitClass(new ClassName(self::fakeClass())));
+    }
+
     /**
      * @return class-string
      */

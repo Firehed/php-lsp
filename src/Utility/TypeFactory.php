@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\IntersectionType;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\UnionType;
@@ -40,56 +42,38 @@ final class TypeFactory
     /**
      * @param class-string|null $selfContext
      * @param class-string|null $parentContext
+     * @param bool $preserveLateBinding If true, returns LateStaticType for static/self/parent
      */
     public static function fromNode(
         ?Node $node,
         ?string $selfContext = null,
         ?string $parentContext = null,
+        bool $preserveLateBinding = false,
     ): ?Type {
         if ($node === null) {
             return null;
         }
 
-        if ($node instanceof Name) {
+        if ($node instanceof Name || $node instanceof Identifier) {
             $name = $node->toString();
 
-            if ($name === 'self' || $name === 'static') {
-                if ($selfContext !== null) {
-                    return new ClassName($selfContext);
-                }
-                return new PrimitiveType($name);
+            $lateBindingType = self::tryLateBindingType(
+                $name,
+                $selfContext,
+                $parentContext,
+                $preserveLateBinding,
+            );
+            if ($lateBindingType !== null) {
+                return $lateBindingType;
             }
 
-            if ($name === 'parent') {
-                if ($parentContext !== null) {
-                    return new ClassName($parentContext);
-                }
-                return new PrimitiveType($name);
-            }
-
-            $resolvedName = $node->getAttribute('resolvedName');
-            /** @var class-string $fqn */
-            $fqn = $resolvedName instanceof Name
-                ? $resolvedName->toString()
-                : $name;
-            return new ClassName($fqn);
-        }
-
-        if ($node instanceof Identifier) {
-            $name = $node->toString();
-
-            if ($name === 'self' || $name === 'static') {
-                if ($selfContext !== null) {
-                    return new ClassName($selfContext);
-                }
-                return new PrimitiveType($name);
-            }
-
-            if ($name === 'parent') {
-                if ($parentContext !== null) {
-                    return new ClassName($parentContext);
-                }
-                return new PrimitiveType($name);
+            if ($node instanceof Name) {
+                $resolvedName = $node->getAttribute('resolvedName');
+                /** @var class-string $fqn */
+                $fqn = $resolvedName instanceof Name
+                    ? $resolvedName->toString()
+                    : $name;
+                return new ClassName($fqn);
             }
 
             if (in_array($name, self::PRIMITIVES, true)) {
@@ -102,7 +86,7 @@ final class TypeFactory
         }
 
         if ($node instanceof Node\NullableType) {
-            $inner = self::fromNode($node->type, $selfContext, $parentContext);
+            $inner = self::fromNode($node->type, $selfContext, $parentContext, $preserveLateBinding);
             // @codeCoverageIgnoreStart
             if ($inner === null) {
                 throw new LogicException('NullableType inner type resolved to null');
@@ -111,18 +95,12 @@ final class TypeFactory
             return new UnionType([$inner, new PrimitiveType('null')]);
         }
 
-        if ($node instanceof Node\UnionType) {
-            $members = array_values(array_filter(
-                array_map(fn (Node $n) => self::fromNode($n, $selfContext, $parentContext), $node->types),
-            ));
-            return new UnionType($members);
-        }
-
-        if ($node instanceof Node\IntersectionType) {
-            $members = array_values(array_filter(
-                array_map(fn (Node $n) => self::fromNode($n, $selfContext, $parentContext), $node->types),
-            ));
-            return new IntersectionType($members);
+        if ($node instanceof Node\UnionType || $node instanceof Node\IntersectionType) {
+            $mapper = fn (Node $n) => self::fromNode($n, $selfContext, $parentContext, $preserveLateBinding);
+            $members = array_values(array_filter(array_map($mapper, $node->types)));
+            return $node instanceof Node\UnionType
+                ? new UnionType($members)
+                : new IntersectionType($members);
         }
 
         // @codeCoverageIgnoreStart
@@ -172,5 +150,36 @@ final class TypeFactory
         // @codeCoverageIgnoreStart
         throw new LogicException('Unexpected ReflectionType: ' . $type::class);
         // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @param class-string|null $selfContext
+     * @param class-string|null $parentContext
+     */
+    private static function tryLateBindingType(
+        string $name,
+        ?string $selfContext,
+        ?string $parentContext,
+        bool $preserveLateBinding,
+    ): ?Type {
+        $keyword = LateBindingKeyword::tryFrom($name);
+        if ($keyword === null) {
+            return null;
+        }
+
+        $context = match ($keyword) {
+            LateBindingKeyword::Self, LateBindingKeyword::Static => $selfContext,
+            LateBindingKeyword::Parent => $parentContext,
+        };
+
+        if ($context === null) {
+            return new PrimitiveType($name);
+        }
+
+        if ($preserveLateBinding) {
+            return new LateStaticType($keyword, new ClassName($context));
+        }
+
+        return new ClassName($context);
     }
 }

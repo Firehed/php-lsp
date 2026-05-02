@@ -77,4 +77,10 @@ class ClassNameTest extends TestCase
         $cn = new ClassName(\stdClass::class);
         self::assertFalse($cn->isNullable());
     }
+
+    public function testResolveLateBoundReturnsSelf(): void
+    {
+        $cn = new ClassName(\stdClass::class);
+        self::assertSame($cn, $cn->resolveLateBound(\ArrayIterator::class));
+    }
 }

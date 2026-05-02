@@ -33,4 +33,10 @@ class PrimitiveTypeTest extends TestCase
         $type = new PrimitiveType('string');
         self::assertFalse($type->isNullable());
     }
+
+    public function testResolveLateBoundReturnsSelf(): void
+    {
+        $type = new PrimitiveType('string');
+        self::assertSame($type, $type->resolveLateBound(\ArrayIterator::class));
+    }
 }

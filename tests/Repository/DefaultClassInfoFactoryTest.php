@@ -260,7 +260,7 @@ PHP;
         self::assertSame('string', $info->methods['protectedMethod']->returnType?->format());
     }
 
-    public function testFromAstNodeResolvesSelfReturnType(): void
+    public function testFromAstNodePreservesLateStaticSelfReturnType(): void
     {
         $node = $this->parseClass('<?php class SomeClass {
             public static function create(): ?self { return new self(); }
@@ -271,13 +271,15 @@ PHP;
         self::assertArrayHasKey('create', $info->methods);
         $returnType = $info->methods['create']->returnType;
         self::assertNotNull($returnType);
-        self::assertSame('?SomeClass', $returnType->format());
+        // Late-binding types preserve the keyword for display
+        self::assertSame('?self', $returnType->format());
+        // But still resolve to the declaring class for lookups
         $classNames = $returnType->getResolvableClassNames();
         self::assertCount(1, $classNames);
         self::assertSame('SomeClass', $classNames[0]->fqn);
     }
 
-    public function testFromAstNodeResolvesStaticReturnType(): void
+    public function testFromAstNodePreservesLateStaticStaticReturnType(): void
     {
         $node = $this->parseClass('<?php class Builder {
             public function build(): static { return $this; }
@@ -288,7 +290,9 @@ PHP;
         self::assertArrayHasKey('build', $info->methods);
         $returnType = $info->methods['build']->returnType;
         self::assertNotNull($returnType);
-        self::assertSame('Builder', $returnType->format());
+        // Late-binding types preserve the keyword for display
+        self::assertSame('static', $returnType->format());
+        // But still resolve to the declaring class for lookups
         $classNames = $returnType->getResolvableClassNames();
         self::assertCount(1, $classNames);
         self::assertSame('Builder', $classNames[0]->fqn);
