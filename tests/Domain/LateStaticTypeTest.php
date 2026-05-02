@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Domain;
 
 use ArrayIterator;
-use Countable;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
-use IteratorAggregate;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Traversable;
@@ -41,39 +39,33 @@ class LateStaticTypeTest extends TestCase
         self::assertFalse($type->isNullable());
     }
 
-    public function testResolveStaticReturnsCallingClass(): void
+    public function testResolveLateBoundStaticReturnsCallingClass(): void
     {
         $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
 
-        $resolved = $type->resolve(ArrayIterator::class);
+        $resolved = $type->resolveLateBound(ArrayIterator::class);
 
+        self::assertInstanceOf(ClassName::class, $resolved);
         self::assertSame(ArrayIterator::class, $resolved->fqn);
     }
 
-    public function testResolveSelfReturnsCallingClass(): void
+    public function testResolveLateBoundSelfReturnsCallingClass(): void
     {
         $type = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
 
-        $resolved = $type->resolve(ArrayIterator::class);
+        $resolved = $type->resolveLateBound(ArrayIterator::class);
 
+        self::assertInstanceOf(ClassName::class, $resolved);
         self::assertSame(ArrayIterator::class, $resolved->fqn);
     }
 
-    public function testResolveParentReturnsCallingParent(): void
+    public function testResolveLateBoundParentReturnsDeclaringClass(): void
     {
         $type = new LateStaticType(LateBindingKeyword::Parent, new ClassName(Traversable::class));
 
-        $resolved = $type->resolve(ArrayIterator::class, IteratorAggregate::class);
+        $resolved = $type->resolveLateBound(ArrayIterator::class);
 
-        self::assertSame(IteratorAggregate::class, $resolved->fqn);
-    }
-
-    public function testResolveParentFallsBackToDeclaringClass(): void
-    {
-        $type = new LateStaticType(LateBindingKeyword::Parent, new ClassName(Traversable::class));
-
-        $resolved = $type->resolve(ArrayIterator::class, null);
-
+        self::assertInstanceOf(ClassName::class, $resolved);
         self::assertSame(Traversable::class, $resolved->fqn);
     }
 }

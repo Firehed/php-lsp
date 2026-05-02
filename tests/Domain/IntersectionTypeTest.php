@@ -50,4 +50,20 @@ class IntersectionTypeTest extends TestCase
 
         self::assertSame($members, $type->getMembers());
     }
+
+    public function testResolveLateBoundResolvesMembers(): void
+    {
+        $type = new IntersectionType([
+            new ClassName(\Iterator::class),
+            new ClassName(\Countable::class),
+        ]);
+
+        $resolved = $type->resolveLateBound(\ArrayIterator::class);
+
+        self::assertInstanceOf(IntersectionType::class, $resolved);
+        $members = $resolved->getMembers();
+        self::assertCount(2, $members);
+        self::assertInstanceOf(ClassName::class, $members[0]);
+        self::assertSame(\Iterator::class, $members[0]->fqn);
+    }
 }

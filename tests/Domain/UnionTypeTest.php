@@ -106,4 +106,21 @@ class UnionTypeTest extends TestCase
 
         self::assertSame($members, $type->getMembers());
     }
+
+    public function testResolveLateBoundResolvesMembers(): void
+    {
+        $type = new UnionType([
+            new LateStaticType(LateBindingKeyword::Static, new ClassName(\Traversable::class)),
+            new PrimitiveType('null'),
+        ]);
+
+        $resolved = $type->resolveLateBound(\ArrayIterator::class);
+
+        self::assertInstanceOf(UnionType::class, $resolved);
+        $members = $resolved->getMembers();
+        self::assertCount(2, $members);
+        self::assertInstanceOf(ClassName::class, $members[0]);
+        self::assertSame(\ArrayIterator::class, $members[0]->fqn);
+        self::assertInstanceOf(PrimitiveType::class, $members[1]);
+    }
 }
