@@ -17,4 +17,9 @@ class TraitStaticReturn
     {
         return ConcreteService::instance()->getServiceName();
     }
+
+    public function callNullableTraitStaticMethod(): ?ConcreteService
+    {
+        return ConcreteService::tryInstance();
+    }
 }

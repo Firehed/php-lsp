@@ -20,4 +20,9 @@ trait SingletonTrait
     {
         return static::instance();
     }
+
+    public static function tryInstance(): ?static
+    {
+        return self::$instance;
+    }
 }
