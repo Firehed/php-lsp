@@ -54,6 +54,18 @@ trait OpensDocumentsTrait
      */
     private function openFixture(string $fixturePath): string
     {
+        [$uri, $_] = $this->loadAndOpenFixture($fixturePath);
+        return $uri;
+    }
+
+    /**
+     * Loads fixture content, opens it as a document, returns URI and content.
+     *
+     * @param string $fixturePath Path relative to tests/Fixtures/
+     * @return array{string, string} [uri, content]
+     */
+    private function loadAndOpenFixture(string $fixturePath): array
+    {
         $fullPath = dirname(__DIR__) . '/Fixtures/' . $fixturePath;
         $content = file_get_contents($fullPath);
         assert($content !== false, "Fixture not found: $fixturePath");
@@ -61,7 +73,7 @@ trait OpensDocumentsTrait
         $uri = 'file:///fixtures/' . $fixturePath;
         $this->openDocument($uri, $content);
 
-        return $uri;
+        return [$uri, $content];
     }
 
     /**
@@ -80,12 +92,7 @@ trait OpensDocumentsTrait
      */
     private function openFixtureAtCursor(string $fixturePath, string $cursorName): array
     {
-        $fullPath = dirname(__DIR__) . '/Fixtures/' . $fixturePath;
-        $content = file_get_contents($fullPath);
-        assert($content !== false, "Fixture not found: $fixturePath");
-
-        $uri = 'file:///fixtures/' . $fixturePath;
-        $this->openDocument($uri, $content);
+        [$uri, $content] = $this->loadAndOpenFixture($fixturePath);
 
         $marker = "/*|{$cursorName}*/";
         $pos = strpos($content, $marker);
@@ -144,5 +151,73 @@ trait OpensDocumentsTrait
                 'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
             ],
         ]);
+    }
+
+    /**
+     * Builds a textDocument/hover request for the given cursor position.
+     *
+     * @param CursorPosition $cursor From openFixtureAtCursor()
+     * @phpstan-ignore missingType.iterableValue
+     */
+    private function hoverRequestAt(array $cursor): RequestMessage
+    {
+        return RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => $cursor['uri']],
+                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
+            ],
+        ]);
+    }
+
+    /**
+     * Opens a fixture and returns cursor position ON a symbol for hover tests.
+     *
+     * Uses a marker comment at end of line: //hover:marker_name
+     * Returns position of the last method/property access or function call on that line.
+     *
+     * @param string $fixturePath Path relative to tests/Fixtures/
+     * @param string $markerName The marker name
+     * @return CursorPosition
+     * @phpstan-ignore missingType.iterableValue
+     */
+    private function openFixtureAtHoverMarker(string $fixturePath, string $markerName): array
+    {
+        [$uri, $content] = $this->loadAndOpenFixture($fixturePath);
+
+        $marker = "//hover:$markerName";
+        $lines = explode("\n", $content);
+        foreach ($lines as $lineNum => $line) {
+            if (strpos($line, $marker) === false) {
+                continue;
+            }
+
+            $symbolMatch = [];
+            preg_match_all('/(?:->|\?->|::)\$?([a-zA-Z_][a-zA-Z0-9_]*)/', $line, $symbolMatch, PREG_OFFSET_CAPTURE);
+
+            if (count($symbolMatch[1]) > 0) {
+                $lastMatch = end($symbolMatch[1]);
+                return [
+                    'uri' => $uri,
+                    'line' => $lineNum,
+                    'character' => $lastMatch[1],
+                ];
+            }
+
+            $funcMatch = [];
+            preg_match_all('/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/', $line, $funcMatch, PREG_OFFSET_CAPTURE);
+            assert(count($funcMatch[1]) > 0, "No callable found on line with marker '$markerName' in $fixturePath");
+
+            $lastMatch = end($funcMatch[1]);
+            return [
+                'uri' => $uri,
+                'line' => $lineNum,
+                'character' => $lastMatch[1],
+            ];
+        }
+
+        throw new \RuntimeException("Hover marker '$markerName' not found in $fixturePath");
     }
 }
