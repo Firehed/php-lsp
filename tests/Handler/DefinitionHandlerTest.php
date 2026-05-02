@@ -166,25 +166,9 @@ class DefinitionHandlerTest extends TestCase
 
     public function testReturnsNullForMethodOnUnknownType(): void
     {
-        $usageCode = <<<'PHP'
-<?php
-function test($obj): void {
-    $obj->unknownMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/UnknownTypeMethod.php', 'untyped_param');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertNull($result);
     }
@@ -338,52 +322,20 @@ PHP;
 
     public function testReturnsNullForDynamicStaticMethodName(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public static function test(): void {
-        $method = 'foo';
-        self::$method();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_static_method');
 
-        // Position on $method in self::$method()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 4, 'character' => 15],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForDynamicClassName(): void
     {
-        $code = <<<'PHP'
-<?php
-$class = 'MyClass';
-$class::method();
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_class_name');
 
-        // Position on ::method
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 2, 'character' => 10],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testGoToSelfMethodDefinition(): void
@@ -412,59 +364,20 @@ PHP;
 
     public function testReturnsNullForUnknownMethod(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function existingMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/UnknownTypeMethod.php', 'unknown_method');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(MyClass $obj): void {
-    $obj->nonExistentMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForDynamicInstanceMethodName(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {}
-function test(MyClass $obj): void {
-    $method = 'foo';
-    $obj->$method();
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_instance_method');
 
-        // Position on $method in $obj->$method()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 4, 'character' => 11],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForParentWithoutExtends(): void
