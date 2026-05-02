@@ -54,6 +54,18 @@ trait OpensDocumentsTrait
      */
     private function openFixture(string $fixturePath): string
     {
+        [$uri, $_] = $this->loadAndOpenFixture($fixturePath);
+        return $uri;
+    }
+
+    /**
+     * Loads fixture content, opens it as a document, returns URI and content.
+     *
+     * @param string $fixturePath Path relative to tests/Fixtures/
+     * @return array{string, string} [uri, content]
+     */
+    private function loadAndOpenFixture(string $fixturePath): array
+    {
         $fullPath = dirname(__DIR__) . '/Fixtures/' . $fixturePath;
         $content = file_get_contents($fullPath);
         assert($content !== false, "Fixture not found: $fixturePath");
@@ -61,7 +73,7 @@ trait OpensDocumentsTrait
         $uri = 'file:///fixtures/' . $fixturePath;
         $this->openDocument($uri, $content);
 
-        return $uri;
+        return [$uri, $content];
     }
 
     /**
@@ -80,12 +92,7 @@ trait OpensDocumentsTrait
      */
     private function openFixtureAtCursor(string $fixturePath, string $cursorName): array
     {
-        $fullPath = dirname(__DIR__) . '/Fixtures/' . $fixturePath;
-        $content = file_get_contents($fullPath);
-        assert($content !== false, "Fixture not found: $fixturePath");
-
-        $uri = 'file:///fixtures/' . $fixturePath;
-        $this->openDocument($uri, $content);
+        [$uri, $content] = $this->loadAndOpenFixture($fixturePath);
 
         $marker = "/*|{$cursorName}*/";
         $pos = strpos($content, $marker);
@@ -178,12 +185,7 @@ trait OpensDocumentsTrait
      */
     private function openFixtureAtHoverMarker(string $fixturePath, string $markerName): array
     {
-        $fullPath = dirname(__DIR__) . '/Fixtures/' . $fixturePath;
-        $content = file_get_contents($fullPath);
-        assert($content !== false, "Fixture not found: $fixturePath");
-
-        $uri = 'file:///fixtures/' . $fixturePath;
-        $this->openDocument($uri, $content);
+        [$uri, $content] = $this->loadAndOpenFixture($fixturePath);
 
         $marker = "//hover:$markerName";
         $lines = explode("\n", $content);
