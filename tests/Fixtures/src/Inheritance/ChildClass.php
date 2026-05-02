@@ -78,4 +78,34 @@ class ChildClass extends ParentClass
     {
         echo $this->privateProperty; //hover:private_property
     }
+
+    public function triggerHoverSelfMethod(): void
+    {
+        self::staticMethod(); //hover:self_method
+    }
+
+    public function triggerHoverStaticMethod(): void
+    {
+        static::staticMethod(); //hover:static_method
+    }
+
+    public function triggerHoverParentMethod(): void
+    {
+        parent::parentMethod(); //hover:parent_method
+    }
+
+    public function triggerHoverSelfProperty(): void
+    {
+        echo self::$staticProperty; //hover:self_property
+    }
+
+    public function triggerHoverStaticProperty(): void
+    {
+        echo static::$staticProperty; //hover:static_property
+    }
+
+    public function triggerHoverParentProperty(): void
+    {
+        echo parent::$staticProperty; //hover:parent_property
+    }
 }

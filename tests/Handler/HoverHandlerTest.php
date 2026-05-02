@@ -888,4 +888,82 @@ PHP;
         self::assertStringContainsString('withAge', $result['contents']);
         self::assertStringContainsString('Sets the age fluently', $result['contents']);
     }
+
+    public function testHoverOnSelfStaticMethod(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'self_method');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('staticMethod', $result['contents']);
+        self::assertStringContainsString('Static method documentation', $result['contents']);
+    }
+
+    public function testHoverOnStaticStaticMethod(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'static_method');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('staticMethod', $result['contents']);
+        self::assertStringContainsString('Static method documentation', $result['contents']);
+    }
+
+    public function testHoverOnParentMethod(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'parent_method');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('parentMethod', $result['contents']);
+        self::assertStringContainsString('Parent method documentation', $result['contents']);
+    }
+
+    public function testHoverOnSelfStaticProperty(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'self_property');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$staticProperty', $result['contents']);
+        self::assertStringContainsString('Static property documentation', $result['contents']);
+    }
+
+    public function testHoverOnStaticStaticProperty(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'static_property');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$staticProperty', $result['contents']);
+        self::assertStringContainsString('Static property documentation', $result['contents']);
+    }
+
+    public function testHoverOnParentStaticProperty(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'parent_property');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$staticProperty', $result['contents']);
+        self::assertStringContainsString('Static property documentation', $result['contents']);
+    }
 }
