@@ -259,131 +259,39 @@ PHP;
 
     public function testGoToInheritedMethodDefinition(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function inheritedMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'inherited_method');
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $usageCode = <<<'PHP'
-<?php
-function test(ChildClass $child): void {
-    $child->inheritedMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "inheritedMethod"
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 14],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to ParentClass where the method is actually defined
         self::assertIsArray($result);
-        self::assertSame('file:///ParentClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(28, $result['range']['start']['line']);
     }
 
     public function testGoToOverriddenMethodDefinition(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function overriddenMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $childUri = $this->openFixture('src/Inheritance/ChildClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'overridden_method');
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-    public function overriddenMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $usageCode = <<<'PHP'
-<?php
-function test(ChildClass $child): void {
-    $child->overriddenMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "overriddenMethod"
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 14],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to ChildClass where the method is overridden
         self::assertIsArray($result);
-        self::assertSame('file:///ChildClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($childUri, $result['uri']);
+        self::assertSame(21, $result['range']['start']['line']);
     }
 
     public function testGoToParentMethodDefinition(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function doFoo(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'parent_method');
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-    public function doFoo(): void {
-        parent::doFoo();
-    }
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        // Request definition at "doFoo" in parent::doFoo() on line 3
-        // "        parent::doFoo();" - doFoo starts at character 16
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///ChildClass.php'],
-                'position' => ['line' => 3, 'character' => 17],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to ParentClass, not ChildClass
         self::assertIsArray($result);
-        self::assertSame('file:///ParentClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(28, $result['range']['start']['line']);
     }
 
     public function testGoToTraitMethodDefinition(): void
