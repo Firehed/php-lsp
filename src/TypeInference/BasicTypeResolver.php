@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\TypeInference;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
@@ -253,7 +254,14 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Private,
         );
 
-        return $methodInfo?->returnType;
+        $returnType = $methodInfo?->returnType;
+
+        // Resolve late-binding types (static, self, parent) to the calling class
+        if ($returnType instanceof LateStaticType) {
+            return $returnType->resolve($className);
+        }
+
+        return $returnType;
     }
 
     private function getPropertyType(string $className, string $propertyName): ?Type

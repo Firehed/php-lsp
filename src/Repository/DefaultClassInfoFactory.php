@@ -210,6 +210,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                     $stmt->returnType,
                     $className->fqn,
                     $parentClass?->fqn,
+                    preserveLateBinding: true,
                 ),
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
