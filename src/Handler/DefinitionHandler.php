@@ -129,7 +129,10 @@ final class DefinitionHandler implements HandlerInterface
      */
     private function handleNameDefinition(Name $node): ?array
     {
-        $symbolName = ScopeFinder::resolveClassName($node);
+        $symbolName = ScopeFinder::resolveClassNameInContext($node, $node);
+        if ($symbolName === null) {
+            return null;
+        }
 
         $classInfo = $this->classRepository->get(new ClassName($symbolName));
         if ($classInfo === null) {
@@ -164,23 +167,9 @@ final class DefinitionHandler implements HandlerInterface
             return null;
         }
 
-        $rawName = $class->toString();
-
-        // Handle parent:: - resolve to actual parent class name
-        if ($rawName === 'parent') {
-            $enclosingClass = ScopeFinder::findEnclosingClassNode($call);
-            if (!$enclosingClass instanceof Stmt\Class_ || $enclosingClass->extends === null) {
-                return null;
-            }
-            $className = ScopeFinder::resolveClassName($enclosingClass->extends);
-        } elseif ($rawName === 'self' || $rawName === 'static') {
-            // Handle self:: and static:: - resolve to enclosing class
-            $className = ScopeFinder::findEnclosingClassName($call);
-            if ($className === null) {
-                return null;
-            }
-        } else {
-            $className = ScopeFinder::resolveClassName($class);
+        $className = ScopeFinder::resolveClassNameInContext($class, $call);
+        if ($className === null) {
+            return null;
         }
 
         return $this->findMethodDefinition($className, $methodName->toString());
