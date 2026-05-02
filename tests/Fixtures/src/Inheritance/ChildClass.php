@@ -108,4 +108,19 @@ class ChildClass extends ParentClass
     {
         echo parent::$staticProperty; //hover:parent_property
     }
+
+    public function triggerSignatureHelpParent(): void
+    {
+        parent::__construct(/*|parent_sig*/);
+    }
+
+    public function triggerSignatureHelpSelf(): void
+    {
+        self::staticMethod(/*|self_sig*/);
+    }
+
+    public function triggerSignatureHelpStatic(): void
+    {
+        static::staticMethod(/*|static_sig*/);
+    }
 }

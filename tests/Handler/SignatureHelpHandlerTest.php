@@ -193,4 +193,38 @@ class SignatureHelpHandlerTest extends TestCase
         $doc = $result['signatures'][0]['documentation'] ?? '';
         self::assertStringContainsString("Updates the user's display name", $doc);
     }
+
+    public function testSignatureHelpOnParentStaticCall(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'parent_sig');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('__construct', $result['signatures'][0]['label']);
+        self::assertStringContainsString('$name', $result['signatures'][0]['label']);
+    }
+
+    public function testSignatureHelpOnSelfStaticCall(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'self_sig');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('staticMethod', $result['signatures'][0]['label']);
+    }
+
+    public function testSignatureHelpOnStaticStaticCall(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'static_sig');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('staticMethod', $result['signatures'][0]['label']);
+    }
 }
