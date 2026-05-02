@@ -330,25 +330,18 @@ final class CompletionHandler implements HandlerInterface
         $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
         $rawName = $class->toString();
 
+        // parent:: has special completion behavior - only shows parent's methods
         if ($rawName === 'parent') {
             return $this->getParentCompletions($prefix, $ast, $line);
         }
 
-        if ($rawName === 'self' || $rawName === 'static') {
-            $classNode = ScopeFinder::findClassAtLine($ast, $line);
-            if ($classNode === null) {
-                return [];
-            }
-            $className = $classNode->namespacedName?->toString() ?? $classNode->name?->toString();
-            if ($className === null) {
-                return [];
-            }
-            return $this->getStaticCompletions($className, $prefix, $ast, $line);
+        // For self::, static::, and regular class names, resolve and get completions
+        $className = ScopeFinder::resolveClassNameInContext($class, $node);
+        if ($className === null) {
+            return [];
         }
 
-        // ClassName:: - resolve via imports
-        $resolvedName = ScopeFinder::resolveClassName($class);
-        return $this->getStaticCompletions($resolvedName, $prefix, $ast, $line);
+        return $this->getStaticCompletions($className, $prefix, $ast, $line);
     }
 
     /**
