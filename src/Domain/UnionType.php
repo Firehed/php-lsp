@@ -60,4 +60,13 @@ final readonly class UnionType implements Type
         }
         return false;
     }
+
+    public function resolveLateBound(string $callingClass): Type
+    {
+        $resolved = array_map(
+            fn (Type $member) => $member->resolveLateBound($callingClass),
+            $this->members,
+        );
+        return new self($resolved);
+    }
 }

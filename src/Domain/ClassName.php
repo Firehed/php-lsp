@@ -60,4 +60,9 @@ final readonly class ClassName implements Type
     {
         return strcasecmp($this->fqn, $other->fqn) === 0;
     }
+
+    public function resolveLateBound(string $callingClass): Type
+    {
+        return $this;
+    }
 }

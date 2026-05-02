@@ -31,15 +31,11 @@ final class LateStaticType implements Type
         return false;
     }
 
-    /**
-     * @param class-string $callingClass The class from which the method was called
-     * @param class-string|null $callingParent The parent of the calling class (for parent::)
-     */
-    public function resolve(string $callingClass, ?string $callingParent = null): ClassName
+    public function resolveLateBound(string $callingClass): Type
     {
         return match ($this->keyword) {
             LateBindingKeyword::Self, LateBindingKeyword::Static => new ClassName($callingClass),
-            LateBindingKeyword::Parent => new ClassName($callingParent ?? $this->declaringClass->fqn),
+            LateBindingKeyword::Parent => new ClassName($this->declaringClass->fqn),
         };
     }
 }
