@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\TypeInference;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -255,13 +257,59 @@ final class BasicTypeResolver implements TypeResolverInterface
         );
 
         $returnType = $methodInfo?->returnType;
-
-        // Resolve late-binding types (static, self, parent) to the calling class
-        if ($returnType instanceof LateStaticType) {
-            return $returnType->resolve($className);
+        if ($returnType === null) {
+            return null;
         }
 
-        return $returnType;
+        return $this->resolveLateBoundType($returnType, $className);
+    }
+
+    /**
+     * Recursively resolve LateStaticType within composite types (UnionType, IntersectionType).
+     *
+     * @param class-string $callingClass
+     */
+    private function resolveLateBoundType(Type $type, string $callingClass): Type
+    {
+        if ($type instanceof LateStaticType) {
+            return $type->resolve($callingClass);
+        }
+
+        if ($type instanceof UnionType) {
+            return $this->resolveUnionMembers($type, $callingClass);
+        }
+
+        if ($type instanceof IntersectionType) {
+            return $this->resolveIntersectionMembers($type, $callingClass);
+        }
+
+        return $type;
+    }
+
+    /**
+     * @param class-string $callingClass
+     */
+    private function resolveUnionMembers(UnionType $type, string $callingClass): UnionType
+    {
+        $resolved = array_map(
+            fn (Type $member) => $this->resolveLateBoundType($member, $callingClass),
+            $type->getMembers(),
+        );
+
+        return new UnionType($resolved);
+    }
+
+    /**
+     * @param class-string $callingClass
+     */
+    private function resolveIntersectionMembers(IntersectionType $type, string $callingClass): IntersectionType
+    {
+        $resolved = array_map(
+            fn (Type $member) => $this->resolveLateBoundType($member, $callingClass),
+            $type->getMembers(),
+        );
+
+        return new IntersectionType($resolved);
     }
 
     private function getPropertyType(string $className, string $propertyName): ?Type
