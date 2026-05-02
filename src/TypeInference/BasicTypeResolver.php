@@ -87,7 +87,10 @@ final class BasicTypeResolver implements TypeResolverInterface
         // Static method call: ClassName::method()
         if ($expr instanceof Expr\StaticCall) {
             if ($expr->class instanceof Node\Name && $expr->name instanceof Node\Identifier) {
-                $className = $expr->class->toString();
+                $className = ScopeFinder::resolveClassNameInContext($expr->class, $expr);
+                if ($className === null) {
+                    return null;
+                }
                 return $this->getMethodReturnType($className, $expr->name->toString());
             }
             return null;

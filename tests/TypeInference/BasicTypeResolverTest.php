@@ -930,4 +930,71 @@ PHP;
 
         self::assertNull($type);
     }
+
+    public function testResolveSelfStaticCall(): void
+    {
+        $resolver = $this->createResolverWithFixtures();
+        $ast = $this->parseFixture('src/TypeInference/NewKeywords.php');
+        $method = $this->findMethodByName($ast, 'callSelfStaticMethod');
+        $finder = new \PhpParser\NodeFinder();
+        $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
+        assert($staticCall !== null);
+
+        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
+    }
+
+    public function testResolveStaticStaticCall(): void
+    {
+        $resolver = $this->createResolverWithFixtures();
+        $ast = $this->parseFixture('src/TypeInference/NewKeywords.php');
+        $method = $this->findMethodByName($ast, 'callStaticStaticMethod');
+        $finder = new \PhpParser\NodeFinder();
+        $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
+        assert($staticCall !== null);
+
+        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
+    }
+
+    public function testResolveSelfStaticCallOutsideClassReturnsNull(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/StaticCallOutsideClass.php');
+        $func = $this->findFunctionByName($ast, 'callSelfOutsideClass');
+        $finder = new \PhpParser\NodeFinder();
+        $staticCall = $finder->findFirstInstanceOf($func, Expr\StaticCall::class);
+        assert($staticCall !== null);
+
+        $type = $this->resolver->resolveExpressionType($staticCall, $func, $ast);
+
+        self::assertNull($type);
+    }
+
+    public function testResolveParentStaticCallWithoutExtendsReturnsNull(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/ParentWithoutExtends.php');
+        $method = $this->findMethodByName($ast, 'callParentMethod');
+        $finder = new \PhpParser\NodeFinder();
+        $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
+        assert($staticCall !== null);
+
+        $type = $this->resolver->resolveExpressionType($staticCall, $method, $ast);
+
+        self::assertNull($type);
+    }
+
+    private function createResolverWithFixtures(): BasicTypeResolver
+    {
+        $classInfoFactory = new DefaultClassInfoFactory();
+        $locator = new \Firehed\PhpLsp\Index\ComposerClassLocator(__DIR__ . '/../Fixtures');
+        $parser = new ParserService();
+        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
+        $memberResolver = new MemberResolver($classRepository);
+
+        return new BasicTypeResolver($memberResolver);
+    }
 }

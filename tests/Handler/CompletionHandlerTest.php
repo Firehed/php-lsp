@@ -1990,4 +1990,43 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('hiddenMethod', $labels);
         self::assertContains('getName', $labels);
     }
+
+    public function testChainCompletionAfterSelfStaticCall(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_chain');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getInstanceProp', $labels);
+        self::assertContains('instanceProp', $labels);
+    }
+
+    public function testChainCompletionAfterStaticStaticCall(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'static_chain');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getInstanceProp', $labels);
+        self::assertContains('instanceProp', $labels);
+    }
+
+    public function testChainCompletionAfterSelfStaticCallWithPrefix(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_chain_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getInstanceProp', $labels);
+        self::assertNotContains('instanceProp', $labels);
+    }
 }

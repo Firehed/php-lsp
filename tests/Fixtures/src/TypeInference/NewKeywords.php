@@ -22,4 +22,24 @@ class NewKeywords extends ParentClass
     {
         return new parent();
     }
+
+    public static function getInstance(): self
+    {
+        return new self();
+    }
+
+    public function callSelfStaticMethod(): self
+    {
+        return self::getInstance();
+    }
+
+    public function callStaticStaticMethod(): static
+    {
+        return static::createStatic();
+    }
+
+    public function callParentStaticMethod(): void
+    {
+        parent::staticMethod();
+    }
 }
