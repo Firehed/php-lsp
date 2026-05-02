@@ -1016,4 +1016,13 @@ PHP;
 
         self::assertNull($result);
     }
+
+    public function testGoToSelfClassConstantOutsideClassReturnsNull(): void
+    {
+        $cursor = $this->openFixtureAtCursor('EdgeCases/SelfOutsideClass.php', 'def_self_class');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertNull($result);
+    }
 }
