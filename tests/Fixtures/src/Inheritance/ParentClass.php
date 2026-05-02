@@ -64,4 +64,14 @@ class ParentClass extends Grandparent
     {
         echo ParentClass::$staticProperty; //hover:staticProperty
     }
+
+    public function triggerDefPrivateMethod(): void
+    {
+        $this->privateMethod(); //hover:private_method_internal
+    }
+
+    public function triggerDefProtectedMethod(): void
+    {
+        $this->protectedMethod(); //hover:protected_method_internal
+    }
 }

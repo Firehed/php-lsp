@@ -180,4 +180,16 @@ class User implements Entity, Person
             ->manager //hover:chain_back_to_user
             ?->withAge(30); //hover:chain_nullsafe
     }
+
+    public static function triggerDefViaAssignment(): void
+    {
+        $user = new User('1', 'name', 'email');
+        $user->setName('new'); //hover:method_via_assignment
+    }
+
+    public static function triggerDefNullsafeViaAssignment(): void
+    {
+        $user = rand() ? new User('1', 'name', 'email') : null;
+        $user?->setName('new'); //hover:nullsafe_via_assignment
+    }
 }

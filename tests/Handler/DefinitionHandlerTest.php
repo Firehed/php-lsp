@@ -130,358 +130,109 @@ class DefinitionHandlerTest extends TestCase
 
     public function testGoToStaticMethodDefinition(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public static function myStaticMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
-        $this->openDocument('file:///usage.php', '<?php MyClass::myStaticMethod();');
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'create');
 
-        // Request definition at "myStaticMethod" (character 15 is on the method name)
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 0, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        // Line 2 (0-indexed) is where the method is defined
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(123, $result['range']['start']['line']);
     }
 
     public function testGoToInstanceMethodDefinition(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(MyClass $obj): void {
-    $obj->myMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "myMethod" on line 2 (0-indexed)
-        // "$obj->myMethod()" - "myMethod" starts at character 10
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(47, $result['range']['start']['line']);
     }
 
     public function testGoToMethodDefinitionViaAssignment(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'method_via_assignment');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(): void {
-    $obj = new MyClass();
-    $obj->myMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "myMethod" on line 3 (0-indexed)
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 3, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(47, $result['range']['start']['line']);
     }
 
     public function testReturnsNullForMethodOnUnknownType(): void
     {
-        $usageCode = <<<'PHP'
-<?php
-function test($obj): void {
-    $obj->unknownMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/UnknownTypeMethod.php', 'untyped_param');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertNull($result);
     }
 
     public function testGoToInheritedMethodDefinition(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function inheritedMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'inherited_method');
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $usageCode = <<<'PHP'
-<?php
-function test(ChildClass $child): void {
-    $child->inheritedMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "inheritedMethod"
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 14],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to ParentClass where the method is actually defined
         self::assertIsArray($result);
-        self::assertSame('file:///ParentClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(28, $result['range']['start']['line']);
     }
 
     public function testGoToOverriddenMethodDefinition(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function overriddenMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $childUri = $this->openFixture('src/Inheritance/ChildClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'overridden_method');
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-    public function overriddenMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $usageCode = <<<'PHP'
-<?php
-function test(ChildClass $child): void {
-    $child->overriddenMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "overriddenMethod"
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 14],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to ChildClass where the method is overridden
         self::assertIsArray($result);
-        self::assertSame('file:///ChildClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($childUri, $result['uri']);
+        self::assertSame(21, $result['range']['start']['line']);
     }
 
     public function testGoToParentMethodDefinition(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function doFoo(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'parent_method');
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-    public function doFoo(): void {
-        parent::doFoo();
-    }
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        // Request definition at "doFoo" in parent::doFoo() on line 3
-        // "        parent::doFoo();" - doFoo starts at character 16
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///ChildClass.php'],
-                'position' => ['line' => 3, 'character' => 17],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to ParentClass, not ChildClass
         self::assertIsArray($result);
-        self::assertSame('file:///ParentClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(28, $result['range']['start']['line']);
     }
 
     public function testGoToTraitMethodDefinition(): void
     {
-        $traitCode = <<<'PHP'
-<?php
-trait MyTrait {
-    public function traitMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyTrait.php', $traitCode);
+        $traitUri = $this->openFixture('src/Traits/HasTimestamps.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'markCreated');
 
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    use MyTrait;
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $usageCode = <<<'PHP'
-<?php
-function test(MyClass $obj): void {
-    $obj->traitMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "traitMethod"
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to the trait where the method is defined
         self::assertIsArray($result);
-        self::assertSame('file:///MyTrait.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($traitUri, $result['uri']);
+        self::assertSame(26, $result['range']['start']['line']);
     }
 
     public function testTraitMethodTakesPrecedenceOverParent(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function sharedMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $this->openFixture('src/Definition/TraitPrecedenceParent.php');
+        $traitUri = $this->openFixture('src/Definition/TraitPrecedenceTrait.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Definition/TraitPrecedenceChild.php', 'trait_precedence');
 
-        $traitCode = <<<'PHP'
-<?php
-trait MyTrait {
-    public function sharedMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyTrait.php', $traitCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-    use MyTrait;
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
-
-        $usageCode = <<<'PHP'
-<?php
-function test(ChildClass $obj): void {
-    $obj->sharedMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "sharedMethod"
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to trait (trait takes precedence over parent in PHP)
         self::assertIsArray($result);
-        self::assertSame('file:///MyTrait.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($traitUri, $result['uri']);
+        self::assertSame(8, $result['range']['start']['line']);
     }
 
     public function testReturnsNullForInvalidTextDocumentParam(): void
@@ -571,219 +322,80 @@ PHP;
 
     public function testReturnsNullForDynamicStaticMethodName(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public static function test(): void {
-        $method = 'foo';
-        self::$method();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_static_method');
 
-        // Position on $method in self::$method()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 4, 'character' => 15],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForDynamicClassName(): void
     {
-        $code = <<<'PHP'
-<?php
-$class = 'MyClass';
-$class::method();
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_class_name');
 
-        // Position on ::method
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 2, 'character' => 10],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testGoToSelfMethodDefinition(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public static function foo(): void {}
-    public static function bar(): void {
-        self::foo();
-    }
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $code);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'self_method');
 
-        // Position on foo in self::foo()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///MyClass.php'],
-                'position' => ['line' => 4, 'character' => 15],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(38, $result['range']['start']['line']);
     }
 
     public function testGoToStaticKeywordMethodDefinition(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public static function foo(): void {}
-    public function bar(): void {
-        static::foo();
-    }
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $code);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'static_method');
 
-        // Position on foo in static::foo()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///MyClass.php'],
-                'position' => ['line' => 4, 'character' => 17],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(38, $result['range']['start']['line']);
     }
 
     public function testReturnsNullForUnknownMethod(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function existingMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/UnknownTypeMethod.php', 'unknown_method');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(MyClass $obj): void {
-    $obj->nonExistentMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForDynamicInstanceMethodName(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {}
-function test(MyClass $obj): void {
-    $method = 'foo';
-    $obj->$method();
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_instance_method');
 
-        // Position on $method in $obj->$method()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 4, 'character' => 11],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForParentWithoutExtends(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public function test(): void {
-        parent::foo();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/ParentWithoutExtends.php', 'parent_method');
 
-        // Position on foo in parent::foo()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 17],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForSelfOutsideClass(): void
     {
-        $code = <<<'PHP'
-<?php
-self::foo();
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/SelfOutsideClass.php', 'self_method');
 
-        // Position on foo in self::foo()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 1, 'character' => 7],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForBuiltInClassMethod(): void
@@ -828,175 +440,62 @@ PHP;
 
     public function testGoToPrivateMethodDefinition(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    private function privateMethod(): void {}
-    public function publicMethod(): void {
-        $this->privateMethod();
-    }
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $code);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'private_method_internal');
 
-        // Position on privateMethod in $this->privateMethod()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///MyClass.php'],
-                'position' => ['line' => 4, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(58, $result['range']['start']['line']);
     }
 
     public function testGoToProtectedMethodDefinition(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    protected function protectedMethod(): void {}
-    public function publicMethod(): void {
-        $this->protectedMethod();
-    }
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $code);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'protected_method_internal');
 
-        // Position on protectedMethod in $this->protectedMethod()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///MyClass.php'],
-                'position' => ['line' => 4, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(53, $result['range']['start']['line']);
     }
 
     public function testGoToNullsafeMethodDefinition(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName_nullsafe');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(?MyClass $obj): void {
-    $obj?->myMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 13], // On "myMethod"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(47, $result['range']['start']['line']);
     }
 
     public function testGoToNullsafeMethodDefinitionViaAssignment(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'nullsafe_via_assignment');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(): void {
-    $obj = rand() ? new MyClass() : null;
-    $obj?->myMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 3, 'character' => 13], // On "myMethod"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(47, $result['range']['start']['line']);
     }
 
     public function testGoToEnumMethodFromWithinEnum(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status: string {
-    case Active = 'active';
-    case Inactive = 'inactive';
+        $statusUri = $this->openFixture('src/Enum/Status.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Enum/Status.php', 'enum_method');
 
-    public function label(): string {
-        return match($this) {
-            self::Active => 'Active',
-            self::Inactive => 'Inactive',
-        };
-    }
-
-    public function description(): string {
-        return $this->label() . ' status';
-    }
-}
-PHP;
-        $this->openDocument('file:///Status.php', $code);
-
-        // Position on "label" in $this->label()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///Status.php'],
-                'position' => ['line' => 13, 'character' => 22],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///Status.php', $result['uri']);
-        self::assertSame(5, $result['range']['start']['line']);
+        self::assertSame($statusUri, $result['uri']);
+        self::assertSame(16, $result['range']['start']['line']);
     }
 
     public function testGoToSelfDefinitionOutsideClassReturnsNull(): void
