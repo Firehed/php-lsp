@@ -154,39 +154,14 @@ class DefinitionHandlerTest extends TestCase
 
     public function testGoToMethodDefinitionViaAssignment(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'method_via_assignment');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(): void {
-    $obj = new MyClass();
-    $obj->myMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "myMethod" on line 3 (0-indexed)
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 3, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(47, $result['range']['start']['line']);
     }
 
     public function testReturnsNullForMethodOnUnknownType(): void
@@ -628,38 +603,14 @@ PHP;
 
     public function testGoToNullsafeMethodDefinitionViaAssignment(): void
     {
-        $classCode = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $classCode);
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'nullsafe_via_assignment');
 
-        $usageCode = <<<'PHP'
-<?php
-function test(): void {
-    $obj = rand() ? new MyClass() : null;
-    $obj?->myMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 3, 'character' => 13], // On "myMethod"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(47, $result['range']['start']['line']);
     }
 
     public function testGoToEnumMethodFromWithinEnum(): void
