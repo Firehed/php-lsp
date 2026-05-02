@@ -230,70 +230,36 @@ class SignatureHelpHandlerTest extends TestCase
 
     public function testSignatureHelpOnSelfOutsideClassReturnsNull(): void
     {
-        $code = '<?php self::foo();';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('EdgeCases/SelfOutsideClass.php', 'sig_self_method');
 
-        $result = $this->handler->handle($this->signatureHelpRequestAt([
-            'uri' => 'file:///test.php',
-            'line' => 0,
-            'character' => 15,
-        ]));
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertNull($result);
     }
 
     public function testSignatureHelpOnParentWithoutExtendsReturnsNull(): void
     {
-        $code = <<<'PHP'
-<?php
-class NoParent {
-    public function test(): void {
-        parent::foo();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('EdgeCases/ParentWithoutExtends.php', 'sig_parent_method');
 
-        $result = $this->handler->handle($this->signatureHelpRequestAt([
-            'uri' => 'file:///test.php',
-            'line' => 3,
-            'character' => 19,
-        ]));
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertNull($result);
     }
 
     public function testSignatureHelpOnNewSelfOutsideClassReturnsNull(): void
     {
-        $code = '<?php new self();';
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('EdgeCases/SelfOutsideClass.php', 'sig_new_self');
 
-        $result = $this->handler->handle($this->signatureHelpRequestAt([
-            'uri' => 'file:///test.php',
-            'line' => 0,
-            'character' => 14,
-        ]));
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertNull($result);
     }
 
     public function testSignatureHelpOnNewParentWithoutExtendsReturnsNull(): void
     {
-        $code = <<<'PHP'
-<?php
-class NoParent {
-    public function test(): void {
-        new parent();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('EdgeCases/ParentWithoutExtends.php', 'sig_new_parent');
 
-        $result = $this->handler->handle($this->signatureHelpRequestAt([
-            'uri' => 'file:///test.php',
-            'line' => 3,
-            'character' => 19,
-        ]));
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
 
         self::assertNull($result);
     }

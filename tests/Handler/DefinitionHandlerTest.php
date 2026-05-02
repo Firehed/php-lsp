@@ -1001,46 +1001,18 @@ PHP;
 
     public function testGoToSelfDefinitionOutsideClassReturnsNull(): void
     {
-        $this->openDocument('file:///test.php', '<?php new self();');
+        $cursor = $this->openFixtureAtCursor('EdgeCases/SelfOutsideClass.php', 'def_new_self');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 10],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertNull($result);
     }
 
     public function testGoToParentDefinitionWithoutExtendsReturnsNull(): void
     {
-        $code = <<<'PHP'
-<?php
-class NoParent {
-    public function test(): void {
-        new parent();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtCursor('EdgeCases/ParentWithoutExtends.php', 'def_new_parent');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertNull($result);
     }
