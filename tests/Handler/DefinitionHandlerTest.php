@@ -592,64 +592,26 @@ PHP;
 
     public function testGoToPrivateMethodDefinition(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    private function privateMethod(): void {}
-    public function publicMethod(): void {
-        $this->privateMethod();
-    }
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $code);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'private_method_internal');
 
-        // Position on privateMethod in $this->privateMethod()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///MyClass.php'],
-                'position' => ['line' => 4, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(58, $result['range']['start']['line']);
     }
 
     public function testGoToProtectedMethodDefinition(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    protected function protectedMethod(): void {}
-    public function publicMethod(): void {
-        $this->protectedMethod();
-    }
-}
-PHP;
-        $this->openDocument('file:///MyClass.php', $code);
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'protected_method_internal');
 
-        // Position on protectedMethod in $this->protectedMethod()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///MyClass.php'],
-                'position' => ['line' => 4, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///MyClass.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(53, $result['range']['start']['line']);
     }
 
     public function testGoToNullsafeMethodDefinition(): void
