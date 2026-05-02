@@ -89,6 +89,33 @@ final class ScopeFinder
     }
 
     /**
+     * Resolve a class Name node in context, handling special names.
+     *
+     * Handles `self`, `static`, and `parent` by resolving them to the
+     * appropriate class name based on the enclosing class context.
+     *
+     * @return ?class-string
+     */
+    public static function resolveClassNameInContext(Name $name, Node $contextNode): ?string
+    {
+        $rawName = $name->toString();
+
+        if ($rawName === 'self' || $rawName === 'static') {
+            return self::findEnclosingClassName($contextNode);
+        }
+
+        if ($rawName === 'parent') {
+            $enclosingClass = self::findEnclosingClassNode($contextNode);
+            if (!$enclosingClass instanceof Stmt\Class_) {
+                return null;
+            }
+            return self::resolveExtendsName($enclosingClass);
+        }
+
+        return self::resolveClassName($name);
+    }
+
+    /**
      * Get the fully qualified name of a class-like node.
      *
      * @return ?class-string

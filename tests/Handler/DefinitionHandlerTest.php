@@ -998,4 +998,48 @@ PHP;
         self::assertSame('file:///Status.php', $result['uri']);
         self::assertSame(5, $result['range']['start']['line']);
     }
+
+    public function testGoToSelfDefinitionOutsideClassReturnsNull(): void
+    {
+        $cursor = $this->openFixtureAtCursor('EdgeCases/SelfOutsideClass.php', 'def_new_self');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertNull($result);
+    }
+
+    public function testGoToParentDefinitionWithoutExtendsReturnsNull(): void
+    {
+        $cursor = $this->openFixtureAtCursor('EdgeCases/ParentWithoutExtends.php', 'def_new_parent');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertNull($result);
+    }
+
+    /**
+     * Tests handleNameDefinition null path when self is used outside class.
+     * Uses inline code with manual offset because cursor must land ON "self",
+     * not after it, and the /*|marker* / syntax can't split a keyword.
+     */
+    public function testGoToSelfClassConstantOutsideClassReturnsNull(): void
+    {
+        // $x = self::class;
+        //      ^--- cursor on 's' of self (character 5)
+        $this->openDocument('file:///test.php', '<?php $x = self::class;');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 11],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
 }

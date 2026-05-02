@@ -280,7 +280,10 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = ScopeFinder::resolveClassName($class);
+        $className = ScopeFinder::resolveClassNameInContext($class, $call);
+        if ($className === null) {
+            return null;
+        }
 
         return $this->getMethodHoverForClass($className, $methodName->toString());
     }
@@ -315,7 +318,10 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $className = ScopeFinder::resolveClassName($class);
+        $className = ScopeFinder::resolveClassNameInContext($class, $fetch);
+        if ($className === null) {
+            return null;
+        }
 
         return $this->getPropertyHoverForClass($className, $propertyName->toString());
     }

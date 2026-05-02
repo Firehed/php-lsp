@@ -634,4 +634,243 @@ PHP;
 
         self::assertSame('App\Enums\Status', ScopeFinder::getClassLikeName($enum));
     }
+
+    public function testResolveClassNameInContextResolvesSelf(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class MyClass {
+    public static function test(): void {
+        self::method();
+    }
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $selfName = self::findNameNode('self', $ast);
+
+        self::assertNotNull($selfName);
+        $resolved = ScopeFinder::resolveClassNameInContext($selfName, $selfName);
+
+        self::assertSame('App\MyClass', $resolved);
+    }
+
+    public function testResolveClassNameInContextResolvesStatic(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class MyClass {
+    public static function test(): void {
+        static::method();
+    }
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $staticName = self::findNameNode('static', $ast);
+
+        self::assertNotNull($staticName);
+        $resolved = ScopeFinder::resolveClassNameInContext($staticName, $staticName);
+
+        self::assertSame('App\MyClass', $resolved);
+    }
+
+    public function testResolveClassNameInContextResolvesParent(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+use Other\BaseClass;
+
+class MyClass extends BaseClass {
+    public static function test(): void {
+        parent::method();
+    }
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $parentName = self::findNameNode('parent', $ast);
+
+        self::assertNotNull($parentName);
+        $resolved = ScopeFinder::resolveClassNameInContext($parentName, $parentName);
+
+        self::assertSame('Other\BaseClass', $resolved);
+    }
+
+    public function testResolveClassNameInContextResolvesRegularClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+namespace App;
+
+class MyClass {
+    public static function test(): void {
+        \Other\SomeClass::method();
+    }
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        // Find the StaticCall and get its class Name node
+        $staticCall = self::findStaticCallNode('method', $ast);
+        self::assertNotNull($staticCall);
+        self::assertInstanceOf(Node\Name::class, $staticCall->class);
+
+        $resolved = ScopeFinder::resolveClassNameInContext($staticCall->class, $staticCall);
+
+        self::assertSame('Other\SomeClass', $resolved);
+    }
+
+    public function testResolveClassNameInContextReturnsNullForSelfOutsideClass(): void
+    {
+        $code = <<<'PHP'
+<?php
+function test(): void {
+    self::method();
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $selfName = self::findNameNode('self', $ast);
+
+        self::assertNotNull($selfName);
+        $resolved = ScopeFinder::resolveClassNameInContext($selfName, $selfName);
+
+        self::assertNull($resolved);
+    }
+
+    public function testResolveClassNameInContextReturnsNullForParentWithNoExtends(): void
+    {
+        $code = <<<'PHP'
+<?php
+class MyClass {
+    public static function test(): void {
+        parent::method();
+    }
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        $parentName = self::findNameNode('parent', $ast);
+
+        self::assertNotNull($parentName);
+        $resolved = ScopeFinder::resolveClassNameInContext($parentName, $parentName);
+
+        self::assertNull($resolved);
+    }
+
+    public function testResolveClassNameInContextReturnsNullForParentInInterface(): void
+    {
+        $code = <<<'PHP'
+<?php
+interface MyInterface {
+    public static function test(): void;
+}
+PHP;
+        $ast = self::parseWithParents($code);
+        // Create a fake parent Name node to test this edge case
+        $name = new Node\Name('parent');
+
+        // Find the interface method to get a context node
+        $methodNode = self::findMethodNode('test', $ast);
+        self::assertNotNull($methodNode);
+
+        // Manually set parent attribute
+        $name->setAttribute('parent', $methodNode);
+
+        $resolved = ScopeFinder::resolveClassNameInContext($name, $name);
+
+        self::assertNull($resolved);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findNameNode(string $name, array $ast): ?Node\Name
+    {
+        $visitor = new class ($name) extends \PhpParser\NodeVisitorAbstract {
+            public ?Node\Name $found = null;
+
+            public function __construct(private readonly string $name)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Node\Name && $node->toString() === $this->name) {
+                    $this->found = $node;
+                    return NodeTraverser::STOP_TRAVERSAL;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findMethodNode(string $name, array $ast): ?Stmt\ClassMethod
+    {
+        $visitor = new class ($name) extends \PhpParser\NodeVisitorAbstract {
+            public ?Stmt\ClassMethod $found = null;
+
+            public function __construct(private readonly string $name)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Stmt\ClassMethod && $node->name->toString() === $this->name) {
+                    $this->found = $node;
+                    return NodeTraverser::STOP_TRAVERSAL;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findStaticCallNode(string $methodName, array $ast): ?Node\Expr\StaticCall
+    {
+        $visitor = new class ($methodName) extends \PhpParser\NodeVisitorAbstract {
+            public ?Node\Expr\StaticCall $found = null;
+
+            public function __construct(private readonly string $methodName)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if (
+                    $node instanceof Node\Expr\StaticCall
+                    && $node->name instanceof Node\Identifier
+                    && $node->name->toString() === $this->methodName
+                ) {
+                    $this->found = $node;
+                    return NodeTraverser::STOP_TRAVERSAL;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
+    }
 }

@@ -173,6 +173,25 @@ trait OpensDocumentsTrait
     }
 
     /**
+     * Builds a textDocument/definition request for the given cursor position.
+     *
+     * @param CursorPosition $cursor From openFixtureAtCursor()
+     * @phpstan-ignore missingType.iterableValue
+     */
+    private function definitionRequestAt(array $cursor): RequestMessage
+    {
+        return RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => $cursor['uri']],
+                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
+            ],
+        ]);
+    }
+
+    /**
      * Opens a fixture and returns cursor position ON a symbol for hover tests.
      *
      * Uses a marker comment at end of line: //hover:marker_name
