@@ -240,55 +240,15 @@ PHP;
 
     public function testTraitMethodTakesPrecedenceOverParent(): void
     {
-        $parentCode = <<<'PHP'
-<?php
-class ParentClass {
-    public function sharedMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///ParentClass.php', $parentCode);
+        $this->openFixture('src/Definition/TraitPrecedenceParent.php');
+        $traitUri = $this->openFixture('src/Definition/TraitPrecedenceTrait.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Definition/TraitPrecedenceChild.php', 'trait_precedence');
 
-        $traitCode = <<<'PHP'
-<?php
-trait MyTrait {
-    public function sharedMethod(): void {}
-}
-PHP;
-        $this->openDocument('file:///MyTrait.php', $traitCode);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        $childCode = <<<'PHP'
-<?php
-class ChildClass extends ParentClass {
-    use MyTrait;
-}
-PHP;
-        $this->openDocument('file:///ChildClass.php', $childCode);
-
-        $usageCode = <<<'PHP'
-<?php
-function test(ChildClass $obj): void {
-    $obj->sharedMethod();
-}
-PHP;
-        $this->openDocument('file:///usage.php', $usageCode);
-
-        // Request definition at "sharedMethod"
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///usage.php'],
-                'position' => ['line' => 2, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        // Should go to trait (trait takes precedence over parent in PHP)
         self::assertIsArray($result);
-        self::assertSame('file:///MyTrait.php', $result['uri']);
-        self::assertSame(2, $result['range']['start']['line']);
+        self::assertSame($traitUri, $result['uri']);
+        self::assertSame(8, $result['range']['start']['line']);
     }
 
     public function testReturnsNullForInvalidTextDocumentParam(): void
