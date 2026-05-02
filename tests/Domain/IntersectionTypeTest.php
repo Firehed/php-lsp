@@ -39,4 +39,15 @@ class IntersectionTypeTest extends TestCase
         ]);
         self::assertFalse($type->isNullable());
     }
+
+    public function testGetMembersReturnsMembers(): void
+    {
+        $members = [
+            new ClassName(\Iterator::class),
+            new ClassName(\Countable::class),
+        ];
+        $type = new IntersectionType($members);
+
+        self::assertSame($members, $type->getMembers());
+    }
 }

@@ -95,4 +95,15 @@ class UnionTypeTest extends TestCase
         ]);
         self::assertFalse($type->isNullable());
     }
+
+    public function testGetMembersReturnsMembers(): void
+    {
+        $members = [
+            new ClassName(\Iterator::class),
+            new ClassName(\Countable::class),
+        ];
+        $type = new UnionType($members);
+
+        self::assertSame($members, $type->getMembers());
+    }
 }
