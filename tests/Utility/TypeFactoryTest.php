@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\IntersectionType;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
 use PhpParser\Node\Identifier;
@@ -114,6 +115,36 @@ class TypeFactoryTest extends TestCase
         self::assertSame('self', $type->format());
     }
 
+    public function testFromNodeWithIdentifierSelfAndPreserveLateBindingCreatesLateStaticType(): void
+    {
+        $node = new Identifier('self');
+        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class, preserveLateBinding: true);
+
+        self::assertInstanceOf(LateStaticType::class, $type);
+        self::assertSame('self', $type->keyword);
+        self::assertSame(\stdClass::class, $type->declaringClass->fqn);
+    }
+
+    public function testFromNodeWithIdentifierStaticAndPreserveLateBindingCreatesLateStaticType(): void
+    {
+        $node = new Identifier('static');
+        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class, preserveLateBinding: true);
+
+        self::assertInstanceOf(LateStaticType::class, $type);
+        self::assertSame('static', $type->keyword);
+        self::assertSame(\ArrayObject::class, $type->declaringClass->fqn);
+    }
+
+    public function testFromNodeWithIdentifierParentAndPreserveLateBindingCreatesLateStaticType(): void
+    {
+        $node = new Identifier('parent');
+        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class, preserveLateBinding: true);
+
+        self::assertInstanceOf(LateStaticType::class, $type);
+        self::assertSame('parent', $type->keyword);
+        self::assertSame(\Throwable::class, $type->declaringClass->fqn);
+    }
+
     public function testFromNodeWithParentWithoutContextCreatesPrimitiveType(): void
     {
         $node = new Identifier('parent');
@@ -157,6 +188,36 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('self', $type->format());
+    }
+
+    public function testFromNodeWithNameSelfAndPreserveLateBindingCreatesLateStaticType(): void
+    {
+        $node = new Name('self');
+        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class, preserveLateBinding: true);
+
+        self::assertInstanceOf(LateStaticType::class, $type);
+        self::assertSame('self', $type->keyword);
+        self::assertSame(\stdClass::class, $type->declaringClass->fqn);
+    }
+
+    public function testFromNodeWithNameStaticAndPreserveLateBindingCreatesLateStaticType(): void
+    {
+        $node = new Name('static');
+        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class, preserveLateBinding: true);
+
+        self::assertInstanceOf(LateStaticType::class, $type);
+        self::assertSame('static', $type->keyword);
+        self::assertSame(\ArrayObject::class, $type->declaringClass->fqn);
+    }
+
+    public function testFromNodeWithNameParentAndPreserveLateBindingCreatesLateStaticType(): void
+    {
+        $node = new Name('parent');
+        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class, preserveLateBinding: true);
+
+        self::assertInstanceOf(LateStaticType::class, $type);
+        self::assertSame('parent', $type->keyword);
+        self::assertSame(\Throwable::class, $type->declaringClass->fqn);
     }
 
     public function testFromNodeWithNameParentWithoutContextCreatesPrimitiveType(): void
