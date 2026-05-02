@@ -54,58 +54,26 @@ final class TypeFactory
             return null;
         }
 
-        if ($node instanceof Name) {
+        if ($node instanceof Name || $node instanceof Identifier) {
             $name = $node->toString();
 
-            if ($name === 'self' || $name === 'static') {
-                if ($selfContext !== null) {
-                    if ($preserveLateBinding) {
-                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($selfContext));
-                    }
-                    return new ClassName($selfContext);
-                }
-                return new PrimitiveType($name);
+            $lateBindingType = self::tryLateBindingType(
+                $name,
+                $selfContext,
+                $parentContext,
+                $preserveLateBinding,
+            );
+            if ($lateBindingType !== null) {
+                return $lateBindingType;
             }
 
-            if ($name === 'parent') {
-                if ($parentContext !== null) {
-                    if ($preserveLateBinding) {
-                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($parentContext));
-                    }
-                    return new ClassName($parentContext);
-                }
-                return new PrimitiveType($name);
-            }
-
-            $resolvedName = $node->getAttribute('resolvedName');
-            /** @var class-string $fqn */
-            $fqn = $resolvedName instanceof Name
-                ? $resolvedName->toString()
-                : $name;
-            return new ClassName($fqn);
-        }
-
-        if ($node instanceof Identifier) {
-            $name = $node->toString();
-
-            if ($name === 'self' || $name === 'static') {
-                if ($selfContext !== null) {
-                    if ($preserveLateBinding) {
-                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($selfContext));
-                    }
-                    return new ClassName($selfContext);
-                }
-                return new PrimitiveType($name);
-            }
-
-            if ($name === 'parent') {
-                if ($parentContext !== null) {
-                    if ($preserveLateBinding) {
-                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($parentContext));
-                    }
-                    return new ClassName($parentContext);
-                }
-                return new PrimitiveType($name);
+            if ($node instanceof Name) {
+                $resolvedName = $node->getAttribute('resolvedName');
+                /** @var class-string $fqn */
+                $fqn = $resolvedName instanceof Name
+                    ? $resolvedName->toString()
+                    : $name;
+                return new ClassName($fqn);
             }
 
             if (in_array($name, self::PRIMITIVES, true)) {
@@ -186,5 +154,36 @@ final class TypeFactory
         // @codeCoverageIgnoreStart
         throw new LogicException('Unexpected ReflectionType: ' . $type::class);
         // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @param class-string|null $selfContext
+     * @param class-string|null $parentContext
+     */
+    private static function tryLateBindingType(
+        string $name,
+        ?string $selfContext,
+        ?string $parentContext,
+        bool $preserveLateBinding,
+    ): ?Type {
+        $keyword = LateBindingKeyword::tryFrom($name);
+        if ($keyword === null) {
+            return null;
+        }
+
+        $context = match ($keyword) {
+            LateBindingKeyword::Self, LateBindingKeyword::Static => $selfContext,
+            LateBindingKeyword::Parent => $parentContext,
+        };
+
+        if ($context === null) {
+            return new PrimitiveType($name);
+        }
+
+        if ($preserveLateBinding) {
+            return new LateStaticType($keyword, new ClassName($context));
+        }
+
+        return new ClassName($context);
     }
 }
