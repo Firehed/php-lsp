@@ -95,16 +95,12 @@ final class TypeFactory
             return new UnionType([$inner, new PrimitiveType('null')]);
         }
 
-        if ($node instanceof Node\UnionType) {
+        if ($node instanceof Node\UnionType || $node instanceof Node\IntersectionType) {
             $mapper = fn (Node $n) => self::fromNode($n, $selfContext, $parentContext, $preserveLateBinding);
             $members = array_values(array_filter(array_map($mapper, $node->types)));
-            return new UnionType($members);
-        }
-
-        if ($node instanceof Node\IntersectionType) {
-            $mapper = fn (Node $n) => self::fromNode($n, $selfContext, $parentContext, $preserveLateBinding);
-            $members = array_values(array_filter(array_map($mapper, $node->types)));
-            return new IntersectionType($members);
+            return $node instanceof Node\UnionType
+                ? new UnionType($members)
+                : new IntersectionType($members);
         }
 
         // @codeCoverageIgnoreStart

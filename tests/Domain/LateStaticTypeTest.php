@@ -49,11 +49,20 @@ class LateStaticTypeTest extends TestCase
         self::assertSame(ArrayIterator::class, $resolved->fqn);
     }
 
-    public function testResolveLateBoundSelfReturnsCallingClass(): void
+    public function testResolveLateBoundSelfReturnsDeclaringClassForRegularClass(): void
     {
         $type = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
 
-        $resolved = $type->resolveLateBound(ArrayIterator::class);
+        $resolved = $type->resolveLateBound(ArrayIterator::class, declaringClassIsTrait: false);
+
+        self::assertSame($type->declaringClass, $resolved);
+    }
+
+    public function testResolveLateBoundSelfReturnsCallingClassForTrait(): void
+    {
+        $type = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
+
+        $resolved = $type->resolveLateBound(ArrayIterator::class, declaringClassIsTrait: true);
 
         self::assertInstanceOf(ClassName::class, $resolved);
         self::assertSame(ArrayIterator::class, $resolved->fqn);
@@ -65,7 +74,6 @@ class LateStaticTypeTest extends TestCase
 
         $resolved = $type->resolveLateBound(ArrayIterator::class);
 
-        self::assertInstanceOf(ClassName::class, $resolved);
-        self::assertSame(Traversable::class, $resolved->fqn);
+        self::assertSame($type->declaringClass, $resolved);
     }
 }

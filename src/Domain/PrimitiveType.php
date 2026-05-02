@@ -34,7 +34,7 @@ final readonly class PrimitiveType implements Type
         return $this->name === 'null';
     }
 
-    public function resolveLateBound(string $callingClass): Type
+    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
     {
         return $this;
     }

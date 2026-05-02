@@ -253,7 +253,13 @@ final class BasicTypeResolver implements TypeResolverInterface
             Visibility::Private,
         );
 
-        return $methodInfo?->returnType?->resolveLateBound($className);
+        if ($methodInfo === null) {
+            return null;
+        }
+
+        $isFromTrait = $this->memberResolver->isTraitClass($methodInfo->declaringClass);
+
+        return $methodInfo->returnType?->resolveLateBound($className, $isFromTrait);
     }
 
     private function getPropertyType(string $className, string $propertyName): ?Type

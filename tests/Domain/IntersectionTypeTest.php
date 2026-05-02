@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(IntersectionType::class)]
+#[CoversClass(LateStaticType::class)]
 class IntersectionTypeTest extends TestCase
 {
     public function testFormatJoinsWithAmpersand(): void
@@ -43,13 +44,13 @@ class IntersectionTypeTest extends TestCase
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new IntersectionType([
-            new ClassName(\Iterator::class),
+            new LateStaticType(LateBindingKeyword::Static, new ClassName(\Traversable::class)),
             new ClassName(\Countable::class),
         ]);
 
         $resolved = $type->resolveLateBound(\ArrayIterator::class);
 
         self::assertInstanceOf(IntersectionType::class, $resolved);
-        self::assertSame('Iterator&Countable', $resolved->format());
+        self::assertSame('ArrayIterator&Countable', $resolved->format());
     }
 }

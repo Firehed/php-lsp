@@ -53,10 +53,10 @@ final readonly class UnionType implements Type
         return false;
     }
 
-    public function resolveLateBound(string $callingClass): Type
+    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
     {
         $resolved = array_map(
-            fn (Type $member) => $member->resolveLateBound($callingClass),
+            fn (Type $member) => $member->resolveLateBound($callingClass, $declaringClassIsTrait),
             $this->members,
         );
         return new self($resolved);

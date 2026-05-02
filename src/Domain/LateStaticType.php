@@ -31,11 +31,14 @@ final class LateStaticType implements Type
         return false;
     }
 
-    public function resolveLateBound(string $callingClass): Type
+    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
     {
         return match ($this->keyword) {
-            LateBindingKeyword::Self, LateBindingKeyword::Static => new ClassName($callingClass),
-            LateBindingKeyword::Parent => new ClassName($this->declaringClass->fqn),
+            LateBindingKeyword::Self => $declaringClassIsTrait
+                ? new ClassName($callingClass)
+                : $this->declaringClass,
+            LateBindingKeyword::Static => new ClassName($callingClass),
+            LateBindingKeyword::Parent => $this->declaringClass,
         };
     }
 }

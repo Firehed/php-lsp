@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -72,6 +73,11 @@ final class MemberResolver
     {
         $classInfo = $this->classes->get($class);
         return $classInfo?->enumCases[$case->name] ?? null;
+    }
+
+    public function isTraitClass(ClassName $class): bool
+    {
+        return $this->classes->get($class)?->kind === ClassKind::Trait_;
     }
 
     /**
