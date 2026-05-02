@@ -987,6 +987,23 @@ PHP;
         self::assertNull($type);
     }
 
+    public function testResolveTraitStaticReturnTypeToCallingClass(): void
+    {
+        $resolver = $this->createResolverWithFixtures();
+        $ast = $this->parseFixture('src/TypeInference/TraitStaticReturn.php');
+        $method = $this->findMethodByName($ast, 'callTraitStaticMethod');
+        $finder = new \PhpParser\NodeFinder();
+        $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
+        assert($staticCall !== null);
+
+        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+
+        // The trait method returns `static`, which should resolve to ConcreteService
+        // (the class the method was called on), not SingletonTrait (where it's defined)
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\Traits\\ConcreteService', $type->fqn);
+    }
+
     private function createResolverWithFixtures(): BasicTypeResolver
     {
         $classInfoFactory = new DefaultClassInfoFactory();
