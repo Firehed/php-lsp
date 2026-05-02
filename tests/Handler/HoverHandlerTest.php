@@ -966,4 +966,98 @@ PHP;
         self::assertStringContainsString('$staticProperty', $result['contents']);
         self::assertStringContainsString('Static property documentation', $result['contents']);
     }
+
+    public function testHoverOnSelfMethodOutsideClassReturnsNull(): void
+    {
+        $code = '<?php self::foo();';
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 12],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
+
+    public function testHoverOnParentMethodWithoutExtendsReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class NoParent {
+    public function test(): void {
+        parent::foo();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 16],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
+
+    public function testHoverOnSelfPropertyOutsideClassReturnsNull(): void
+    {
+        $code = '<?php echo self::$prop;';
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 18],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
+
+    public function testHoverOnParentPropertyWithoutExtendsReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class NoParent {
+    public function test(): void {
+        echo parent::$prop;
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/hover',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 22],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
 }

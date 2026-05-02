@@ -998,4 +998,50 @@ PHP;
         self::assertSame('file:///Status.php', $result['uri']);
         self::assertSame(5, $result['range']['start']['line']);
     }
+
+    public function testGoToSelfDefinitionOutsideClassReturnsNull(): void
+    {
+        $this->openDocument('file:///test.php', '<?php new self();');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 10],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
+
+    public function testGoToParentDefinitionWithoutExtendsReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class NoParent {
+    public function test(): void {
+        new parent();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 3, 'character' => 12],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
 }

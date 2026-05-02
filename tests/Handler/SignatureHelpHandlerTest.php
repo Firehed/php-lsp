@@ -227,4 +227,74 @@ class SignatureHelpHandlerTest extends TestCase
         self::assertIsArray($result);
         self::assertStringContainsString('staticMethod', $result['signatures'][0]['label']);
     }
+
+    public function testSignatureHelpOnSelfOutsideClassReturnsNull(): void
+    {
+        $code = '<?php self::foo();';
+        $this->openDocument('file:///test.php', $code);
+
+        $result = $this->handler->handle($this->signatureHelpRequestAt([
+            'uri' => 'file:///test.php',
+            'line' => 0,
+            'character' => 15,
+        ]));
+
+        self::assertNull($result);
+    }
+
+    public function testSignatureHelpOnParentWithoutExtendsReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class NoParent {
+    public function test(): void {
+        parent::foo();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $result = $this->handler->handle($this->signatureHelpRequestAt([
+            'uri' => 'file:///test.php',
+            'line' => 3,
+            'character' => 19,
+        ]));
+
+        self::assertNull($result);
+    }
+
+    public function testSignatureHelpOnNewSelfOutsideClassReturnsNull(): void
+    {
+        $code = '<?php new self();';
+        $this->openDocument('file:///test.php', $code);
+
+        $result = $this->handler->handle($this->signatureHelpRequestAt([
+            'uri' => 'file:///test.php',
+            'line' => 0,
+            'character' => 14,
+        ]));
+
+        self::assertNull($result);
+    }
+
+    public function testSignatureHelpOnNewParentWithoutExtendsReturnsNull(): void
+    {
+        $code = <<<'PHP'
+<?php
+class NoParent {
+    public function test(): void {
+        new parent();
+    }
+}
+PHP;
+        $this->openDocument('file:///test.php', $code);
+
+        $result = $this->handler->handle($this->signatureHelpRequestAt([
+            'uri' => 'file:///test.php',
+            'line' => 3,
+            'character' => 19,
+        ]));
+
+        self::assertNull($result);
+    }
 }
