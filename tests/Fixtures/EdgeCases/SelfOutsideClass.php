@@ -12,4 +12,3 @@ echo static::$prop; //hover:static_property
 new self/*|def_new_self*/(/*|sig_new_self*/);
 new static/*|def_new_static*/(/*|sig_new_static*/);
 
-$className = self/*|def_self_class*/::class;

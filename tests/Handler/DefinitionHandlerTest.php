@@ -1017,11 +1017,28 @@ PHP;
         self::assertNull($result);
     }
 
+    /**
+     * Tests handleNameDefinition null path when self is used outside class.
+     * Uses inline code with manual offset because cursor must land ON "self",
+     * not after it, and the /*|marker* / syntax can't split a keyword.
+     */
     public function testGoToSelfClassConstantOutsideClassReturnsNull(): void
     {
-        $cursor = $this->openFixtureAtCursor('EdgeCases/SelfOutsideClass.php', 'def_self_class');
+        // $x = self::class;
+        //      ^--- cursor on 's' of self (character 5)
+        $this->openDocument('file:///test.php', '<?php $x = self::class;');
 
-        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/definition',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 11],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
 
         self::assertNull($result);
     }
