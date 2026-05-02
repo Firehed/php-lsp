@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\IntersectionType;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\Type;
@@ -59,7 +60,7 @@ final class TypeFactory
             if ($name === 'self' || $name === 'static') {
                 if ($selfContext !== null) {
                     if ($preserveLateBinding) {
-                        return new LateStaticType($name, new ClassName($selfContext));
+                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($selfContext));
                     }
                     return new ClassName($selfContext);
                 }
@@ -69,7 +70,7 @@ final class TypeFactory
             if ($name === 'parent') {
                 if ($parentContext !== null) {
                     if ($preserveLateBinding) {
-                        return new LateStaticType($name, new ClassName($parentContext));
+                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($parentContext));
                     }
                     return new ClassName($parentContext);
                 }
@@ -90,7 +91,7 @@ final class TypeFactory
             if ($name === 'self' || $name === 'static') {
                 if ($selfContext !== null) {
                     if ($preserveLateBinding) {
-                        return new LateStaticType($name, new ClassName($selfContext));
+                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($selfContext));
                     }
                     return new ClassName($selfContext);
                 }
@@ -100,7 +101,7 @@ final class TypeFactory
             if ($name === 'parent') {
                 if ($parentContext !== null) {
                     if ($preserveLateBinding) {
-                        return new LateStaticType($name, new ClassName($parentContext));
+                        return new LateStaticType(LateBindingKeyword::from($name), new ClassName($parentContext));
                     }
                     return new ClassName($parentContext);
                 }

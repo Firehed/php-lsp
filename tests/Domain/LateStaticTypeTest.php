@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Domain;
 use ArrayIterator;
 use Countable;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
 use IteratorAggregate;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -18,14 +19,14 @@ class LateStaticTypeTest extends TestCase
 {
     public function testFormatReturnsKeyword(): void
     {
-        $type = new LateStaticType('static', new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
 
         self::assertSame('static', $type->format());
     }
 
     public function testGetResolvableClassNamesReturnsDeclaringClass(): void
     {
-        $type = new LateStaticType('static', new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
 
         $classNames = $type->getResolvableClassNames();
 
@@ -35,14 +36,14 @@ class LateStaticTypeTest extends TestCase
 
     public function testIsNullableReturnsFalse(): void
     {
-        $type = new LateStaticType('static', new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
 
         self::assertFalse($type->isNullable());
     }
 
     public function testResolveStaticReturnsCallingClass(): void
     {
-        $type = new LateStaticType('static', new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
 
         $resolved = $type->resolve(ArrayIterator::class);
 
@@ -51,7 +52,7 @@ class LateStaticTypeTest extends TestCase
 
     public function testResolveSelfReturnsCallingClass(): void
     {
-        $type = new LateStaticType('self', new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
 
         $resolved = $type->resolve(ArrayIterator::class);
 
@@ -60,7 +61,7 @@ class LateStaticTypeTest extends TestCase
 
     public function testResolveParentReturnsCallingParent(): void
     {
-        $type = new LateStaticType('parent', new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Parent, new ClassName(Traversable::class));
 
         $resolved = $type->resolve(ArrayIterator::class, IteratorAggregate::class);
 
@@ -69,7 +70,7 @@ class LateStaticTypeTest extends TestCase
 
     public function testResolveParentFallsBackToDeclaringClass(): void
     {
-        $type = new LateStaticType('parent', new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Parent, new ClassName(Traversable::class));
 
         $resolved = $type->resolve(ArrayIterator::class, null);
 

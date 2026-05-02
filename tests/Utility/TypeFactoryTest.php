@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\IntersectionType;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
@@ -121,7 +122,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \stdClass::class, preserveLateBinding: true);
 
         self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame('self', $type->keyword);
+        self::assertSame(LateBindingKeyword::Self, $type->keyword);
         self::assertSame(\stdClass::class, $type->declaringClass->fqn);
     }
 
@@ -131,7 +132,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class, preserveLateBinding: true);
 
         self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame('static', $type->keyword);
+        self::assertSame(LateBindingKeyword::Static, $type->keyword);
         self::assertSame(\ArrayObject::class, $type->declaringClass->fqn);
     }
 
@@ -141,7 +142,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, parentContext: \Throwable::class, preserveLateBinding: true);
 
         self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame('parent', $type->keyword);
+        self::assertSame(LateBindingKeyword::Parent, $type->keyword);
         self::assertSame(\Throwable::class, $type->declaringClass->fqn);
     }
 
@@ -196,7 +197,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \stdClass::class, preserveLateBinding: true);
 
         self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame('self', $type->keyword);
+        self::assertSame(LateBindingKeyword::Self, $type->keyword);
         self::assertSame(\stdClass::class, $type->declaringClass->fqn);
     }
 
@@ -206,7 +207,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class, preserveLateBinding: true);
 
         self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame('static', $type->keyword);
+        self::assertSame(LateBindingKeyword::Static, $type->keyword);
         self::assertSame(\ArrayObject::class, $type->declaringClass->fqn);
     }
 
@@ -216,7 +217,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, parentContext: \Throwable::class, preserveLateBinding: true);
 
         self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame('parent', $type->keyword);
+        self::assertSame(LateBindingKeyword::Parent, $type->keyword);
         self::assertSame(\Throwable::class, $type->declaringClass->fqn);
     }
 
