@@ -534,50 +534,20 @@ PHP;
 
     public function testReturnsNullForParentWithoutExtends(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public function test(): void {
-        parent::foo();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/ParentWithoutExtends.php', 'parent_method');
 
-        // Position on foo in parent::foo()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 17],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForSelfOutsideClass(): void
     {
-        $code = <<<'PHP'
-<?php
-self::foo();
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/SelfOutsideClass.php', 'self_method');
 
-        // Position on foo in self::foo()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 1, 'character' => 7],
-            ],
-        ]);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($this->handler->handle($request));
+        self::assertNull($result);
     }
 
     public function testReturnsNullForBuiltInClassMethod(): void
