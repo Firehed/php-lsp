@@ -158,7 +158,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolvePropertyTypeReturnsNullForUnknownClass(): void
     {
-        $ast = $this->parseFixture('src/TypeInference/EdgeCases.php');
+        $ast = $this->parseFixture('src/TypeInference/StaticCallOutsideClass.php');
         $function = $this->findFunctionByName($ast, 'unknownClassParameter');
         $finder = new \PhpParser\NodeFinder();
         $propertyFetch = $finder->findFirstInstanceOf($function, Expr\PropertyFetch::class);
@@ -171,7 +171,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveThisInFunctionReturnsNull(): void
     {
-        $ast = $this->parseFixture('src/TypeInference/EdgeCases.php');
+        $ast = $this->parseFixture('src/TypeInference/StaticCallOutsideClass.php');
         $function = $this->findFunctionByName($ast, 'thisInFunction');
         $thisVar = $this->findThisVariable([$function]);
 
@@ -182,7 +182,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveMethodCallOnUnresolvedTypeReturnsNull(): void
     {
-        $ast = $this->parseFixture('src/TypeInference/EdgeCases.php');
+        $ast = $this->parseFixture('src/TypeInference/StaticCallOutsideClass.php');
         $function = $this->findFunctionByName($ast, 'methodCallOnUnresolvedType');
         $finder = new \PhpParser\NodeFinder();
         $methodCall = $finder->findFirstInstanceOf($function, Expr\MethodCall::class);

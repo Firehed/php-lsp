@@ -36,7 +36,7 @@ class ExpressionTypeResolverTest extends TestCase
 
     public function testResolveExpressionTypeReturnsNullForThisOutsideClass(): void
     {
-        $ast = $this->parseFixtureWithParents('src/TypeInference/EdgeCases.php');
+        $ast = $this->parseFixtureWithParents('src/TypeInference/StaticCallOutsideClass.php');
         $thisNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($thisNode);
@@ -76,7 +76,7 @@ class ExpressionTypeResolverTest extends TestCase
 
     public function testResolveExpressionTypeReturnsNullWhenTypeResolverReturnsNull(): void
     {
-        $ast = $this->parseFixtureWithParents('src/TypeInference/EdgeCases.php');
+        $ast = $this->parseFixtureWithParents('src/TypeInference/StaticCallOutsideClass.php');
         $varNode = self::findVariableNode('unknown', $ast);
 
         self::assertNotNull($varNode);
