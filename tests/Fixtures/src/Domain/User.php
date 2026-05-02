@@ -27,6 +27,7 @@ class User implements Entity, Person
         private int $age = 0,
         private Status $status = Status::Active,
         public ?self $manager = null,
+        public ?Team $team = null,
     ) {
         self::$instanceCount++;
     }
@@ -64,6 +65,14 @@ class User implements Entity, Person
         return $this->status;
     }
 
+    /**
+     * Gets the user's team.
+     */
+    public function getTeam(): ?Team
+    {
+        return $this->team;
+    }
+
     public function activate(): void
     {
         $this->status = Status::Active;
@@ -77,6 +86,33 @@ class User implements Entity, Person
     public function isActive(): bool
     {
         return $this->status === Status::Active;
+    }
+
+    /**
+     * Sets the name fluently.
+     */
+    public function withName(string $name): self
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    /**
+     * Sets the age fluently.
+     */
+    public function withAge(int $age): self
+    {
+        $this->age = $age;
+        return $this;
+    }
+
+    /**
+     * Sets the status fluently.
+     */
+    public function withStatus(Status $status): self
+    {
+        $this->status = $status;
+        return $this;
     }
 
     public static function getInstanceCount(): int
@@ -133,5 +169,15 @@ class User implements Entity, Person
     public function triggerHoverTraitMethod(): void
     {
         $this->markCreated(); //hover:markCreated
+    }
+
+    public function triggerHoverMultilineChain(): void
+    {
+        $this
+            ->withName('test') //hover:chain_method
+            ->team //hover:chain_property
+            ?->getLeader() //hover:chain_cross_type
+            ->manager //hover:chain_back_to_user
+            ?->withAge(30); //hover:chain_nullsafe
     }
 }
