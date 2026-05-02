@@ -494,7 +494,7 @@ class BasicTypeResolverTest extends TestCase
         $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
-        self::assertSame('Fixtures\\TypeInference\\Config', $type->fqn);
+        self::assertSame('Fixtures\\Domain\\User', $type->fqn);
     }
 
     public function testResolveVariableFromNamespacedFunctionCall(): void
@@ -502,10 +502,10 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/TypeInference/FunctionTypes.php');
         $function = $this->findFunctionByName($ast, 'testNamespacedFunctionUsage');
 
-        $type = $this->resolver->resolveVariableType('config', $function, $function->getStartLine() + 1, $ast);
+        $type = $this->resolver->resolveVariableType('user', $function, $function->getStartLine() + 1, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
-        self::assertSame('Fixtures\\TypeInference\\Config', $type->fqn);
+        self::assertSame('Fixtures\\Domain\\User', $type->fqn);
     }
 
     public function testResolveBuiltinFunctionReturnType(): void

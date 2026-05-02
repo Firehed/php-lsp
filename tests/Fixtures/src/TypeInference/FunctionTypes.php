@@ -4,26 +4,20 @@ declare(strict_types=1);
 
 namespace Fixtures\TypeInference;
 
-class Config
-{
-    public function get(string $key): mixed
-    {
-        return null;
-    }
-}
+use Fixtures\Domain\User;
 
-function getConfig(): Config
+function getUser(): User
 {
-    return new Config();
+    return new User('1', 'Test', 'test@example.com');
 }
 
 function testNamespacedFunction(): void
 {
-    $config = getConfig();
+    $user = getUser();
 }
 
 function testNamespacedFunctionUsage(): void
 {
-    $config = getConfig();
-    echo $config;
+    $user = getUser();
+    echo $user;
 }
