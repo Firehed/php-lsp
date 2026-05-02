@@ -14,14 +14,6 @@ final readonly class UnionType implements Type
     ) {
     }
 
-    /**
-     * @return list<Type>
-     */
-    public function getMembers(): array
-    {
-        return $this->members;
-    }
-
     public function format(): string
     {
         // Format 2-member nullable unions as ?T instead of T|null

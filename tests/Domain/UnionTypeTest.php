@@ -96,17 +96,6 @@ class UnionTypeTest extends TestCase
         self::assertFalse($type->isNullable());
     }
 
-    public function testGetMembersReturnsMembers(): void
-    {
-        $members = [
-            new ClassName(\Iterator::class),
-            new ClassName(\Countable::class),
-        ];
-        $type = new UnionType($members);
-
-        self::assertSame($members, $type->getMembers());
-    }
-
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new UnionType([
@@ -117,10 +106,9 @@ class UnionTypeTest extends TestCase
         $resolved = $type->resolveLateBound(\ArrayIterator::class);
 
         self::assertInstanceOf(UnionType::class, $resolved);
-        $members = $resolved->getMembers();
-        self::assertCount(2, $members);
-        self::assertInstanceOf(ClassName::class, $members[0]);
-        self::assertSame(\ArrayIterator::class, $members[0]->fqn);
-        self::assertInstanceOf(PrimitiveType::class, $members[1]);
+        self::assertSame('?ArrayIterator', $resolved->format());
+        $classNames = $resolved->getResolvableClassNames();
+        self::assertCount(1, $classNames);
+        self::assertSame(\ArrayIterator::class, $classNames[0]->fqn);
     }
 }

@@ -14,14 +14,6 @@ final readonly class IntersectionType implements Type
     ) {
     }
 
-    /**
-     * @return list<Type>
-     */
-    public function getMembers(): array
-    {
-        return $this->members;
-    }
-
     public function format(): string
     {
         $parts = array_map(
