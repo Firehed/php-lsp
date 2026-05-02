@@ -12,4 +12,11 @@ interface Type extends Formattable
     public function getResolvableClassNames(): array;
 
     public function isNullable(): bool;
+
+    /**
+     * Resolve late-bound types (static/self/parent) to concrete types.
+     *
+     * @param class-string $callingClass
+     */
+    public function resolveLateBound(string $callingClass): Type;
 }
