@@ -828,4 +828,64 @@ PHP;
         self::assertStringContainsString('getValue', $result['contents']);
         self::assertStringContainsString('Returns the value', $result['contents']);
     }
+
+    public function testHoverOnMultilineChainMethod(): void
+    {
+        $this->openFixture('src/Domain/Team.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'chain_method');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('withName', $result['contents']);
+        self::assertStringContainsString('Sets the name fluently', $result['contents']);
+    }
+
+    public function testHoverOnMultilineChainProperty(): void
+    {
+        $this->openFixture('src/Domain/Team.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'chain_property');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$team', $result['contents']);
+        self::assertStringContainsString('Team', $result['contents']);
+    }
+
+    public function testHoverOnMultilineChainCrossType(): void
+    {
+        $this->openFixture('src/Domain/Team.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'chain_cross_type');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('getLeader', $result['contents']);
+        self::assertStringContainsString('Gets the team leader', $result['contents']);
+    }
+
+    public function testHoverOnMultilineChainBackToUser(): void
+    {
+        $this->openFixture('src/Domain/Team.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'chain_back_to_user');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$manager', $result['contents']);
+        self::assertStringContainsString('User', $result['contents']);
+    }
+
+    public function testHoverOnMultilineChainNullsafe(): void
+    {
+        $this->openFixture('src/Domain/Team.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'chain_nullsafe');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('withAge', $result['contents']);
+        self::assertStringContainsString('Sets the age fluently', $result['contents']);
+    }
 }
