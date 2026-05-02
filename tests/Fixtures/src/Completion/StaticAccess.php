@@ -48,4 +48,24 @@ class StaticAccess
     {
         static::/*|static_keyword*/
     }
+
+    public function getInstanceProp(): string
+    {
+        return $this->instanceProp;
+    }
+
+    public function triggerSelfChain(): void
+    {
+        self::getInstance()->/*|self_chain*/
+    }
+
+    public function triggerStaticChain(): void
+    {
+        static::create()->/*|static_chain*/
+    }
+
+    public function triggerSelfChainPrefix(): void
+    {
+        self::getInstance()->get/*|self_chain_prefix*/
+    }
 }
