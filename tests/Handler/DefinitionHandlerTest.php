@@ -702,42 +702,14 @@ PHP;
 
     public function testGoToEnumMethodFromWithinEnum(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status: string {
-    case Active = 'active';
-    case Inactive = 'inactive';
+        $statusUri = $this->openFixture('src/Enum/Status.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Enum/Status.php', 'enum_method');
 
-    public function label(): string {
-        return match($this) {
-            self::Active => 'Active',
-            self::Inactive => 'Inactive',
-        };
-    }
-
-    public function description(): string {
-        return $this->label() . ' status';
-    }
-}
-PHP;
-        $this->openDocument('file:///Status.php', $code);
-
-        // Position on "label" in $this->label()
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///Status.php'],
-                'position' => ['line' => 13, 'character' => 22],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertSame('file:///Status.php', $result['uri']);
-        self::assertSame(5, $result['range']['start']['line']);
+        self::assertSame($statusUri, $result['uri']);
+        self::assertSame(16, $result['range']['start']['line']);
     }
 
     public function testGoToSelfDefinitionOutsideClassReturnsNull(): void
