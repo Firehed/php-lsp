@@ -12,4 +12,9 @@ class NoNamespaceClass
     {
         self::/*|self_no_namespace*/
     }
+
+    public function methodWithThis(): void
+    {
+        $this->staticMethod();
+    }
 }
