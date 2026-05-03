@@ -504,8 +504,10 @@ final class DefaultClassInfoFactoryTest extends TestCase
         return $this->parseClassInternal($code, $className, useNameResolver: true);
     }
 
-    private function parseClassWithoutNameResolverFromFixture(string $fixturePath, ?string $className = null): Stmt\ClassLike
-    {
+    private function parseClassWithoutNameResolverFromFixture(
+        string $fixturePath,
+        ?string $className = null,
+    ): Stmt\ClassLike {
         $code = $this->loadFixture($fixturePath);
         return $this->parseClassInternal($code, $className, useNameResolver: false);
     }
