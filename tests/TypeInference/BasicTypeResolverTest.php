@@ -24,7 +24,6 @@ use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(BasicTypeResolver::class)]
@@ -47,11 +46,13 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveNewExpression(): void
     {
-        $code = '<?php $x = new DateTime();';
-        $ast = $this->parse($code);
-        $expr = $this->findFirstExprOfType($ast, Expr\New_::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'newDateTime');
+        $finder = new \PhpParser\NodeFinder();
+        $expr = $finder->findFirstInstanceOf($method, Expr\New_::class);
+        assert($expr instanceof Expr\New_);
 
-        $type = $this->resolver->resolveExpressionType($expr, null, $ast);
+        $type = $this->resolver->resolveExpressionType($expr, $method, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -59,16 +60,10 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveParameterType(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(DateTime $dt) {
-    $x = $dt;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'parameterType');
 
-        $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
+        $type = $this->resolver->resolveVariableType('dt', $method, $method->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -98,17 +93,10 @@ PHP;
 
     public function testResolveAssignmentFromNew(): void
     {
-        $code = <<<'PHP'
-<?php
-function test() {
-    $x = new DateTime();
-    $y = $x;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'assignmentFromNew');
 
-        $type = $this->resolver->resolveVariableType('x', $function, 3, $ast);
+        $type = $this->resolver->resolveVariableType('x', $method, $method->getStartLine() + 1, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -116,41 +104,26 @@ PHP;
 
     public function testResolveMethodReturnTypeResolvesObjectType(): void
     {
-        // Note: Many built-in PHP methods don't have return type declarations
-        // in reflection. This test verifies we can at least resolve the object type
-        // that the method is called on.
-        $code = <<<'PHP'
-<?php
-function test() {
-    $dt = new DateTime();
-    $result = $dt->format('Y');
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'methodCallOnBuiltin');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
+        assert($methodCall instanceof Expr\MethodCall);
 
-        // The object type is resolved, even if method return type isn't
-        $objectType = $this->resolver->resolveExpressionType($methodCall->var, $function, $ast);
+        $objectType = $this->resolver->resolveExpressionType($methodCall->var, $method, $ast);
         self::assertInstanceOf(ClassName::class, $objectType);
         self::assertSame(DateTime::class, $objectType->fqn);
     }
 
     public function testResolveMethodReturnTypePrimitive(): void
     {
-        // Exception::getMessage() has return type string
-        $code = <<<'PHP'
-<?php
-function test() {
-    $ex = new Exception();
-    $result = $ex->getMessage();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'exceptionGetMessage');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
+        assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('string', $type->format());
@@ -158,37 +131,26 @@ PHP;
 
     public function testResolveMethodReturnTypeReturnsNullForUnknownMethod(): void
     {
-        $code = <<<'PHP'
-<?php
-function test() {
-    $ex = new Exception();
-    $result = $ex->nonExistentMethod();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'exceptionNonExistentMethod');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
+        assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
 
         self::assertNull($type);
     }
 
     public function testResolveMethodReturnTypeInt(): void
     {
-        // Exception::getLine() returns int
-        $code = <<<'PHP'
-<?php
-function test() {
-    $ex = new Exception();
-    $result = $ex->getLine();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'exceptionGetLine');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
+        assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('int', $type->format());
@@ -196,15 +158,11 @@ PHP;
 
     public function testResolvePropertyTypeReturnsNullForUnknownClass(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(UnknownClass $obj) {
-    $result = $obj->name;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $propertyFetch = $this->findFirstExprOfType($ast, Expr\PropertyFetch::class);
+        $ast = $this->parseFixture('src/TypeInference/StaticCallOutsideClass.php');
+        $function = $this->findFunctionByName($ast, 'unknownClassParameter');
+        $finder = new \PhpParser\NodeFinder();
+        $propertyFetch = $finder->findFirstInstanceOf($function, Expr\PropertyFetch::class);
+        assert($propertyFetch instanceof Expr\PropertyFetch);
 
         $type = $this->resolver->resolveExpressionType($propertyFetch, $function, $ast);
 
@@ -213,16 +171,9 @@ PHP;
 
     public function testResolveThisInFunctionReturnsNull(): void
     {
-        // $this used in a function (not a method) - findEnclosingClassName returns null
-        $code = <<<'PHP'
-<?php
-function test() {
-    $x = $this;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $thisVar = $this->findThisVariable($ast);
+        $ast = $this->parseFixture('src/TypeInference/StaticCallOutsideClass.php');
+        $function = $this->findFunctionByName($ast, 'thisInFunction');
+        $thisVar = $this->findThisVariable([$function]);
 
         $type = $this->resolver->resolveExpressionType($thisVar, $function, $ast);
 
@@ -231,16 +182,11 @@ PHP;
 
     public function testResolveMethodCallOnUnresolvedTypeReturnsNull(): void
     {
-        // Method call on a variable whose type can't be resolved
-        $code = <<<'PHP'
-<?php
-function test() {
-    $result = $unknown->someMethod();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/StaticCallOutsideClass.php');
+        $function = $this->findFunctionByName($ast, 'methodCallOnUnresolvedType');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($function, Expr\MethodCall::class);
+        assert($methodCall instanceof Expr\MethodCall);
 
         $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
 
@@ -249,17 +195,13 @@ PHP;
 
     public function testResolveCloneExpression(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(DateTime $dt) {
-    $cloned = clone $dt;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $clone = $this->findFirstExprOfType($ast, Expr\Clone_::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'cloneExpression');
+        $finder = new \PhpParser\NodeFinder();
+        $clone = $finder->findFirstInstanceOf($method, Expr\Clone_::class);
+        assert($clone instanceof Expr\Clone_);
 
-        $type = $this->resolver->resolveExpressionType($clone, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($clone, $method, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -267,17 +209,13 @@ PHP;
 
     public function testResolveTernaryExpression(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(DateTime $dt, bool $cond) {
-    $result = $cond ? $dt : null;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $ternary = $this->findFirstExprOfType($ast, Expr\Ternary::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'ternaryExpression');
+        $finder = new \PhpParser\NodeFinder();
+        $ternary = $finder->findFirstInstanceOf($method, Expr\Ternary::class);
+        assert($ternary instanceof Expr\Ternary);
 
-        $type = $this->resolver->resolveExpressionType($ternary, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($ternary, $method, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -285,57 +223,37 @@ PHP;
 
     public function testResolveNullCoalesceExpression(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(?DateTime $dt) {
-    $result = $dt ?? new DateTimeImmutable();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $coalesce = $this->findFirstExprOfType($ast, Expr\BinaryOp\Coalesce::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'nullCoalesceExpression');
+        $finder = new \PhpParser\NodeFinder();
+        $coalesce = $finder->findFirstInstanceOf($method, Expr\BinaryOp\Coalesce::class);
+        assert($coalesce instanceof Expr\BinaryOp\Coalesce);
 
-        $type = $this->resolver->resolveExpressionType($coalesce, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($coalesce, $method, $ast);
 
-        // The left side is ?DateTime|null, full UnionType returned
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
     }
 
     public function testResolveThisInClassMethod(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public function test() {
-        $x = $this;
-    }
-}
-PHP;
-        $ast = $this->parse($code);
-        $method = $this->findFirstStmtOfType($ast, Stmt\ClassMethod::class);
-        $thisVar = $this->findThisVariable($ast);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'thisReference');
+        $thisVar = $this->findThisVariable([$method]);
 
         $type = $this->resolver->resolveExpressionType($thisVar, $method, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
-        self::assertSame('MyClass', $type->fqn);
+        self::assertSame('Fixtures\\TypeInference\\BuiltinTypes', $type->fqn);
     }
 
     public function testResolveNullableParameterType(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(?DateTime $dt) {
-    $x = $dt;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'nullableParameterType');
 
-        $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
+        $type = $this->resolver->resolveVariableType('dt', $method, $method->getStartLine(), $ast);
 
-        // Returns full UnionType with DateTime|null
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
         $classNames = $type->getResolvableClassNames();
@@ -345,18 +263,11 @@ PHP;
 
     public function testResolveUnionParameterType(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(DateTime|DateTimeImmutable $dt) {
-    $x = $dt;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'unionParameterType');
 
-        $type = $this->resolver->resolveVariableType('dt', $function, 2, $ast);
+        $type = $this->resolver->resolveVariableType('dt', $method, $method->getStartLine(), $ast);
 
-        // Returns full UnionType with both classes
         self::assertInstanceOf(UnionType::class, $type);
         $classNames = $type->getResolvableClassNames();
         self::assertCount(2, $classNames);
@@ -366,32 +277,23 @@ PHP;
 
     public function testResolveUnknownVariableReturnsNull(): void
     {
-        $code = <<<'PHP'
-<?php
-function test() {
-    $x = unknown_function();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'unknownVariableCall');
 
-        $type = $this->resolver->resolveVariableType('x', $function, 2, $ast);
+        $type = $this->resolver->resolveVariableType('x', $method, $method->getStartLine() + 1, $ast);
 
         self::assertNull($type);
     }
 
     public function testResolveClosureParameter(): void
     {
-        $code = <<<'PHP'
-<?php
-$fn = function (DateTime $dt) {
-    $x = $dt;
-};
-PHP;
-        $ast = $this->parse($code);
-        $closure = $this->findFirstExprOfType($ast, Expr\Closure::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'closureParameter');
+        $finder = new \PhpParser\NodeFinder();
+        $closure = $finder->findFirstInstanceOf($method, Expr\Closure::class);
+        assert($closure instanceof Expr\Closure);
 
-        $type = $this->resolver->resolveVariableType('dt', $closure, 2, $ast);
+        $type = $this->resolver->resolveVariableType('dt', $closure, $closure->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -399,11 +301,13 @@ PHP;
 
     public function testResolveArrowFunctionParameter(): void
     {
-        $code = '<?php $fn = fn(DateTime $dt) => $dt->format("Y");';
-        $ast = $this->parse($code);
-        $arrow = $this->findFirstExprOfType($ast, Expr\ArrowFunction::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'arrowFunctionParameter');
+        $finder = new \PhpParser\NodeFinder();
+        $arrow = $finder->findFirstInstanceOf($method, Expr\ArrowFunction::class);
+        assert($arrow instanceof Expr\ArrowFunction);
 
-        $type = $this->resolver->resolveVariableType('dt', $arrow, 0, $ast);
+        $type = $this->resolver->resolveVariableType('dt', $arrow, $arrow->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -411,21 +315,14 @@ PHP;
 
     public function testResolveNullableMethodReturnType(): void
     {
-        // Exception::getPrevious() returns ?Throwable
-        $code = <<<'PHP'
-<?php
-function test() {
-    $ex = new Exception();
-    $prev = $ex->getPrevious();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\MethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'nullableMethodReturnType');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
+        assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
 
-        // Returns full nullable type
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
         $classNames = $type->getResolvableClassNames();
@@ -435,50 +332,16 @@ PHP;
 
     public function testChainWithNullableIntermediate(): void
     {
-        // Exception::getPrevious() returns ?Throwable
-        // Throwable::getMessage() returns string
-        $code = <<<'PHP'
-<?php
-function test() {
-    $ex = new Exception();
-    $msg = $ex->getPrevious()->getMessage();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-
-        // Find method calls - traversal is top-down, so outer call first
-        $methodCalls = [];
-        $finder = new class ($methodCalls) extends \PhpParser\NodeVisitorAbstract {
-            /** @var list<Expr\MethodCall> */
-            public array $methodCalls = [];
-
-            /**
-             * @param list<Expr\MethodCall> $methodCalls
-             */
-            public function __construct(array &$methodCalls)
-            {
-                $this->methodCalls = &$methodCalls;
-            }
-
-            public function enterNode(\PhpParser\Node $node): ?int
-            {
-                if ($node instanceof Expr\MethodCall) {
-                    $this->methodCalls[] = $node;
-                }
-                return null;
-            }
-        };
-        $traverser = new \PhpParser\NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'chainWithNullableIntermediate');
+        $methodCalls = $this->findAllExprsOfType([$method], Expr\MethodCall::class);
 
         // methodCalls[0] is getMessage (outer), methodCalls[1] is getPrevious (inner)
-        $getMessageCall = $finder->methodCalls[0];
-        $getPreviousCall = $finder->methodCalls[1];
+        $getMessageCall = $methodCalls[0];
+        $getPreviousCall = $methodCalls[1];
 
         // getPrevious() returns ?Throwable as a UnionType
-        $prevType = $this->resolver->resolveExpressionType($getPreviousCall, $function, $ast);
+        $prevType = $this->resolver->resolveExpressionType($getPreviousCall, $method, $ast);
         self::assertInstanceOf(UnionType::class, $prevType);
         self::assertTrue($prevType->isNullable());
         $classNames = $prevType->getResolvableClassNames();
@@ -486,7 +349,7 @@ PHP;
         self::assertSame(Throwable::class, $classNames[0]->fqn);
 
         // getMessage() returns string as PrimitiveType
-        $msgType = $this->resolver->resolveExpressionType($getMessageCall, $function, $ast);
+        $msgType = $this->resolver->resolveExpressionType($getMessageCall, $method, $ast);
         self::assertInstanceOf(PrimitiveType::class, $msgType);
         self::assertSame('string', $msgType->format());
     }
@@ -498,80 +361,6 @@ PHP;
     {
         $parser = new ParserService();
         return $parser->parse(new TextDocument('file:///test.php', 'php', 1, $code)) ?? [];
-    }
-
-    /**
-     * @template T of Stmt
-     * @param array<Stmt> $ast
-     * @param class-string<T> $type
-     * @return T
-     */
-    private function findFirstStmtOfType(array $ast, string $type): Stmt
-    {
-        foreach ($ast as $node) {
-            if ($node instanceof $type) {
-                return $node;
-            }
-            if ($node instanceof Stmt\Class_) {
-                foreach ($node->stmts as $stmt) {
-                    if ($stmt instanceof $type) {
-                        return $stmt;
-                    }
-                }
-            }
-            if ($node instanceof Stmt\Namespace_) {
-                foreach ($node->stmts as $stmt) {
-                    if ($stmt instanceof $type) {
-                        return $stmt;
-                    }
-                }
-            }
-        }
-        throw new \RuntimeException("Could not find statement of type $type");
-    }
-
-    /**
-     * @template T of Expr
-     * @param array<Stmt> $ast
-     * @param class-string<T> $type
-     * @return T
-     */
-    private function findFirstExprOfType(array $ast, string $type): Expr
-    {
-        $found = null;
-        $finder = new class ($type, $found) extends \PhpParser\NodeVisitorAbstract {
-            public ?Expr $found = null;
-            /** @var class-string<Expr> */
-            private string $type;
-
-            /**
-             * @param class-string<Expr> $type
-             */
-            public function __construct(string $type, ?Expr &$found)
-            {
-                $this->type = $type;
-                $this->found = &$found;
-            }
-
-            public function enterNode(\PhpParser\Node $node): ?int
-            {
-                if ($node instanceof $this->type && $this->found === null) {
-                    $this->found = $node;
-                    return \PhpParser\NodeTraverser::STOP_TRAVERSAL;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new \PhpParser\NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        if ($finder->found === null) {
-            throw new \RuntimeException("Could not find expression of type $type");
-        }
-        assert($finder->found instanceof $type);
-        return $finder->found;
     }
 
     /**
@@ -618,17 +407,13 @@ PHP;
 
     public function testResolveNullsafeMethodCall(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(?Exception $ex) {
-    $msg = $ex?->getMessage();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\NullsafeMethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'nullsafeMethodCall');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($method, Expr\NullsafeMethodCall::class);
+        assert($methodCall instanceof Expr\NullsafeMethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('string', $type->format());
@@ -636,36 +421,26 @@ PHP;
 
     public function testResolveNullsafePropertyFetch(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(?Exception $ex) {
-    $msg = $ex?->message;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $propertyFetch = $this->findFirstExprOfType($ast, Expr\NullsafePropertyFetch::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'nullsafePropertyFetch');
+        $finder = new \PhpParser\NodeFinder();
+        $propertyFetch = $finder->findFirstInstanceOf($method, Expr\NullsafePropertyFetch::class);
+        assert($propertyFetch instanceof Expr\NullsafePropertyFetch);
 
-        // Exception::$message is a protected property - type resolution returns null
-        $type = $this->resolver->resolveExpressionType($propertyFetch, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($propertyFetch, $method, $ast);
         self::assertNull($type);
     }
 
     public function testResolveNullsafeMethodCallChain(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(?Exception $ex) {
-    $prev = $ex?->getPrevious();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFirstStmtOfType($ast, Stmt\Function_::class);
-        $methodCall = $this->findFirstExprOfType($ast, Expr\NullsafeMethodCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'nullsafeMethodCallChain');
+        $finder = new \PhpParser\NodeFinder();
+        $methodCall = $finder->findFirstInstanceOf($method, Expr\NullsafeMethodCall::class);
+        assert($methodCall instanceof Expr\NullsafeMethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
 
-        // getPrevious returns ?Throwable
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
     }
@@ -710,69 +485,38 @@ PHP;
 
     public function testResolveNamespacedFunctionReturnType(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-
-class Config {
-    public function get(string $key): mixed { return null; }
-}
-
-function getConfig(): Config { return new Config(); }
-
-function test(): void {
-    $config = getConfig();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFunctionByName($ast, 'test');
-        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+        $ast = $this->parseFixture('src/TypeInference/FunctionTypes.php');
+        $function = $this->findFunctionByName($ast, 'testNamespacedFunction');
+        $finder = new \PhpParser\NodeFinder();
+        $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
+        assert($funcCall instanceof Expr\FuncCall);
 
         $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
-        self::assertSame('App\\Config', $type->fqn);
+        self::assertSame('Fixtures\\Domain\\User', $type->fqn);
     }
 
     public function testResolveVariableFromNamespacedFunctionCall(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
+        $ast = $this->parseFixture('src/TypeInference/FunctionTypes.php');
+        $function = $this->findFunctionByName($ast, 'testNamespacedFunctionUsage');
 
-class Config {
-    public function get(string $key): mixed { return null; }
-}
-
-function getConfig(): Config { return new Config(); }
-
-function test(): void {
-    $config = getConfig();
-    echo $config;
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFunctionByName($ast, 'test');
-
-        $type = $this->resolver->resolveVariableType('config', $function, 11, $ast);
+        $type = $this->resolver->resolveVariableType('user', $function, $function->getStartLine() + 1, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
-        self::assertSame('App\\Config', $type->fqn);
+        self::assertSame('Fixtures\\Domain\\User', $type->fqn);
     }
 
     public function testResolveBuiltinFunctionReturnType(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(): void {
-    $len = strlen("hello");
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFunctionByName($ast, 'test');
-        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'builtinFunctionCall');
+        $finder = new \PhpParser\NodeFinder();
+        $funcCall = $finder->findFirstInstanceOf($method, Expr\FuncCall::class);
+        assert($funcCall instanceof Expr\FuncCall);
 
-        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, $method, $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('int', $type->format());
@@ -780,46 +524,26 @@ PHP;
 
     public function testResolveTopLevelFunctionReturnType(): void
     {
-        $code = <<<'PHP'
-<?php
-class Config {
-    public function get(): string { return ''; }
-}
-
-function getConfig(): Config {
-    return new Config();
-}
-
-function test(): void {
-    $config = getConfig();
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFunctionByName($ast, 'test');
-        $funcCall = $this->findFirstExprOfType($ast, Expr\FuncCall::class);
+        $ast = $this->parseFixture('TypeInference/GlobalFunction.php');
+        $function = $this->findFunctionByName($ast, 'testGlobalFunction');
+        $finder = new \PhpParser\NodeFinder();
+        $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
+        assert($funcCall instanceof Expr\FuncCall);
 
         $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
-        self::assertSame('Config', $type->fqn);
+        self::assertSame('GlobalConfig', $type->fqn);
     }
 
     public function testResolveDynamicFunctionCallReturnsNull(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(): void {
-    $func = 'strlen';
-    $result = $func("hello");
-}
-PHP;
-        $ast = $this->parse($code);
-        $function = $this->findFunctionByName($ast, 'test');
-        $funcCalls = $this->findAllExprsOfType($ast, Expr\FuncCall::class);
-        // Get the second FuncCall ($func("hello")), not $func = 'strlen'
+        $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
+        $method = $this->findMethodByName($ast, 'dynamicFunctionCall');
+        $funcCalls = $this->findAllExprsOfType([$method], Expr\FuncCall::class);
         $dynamicCall = $funcCalls[0];
 
-        $type = $this->resolver->resolveExpressionType($dynamicCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($dynamicCall, $method, $ast);
 
         self::assertNull($type);
     }

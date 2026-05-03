@@ -9,7 +9,8 @@
             "Fixtures\\": "src/"
         },
         "classmap": [
-            "Autoload/Classmap/"
+            "Autoload/Classmap/",
+            "TypeInference/"
         ]
     }
 }
