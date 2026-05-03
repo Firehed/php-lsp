@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PhpParser\Node\Expr\MethodCall;
@@ -26,6 +27,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MemberAccessResolver::class)]
 class MemberAccessResolverTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private MemberAccessResolver $resolver;
 
     protected function setUp(): void
@@ -42,27 +45,19 @@ class MemberAccessResolverTest extends TestCase
 
     public function testResolveObjectClassName(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(\Exception $e) {
-    $e->getMessage();
-}
-PHP;
+        $code = $this->loadFixture('src/TypeInference/BuiltinTypes.php');
         $ast = $this->parse($code);
         $methodCall = $this->findFirst($ast, MethodCall::class);
 
         $result = $this->resolver->resolveObjectClassName($methodCall->var, $ast);
 
         self::assertNotNull($result);
-        self::assertSame('Exception', $result->fqn);
+        self::assertSame('DateTime', $result->fqn);
     }
 
     public function testResolveObjectClassNameReturnsNullForUnknownVariable(): void
     {
-        $code = <<<'PHP'
-<?php
-$unknown->foo();
-PHP;
+        $code = $this->loadFixture('src/TypeInference/StaticCallOutsideClass.php');
         $ast = $this->parse($code);
         $methodCall = $this->findFirst($ast, MethodCall::class);
 
