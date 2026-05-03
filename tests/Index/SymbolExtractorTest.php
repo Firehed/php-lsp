@@ -38,6 +38,7 @@ class SymbolExtractorTest extends TestCase
 
         self::assertNotEmpty($functions);
         $func = reset($functions);
+        self::assertNotFalse($func);
         self::assertSame('getGlobalConfig', $func->name);
         self::assertSame('getGlobalConfig', $func->fullyQualifiedName);
     }
@@ -69,6 +70,7 @@ class SymbolExtractorTest extends TestCase
 
         self::assertNotEmpty($classes);
         $class = reset($classes);
+        self::assertNotFalse($class);
         self::assertSame('User', $class->name);
         self::assertSame('Fixtures\\Domain\\User', $class->fullyQualifiedName);
     }
@@ -85,6 +87,7 @@ class SymbolExtractorTest extends TestCase
 
         self::assertNotEmpty($methods);
         $method = reset($methods);
+        self::assertNotFalse($method);
         self::assertSame('getId', $method->name);
         self::assertSame('Fixtures\\Domain\\Entity::getId', $method->fullyQualifiedName);
         self::assertSame('Entity', $method->containerName);
