@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\ContextDetector;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -12,6 +13,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ContextDetector::class)]
 class ContextDetectorTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     // =========================================================================
     // Valid completion contexts
     // =========================================================================
@@ -30,12 +33,7 @@ class ContextDetectorTest extends TestCase
 
     public function testCompletableInFunctionBody(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(): void
-{
-    $x = new
-PHP;
+        $code = $this->loadFixture('ContextDetector/function_body_incomplete.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -69,21 +67,13 @@ PHP;
 
     public function testNotCompletableInMultiLineComment(): void
     {
-        $code = <<<'PHP'
-<?php
-/*
- * Comment $this->
-PHP;
+        $code = $this->loadFixture('ContextDetector/multiline_comment_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInDocblock(): void
     {
-        $code = <<<'PHP'
-<?php
-/**
- * @param string $var
-PHP;
+        $code = $this->loadFixture('ContextDetector/docblock_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -126,21 +116,13 @@ PHP;
 
     public function testNotCompletableInHeredoc(): void
     {
-        $code = <<<'PHP'
-<?php
-$x = <<<HTML
-<div>Some content
-PHP;
+        $code = $this->loadFixture('ContextDetector/heredoc_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInNowdoc(): void
     {
-        $code = <<<'PHP'
-<?php
-$x = <<<'TEXT'
-Some text content
-PHP;
+        $code = $this->loadFixture('ContextDetector/nowdoc_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -162,13 +144,7 @@ PHP;
 
     public function testCompletableAfterClosedHeredoc(): void
     {
-        $code = <<<'PHP'
-<?php
-$x = <<<HTML
-content
-HTML;
-$this->
-PHP;
+        $code = $this->loadFixture('ContextDetector/heredoc_closed.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
