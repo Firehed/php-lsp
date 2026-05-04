@@ -51,7 +51,7 @@ class DefinitionHandlerTest extends TestCase
             $this->parser,
             $this->memberResolver,
             $this->classRepository,
-            new MemberAccessResolver($typeResolver),
+            new MemberAccessResolver($typeResolver, $this->memberResolver),
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
@@ -538,6 +538,122 @@ class DefinitionHandlerTest extends TestCase
         ]);
 
         $result = $this->handler->handle($request);
+
+        self::assertNull($result);
+    }
+
+    public function testGoToInstancePropertyDefinition(): void
+    {
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'inherited_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(12, $result['range']['start']['line']);
+    }
+
+    public function testGoToStaticPropertyDefinition(): void
+    {
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'staticProperty');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(21, $result['range']['start']['line']);
+    }
+
+    public function testGoToSelfStaticPropertyDefinition(): void
+    {
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'self_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(21, $result['range']['start']['line']);
+    }
+
+    public function testGoToStaticKeywordPropertyDefinition(): void
+    {
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'static_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(21, $result['range']['start']['line']);
+    }
+
+    public function testGoToParentStaticPropertyDefinition(): void
+    {
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'parent_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($parentUri, $result['uri']);
+        self::assertSame(21, $result['range']['start']['line']);
+    }
+
+    public function testGoToNullsafePropertyDefinition(): void
+    {
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager_nullsafe');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(28, $result['range']['start']['line']);
+    }
+
+    public function testGoToGrandparentPropertyDefinition(): void
+    {
+        $grandparentUri = $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'grandparent_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($grandparentUri, $result['uri']);
+        self::assertSame(11, $result['range']['start']['line']);
+    }
+
+    public function testGoToOverriddenPropertyDefinition(): void
+    {
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $childUri = $this->openFixture('src/Inheritance/ChildClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ChildClass.php', 'shared_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($childUri, $result['uri']);
+        self::assertSame(13, $result['range']['start']['line']);
+    }
+
+    public function testReturnsNullForPropertyOnUnknownType(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/UnknownTypeProperty.php', 'untyped_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertNull($result);
+    }
+
+    public function testReturnsNullForBuiltInClassProperty(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/BuiltinUsage.php', 'builtin_class_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
         self::assertNull($result);
     }

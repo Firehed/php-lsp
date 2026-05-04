@@ -16,6 +16,7 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
@@ -40,7 +41,7 @@ class MemberAccessResolverTest extends TestCase
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver);
 
-        $this->resolver = new MemberAccessResolver($typeResolver);
+        $this->resolver = new MemberAccessResolver($typeResolver, $memberResolver);
     }
 
     public function testResolveObjectClassName(): void
@@ -98,6 +99,53 @@ class MemberAccessResolverTest extends TestCase
         )));
     }
 
+    public function testResolvePropertyFetch(): void
+    {
+        $code = $this->loadFixture('src/TypeInference/BuiltinTypes.php');
+        $ast = $this->parse($code);
+        $propertyFetch = $this->findFirst($ast, NullsafePropertyFetch::class);
+
+        $result = $this->resolver->resolvePropertyFetch($propertyFetch, $ast);
+
+        self::assertNotNull($result);
+        self::assertSame('message', $result->name->name);
+    }
+
+    public function testResolvePropertyFetchReturnsNullForUnknownType(): void
+    {
+        $code = $this->loadFixture('EdgeCases/UnknownTypeProperty.php');
+        $ast = $this->parse($code);
+        $propertyFetch = $this->findFirst($ast, PropertyFetch::class);
+
+        $result = $this->resolver->resolvePropertyFetch($propertyFetch, $ast);
+
+        self::assertNull($result);
+    }
+
+    public function testResolvePropertyFetchReturnsNullForDynamicPropertyName(): void
+    {
+        $code = $this->loadFixture('EdgeCases/DynamicAccess.php');
+        $ast = $this->parse($code);
+        $propertyFetches = $this->findAll($ast, PropertyFetch::class);
+        $dynamicFetch = $propertyFetches[count($propertyFetches) - 1];
+
+        $result = $this->resolver->resolvePropertyFetch($dynamicFetch, $ast);
+
+        self::assertNull($result);
+    }
+
+    public function testResolveStaticPropertyFetchReturnsNullForDynamicClassName(): void
+    {
+        $code = $this->loadFixture('EdgeCases/DynamicAccess.php');
+        $ast = $this->parse($code);
+        $staticFetches = $this->findAll($ast, StaticPropertyFetch::class);
+        $dynamicFetch = $staticFetches[count($staticFetches) - 1];
+
+        $result = $this->resolver->resolveStaticPropertyFetch($dynamicFetch);
+
+        self::assertNull($result);
+    }
+
     /**
      * @return array<Stmt>
      */
@@ -120,35 +168,23 @@ class MemberAccessResolverTest extends TestCase
      */
     private function findFirst(array $ast, string $type): \PhpParser\Node
     {
-        $finder = new class ($type) extends \PhpParser\NodeVisitorAbstract {
-            public ?\PhpParser\Node $found = null;
-            /** @var class-string */
-            private string $type;
-
-            /** @param class-string $type */
-            public function __construct(string $type)
-            {
-                $this->type = $type;
-            }
-
-            public function enterNode(\PhpParser\Node $node): ?int
-            {
-                if ($node instanceof $this->type && $this->found === null) {
-                    $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        if ($finder->found === null) {
+        $all = $this->findAll($ast, $type);
+        if (count($all) === 0) {
             throw new \RuntimeException("Could not find node of type $type");
         }
-        assert($finder->found instanceof $type);
-        return $finder->found;
+        return $all[0];
+    }
+
+    /**
+     * @template T of \PhpParser\Node
+     * @param array<Stmt> $ast
+     * @param class-string<T> $type
+     * @return list<T>
+     */
+    private function findAll(array $ast, string $type): array
+    {
+        $finder = new \PhpParser\NodeFinder();
+        /** @var list<T> */
+        return $finder->findInstanceOf($ast, $type);
     }
 }

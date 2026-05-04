@@ -60,7 +60,7 @@ final class Server
         $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver);
-        $memberAccessResolver = new MemberAccessResolver($typeResolver);
+        $memberAccessResolver = new MemberAccessResolver($typeResolver, $memberResolver);
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;

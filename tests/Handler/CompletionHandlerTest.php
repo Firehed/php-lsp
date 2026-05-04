@@ -53,7 +53,7 @@ class CompletionHandlerTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
-        $memberAccessResolver = new MemberAccessResolver($typeResolver);
+        $memberAccessResolver = new MemberAccessResolver($typeResolver, $this->memberResolver);
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->handler = new CompletionHandler(
             $this->documents,
