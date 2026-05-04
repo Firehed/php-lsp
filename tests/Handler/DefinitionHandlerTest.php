@@ -219,7 +219,7 @@ class DefinitionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         self::assertSame($traitUri, $result['uri']);
-        self::assertSame(26, $result['range']['start']['line']);
+        self::assertSame(38, $result['range']['start']['line']);
     }
 
     public function testTraitMethodTakesPrecedenceOverParent(): void

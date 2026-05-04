@@ -33,6 +33,6 @@ $sum = signatureHelpAdd(/*|first_param*/1, 2);
 $sumHover = signatureHelpAdd(1, 2); //hover:signatureHelpAdd
 $greeting = signatureHelpAdd(1, /*|second_param*/2);
 $mapped = array_map(/*|builtin*/fn($x) => $x * 2, [1, 2, 3]);
-$user = new User(/*|constructor*/"id", "name", "email@example.com");
+$user = new User(/*|constructor*/"id", "name", "email@example.com"); //hover:class_instantiation
 $priority = Priority::fromScore(/*|static_call*/50);
 $x/*|outside_call*/ = 1;

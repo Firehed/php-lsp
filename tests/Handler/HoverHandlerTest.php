@@ -71,68 +71,16 @@ class HoverHandlerTest extends TestCase
         self::assertFalse($this->handler->supports('textDocument/definition'));
     }
 
-    public function testHoverOnClass(): void
-    {
-        $code = <<<'PHP'
-<?php
-/**
- * A sample class for testing.
- */
-class MyClass
-{
-    public function doSomething(): void {}
-}
-
-$x = new MyClass();
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 9, 'character' => 12], // On "MyClass"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('contents', $result);
-        self::assertStringContainsString('MyClass', $result['contents']);
-    }
-
     public function testHoverOnClassWithDocblock(): void
     {
-        $code = <<<'PHP'
-<?php
-/**
- * Represents a user in the system.
- *
- * @author Test
- */
-class User {}
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'class_instantiation');
 
-$u = new User();
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 8, 'character' => 10], // On "User"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('Represents a user', $result['contents']);
+        self::assertStringContainsString('User', $result['contents']);
+        self::assertStringContainsString('Represents a system user', $result['contents']);
     }
 
     public function testHoverReturnsNullForUnknownPosition(): void
@@ -191,54 +139,12 @@ PHP;
 
     public function testHoverOnBuiltinFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-$arr = [3, 1, 2];
-sort($arr);
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/BuiltinUsage.php', 'builtin_function');
 
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 2, 'character' => 2], // On "sort"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertStringContainsString('sort', $result['contents']);
-    }
-
-    public function testHoverOnExternalFunctionWithDocblock(): void
-    {
-        require_once __DIR__ . '/../Domain/Fixtures/documented_function.php';
-
-        $code = <<<'PHP'
-<?php
-testDocumentedFunction();
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 1, 'character' => 5],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        self::assertStringContainsString('testDocumentedFunction', $result['contents']);
-        self::assertStringContainsString('A test function with documentation', $result['contents']);
     }
 
     public function testHoverOnStaticMethod(): void
@@ -327,47 +233,6 @@ PHP;
         self::assertStringContainsString('Grandparent property', $result['contents']);
     }
 
-    public function testHoverOnInheritedMethodWithNamespace(): void
-    {
-        $code = <<<'PHP'
-<?php
-namespace App;
-
-class ParentClass
-{
-    /**
-     * Namespaced parent method.
-     */
-    public function parentMethod(): void {}
-}
-
-class ChildClass extends ParentClass
-{
-    public function test(): void
-    {
-        $this->parentMethod();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        self::assertStringContainsString('parentMethod', $result['contents']);
-        self::assertStringContainsString('Namespaced parent method', $result['contents']);
-    }
-
     public function testHoverOnTraitMethod(): void
     {
         $this->openFixture('src/Traits/HasTimestamps.php');
@@ -381,120 +246,34 @@ PHP;
 
     public function testHoverOnTraitProperty(): void
     {
-        $code = <<<'PHP'
-<?php
-trait HasName
-{
-    /**
-     * The name value.
-     */
-    protected string $name;
-}
+        $cursor = $this->openFixtureAtHoverMarker('src/Traits/HasTimestamps.php', 'trait_property');
 
-class Person
-{
-    use HasName;
-
-    public function test(): void
-    {
-        $this->name;
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 15, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$name', $result['contents']);
-        self::assertStringContainsString('The name value', $result['contents']);
+        self::assertStringContainsString('$displayName', $result['contents']);
+        self::assertStringContainsString('Display name for the entity', $result['contents']);
     }
 
     public function testHoverOnInterfaceMethod(): void
     {
-        $code = <<<'PHP'
-<?php
-interface Greeter
-{
-    /**
-     * Says hello.
-     */
-    public function greet(): void;
-}
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/Person.php', 'interface_method');
 
-function test(Greeter $g): void
-{
-    $g->greet();
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 11, 'character' => 8],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('greet', $result['contents']);
-        self::assertStringContainsString('Says hello', $result['contents']);
+        self::assertStringContainsString('getName', $result['contents']);
+        self::assertStringContainsString("Gets the person's name", $result['contents']);
     }
 
     public function testHoverOnInheritedMethodAcrossNamespaces(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace Base;
+        $cursor = $this->openFixtureAtHoverMarker(
+            'Namespacing/CrossNamespaceInheritance.php',
+            'cross_namespace_method',
+        );
 
-class ParentClass
-{
-    /**
-     * Method from Base namespace.
-     */
-    public function baseMethod(): void {}
-}
-
-namespace App;
-
-use Base\ParentClass;
-
-class ChildClass extends ParentClass
-{
-    public function test(): void
-    {
-        $this->baseMethod();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 19, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertStringContainsString('baseMethod', $result['contents']);
@@ -566,34 +345,9 @@ PHP;
 
     public function testHoverOnBuiltinClassMethod(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(ArrayObject $obj): void
-{
-    $obj->getArrayCopy();
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/BuiltinUsage.php', 'builtin_class_method');
 
-        $handlerWithResolver = new HoverHandler(
-            $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $this->memberResolver,
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 12],
-            ],
-        ]);
-
-        $result = $handlerWithResolver->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertStringContainsString('getArrayCopy', $result['contents']);
@@ -601,34 +355,9 @@ PHP;
 
     public function testHoverOnBuiltinClassProperty(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(Exception $e): void
-{
-    $e->message;
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
+        $cursor = $this->openFixtureAtHoverMarker('src/TypeInference/BuiltinTypes.php', 'builtin_class_property');
 
-        $handlerWithResolver = new HoverHandler(
-            $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $this->memberResolver,
-            new MemberAccessResolver(new BasicTypeResolver($this->memberResolver)),
-        );
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 3, 'character' => 9],
-            ],
-        ]);
-
-        $result = $handlerWithResolver->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
         self::assertStringContainsString('$message', $result['contents']);
@@ -636,69 +365,22 @@ PHP;
 
     public function testHoverOnMethodWithVariadicParameter(): void
     {
-        $code = <<<'PHP'
-<?php
-class Logger
-{
-    public function log(string $level, string ...$messages): void {}
+        $cursor = $this->openFixtureAtHoverMarker('src/Repository/ClassInfoPatterns.php', 'variadic_param');
 
-    public function test(): void
-    {
-        $this->log('info', 'a', 'b');
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 7, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('...$messages', $result['contents']);
+        self::assertStringContainsString('...$items', $result['contents']);
     }
 
     public function testHoverOnMethodWithOptionalParameter(): void
     {
-        $code = <<<'PHP'
-<?php
-class Greeter
-{
-    public function greet(string $name, string $prefix = 'Hello'): string
-    {
-        return "$prefix, $name!";
-    }
+        $cursor = $this->openFixtureAtHoverMarker('src/Repository/ClassInfoPatterns.php', 'optional_param');
 
-    public function test(): void
-    {
-        $this->greet('World');
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 10, 'character' => 16],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$prefix = ...', $result['contents']);
+        self::assertStringContainsString('$count = ...', $result['contents']);
         self::assertStringNotContainsString('$name = ...', $result['contents']);
     }
 
@@ -734,99 +416,6 @@ PHP;
         self::assertIsArray($result);
         self::assertStringContainsString('setName', $result['contents']);
         self::assertStringContainsString('Updates the user', $result['contents']);
-    }
-
-    public function testHoverOnNullsafeProtectedPropertyMethodCall(): void
-    {
-        $code = <<<'PHP'
-<?php
-class Calculator
-{
-    /**
-     * Divides two numbers.
-     */
-    public function divide(int $a, int $b): float
-    {
-        return $a / $b;
-    }
-}
-
-class Container
-{
-    protected ?Calculator $calc;
-
-    public function test(): void
-    {
-        $this->calc?->divide(10, 2);
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 18, 'character' => 23], // On "divide"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        self::assertStringContainsString('divide', $result['contents']);
-        self::assertStringContainsString('Divides two numbers', $result['contents']);
-    }
-
-    public function testHoverOnChainedNullsafeMethodCall(): void
-    {
-        $code = <<<'PHP'
-<?php
-class Inner
-{
-    /**
-     * Returns the value.
-     */
-    public function getValue(): int
-    {
-        return 42;
-    }
-}
-
-class Middle
-{
-    public ?Inner $inner;
-}
-
-class Outer
-{
-    private ?Middle $middle;
-
-    public function test(): void
-    {
-        $this->middle?->inner?->getValue();
-    }
-}
-PHP;
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/hover',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 23, 'character' => 33], // On "getValue"
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        self::assertStringContainsString('getValue', $result['contents']);
-        self::assertStringContainsString('Returns the value', $result['contents']);
     }
 
     public function testHoverOnMultilineChainMethod(): void

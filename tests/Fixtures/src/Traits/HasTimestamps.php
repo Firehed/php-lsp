@@ -11,8 +11,20 @@ use DateTimeImmutable;
  */
 trait HasTimestamps
 {
+    /**
+     * When the entity was created.
+     */
     private ?DateTimeImmutable $createdAt = null;
+
+    /**
+     * When the entity was last updated.
+     */
     private ?DateTimeImmutable $updatedAt = null;
+
+    /**
+     * Display name for the entity.
+     */
+    protected string $displayName = '';
 
     public function getCreatedAt(): ?DateTimeImmutable
     {
@@ -32,5 +44,10 @@ trait HasTimestamps
     public function markUpdated(): void
     {
         $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function triggerTraitPropertyHover(): void
+    {
+        echo $this->displayName; //hover:trait_property
     }
 }
