@@ -18,7 +18,10 @@ use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\NullsafePropertyFetch;
+use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
@@ -94,7 +97,7 @@ final class DefinitionHandler implements HandlerInterface
             return null;
         }
 
-        // Check if this is a method name (Identifier) in a method call
+        // Check if this is a method/property name (Identifier) in a member access
         if ($node instanceof Identifier) {
             $parent = $node->getAttribute('parent');
 
@@ -107,6 +110,17 @@ final class DefinitionHandler implements HandlerInterface
             if (MemberAccessResolver::isMethodCall($parent)) {
                 /** @var MethodCall|NullsafeMethodCall $parent */
                 return $this->handleInstanceMethodDefinition($parent, $ast);
+            }
+
+            // Instance property fetch: $obj->property or $obj?->property
+            if (MemberAccessResolver::isPropertyFetch($parent)) {
+                /** @var PropertyFetch|NullsafePropertyFetch $parent */
+                return $this->handleInstancePropertyDefinition($parent, $ast);
+            }
+
+            // Static property fetch: ClassName::$property, self::$property, etc.
+            if ($parent instanceof StaticPropertyFetch) {
+                return $this->handleStaticPropertyDefinition($parent);
             }
         }
 
@@ -229,6 +243,45 @@ final class DefinitionHandler implements HandlerInterface
         }
 
         return $this->createLocationFromFileLine($methodInfo->file, $methodInfo->line);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return array{
+     *   uri: string,
+     *   range: array{
+     *     start: array{line: int, character: int},
+     *     end: array{line: int, character: int},
+     *   },
+     * }|null
+     */
+    private function handleInstancePropertyDefinition(PropertyFetch|NullsafePropertyFetch $fetch, array $ast): ?array
+    {
+        $propertyInfo = $this->memberAccessResolver->resolvePropertyFetch($fetch, $ast);
+        if ($propertyInfo === null) {
+            return null;
+        }
+
+        return $this->createLocationFromFileLine($propertyInfo->file, $propertyInfo->line);
+    }
+
+    /**
+     * @return array{
+     *   uri: string,
+     *   range: array{
+     *     start: array{line: int, character: int},
+     *     end: array{line: int, character: int},
+     *   },
+     * }|null
+     */
+    private function handleStaticPropertyDefinition(StaticPropertyFetch $fetch): ?array
+    {
+        $propertyInfo = $this->memberAccessResolver->resolveStaticPropertyFetch($fetch);
+        if ($propertyInfo === null) {
+            return null;
+        }
+
+        return $this->createLocationFromFileLine($propertyInfo->file, $propertyInfo->line);
     }
 
     /**
