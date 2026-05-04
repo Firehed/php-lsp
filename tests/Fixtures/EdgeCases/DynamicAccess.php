@@ -16,7 +16,14 @@ class DynamicAccessClass
         $method = 'foo';
         $this->$method(); //hover:dynamic_instance_method
     }
+
+    public function testDynamicInstanceProperty(): void
+    {
+        $prop = 'foo';
+        echo $this->$prop; //hover:dynamic_instance_property
+    }
 }
 
 $class = 'SomeClass';
 $class::method(); //hover:dynamic_class_name
+$class::$staticProp; //hover:dynamic_class_property

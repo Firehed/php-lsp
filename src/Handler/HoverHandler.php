@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -293,37 +292,22 @@ final class HoverHandler implements HandlerInterface
      */
     private function getPropertyHover(PropertyFetch|NullsafePropertyFetch $fetch, array $ast): ?string
     {
-        $propertyName = $fetch->name;
-        if (!$propertyName instanceof Identifier) {
+        $propertyInfo = $this->memberAccessResolver->resolvePropertyFetch($fetch, $ast);
+        if ($propertyInfo === null) {
             return null;
         }
 
-        $className = $this->memberAccessResolver->resolveObjectClassName($fetch->var, $ast);
-        if ($className === null) {
-            return null;
-        }
-
-        return $this->getPropertyHoverForClass($className->fqn, $propertyName->toString());
+        return $this->formatPropertyHover($propertyInfo);
     }
 
     private function getStaticPropertyHover(StaticPropertyFetch $fetch): ?string
     {
-        $propertyName = $fetch->name;
-        if (!$propertyName instanceof Node\VarLikeIdentifier) {
+        $propertyInfo = $this->memberAccessResolver->resolveStaticPropertyFetch($fetch);
+        if ($propertyInfo === null) {
             return null;
         }
 
-        $class = $fetch->class;
-        if (!$class instanceof Name) {
-            return null;
-        }
-
-        $className = ScopeFinder::resolveClassNameInContext($class, $fetch);
-        if ($className === null) {
-            return null;
-        }
-
-        return $this->getPropertyHoverForClass($className, $propertyName->toString());
+        return $this->formatPropertyHover($propertyInfo);
     }
 
     /**
@@ -341,23 +325,6 @@ final class HoverHandler implements HandlerInterface
         }
 
         return $this->formatMethodHover($methodInfo);
-    }
-
-    /**
-     * @param class-string $classNameStr
-     */
-    private function getPropertyHoverForClass(string $classNameStr, string $propertyNameStr): ?string
-    {
-        $className = new ClassName($classNameStr);
-        $propertyName = new PropertyName($propertyNameStr);
-
-        // Hover shows all members regardless of caller context
-        $propertyInfo = $this->memberResolver->findProperty($className, $propertyName, Visibility::Private);
-        if ($propertyInfo === null) {
-            return null;
-        }
-
-        return $this->formatPropertyHover($propertyInfo);
     }
 
     private function formatMethodHover(MethodInfo $method): string

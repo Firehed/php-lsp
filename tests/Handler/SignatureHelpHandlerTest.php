@@ -50,7 +50,7 @@ class SignatureHelpHandlerTest extends TestCase
             $this->documents,
             $this->parser,
             $this->memberResolver,
-            new MemberAccessResolver($typeResolver),
+            new MemberAccessResolver($typeResolver, $this->memberResolver),
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
