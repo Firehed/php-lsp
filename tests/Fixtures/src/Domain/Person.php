@@ -9,7 +9,15 @@ namespace Fixtures\Domain;
  */
 interface Person
 {
+    /**
+     * Gets the person's name.
+     */
     public function getName(): string;
 
     public function getAge(): int;
+}
+
+function usePersonInterface(Person $p): void
+{
+    $p->getName(); //hover:interface_method
 }

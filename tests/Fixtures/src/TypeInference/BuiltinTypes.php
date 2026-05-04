@@ -118,7 +118,7 @@ class BuiltinTypes
 
     public function nullsafePropertyFetch(?Exception $ex): void
     {
-        $msg = $ex?->message;
+        $msg = $ex?->message; //hover:builtin_class_property
     }
 
     public function nullsafeMethodCallChain(?Exception $ex): ?Throwable

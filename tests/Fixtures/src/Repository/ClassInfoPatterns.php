@@ -59,4 +59,14 @@ class ClassInfoPatterns
     {
         return $this;
     }
+
+    public function triggerVariadicHover(): void
+    {
+        $this->withParams('test', 0, 'a', 'b'); //hover:variadic_param
+    }
+
+    public function triggerOptionalHover(): void
+    {
+        $this->withParams('test'); //hover:optional_param
+    }
 }
