@@ -522,7 +522,7 @@ class ScopeFinderTest extends TestCase
     {
         $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
-        $staticCall = self::findStaticCallNode('staticMethod', $ast);
+        $staticCall = self::findStaticCallNode('anotherStaticMethod', $ast);
         self::assertNotNull($staticCall);
         self::assertInstanceOf(Node\Name::class, $staticCall->class);
 

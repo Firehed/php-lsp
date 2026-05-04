@@ -42,4 +42,9 @@ class NewKeywords extends ParentClass
     {
         parent::staticMethod();
     }
+
+    public function callExplicitClassStaticMethod(): void
+    {
+        ParentClass::anotherStaticMethod();
+    }
 }
