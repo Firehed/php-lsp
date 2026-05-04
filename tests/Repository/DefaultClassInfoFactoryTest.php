@@ -134,11 +134,13 @@ final class DefaultClassInfoFactoryTest extends TestCase
 
     public function testFromAstNodeExtractsInterfaceExtends(): void
     {
-        $node = $this->parseClassFromFixture('src/Repository/UserRepository.php');
+        $node = $this->parseClassFromFixture('src/Repository/Repository.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertSame(ClassKind::Interface_, $info->kind);
+        self::assertCount(1, $info->interfaces);
+        self::assertSame('Countable', $info->interfaces[0]->fqn);
     }
 
     public function testFromAstNodeExtractsEnumImplements(): void
