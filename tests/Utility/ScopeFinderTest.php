@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Utility;
 
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
@@ -17,17 +18,11 @@ use PHPUnit\Framework\TestCase;
 class ScopeFinderTest extends TestCase
 {
     use AstTestHelperTrait;
+    use LoadsFixturesTrait;
 
     public function testFindEnclosingScopeReturnsMethodForThis(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {
-        $this->foo();
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/Utility/ScopePatterns.php');
         $ast = self::parseWithParents($code);
         $thisNode = self::findVariableNode('this', $ast);
 
@@ -35,15 +30,12 @@ PHP;
         $scope = ScopeFinder::findEnclosingScope($thisNode);
 
         self::assertInstanceOf(Stmt\ClassMethod::class, $scope);
-        self::assertSame('myMethod', $scope->name->toString());
+        self::assertSame('methodWithThis', $scope->name->toString());
     }
 
     public function testFindEnclosingScopeReturnsNullOutsideFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-$globalVar = 1;
-PHP;
+        $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
         $varNode = self::findVariableNode('globalVar', $ast);
 
@@ -55,32 +47,22 @@ PHP;
 
     public function testFindEnclosingScopeReturnsFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-function myFunction(): void {
-    $var = 1;
-}
-PHP;
+        $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $varNode = self::findVariableNode('functionVar', $ast);
 
         self::assertNotNull($varNode);
         $scope = ScopeFinder::findEnclosingScope($varNode);
 
         self::assertInstanceOf(Stmt\Function_::class, $scope);
-        self::assertSame('myFunction', $scope->name->toString());
+        self::assertSame('utilityFunction', $scope->name->toString());
     }
 
     public function testFindEnclosingScopeReturnsClosure(): void
     {
-        $code = <<<'PHP'
-<?php
-$fn = function () {
-    $var = 1;
-};
-PHP;
+        $code = $this->loadFixture('src/Utility/ScopePatterns.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $varNode = self::findVariableNode('closureVar', $ast);
 
         self::assertNotNull($varNode);
         $scope = ScopeFinder::findEnclosingScope($varNode);
@@ -90,12 +72,9 @@ PHP;
 
     public function testFindEnclosingScopeReturnsArrowFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-$fn = fn() => $var = 1;
-PHP;
+        $code = $this->loadFixture('src/Utility/ScopePatterns.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $varNode = self::findVariableNode('arrowVar', $ast);
 
         self::assertNotNull($varNode);
         $scope = ScopeFinder::findEnclosingScope($varNode);
@@ -105,14 +84,7 @@ PHP;
 
     public function testFindEnclosingClassNodeReturnsClass(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {
-        $this->foo();
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/Utility/ScopePatterns.php');
         $ast = self::parseWithParents($code);
         $thisNode = self::findVariableNode('this', $ast);
 
@@ -121,17 +93,12 @@ PHP;
 
         self::assertInstanceOf(Stmt\Class_::class, $classNode);
         self::assertNotNull($classNode->name);
-        self::assertSame('MyClass', $classNode->name->toString());
+        self::assertSame('ScopePatterns', $classNode->name->toString());
     }
 
     public function testFindEnclosingClassNodeReturnsInterface(): void
     {
-        $code = <<<'PHP'
-<?php
-interface MyInterface {
-    public function myMethod(): void;
-}
-PHP;
+        $code = $this->loadFixture('src/Domain/Entity.php');
         $ast = self::parseWithParents($code);
 
         $visitor = new class () extends \PhpParser\NodeVisitorAbstract {
@@ -159,16 +126,9 @@ PHP;
 
     public function testFindEnclosingClassNodeReturnsTrait(): void
     {
-        $code = <<<'PHP'
-<?php
-trait MyTrait {
-    public function myMethod(): void {
-        $var = 1;
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/Traits/HasTimestamps.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $varNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($varNode);
         $classNode = ScopeFinder::findEnclosingClassNode($varNode);
@@ -178,19 +138,9 @@ PHP;
 
     public function testFindEnclosingClassNodeReturnsEnum(): void
     {
-        $code = <<<'PHP'
-<?php
-enum Status: string {
-    case Active = 'active';
-
-    public function label(): string {
-        $var = 1;
-        return $this->value;
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/Enum/Status.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $varNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($varNode);
         $classNode = ScopeFinder::findEnclosingClassNode($varNode);
@@ -200,14 +150,9 @@ PHP;
 
     public function testFindEnclosingClassNodeReturnsNullOutsideClass(): void
     {
-        $code = <<<'PHP'
-<?php
-function globalFunc(): void {
-    $var = 1;
-}
-PHP;
+        $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $varNode = self::findVariableNode('functionVar', $ast);
 
         self::assertNotNull($varNode);
         $classNode = ScopeFinder::findEnclosingClassNode($varNode);
@@ -217,54 +162,33 @@ PHP;
 
     public function testFindEnclosingClassNameReturnsShortName(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public function myMethod(): void {
-        $this->foo();
-    }
-}
-PHP;
+        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
         $ast = self::parseWithParents($code);
         $thisNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($thisNode);
         $className = ScopeFinder::findEnclosingClassName($thisNode);
 
-        self::assertSame('MyClass', $className);
+        self::assertSame('GlobalConfig', $className);
     }
 
     public function testFindEnclosingClassNameReturnsFqn(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Models;
-
-class User {
-    public function getName(): string {
-        $this->name;
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/Domain/User.php');
         $ast = self::parseWithParents($code);
         $thisNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($thisNode);
         $className = ScopeFinder::findEnclosingClassName($thisNode);
 
-        self::assertSame('App\Models\User', $className);
+        self::assertSame('Fixtures\Domain\User', $className);
     }
 
     public function testFindEnclosingClassNameReturnsNullOutsideClass(): void
     {
-        $code = <<<'PHP'
-<?php
-function globalFunc(): void {
-    $var = 1;
-}
-PHP;
+        $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $varNode = self::findVariableNode('functionVar', $ast);
 
         self::assertNotNull($varNode);
         $className = ScopeFinder::findEnclosingClassName($varNode);
@@ -274,189 +198,157 @@ PHP;
 
     public function testFindEnclosingClassNameReturnsNullForAnonymousClass(): void
     {
-        $code = <<<'PHP'
-<?php
-$obj = new class {
-    public function myMethod(): void {
-        $var = 1;
-    }
-};
-PHP;
+        $code = $this->loadFixture('src/Utility/AnonymousClassScope.php');
         $ast = self::parseWithParents($code);
-        $varNode = self::findVariableNode('var', $ast);
+        $thisNode = self::findVariableNode('this', $ast);
 
-        self::assertNotNull($varNode);
-        $className = ScopeFinder::findEnclosingClassName($varNode);
+        self::assertNotNull($thisNode);
+        $className = ScopeFinder::findEnclosingClassName($thisNode);
 
         self::assertNull($className);
     }
 
     public function testNodeContainsLineReturnsTrueWhenLineInRange(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public function test(): void {}
-}
-PHP;
+        $code = $this->loadFixture('src/Utility/ScopePatterns.php');
         $ast = self::parseWithParents($code);
-        $classNode = $ast[0];
-        self::assertInstanceOf(Stmt\Class_::class, $classNode);
+        $namespace = $ast[1];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $classNode = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($classNode);
 
-        // Line 1 (0-indexed) is inside the class (lines 2-4 in 1-indexed)
-        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, 1));
-        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, 2));
-        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, 3));
+        // nodeContainsLine uses 0-indexed lines, getStartLine/getEndLine return 1-indexed
+        $startLine = $classNode->getStartLine() - 1;
+        $endLine = $classNode->getEndLine() - 1;
+        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, $startLine));
+        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, $endLine));
+        self::assertTrue(ScopeFinder::nodeContainsLine($classNode, (int)(($startLine + $endLine) / 2)));
     }
 
     public function testNodeContainsLineReturnsFalseWhenLineOutsideRange(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-}
-PHP;
+        $code = $this->loadFixture('src/Utility/ScopePatterns.php');
         $ast = self::parseWithParents($code);
-        $classNode = $ast[0];
-        self::assertInstanceOf(Stmt\Class_::class, $classNode);
+        $namespace = $ast[1];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $classNode = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($classNode);
 
-        // Line 0 is <?php, before the class
-        self::assertFalse(ScopeFinder::nodeContainsLine($classNode, 0));
-        // Line 10 is well after the class ends
-        self::assertFalse(ScopeFinder::nodeContainsLine($classNode, 10));
+        // nodeContainsLine uses 0-indexed lines
+        $startLine = $classNode->getStartLine() - 1;
+        $endLine = $classNode->getEndLine() - 1;
+        self::assertFalse(ScopeFinder::nodeContainsLine($classNode, $startLine - 2));
+        self::assertFalse(ScopeFinder::nodeContainsLine($classNode, $endLine + 10));
     }
 
     public function testFindClassAtLineReturnsClassContainingLine(): void
     {
-        $code = <<<'PHP'
-<?php
-class First {}
-
-class Second {
-    public function test(): void {}
-}
-PHP;
+        $code = $this->loadFixture('src/Mixed/MultipleClasses.php');
         $ast = self::parseWithParents($code);
+        $namespace = $ast[1];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $secondClass = $namespace->stmts[1];
+        self::assertInstanceOf(Stmt\Class_::class, $secondClass);
 
-        // Line 4 (0-indexed) is inside Second class
-        $class = ScopeFinder::findClassAtLine($ast, 4);
+        $midLine = (int)(($secondClass->getStartLine() + $secondClass->getEndLine()) / 2);
+        $class = ScopeFinder::findClassAtLine($ast, $midLine);
         self::assertNotNull($class);
         self::assertSame('Second', $class->name?->toString());
     }
 
     public function testFindClassAtLineReturnsNullWhenNotInClass(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {}
-
-$var = 1;
-PHP;
+        $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
 
-        // Line 3 (0-indexed) is after the class
-        $class = ScopeFinder::findClassAtLine($ast, 3);
+        $class = ScopeFinder::findClassAtLine($ast, 1000);
         self::assertNull($class);
     }
 
     public function testResolveExtendsNameReturnsNullWhenNoExtends(): void
     {
-        $code = '<?php class MyClass {}';
+        $code = $this->loadFixture('src/Utility/ScopePatterns.php');
         $ast = self::parseWithParents($code);
-        $class = $ast[0];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $namespace = $ast[1];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($class);
 
         self::assertNull(ScopeFinder::resolveExtendsName($class));
     }
 
     public function testResolveExtendsNameReturnsParentName(): void
     {
-        $code = '<?php class Child extends ParentClass {}';
+        $code = $this->loadFixture('Inheritance/NoNamespaceChild.php');
         $ast = self::parseWithParents($code);
-        $class = $ast[0];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $class = self::findFirstClassLike($ast, Stmt\Class_::class);
+        self::assertNotNull($class);
 
-        self::assertSame('ParentClass', ScopeFinder::resolveExtendsName($class));
+        self::assertSame('NoNamespaceParent', ScopeFinder::resolveExtendsName($class));
     }
 
     public function testResolveExtendsNameUsesResolvedNameWhenAvailable(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-use Other\ParentClass;
-class Child extends ParentClass {}
-PHP;
+        $code = $this->loadFixture('src/Utility/ImportedExtends.php');
         $ast = self::parseWithParents($code);
-        $namespace = $ast[0];
+        $namespace = $ast[1];
         self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = $namespace->stmts[1];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($class);
 
-        self::assertSame('Other\ParentClass', ScopeFinder::resolveExtendsName($class));
+        self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveExtendsName($class));
     }
 
     public function testResolveNameReturnsRawNameWhenNoResolvedAttribute(): void
     {
-        $code = '<?php class Foo extends Bar {}';
+        $code = $this->loadFixture('src/Inheritance/ParentClass.php');
         $ast = self::parseWithParents($code);
-        $class = $ast[0];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $namespace = $ast[1];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($class);
         self::assertNotNull($class->extends);
 
-        self::assertSame('Bar', ScopeFinder::resolveName($class->extends));
+        self::assertSame('Fixtures\Inheritance\Grandparent', ScopeFinder::resolveName($class->extends));
     }
 
     public function testResolveNameUsesResolvedNameWhenAvailable(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-use Other\Bar;
-class Foo extends Bar {}
-PHP;
+        $code = $this->loadFixture('src/Utility/ImportedExtends.php');
         $ast = self::parseWithParents($code);
-        $namespace = $ast[0];
+        $namespace = $ast[1];
         self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = $namespace->stmts[1];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($class);
         self::assertNotNull($class->extends);
 
-        self::assertSame('Other\Bar', ScopeFinder::resolveName($class->extends));
+        self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveName($class->extends));
     }
 
     public function testIterateTopLevelStatementsYieldsStatementsDirectly(): void
     {
-        $code = <<<'PHP'
-<?php
-class First {}
-class Second {}
-function myFunc() {}
-PHP;
+        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
         $ast = self::parseWithParents($code);
 
         $statements = iterator_to_array(ScopeFinder::iterateTopLevelStatements($ast));
+        $classLikes = array_filter($statements, fn($s) => $s instanceof Stmt\ClassLike);
+        $functions = array_filter($statements, fn($s) => $s instanceof Stmt\Function_);
 
-        self::assertCount(3, $statements);
-        self::assertInstanceOf(Stmt\Class_::class, $statements[0]);
-        self::assertInstanceOf(Stmt\Class_::class, $statements[1]);
-        self::assertInstanceOf(Stmt\Function_::class, $statements[2]);
+        self::assertCount(1, $classLikes);
+        self::assertCount(2, $functions);
+        $class = reset($classLikes);
+        self::assertInstanceOf(Stmt\Class_::class, $class);
+        self::assertSame('GlobalConfig', $class->name?->toString());
     }
 
     public function testIterateTopLevelStatementsFlattensNamespace(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-
-class First {}
-class Second {}
-PHP;
+        $code = $this->loadFixture('src/Mixed/MultipleClasses.php');
         $ast = self::parseWithParents($code);
 
         $statements = iterator_to_array(ScopeFinder::iterateTopLevelStatements($ast));
 
-        self::assertCount(2, $statements);
+        self::assertGreaterThanOrEqual(2, count($statements));
         self::assertInstanceOf(Stmt\Class_::class, $statements[0]);
         self::assertSame('First', $statements[0]->name?->toString());
         self::assertInstanceOf(Stmt\Class_::class, $statements[1]);
@@ -465,10 +357,7 @@ PHP;
 
     public function testFindFunctionReturnsNullWhenNotFound(): void
     {
-        $code = <<<'PHP'
-<?php
-function other(): void {}
-PHP;
+        $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
 
         self::assertNull(ScopeFinder::findFunction('nonexistent', $ast));
@@ -476,89 +365,64 @@ PHP;
 
     public function testFindFunctionReturnsMatchingFunction(): void
     {
-        $code = <<<'PHP'
-<?php
-function first(): void {}
-function second(): int { return 1; }
-function third(): string { return ''; }
-PHP;
+        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
         $ast = self::parseWithParents($code);
 
-        $found = ScopeFinder::findFunction('second', $ast);
+        $found = ScopeFinder::findFunction('testGlobalFunction', $ast);
 
         self::assertNotNull($found);
-        self::assertSame('second', $found->name->toString());
+        self::assertSame('testGlobalFunction', $found->name->toString());
     }
 
     public function testFindFunctionWorksWithNamespace(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Utils;
-
-function helper(): void {}
-PHP;
+        $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
 
-        $found = ScopeFinder::findFunction('helper', $ast);
+        $found = ScopeFinder::findFunction('utilityFunction', $ast);
 
         self::assertNotNull($found);
-        self::assertSame('helper', $found->name->toString());
+        self::assertSame('utilityFunction', $found->name->toString());
     }
 
     public function testResolveClassNameDelegatesToResolveName(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-use Other\Bar;
-class Foo extends Bar {}
-PHP;
+        $code = $this->loadFixture('src/Utility/ImportedExtends.php');
         $ast = self::parseWithParents($code);
-        $namespace = $ast[0];
+        $namespace = $ast[1];
         self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = $namespace->stmts[1];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($class);
         self::assertNotNull($class->extends);
 
-        self::assertSame('Other\Bar', ScopeFinder::resolveClassName($class->extends));
+        self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveClassName($class->extends));
     }
 
     public function testGetClassLikeNameReturnsNamespacedName(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Models;
-
-class User {}
-PHP;
+        $code = $this->loadFixture('src/Domain/User.php');
         $ast = self::parseWithParents($code);
-        $namespace = $ast[0];
+        $namespace = $ast[1];
         self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = $namespace->stmts[0];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
+        self::assertNotNull($class);
 
-        self::assertSame('App\Models\User', ScopeFinder::getClassLikeName($class));
+        self::assertSame('Fixtures\Domain\User', ScopeFinder::getClassLikeName($class));
     }
 
     public function testGetClassLikeNameReturnsShortNameWhenNoNamespace(): void
     {
-        $code = '<?php class MyClass {}';
+        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
         $ast = self::parseWithParents($code);
-        $class = $ast[0];
-        self::assertInstanceOf(Stmt\Class_::class, $class);
+        $class = self::findFirstClassLike($ast, Stmt\Class_::class);
+        self::assertNotNull($class);
 
-        self::assertSame('MyClass', ScopeFinder::getClassLikeName($class));
+        self::assertSame('GlobalConfig', ScopeFinder::getClassLikeName($class));
     }
 
     public function testGetClassLikeNameReturnsNullForAnonymousClass(): void
     {
-        $code = <<<'PHP'
-<?php
-$obj = new class {
-    public function test(): void {}
-};
-PHP;
+        $code = $this->loadFixture('src/Utility/AnonymousClassScope.php');
         $ast = self::parseWithParents($code);
 
         $visitor = new class () extends \PhpParser\NodeVisitorAbstract {
@@ -584,153 +448,92 @@ PHP;
 
     public function testGetClassLikeNameWorksWithInterface(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Contracts;
-
-interface Renderable {}
-PHP;
+        $code = $this->loadFixture('src/Domain/Entity.php');
         $ast = self::parseWithParents($code);
-        $namespace = $ast[0];
+        $namespace = $ast[1];
         self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $interface = $namespace->stmts[0];
-        self::assertInstanceOf(Stmt\Interface_::class, $interface);
+        $interface = self::findFirstClassLike($namespace->stmts, Stmt\Interface_::class);
+        self::assertNotNull($interface);
 
-        self::assertSame('App\Contracts\Renderable', ScopeFinder::getClassLikeName($interface));
+        self::assertSame('Fixtures\Domain\Entity', ScopeFinder::getClassLikeName($interface));
     }
 
     public function testGetClassLikeNameWorksWithTrait(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Concerns;
-
-trait Loggable {}
-PHP;
+        $code = $this->loadFixture('src/Traits/HasTimestamps.php');
         $ast = self::parseWithParents($code);
-        $namespace = $ast[0];
+        $namespace = $ast[1];
         self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $trait = $namespace->stmts[0];
-        self::assertInstanceOf(Stmt\Trait_::class, $trait);
+        $trait = self::findFirstClassLike($namespace->stmts, Stmt\Trait_::class);
+        self::assertNotNull($trait);
 
-        self::assertSame('App\Concerns\Loggable', ScopeFinder::getClassLikeName($trait));
+        self::assertSame('Fixtures\Traits\HasTimestamps', ScopeFinder::getClassLikeName($trait));
     }
 
     public function testGetClassLikeNameWorksWithEnum(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App\Enums;
-
-enum Status: string {
-    case Active = 'active';
-}
-PHP;
+        $code = $this->loadFixture('src/Enum/Status.php');
         $ast = self::parseWithParents($code);
-        $namespace = $ast[0];
+        $namespace = $ast[1];
         self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $enum = $namespace->stmts[0];
-        self::assertInstanceOf(Stmt\Enum_::class, $enum);
+        $enum = self::findFirstClassLike($namespace->stmts, Stmt\Enum_::class);
+        self::assertNotNull($enum);
 
-        self::assertSame('App\Enums\Status', ScopeFinder::getClassLikeName($enum));
+        self::assertSame('Fixtures\Enum\Status', ScopeFinder::getClassLikeName($enum));
     }
 
     public function testResolveClassNameInContextResolvesSelf(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-
-class MyClass {
-    public static function test(): void {
-        self::method();
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
         $selfName = self::findNameNode('self', $ast);
 
         self::assertNotNull($selfName);
         $resolved = ScopeFinder::resolveClassNameInContext($selfName, $selfName);
 
-        self::assertSame('App\MyClass', $resolved);
+        self::assertSame('Fixtures\TypeInference\NewKeywords', $resolved);
     }
 
     public function testResolveClassNameInContextResolvesStatic(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-
-class MyClass {
-    public static function test(): void {
-        static::method();
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
         $staticName = self::findNameNode('static', $ast);
 
         self::assertNotNull($staticName);
         $resolved = ScopeFinder::resolveClassNameInContext($staticName, $staticName);
 
-        self::assertSame('App\MyClass', $resolved);
+        self::assertSame('Fixtures\TypeInference\NewKeywords', $resolved);
     }
 
     public function testResolveClassNameInContextResolvesParent(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-
-use Other\BaseClass;
-
-class MyClass extends BaseClass {
-    public static function test(): void {
-        parent::method();
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
         $parentName = self::findNameNode('parent', $ast);
 
         self::assertNotNull($parentName);
         $resolved = ScopeFinder::resolveClassNameInContext($parentName, $parentName);
 
-        self::assertSame('Other\BaseClass', $resolved);
+        self::assertSame('Fixtures\Inheritance\ParentClass', $resolved);
     }
 
     public function testResolveClassNameInContextResolvesRegularClass(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-
-class MyClass {
-    public static function test(): void {
-        \Other\SomeClass::method();
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
-        // Find the StaticCall and get its class Name node
-        $staticCall = self::findStaticCallNode('method', $ast);
+        $staticCall = self::findStaticCallNode('anotherStaticMethod', $ast);
         self::assertNotNull($staticCall);
         self::assertInstanceOf(Node\Name::class, $staticCall->class);
 
         $resolved = ScopeFinder::resolveClassNameInContext($staticCall->class, $staticCall);
 
-        self::assertSame('Other\SomeClass', $resolved);
+        self::assertSame('Fixtures\Inheritance\ParentClass', $resolved);
     }
 
     public function testResolveClassNameInContextReturnsNullForSelfOutsideClass(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(): void {
-    self::method();
-}
-PHP;
+        $code = $this->loadFixture('src/TypeInference/StaticCallOutsideClass.php');
         $ast = self::parseWithParents($code);
         $selfName = self::findNameNode('self', $ast);
 
@@ -742,14 +545,7 @@ PHP;
 
     public function testResolveClassNameInContextReturnsNullForParentWithNoExtends(): void
     {
-        $code = <<<'PHP'
-<?php
-class MyClass {
-    public static function test(): void {
-        parent::method();
-    }
-}
-PHP;
+        $code = $this->loadFixture('src/TypeInference/ParentWithoutExtends.php');
         $ast = self::parseWithParents($code);
         $parentName = self::findNameNode('parent', $ast);
 
@@ -761,18 +557,13 @@ PHP;
 
     public function testResolveClassNameInContextReturnsNullForParentInInterface(): void
     {
-        $code = <<<'PHP'
-<?php
-interface MyInterface {
-    public static function test(): void;
-}
-PHP;
+        $code = $this->loadFixture('src/Domain/Entity.php');
         $ast = self::parseWithParents($code);
         // Create a fake parent Name node to test this edge case
         $name = new Node\Name('parent');
 
         // Find the interface method to get a context node
-        $methodNode = self::findMethodNode('test', $ast);
+        $methodNode = self::findMethodNode('getId', $ast);
         self::assertNotNull($methodNode);
 
         // Manually set parent attribute
@@ -781,6 +572,22 @@ PHP;
         $resolved = ScopeFinder::resolveClassNameInContext($name, $name);
 
         self::assertNull($resolved);
+    }
+
+    /**
+     * @template T of Stmt\ClassLike
+     * @param array<Stmt> $stmts
+     * @param class-string<T> $type
+     * @return T|null
+     */
+    private static function findFirstClassLike(array $stmts, string $type): ?Stmt\ClassLike
+    {
+        foreach ($stmts as $stmt) {
+            if ($stmt instanceof $type) {
+                return $stmt;
+            }
+        }
+        return null;
     }
 
     /**

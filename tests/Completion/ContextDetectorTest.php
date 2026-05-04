@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\ContextDetector;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -12,42 +13,39 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ContextDetector::class)]
 class ContextDetectorTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     // =========================================================================
     // Valid completion contexts
     // =========================================================================
 
     public function testCompletableInNormalCode(): void
     {
-        $code = '<?php $this->';
+        $code = $this->loadFixture('ContextDetector/member_access.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testCompletableAfterMemberAccess(): void
     {
-        $code = '<?php $foo->bar->';
+        $code = $this->loadFixture('ContextDetector/chained_member_access.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testCompletableInFunctionBody(): void
     {
-        $code = <<<'PHP'
-<?php
-function test(): void
-{
-    $x = new
-PHP;
+        $code = $this->loadFixture('ContextDetector/function_body_incomplete.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testCompletableInTypeHintPosition(): void
     {
-        $code = '<?php function test(str';
+        $code = $this->loadFixture('ContextDetector/type_hint_incomplete.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testCompletableInUseStatement(): void
     {
-        $code = '<?php use Psr\Log\\';
+        $code = $this->loadFixture('ContextDetector/use_statement_incomplete.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -57,33 +55,25 @@ PHP;
 
     public function testNotCompletableInSingleLineComment(): void
     {
-        $code = '<?php // this is a comment $this->';
+        $code = $this->loadFixture('ContextDetector/single_line_comment.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInSingleLineHashComment(): void
     {
-        $code = '<?php # hash comment $this->';
+        $code = $this->loadFixture('ContextDetector/hash_comment.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInMultiLineComment(): void
     {
-        $code = <<<'PHP'
-<?php
-/*
- * Comment $this->
-PHP;
+        $code = $this->loadFixture('ContextDetector/multiline_comment_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInDocblock(): void
     {
-        $code = <<<'PHP'
-<?php
-/**
- * @param string $var
-PHP;
+        $code = $this->loadFixture('ContextDetector/docblock_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -93,30 +83,27 @@ PHP;
 
     public function testNotCompletableInSingleQuotedString(): void
     {
-        $code = "<?php \$x = 'hello \$this->";
+        $code = $this->loadFixture('ContextDetector/single_quoted_string_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInDoubleQuotedString(): void
     {
-        $code = '<?php $x = "hello ';
+        $code = $this->loadFixture('ContextDetector/double_quoted_string_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInInterpolatedString(): void
     {
-        // Inside the string content portion
-        $code = '<?php $x = "hello {$name} world ';
+        $code = $this->loadFixture('ContextDetector/interpolated_string_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testCompletableInsideInterpolationBraces(): void
     {
-        // Inside {$...} blocks, completions should work (variable interpolation)
-        $code = '<?php $x = "Hello {$user->}";';
+        $code = $this->loadFixture('ContextDetector/interpolation_braces.php');
         $pos = strpos($code, '->}');
         self::assertIsInt($pos);
-        // Position right after -> (before the closing })
         self::assertTrue(ContextDetector::isCompletable($code, $pos + 2));
     }
 
@@ -126,21 +113,13 @@ PHP;
 
     public function testNotCompletableInHeredoc(): void
     {
-        $code = <<<'PHP'
-<?php
-$x = <<<HTML
-<div>Some content
-PHP;
+        $code = $this->loadFixture('ContextDetector/heredoc_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testNotCompletableInNowdoc(): void
     {
-        $code = <<<'PHP'
-<?php
-$x = <<<'TEXT'
-Some text content
-PHP;
+        $code = $this->loadFixture('ContextDetector/nowdoc_open.php');
         self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -150,25 +129,19 @@ PHP;
 
     public function testCompletableAfterClosedString(): void
     {
-        $code = '<?php $x = "hello"; $this->';
+        $code = $this->loadFixture('ContextDetector/after_closed_string.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testCompletableAfterClosedComment(): void
     {
-        $code = '<?php /* comment */ $this->';
+        $code = $this->loadFixture('ContextDetector/after_closed_comment.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testCompletableAfterClosedHeredoc(): void
     {
-        $code = <<<'PHP'
-<?php
-$x = <<<HTML
-content
-HTML;
-$this->
-PHP;
+        $code = $this->loadFixture('ContextDetector/heredoc_closed.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -178,26 +151,25 @@ PHP;
 
     public function testReturnsCompletableForCompletelyBrokenSyntax(): void
     {
-        // Assume completable (fallback) for completely broken code
-        $code = '<?php function foo( $';
+        $code = $this->loadFixture('ContextDetector/broken_function_param.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testHandlesUnclosedBrace(): void
     {
-        $code = '<?php class Foo { public function bar() { $this->';
+        $code = $this->loadFixture('ContextDetector/unclosed_class_method.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testHandlesUnclosedParenthesis(): void
     {
-        $code = '<?php $result = array_map(function($x) { return $x->';
+        $code = $this->loadFixture('ContextDetector/unclosed_closure.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testHandlesMidEditIncompleteStatement(): void
     {
-        $code = '<?php $foo = $bar->';
+        $code = $this->loadFixture('ContextDetector/mid_edit_statement.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -209,7 +181,7 @@ PHP;
 
     public function testHandlesCodeWithOnlyPhpTag(): void
     {
-        $code = '<?php ';
+        $code = $this->loadFixture('ContextDetector/php_tag_only.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
@@ -246,7 +218,7 @@ PHP;
 
     public function testPositionInMiddleOfComment(): void
     {
-        $code = '<?php // comment $this-> more';
+        $code = $this->loadFixture('ContextDetector/comment_with_member_access.php');
         $position = strpos($code, '$this->');
         self::assertIsInt($position);
         self::assertFalse(ContextDetector::isCompletable($code, $position + 7));
@@ -254,7 +226,7 @@ PHP;
 
     public function testPositionBeforeComment(): void
     {
-        $code = '<?php $foo->bar // comment';
+        $code = $this->loadFixture('ContextDetector/member_access_before_comment.php');
         $position = strpos($code, '$foo->bar');
         self::assertIsInt($position);
         self::assertTrue(ContextDetector::isCompletable($code, $position + 9));
@@ -262,20 +234,19 @@ PHP;
 
     public function testPositionAfterComment(): void
     {
-        $code = "<?php // comment\n\$this->";
+        $code = $this->loadFixture('ContextDetector/member_access_after_comment.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
     }
 
     public function testZeroOffset(): void
     {
-        $code = '<?php $x = 1;';
+        $code = $this->loadFixture('ContextDetector/simple_statement.php');
         self::assertTrue(ContextDetector::isCompletable($code, 0));
     }
 
     public function testOffsetBeyondCodeLength(): void
     {
-        $code = '<?php $x = 1;';
-        // Should handle gracefully
+        $code = $this->loadFixture('ContextDetector/simple_statement.php');
         self::assertTrue(ContextDetector::isCompletable($code, 1000));
     }
 }

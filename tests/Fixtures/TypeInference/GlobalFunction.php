@@ -8,6 +8,11 @@ class GlobalConfig
     {
         return '';
     }
+
+    public function doSomething(): void
+    {
+        $this->get();
+    }
 }
 
 function getGlobalConfig(): GlobalConfig

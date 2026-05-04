@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Repository;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node\Stmt;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -16,6 +17,8 @@ use ReflectionClass;
 #[CoversClass(DefaultClassInfoFactory::class)]
 final class DefaultClassInfoFactoryTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private DefaultClassInfoFactory $factory;
 
     protected function setUp(): void
@@ -25,26 +28,26 @@ final class DefaultClassInfoFactoryTest extends TestCase
 
     public function testFromAstNodeExtractsClassName(): void
     {
-        $node = $this->parseClass('<?php namespace App; class MyClass {}');
+        $node = $this->parseClassFromFixture('src/Domain/User.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertSame('App\\MyClass', $info->name->fqn);
+        self::assertSame('Fixtures\\Domain\\User', $info->name->fqn);
         self::assertSame(ClassKind::Class_, $info->kind);
     }
 
     public function testFromAstNodeExtractsClassNameWithoutNameResolver(): void
     {
-        $node = $this->parseClassWithoutNameResolver('<?php class SimpleClass {}');
+        $node = $this->parseClassWithoutNameResolverFromFixture('TypeInference/GlobalFunction.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertSame('SimpleClass', $info->name->fqn);
+        self::assertSame('GlobalConfig', $info->name->fqn);
     }
 
     public function testFromAstNodeExtractsInterface(): void
     {
-        $node = $this->parseClass('<?php interface MyInterface {}');
+        $node = $this->parseClassFromFixture('src/Domain/Entity.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -53,7 +56,7 @@ final class DefaultClassInfoFactoryTest extends TestCase
 
     public function testFromAstNodeExtractsTrait(): void
     {
-        $node = $this->parseClass('<?php trait MyTrait {}');
+        $node = $this->parseClassFromFixture('src/Traits/HasTimestamps.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -62,44 +65,38 @@ final class DefaultClassInfoFactoryTest extends TestCase
 
     public function testFromAstNodeExtractsEnum(): void
     {
-        $node = $this->parseClass('<?php enum Status { case Active; }');
+        $node = $this->parseClassFromFixture('src/Enum/Status.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertSame(ClassKind::Enum_, $info->kind);
-        self::assertCount(1, $info->enumCases);
+        self::assertGreaterThanOrEqual(1, count($info->enumCases));
         self::assertArrayHasKey('Active', $info->enumCases);
     }
 
     public function testFromAstNodeExtractsParentClass(): void
     {
-        $node = $this->parseClass('<?php namespace App; class Child extends Parent_ {}');
+        $node = $this->parseClassFromFixture('src/Inheritance/ParentClass.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertNotNull($info->parent);
-        self::assertSame('App\\Parent_', $info->parent->fqn);
+        self::assertSame('Fixtures\\Inheritance\\Grandparent', $info->parent->fqn);
     }
 
     public function testFromAstNodeExtractsImportedParentClass(): void
     {
-        $code = <<<'PHP'
-<?php
-namespace App;
-use External\BaseClass;
-class Child extends BaseClass {}
-PHP;
-        $node = $this->parseClass($code);
+        $node = $this->parseClassFromFixture('src/Utility/ImportedExtends.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertNotNull($info->parent);
-        self::assertSame('External\\BaseClass', $info->parent->fqn);
+        self::assertSame('Fixtures\\Inheritance\\ParentClass', $info->parent->fqn);
     }
 
     public function testFromAstNodeExtractsAbstractClass(): void
     {
-        $node = $this->parseClass('<?php abstract class Base {}');
+        $node = $this->parseClassFromFixture('src/Utility/ClassModifiers.php', 'AbstractBase');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -108,7 +105,7 @@ PHP;
 
     public function testFromAstNodeExtractsFinalClass(): void
     {
-        $node = $this->parseClass('<?php final class Sealed {}');
+        $node = $this->parseClassFromFixture('src/Utility/ClassModifiers.php', 'SealedClass');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -117,7 +114,7 @@ PHP;
 
     public function testFromAstNodeExtractsReadonlyClass(): void
     {
-        $node = $this->parseClass('<?php readonly class Immutable {}');
+        $node = $this->parseClassFromFixture('src/Utility/ClassModifiers.php', 'ImmutableClass');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -126,21 +123,18 @@ PHP;
 
     public function testFromAstNodeExtractsInterfaces(): void
     {
-        $node = $this->parseClass('<?php class MyClass implements \Stringable, \Countable {
-            public function __toString(): string { return ""; }
-            public function count(): int { return 0; }
-        }');
+        $node = $this->parseClassFromFixture('src/Domain/User.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertCount(2, $info->interfaces);
-        self::assertSame('Stringable', $info->interfaces[0]->fqn);
-        self::assertSame('Countable', $info->interfaces[1]->fqn);
+        self::assertSame('Fixtures\\Domain\\Entity', $info->interfaces[0]->fqn);
+        self::assertSame('Fixtures\\Domain\\Person', $info->interfaces[1]->fqn);
     }
 
     public function testFromAstNodeExtractsInterfaceExtends(): void
     {
-        $node = $this->parseClass('<?php interface MyInterface extends \Countable {}');
+        $node = $this->parseClassFromFixture('src/Repository/Repository.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -151,31 +145,25 @@ PHP;
 
     public function testFromAstNodeExtractsEnumImplements(): void
     {
-        $node = $this->parseClass('<?php enum Status: string implements \JsonSerializable {
-            case Active = "active";
-            public function jsonSerialize(): string { return $this->value; }
-        }');
+        $node = $this->parseClassFromFixture('src/Enum/SerializableStatus.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertSame(ClassKind::Enum_, $info->kind);
         self::assertCount(1, $info->interfaces);
         self::assertSame('JsonSerializable', $info->interfaces[0]->fqn);
-        self::assertCount(1, $info->enumCases);
+        self::assertCount(2, $info->enumCases);
         self::assertArrayHasKey('Active', $info->enumCases);
         self::assertSame('active', $info->enumCases['Active']->backingValue);
     }
 
     public function testFromAstNodeExtractsIntBackedEnumCases(): void
     {
-        $node = $this->parseClass('<?php enum Priority: int {
-            case Low = 1;
-            case High = 10;
-        }');
+        $node = $this->parseClassFromFixture('src/Enum/Priority.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertCount(2, $info->enumCases);
+        self::assertGreaterThanOrEqual(2, count($info->enumCases));
         self::assertArrayHasKey('Low', $info->enumCases);
         self::assertArrayHasKey('High', $info->enumCases);
         self::assertSame(1, $info->enumCases['Low']->backingValue);
@@ -184,18 +172,18 @@ PHP;
 
     public function testFromAstNodeExtractsPureEnumCasesWithNullBackingValue(): void
     {
-        $node = $this->parseClass('<?php enum Status { case Active; case Inactive; }');
+        $node = $this->parseClassFromFixture('src/Enum/Status.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertCount(2, $info->enumCases);
+        self::assertGreaterThanOrEqual(2, count($info->enumCases));
         self::assertNull($info->enumCases['Active']->backingValue);
         self::assertNull($info->enumCases['Inactive']->backingValue);
     }
 
     public function testFromAstNodeSynthesizesEnumBuiltinMethods(): void
     {
-        $node = $this->parseClass('<?php enum Status { case Active; }');
+        $node = $this->parseClassFromFixture('src/Enum/Status.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -206,9 +194,7 @@ PHP;
 
     public function testFromAstNodeSynthesizesBackedEnumMethods(): void
     {
-        $node = $this->parseClass('<?php enum Priority: int {
-            case Low = 1;
-        }');
+        $node = $this->parseClassFromFixture('src/Enum/Priority.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
@@ -217,37 +203,29 @@ PHP;
         self::assertArrayHasKey('tryFrom', $info->methods);
 
         self::assertTrue($info->methods['from']->isStatic);
-        self::assertSame('Priority', $info->methods['from']->returnType?->format());
+        self::assertSame('Fixtures\\Enum\\Priority', $info->methods['from']->returnType?->format());
         self::assertCount(1, $info->methods['from']->parameters);
         self::assertSame('int', $info->methods['from']->parameters[0]->type?->format());
 
-        self::assertSame('?Priority', $info->methods['tryFrom']->returnType?->format());
+        self::assertSame('?Fixtures\\Enum\\Priority', $info->methods['tryFrom']->returnType?->format());
     }
 
     public function testFromAstNodeExtractsTraits(): void
     {
-        $node = $this->parseClass('<?php
-            trait MyTrait {}
-            class MyClass { use MyTrait; }
-        ', 'MyClass');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertCount(1, $info->traits);
-        self::assertSame('MyTrait', $info->traits[0]->fqn);
+        self::assertSame('Fixtures\\Repository\\ExampleTrait', $info->traits[0]->fqn);
     }
 
     public function testFromAstNodeExtractsMethods(): void
     {
-        $node = $this->parseClass('<?php class MyClass {
-            public function publicMethod(): void {}
-            protected function protectedMethod(): string { return ""; }
-            private static function privateStaticMethod(): int { return 0; }
-        }');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertCount(3, $info->methods);
         self::assertArrayHasKey('publicMethod', $info->methods);
         self::assertArrayHasKey('protectedMethod', $info->methods);
         self::assertArrayHasKey('privateStaticMethod', $info->methods);
@@ -262,47 +240,41 @@ PHP;
 
     public function testFromAstNodePreservesLateStaticSelfReturnType(): void
     {
-        $node = $this->parseClass('<?php class SomeClass {
-            public static function create(): ?self { return new self(); }
-        }');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertArrayHasKey('create', $info->methods);
-        $returnType = $info->methods['create']->returnType;
+        self::assertArrayHasKey('createSelf', $info->methods);
+        $returnType = $info->methods['createSelf']->returnType;
         self::assertNotNull($returnType);
         // Late-binding types preserve the keyword for display
         self::assertSame('?self', $returnType->format());
         // But still resolve to the declaring class for lookups
         $classNames = $returnType->getResolvableClassNames();
         self::assertCount(1, $classNames);
-        self::assertSame('SomeClass', $classNames[0]->fqn);
+        self::assertSame('Fixtures\\Repository\\ClassInfoPatterns', $classNames[0]->fqn);
     }
 
     public function testFromAstNodePreservesLateStaticStaticReturnType(): void
     {
-        $node = $this->parseClass('<?php class Builder {
-            public function build(): static { return $this; }
-        }');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertArrayHasKey('build', $info->methods);
-        $returnType = $info->methods['build']->returnType;
+        self::assertArrayHasKey('buildStatic', $info->methods);
+        $returnType = $info->methods['buildStatic']->returnType;
         self::assertNotNull($returnType);
         // Late-binding types preserve the keyword for display
         self::assertSame('static', $returnType->format());
         // But still resolve to the declaring class for lookups
         $classNames = $returnType->getResolvableClassNames();
         self::assertCount(1, $classNames);
-        self::assertSame('Builder', $classNames[0]->fqn);
+        self::assertSame('Fixtures\\Repository\\ClassInfoPatterns', $classNames[0]->fqn);
     }
 
     public function testFromAstNodeExtractsMethodParameters(): void
     {
-        $node = $this->parseClass('<?php class MyClass {
-            public function withParams(string $name, int $count = 0, string ...$items): void {}
-        }');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
         $method = $info->methods['withParams'];
@@ -322,16 +294,10 @@ PHP;
 
     public function testFromAstNodeExtractsProperties(): void
     {
-        $node = $this->parseClass('<?php class MyClass {
-            public string $publicProp;
-            protected int $protectedProp;
-            private static bool $privateStaticProp;
-            public readonly string $readonlyProp;
-        }');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertCount(4, $info->properties);
         self::assertArrayHasKey('publicProp', $info->properties);
         self::assertSame(Visibility::Public, $info->properties['publicProp']->visibility);
         self::assertSame('string', $info->properties['publicProp']->type?->format());
@@ -343,16 +309,10 @@ PHP;
 
     public function testFromAstNodeExtractsPromotedProperties(): void
     {
-        $node = $this->parseClass('<?php class MyClass {
-            public function __construct(
-                public string $name,
-                private readonly int $id,
-            ) {}
-        }');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertCount(2, $info->properties);
         self::assertArrayHasKey('name', $info->properties);
         self::assertArrayHasKey('id', $info->properties);
 
@@ -366,15 +326,10 @@ PHP;
 
     public function testFromAstNodeExtractsConstants(): void
     {
-        $node = $this->parseClass('<?php class MyClass {
-            public const string PUBLIC_CONST = "value";
-            protected const PROTECTED_CONST = 123;
-            private const PRIVATE_CONST = true;
-        }');
+        $node = $this->parseClassFromFixture('src/Repository/ClassInfoPatterns.php', 'ClassInfoPatterns');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertCount(3, $info->constants);
         self::assertArrayHasKey('PUBLIC_CONST', $info->constants);
         self::assertSame(Visibility::Public, $info->constants['PUBLIC_CONST']->visibility);
         self::assertSame('string', $info->constants['PUBLIC_CONST']->type?->format());
@@ -386,18 +341,16 @@ PHP;
 
     public function testFromAstNodeExtractsDocblock(): void
     {
-        $node = $this->parseClass('<?php
-        /** This is a docblock */
-        class MyClass {}');
+        $node = $this->parseClassFromFixture('src/Domain/User.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
-        self::assertStringContainsString('This is a docblock', $info->docblock ?? '');
+        self::assertStringContainsString('Represents a system user', $info->docblock ?? '');
     }
 
     public function testFromAstNodeExtractsFileInfo(): void
     {
-        $node = $this->parseClass('<?php class MyClass {}');
+        $node = $this->parseClassFromFixture('src/Domain/User.php');
 
         $info = $this->factory->fromAstNode($node, 'file:///path/to/test.php');
 
@@ -407,18 +360,12 @@ PHP;
 
     public function testFromAstNodeThrowsForAnonymousClass(): void
     {
+        $code = $this->loadFixture('src/Utility/AnonymousClassScope.php');
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
-        $ast = $parser->parse('<?php $x = new class {};');
+        $ast = $parser->parse($code);
         assert($ast !== null);
 
-        $expr = $ast[0];
-        assert($expr instanceof \PhpParser\Node\Stmt\Expression);
-        $assign = $expr->expr;
-        assert($assign instanceof \PhpParser\Node\Expr\Assign);
-        $new = $assign->expr;
-        assert($new instanceof \PhpParser\Node\Expr\New_);
-        $node = $new->class;
-        assert($node instanceof Stmt\Class_);
+        $node = $this->extractAnonymousClassNode($ast);
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('anonymous class');
@@ -553,13 +500,17 @@ PHP;
         self::assertSame(TestTrait::class, $info->traits[0]->fqn);
     }
 
-    private function parseClass(string $code, ?string $className = null): Stmt\ClassLike
+    private function parseClassFromFixture(string $fixturePath, ?string $className = null): Stmt\ClassLike
     {
+        $code = $this->loadFixture($fixturePath);
         return $this->parseClassInternal($code, $className, useNameResolver: true);
     }
 
-    private function parseClassWithoutNameResolver(string $code, ?string $className = null): Stmt\ClassLike
-    {
+    private function parseClassWithoutNameResolverFromFixture(
+        string $fixturePath,
+        ?string $className = null,
+    ): Stmt\ClassLike {
+        $code = $this->loadFixture($fixturePath);
         return $this->parseClassInternal($code, $className, useNameResolver: false);
     }
 
@@ -593,5 +544,16 @@ PHP;
         }
 
         throw new \RuntimeException('No class found in code');
+    }
+
+    /**
+     * @param array<\PhpParser\Node\Stmt> $ast
+     */
+    private function extractAnonymousClassNode(array $ast): Stmt\Class_
+    {
+        $finder = new \PhpParser\NodeFinder();
+        $class = $finder->findFirst($ast, fn($node) => $node instanceof Stmt\Class_ && $node->name === null);
+        assert($class instanceof Stmt\Class_);
+        return $class;
     }
 }

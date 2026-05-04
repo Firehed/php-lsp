@@ -1,0 +1,3 @@
+<?php
+/**
+ * @param string $var
