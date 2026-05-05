@@ -192,4 +192,10 @@ class User implements Entity, Person
         $user = rand() ? new User('1', 'name', 'email') : null;
         $user?->setName('new'); //hover:nullsafe_via_assignment
     }
+
+    public function triggerHoverVariable(): void
+    {
+        $typed = $this->manager;
+        echo $typed; //hover:variable_typed
+    }
 }

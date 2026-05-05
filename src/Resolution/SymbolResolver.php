@@ -22,6 +22,7 @@ use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
@@ -92,6 +93,10 @@ final class SymbolResolver
 
         if ($node instanceof Name) {
             return $this->resolveName($node);
+        }
+
+        if ($node instanceof Variable) {
+            return $this->resolveVariable($node, $ast);
         }
 
         return null;
@@ -200,6 +205,21 @@ final class SymbolResolver
         }
 
         return new ResolvedClass($classInfo);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveVariable(Variable $node, array $ast): ?ResolvedSymbol
+    {
+        $name = $node->name;
+        if (!is_string($name)) {
+            return null;
+        }
+
+        $type = ExpressionTypeResolver::resolveExpressionType($node, $ast, $this->typeResolver);
+
+        return new ResolvedVariable($name, $type);
     }
 
     /**

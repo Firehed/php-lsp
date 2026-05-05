@@ -21,6 +21,7 @@ use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
+use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
@@ -189,5 +190,33 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedEnumCase::class, $result);
         self::assertStringContainsString('Active', $result->format());
+    }
+
+    public function testResolvesVariable(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get('file:///fixtures/src/Domain/User.php');
+        assert($document !== null);
+
+        // Find line with "echo $typed" and position on $typed
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = null;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'echo $typed')) {
+                $lineNum = $i;
+                break;
+            }
+        }
+        assert($lineNum !== null, 'Could not find "echo $typed" in fixture');
+
+        // Position on the $ of $typed (after "echo ")
+        $character = strpos($lines[$lineNum], '$typed');
+        assert($character !== false);
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedVariable::class, $result);
+        self::assertStringContainsString('typed', $result->format());
     }
 }
