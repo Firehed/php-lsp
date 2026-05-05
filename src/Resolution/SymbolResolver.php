@@ -23,7 +23,11 @@ use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
@@ -124,6 +128,142 @@ final class SymbolResolver
         }
 
         return $members;
+    }
+
+    /**
+     * Get variables in scope at position.
+     * Used by: Completion (variable names)
+     *
+     * @return list<ResolvedVariable>
+     */
+    public function getVariablesInScope(
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): array {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        $offset = $document->offsetAt($line, $character);
+
+        // Find enclosing scope
+        $scope = $this->findScopeAtOffset($ast, $offset);
+        if ($scope === null) {
+            return [];
+        }
+
+        $variables = [];
+        $seen = [];
+
+        // Add parameters
+        foreach ($scope->params as $param) {
+            if ($param->var instanceof Variable && is_string($param->var->name)) {
+                $name = $param->var->name;
+                if (!isset($seen[$name])) {
+                    $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
+                    $variables[] = new ResolvedVariable($name, $type);
+                    $seen[$name] = true;
+                }
+            }
+        }
+
+        // Add $this if in a method
+        if ($scope instanceof Stmt\ClassMethod) {
+            $className = ScopeFinder::findEnclosingClassName($scope);
+            if ($className !== null && !isset($seen['this'])) {
+                $variables[] = new ResolvedVariable('this', new ClassName($className));
+                $seen['this'] = true;
+            }
+        }
+
+        // Find variable assignments before cursor
+        $stmts = $scope->stmts ?? [];
+        $this->collectVariablesFromStatements($stmts, $line, $scope, $ast, $variables, $seen);
+
+        return $variables;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return Stmt\Function_|Stmt\ClassMethod|Closure|null
+     */
+    private function findScopeAtOffset(array $ast, int $offset): Stmt\Function_|Stmt\ClassMethod|Closure|null
+    {
+        $found = null;
+
+        $visitor = new class ($offset) extends NodeVisitorAbstract {
+            public Stmt\Function_|Stmt\ClassMethod|Closure|null $found = null;
+            private int $offset;
+
+            public function __construct(int $offset)
+            {
+                $this->offset = $offset;
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if (
+                    ($node instanceof Stmt\Function_ || $node instanceof Stmt\ClassMethod || $node instanceof Closure)
+                    && $node->getStartFilePos() <= $this->offset
+                    && $node->getEndFilePos() >= $this->offset
+                ) {
+                    $this->found = $node;
+                }
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($ast);
+
+        return $visitor->found;
+    }
+
+    /**
+     * @param array<Stmt|Node> $stmts
+     * @param Stmt\Function_|Stmt\ClassMethod|Closure $scope
+     * @param array<Stmt> $ast
+     * @param list<ResolvedVariable> $variables
+     * @param array<string, bool> $seen
+     */
+    private function collectVariablesFromStatements(
+        array $stmts,
+        int $line,
+        Stmt\Function_|Stmt\ClassMethod|Closure $scope,
+        array $ast,
+        array &$variables,
+        array &$seen,
+    ): void {
+        foreach ($stmts as $stmt) {
+            $stmtLine = $stmt->getStartLine() - 1; // Convert to 0-based
+            if ($stmtLine > $line) {
+                continue;
+            }
+
+            if ($stmt instanceof Stmt\Expression && $stmt->expr instanceof Assign) {
+                $assign = $stmt->expr;
+                if ($assign->var instanceof Variable && is_string($assign->var->name)) {
+                    $name = $assign->var->name;
+                    if (!isset($seen[$name])) {
+                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
+                        $variables[] = new ResolvedVariable($name, $type);
+                        $seen[$name] = true;
+                    }
+                }
+            }
+
+            // Recursively check nested structures (if/while/etc.)
+            if (property_exists($stmt, 'stmts') && is_array($stmt->stmts)) {
+                /** @var array<Stmt|Node> $nestedStmts */
+                $nestedStmts = $stmt->stmts;
+                $this->collectVariablesFromStatements($nestedStmts, $line, $scope, $ast, $variables, $seen);
+            }
+        }
     }
 
     /**

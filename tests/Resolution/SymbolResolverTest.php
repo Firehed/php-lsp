@@ -262,4 +262,36 @@ final class SymbolResolverTest extends TestCase
             self::assertTrue($member->isStatic(), 'Expected only static members');
         }
     }
+
+    public function testGetVariablesInScopeReturnsParameters(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get('file:///fixtures/src/Domain/User.php');
+        assert($document !== null);
+
+        // Find position inside setName method (has 'name' parameter)
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = null;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, '$this->name = $name;')) {
+                $lineNum = $i;
+                break;
+            }
+        }
+        assert($lineNum !== null, 'Could not find line in fixture');
+
+        $variables = $this->resolver->getVariablesInScope($document, $lineNum, 0);
+
+        self::assertNotEmpty($variables);
+        $names = array_map(fn($v) => $v->format(), $variables);
+        $hasNameParam = false;
+        foreach ($names as $name) {
+            if (str_contains($name, '$name')) {
+                $hasNameParam = true;
+                break;
+            }
+        }
+        self::assertTrue($hasNameParam, 'Expected $name parameter in scope');
+    }
 }
