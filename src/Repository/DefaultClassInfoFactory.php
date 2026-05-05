@@ -265,6 +265,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                         name: 'value',
                         type: $scalarTypeInfo,
                         hasDefault: false,
+                        defaultValue: null,
+                        position: 0,
                         isVariadic: false,
                         isPassedByReference: false,
                     ),
@@ -287,6 +289,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                         name: 'value',
                         type: $scalarTypeInfo,
                         hasDefault: false,
+                        defaultValue: null,
+                        position: 0,
                         isVariadic: false,
                         isPassedByReference: false,
                     ),
@@ -309,8 +313,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function extractParameters(array $params, ClassName $className, ?ClassName $parentClass): array
     {
         $result = [];
-        foreach ($params as $param) {
-            $info = ParameterInfo::fromNode($param, $className->fqn, $parentClass?->fqn);
+        foreach ($params as $position => $param) {
+            $info = ParameterInfo::fromNode($param, $position, $className->fqn, $parentClass?->fqn);
             if ($info !== null) {
                 $result[] = $info;
             }

@@ -77,129 +77,130 @@ class ClassInfoTest extends TestCase
     public function testFormatSimpleClass(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\User',
+            name: \stdClass::class,
             kind: ClassKind::Class_,
         );
 
-        self::assertSame('class User', $class->format());
+        self::assertSame('class stdClass', $class->format());
     }
 
     public function testFormatFinalClass(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\User',
+            name: \stdClass::class,
             kind: ClassKind::Class_,
             isFinal: true,
         );
 
-        self::assertSame('final class User', $class->format());
+        self::assertSame('final class stdClass', $class->format());
     }
 
     public function testFormatAbstractClass(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\Entity',
+            name: \stdClass::class,
             kind: ClassKind::Class_,
             isAbstract: true,
         );
 
-        self::assertSame('abstract class Entity', $class->format());
+        self::assertSame('abstract class stdClass', $class->format());
     }
 
     public function testFormatReadonlyClass(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\Value',
+            name: \stdClass::class,
             kind: ClassKind::Class_,
             isReadonly: true,
         );
 
-        self::assertSame('readonly class Value', $class->format());
+        self::assertSame('readonly class stdClass', $class->format());
     }
 
     public function testFormatClassWithParent(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\User',
+            name: \Exception::class,
             kind: ClassKind::Class_,
-            parent: new ClassName('App\\Entity'),
+            parent: new ClassName(\Error::class),
         );
 
-        self::assertSame('class User extends Entity', $class->format());
+        self::assertSame('class Exception extends Error', $class->format());
     }
 
     public function testFormatClassWithInterfaces(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\User',
+            name: \stdClass::class,
             kind: ClassKind::Class_,
             interfaces: [
-                new ClassName('JsonSerializable'),
-                new ClassName('Stringable'),
+                new ClassName(\JsonSerializable::class),
+                new ClassName(\Stringable::class),
             ],
         );
 
-        self::assertSame('class User implements JsonSerializable, Stringable', $class->format());
+        self::assertSame('class stdClass implements JsonSerializable, Stringable', $class->format());
     }
 
     public function testFormatClassWithParentAndInterfaces(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\User',
+            name: \Exception::class,
             kind: ClassKind::Class_,
             isFinal: true,
-            parent: new ClassName('App\\Entity'),
-            interfaces: [new ClassName('JsonSerializable')],
+            parent: new ClassName(\Error::class),
+            interfaces: [new ClassName(\JsonSerializable::class)],
         );
 
-        self::assertSame('final class User extends Entity implements JsonSerializable', $class->format());
+        self::assertSame('final class Exception extends Error implements JsonSerializable', $class->format());
     }
 
     public function testFormatInterface(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\UserInterface',
+            name: \Stringable::class,
             kind: ClassKind::Interface_,
         );
 
-        self::assertSame('interface UserInterface', $class->format());
+        self::assertSame('interface Stringable', $class->format());
     }
 
     public function testFormatInterfaceExtendingInterfaces(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\UserInterface',
+            name: \Stringable::class,
             kind: ClassKind::Interface_,
             interfaces: [
-                new ClassName('JsonSerializable'),
-                new ClassName('Stringable'),
+                new ClassName(\JsonSerializable::class),
+                new ClassName(\Countable::class),
             ],
         );
 
-        self::assertSame('interface UserInterface extends JsonSerializable, Stringable', $class->format());
+        self::assertSame('interface Stringable extends JsonSerializable, Countable', $class->format());
     }
 
     public function testFormatTrait(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\LoggerTrait',
+            name: \Generator::class,
             kind: ClassKind::Trait_,
         );
 
-        self::assertSame('trait LoggerTrait', $class->format());
+        self::assertSame('trait Generator', $class->format());
     }
 
     public function testFormatEnum(): void
     {
         $class = $this->createClassInfo(
-            name: 'App\\Status',
+            name: ClassKind::class,
             kind: ClassKind::Enum_,
         );
 
-        self::assertSame('enum Status', $class->format());
+        self::assertSame('enum ClassKind', $class->format());
     }
 
     /**
+     * @param class-string $name
      * @param list<ClassName> $interfaces
      */
     private function createClassInfo(
