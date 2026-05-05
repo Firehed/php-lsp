@@ -21,6 +21,9 @@ use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -218,5 +221,45 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedVariable::class, $result);
         self::assertStringContainsString('typed', $result->format());
+    }
+
+    public function testGetAccessibleMembersReturnsMembers(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+
+        $type = new ClassName('Fixtures\\Domain\\User');
+        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public);
+
+        self::assertNotEmpty($members);
+        // For instance access, should return methods and properties (ResolvedMember)
+        foreach ($members as $member) {
+            self::assertInstanceOf(ResolvedMember::class, $member);
+        }
+
+        // Check that public methods are included
+        $names = array_map(fn($m) => $m->format(), $members);
+        $hasGetName = false;
+        foreach ($names as $name) {
+            if (str_contains($name, 'getName')) {
+                $hasGetName = true;
+                break;
+            }
+        }
+        self::assertTrue($hasGetName, 'Expected getName method in accessible members');
+    }
+
+    public function testGetAccessibleMembersFiltersStaticOnly(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+
+        $type = new ClassName('Fixtures\\Domain\\User');
+        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, staticOnly: true);
+
+        self::assertNotEmpty($members);
+
+        // All members should be static
+        foreach ($members as $member) {
+            self::assertTrue($member->isStatic(), 'Expected only static members');
+        }
     }
 }

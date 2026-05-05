@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -75,6 +76,54 @@ final class SymbolResolver
         }
 
         return $this->resolveNode($node, $ast);
+    }
+
+    /**
+     * Get members accessible on a type.
+     * Used by: Completion (after -> or ::)
+     *
+     * For instance access (->): returns methods and properties.
+     * For static access (::): also includes constants and enum cases.
+     *
+     * @return list<ResolvedSymbol>
+     */
+    public function getAccessibleMembers(
+        Type $type,
+        Visibility $minVisibility,
+        bool $staticOnly = false,
+    ): array {
+        $classNames = $type->getResolvableClassNames();
+        if ($classNames === []) {
+            return [];
+        }
+
+        $members = [];
+
+        foreach ($classNames as $className) {
+            $methods = $this->memberResolver->getMethods($className, $minVisibility, $staticOnly);
+            foreach ($methods as $methodInfo) {
+                $members[] = new ResolvedMethod($methodInfo);
+            }
+
+            $properties = $this->memberResolver->getProperties($className, $minVisibility, $staticOnly);
+            foreach ($properties as $propertyInfo) {
+                $members[] = new ResolvedProperty($propertyInfo);
+            }
+
+            if ($staticOnly) {
+                $constants = $this->memberResolver->getConstants($className, $minVisibility);
+                foreach ($constants as $constantInfo) {
+                    $members[] = new ResolvedConstant($constantInfo);
+                }
+
+                $enumCases = $this->memberResolver->getEnumCases($className);
+                foreach ($enumCases as $enumCaseInfo) {
+                    $members[] = new ResolvedEnumCase($enumCaseInfo);
+                }
+            }
+        }
+
+        return $members;
     }
 
     /**
