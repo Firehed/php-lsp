@@ -380,7 +380,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$count = ...', $result['contents']);
+        self::assertStringContainsString('$count = 0', $result['contents']);
         self::assertStringNotContainsString('$name = ...', $result['contents']);
     }
 

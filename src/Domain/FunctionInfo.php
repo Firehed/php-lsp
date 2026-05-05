@@ -28,14 +28,17 @@ final readonly class FunctionInfo implements Formattable
 
     public static function fromNode(Stmt\Function_ $node): self
     {
-        $params = array_filter(
-            array_map(ParameterInfo::fromNode(...), $node->params),
-            fn($p) => $p !== null,
-        );
+        $params = [];
+        foreach ($node->params as $position => $param) {
+            $paramInfo = ParameterInfo::fromNode($param, $position);
+            if ($paramInfo !== null) {
+                $params[] = $paramInfo;
+            }
+        }
 
         return new self(
             name: $node->name->toString(),
-            parameters: array_values($params),
+            parameters: $params,
             returnType: TypeFactory::fromNode($node->returnType),
             docblock: $node->getDocComment()?->getText(),
             file: null,

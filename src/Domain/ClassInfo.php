@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class, interface, trait, or enum.
  */
-final readonly class ClassInfo
+final readonly class ClassInfo implements Formattable
 {
     /**
      * @param list<ClassName> $interfaces Implemented interfaces
@@ -34,5 +34,44 @@ final readonly class ClassInfo
         public ?string $file,
         public ?int $line,
     ) {
+    }
+
+    /**
+     * Returns a formatted class signature for display.
+     * Example: "final class User extends Entity implements JsonSerializable"
+     */
+    public function format(): string
+    {
+        $parts = [];
+        if ($this->isFinal) {
+            $parts[] = 'final';
+        }
+        if ($this->isAbstract) {
+            $parts[] = 'abstract';
+        }
+        if ($this->isReadonly) {
+            $parts[] = 'readonly';
+        }
+
+        $parts[] = match ($this->kind) {
+            ClassKind::Interface_ => 'interface',
+            ClassKind::Trait_ => 'trait',
+            ClassKind::Enum_ => 'enum',
+            default => 'class',
+        };
+        $parts[] = $this->name->shortName();
+
+        $sig = implode(' ', $parts);
+
+        if ($this->kind === ClassKind::Class_ && $this->parent !== null) {
+            $sig .= ' extends ' . $this->parent->shortName();
+        }
+        if ($this->kind === ClassKind::Interface_ && $this->interfaces !== []) {
+            $sig .= ' extends ' . implode(', ', array_map(fn($n) => $n->shortName(), $this->interfaces));
+        } elseif ($this->interfaces !== []) {
+            $sig .= ' implements ' . implode(', ', array_map(fn($n) => $n->shortName(), $this->interfaces));
+        }
+
+        return $sig;
     }
 }

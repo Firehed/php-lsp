@@ -86,7 +86,7 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('name', new PrimitiveType('string'), false, false, false),
+                new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
             ],
             returnType: null,
             docblock: null,
@@ -107,8 +107,8 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('a', new PrimitiveType('int'), false, false, false),
-                new ParameterInfo('b', new PrimitiveType('int'), false, false, false),
+                new ParameterInfo('a', new PrimitiveType('int'), false, null, 0, false, false),
+                new ParameterInfo('b', new PrimitiveType('int'), false, null, 1, false, false),
             ],
             returnType: new PrimitiveType('int'),
             docblock: null,
@@ -129,7 +129,7 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('arrays', new PrimitiveType('array'), false, true, false),
+                new ParameterInfo('arrays', new PrimitiveType('array'), false, null, 0, true, false),
             ],
             returnType: new PrimitiveType('array'),
             docblock: null,
@@ -150,8 +150,8 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('a', new PrimitiveType('mixed'), false, false, true),
-                new ParameterInfo('b', new PrimitiveType('mixed'), false, false, true),
+                new ParameterInfo('a', new PrimitiveType('mixed'), false, null, 0, false, true),
+                new ParameterInfo('b', new PrimitiveType('mixed'), false, null, 1, false, true),
             ],
             returnType: new PrimitiveType('void'),
             docblock: null,

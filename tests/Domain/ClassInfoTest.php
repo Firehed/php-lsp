@@ -73,4 +73,161 @@ class ClassInfoTest extends TestCase
         self::assertNull($class->file);
         self::assertNull($class->line);
     }
+
+    public function testFormatSimpleClass(): void
+    {
+        $class = $this->createClassInfo(
+            name: \stdClass::class,
+            kind: ClassKind::Class_,
+        );
+
+        self::assertSame('class stdClass', $class->format());
+    }
+
+    public function testFormatFinalClass(): void
+    {
+        $class = $this->createClassInfo(
+            name: \stdClass::class,
+            kind: ClassKind::Class_,
+            isFinal: true,
+        );
+
+        self::assertSame('final class stdClass', $class->format());
+    }
+
+    public function testFormatAbstractClass(): void
+    {
+        $class = $this->createClassInfo(
+            name: \stdClass::class,
+            kind: ClassKind::Class_,
+            isAbstract: true,
+        );
+
+        self::assertSame('abstract class stdClass', $class->format());
+    }
+
+    public function testFormatReadonlyClass(): void
+    {
+        $class = $this->createClassInfo(
+            name: \stdClass::class,
+            kind: ClassKind::Class_,
+            isReadonly: true,
+        );
+
+        self::assertSame('readonly class stdClass', $class->format());
+    }
+
+    public function testFormatClassWithParent(): void
+    {
+        $class = $this->createClassInfo(
+            name: \Exception::class,
+            kind: ClassKind::Class_,
+            parent: new ClassName(\Error::class),
+        );
+
+        self::assertSame('class Exception extends Error', $class->format());
+    }
+
+    public function testFormatClassWithInterfaces(): void
+    {
+        $class = $this->createClassInfo(
+            name: \stdClass::class,
+            kind: ClassKind::Class_,
+            interfaces: [
+                new ClassName(\JsonSerializable::class),
+                new ClassName(\Stringable::class),
+            ],
+        );
+
+        self::assertSame('class stdClass implements JsonSerializable, Stringable', $class->format());
+    }
+
+    public function testFormatClassWithParentAndInterfaces(): void
+    {
+        $class = $this->createClassInfo(
+            name: \Exception::class,
+            kind: ClassKind::Class_,
+            isFinal: true,
+            parent: new ClassName(\Error::class),
+            interfaces: [new ClassName(\JsonSerializable::class)],
+        );
+
+        self::assertSame('final class Exception extends Error implements JsonSerializable', $class->format());
+    }
+
+    public function testFormatInterface(): void
+    {
+        $class = $this->createClassInfo(
+            name: \Stringable::class,
+            kind: ClassKind::Interface_,
+        );
+
+        self::assertSame('interface Stringable', $class->format());
+    }
+
+    public function testFormatInterfaceExtendingInterfaces(): void
+    {
+        $class = $this->createClassInfo(
+            name: \Stringable::class,
+            kind: ClassKind::Interface_,
+            interfaces: [
+                new ClassName(\JsonSerializable::class),
+                new ClassName(\Countable::class),
+            ],
+        );
+
+        self::assertSame('interface Stringable extends JsonSerializable, Countable', $class->format());
+    }
+
+    public function testFormatTrait(): void
+    {
+        $class = $this->createClassInfo(
+            name: \Generator::class,
+            kind: ClassKind::Trait_,
+        );
+
+        self::assertSame('trait Generator', $class->format());
+    }
+
+    public function testFormatEnum(): void
+    {
+        $class = $this->createClassInfo(
+            name: ClassKind::class,
+            kind: ClassKind::Enum_,
+        );
+
+        self::assertSame('enum ClassKind', $class->format());
+    }
+
+    /**
+     * @param class-string $name
+     * @param list<ClassName> $interfaces
+     */
+    private function createClassInfo(
+        string $name,
+        ClassKind $kind,
+        bool $isAbstract = false,
+        bool $isFinal = false,
+        bool $isReadonly = false,
+        ?ClassName $parent = null,
+        array $interfaces = [],
+    ): ClassInfo {
+        return new ClassInfo(
+            name: new ClassName($name),
+            kind: $kind,
+            isAbstract: $isAbstract,
+            isFinal: $isFinal,
+            isReadonly: $isReadonly,
+            parent: $parent,
+            interfaces: $interfaces,
+            traits: [],
+            methods: [],
+            properties: [],
+            constants: [],
+            enumCases: [],
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
 }

@@ -68,7 +68,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'greet',
             parameters: [
-                new ParameterInfo('name', new PrimitiveType('string'), false, false, false),
+                new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
             ],
             returnType: null,
             docblock: null,
@@ -84,8 +84,8 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'add',
             parameters: [
-                new ParameterInfo('a', new PrimitiveType('int'), false, false, false),
-                new ParameterInfo('b', new PrimitiveType('int'), false, false, false),
+                new ParameterInfo('a', new PrimitiveType('int'), false, null, 0, false, false),
+                new ParameterInfo('b', new PrimitiveType('int'), false, null, 1, false, false),
             ],
             returnType: new PrimitiveType('int'),
             docblock: null,
@@ -101,7 +101,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: 'sum',
             parameters: [
-                new ParameterInfo('numbers', new PrimitiveType('int'), false, true, false),
+                new ParameterInfo('numbers', new PrimitiveType('int'), false, null, 0, true, false),
             ],
             returnType: new PrimitiveType('int'),
             docblock: null,

@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
+use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 use ReflectionParameter;
 
 /**
@@ -18,6 +19,8 @@ final readonly class ParameterInfo implements Formattable
         public string $name,
         public ?Type $type,
         public bool $hasDefault,
+        public ?string $defaultValue,
+        public int $position,
         public bool $isVariadic,
         public bool $isPassedByReference,
     ) {
@@ -29,6 +32,7 @@ final readonly class ParameterInfo implements Formattable
      */
     public static function fromNode(
         Param $param,
+        int $position,
         ?string $selfContext = null,
         ?string $parentContext = null,
     ): ?self {
@@ -36,10 +40,18 @@ final readonly class ParameterInfo implements Formattable
             return null;
         }
 
+        $defaultValue = null;
+        if ($param->default !== null) {
+            $printer = new PrettyPrinter();
+            $defaultValue = $printer->prettyPrintExpr($param->default);
+        }
+
         return new self(
             name: $param->var->name,
             type: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
             hasDefault: $param->default !== null,
+            defaultValue: $defaultValue,
+            position: $position,
             isVariadic: $param->variadic,
             isPassedByReference: $param->byRef,
         );
@@ -47,13 +59,31 @@ final readonly class ParameterInfo implements Formattable
 
     public static function fromReflection(ReflectionParameter $param): self
     {
+        $defaultValue = null;
+        if ($param->isDefaultValueAvailable()) {
+            $defaultValue = self::formatReflectionDefault($param->getDefaultValue());
+        }
+
         return new self(
             name: $param->getName(),
             type: TypeFactory::fromReflection($param->getType()),
             hasDefault: $param->isDefaultValueAvailable(),
+            defaultValue: $defaultValue,
+            position: $param->getPosition(),
             isVariadic: $param->isVariadic(),
             isPassedByReference: $param->isPassedByReference(),
         );
+    }
+
+    private static function formatReflectionDefault(mixed $value): string
+    {
+        if ($value === null) {
+            return 'null';
+        }
+        if ($value === []) {
+            return '[]';
+        }
+        return var_export($value, true);
     }
 
     public function format(bool $showDefault = false): string
@@ -70,7 +100,7 @@ final readonly class ParameterInfo implements Formattable
         }
         $str .= '$' . $this->name;
         if ($showDefault && $this->hasDefault && !$this->isVariadic) {
-            $str .= ' = ...';
+            $str .= ' = ' . ($this->defaultValue ?? '...');
         }
         return $str;
     }
