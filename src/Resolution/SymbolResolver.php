@@ -23,8 +23,11 @@ use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -185,6 +188,243 @@ final class SymbolResolver
         $this->collectVariablesFromStatements($stmts, $line, $scope, $ast, $variables, $seen);
 
         return $variables;
+    }
+
+    /**
+     * Get parameters for active call at position.
+     * Used by: SignatureHelp, Completion (named args)
+     */
+    public function getCallContext(
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): ?CallContext {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        $offset = $document->offsetAt($line, $character);
+
+        $callInfo = $this->findCallAtPosition($ast, $offset);
+        if ($callInfo === null) {
+            return null;
+        }
+
+        [$callNode, $activeParameter, $usedNames] = $callInfo;
+
+        $callable = $this->resolveCallable($callNode, $ast);
+        if ($callable === null) {
+            return null;
+        }
+
+        return new CallContext($callable, $activeParameter, $usedNames);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>}|null
+     */
+    private function findCallAtPosition(array $ast, int $offset): ?array
+    {
+        $finder = new class ($offset) extends NodeVisitorAbstract {
+            /** @var FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null */
+            public ?Node $found = null;
+            public int $activeParameter = 0;
+            /** @var list<string> */
+            public array $usedNames = [];
+
+            public function __construct(private readonly int $offset)
+            {
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if (
+                    !$node instanceof FuncCall
+                    && !$node instanceof MethodCall
+                    && !$node instanceof NullsafeMethodCall
+                    && !$node instanceof StaticCall
+                    && !$node instanceof New_
+                ) {
+                    return null;
+                }
+
+                $startPos = $node->getStartFilePos();
+                $endPos = $node->getEndFilePos();
+
+                if ($startPos <= $this->offset && $this->offset <= $endPos) {
+                    $activeParam = 0;
+                    $usedNames = [];
+
+                    foreach ($node->args as $i => $arg) {
+                        if ($arg instanceof \PhpParser\Node\Arg && $arg->name !== null) {
+                            $usedNames[] = $arg->name->name;
+                        }
+                        $argEnd = $arg->getEndFilePos();
+                        if ($this->offset > $argEnd) {
+                            $activeParam = $i + 1;
+                        }
+                    }
+
+                    $this->found = $node;
+                    $this->activeParameter = $activeParam;
+                    $this->usedNames = $usedNames;
+                }
+
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($finder);
+        $traverser->traverse($ast);
+
+        if ($finder->found === null) {
+            return null;
+        }
+
+        return [$finder->found, $finder->activeParameter, $finder->usedNames];
+    }
+
+    /**
+     * @param FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_ $call
+     * @param array<Stmt> $ast
+     */
+    private function resolveCallable(
+        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_ $call,
+        array $ast,
+    ): ?ResolvedCallable {
+        if ($call instanceof FuncCall) {
+            return $this->resolveFuncCallCallable($call, $ast);
+        }
+
+        if ($call instanceof MethodCall || $call instanceof NullsafeMethodCall) {
+            return $this->resolveMethodCallCallable($call, $ast);
+        }
+
+        if ($call instanceof StaticCall) {
+            return $this->resolveStaticCallCallable($call);
+        }
+
+        // New_ - resolve constructor
+        return $this->resolveNewCallable($call);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveFuncCallCallable(FuncCall $call, array $ast): ?ResolvedCallable
+    {
+        $name = $call->name;
+        if (!$name instanceof Name) {
+            return null;
+        }
+
+        $functionName = $name->toString();
+
+        // Try user-defined function first
+        $funcNode = ScopeFinder::findFunction($functionName, $ast);
+        if ($funcNode !== null) {
+            $funcInfo = FunctionInfo::fromNode($funcNode);
+            return new ResolvedFunction($funcInfo);
+        }
+
+        // Fall back to built-in function
+        try {
+            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($functionName));
+            return new ResolvedFunction($funcInfo);
+        } catch (\ReflectionException) {
+            return null;
+        }
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveMethodCallCallable(MethodCall|NullsafeMethodCall $call, array $ast): ?ResolvedCallable
+    {
+        $methodName = $call->name;
+        if (!$methodName instanceof Identifier) {
+            return null;
+        }
+
+        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        $className = $classNames[0] ?? null;
+
+        if ($className === null) {
+            return null;
+        }
+
+        $methodInfo = $this->memberResolver->findMethod(
+            $className,
+            new MethodName($methodName->toString()),
+            Visibility::Private,
+        );
+
+        if ($methodInfo === null) {
+            return null;
+        }
+
+        return new ResolvedMethod($methodInfo);
+    }
+
+    private function resolveStaticCallCallable(StaticCall $call): ?ResolvedCallable
+    {
+        $methodName = $call->name;
+        if (!$methodName instanceof Identifier) {
+            return null;
+        }
+
+        $class = $call->class;
+        if (!$class instanceof Name) {
+            return null;
+        }
+
+        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
+        if ($classNameStr === null) {
+            return null;
+        }
+
+        $methodInfo = $this->memberResolver->findMethod(
+            new ClassName($classNameStr),
+            new MethodName($methodName->toString()),
+            Visibility::Private,
+        );
+
+        if ($methodInfo === null) {
+            return null;
+        }
+
+        return new ResolvedMethod($methodInfo);
+    }
+
+    private function resolveNewCallable(New_ $call): ?ResolvedCallable
+    {
+        $class = $call->class;
+        if (!$class instanceof Name) {
+            return null;
+        }
+
+        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
+        if ($classNameStr === null) {
+            return null;
+        }
+
+        $methodInfo = $this->memberResolver->findMethod(
+            new ClassName($classNameStr),
+            new MethodName('__construct'),
+            Visibility::Private,
+        );
+
+        if ($methodInfo === null) {
+            return null;
+        }
+
+        return new ResolvedMethod($methodInfo);
     }
 
     /**

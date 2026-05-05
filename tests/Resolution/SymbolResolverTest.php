@@ -23,6 +23,7 @@ use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -293,5 +294,30 @@ final class SymbolResolverTest extends TestCase
             }
         }
         self::assertTrue($hasNameParam, 'Expected $name parameter in scope');
+    }
+
+    public function testGetCallContextReturnsContext(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_this_call');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context);
+        self::assertSame(0, $context->activeParameterIndex);
+        self::assertStringContainsString('setName', $context->callable->format());
+    }
+
+    public function testGetCallContextReturnsNullOutsideCall(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get('file:///fixtures/src/Domain/User.php');
+        assert($document !== null);
+
+        // Position at start of file, not in any call
+        $context = $this->resolver->getCallContext($document, 0, 0);
+
+        self::assertNull($context);
     }
 }
