@@ -433,8 +433,6 @@ final class SymbolResolver
      */
     private function findScopeAtOffset(array $ast, int $offset): Stmt\Function_|Stmt\ClassMethod|Closure|null
     {
-        $found = null;
-
         $visitor = new class ($offset) extends NodeVisitorAbstract {
             public Stmt\Function_|Stmt\ClassMethod|Closure|null $found = null;
             private int $offset;
@@ -541,12 +539,12 @@ final class SymbolResolver
         // Instance method call: $obj->method() or $obj?->method()
         if (MemberAccessResolver::isMethodCall($parent)) {
             /** @var MethodCall|NullsafeMethodCall $parent */
-            return $this->resolveMethodCall($parent, $ast);
+            return $this->resolveMethodCallCallable($parent, $ast);
         }
 
         // Static method call: ClassName::method()
         if ($parent instanceof StaticCall) {
-            return $this->resolveStaticCall($parent);
+            return $this->resolveStaticCallCallable($parent);
         }
 
         // Property fetch: $obj->property or $obj?->property
@@ -561,67 +559,6 @@ final class SymbolResolver
         }
 
         return null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveMethodCall(MethodCall|NullsafeMethodCall $call, array $ast): ?ResolvedSymbol
-    {
-        $methodName = $call->name;
-        if (!$methodName instanceof Identifier) {
-            return null;
-        }
-
-        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        $className = $classNames[0] ?? null;
-
-        if ($className === null) {
-            return null;
-        }
-
-        $methodInfo = $this->memberResolver->findMethod(
-            $className,
-            new MethodName($methodName->toString()),
-            Visibility::Private,
-        );
-
-        if ($methodInfo === null) {
-            return null;
-        }
-
-        return new ResolvedMethod($methodInfo);
-    }
-
-    private function resolveStaticCall(StaticCall $call): ?ResolvedSymbol
-    {
-        $methodName = $call->name;
-        if (!$methodName instanceof Identifier) {
-            return null;
-        }
-
-        $class = $call->class;
-        if (!$class instanceof Name) {
-            return null;
-        }
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        $methodInfo = $this->memberResolver->findMethod(
-            new ClassName($classNameStr),
-            new MethodName($methodName->toString()),
-            Visibility::Private,
-        );
-
-        if ($methodInfo === null) {
-            return null;
-        }
-
-        return new ResolvedMethod($methodInfo);
     }
 
     private function resolveName(Name $node): ?ResolvedSymbol
