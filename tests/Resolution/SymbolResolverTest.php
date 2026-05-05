@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ResolvedClass;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
+use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
@@ -125,5 +126,29 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedClass::class, $result);
         self::assertStringContainsString('User', $result->format());
+    }
+
+    public function testResolvesPropertyFetch(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedProperty::class, $result);
+        self::assertStringContainsString('manager', $result->format());
+    }
+
+    public function testResolvesNullsafePropertyFetch(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager_nullsafe');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedProperty::class, $result);
+        self::assertStringContainsString('manager', $result->format());
     }
 }

@@ -17,8 +17,11 @@ use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
+use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\NullsafePropertyFetch;
+use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
@@ -102,6 +105,12 @@ final class SymbolResolver
             return $this->resolveStaticCall($parent);
         }
 
+        // Property fetch: $obj->property or $obj?->property
+        if (MemberAccessResolver::isPropertyFetch($parent)) {
+            /** @var PropertyFetch|NullsafePropertyFetch $parent */
+            return $this->resolvePropertyFetch($parent, $ast);
+        }
+
         return null;
     }
 
@@ -176,5 +185,36 @@ final class SymbolResolver
         }
 
         return new ResolvedClass($classInfo);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolvePropertyFetch(PropertyFetch|NullsafePropertyFetch $fetch, array $ast): ?ResolvedSymbol
+    {
+        $propertyName = $fetch->name;
+        if (!$propertyName instanceof Identifier) {
+            return null;
+        }
+
+        $type = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        $className = $classNames[0] ?? null;
+
+        if ($className === null) {
+            return null;
+        }
+
+        $propertyInfo = $this->memberResolver->findProperty(
+            $className,
+            new PropertyName($propertyName->toString()),
+            Visibility::Private,
+        );
+
+        if ($propertyInfo === null) {
+            return null;
+        }
+
+        return new ResolvedProperty($propertyInfo);
     }
 }
