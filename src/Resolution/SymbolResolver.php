@@ -23,6 +23,8 @@ use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\StaticPropertyFetch;
+use PhpParser\Node\VarLikeIdentifier;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
@@ -76,6 +78,11 @@ final class SymbolResolver
      */
     private function resolveNode(Node $node, array $ast): ?ResolvedSymbol
     {
+        // VarLikeIdentifier extends Identifier, so check it first
+        if ($node instanceof VarLikeIdentifier) {
+            return $this->resolveVarLikeIdentifier($node);
+        }
+
         if ($node instanceof Identifier) {
             return $this->resolveIdentifier($node, $ast);
         }
@@ -207,6 +214,48 @@ final class SymbolResolver
 
         $propertyInfo = $this->memberResolver->findProperty(
             $className,
+            new PropertyName($propertyName->toString()),
+            Visibility::Private,
+        );
+
+        if ($propertyInfo === null) {
+            return null;
+        }
+
+        return new ResolvedProperty($propertyInfo);
+    }
+
+    private function resolveVarLikeIdentifier(VarLikeIdentifier $node): ?ResolvedSymbol
+    {
+        $parent = $node->getAttribute('parent');
+
+        // Static property fetch: ClassName::$property
+        if ($parent instanceof StaticPropertyFetch) {
+            return $this->resolveStaticPropertyFetch($parent);
+        }
+
+        return null;
+    }
+
+    private function resolveStaticPropertyFetch(StaticPropertyFetch $fetch): ?ResolvedSymbol
+    {
+        $propertyName = $fetch->name;
+        if (!$propertyName instanceof VarLikeIdentifier) {
+            return null;
+        }
+
+        $class = $fetch->class;
+        if (!$class instanceof Name) {
+            return null;
+        }
+
+        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
+        if ($classNameStr === null) {
+            return null;
+        }
+
+        $propertyInfo = $this->memberResolver->findProperty(
+            new ClassName($classNameStr),
             new PropertyName($propertyName->toString()),
             Visibility::Private,
         );

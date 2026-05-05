@@ -151,4 +151,17 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(ResolvedProperty::class, $result);
         self::assertStringContainsString('manager', $result->format());
     }
+
+    public function testResolvesStaticPropertyFetch(): void
+    {
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'staticProperty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedProperty::class, $result);
+        self::assertStringContainsString('staticProperty', $result->format());
+    }
 }
