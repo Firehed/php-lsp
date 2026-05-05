@@ -12,12 +12,16 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
+use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 
 /**
@@ -73,6 +77,10 @@ final class SymbolResolver
             return $this->resolveIdentifier($node, $ast);
         }
 
+        if ($node instanceof Name) {
+            return $this->resolveName($node);
+        }
+
         return null;
     }
 
@@ -87,6 +95,11 @@ final class SymbolResolver
         if (MemberAccessResolver::isMethodCall($parent)) {
             /** @var MethodCall|NullsafeMethodCall $parent */
             return $this->resolveMethodCall($parent, $ast);
+        }
+
+        // Static method call: ClassName::method()
+        if ($parent instanceof StaticCall) {
+            return $this->resolveStaticCall($parent);
         }
 
         return null;
@@ -121,5 +134,47 @@ final class SymbolResolver
         }
 
         return new ResolvedMethod($methodInfo);
+    }
+
+    private function resolveStaticCall(StaticCall $call): ?ResolvedSymbol
+    {
+        $methodName = $call->name;
+        if (!$methodName instanceof Identifier) {
+            return null;
+        }
+
+        $class = $call->class;
+        if (!$class instanceof Name) {
+            return null;
+        }
+
+        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
+        if ($classNameStr === null) {
+            return null;
+        }
+
+        $methodInfo = $this->memberResolver->findMethod(
+            new ClassName($classNameStr),
+            new MethodName($methodName->toString()),
+            Visibility::Private,
+        );
+
+        if ($methodInfo === null) {
+            return null;
+        }
+
+        return new ResolvedMethod($methodInfo);
+    }
+
+    private function resolveName(Name $node): ?ResolvedSymbol
+    {
+        $classNameStr = ScopeFinder::resolveClassName($node);
+
+        $classInfo = $this->classRepository->get(new ClassName($classNameStr));
+        if ($classInfo === null) {
+            return null;
+        }
+
+        return new ResolvedClass($classInfo);
     }
 }
