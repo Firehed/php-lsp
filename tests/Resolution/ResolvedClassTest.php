@@ -13,42 +13,23 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedClass::class)]
 class ResolvedClassTest extends TestCase
 {
+    use ResolvesFromInfoTestTrait;
+
+    protected function createSubjectWithLocation(?string $file, ?int $line): ResolvedSymbol
+    {
+        return $this->createResolvedClass(file: $file, line: $line);
+    }
+
+    protected function createSubjectWithDocblock(?string $docblock): ResolvedSymbol
+    {
+        return $this->createResolvedClass(docblock: $docblock);
+    }
+
     public function testImplementsInterfaces(): void
     {
         $resolved = $this->createResolvedClass();
 
         self::assertInstanceOf(ResolvedSymbol::class, $resolved);
-    }
-
-    public function testGetDefinitionLocation(): void
-    {
-        $resolved = $this->createResolvedClass();
-
-        $location = $resolved->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-    }
-
-    public function testGetDefinitionLocationReturnsNullWhenFileIsNull(): void
-    {
-        $resolved = $this->createResolvedClass(file: null);
-
-        self::assertNull($resolved->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $resolved = $this->createResolvedClass(docblock: "/**\n * A user entity\n */");
-
-        self::assertSame('A user entity', $resolved->getDocumentation());
-    }
-
-    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
-    {
-        $resolved = $this->createResolvedClass(docblock: null);
-
-        self::assertNull($resolved->getDocumentation());
     }
 
     public function testGetType(): void

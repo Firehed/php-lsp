@@ -14,35 +14,23 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedEnumCase::class)]
 class ResolvedEnumCaseTest extends TestCase
 {
+    use ResolvesFromInfoTestTrait;
+
+    protected function createSubjectWithLocation(?string $file, ?int $line): ResolvedSymbol
+    {
+        return $this->createResolvedEnumCase(file: $file, line: $line);
+    }
+
+    protected function createSubjectWithDocblock(?string $docblock): ResolvedSymbol
+    {
+        return $this->createResolvedEnumCase(docblock: $docblock);
+    }
+
     public function testImplementsResolvedSymbol(): void
     {
         $resolved = $this->createResolvedEnumCase();
 
         self::assertInstanceOf(ResolvedSymbol::class, $resolved);
-    }
-
-    public function testGetDefinitionLocation(): void
-    {
-        $resolved = $this->createResolvedEnumCase();
-
-        $location = $resolved->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $resolved = $this->createResolvedEnumCase(docblock: "/**\n * Active status\n */");
-
-        self::assertSame('Active status', $resolved->getDocumentation());
-    }
-
-    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
-    {
-        $resolved = $this->createResolvedEnumCase(docblock: null);
-
-        self::assertNull($resolved->getDocumentation());
     }
 
     public function testGetTypeReturnsDeclaringEnum(): void
@@ -72,6 +60,8 @@ class ResolvedEnumCaseTest extends TestCase
     }
 
     private function createResolvedEnumCase(
+        ?string $file = '/path/to/file.php',
+        ?int $line = 10,
         ?string $docblock = null,
         ?ClassName $declaringClass = null,
     ): ResolvedEnumCase {
@@ -79,8 +69,8 @@ class ResolvedEnumCaseTest extends TestCase
             name: new EnumCaseName('Active'),
             backingValue: null,
             docblock: $docblock,
-            file: '/path/to/file.php',
-            line: 10,
+            file: $file,
+            line: $line,
             declaringClass: $declaringClass ?? new ClassName(ClassKind::class),
         );
 

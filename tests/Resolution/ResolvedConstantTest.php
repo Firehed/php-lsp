@@ -15,36 +15,24 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedConstant::class)]
 class ResolvedConstantTest extends TestCase
 {
+    use ResolvesFromInfoTestTrait;
+
+    protected function createSubjectWithLocation(?string $file, ?int $line): ResolvedSymbol
+    {
+        return $this->createResolvedConstant(file: $file, line: $line);
+    }
+
+    protected function createSubjectWithDocblock(?string $docblock): ResolvedSymbol
+    {
+        return $this->createResolvedConstant(docblock: $docblock);
+    }
+
     public function testImplementsInterfaces(): void
     {
         $resolved = $this->createResolvedConstant();
 
         self::assertInstanceOf(ResolvedSymbol::class, $resolved);
         self::assertInstanceOf(ResolvedMember::class, $resolved);
-    }
-
-    public function testGetDefinitionLocation(): void
-    {
-        $resolved = $this->createResolvedConstant();
-
-        $location = $resolved->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $resolved = $this->createResolvedConstant(docblock: "/**\n * Max retries\n */");
-
-        self::assertSame('Max retries', $resolved->getDocumentation());
-    }
-
-    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
-    {
-        $resolved = $this->createResolvedConstant(docblock: null);
-
-        self::assertNull($resolved->getDocumentation());
     }
 
     public function testGetType(): void
@@ -85,6 +73,8 @@ class ResolvedConstantTest extends TestCase
     }
 
     private function createResolvedConstant(
+        ?string $file = '/path/to/file.php',
+        ?int $line = 10,
         ?string $docblock = null,
         ?PrimitiveType $type = null,
         ?ClassName $declaringClass = null,
@@ -96,8 +86,8 @@ class ResolvedConstantTest extends TestCase
             isFinal: false,
             type: $type ?? new PrimitiveType('int'),
             docblock: $docblock,
-            file: '/path/to/file.php',
-            line: 10,
+            file: $file,
+            line: $line,
             declaringClass: $declaringClass ?? new ClassName(\stdClass::class),
         );
 

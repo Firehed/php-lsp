@@ -13,36 +13,24 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedFunction::class)]
 class ResolvedFunctionTest extends TestCase
 {
+    use ResolvesFromInfoTestTrait;
+
+    protected function createSubjectWithLocation(?string $file, ?int $line): ResolvedSymbol
+    {
+        return $this->createResolvedFunction(file: $file, line: $line);
+    }
+
+    protected function createSubjectWithDocblock(?string $docblock): ResolvedSymbol
+    {
+        return $this->createResolvedFunction(docblock: $docblock);
+    }
+
     public function testImplementsInterfaces(): void
     {
         $resolved = $this->createResolvedFunction();
 
         self::assertInstanceOf(ResolvedSymbol::class, $resolved);
         self::assertInstanceOf(ResolvedCallable::class, $resolved);
-    }
-
-    public function testGetDefinitionLocation(): void
-    {
-        $resolved = $this->createResolvedFunction();
-
-        $location = $resolved->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $resolved = $this->createResolvedFunction(docblock: "/**\n * Greets a user\n */");
-
-        self::assertSame('Greets a user', $resolved->getDocumentation());
-    }
-
-    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
-    {
-        $resolved = $this->createResolvedFunction(docblock: null);
-
-        self::assertNull($resolved->getDocumentation());
     }
 
     public function testGetType(): void
@@ -106,6 +94,8 @@ class ResolvedFunctionTest extends TestCase
      * @param list<ParameterInfo> $parameters
      */
     private function createResolvedFunction(
+        ?string $file = '/path/to/file.php',
+        ?int $line = 10,
         ?string $docblock = null,
         ?PrimitiveType $returnType = null,
         array $parameters = [],
@@ -115,8 +105,8 @@ class ResolvedFunctionTest extends TestCase
             parameters: $parameters,
             returnType: $returnType ?? new PrimitiveType('string'),
             docblock: $docblock,
-            file: '/path/to/file.php',
-            line: 10,
+            file: $file,
+            line: $line,
         );
 
         return new ResolvedFunction($funcInfo);

@@ -15,44 +15,24 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedProperty::class)]
 class ResolvedPropertyTest extends TestCase
 {
+    use ResolvesFromInfoTestTrait;
+
+    protected function createSubjectWithLocation(?string $file, ?int $line): ResolvedSymbol
+    {
+        return $this->createResolvedProperty(file: $file, line: $line);
+    }
+
+    protected function createSubjectWithDocblock(?string $docblock): ResolvedSymbol
+    {
+        return $this->createResolvedProperty(docblock: $docblock);
+    }
+
     public function testImplementsInterfaces(): void
     {
         $resolved = $this->createResolvedProperty();
 
         self::assertInstanceOf(ResolvedSymbol::class, $resolved);
         self::assertInstanceOf(ResolvedMember::class, $resolved);
-    }
-
-    public function testGetDefinitionLocation(): void
-    {
-        $resolved = $this->createResolvedProperty(file: '/path/to/file.php', line: 10);
-
-        $location = $resolved->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-        self::assertSame(9, $location->startLine);
-    }
-
-    public function testGetDefinitionLocationReturnsNullWhenFileIsNull(): void
-    {
-        $resolved = $this->createResolvedProperty(file: null, line: 10);
-
-        self::assertNull($resolved->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $resolved = $this->createResolvedProperty(docblock: "/**\n * The name property\n */");
-
-        self::assertSame('The name property', $resolved->getDocumentation());
-    }
-
-    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
-    {
-        $resolved = $this->createResolvedProperty(docblock: null);
-
-        self::assertNull($resolved->getDocumentation());
     }
 
     public function testGetType(): void
