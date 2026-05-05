@@ -17,6 +17,8 @@ use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ResolvedClass;
+use Firehed\PhpLsp\Resolution\ResolvedConstant;
+use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -163,5 +165,29 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedProperty::class, $result);
         self::assertStringContainsString('staticProperty', $result->format());
+    }
+
+    public function testResolvesClassConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'class_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedConstant::class, $result);
+        self::assertStringContainsString('PARENT_CONST', $result->format());
+    }
+
+    public function testResolvesEnumCase(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Enum/Status.php', 'enum_case');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedEnumCase::class, $result);
+        self::assertStringContainsString('Active', $result->format());
     }
 }

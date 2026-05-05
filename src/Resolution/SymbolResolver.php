@@ -17,7 +17,10 @@ use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
+use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\PropertyName;
+use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
@@ -116,6 +119,11 @@ final class SymbolResolver
         if (MemberAccessResolver::isPropertyFetch($parent)) {
             /** @var PropertyFetch|NullsafePropertyFetch $parent */
             return $this->resolvePropertyFetch($parent, $ast);
+        }
+
+        // Class constant or enum case: ClassName::CONSTANT or Enum::Case
+        if ($parent instanceof ClassConstFetch) {
+            return $this->resolveClassConstFetch($parent);
         }
 
         return null;
@@ -223,6 +231,49 @@ final class SymbolResolver
         }
 
         return new ResolvedProperty($propertyInfo);
+    }
+
+    private function resolveClassConstFetch(ClassConstFetch $fetch): ?ResolvedSymbol
+    {
+        $constName = $fetch->name;
+        if (!$constName instanceof Identifier) {
+            return null;
+        }
+
+        $class = $fetch->class;
+        if (!$class instanceof Name) {
+            return null;
+        }
+
+        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
+        if ($classNameStr === null) {
+            return null;
+        }
+
+        $className = new ClassName($classNameStr);
+
+        // Check if it's an enum case first
+        $enumCaseInfo = $this->memberResolver->findEnumCase(
+            $className,
+            new EnumCaseName($constName->toString()),
+        );
+
+        if ($enumCaseInfo !== null) {
+            return new ResolvedEnumCase($enumCaseInfo);
+        }
+
+        // Otherwise it's a class constant
+        $constantInfo = $this->memberResolver->findConstant(
+            $className,
+            new ConstantName($constName->toString()),
+            Visibility::Private,
+        );
+
+        if ($constantInfo === null) {
+            return null;
+        }
+
+        return new ResolvedConstant($constantInfo);
     }
 
     private function resolveVarLikeIdentifier(VarLikeIdentifier $node): ?ResolvedSymbol

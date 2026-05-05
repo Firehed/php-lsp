@@ -33,4 +33,9 @@ enum Status
     {
         return $this->label(); //hover:enum_method
     }
+
+    public function triggerEnumCase(): Status
+    {
+        return self::Active; //hover:enum_case
+    }
 }
