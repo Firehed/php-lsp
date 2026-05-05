@@ -228,6 +228,7 @@ final class SymbolResolverTest extends TestCase
     {
         $this->openFixture('src/Domain/User.php');
 
+        // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Domain\\User');
         $members = $this->resolver->getAccessibleMembers($type, Visibility::Public);
 
@@ -253,13 +254,15 @@ final class SymbolResolverTest extends TestCase
     {
         $this->openFixture('src/Domain/User.php');
 
+        // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Domain\\User');
         $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, staticOnly: true);
 
         self::assertNotEmpty($members);
 
-        // All members should be static
+        // All returned symbols for static access should be static members, constants, or enum cases
         foreach ($members as $member) {
+            self::assertInstanceOf(ResolvedMember::class, $member);
             self::assertTrue($member->isStatic(), 'Expected only static members');
         }
     }
