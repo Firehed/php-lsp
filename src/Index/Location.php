@@ -16,6 +16,19 @@ final readonly class Location
     }
 
     /**
+     * Creates a Location from a filesystem path and 1-based line number.
+     * Returns null if either argument is null.
+     */
+    public static function fromFileLine(?string $file, ?int $line): ?self
+    {
+        if ($file === null || $line === null) {
+            return null;
+        }
+        $uri = str_starts_with($file, 'file://') ? $file : 'file://' . $file;
+        return new self($uri, $line - 1, 0, $line - 1, 0);
+    }
+
+    /**
      * @return array{
      *   uri: string,
      *   range: array{
