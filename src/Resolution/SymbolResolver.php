@@ -594,9 +594,11 @@ final class SymbolResolver
     private function resolvePropertyFetch(PropertyFetch|NullsafePropertyFetch $fetch, array $ast): ?ResolvedSymbol
     {
         $propertyName = $fetch->name;
+        // @codeCoverageIgnoreStart
         if (!$propertyName instanceof Identifier) {
-            return null;
+            throw new \LogicException('resolvePropertyFetch called with non-Identifier name');
         }
+        // @codeCoverageIgnoreEnd
 
         $type = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
         $classNames = $type?->getResolvableClassNames() ?? [];
@@ -622,14 +624,16 @@ final class SymbolResolver
     private function resolveClassConstFetch(ClassConstFetch $fetch): ?ResolvedSymbol
     {
         $constName = $fetch->name;
+        // @codeCoverageIgnoreStart
         if (!$constName instanceof Identifier) {
-            return null;
+            throw new \LogicException('resolveClassConstFetch called with non-Identifier name');
         }
 
         $class = $fetch->class;
         if (!$class instanceof Name) {
-            return null;
+            throw new \LogicException('resolveClassConstFetch called with non-Name class');
         }
+        // @codeCoverageIgnoreEnd
 
         $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
         if ($classNameStr === null) {
@@ -677,14 +681,16 @@ final class SymbolResolver
     private function resolveStaticPropertyFetch(StaticPropertyFetch $fetch): ?ResolvedSymbol
     {
         $propertyName = $fetch->name;
+        // @codeCoverageIgnoreStart
         if (!$propertyName instanceof VarLikeIdentifier) {
-            return null;
+            throw new \LogicException('resolveStaticPropertyFetch called with non-VarLikeIdentifier name');
         }
 
         $class = $fetch->class;
         if (!$class instanceof Name) {
-            return null;
+            throw new \LogicException('resolveStaticPropertyFetch called with non-Name class');
         }
+        // @codeCoverageIgnoreEnd
 
         $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
         if ($classNameStr === null) {

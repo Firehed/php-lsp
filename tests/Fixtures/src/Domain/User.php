@@ -47,7 +47,7 @@ class User implements Entity, Person
      */
     public function setName(string $name): void
     {
-        $this->name = $name;
+        $this->name = $name; /*|inside_setName*/
     }
 
     public function getEmail(): string
@@ -197,5 +197,80 @@ class User implements Entity, Person
     {
         $typed = $this->manager;
         echo $typed; //hover:variable_typed
+    }
+
+    public function triggerSigNew(): self
+    {
+        return new User(/*|sig_new*/'1', 'name', 'email');
+    }
+
+    public function triggerSigBuiltinFunc(): int
+    {
+        return strlen(/*|sig_builtin_func*/'test');
+    }
+
+    public function triggerDynamicMethodCall(): void
+    {
+        $method = 'setName';
+        $this->$method(/*|sig_dynamic_method*/'name');
+    }
+
+    public function triggerDynamicStaticCall(): void
+    {
+        $method = 'create';
+        self::$method(/*|sig_dynamic_static*/'1', 'n', 'e');
+    }
+
+    public function triggerDynamicFuncCall(): void
+    {
+        $func = 'strlen';
+        $func(/*|sig_dynamic_func*/'test');
+    }
+
+    public function triggerDynamicNew(): self
+    {
+        $class = self::class;
+        return new $class(/*|sig_dynamic_new*/'1', 'n', 'e');
+    }
+
+    public function triggerVariableVariable(): void
+    {
+        $name = 'foo';
+        $$name = 'bar'; //hover:variable_variable
+        echo /*|outer_var_var*/$$name;
+    }
+
+    public function triggerDynamicProperty(): void
+    {
+        $prop = 'name';
+        echo $this->$prop; //hover:dynamic_property
+    }
+
+    public function triggerDynamicConstant(): void
+    {
+        $const = 'DEFAULT_ROLE';
+        echo self::$const; //hover:dynamic_constant
+    }
+
+    public function triggerComputedClassStatic(): void
+    {
+        $class = self::class;
+        $class::create(/*|sig_computed_class*/'1', 'n', 'e');
+    }
+
+    public function triggerUntypedMethodCall(): void
+    {
+        $untyped = $this->getUnknown();
+        $untyped->foo(/*|sig_untyped_method*/);
+    }
+
+    public function triggerNonexistentMethodCall(): void
+    {
+        $this->nonexistentMethod(/*|sig_nonexistent_method*/);
+    }
+
+    public function triggerNonexistentStaticMethod(): void
+    {
+        self::nonexistentStatic(/*|sig_nonexistent_static*/);
     }
 }
