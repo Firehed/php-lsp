@@ -38,6 +38,13 @@ class ResolvedEnumCaseTest extends TestCase
         self::assertSame('Active status', $resolved->getDocumentation());
     }
 
+    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
+    {
+        $resolved = $this->createResolvedEnumCase(docblock: null);
+
+        self::assertNull($resolved->getDocumentation());
+    }
+
     public function testGetTypeReturnsDeclaringEnum(): void
     {
         $enumName = new ClassName(ClassKind::class);

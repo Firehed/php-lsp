@@ -40,6 +40,13 @@ class ResolvedConstantTest extends TestCase
         self::assertSame('Max retries', $resolved->getDocumentation());
     }
 
+    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
+    {
+        $resolved = $this->createResolvedConstant(docblock: null);
+
+        self::assertNull($resolved->getDocumentation());
+    }
+
     public function testGetType(): void
     {
         $type = new PrimitiveType('int');

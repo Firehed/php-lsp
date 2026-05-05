@@ -44,6 +44,13 @@ class ResolvedClassTest extends TestCase
         self::assertSame('A user entity', $resolved->getDocumentation());
     }
 
+    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
+    {
+        $resolved = $this->createResolvedClass(docblock: null);
+
+        self::assertNull($resolved->getDocumentation());
+    }
+
     public function testGetType(): void
     {
         $resolved = $this->createResolvedClass();

@@ -38,6 +38,13 @@ class ResolvedFunctionTest extends TestCase
         self::assertSame('Greets a user', $resolved->getDocumentation());
     }
 
+    public function testGetDocumentationReturnsNullWhenNoDocblock(): void
+    {
+        $resolved = $this->createResolvedFunction(docblock: null);
+
+        self::assertNull($resolved->getDocumentation());
+    }
+
     public function testGetType(): void
     {
         $returnType = new PrimitiveType('string');
