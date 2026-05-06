@@ -21,6 +21,12 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Resolution\ResolvedConstant;
+use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
+use Firehed\PhpLsp\Resolution\ResolvedMember;
+use Firehed\PhpLsp\Resolution\ResolvedMethod;
+use Firehed\PhpLsp\Resolution\ResolvedProperty;
+use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
@@ -92,6 +98,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly ClassRepository $classRepository,
         private readonly TypeResolverInterface $typeResolver,
         private readonly MemberAccessResolver $memberAccessResolver,
+        private readonly SymbolResolver $symbolResolver,
     ) {
     }
 
@@ -310,7 +317,19 @@ final class CompletionHandler implements HandlerInterface
         $isSameClass = $enclosingClassName !== null && $enclosingClassName === $className->fqn;
         $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
 
-        return $this->getMemberCompletions($className, $visibility, false, $prefix);
+        $members = $this->symbolResolver->getAccessibleMembers($className, $visibility, staticOnly: false);
+
+        $items = [];
+        foreach ($members as $member) {
+            if (!$member instanceof ResolvedMember) {
+                continue;
+            }
+            if (self::matchesPrefix($member->getName()->name, $prefix)) {
+                $items[] = $this->formatResolvedMemberCompletion($member);
+            }
+        }
+
+        return $items;
     }
 
     /**
@@ -563,6 +582,35 @@ final class CompletionHandler implements HandlerInterface
             'kind' => self::KIND_ENUM_MEMBER,
             'detail' => $enumCase->format(),
         ], $enumCase->docblock);
+    }
+
+    /**
+     * @return CompletionItem
+     */
+    private function formatResolvedMemberCompletion(ResolvedMember $member): array
+    {
+        $kind = match (true) {
+            $member instanceof ResolvedMethod => self::KIND_METHOD,
+            $member instanceof ResolvedProperty => self::KIND_PROPERTY,
+            $member instanceof ResolvedConstant => self::KIND_CONSTANT,
+            $member instanceof ResolvedEnumCase => self::KIND_ENUM_MEMBER,
+            // @codeCoverageIgnoreStart
+            default => throw new \LogicException('Unexpected member type: ' . $member::class),
+            // @codeCoverageIgnoreEnd
+        };
+
+        $item = [
+            'label' => $member->getName()->name,
+            'kind' => $kind,
+            'detail' => $member->format(),
+        ];
+
+        $doc = $member->getDocumentation();
+        if ($doc !== null) {
+            $item['documentation'] = $doc;
+        }
+
+        return $item;
     }
 
     /**

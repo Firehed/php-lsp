@@ -93,6 +93,7 @@ final class Server
             $classRepository,
             $typeResolver,
             $memberAccessResolver,
+            $symbolResolver,
         );
     }
 
