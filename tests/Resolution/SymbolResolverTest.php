@@ -433,46 +433,43 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($context);
     }
 
-    public function testGetCallContextResolvesNewExpression(): void
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string, class-string<ResolvedMember|ResolvedFunction>, string}>
+     */
+    public static function callContextResolveCases(): iterable
     {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_new');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(CallContext::class, $context);
-        self::assertSame(0, $context->activeParameterIndex);
-        self::assertInstanceOf(ResolvedMethod::class, $context->callable);
-        self::assertStringContainsString('__construct', $context->callable->format());
+        yield 'new expression' => [
+            'src/Domain/User.php', 'sig_new', ResolvedMethod::class, '__construct',
+        ];
+        yield 'builtin function' => [
+            'src/Domain/User.php', 'sig_builtin_func', ResolvedFunction::class, 'strlen',
+        ];
+        yield 'user defined function' => [
+            'SignatureHelp.php', 'first_param', ResolvedFunction::class, 'signatureHelpAdd',
+        ];
     }
 
-    public function testGetCallContextResolvesBuiltinFunction(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_builtin_func');
-        $document = $this->documents->get($cursor['uri']);
+    /**
+     * @param class-string<ResolvedMember|ResolvedFunction> $expectedType
+     */
+    #[DataProvider('callContextResolveCases')]
+    public function testGetCallContextResolves(
+        string $fixture,
+        string $cursor,
+        string $expectedType,
+        string $expectedName,
+    ): void {
+        $cursorPos = $this->openFixtureAtCursor($fixture, $cursor);
+        $document = $this->documents->get($cursorPos['uri']);
         assert($document !== null);
 
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+        $context = $this->resolver->getCallContext($document, $cursorPos['line'], $cursorPos['character']);
 
         self::assertInstanceOf(CallContext::class, $context);
         self::assertSame(0, $context->activeParameterIndex);
-        self::assertInstanceOf(ResolvedFunction::class, $context->callable);
-        self::assertStringContainsString('strlen', $context->callable->format());
-    }
-
-    public function testGetCallContextResolvesUserDefinedFunction(): void
-    {
-        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'first_param');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(CallContext::class, $context);
-        self::assertSame(0, $context->activeParameterIndex);
-        self::assertInstanceOf(ResolvedFunction::class, $context->callable);
-        self::assertStringContainsString('signatureHelpAdd', $context->callable->format());
+        self::assertInstanceOf($expectedType, $context->callable);
+        self::assertStringContainsString($expectedName, $context->callable->format());
     }
 
     public function testResolveAtPositionResolvesVariableInVariableVariable(): void
