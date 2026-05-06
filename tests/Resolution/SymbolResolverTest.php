@@ -655,24 +655,42 @@ final class SymbolResolverTest extends TestCase
 
     /**
      * @codeCoverageIgnore
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string, string, list<string>}>
      */
     public static function resolveAtPositionNullCases(): iterable
     {
-        yield 'nonexistent static property' => ['src/Domain/User.php', 'dynamic_constant'];
-        yield 'unknown class' => ['src/Domain/User.php', 'unknown_class'];
-        yield 'unknown property' => ['src/Domain/User.php', 'unknown_property'];
-        yield 'unknown constant' => ['src/Domain/User.php', 'unknown_constant'];
-        yield 'untyped property' => ['src/Domain/User.php', 'untyped_property'];
-        yield 'method definition name' => ['src/Domain/User.php', 'method_name'];
-        yield 'property declaration' => ['src/Domain/User.php', 'property_declaration'];
-        yield 'self const outside class' => ['SignatureHelp.php', 'self_const_outside'];
-        yield 'self prop outside class' => ['SignatureHelp.php', 'self_prop_outside'];
+        yield 'nonexistent static property' => ['src/Domain/User.php', 'dynamic_constant', []];
+        yield 'unknown class' => ['src/Domain/User.php', 'unknown_class', []];
+        yield 'unknown property' => ['src/Domain/User.php', 'unknown_property', []];
+        yield 'unknown constant' => ['src/Domain/User.php', 'unknown_constant', []];
+        yield 'untyped property' => ['src/Domain/User.php', 'untyped_property', []];
+        yield 'method definition name' => ['src/Domain/User.php', 'method_name', []];
+        yield 'property declaration' => ['src/Domain/User.php', 'property_declaration', []];
+        yield 'self const outside class' => ['SignatureHelp.php', 'self_const_outside', []];
+        yield 'self prop outside class' => ['SignatureHelp.php', 'self_prop_outside', []];
+        yield 'named arg on undefined func' => ['SignatureHelp.php', 'named_arg_undefined_func', []];
+        yield 'named arg with wrong name' => ['SignatureHelp.php', 'named_arg_wrong_name', []];
+        yield 'attr named arg no constructor' => [
+            'src/Services/ApiController.php',
+            'attr_no_constructor',
+            ['src/Attributes/NoConstructorAttribute.php'],
+        ];
+        yield 'attr named arg wrong param' => [
+            'src/Services/ApiController.php',
+            'attr_wrong_param',
+            ['src/Attributes/Route.php'],
+        ];
     }
 
+    /**
+     * @param list<string> $extraFixtures
+     */
     #[DataProvider('resolveAtPositionNullCases')]
-    public function testResolveAtPositionReturnsNull(string $fixture, string $marker): void
+    public function testResolveAtPositionReturnsNull(string $fixture, string $marker, array $extraFixtures): void
     {
+        foreach ($extraFixtures as $extra) {
+            $this->openFixture($extra);
+        }
         $cursor = $this->openFixtureAtHoverMarker($fixture, $marker);
         $document = $this->documents->get($cursor['uri']);
         assert($document !== null);
@@ -680,97 +698,6 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertNull($result);
-    }
-
-    public function testResolveNamedArgOnUndefinedFuncReturnsNull(): void
-    {
-        $uri = $this->openFixture('SignatureHelp.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $content = $document->getContent();
-        $lines = explode("\n", $content);
-        foreach ($lines as $lineNum => $line) {
-            if (str_contains($line, 'undefinedFunction(badArg:')) {
-                $pos = strpos($line, 'badArg');
-                assert($pos !== false);
-
-                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
-
-                self::assertNull($result);
-                return;
-            }
-        }
-        self::fail('Test fixture line not found');
-    }
-
-    public function testResolveNamedArgWithWrongNameReturnsNull(): void
-    {
-        $uri = $this->openFixture('SignatureHelp.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $content = $document->getContent();
-        $lines = explode("\n", $content);
-        foreach ($lines as $lineNum => $line) {
-            if (str_contains($line, 'signatureHelpAdd(wrongName:')) {
-                // Find 'wrongName:' (with colon) to avoid matching $wrongNamedArg
-                $pos = strpos($line, 'wrongName:');
-                assert($pos !== false);
-
-                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
-
-                self::assertNull($result);
-                return;
-            }
-        }
-        self::fail('Test fixture line not found');
-    }
-
-    public function testResolveAttrNamedArgNoConstructorReturnsNull(): void
-    {
-        $this->openFixture('src/Attributes/NoConstructorAttribute.php');
-        $uri = $this->openFixture('src/Services/ApiController.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $content = $document->getContent();
-        $lines = explode("\n", $content);
-        foreach ($lines as $lineNum => $line) {
-            if (str_contains($line, 'NoConstructorAttribute(someParam:')) {
-                $pos = strpos($line, 'someParam');
-                assert($pos !== false);
-
-                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
-
-                self::assertNull($result);
-                return;
-            }
-        }
-        self::fail('Test fixture line not found');
-    }
-
-    public function testResolveAttrNamedArgWrongParamReturnsNull(): void
-    {
-        $this->openFixture('src/Attributes/Route.php');
-        $uri = $this->openFixture('src/Services/ApiController.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $content = $document->getContent();
-        $lines = explode("\n", $content);
-        foreach ($lines as $lineNum => $line) {
-            if (str_contains($line, 'Route(wrongParam:')) {
-                $pos = strpos($line, 'wrongParam');
-                assert($pos !== false);
-
-                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
-
-                self::assertNull($result);
-                return;
-            }
-        }
-        self::fail('Test fixture line not found');
     }
 
     public function testGetVariablesInScopeSkipsStatementsAfterCursor(): void

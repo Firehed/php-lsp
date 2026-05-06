@@ -21,13 +21,13 @@ class ApiController
         return [];
     }
 
-    #[Route(wrongParam: '/api/wrong')]
+    #[Route(wrongParam: '/api/wrong')] //hover:attr_wrong_param
     public function wrongAttrParam(): array
     {
         return [];
     }
 
-    #[NoConstructorAttribute(someParam: 'value')]
+    #[NoConstructorAttribute(someParam: 'value')] //hover:attr_no_constructor
     public function noConstructorAttr(): array
     {
         return [];
