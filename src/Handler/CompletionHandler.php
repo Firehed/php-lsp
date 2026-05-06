@@ -9,14 +9,9 @@ use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\PropertyInfo as DomainPropertyInfo;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\ClassRepository;
-use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -94,7 +89,6 @@ final class CompletionHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
-        private readonly MemberResolver $memberResolver,
         private readonly ClassRepository $classRepository,
         private readonly TypeResolverInterface $typeResolver,
         private readonly MemberAccessResolver $memberAccessResolver,
@@ -364,66 +358,6 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * Unified method to collect member completions with visibility and static/instance filters.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getMemberCompletions(
-        ClassName $className,
-        Visibility $minVisibility,
-        ?bool $static,
-        string $prefix,
-        bool $includeProperties = true,
-        bool $includeConstants = false,
-        bool $includeEnumCases = false,
-    ): array {
-        $items = [];
-
-        foreach ($this->memberResolver->getMethods($className, $minVisibility, $static) as $method) {
-            if (self::matchesPrefix($method->name->name, $prefix)) {
-                $items[] = $this->formatMethodInfoCompletion($method);
-            }
-        }
-
-        if ($includeProperties) {
-            foreach ($this->memberResolver->getProperties($className, $minVisibility, $static) as $property) {
-                if (self::matchesPrefix($property->name->name, $prefix)) {
-                    $items[] = $this->formatPropertyInfoCompletion($property);
-                }
-            }
-        }
-
-        if ($includeConstants) {
-            foreach ($this->memberResolver->getConstants($className, $minVisibility) as $constant) {
-                if (self::matchesPrefix($constant->name->name, $prefix)) {
-                    $items[] = $this->formatConstantInfoCompletion($constant);
-                }
-            }
-
-            // ::class magic constant is always available for static access
-            if ($static === true || $static === null) {
-                if (self::matchesPrefix('class', $prefix)) {
-                    $items[] = [
-                        'label' => 'class',
-                        'kind' => self::KIND_CONSTANT,
-                        'detail' => 'string (fully qualified class name)',
-                    ];
-                }
-            }
-        }
-
-        if ($includeEnumCases) {
-            foreach ($this->memberResolver->getEnumCases($className) as $enumCase) {
-                if (self::matchesPrefix($enumCase->name->name, $prefix)) {
-                    $items[] = $this->formatEnumCaseInfoCompletion($enumCase);
-                }
-            }
-        }
-
-        return $items;
-    }
-
-    /**
      * Get completions for parent:: - methods from the parent class.
      *
      * @param array<Stmt> $ast
@@ -439,13 +373,24 @@ final class CompletionHandler implements HandlerInterface
         $parentClassName = ScopeFinder::resolveExtendsName($classNode);
         assert($parentClassName !== null);
 
-        return $this->getMemberCompletions(
+        // Get all members (both static and instance) but only include methods
+        $members = $this->symbolResolver->getAccessibleMembers(
             new ClassName($parentClassName),
             Visibility::Protected,
-            null,
-            $prefix,
-            includeProperties: false,
+            staticOnly: false,
         );
+
+        $items = [];
+        foreach ($members as $member) {
+            if (!$member instanceof ResolvedMethod) {
+                continue;
+            }
+            if (self::matchesPrefix($member->getName()->name, $prefix)) {
+                $items[] = $this->formatResolvedMemberCompletion($member);
+            }
+        }
+
+        return $items;
     }
 
     /**
@@ -460,14 +405,32 @@ final class CompletionHandler implements HandlerInterface
         $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
         $minVisibility = $this->getMinVisibilityForAccess($enclosingClass, $resolvedClassName);
 
-        return $this->getMemberCompletions(
+        $members = $this->symbolResolver->getAccessibleMembers(
             new ClassName($resolvedClassName),
             $minVisibility,
-            true,
-            $prefix,
-            includeConstants: true,
-            includeEnumCases: true,
+            staticOnly: true,
         );
+
+        $items = [];
+        foreach ($members as $member) {
+            if (!$member instanceof ResolvedMember) {
+                continue;
+            }
+            if (self::matchesPrefix($member->getName()->name, $prefix)) {
+                $items[] = $this->formatResolvedMemberCompletion($member);
+            }
+        }
+
+        // ::class magic constant is always available for static access
+        if (self::matchesPrefix('class', $prefix)) {
+            $items[] = [
+                'label' => 'class',
+                'kind' => self::KIND_CONSTANT,
+                'detail' => 'string (fully qualified class name)',
+            ];
+        }
+
+        return $items;
     }
 
     /**
@@ -534,54 +497,6 @@ final class CompletionHandler implements HandlerInterface
 
         // Limit results
         return array_slice($items, 0, 100);
-    }
-
-    /**
-     * @return CompletionItem
-     */
-    private function formatMethodInfoCompletion(MethodInfo $method): array
-    {
-        return self::withDocumentation([
-            'label' => $method->name->name,
-            'kind' => self::KIND_METHOD,
-            'detail' => $method->format(),
-        ], $method->docblock);
-    }
-
-    /**
-     * @return CompletionItem
-     */
-    private function formatPropertyInfoCompletion(DomainPropertyInfo $property): array
-    {
-        return self::withDocumentation([
-            'label' => $property->name->name,
-            'kind' => self::KIND_PROPERTY,
-            'detail' => $property->format(),
-        ], $property->docblock);
-    }
-
-    /**
-     * @return CompletionItem
-     */
-    private function formatConstantInfoCompletion(ConstantInfo $constant): array
-    {
-        return self::withDocumentation([
-            'label' => $constant->name->name,
-            'kind' => self::KIND_CONSTANT,
-            'detail' => $constant->format(),
-        ], $constant->docblock);
-    }
-
-    /**
-     * @return CompletionItem
-     */
-    private function formatEnumCaseInfoCompletion(EnumCaseInfo $enumCase): array
-    {
-        return self::withDocumentation([
-            'label' => $enumCase->name->name,
-            'kind' => self::KIND_ENUM_MEMBER,
-            'detail' => $enumCase->format(),
-        ], $enumCase->docblock);
     }
 
     /**
