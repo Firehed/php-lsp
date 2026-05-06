@@ -571,6 +571,11 @@ final class SymbolResolver
             return $this->resolveClassConstFetch($parent);
         }
 
+        // Named argument: func(name: value) - cursor on 'name'
+        if ($parent instanceof Node\Arg && $parent->name === $node) {
+            return $this->resolveNamedArgument($node, $parent, $ast);
+        }
+
         return null;
     }
 
@@ -676,6 +681,38 @@ final class SymbolResolver
         if ($paramInfo === null) {
             return null;
         }
+        return new ResolvedParameter($paramInfo);
+    }
+
+    /**
+     * Resolve a named argument to its parameter.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveNamedArgument(Identifier $node, Node\Arg $arg, array $ast): ?ResolvedParameter
+    {
+        // Find the call this arg belongs to
+        $call = $arg->getAttribute('parent');
+        if (
+            !$call instanceof FuncCall
+            && !$call instanceof MethodCall
+            && !$call instanceof NullsafeMethodCall
+            && !$call instanceof StaticCall
+            && !$call instanceof New_
+        ) {
+            return null;
+        }
+
+        $callable = $this->resolveCallable($call, $ast);
+        if ($callable === null) {
+            return null;
+        }
+
+        $paramInfo = $callable->getParameterByName($node->toString());
+        if ($paramInfo === null) {
+            return null;
+        }
+
         return new ResolvedParameter($paramInfo);
     }
 

@@ -261,6 +261,35 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('string', $result->getType()?->format());
     }
 
+    public function testResolvesNamedArgument(): void
+    {
+        $uri = $this->openFixture('SignatureHelp.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // Find the line with named argument: signatureHelpAdd(a: 1, b: 2)
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'signatureHelpAdd(a: 1, b:')) {
+                $lineNum = $i;
+                // Position on 'b' in 'b: 2'
+                $pos = strpos($line, 'b:');
+                assert($pos !== false);
+                $character = $pos;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertStringContainsString('b', $result->format());
+        self::assertSame('int', $result->getType()?->format());
+    }
+
     public function testGetAccessibleMembersReturnsMembers(): void
     {
         $this->openFixture('src/Domain/User.php');
