@@ -7,16 +7,16 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -46,11 +46,15 @@ class SignatureHelpHandlerTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
+        $symbolResolver = new SymbolResolver(
+            $this->parser,
+            $this->classRepository,
+            $this->memberResolver,
+            $typeResolver,
+        );
         $this->handler = new SignatureHelpHandler(
             $this->documents,
-            $this->parser,
-            $this->memberResolver,
-            new MemberAccessResolver($typeResolver),
+            $symbolResolver,
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
