@@ -20,6 +20,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -61,6 +62,7 @@ final class Server
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver);
         $memberAccessResolver = new MemberAccessResolver($typeResolver);
+        $symbolResolver = new SymbolResolver($parser, $classRepository, $memberResolver, $typeResolver);
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;
@@ -73,10 +75,7 @@ final class Server
         );
         $this->handlers[] = new DefinitionHandler(
             $this->documentManager,
-            $parser,
-            $memberResolver,
-            $classRepository,
-            $memberAccessResolver,
+            $symbolResolver,
         );
         $this->handlers[] = new HoverHandler(
             $this->documentManager,

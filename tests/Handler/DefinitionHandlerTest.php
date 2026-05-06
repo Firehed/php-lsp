@@ -16,8 +16,8 @@ use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -29,7 +29,6 @@ class DefinitionHandlerTest extends TestCase
     private DocumentManager $documents;
     private ParserService $parser;
     private DefaultClassRepository $classRepository;
-    private MemberResolver $memberResolver;
     private DefinitionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -44,14 +43,17 @@ class DefinitionHandlerTest extends TestCase
             $locator,
             $this->parser,
         );
-        $this->memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($this->memberResolver);
+        $memberResolver = new MemberResolver($this->classRepository);
+        $typeResolver = new BasicTypeResolver($memberResolver);
+        $symbolResolver = new SymbolResolver(
+            $this->parser,
+            $this->classRepository,
+            $memberResolver,
+            $typeResolver,
+        );
         $this->handler = new DefinitionHandler(
             $this->documents,
-            $this->parser,
-            $this->memberResolver,
-            $this->classRepository,
-            new MemberAccessResolver($typeResolver),
+            $symbolResolver,
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
