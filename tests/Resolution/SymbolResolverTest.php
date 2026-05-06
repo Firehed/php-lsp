@@ -24,6 +24,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
+use Firehed\PhpLsp\Resolution\ResolvedParameter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -135,6 +136,30 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('User', $result->format());
     }
 
+    public function testResolvesFunctionCall(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'signatureHelpAdd');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedFunction::class, $result);
+        self::assertStringContainsString('signatureHelpAdd', $result->format());
+    }
+
+    public function testResolvesBuiltinFunctionCall(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'builtin_strlen');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedFunction::class, $result);
+        self::assertStringContainsString('strlen', $result->format());
+    }
+
     public function testResolvesPropertyFetch(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager');
@@ -206,6 +231,122 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedVariable::class, $result);
         self::assertStringContainsString('typed', $result->format());
+    }
+
+    public function testResolvesParameterDeclaration(): void
+    {
+        $uri = $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // Find the line with the setName method signature
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'public function setName(string $name)')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$name');
+                assert($pos !== false);
+                $character = $pos + 2; // Position inside the variable name
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertStringContainsString('name', $result->format());
+        self::assertSame('string', $result->getType()?->format());
+    }
+
+    public function testResolvesNamedArgument(): void
+    {
+        $uri = $this->openFixture('SignatureHelp.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // Find the line with named argument: signatureHelpAdd(a: 1, b: 2)
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'signatureHelpAdd(a: 1, b:')) {
+                $lineNum = $i;
+                // Position on 'b' in 'b: 2'
+                $pos = strpos($line, 'b:');
+                assert($pos !== false);
+                $character = $pos;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertStringContainsString('b', $result->format());
+        self::assertSame('int', $result->getType()?->format());
+    }
+
+    public function testResolvesAttribute(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $uri = $this->openFixture('src/Services/ApiController.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // Find the line with the attribute: #[Route('/api/users')]
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, '#[Route(')) {
+                $lineNum = $i;
+                // Position on 'Route' after #[
+                $pos = strpos($line, 'Route');
+                assert($pos !== false);
+                $character = $pos + 2; // Inside the name
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedClass::class, $result);
+        self::assertStringContainsString('Route', $result->format());
+    }
+
+    public function testResolvesNamedArgumentInAttribute(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $uri = $this->openFixture('src/Services/ApiController.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // Find the line with named argument: #[Route(path: '/api/posts', ...)]
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'path:')) {
+                $lineNum = $i;
+                // Position on 'path' in 'path:'
+                $pos = strpos($line, 'path');
+                assert($pos !== false);
+                $character = $pos;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertStringContainsString('path', $result->format());
+        self::assertSame('string', $result->getType()?->format());
     }
 
     public function testGetAccessibleMembersReturnsMembers(): void
@@ -514,24 +655,42 @@ final class SymbolResolverTest extends TestCase
 
     /**
      * @codeCoverageIgnore
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string, string, list<string>}>
      */
     public static function resolveAtPositionNullCases(): iterable
     {
-        yield 'nonexistent static property' => ['src/Domain/User.php', 'dynamic_constant'];
-        yield 'unknown class' => ['src/Domain/User.php', 'unknown_class'];
-        yield 'unknown property' => ['src/Domain/User.php', 'unknown_property'];
-        yield 'unknown constant' => ['src/Domain/User.php', 'unknown_constant'];
-        yield 'untyped property' => ['src/Domain/User.php', 'untyped_property'];
-        yield 'method definition name' => ['src/Domain/User.php', 'method_name'];
-        yield 'property declaration' => ['src/Domain/User.php', 'property_declaration'];
-        yield 'self const outside class' => ['SignatureHelp.php', 'self_const_outside'];
-        yield 'self prop outside class' => ['SignatureHelp.php', 'self_prop_outside'];
+        yield 'nonexistent static property' => ['src/Domain/User.php', 'dynamic_constant', []];
+        yield 'unknown class' => ['src/Domain/User.php', 'unknown_class', []];
+        yield 'unknown property' => ['src/Domain/User.php', 'unknown_property', []];
+        yield 'unknown constant' => ['src/Domain/User.php', 'unknown_constant', []];
+        yield 'untyped property' => ['src/Domain/User.php', 'untyped_property', []];
+        yield 'method definition name' => ['src/Domain/User.php', 'method_name', []];
+        yield 'property declaration' => ['src/Domain/User.php', 'property_declaration', []];
+        yield 'self const outside class' => ['SignatureHelp.php', 'self_const_outside', []];
+        yield 'self prop outside class' => ['SignatureHelp.php', 'self_prop_outside', []];
+        yield 'named arg on undefined func' => ['SignatureHelp.php', 'named_arg_undefined_func', []];
+        yield 'named arg with wrong name' => ['SignatureHelp.php', 'named_arg_wrong_name', []];
+        yield 'attr named arg no constructor' => [
+            'src/Services/ApiController.php',
+            'attr_no_constructor',
+            ['src/Attributes/NoConstructorAttribute.php'],
+        ];
+        yield 'attr named arg wrong param' => [
+            'src/Services/ApiController.php',
+            'attr_wrong_param',
+            ['src/Attributes/Route.php'],
+        ];
     }
 
+    /**
+     * @param list<string> $extraFixtures
+     */
     #[DataProvider('resolveAtPositionNullCases')]
-    public function testResolveAtPositionReturnsNull(string $fixture, string $marker): void
+    public function testResolveAtPositionReturnsNull(string $fixture, string $marker, array $extraFixtures): void
     {
+        foreach ($extraFixtures as $extra) {
+            $this->openFixture($extra);
+        }
         $cursor = $this->openFixtureAtHoverMarker($fixture, $marker);
         $document = $this->documents->get($cursor['uri']);
         assert($document !== null);

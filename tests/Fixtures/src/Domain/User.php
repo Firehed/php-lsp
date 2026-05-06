@@ -243,7 +243,7 @@ class User implements Entity, Person
 
     public function triggerSigBuiltinFunc(): int
     {
-        return strlen(/*|sig_builtin_func*/'test');
+        return strlen(/*|sig_builtin_func*/'test'); //hover:builtin_strlen
     }
 
     public function triggerDynamicMethodCall(): void

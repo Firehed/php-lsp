@@ -39,6 +39,7 @@ use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\VarLikeIdentifier;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use PhpParser\Node\Attribute;
 use PhpParser\Node\Stmt;
 
 /**
@@ -336,22 +337,7 @@ final class SymbolResolver
             return null;
         }
 
-        $functionName = $name->toString();
-
-        // Try user-defined function first
-        $funcNode = ScopeFinder::findFunction($functionName, $ast);
-        if ($funcNode !== null) {
-            $funcInfo = FunctionInfo::fromNode($funcNode);
-            return new ResolvedFunction($funcInfo);
-        }
-
-        // Fall back to built-in function
-        try {
-            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($functionName));
-            return new ResolvedFunction($funcInfo);
-        } catch (\ReflectionException) {
-            return null;
-        }
+        return $this->resolveFunctionByName($name->toString(), $ast);
     }
 
     /**
@@ -532,7 +518,7 @@ final class SymbolResolver
         }
 
         if ($node instanceof Name) {
-            return $this->resolveName($node);
+            return $this->resolveName($node, $ast);
         }
 
         if ($node instanceof Variable) {
@@ -571,11 +557,27 @@ final class SymbolResolver
             return $this->resolveClassConstFetch($parent);
         }
 
+        // Named argument: func(name: value) - cursor on 'name'
+        if ($parent instanceof Node\Arg && $parent->name === $node) {
+            return $this->resolveNamedArgument($node, $parent, $ast);
+        }
+
         return null;
     }
 
-    private function resolveName(Name $node): ?ResolvedSymbol
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveName(Name $node, array $ast): ?ResolvedSymbol
     {
+        $parent = $node->getAttribute('parent');
+
+        // Function call: resolve to ResolvedFunction
+        if ($parent instanceof FuncCall) {
+            return $this->resolveFunctionCall($node, $ast);
+        }
+
+        // Class reference (new, instanceof, static call, type hint, etc.)
         $classNameStr = ScopeFinder::resolveClassName($node);
 
         $classInfo = $this->classRepository->get(new ClassName($classNameStr));
@@ -589,6 +591,34 @@ final class SymbolResolver
     /**
      * @param array<Stmt> $ast
      */
+    private function resolveFunctionCall(Name $node, array $ast): ?ResolvedFunction
+    {
+        return $this->resolveFunctionByName($node->toString(), $ast);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveFunctionByName(string $functionName, array $ast): ?ResolvedFunction
+    {
+        // Try user-defined function first
+        $funcNode = ScopeFinder::findFunction($functionName, $ast);
+        if ($funcNode !== null) {
+            return new ResolvedFunction(FunctionInfo::fromNode($funcNode));
+        }
+
+        // Fall back to built-in function via reflection
+        try {
+            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($functionName));
+            return new ResolvedFunction($funcInfo);
+        } catch (\ReflectionException) {
+            return null;
+        }
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
     private function resolveVariable(Variable $node, array $ast): ?ResolvedSymbol
     {
         $name = $node->name;
@@ -596,9 +626,121 @@ final class SymbolResolver
             return null;
         }
 
+        // Check if this is a parameter declaration
+        $parent = $node->getAttribute('parent');
+        if ($parent instanceof Node\Param) {
+            return $this->resolveParameter($parent);
+        }
+
         $type = ExpressionTypeResolver::resolveExpressionType($node, $ast, $this->typeResolver);
 
         return new ResolvedVariable($name, $type);
+    }
+
+    private function resolveParameter(Node\Param $param): ResolvedParameter
+    {
+        $enclosingScope = ScopeFinder::findEnclosingScope($param);
+        // @codeCoverageIgnoreStart
+        if ($enclosingScope === null) {
+            throw new \LogicException('Param node always has enclosing scope');
+        }
+        // @codeCoverageIgnoreEnd
+
+        // Find position in parameter list
+        $position = 0;
+        foreach ($enclosingScope->params as $i => $p) {
+            if ($p === $param) {
+                $position = $i;
+                break;
+            }
+        }
+
+        $selfContext = null;
+        $parentContext = null;
+
+        if ($enclosingScope instanceof Stmt\ClassMethod) {
+            $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
+            // @codeCoverageIgnoreStart
+            if ($selfContext === null) {
+                throw new \LogicException('ClassMethod always has enclosing class');
+            }
+            // @codeCoverageIgnoreEnd
+            $classInfo = $this->classRepository->get(new ClassName($selfContext));
+            $parentContext = $classInfo?->parent?->fqn;
+        }
+
+        $paramInfo = \Firehed\PhpLsp\Domain\ParameterInfo::fromNode($param, $position, $selfContext, $parentContext);
+        // @codeCoverageIgnoreStart
+        if ($paramInfo === null) {
+            throw new \LogicException('ParameterInfo::fromNode should not return null for valid Param');
+        }
+        // @codeCoverageIgnoreEnd
+        return new ResolvedParameter($paramInfo);
+    }
+
+    /**
+     * Resolve a named argument to its parameter.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveNamedArgument(Identifier $node, Node\Arg $arg, array $ast): ?ResolvedParameter
+    {
+        // Find the call this arg belongs to
+        $call = $arg->getAttribute('parent');
+
+        // Handle attribute named arguments
+        if ($call instanceof Attribute) {
+            return $this->resolveAttributeNamedArgument($node, $call);
+        }
+
+        // @codeCoverageIgnoreStart
+        if (
+            !$call instanceof FuncCall
+            && !$call instanceof MethodCall
+            && !$call instanceof NullsafeMethodCall
+            && !$call instanceof StaticCall
+            && !$call instanceof New_
+        ) {
+            throw new \LogicException('Named arg parent must be a call or attribute');
+        }
+        // @codeCoverageIgnoreEnd
+
+        $callable = $this->resolveCallable($call, $ast);
+        if ($callable === null) {
+            return null;
+        }
+
+        $paramInfo = $callable->getParameterByName($node->toString());
+        if ($paramInfo === null) {
+            return null;
+        }
+
+        return new ResolvedParameter($paramInfo);
+    }
+
+    private function resolveAttributeNamedArgument(Identifier $node, Attribute $attribute): ?ResolvedParameter
+    {
+        $classNameStr = ScopeFinder::resolveClassName($attribute->name);
+        $className = new ClassName($classNameStr);
+
+        // Resolve constructor of attribute class
+        $methodInfo = $this->memberResolver->findMethod(
+            $className,
+            new MethodName('__construct'),
+            Visibility::Private,
+        );
+
+        if ($methodInfo === null) {
+            return null;
+        }
+
+        $callable = new ResolvedMethod($methodInfo);
+        $paramInfo = $callable->getParameterByName($node->toString());
+        if ($paramInfo === null) {
+            return null;
+        }
+
+        return new ResolvedParameter($paramInfo);
     }
 
     /**

@@ -209,31 +209,54 @@ trait OpensDocumentsTrait
         $marker = "//hover:$markerName";
         $lines = explode("\n", $content);
         foreach ($lines as $lineNum => $line) {
-            if (strpos($line, $marker) === false) {
+            $markerPos = strpos($line, $marker);
+            if ($markerPos === false) {
                 continue;
             }
 
+            // Collect all symbol positions, return the rightmost one
+            $candidates = [];
+
+            // Member access: ->method, ?->method, ::method, ::$property
             $symbolMatch = [];
             preg_match_all('/(?:->|\?->|::)\$?([a-zA-Z_][a-zA-Z0-9_]*)/', $line, $symbolMatch, PREG_OFFSET_CAPTURE);
-
-            if (count($symbolMatch[1]) > 0) {
-                $lastMatch = end($symbolMatch[1]);
-                return [
-                    'uri' => $uri,
-                    'line' => $lineNum,
-                    'character' => $lastMatch[1],
-                ];
+            foreach ($symbolMatch[1] as $match) {
+                $candidates[] = $match[1];
             }
 
+            // Function calls: func(
             $funcMatch = [];
             preg_match_all('/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/', $line, $funcMatch, PREG_OFFSET_CAPTURE);
+            foreach ($funcMatch[1] as $match) {
+                $candidates[] = $match[1];
+            }
 
-            if (count($funcMatch[1]) > 0) {
-                $lastMatch = end($funcMatch[1]);
+            // Named arguments: identifier: (but not ::)
+            $beforeMarker = substr($line, 0, $markerPos);
+            $colonPos = strrpos($beforeMarker, ':');
+            if ($colonPos !== false && ($colonPos === 0 || $beforeMarker[$colonPos - 1] !== ':')) {
+                $identEnd = $colonPos;
+                while ($identEnd > 0 && ctype_space($beforeMarker[$identEnd - 1])) {
+                    $identEnd--;
+                }
+                $identStart = $identEnd;
+                while ($identStart > 0) {
+                    $char = $beforeMarker[$identStart - 1];
+                    if (!ctype_alnum($char) && $char !== '_') {
+                        break;
+                    }
+                    $identStart--;
+                }
+                if ($identStart < $identEnd) {
+                    $candidates[] = $identStart;
+                }
+            }
+
+            if ($candidates !== []) {
                 return [
                     'uri' => $uri,
                     'line' => $lineNum,
-                    'character' => $lastMatch[1],
+                    'character' => max($candidates),
                 ];
             }
 
