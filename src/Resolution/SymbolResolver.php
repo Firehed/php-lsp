@@ -47,6 +47,19 @@ use PhpParser\Node\Stmt;
  * This class provides a single entry point for resolving symbols at cursor
  * positions, eliminating the M×N problem where M handlers each independently
  * implement resolution logic for N node types.
+ *
+ * FUTURE: Workspace queries (requires index)
+ * - findReferences(SymbolIdentity $symbol, ?Scope $scope = null): array<Location>
+ * - findImplementations(ClassName $interface): array<ResolvedClass>
+ * - findSubtypes(ClassName $class): array<ResolvedClass>
+ * - findSupertypes(ClassName $class): array<ResolvedClass>
+ *
+ * FUTURE: Call hierarchy
+ * - getIncomingCalls(ResolvedCallable $callable): array<CallHierarchyItem>
+ * - getOutgoingCalls(ResolvedCallable $callable): array<CallHierarchyItem>
+ *
+ * FUTURE: Batch operations (for SemanticTokens)
+ * - resolveAllSymbols(Document $document): array<ResolvedToken>
  */
 final class SymbolResolver
 {
