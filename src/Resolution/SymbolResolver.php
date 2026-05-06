@@ -39,6 +39,7 @@ use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\VarLikeIdentifier;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use PhpParser\Node\Attribute;
 use PhpParser\Node\Stmt;
 
 /**
@@ -336,22 +337,7 @@ final class SymbolResolver
             return null;
         }
 
-        $functionName = $name->toString();
-
-        // Try user-defined function first
-        $funcNode = ScopeFinder::findFunction($functionName, $ast);
-        if ($funcNode !== null) {
-            $funcInfo = FunctionInfo::fromNode($funcNode);
-            return new ResolvedFunction($funcInfo);
-        }
-
-        // Fall back to built-in function
-        try {
-            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($functionName));
-            return new ResolvedFunction($funcInfo);
-        } catch (\ReflectionException) {
-            return null;
-        }
+        return $this->resolveFunctionByName($name->toString(), $ast);
     }
 
     /**
@@ -607,17 +593,23 @@ final class SymbolResolver
      */
     private function resolveFunctionCall(Name $node, array $ast): ?ResolvedFunction
     {
-        $funcName = $node->toString();
+        return $this->resolveFunctionByName($node->toString(), $ast);
+    }
 
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveFunctionByName(string $functionName, array $ast): ?ResolvedFunction
+    {
         // Try user-defined function first
-        $funcNode = ScopeFinder::findFunction($funcName, $ast);
+        $funcNode = ScopeFinder::findFunction($functionName, $ast);
         if ($funcNode !== null) {
             return new ResolvedFunction(FunctionInfo::fromNode($funcNode));
         }
 
         // Fall back to built-in function via reflection
         try {
-            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($funcName));
+            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($functionName));
             return new ResolvedFunction($funcInfo);
         } catch (\ReflectionException) {
             return null;
@@ -693,6 +685,12 @@ final class SymbolResolver
     {
         // Find the call this arg belongs to
         $call = $arg->getAttribute('parent');
+
+        // Handle attribute named arguments
+        if ($call instanceof Attribute) {
+            return $this->resolveAttributeNamedArgument($node, $call);
+        }
+
         if (
             !$call instanceof FuncCall
             && !$call instanceof MethodCall
@@ -708,6 +706,31 @@ final class SymbolResolver
             return null;
         }
 
+        $paramInfo = $callable->getParameterByName($node->toString());
+        if ($paramInfo === null) {
+            return null;
+        }
+
+        return new ResolvedParameter($paramInfo);
+    }
+
+    private function resolveAttributeNamedArgument(Identifier $node, Attribute $attribute): ?ResolvedParameter
+    {
+        $classNameStr = ScopeFinder::resolveClassName($attribute->name);
+        $className = new ClassName($classNameStr);
+
+        // Resolve constructor of attribute class
+        $methodInfo = $this->memberResolver->findMethod(
+            $className,
+            new MethodName('__construct'),
+            Visibility::Private,
+        );
+
+        if ($methodInfo === null) {
+            return null;
+        }
+
+        $callable = new ResolvedMethod($methodInfo);
         $paramInfo = $callable->getParameterByName($node->toString());
         if ($paramInfo === null) {
             return null;

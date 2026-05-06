@@ -319,6 +319,36 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('Route', $result->format());
     }
 
+    public function testResolvesNamedArgumentInAttribute(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $uri = $this->openFixture('src/Services/ApiController.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // Find the line with named argument: #[Route(path: '/api/posts', ...)]
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'path:')) {
+                $lineNum = $i;
+                // Position on 'path' in 'path:'
+                $pos = strpos($line, 'path');
+                assert($pos !== false);
+                $character = $pos;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertStringContainsString('path', $result->format());
+        self::assertSame('string', $result->getType()?->format());
+    }
+
     public function testGetAccessibleMembersReturnsMembers(): void
     {
         $this->openFixture('src/Domain/User.php');

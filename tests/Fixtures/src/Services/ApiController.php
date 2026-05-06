@@ -9,7 +9,13 @@ use Fixtures\Attributes\Route;
 class ApiController
 {
     #[Route('/api/users')]
-    public function listUsers(): array //hover:attribute_usage
+    public function listUsers(): array
+    {
+        return [];
+    }
+
+    #[Route(path: '/api/posts', method: 'POST')]
+    public function createPost(): array
     {
         return [];
     }
