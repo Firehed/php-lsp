@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\Visibility;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -26,11 +27,12 @@ class ResolvedEnumCaseTest extends TestCase
         return $this->createResolvedEnumCase(docblock: $docblock);
     }
 
-    public function testImplementsResolvedSymbol(): void
+    public function testImplementsInterfaces(): void
     {
         $resolved = $this->createResolvedEnumCase();
 
         self::assertInstanceOf(ResolvedSymbol::class, $resolved);
+        self::assertInstanceOf(ResolvedMember::class, $resolved);
     }
 
     public function testGetTypeReturnsDeclaringEnum(): void
@@ -57,6 +59,30 @@ class ResolvedEnumCaseTest extends TestCase
         $resolved = $this->createResolvedEnumCase(declaringClass: $enumName);
 
         self::assertSame($enumName, $resolved->getDeclaringClass());
+    }
+
+    public function testGetName(): void
+    {
+        $resolved = $this->createResolvedEnumCase();
+
+        $name = $resolved->getName();
+
+        self::assertInstanceOf(EnumCaseName::class, $name);
+        self::assertSame('Active', $name->name);
+    }
+
+    public function testGetVisibilityAlwaysPublic(): void
+    {
+        $resolved = $this->createResolvedEnumCase();
+
+        self::assertSame(Visibility::Public, $resolved->getVisibility());
+    }
+
+    public function testIsStaticAlwaysTrue(): void
+    {
+        $resolved = $this->createResolvedEnumCase();
+
+        self::assertTrue($resolved->isStatic());
     }
 
     private function createResolvedEnumCase(

@@ -58,6 +58,16 @@ class ResolvedPropertyTest extends TestCase
         self::assertSame($className, $resolved->getDeclaringClass());
     }
 
+    public function testGetName(): void
+    {
+        $resolved = $this->createResolvedProperty();
+
+        $name = $resolved->getName();
+
+        self::assertInstanceOf(PropertyName::class, $name);
+        self::assertSame('name', $name->name);
+    }
+
     public function testGetVisibility(): void
     {
         $resolved = $this->createResolvedProperty(visibility: Visibility::Private);
