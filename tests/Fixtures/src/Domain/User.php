@@ -18,7 +18,7 @@ class User implements Entity, Person
 
     public const DEFAULT_ROLE = 'user';
 
-    private static int $instanceCount = 0;
+    private static int $instanceCount = 0; //hover:property_declaration
 
     public function __construct(
         private readonly string $id,
@@ -196,7 +196,44 @@ class User implements Entity, Person
     public function triggerHoverVariable(): void
     {
         $typed = $this->manager;
-        echo $typed; //hover:variable_typed
+        echo $typed; //hover:variable_typed /*|after_assignment*/
+    }
+
+    public function triggerNestedVariables(): void
+    {
+        $outer = 1;
+        if (true) {
+            $inner = 2;
+            echo $inner; /*|inside_nested*/
+        }
+        echo $outer; /*|before_after*/
+        $after = 3;
+    }
+
+    public function triggerUnknownClass(): void
+    {
+        new UnknownClass(); //hover:unknown_class
+    }
+
+    public function triggerUnknownProperty(): void
+    {
+        echo $this->unknownProperty; //hover:unknown_property
+    }
+
+    public function triggerUntypedProperty(): void
+    {
+        $untyped = $this->getUnknown();
+        echo $untyped->prop; //hover:untyped_property
+    }
+
+    public function triggerLiteralHover(): int //hover:method_name
+    {
+        return 42; //hover:literal_number
+    }
+
+    public function triggerUnknownConstant(): void
+    {
+        echo self::UNKNOWN_CONSTANT; //hover:unknown_constant
     }
 
     public function triggerSigNew(): self
