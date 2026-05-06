@@ -629,9 +629,54 @@ final class SymbolResolver
             return null;
         }
 
+        // Check if this is a parameter declaration
+        $parent = $node->getAttribute('parent');
+        if ($parent instanceof Node\Param) {
+            return $this->resolveParameter($parent);
+        }
+
         $type = ExpressionTypeResolver::resolveExpressionType($node, $ast, $this->typeResolver);
 
         return new ResolvedVariable($name, $type);
+    }
+
+    private function resolveParameter(Node\Param $param): ?ResolvedParameter
+    {
+        $var = $param->var;
+        if (!$var instanceof Variable || !is_string($var->name)) {
+            return null;
+        }
+
+        $enclosingScope = ScopeFinder::findEnclosingScope($param);
+        if ($enclosingScope === null) {
+            return null;
+        }
+
+        // Find position in parameter list
+        $position = 0;
+        foreach ($enclosingScope->params as $i => $p) {
+            if ($p === $param) {
+                $position = $i;
+                break;
+            }
+        }
+
+        $selfContext = null;
+        $parentContext = null;
+
+        if ($enclosingScope instanceof Stmt\ClassMethod) {
+            $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
+            $classInfo = $selfContext !== null
+                ? $this->classRepository->get(new ClassName($selfContext))
+                : null;
+            $parentContext = $classInfo?->parent?->fqn;
+        }
+
+        $paramInfo = \Firehed\PhpLsp\Domain\ParameterInfo::fromNode($param, $position, $selfContext, $parentContext);
+        if ($paramInfo === null) {
+            return null;
+        }
+        return new ResolvedParameter($paramInfo);
     }
 
     /**

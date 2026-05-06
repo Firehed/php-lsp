@@ -24,6 +24,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
+use Firehed\PhpLsp\Resolution\ResolvedParameter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -230,6 +231,34 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedVariable::class, $result);
         self::assertStringContainsString('typed', $result->format());
+    }
+
+    public function testResolvesParameterDeclaration(): void
+    {
+        $uri = $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // Find the line with the setName method signature
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'public function setName(string $name)')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$name');
+                assert($pos !== false);
+                $character = $pos + 2; // Position inside the variable name
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertStringContainsString('name', $result->format());
+        self::assertSame('string', $result->getType()?->format());
     }
 
     public function testGetAccessibleMembersReturnsMembers(): void
