@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 
 /**
- * @phpstan-type ParameterInfoShape array{label: string, documentation?: string}
+ * @phpstan-type ParameterInfoShape array{label: string}
  * @phpstan-type SignatureInfo array{
  *   label: string,
  *   documentation?: string,
