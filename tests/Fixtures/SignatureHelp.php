@@ -37,6 +37,8 @@ $user = new User(/*|constructor*/"id", "name", "email@example.com"); //hover:cla
 $priority = Priority::fromScore(/*|static_call*/50);
 $x/*|outside_call*/ = 1;
 $namedArgs = signatureHelpAdd(a: 1, b: /*|named_arg*/2);
+$undefinedNamedArg = undefinedFunction(badArg: 1);
+$wrongNamedArg = signatureHelpAdd(wrongName: 1, b: 2);
 $undefined = undefinedFunction(/*|undefined_func*/1);
 // Edge cases for self/parent outside class
 $selfCall = self::method(/*|self_outside_class*/1);

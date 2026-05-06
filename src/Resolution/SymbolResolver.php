@@ -637,17 +637,14 @@ final class SymbolResolver
         return new ResolvedVariable($name, $type);
     }
 
-    private function resolveParameter(Node\Param $param): ?ResolvedParameter
+    private function resolveParameter(Node\Param $param): ResolvedParameter
     {
-        $var = $param->var;
-        if (!$var instanceof Variable || !is_string($var->name)) {
-            return null;
-        }
-
         $enclosingScope = ScopeFinder::findEnclosingScope($param);
+        // @codeCoverageIgnoreStart
         if ($enclosingScope === null) {
-            return null;
+            throw new \LogicException('Param node always has enclosing scope');
         }
+        // @codeCoverageIgnoreEnd
 
         // Find position in parameter list
         $position = 0;
@@ -663,16 +660,21 @@ final class SymbolResolver
 
         if ($enclosingScope instanceof Stmt\ClassMethod) {
             $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
-            $classInfo = $selfContext !== null
-                ? $this->classRepository->get(new ClassName($selfContext))
-                : null;
+            // @codeCoverageIgnoreStart
+            if ($selfContext === null) {
+                throw new \LogicException('ClassMethod always has enclosing class');
+            }
+            // @codeCoverageIgnoreEnd
+            $classInfo = $this->classRepository->get(new ClassName($selfContext));
             $parentContext = $classInfo?->parent?->fqn;
         }
 
         $paramInfo = \Firehed\PhpLsp\Domain\ParameterInfo::fromNode($param, $position, $selfContext, $parentContext);
+        // @codeCoverageIgnoreStart
         if ($paramInfo === null) {
-            return null;
+            throw new \LogicException('ParameterInfo::fromNode should not return null for valid Param');
         }
+        // @codeCoverageIgnoreEnd
         return new ResolvedParameter($paramInfo);
     }
 
@@ -691,6 +693,7 @@ final class SymbolResolver
             return $this->resolveAttributeNamedArgument($node, $call);
         }
 
+        // @codeCoverageIgnoreStart
         if (
             !$call instanceof FuncCall
             && !$call instanceof MethodCall
@@ -698,8 +701,9 @@ final class SymbolResolver
             && !$call instanceof StaticCall
             && !$call instanceof New_
         ) {
-            return null;
+            throw new \LogicException('Named arg parent must be a call or attribute');
         }
+        // @codeCoverageIgnoreEnd
 
         $callable = $this->resolveCallable($call, $ast);
         if ($callable === null) {

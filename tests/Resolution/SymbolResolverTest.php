@@ -682,6 +682,97 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($result);
     }
 
+    public function testResolveNamedArgOnUndefinedFuncReturnsNull(): void
+    {
+        $uri = $this->openFixture('SignatureHelp.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        foreach ($lines as $lineNum => $line) {
+            if (str_contains($line, 'undefinedFunction(badArg:')) {
+                $pos = strpos($line, 'badArg');
+                assert($pos !== false);
+
+                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
+
+                self::assertNull($result);
+                return;
+            }
+        }
+        self::fail('Test fixture line not found');
+    }
+
+    public function testResolveNamedArgWithWrongNameReturnsNull(): void
+    {
+        $uri = $this->openFixture('SignatureHelp.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        foreach ($lines as $lineNum => $line) {
+            if (str_contains($line, 'signatureHelpAdd(wrongName:')) {
+                // Find 'wrongName:' (with colon) to avoid matching $wrongNamedArg
+                $pos = strpos($line, 'wrongName:');
+                assert($pos !== false);
+
+                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
+
+                self::assertNull($result);
+                return;
+            }
+        }
+        self::fail('Test fixture line not found');
+    }
+
+    public function testResolveAttrNamedArgNoConstructorReturnsNull(): void
+    {
+        $this->openFixture('src/Attributes/NoConstructorAttribute.php');
+        $uri = $this->openFixture('src/Services/ApiController.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        foreach ($lines as $lineNum => $line) {
+            if (str_contains($line, 'NoConstructorAttribute(someParam:')) {
+                $pos = strpos($line, 'someParam');
+                assert($pos !== false);
+
+                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
+
+                self::assertNull($result);
+                return;
+            }
+        }
+        self::fail('Test fixture line not found');
+    }
+
+    public function testResolveAttrNamedArgWrongParamReturnsNull(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $uri = $this->openFixture('src/Services/ApiController.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        foreach ($lines as $lineNum => $line) {
+            if (str_contains($line, 'Route(wrongParam:')) {
+                $pos = strpos($line, 'wrongParam');
+                assert($pos !== false);
+
+                $result = $this->resolver->resolveAtPosition($document, $lineNum, $pos);
+
+                self::assertNull($result);
+                return;
+            }
+        }
+        self::fail('Test fixture line not found');
+    }
+
     public function testGetVariablesInScopeSkipsStatementsAfterCursor(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'before_after');

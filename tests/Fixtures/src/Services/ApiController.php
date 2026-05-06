@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fixtures\Services;
 
+use Fixtures\Attributes\NoConstructorAttribute;
 use Fixtures\Attributes\Route;
 
 class ApiController
@@ -16,6 +17,18 @@ class ApiController
 
     #[Route(path: '/api/posts', method: 'POST')]
     public function createPost(): array
+    {
+        return [];
+    }
+
+    #[Route(wrongParam: '/api/wrong')]
+    public function wrongAttrParam(): array
+    {
+        return [];
+    }
+
+    #[NoConstructorAttribute(someParam: 'value')]
+    public function noConstructorAttr(): array
     {
         return [];
     }
