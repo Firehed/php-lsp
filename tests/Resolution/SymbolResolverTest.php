@@ -135,6 +135,30 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('User', $result->format());
     }
 
+    public function testResolvesFunctionCall(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'signatureHelpAdd');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedFunction::class, $result);
+        self::assertStringContainsString('signatureHelpAdd', $result->format());
+    }
+
+    public function testResolvesBuiltinFunctionCall(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'builtin_strlen');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedFunction::class, $result);
+        self::assertStringContainsString('strlen', $result->format());
+    }
+
     public function testResolvesPropertyFetch(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager');

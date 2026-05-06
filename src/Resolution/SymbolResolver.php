@@ -532,7 +532,7 @@ final class SymbolResolver
         }
 
         if ($node instanceof Name) {
-            return $this->resolveName($node);
+            return $this->resolveName($node, $ast);
         }
 
         if ($node instanceof Variable) {
@@ -574,8 +574,19 @@ final class SymbolResolver
         return null;
     }
 
-    private function resolveName(Name $node): ?ResolvedSymbol
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveName(Name $node, array $ast): ?ResolvedSymbol
     {
+        $parent = $node->getAttribute('parent');
+
+        // Function call: resolve to ResolvedFunction
+        if ($parent instanceof FuncCall) {
+            return $this->resolveFunctionCall($node, $ast);
+        }
+
+        // Class reference (new, instanceof, static call, type hint, etc.)
         $classNameStr = ScopeFinder::resolveClassName($node);
 
         $classInfo = $this->classRepository->get(new ClassName($classNameStr));
@@ -584,6 +595,28 @@ final class SymbolResolver
         }
 
         return new ResolvedClass($classInfo);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveFunctionCall(Name $node, array $ast): ?ResolvedFunction
+    {
+        $funcName = $node->toString();
+
+        // Try user-defined function first
+        $funcNode = ScopeFinder::findFunction($funcName, $ast);
+        if ($funcNode !== null) {
+            return new ResolvedFunction(FunctionInfo::fromNode($funcNode));
+        }
+
+        // Fall back to built-in function via reflection
+        try {
+            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($funcName));
+            return new ResolvedFunction($funcInfo);
+        } catch (\ReflectionException) {
+            return null;
+        }
     }
 
     /**
