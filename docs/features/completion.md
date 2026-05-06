@@ -16,6 +16,7 @@ This document tracks the current state of code completion in php-lsp.
 ## Limitations
 
 - **Visibility**: Typed variable completions only show public members. Use `$this->` for protected/private access within the class.
+- **Union types**: Completions on union types (e.g., `User|Admin`) show only members that exist on ALL types in the union (intersection of members). This is type-safe but may show fewer completions than expected. For intersection types (`User&Admin`), all members from all types are shown.
 
 ## Not Yet Supported
 

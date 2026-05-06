@@ -36,3 +36,14 @@ $mapped = array_map(/*|builtin*/fn($x) => $x * 2, [1, 2, 3]);
 $user = new User(/*|constructor*/"id", "name", "email@example.com"); //hover:class_instantiation
 $priority = Priority::fromScore(/*|static_call*/50);
 $x/*|outside_call*/ = 1;
+$namedArgs = signatureHelpAdd(a: 1, b: /*|named_arg*/2);
+$undefined = undefinedFunction(/*|undefined_func*/1);
+// Edge cases for self/parent outside class
+$selfCall = self::method(/*|self_outside_class*/1);
+$newSelf = new self(/*|new_self_outside*/1);
+$selfConst = self::CONST; //hover:self_const_outside
+$selfProp = self::$prop; //hover:self_prop_outside
+
+// Class without explicit constructor
+class NoConstructor {}
+$noConst = new NoConstructor(/*|no_constructor*/);

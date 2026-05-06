@@ -18,7 +18,7 @@ class User implements Entity, Person
 
     public const DEFAULT_ROLE = 'user';
 
-    private static int $instanceCount = 0;
+    private static int $instanceCount = 0; //hover:property_declaration
 
     public function __construct(
         private readonly string $id,
@@ -47,7 +47,7 @@ class User implements Entity, Person
      */
     public function setName(string $name): void
     {
-        $this->name = $name;
+        $this->name = $name; /*|inside_setName*/
     }
 
     public function getEmail(): string
@@ -191,5 +191,123 @@ class User implements Entity, Person
     {
         $user = rand() ? new User('1', 'name', 'email') : null;
         $user?->setName('new'); //hover:nullsafe_via_assignment
+    }
+
+    public function triggerHoverVariable(): void
+    {
+        $typed = $this->manager;
+        echo $typed; //hover:variable_typed /*|after_assignment*/
+    }
+
+    public function triggerNestedVariables(): void
+    {
+        $outer = 1;
+        if (true) {
+            $inner = 2;
+            echo $inner; /*|inside_nested*/
+        }
+        echo $outer; /*|before_after*/
+        $after = 3;
+    }
+
+    public function triggerUnknownClass(): void
+    {
+        new UnknownClass(); //hover:unknown_class
+    }
+
+    public function triggerUnknownProperty(): void
+    {
+        echo $this->unknownProperty; //hover:unknown_property
+    }
+
+    public function triggerUntypedProperty(): void
+    {
+        $untyped = $this->getUnknown();
+        echo $untyped->prop; //hover:untyped_property
+    }
+
+    public function triggerLiteralHover(): int //hover:method_name
+    {
+        return 42; //hover:literal_number
+    }
+
+    public function triggerUnknownConstant(): void
+    {
+        echo self::UNKNOWN_CONSTANT; //hover:unknown_constant
+    }
+
+    public function triggerSigNew(): self
+    {
+        return new User(/*|sig_new*/'1', 'name', 'email');
+    }
+
+    public function triggerSigBuiltinFunc(): int
+    {
+        return strlen(/*|sig_builtin_func*/'test');
+    }
+
+    public function triggerDynamicMethodCall(): void
+    {
+        $method = 'setName';
+        $this->$method(/*|sig_dynamic_method*/'name');
+    }
+
+    public function triggerDynamicStaticCall(): void
+    {
+        $method = 'create';
+        self::$method(/*|sig_dynamic_static*/'1', 'n', 'e');
+    }
+
+    public function triggerDynamicFuncCall(): void
+    {
+        $func = 'strlen';
+        $func(/*|sig_dynamic_func*/'test');
+    }
+
+    public function triggerDynamicNew(): self
+    {
+        $class = self::class;
+        return new $class(/*|sig_dynamic_new*/'1', 'n', 'e');
+    }
+
+    public function triggerVariableVariable(): void
+    {
+        $name = 'foo';
+        $$name = 'bar'; //hover:variable_variable
+        echo /*|outer_var_var*/$$name;
+    }
+
+    public function triggerDynamicProperty(): void
+    {
+        $prop = 'name';
+        echo $this->$prop; //hover:dynamic_property
+    }
+
+    public function triggerDynamicConstant(): void
+    {
+        $const = 'DEFAULT_ROLE';
+        echo self::$const; //hover:dynamic_constant
+    }
+
+    public function triggerComputedClassStatic(): void
+    {
+        $class = self::class;
+        $class::create(/*|sig_computed_class*/'1', 'n', 'e');
+    }
+
+    public function triggerUntypedMethodCall(): void
+    {
+        $untyped = $this->getUnknown();
+        $untyped->foo(/*|sig_untyped_method*/);
+    }
+
+    public function triggerNonexistentMethodCall(): void
+    {
+        $this->nonexistentMethod(/*|sig_nonexistent_method*/);
+    }
+
+    public function triggerNonexistentStaticMethod(): void
+    {
+        self::nonexistentStatic(/*|sig_nonexistent_static*/);
     }
 }

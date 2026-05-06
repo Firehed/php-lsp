@@ -227,9 +227,22 @@ trait OpensDocumentsTrait
 
             $funcMatch = [];
             preg_match_all('/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/', $line, $funcMatch, PREG_OFFSET_CAPTURE);
-            assert(count($funcMatch[1]) > 0, "No callable found on line with marker '$markerName' in $fixturePath");
 
-            $lastMatch = end($funcMatch[1]);
+            if (count($funcMatch[1]) > 0) {
+                $lastMatch = end($funcMatch[1]);
+                return [
+                    'uri' => $uri,
+                    'line' => $lineNum,
+                    'character' => $lastMatch[1],
+                ];
+            }
+
+            // Check for standalone variables
+            $varMatch = [];
+            preg_match_all('/\$([a-zA-Z_][a-zA-Z0-9_]*)/', $line, $varMatch, PREG_OFFSET_CAPTURE);
+            assert(count($varMatch[0]) > 0, "No symbol found on line with marker '$markerName' in $fixturePath");
+
+            $lastMatch = end($varMatch[0]);
             return [
                 'uri' => $uri,
                 'line' => $lineNum,
