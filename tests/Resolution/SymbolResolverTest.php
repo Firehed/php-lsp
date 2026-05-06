@@ -31,6 +31,7 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(SymbolResolver::class)]
@@ -402,13 +403,34 @@ final class SymbolResolverTest extends TestCase
         self::assertContains('a', $context->usedParameterNames);
     }
 
-    public function testGetCallContextReturnsNullForUndefinedFunction(): void
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string}>
+     */
+    public static function callContextNullCases(): iterable
     {
-        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'undefined_func');
-        $document = $this->documents->get($cursor['uri']);
+        yield 'undefined function' => ['SignatureHelp.php', 'undefined_func'];
+        yield 'dynamic method call' => ['src/Domain/User.php', 'sig_dynamic_method'];
+        yield 'dynamic static call' => ['src/Domain/User.php', 'sig_dynamic_static'];
+        yield 'dynamic func call' => ['src/Domain/User.php', 'sig_dynamic_func'];
+        yield 'dynamic new' => ['src/Domain/User.php', 'sig_dynamic_new'];
+        yield 'computed class static' => ['src/Domain/User.php', 'sig_computed_class'];
+        yield 'untyped variable' => ['src/Domain/User.php', 'sig_untyped_method'];
+        yield 'nonexistent method' => ['src/Domain/User.php', 'sig_nonexistent_method'];
+        yield 'nonexistent static method' => ['src/Domain/User.php', 'sig_nonexistent_static'];
+        yield 'self outside class' => ['SignatureHelp.php', 'self_outside_class'];
+        yield 'new self outside class' => ['SignatureHelp.php', 'new_self_outside'];
+        yield 'class without constructor' => ['SignatureHelp.php', 'no_constructor'];
+    }
+
+    #[DataProvider('callContextNullCases')]
+    public function testGetCallContextReturnsNull(string $fixture, string $cursor): void
+    {
+        $cursorPos = $this->openFixtureAtCursor($fixture, $cursor);
+        $document = $this->documents->get($cursorPos['uri']);
         assert($document !== null);
 
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+        $context = $this->resolver->getCallContext($document, $cursorPos['line'], $cursorPos['character']);
 
         self::assertNull($context);
     }
@@ -455,50 +477,6 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('signatureHelpAdd', $context->callable->format());
     }
 
-    public function testGetCallContextReturnsNullForDynamicMethodCall(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_dynamic_method');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context);
-    }
-
-    public function testGetCallContextReturnsNullForDynamicStaticCall(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_dynamic_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context);
-    }
-
-    public function testGetCallContextReturnsNullForDynamicFuncCall(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_dynamic_func');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context);
-    }
-
-    public function testGetCallContextReturnsNullForDynamicNew(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_dynamic_new');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context);
-    }
-
     public function testResolveAtPositionResolvesVariableInVariableVariable(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'variable_variable');
@@ -539,91 +517,27 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('prop', $result->format());
     }
 
-    public function testResolveAtPositionReturnsNullForNonexistentStaticProperty(): void
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string}>
+     */
+    public static function resolveAtPositionNullCases(): iterable
     {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'dynamic_constant');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        // self::$const is a static property access - returns null when property doesn't exist
-        self::assertNull($result);
+        yield 'nonexistent static property' => ['src/Domain/User.php', 'dynamic_constant'];
+        yield 'unknown class' => ['src/Domain/User.php', 'unknown_class'];
+        yield 'unknown property' => ['src/Domain/User.php', 'unknown_property'];
+        yield 'unknown constant' => ['src/Domain/User.php', 'unknown_constant'];
+        yield 'untyped property' => ['src/Domain/User.php', 'untyped_property'];
+        yield 'method definition name' => ['src/Domain/User.php', 'method_name'];
+        yield 'property declaration' => ['src/Domain/User.php', 'property_declaration'];
+        yield 'self const outside class' => ['SignatureHelp.php', 'self_const_outside'];
+        yield 'self prop outside class' => ['SignatureHelp.php', 'self_prop_outside'];
     }
 
-    public function testGetCallContextReturnsNullForComputedClassStatic(): void
+    #[DataProvider('resolveAtPositionNullCases')]
+    public function testResolveAtPositionReturnsNull(string $fixture, string $marker): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_computed_class');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // $class::method() has computed class name - cannot resolve
-        self::assertNull($context);
-    }
-
-    public function testGetCallContextReturnsNullForUntypedVariable(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_untyped_method');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // Method call on untyped variable - cannot resolve
-        self::assertNull($context);
-    }
-
-    public function testGetCallContextReturnsNullForNonexistentMethod(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_nonexistent_method');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // Method doesn't exist on class
-        self::assertNull($context);
-    }
-
-    public function testGetCallContextReturnsNullForNonexistentStaticMethod(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_nonexistent_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // Static method doesn't exist
-        self::assertNull($context);
-    }
-
-    public function testResolveAtPositionReturnsNullForUnknownClass(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'unknown_class');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($result);
-    }
-
-    public function testResolveAtPositionReturnsNullForUnknownProperty(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'unknown_property');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($result);
-    }
-
-    public function testResolveAtPositionReturnsNullForUnknownConstant(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'unknown_constant');
+        $cursor = $this->openFixtureAtHoverMarker($fixture, $marker);
         $document = $this->documents->get($cursor['uri']);
         assert($document !== null);
 
@@ -652,78 +566,6 @@ final class SymbolResolverTest extends TestCase
         self::assertFalse($hasAfter, 'Should not include $after which is assigned after cursor');
     }
 
-    public function testGetCallContextReturnsNullForSelfOutsideClass(): void
-    {
-        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'self_outside_class');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // self:: outside class context - cannot resolve
-        self::assertNull($context);
-    }
-
-    public function testGetCallContextReturnsNullForNewSelfOutsideClass(): void
-    {
-        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'new_self_outside');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // new self outside class context - cannot resolve
-        self::assertNull($context);
-    }
-
-    public function testResolveAtPositionReturnsNullForSelfConstOutsideClass(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'self_const_outside');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        // self::CONST outside class context - cannot resolve
-        self::assertNull($result);
-    }
-
-    public function testResolveAtPositionReturnsNullForSelfPropOutsideClass(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'self_prop_outside');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        // self::$prop outside class context - cannot resolve
-        self::assertNull($result);
-    }
-
-    public function testGetCallContextReturnsNullForClassWithoutConstructor(): void
-    {
-        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'no_constructor');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // Class without constructor - cannot resolve
-        self::assertNull($context);
-    }
-
-    public function testResolveAtPositionReturnsNullForUntypedProperty(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'untyped_property');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        // Property access on untyped variable - cannot resolve
-        self::assertNull($result);
-    }
-
     public function testResolveAtPositionReturnsNullForLiteral(): void
     {
         $this->openFixture('src/Domain/User.php');
@@ -748,28 +590,6 @@ final class SymbolResolverTest extends TestCase
         assert($character !== null, 'Could not find literal position in fixture');
 
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
-
-        self::assertNull($result);
-    }
-
-    public function testResolveAtPositionReturnsNullForMethodDefinitionName(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'method_name');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($result);
-    }
-
-    public function testResolveAtPositionReturnsNullForPropertyDeclaration(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'property_declaration');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertNull($result);
     }
