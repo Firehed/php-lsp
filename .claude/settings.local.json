@@ -12,7 +12,12 @@
       "Bash(gh pr diff:*)",
       "Bash(gh pr view:*)",
       "Bash(gh project:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(~/.claude/skills/link-issues/scripts/link-issues blocks *)",
+      "Bash(~/.claude/skills/link-issues/scripts/link-issues show *)",
+      "Bash(~/.claude/skills/link-issues/scripts/link-issues parent *)",
+      "Bash(~/.claude/skills/link-issues/scripts/link-issues *)",
+      "Bash(php ~/.claude/skills/coverage-gaps/scripts/parse-coverage.php *)"
     ]
   }
 }

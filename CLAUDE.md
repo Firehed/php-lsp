@@ -70,8 +70,9 @@ Key methods:
 - **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Handlers should use it consistently rather than calling `TypeResolverInterface` directly.
 - **Use `MemberAccessResolver` for member access.** It handles both `->` and `?->` operators and resolves types via the shared utilities. Handlers should use it instead of duplicating type resolution logic.
 - **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
+- **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
 
-### Remaining Utilities
+### Utility Classes
 
 - `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names, finds functions
 - `DocblockParser` — Extracts description from docblocks
@@ -87,6 +88,7 @@ Key methods:
 - Update `docs/features/*.md` when merging features
 - Run `composer check` before commits
 - `composer.lock` is gitignored — do not attempt to stage or commit it
+- Debugging: use the testing framework to debug code paths. DO NOT write arbitrary PHP scripts.
 
 ## Completion System
 
@@ -98,9 +100,17 @@ Architecture: `CompletionContextResolver` uses AST analysis to detect member/sta
 
 ## Testing
 
+### Writing Tests
+
+Do not re-invent AST traversal. It is built in to the library. You probably want an existing utility in the project, or `PhpParser\NodeFinder`.
+
+Do not write new tests using inlined PHP code. ALWAYS use the fixture tooling when the test is covering code or file handling.
+
 ### Test Fixtures
 
 Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own autoloading — run `composer dump-autoload` in `tests/Fixtures/` after adding files outside of the PSR-4 or PSR-0 paths.
+
+Re-use existing fixtures whenever possible. Prefer adapting or expanding existing fixtures over adding brand new ones.
 
 Structure (all under `tests/Fixtures/src/` with `Fixtures\` namespace):
 
