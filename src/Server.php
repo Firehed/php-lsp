@@ -79,10 +79,7 @@ final class Server
         );
         $this->handlers[] = new HoverHandler(
             $this->documentManager,
-            $parser,
-            $classRepository,
-            $memberResolver,
-            $memberAccessResolver,
+            $symbolResolver,
         );
         $this->handlers[] = new SignatureHelpHandler(
             $this->documentManager,

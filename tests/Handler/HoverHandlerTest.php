@@ -17,8 +17,8 @@ use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -31,7 +31,6 @@ class HoverHandlerTest extends TestCase
     private ParserService $parser;
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
-    private MemberResolver $memberResolver;
     private HoverHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -46,14 +45,17 @@ class HoverHandlerTest extends TestCase
             $locator,
             $this->parser,
         );
-        $this->memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($this->memberResolver);
-        $this->handler = new HoverHandler(
-            $this->documents,
+        $memberResolver = new MemberResolver($this->classRepository);
+        $typeResolver = new BasicTypeResolver($memberResolver);
+        $symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
-            $this->memberResolver,
-            new MemberAccessResolver($typeResolver),
+            $memberResolver,
+            $typeResolver,
+        );
+        $this->handler = new HoverHandler(
+            $this->documents,
+            $symbolResolver,
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(

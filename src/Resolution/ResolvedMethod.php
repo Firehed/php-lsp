@@ -23,6 +23,11 @@ final readonly class ResolvedMethod implements ResolvedMember, ResolvedCallable
     ) {
     }
 
+    public function format(): string
+    {
+        return $this->info->format(showDefaults: true);
+    }
+
     public function getType(): ?Type
     {
         return $this->info->returnType;
