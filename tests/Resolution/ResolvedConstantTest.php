@@ -58,6 +58,16 @@ class ResolvedConstantTest extends TestCase
         self::assertSame($className, $resolved->getDeclaringClass());
     }
 
+    public function testGetName(): void
+    {
+        $resolved = $this->createResolvedConstant();
+
+        $name = $resolved->getName();
+
+        self::assertInstanceOf(ConstantName::class, $name);
+        self::assertSame('MAX_RETRIES', $name->name);
+    }
+
     public function testGetVisibility(): void
     {
         $resolved = $this->createResolvedConstant(visibility: Visibility::Private);

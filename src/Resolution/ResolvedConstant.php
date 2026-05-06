@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 
@@ -29,6 +30,11 @@ final readonly class ResolvedConstant implements ResolvedMember
     public function getDeclaringClass(): ClassName
     {
         return $this->info->declaringClass;
+    }
+
+    public function getName(): ConstantName
+    {
+        return $this->info->name;
     }
 
     public function getVisibility(): Visibility

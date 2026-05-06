@@ -6,16 +6,16 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\Visibility;
 
 /**
  * A resolved enum case wrapping EnumCaseInfo.
  *
- * Note: Enum cases do not implement ResolvedMember because they don't have
- * visibility or static modifiers in PHP - they are implicitly public and
- * static-like by nature.
+ * Enum cases are effectively singleton constants: implicitly public and static.
  */
-final readonly class ResolvedEnumCase implements ResolvedSymbol
+final readonly class ResolvedEnumCase implements ResolvedMember
 {
     use ResolvesFromInfo;
 
@@ -24,19 +24,28 @@ final readonly class ResolvedEnumCase implements ResolvedSymbol
     ) {
     }
 
-    /**
-     * Returns the declaring enum's ClassName as the type.
-     */
+    public function getDeclaringClass(): ClassName
+    {
+        return $this->info->declaringClass;
+    }
+
+    public function getName(): EnumCaseName
+    {
+        return $this->info->name;
+    }
+
     public function getType(): Type
     {
         return $this->info->declaringClass;
     }
 
-    /**
-     * Returns the class that declares this enum case.
-     */
-    public function getDeclaringClass(): ClassName
+    public function getVisibility(): Visibility
     {
-        return $this->info->declaringClass;
+        return Visibility::Public;
+    }
+
+    public function isStatic(): bool
+    {
+        return true;
     }
 }

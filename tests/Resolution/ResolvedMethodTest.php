@@ -67,6 +67,16 @@ class ResolvedMethodTest extends TestCase
         self::assertSame($className, $resolved->getDeclaringClass());
     }
 
+    public function testGetName(): void
+    {
+        $resolved = $this->createResolvedMethod();
+
+        $name = $resolved->getName();
+
+        self::assertInstanceOf(MethodName::class, $name);
+        self::assertSame('doSomething', $name->name);
+    }
+
     public function testGetVisibility(): void
     {
         $resolved = $this->createResolvedMethod(visibility: Visibility::Protected);

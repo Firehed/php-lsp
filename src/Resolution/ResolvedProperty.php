@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 
@@ -29,6 +30,11 @@ final readonly class ResolvedProperty implements ResolvedMember
     public function getDeclaringClass(): ClassName
     {
         return $this->info->declaringClass;
+    }
+
+    public function getName(): PropertyName
+    {
+        return $this->info->name;
     }
 
     public function getVisibility(): Visibility
