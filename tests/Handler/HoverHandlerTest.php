@@ -633,5 +633,6 @@ class HoverHandlerTest extends TestCase
         self::assertIsArray($result);
         self::assertStringContainsString('$id', $result['contents']);
         self::assertStringContainsString('string', $result['contents']);
+        self::assertStringContainsString('readonly', $result['contents']);
     }
 }
