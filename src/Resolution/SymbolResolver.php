@@ -205,6 +205,182 @@ final class SymbolResolver
     }
 
     /**
+     * Get member access context at position.
+     * Used by: Completion (after -> or ::)
+     */
+    public function getMemberAccessContext(
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): ?MemberAccessContext {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        $offset = $document->offsetAt($line, $character);
+
+        // Use offset - 1 because cursor is after the -> and we want the member access node
+        $nodeFinder = new NodeAtPosition();
+        $node = $nodeFinder->find($ast, $offset > 0 ? $offset - 1 : 0);
+
+        if ($node === null) {
+            return null;
+        }
+
+        // Handle identifier/error by checking parent
+        if ($node instanceof Identifier || $node instanceof Node\Expr\Error) {
+            $parent = $node->getAttribute('parent');
+            if ($parent instanceof Node) {
+                $node = $parent;
+            } else {
+                return null;
+            }
+        }
+
+        return $this->resolveMemberAccessNode($node, $ast, $line);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveMemberAccessNode(Node $node, array $ast, int $line): ?MemberAccessContext
+    {
+        // Instance access: $obj->member or $obj?->member
+        if (MemberAccessResolver::isMethodCall($node) || MemberAccessResolver::isPropertyFetch($node)) {
+            /** @var MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node */
+            return $this->resolveInstanceAccessContext($node, $ast);
+        }
+
+        // Static access: ClassName::member
+        if ($node instanceof StaticPropertyFetch || $node instanceof StaticCall || $node instanceof ClassConstFetch) {
+            return $this->resolveStaticAccessContext($node, $ast, $line);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveInstanceAccessContext(
+        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
+        array $ast,
+    ): ?MemberAccessContext {
+        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
+
+        $type = ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+        if ($type === null) {
+            return null;
+        }
+
+        $isThis = $node->var instanceof Variable && $node->var->name === 'this';
+        $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
+
+        $classNames = $type->getResolvableClassNames();
+        $className = $classNames[0] ?? null;
+        $isSameClass = $enclosingClassName !== null && $className !== null && $enclosingClassName === $className->fqn;
+
+        $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
+
+        return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveStaticAccessContext(
+        StaticPropertyFetch|StaticCall|ClassConstFetch $node,
+        array $ast,
+        int $line,
+    ): ?MemberAccessContext {
+        $class = $node->class;
+        if (!$class instanceof Name) {
+            return null;
+        }
+
+        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
+        $rawName = $class->toString();
+
+        // parent:: has special behavior
+        if ($rawName === 'parent') {
+            return $this->resolveParentAccessContext($ast, $line, $prefix);
+        }
+
+        // For self::, static::, and regular class names
+        $className = ScopeFinder::resolveClassNameInContext($class, $node);
+        if ($className === null) {
+            return null;
+        }
+
+        $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
+        $minVisibility = $this->getMinVisibilityForAccess($enclosingClass, $className);
+
+        return new MemberAccessContext(
+            new ClassName($className),
+            $minVisibility,
+            MemberAccessKind::Static,
+            $prefix,
+        );
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveParentAccessContext(array $ast, int $line, string $prefix): ?MemberAccessContext
+    {
+        $classNode = ScopeFinder::findClassAtLine($ast, $line);
+        if ($classNode === null || $classNode->extends === null) {
+            return null;
+        }
+
+        $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+        assert($parentClassName !== null);
+
+        return new MemberAccessContext(
+            new ClassName($parentClassName),
+            Visibility::Protected,
+            MemberAccessKind::Parent,
+            $prefix,
+        );
+    }
+
+    /**
+     * Determine minimum visibility for accessing members of target class from enclosing class.
+     *
+     * @param class-string $targetClassName
+     */
+    private function getMinVisibilityForAccess(?Stmt\Class_ $enclosingClass, string $targetClassName): Visibility
+    {
+        if ($enclosingClass === null) {
+            return Visibility::Public;
+        }
+
+        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
+        if ($enclosingClassName === null) {
+            return Visibility::Public;
+        }
+
+        if ($enclosingClassName === $targetClassName) {
+            return Visibility::Private;
+        }
+
+        // Check direct extends in AST
+        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
+            return Visibility::Protected;
+        }
+
+        // Check deeper inheritance via ClassRepository
+        if ($this->classRepository->isSubclassOf(new ClassName($enclosingClassName), new ClassName($targetClassName))) {
+            return Visibility::Protected;
+        }
+
+        return Visibility::Public;
+    }
+
+    /**
      * Get parameters for active call at position.
      * Used by: SignatureHelp, Completion (named args)
      */
