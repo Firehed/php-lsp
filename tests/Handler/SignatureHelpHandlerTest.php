@@ -198,6 +198,13 @@ class SignatureHelpHandlerTest extends TestCase
         self::assertStringContainsString("Updates the user's display name", $doc);
     }
 
+    /**
+     * Verifies parent:: resolves to actual parent class, not enclosing class.
+     * ChildClass has no constructor; ParentClass has __construct(string $name).
+     * Finding $name proves we resolved to ParentClass.
+     *
+     * @see https://github.com/Firehed/php-lsp/issues/101
+     */
     public function testSignatureHelpOnParentStaticCall(): void
     {
         $this->openFixture('src/Inheritance/Grandparent.php');

@@ -543,4 +543,36 @@ class DefinitionHandlerTest extends TestCase
 
         self::assertNull($result);
     }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/6
+     */
+    public function testGoToClassConstantDefinition(): void
+    {
+        $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'class_constant');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($parentUri, $result['uri']);
+        // PARENT_CONST is defined on line 9 (0-indexed: 8)
+        self::assertSame(8, $result['range']['start']['line']);
+    }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/190
+     */
+    public function testGoToPropertyDefinition(): void
+    {
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($userUri, $result['uri']);
+        // manager property is defined on line 29 (0-indexed: 28)
+        self::assertSame(28, $result['range']['start']['line']);
+    }
 }
