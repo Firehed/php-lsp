@@ -180,7 +180,10 @@ final class SymbolResolver
             if ($parent instanceof Node) {
                 $node = $parent;
             } else {
-                return null;
+                // @codeCoverageIgnoreStart
+                // ParserService always sets parent via NodeConnectingVisitor
+                throw new \LogicException('Node missing parent attribute');
+                // @codeCoverageIgnoreEnd
             }
         }
 
@@ -247,7 +250,10 @@ final class SymbolResolver
         // For self::, static::, and regular class names
         $className = ScopeFinder::resolveClassNameInContext($class, $node);
         if ($className === null) {
+            // @codeCoverageIgnoreStart
+            // self::/static:: outside a class - parser error recovery makes this hard to reach
             return null;
+            // @codeCoverageIgnoreEnd
         }
 
         $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);

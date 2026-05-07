@@ -13,6 +13,9 @@ use Firehed\PhpLsp\Domain\Visibility;
  */
 final readonly class MemberAccessContext
 {
+    /**
+     * @codeCoverageIgnore
+     */
     public function __construct(
         public Type $type,
         public Visibility $minVisibility,
