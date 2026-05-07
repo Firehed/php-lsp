@@ -106,7 +106,7 @@ final class SymbolResolver
      * For instance access (->): returns methods and properties.
      * For static access (::): also includes constants and enum cases.
      *
-     * @return list<ResolvedSymbol>
+     * @return list<ResolvedMember>
      */
     public function getAccessibleMembers(
         Type $type,
@@ -514,23 +514,26 @@ final class SymbolResolver
                 }
             }
 
-            // Collect catch variables
-            if ($stmt instanceof Stmt\Catch_) {
-                if ($stmt->var !== null && is_string($stmt->var->name)) {
-                    $name = $stmt->var->name;
-                    if (!isset($seen[$name])) {
-                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
-                        $variables[] = new ResolvedVariable($name, $type);
-                        $seen[$name] = true;
-                    }
-                }
-            }
-
             // Recursively check nested structures (if/while/etc.)
             if (property_exists($stmt, 'stmts') && is_array($stmt->stmts)) {
                 /** @var array<Stmt|Node> $nestedStmts */
                 $nestedStmts = $stmt->stmts;
                 $this->collectVariablesFromStatements($nestedStmts, $line, $scope, $ast, $variables, $seen);
+            }
+
+            // Handle try/catch - process catch blocks
+            if ($stmt instanceof Stmt\TryCatch) {
+                foreach ($stmt->catches as $catch) {
+                    if ($catch->var !== null && is_string($catch->var->name)) {
+                        $name = $catch->var->name;
+                        if (!isset($seen[$name])) {
+                            $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
+                            $variables[] = new ResolvedVariable($name, $type);
+                            $seen[$name] = true;
+                        }
+                    }
+                    $this->collectVariablesFromStatements($catch->stmts, $line, $scope, $ast, $variables, $seen);
+                }
             }
         }
     }

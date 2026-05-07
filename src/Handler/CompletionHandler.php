@@ -318,9 +318,6 @@ final class CompletionHandler implements HandlerInterface
 
         $items = [];
         foreach ($members as $member) {
-            if (!$member instanceof ResolvedMember) {
-                continue;
-            }
             if (self::matchesPrefix($member->getName()->name, $prefix)) {
                 $items[] = $this->formatResolvedMemberCompletion($member);
             }
@@ -416,9 +413,6 @@ final class CompletionHandler implements HandlerInterface
 
         $items = [];
         foreach ($members as $member) {
-            if (!$member instanceof ResolvedMember) {
-                continue;
-            }
             if (self::matchesPrefix($member->getName()->name, $prefix)) {
                 $items[] = $this->formatResolvedMemberCompletion($member);
             }
