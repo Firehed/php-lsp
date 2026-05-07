@@ -103,15 +103,15 @@ final class SymbolResolver
      * Get members accessible on a type.
      * Used by: Completion (after -> or ::)
      *
-     * For instance access (->): returns methods and properties.
-     * For static access (::): also includes constants and enum cases.
+     * For instance access: returns methods and properties.
+     * For static access: also includes constants and enum cases.
      *
      * @return list<ResolvedMember>
      */
     public function getAccessibleMembers(
         Type $type,
         Visibility $minVisibility,
-        bool $staticOnly = false,
+        MemberFilter $filter = MemberFilter::Instance,
     ): array {
         $classNames = $type->getResolvableClassNames();
         if ($classNames === []) {
@@ -119,19 +119,20 @@ final class SymbolResolver
         }
 
         $members = [];
+        $includeStatic = $filter !== MemberFilter::Instance;
 
         foreach ($classNames as $className) {
-            $methods = $this->memberResolver->getMethods($className, $minVisibility, $staticOnly);
+            $methods = $this->memberResolver->getMethods($className, $minVisibility, $filter);
             foreach ($methods as $methodInfo) {
                 $members[] = new ResolvedMethod($methodInfo);
             }
 
-            $properties = $this->memberResolver->getProperties($className, $minVisibility, $staticOnly);
+            $properties = $this->memberResolver->getProperties($className, $minVisibility, $filter);
             foreach ($properties as $propertyInfo) {
                 $members[] = new ResolvedProperty($propertyInfo);
             }
 
-            if ($staticOnly) {
+            if ($includeStatic) {
                 $constants = $this->memberResolver->getConstants($className, $minVisibility);
                 foreach ($constants as $constantInfo) {
                     $members[] = new ResolvedConstant($constantInfo);

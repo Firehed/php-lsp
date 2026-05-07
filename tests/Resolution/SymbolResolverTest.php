@@ -25,6 +25,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
+use Firehed\PhpLsp\Resolution\MemberFilter;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedParameter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
@@ -383,7 +384,7 @@ final class SymbolResolverTest extends TestCase
 
         // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Domain\\User');
-        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, staticOnly: true);
+        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, MemberFilter::Static);
 
         self::assertNotEmpty($members);
 
@@ -408,7 +409,7 @@ final class SymbolResolverTest extends TestCase
 
         // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Enum\\Status');
-        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, staticOnly: true);
+        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, MemberFilter::Static);
 
         $hasEnumCase = false;
         foreach ($members as $member) {
