@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
+use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
@@ -146,6 +147,15 @@ final class SymbolResolver
         }
 
         return $members;
+    }
+
+    public function isInstantiable(string $fqcn): bool
+    {
+        $classInfo = $this->classRepository->get(new ClassName($fqcn));
+        if ($classInfo === null) {
+            return false;
+        }
+        return !$classInfo->isAbstract && $classInfo->kind === ClassKind::Class_;
     }
 
     /**

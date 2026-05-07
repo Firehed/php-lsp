@@ -991,4 +991,33 @@ final class SymbolResolverTest extends TestCase
         self::assertSame(MemberAccessKind::Static, $context->kind);
         self::assertSame(Visibility::Public, $context->minVisibility);
     }
+
+    public function testIsInstantiableReturnsFalseForAbstractClass(): void
+    {
+        $this->openFixture('src/Utility/ClassModifiers.php');
+        self::assertFalse($this->resolver->isInstantiable('Fixtures\\Utility\\AbstractBase'));
+    }
+
+    public function testIsInstantiableReturnsTrueForConcreteClass(): void
+    {
+        $this->openFixture('src/Utility/ClassModifiers.php');
+        self::assertTrue($this->resolver->isInstantiable('Fixtures\\Utility\\SealedClass'));
+    }
+
+    public function testIsInstantiableReturnsFalseForInterface(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        self::assertFalse($this->resolver->isInstantiable('Fixtures\\Domain\\Entity'));
+    }
+
+    public function testIsInstantiableReturnsFalseForEnum(): void
+    {
+        $this->openFixture('src/Enum/Status.php');
+        self::assertFalse($this->resolver->isInstantiable('Fixtures\\Enum\\Status'));
+    }
+
+    public function testIsInstantiableReturnsFalseForUnknownClass(): void
+    {
+        self::assertFalse($this->resolver->isInstantiable('NonExistent\\Unknown'));
+    }
 }
