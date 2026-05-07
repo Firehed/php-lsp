@@ -591,4 +591,21 @@ class DefinitionHandlerTest extends TestCase
         // $id promoted property is defined on line 24 (0-indexed: 23)
         self::assertSame(23, $result['range']['start']['line']);
     }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/185
+     */
+    public function testGoToTraitPropertyDefinition(): void
+    {
+        $traitUri = $this->openFixture('src/Traits/HasTimestamps.php');
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'trait_property_consumer');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($traitUri, $result['uri']);
+        // $createdAt is defined on line 17 (0-indexed: 16)
+        self::assertSame(16, $result['range']['start']['line']);
+    }
 }

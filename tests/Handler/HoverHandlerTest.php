@@ -635,4 +635,19 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('string', $result['contents']);
         self::assertStringContainsString('readonly', $result['contents']);
     }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/185
+     */
+    public function testHoverOnTraitPropertyFromConsumingClass(): void
+    {
+        $this->openFixture('src/Traits/HasTimestamps.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'trait_property_consumer');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$createdAt', $result['contents']);
+        self::assertStringContainsString('DateTimeImmutable', $result['contents']);
+    }
 }
