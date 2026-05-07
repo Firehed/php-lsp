@@ -575,4 +575,20 @@ class DefinitionHandlerTest extends TestCase
         // manager property is defined on line 29 (0-indexed: 28)
         self::assertSame(28, $result['range']['start']['line']);
     }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/93
+     */
+    public function testGoToPromotedPropertyDefinition(): void
+    {
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'promoted_property');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($userUri, $result['uri']);
+        // $id promoted property is defined on line 24 (0-indexed: 23)
+        self::assertSame(23, $result['range']['start']['line']);
+    }
 }
