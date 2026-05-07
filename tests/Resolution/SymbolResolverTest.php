@@ -995,29 +995,35 @@ final class SymbolResolverTest extends TestCase
     public function testIsInstantiableReturnsFalseForAbstractClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');
-        self::assertFalse($this->resolver->isInstantiable('Fixtures\\Utility\\AbstractBase'));
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\AbstractBase')));
     }
 
     public function testIsInstantiableReturnsTrueForConcreteClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');
-        self::assertTrue($this->resolver->isInstantiable('Fixtures\\Utility\\SealedClass'));
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\SealedClass')));
     }
 
     public function testIsInstantiableReturnsFalseForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        self::assertFalse($this->resolver->isInstantiable('Fixtures\\Domain\\Entity'));
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsInstantiableReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        self::assertFalse($this->resolver->isInstantiable('Fixtures\\Enum\\Status'));
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Enum\\Status')));
     }
 
-    public function testIsInstantiableReturnsFalseForUnknownClass(): void
+    public function testIsInstantiableReturnsTrueForUnknownClass(): void
     {
-        self::assertFalse($this->resolver->isInstantiable('NonExistent\\Unknown'));
+        // Unknown classes are assumed instantiable (optimistic filtering)
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        self::assertTrue($this->resolver->isInstantiable(new ClassName('NonExistent\\Unknown')));
     }
 }

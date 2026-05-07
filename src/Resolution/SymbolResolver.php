@@ -149,11 +149,11 @@ final class SymbolResolver
         return $members;
     }
 
-    public function isInstantiable(string $fqcn): bool
+    public function isInstantiable(ClassName $className): bool
     {
-        $classInfo = $this->classRepository->get(new ClassName($fqcn));
+        $classInfo = $this->classRepository->get($className);
         if ($classInfo === null) {
-            return false;
+            return true; // Unknown class - can't prove it's not instantiable
         }
         return !$classInfo->isAbstract && $classInfo->kind === ClassKind::Class_;
     }
