@@ -1566,6 +1566,18 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('protectedMethod', $labels);
     }
 
+    public function testParentMethodCompletionIncludesStaticMethods(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('staticMethod', $labels);
+        self::assertContains('protectedStaticMethod', $labels);
+    }
+
     public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/NoParent.php', 'parent_no_parent');

@@ -373,15 +373,22 @@ final class CompletionHandler implements HandlerInterface
         $parentClassName = ScopeFinder::resolveExtendsName($classNode);
         assert($parentClassName !== null);
 
-        // Get all members (both static and instance) but only include methods
-        $members = $this->symbolResolver->getAccessibleMembers(
-            new ClassName($parentClassName),
+        $className = new ClassName($parentClassName);
+
+        // parent:: can call both instance and static methods
+        $instanceMembers = $this->symbolResolver->getAccessibleMembers(
+            $className,
             Visibility::Protected,
             staticOnly: false,
         );
+        $staticMembers = $this->symbolResolver->getAccessibleMembers(
+            $className,
+            Visibility::Protected,
+            staticOnly: true,
+        );
 
         $items = [];
-        foreach ($members as $member) {
+        foreach ([...$instanceMembers, ...$staticMembers] as $member) {
             if (!$member instanceof ResolvedMethod) {
                 continue;
             }
