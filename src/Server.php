@@ -89,10 +89,9 @@ final class Server
             $this->documentManager,
             $parser,
             $symbolIndex,
-            $memberResolver,
             $classRepository,
-            $typeResolver,
             $memberAccessResolver,
+            $symbolResolver,
         );
     }
 

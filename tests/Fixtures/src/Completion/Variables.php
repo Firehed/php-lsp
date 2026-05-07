@@ -36,4 +36,20 @@ class Variables
             $l/*|closure_local*/
         };
     }
+
+    public function withTryCatch(): void
+    {
+        try {
+            throw new \Exception('test');
+        } catch (\Exception $ex) {
+            $e/*|catch_var*/
+        }
+    }
+
+    public function withForeachKey(): void
+    {
+        foreach (['a' => 1] as $key => $value) {
+            $k/*|foreach_key*/
+        }
+    }
 }

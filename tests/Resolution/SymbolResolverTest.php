@@ -493,6 +493,43 @@ final class SymbolResolverTest extends TestCase
         self::assertTrue($hasInner, 'Expected $inner variable from nested block');
     }
 
+    public function testGetVariablesInScopeIncludesForeachVariables(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'foreach_prefix');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains('item', $names);
+    }
+
+    public function testGetVariablesInScopeIncludesForeachKeyVariable(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'foreach_key');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains('key', $names);
+        self::assertContains('value', $names);
+    }
+
+    public function testGetVariablesInScopeIncludesCatchVariable(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'catch_var');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains('ex', $names);
+    }
+
     public function testGetCallContextReturnsContext(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_this_call');

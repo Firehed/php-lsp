@@ -20,6 +20,7 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -54,15 +55,20 @@ class CompletionHandlerTest extends TestCase
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
         $memberAccessResolver = new MemberAccessResolver($typeResolver);
+        $symbolResolver = new SymbolResolver(
+            $this->parser,
+            $this->classRepository,
+            $this->memberResolver,
+            $typeResolver,
+        );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->handler = new CompletionHandler(
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->memberResolver,
             $this->classRepository,
-            $typeResolver,
             $memberAccessResolver,
+            $symbolResolver,
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -1558,6 +1564,18 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('__construct', $labels);
         self::assertContains('parentMethod', $labels);
         self::assertContains('protectedMethod', $labels);
+    }
+
+    public function testParentMethodCompletionIncludesStaticMethods(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('staticMethod', $labels);
+        self::assertContains('protectedStaticMethod', $labels);
     }
 
     public function testParentMethodCompletionReturnsEmptyWhenNoParent(): void
