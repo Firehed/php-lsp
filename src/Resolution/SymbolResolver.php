@@ -149,11 +149,15 @@ final class SymbolResolver
         return $members;
     }
 
+    /**
+     * Check if a class can be instantiated with `new`.
+     * Returns true for unknown classes (optimistic filtering).
+     */
     public function isInstantiable(ClassName $className): bool
     {
         $classInfo = $this->classRepository->get($className);
         if ($classInfo === null) {
-            return true; // Unknown class - can't prove it's not instantiable
+            return true;
         }
         return !$classInfo->isAbstract && $classInfo->kind === ClassKind::Class_;
     }

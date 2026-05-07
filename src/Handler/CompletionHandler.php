@@ -172,7 +172,8 @@ final class CompletionHandler implements HandlerInterface
         if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
             $items = $this->getImportedClassCompletions($prefix, $ast, instantiableOnly: true);
-            $indexedItems = $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_], instantiableOnly: true);
+            $kinds = [SymbolKind::Class_, SymbolKind::Enum_];
+            $indexedItems = $this->getIndexedClassCompletions($prefix, $kinds, instantiableOnly: true);
             $items = array_merge($items, $indexedItems);
             return $this->deduplicateCompletions($items);
         }
