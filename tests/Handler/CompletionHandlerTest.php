@@ -66,8 +66,6 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $memberAccessResolver,
             $symbolResolver,
         );
         $this->syncHandler = new TextDocumentSyncHandler(

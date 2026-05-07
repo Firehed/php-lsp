@@ -103,15 +103,15 @@ final class SymbolResolver
      * Get members accessible on a type.
      * Used by: Completion (after -> or ::)
      *
-     * For instance access (->): returns methods and properties.
-     * For static access (::): also includes constants and enum cases.
+     * For instance access: returns methods and properties.
+     * For static access: also includes constants and enum cases.
      *
      * @return list<ResolvedMember>
      */
     public function getAccessibleMembers(
         Type $type,
         Visibility $minVisibility,
-        bool $staticOnly = false,
+        MemberFilter $filter = MemberFilter::Instance,
     ): array {
         $classNames = $type->getResolvableClassNames();
         if ($classNames === []) {
@@ -119,19 +119,20 @@ final class SymbolResolver
         }
 
         $members = [];
+        $includeStatic = $filter !== MemberFilter::Instance;
 
         foreach ($classNames as $className) {
-            $methods = $this->memberResolver->getMethods($className, $minVisibility, $staticOnly);
+            $methods = $this->memberResolver->getMethods($className, $minVisibility, $filter);
             foreach ($methods as $methodInfo) {
                 $members[] = new ResolvedMethod($methodInfo);
             }
 
-            $properties = $this->memberResolver->getProperties($className, $minVisibility, $staticOnly);
+            $properties = $this->memberResolver->getProperties($className, $minVisibility, $filter);
             foreach ($properties as $propertyInfo) {
                 $members[] = new ResolvedProperty($propertyInfo);
             }
 
-            if ($staticOnly) {
+            if ($includeStatic) {
                 $constants = $this->memberResolver->getConstants($className, $minVisibility);
                 foreach ($constants as $constantInfo) {
                     $members[] = new ResolvedConstant($constantInfo);
@@ -145,6 +146,157 @@ final class SymbolResolver
         }
 
         return $members;
+    }
+
+    /**
+     * Get member access context at position.
+     * Used by: Completion (after -> or ::)
+     */
+    public function getMemberAccessContext(
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): ?MemberAccessContext {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        $offset = $document->offsetAt($line, $character);
+
+        // Use offset - 1 because cursor is after the -> and we want the member access node
+        $nodeFinder = new NodeAtPosition();
+        $node = $nodeFinder->find($ast, $offset > 0 ? $offset - 1 : 0);
+
+        if ($node === null) {
+            return null;
+        }
+
+        // Handle identifier/error by checking parent
+        if ($node instanceof Identifier || $node instanceof Node\Expr\Error) {
+            $parent = $node->getAttribute('parent');
+            if ($parent instanceof Node) {
+                $node = $parent;
+            } else {
+                return null;
+            }
+        }
+
+        // Instance access: $obj->member or $obj?->member
+        if (MemberAccessResolver::isMethodCall($node) || MemberAccessResolver::isPropertyFetch($node)) {
+            /** @var MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node */
+            $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
+            $type = $this->resolveInstanceAccessType($node, $ast);
+            if ($type === null) {
+                return null;
+            }
+
+            $isThis = $node->var instanceof Variable && $node->var->name === 'this';
+            $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
+            $classNames = $type->getResolvableClassNames();
+            $className = $classNames[0] ?? null;
+            $isSameClass = $enclosingClassName !== null && $className !== null
+                && $enclosingClassName === $className->fqn;
+            $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
+
+            return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+        }
+
+        // Static access: ClassName::member
+        if ($node instanceof StaticPropertyFetch || $node instanceof StaticCall || $node instanceof ClassConstFetch) {
+            return $this->resolveStaticAccessContext($node, $ast, $line);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveStaticAccessContext(
+        StaticPropertyFetch|StaticCall|ClassConstFetch $node,
+        array $ast,
+        int $line,
+    ): ?MemberAccessContext {
+        $class = $node->class;
+        if (!$class instanceof Name) {
+            return null;
+        }
+
+        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
+        $rawName = $class->toString();
+
+        // parent:: has special behavior
+        if ($rawName === 'parent') {
+            $classNode = ScopeFinder::findClassAtLine($ast, $line);
+            if ($classNode === null || $classNode->extends === null) {
+                return null;
+            }
+            $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+            assert($parentClassName !== null);
+            return new MemberAccessContext(
+                new ClassName($parentClassName),
+                Visibility::Protected,
+                MemberAccessKind::Parent,
+                $prefix,
+            );
+        }
+
+        // For self::, static::, and regular class names
+        $className = ScopeFinder::resolveClassNameInContext($class, $node);
+        if ($className === null) {
+            return null;
+        }
+
+        $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
+        $minVisibility = $this->getMinVisibilityForStaticAccess($enclosingClass, $className);
+
+        return new MemberAccessContext(
+            new ClassName($className),
+            $minVisibility,
+            MemberAccessKind::Static,
+            $prefix,
+        );
+    }
+
+    /**
+     * Determine minimum visibility for static access from enclosing class.
+     *
+     * @param class-string $targetClassName
+     */
+    private function getMinVisibilityForStaticAccess(
+        ?Stmt\Class_ $enclosingClass,
+        string $targetClassName,
+    ): Visibility {
+        if ($enclosingClass === null) {
+            return Visibility::Public;
+        }
+
+        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
+        if ($enclosingClassName === null) {
+            return Visibility::Public;
+        }
+
+        if ($enclosingClassName === $targetClassName) {
+            return Visibility::Private;
+        }
+
+        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
+            return Visibility::Protected;
+        }
+
+        if (
+            $this->classRepository->isSubclassOf(
+                new ClassName($enclosingClassName),
+                new ClassName($targetClassName),
+            )
+        ) {
+            return Visibility::Protected;
+        }
+
+        return Visibility::Public;
     }
 
     /**
@@ -350,10 +502,7 @@ final class SymbolResolver
             return null;
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        $className = $classNames[0] ?? null;
-
+        $className = $this->resolveInstanceAccessClassName($call, $ast);
         if ($className === null) {
             return null;
         }
@@ -369,6 +518,32 @@ final class SymbolResolver
         }
 
         return new ResolvedMethod($methodInfo);
+    }
+
+    /**
+     * Resolve the type of the object in an instance member access.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveInstanceAccessType(
+        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
+        array $ast,
+    ): ?Type {
+        return ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+    }
+
+    /**
+     * Resolve the class name of the object in an instance member access.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveInstanceAccessClassName(
+        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
+        array $ast,
+    ): ?ClassName {
+        $type = $this->resolveInstanceAccessType($node, $ast);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        return $classNames[0] ?? null;
     }
 
     private function resolveStaticCallCallable(StaticCall $call): ?ResolvedCallable
@@ -790,10 +965,7 @@ final class SymbolResolver
         }
         // @codeCoverageIgnoreEnd
 
-        $type = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        $className = $classNames[0] ?? null;
-
+        $className = $this->resolveInstanceAccessClassName($fetch, $ast);
         if ($className === null) {
             return null;
         }
