@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\MemberFilter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -503,8 +504,8 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $staticOnly = $resolver->getMethods($className, Visibility::Public, static: true);
-        $instanceOnly = $resolver->getMethods($className, Visibility::Public, static: false);
+        $staticOnly = $resolver->getMethods($className, Visibility::Public, MemberFilter::Static);
+        $instanceOnly = $resolver->getMethods($className, Visibility::Public, MemberFilter::Instance);
 
         self::assertSame([$staticMethod], $staticOnly);
         self::assertSame([$instanceMethod], $instanceOnly);
@@ -587,8 +588,8 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $staticOnly = $resolver->getProperties($className, Visibility::Public, static: true);
-        $instanceOnly = $resolver->getProperties($className, Visibility::Public, static: false);
+        $staticOnly = $resolver->getProperties($className, Visibility::Public, MemberFilter::Static);
+        $instanceOnly = $resolver->getProperties($className, Visibility::Public, MemberFilter::Instance);
 
         self::assertSame([$staticProp], $staticOnly);
         self::assertSame([$instanceProp], $instanceOnly);

@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Resolution\MemberFilter;
 
 /**
  * Resolves class members with inheritance traversal.
@@ -86,7 +87,7 @@ final class MemberResolver
     public function getMethods(
         ClassName $class,
         Visibility $minVisibility,
-        ?bool $static = null,
+        MemberFilter $filter = MemberFilter::All,
     ): array {
         $classInfo = $this->classes->get($class);
         if ($classInfo === null) {
@@ -95,7 +96,7 @@ final class MemberResolver
 
         $methods = [];
         $seen = [];
-        $this->collectMethods($classInfo, $minVisibility, $static, $methods, $seen, true);
+        $this->collectMethods($classInfo, $minVisibility, $filter, $methods, $seen, true);
 
         return array_values($methods);
     }
@@ -106,7 +107,7 @@ final class MemberResolver
     public function getProperties(
         ClassName $class,
         Visibility $minVisibility,
-        ?bool $static = null,
+        MemberFilter $filter = MemberFilter::All,
     ): array {
         $classInfo = $this->classes->get($class);
         if ($classInfo === null) {
@@ -115,7 +116,7 @@ final class MemberResolver
 
         $properties = [];
         $seen = [];
-        $this->collectProperties($classInfo, $minVisibility, $static, $properties, $seen, true);
+        $this->collectProperties($classInfo, $minVisibility, $filter, $properties, $seen, true);
 
         return array_values($properties);
     }
@@ -301,7 +302,7 @@ final class MemberResolver
     private function collectMethods(
         ClassInfo $classInfo,
         Visibility $minVisibility,
-        ?bool $static,
+        MemberFilter $filter,
         array &$methods,
         array &$seen,
         bool $isOriginClass,
@@ -317,7 +318,7 @@ final class MemberResolver
             if (array_key_exists($key, $methods)) {
                 continue;
             }
-            if ($static !== null && $methodInfo->isStatic !== $static) {
+            if (!$this->matchesFilter($methodInfo->isStatic, $filter)) {
                 continue;
             }
             if (!$this->isAccessible($methodInfo->visibility, $minVisibility, $isOriginClass)) {
@@ -329,14 +330,14 @@ final class MemberResolver
         foreach ($classInfo->traits as $traitName) {
             $traitInfo = $this->classes->get($traitName);
             if ($traitInfo !== null) {
-                $this->collectMethods($traitInfo, $minVisibility, $static, $methods, $seen, true);
+                $this->collectMethods($traitInfo, $minVisibility, $filter, $methods, $seen, true);
             }
         }
 
         if ($classInfo->parent !== null) {
             $parentInfo = $this->classes->get($classInfo->parent);
             if ($parentInfo !== null) {
-                $this->collectMethods($parentInfo, $minVisibility, $static, $methods, $seen, false);
+                $this->collectMethods($parentInfo, $minVisibility, $filter, $methods, $seen, false);
             }
         }
     }
@@ -348,7 +349,7 @@ final class MemberResolver
     private function collectProperties(
         ClassInfo $classInfo,
         Visibility $minVisibility,
-        ?bool $static,
+        MemberFilter $filter,
         array &$properties,
         array &$seen,
         bool $isOriginClass,
@@ -363,7 +364,7 @@ final class MemberResolver
             if (array_key_exists($key, $properties)) {
                 continue;
             }
-            if ($static !== null && $propInfo->isStatic !== $static) {
+            if (!$this->matchesFilter($propInfo->isStatic, $filter)) {
                 continue;
             }
             if (!$this->isAccessible($propInfo->visibility, $minVisibility, $isOriginClass)) {
@@ -375,16 +376,25 @@ final class MemberResolver
         foreach ($classInfo->traits as $traitName) {
             $traitInfo = $this->classes->get($traitName);
             if ($traitInfo !== null) {
-                $this->collectProperties($traitInfo, $minVisibility, $static, $properties, $seen, true);
+                $this->collectProperties($traitInfo, $minVisibility, $filter, $properties, $seen, true);
             }
         }
 
         if ($classInfo->parent !== null) {
             $parentInfo = $this->classes->get($classInfo->parent);
             if ($parentInfo !== null) {
-                $this->collectProperties($parentInfo, $minVisibility, $static, $properties, $seen, false);
+                $this->collectProperties($parentInfo, $minVisibility, $filter, $properties, $seen, false);
             }
         }
+    }
+
+    private function matchesFilter(bool $isStatic, MemberFilter $filter): bool
+    {
+        return match ($filter) {
+            MemberFilter::All => true,
+            MemberFilter::Static => $isStatic,
+            MemberFilter::Instance => !$isStatic,
+        };
     }
 
     /**
