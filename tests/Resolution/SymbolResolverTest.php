@@ -876,4 +876,119 @@ final class SymbolResolverTest extends TestCase
 
         self::assertNull($context);
     }
+
+    public function testGetMemberAccessContextReturnsNullForUnresolvedVariable(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EdgeCases.php', 'unresolved_var');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context);
+    }
+
+    public function testGetMemberAccessContextReturnsNullForDynamicClass(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EdgeCases.php', 'dynamic_class');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context);
+    }
+
+    public function testGetMemberAccessContextStaticFromDirectSubclass(): void
+    {
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'direct_parent_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Static, $context->kind);
+        self::assertSame(Visibility::Protected, $context->minVisibility);
+    }
+
+    public function testGetMemberAccessContextStaticFromDeepSubclass(): void
+    {
+        $this->openFixture('src/Inheritance/Grandparent.php');
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'grandparent_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Static, $context->kind);
+        self::assertSame(Visibility::Protected, $context->minVisibility);
+    }
+
+    public function testGetMemberAccessContextStaticFromUnrelatedClass(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/EdgeCases.php', 'unrelated_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Static, $context->kind);
+        self::assertSame(Visibility::Public, $context->minVisibility);
+    }
+
+    public function testGetMemberAccessContextReturnsNullForSelfOutsideClass(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/static_access.php', 'toplevel_self');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context);
+    }
+
+    public function testGetMemberAccessContextReturnsNullForNonMemberAccess(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EdgeCases.php', 'not_member_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context);
+    }
+
+    public function testGetMemberAccessContextStaticFromTopLevel(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('TopLevel/static_access.php', 'toplevel_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Static, $context->kind);
+        self::assertSame(Visibility::Public, $context->minVisibility);
+    }
+
+    public function testGetMemberAccessContextStaticFromAnonymousClass(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('TopLevel/static_access.php', 'anon_class_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Static, $context->kind);
+        self::assertSame(Visibility::Public, $context->minVisibility);
+    }
 }
