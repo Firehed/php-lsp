@@ -6,17 +6,15 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\TypeHintContext;
-use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Resolution\MemberAccessContext;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
@@ -24,19 +22,7 @@ use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Utility\DocblockParser;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
-use PhpParser\Node;
-use PhpParser\Node\Expr\ClassConstFetch;
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Expr\NullsafeMethodCall;
-use PhpParser\Node\Expr\NullsafePropertyFetch;
-use PhpParser\Node\Expr\PropertyFetch;
-use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Expr\StaticPropertyFetch;
-use PhpParser\Node\Expr\Variable;
-use PhpParser\Node\Identifier;
-use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 
 /**
@@ -86,8 +72,6 @@ final class CompletionHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
-        private readonly ClassRepository $classRepository,
-        private readonly MemberAccessResolver $memberAccessResolver,
         private readonly SymbolResolver $symbolResolver,
     ) {
     }
@@ -170,17 +154,10 @@ final class CompletionHandler implements HandlerInterface
         int $line,
         int $character,
     ): array {
-        $offset = $document->offsetAt($line, $character);
-
-        // AST-based member/static access detection
-        // Use offset - 1 because cursor is after the -> and we want the member access node
-        $nodeFinder = new NodeAtPosition();
-        $node = $nodeFinder->find($ast, $offset > 0 ? $offset - 1 : 0);
-        if ($node !== null) {
-            $result = $this->handleMemberAccessNode($node, $ast, $line);
-            if ($result !== null) {
-                return $result;
-            }
+        // Member/static access via SymbolResolver
+        $memberContext = $this->symbolResolver->getMemberAccessContext($document, $line, $character);
+        if ($memberContext !== null) {
+            return $this->handleMemberAccessContext($memberContext);
         }
 
         // Variable completion ($var)
@@ -260,173 +237,50 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * Handle member/static access detected via AST analysis.
+     * Handle member access context from SymbolResolver.
      *
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>|null
-     */
-    private function handleMemberAccessNode(Node $node, array $ast, int $line): ?array
-    {
-        // Handle identifier/error by checking parent
-        if ($node instanceof Identifier || $node instanceof Node\Expr\Error) {
-            $parent = $node->getAttribute('parent');
-            if ($parent instanceof Node) {
-                $node = $parent;
-            } else {
-                // @codeCoverageIgnoreStart
-                // ParserService always sets parent via NodeConnectingVisitor
-                return null;
-                // @codeCoverageIgnoreEnd
-            }
-        }
-
-        // Member access: $obj->member or $obj?->member
-        if (MemberAccessResolver::isMethodCall($node) || MemberAccessResolver::isPropertyFetch($node)) {
-            /** @var MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node */
-            return $this->handleMemberAccess($node, $ast);
-        }
-
-        // Static access: ClassName::member
-        if ($node instanceof StaticPropertyFetch || $node instanceof StaticCall || $node instanceof ClassConstFetch) {
-            return $this->handleStaticAccess($node, $ast, $line);
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function handleMemberAccess(
-        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
-        array $ast,
-    ): array {
-        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
-
-        $className = $this->memberAccessResolver->resolveObjectClassName($node->var, $ast);
-        if ($className === null) {
-            return [];
-        }
-
-        $isThis = $node->var instanceof Variable && $node->var->name === 'this';
-        $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
-        $isSameClass = $enclosingClassName !== null && $enclosingClassName === $className->fqn;
-        $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
-
-        $members = $this->symbolResolver->getAccessibleMembers($className, $visibility, staticOnly: false);
+    private function handleMemberAccessContext(MemberAccessContext $context): array
+    {
+        $members = match ($context->kind) {
+            MemberAccessKind::Instance => $this->symbolResolver->getAccessibleMembers(
+                $context->type,
+                $context->minVisibility,
+                staticOnly: false,
+            ),
+            MemberAccessKind::Static => $this->symbolResolver->getAccessibleMembers(
+                $context->type,
+                $context->minVisibility,
+                staticOnly: true,
+            ),
+            MemberAccessKind::Parent => [
+                ...$this->symbolResolver->getAccessibleMembers(
+                    $context->type,
+                    $context->minVisibility,
+                    staticOnly: false,
+                ),
+                ...$this->symbolResolver->getAccessibleMembers(
+                    $context->type,
+                    $context->minVisibility,
+                    staticOnly: true,
+                ),
+            ],
+        };
 
         $items = [];
         foreach ($members as $member) {
-            if (self::matchesPrefix($member->getName()->name, $prefix)) {
-                $items[] = $this->formatResolvedMemberCompletion($member);
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function handleStaticAccess(
-        StaticPropertyFetch|StaticCall|ClassConstFetch $node,
-        array $ast,
-        int $line,
-    ): array {
-        $class = $node->class;
-        if (!$class instanceof Name) {
-            return [];
-        }
-
-        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
-        $rawName = $class->toString();
-
-        // parent:: has special completion behavior - only shows parent's methods
-        if ($rawName === 'parent') {
-            return $this->getParentCompletions($prefix, $ast, $line);
-        }
-
-        // For self::, static::, and regular class names, resolve and get completions
-        $className = ScopeFinder::resolveClassNameInContext($class, $node);
-        if ($className === null) {
-            return [];
-        }
-
-        return $this->getStaticCompletions($className, $prefix, $ast, $line);
-    }
-
-    /**
-     * Get completions for parent:: - methods from the parent class.
-     *
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function getParentCompletions(string $prefix, array $ast, int $line): array
-    {
-        $classNode = ScopeFinder::findClassAtLine($ast, $line);
-        if ($classNode === null || $classNode->extends === null) {
-            return [];
-        }
-
-        $parentClassName = ScopeFinder::resolveExtendsName($classNode);
-        assert($parentClassName !== null);
-
-        $className = new ClassName($parentClassName);
-
-        // parent:: can call both instance and static methods
-        $instanceMembers = $this->symbolResolver->getAccessibleMembers(
-            $className,
-            Visibility::Protected,
-            staticOnly: false,
-        );
-        $staticMembers = $this->symbolResolver->getAccessibleMembers(
-            $className,
-            Visibility::Protected,
-            staticOnly: true,
-        );
-
-        $items = [];
-        foreach ([...$instanceMembers, ...$staticMembers] as $member) {
-            if (!$member instanceof ResolvedMethod) {
+            // Parent access only shows methods
+            if ($context->kind === MemberAccessKind::Parent && !$member instanceof ResolvedMethod) {
                 continue;
             }
-            if (self::matchesPrefix($member->getName()->name, $prefix)) {
-                $items[] = $this->formatResolvedMemberCompletion($member);
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function getStaticCompletions(string $className, string $prefix, array $ast, int $line): array
-    {
-        // Resolve short name to FQCN using imports
-        $resolvedClassName = $this->resolveClassName($className, $ast);
-
-        $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
-        $minVisibility = $this->getMinVisibilityForAccess($enclosingClass, $resolvedClassName);
-
-        $members = $this->symbolResolver->getAccessibleMembers(
-            new ClassName($resolvedClassName),
-            $minVisibility,
-            staticOnly: true,
-        );
-
-        $items = [];
-        foreach ($members as $member) {
-            if (self::matchesPrefix($member->getName()->name, $prefix)) {
+            if (self::matchesPrefix($member->getName()->name, $context->prefix)) {
                 $items[] = $this->formatResolvedMemberCompletion($member);
             }
         }
 
         // ::class magic constant is always available for static access
-        if (self::matchesPrefix('class', $prefix)) {
+        if ($context->kind === MemberAccessKind::Static && self::matchesPrefix('class', $context->prefix)) {
             $items[] = [
                 'label' => 'class',
                 'kind' => self::KIND_CONSTANT,
@@ -435,39 +289,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $items;
-    }
-
-    /**
-     * Determine minimum visibility for accessing members of target class from enclosing class.
-     *
-     * @param class-string $targetClassName
-     */
-    private function getMinVisibilityForAccess(?Stmt\Class_ $enclosingClass, string $targetClassName): Visibility
-    {
-        if ($enclosingClass === null) {
-            return Visibility::Public;
-        }
-
-        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
-        if ($enclosingClassName === null) {
-            return Visibility::Public;
-        }
-
-        if ($enclosingClassName === $targetClassName) {
-            return Visibility::Private;
-        }
-
-        // Check direct extends in AST
-        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
-            return Visibility::Protected;
-        }
-
-        // Check deeper inheritance via ClassRepository
-        if ($this->classRepository->isSubclassOf(new ClassName($enclosingClassName), new ClassName($targetClassName))) {
-            return Visibility::Protected;
-        }
-
-        return Visibility::Public;
     }
 
     /**
@@ -544,19 +365,6 @@ final class CompletionHandler implements HandlerInterface
             'kind' => self::KIND_FUNCTION,
             'detail' => $funcInfo->format(),
         ], $funcInfo->docblock);
-    }
-
-    /**
-     * Resolve a short class name to its FQCN using use statements.
-     *
-     * @param array<Stmt> $ast
-     * @return class-string
-     */
-    private function resolveClassName(string $shortName, array $ast): string
-    {
-        $imports = $this->getImports($ast);
-        /** @var class-string */
-        return $imports[$shortName] ?? $shortName;
     }
 
     /**

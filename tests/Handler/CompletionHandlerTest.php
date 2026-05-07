@@ -22,7 +22,6 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -54,7 +53,6 @@ class CompletionHandlerTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
-        $memberAccessResolver = new MemberAccessResolver($typeResolver);
         $symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
@@ -66,8 +64,6 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $this->parser,
             $this->symbolIndex,
-            $this->classRepository,
-            $memberAccessResolver,
             $symbolResolver,
         );
         $this->syncHandler = new TextDocumentSyncHandler(
