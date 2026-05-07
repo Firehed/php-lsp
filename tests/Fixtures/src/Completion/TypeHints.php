@@ -6,7 +6,6 @@ namespace Fixtures\Completion;
 
 use Fixtures\Domain\User;
 use Fixtures\Domain\Entity;
-use Fixtures\Traits\SingletonTrait;
 
 class TypeHints
 {

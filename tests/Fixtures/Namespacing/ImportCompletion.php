@@ -6,6 +6,7 @@ namespace Fixtures\Namespacing\ImportCompletion {
 
     use Fixtures\Namespacing\Models\User;
     use Fixtures\Namespacing\Models\UserRepository as Repo;
+    use Fixtures\Traits\SingletonTrait;
 
     function triggerImportedClassPartial()
     {
@@ -15,6 +16,15 @@ namespace Fixtures\Namespacing\ImportCompletion {
     function triggerAliasedClassPartial()
     {
         $x = Rep/*|aliased_class_partial*/
+    }
+
+    function triggerTraitInExpression()
+    {
+        $x = Sing/*|trait_expression_partial*/
+    }
+
+    function triggerTypeHintReturn(): /*|type_hint_return*/
+    {
     }
 
 }
