@@ -6,9 +6,12 @@ namespace Fixtures\Completion;
 
 use Fixtures\Inheritance\ChildClass;
 use Fixtures\Inheritance\ParentClass;
+use Fixtures\Traits\HasTimestamps;
 
 class InheritanceCompletion extends ChildClass
 {
+    use HasTimestamps;
+
     private string $ownProperty = '';
 
     public function ownMethod(): void
