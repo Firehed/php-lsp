@@ -350,10 +350,7 @@ final class SymbolResolver
             return null;
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($call->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        $className = $classNames[0] ?? null;
-
+        $className = $this->resolveInstanceAccessClassName($call, $ast);
         if ($className === null) {
             return null;
         }
@@ -369,6 +366,20 @@ final class SymbolResolver
         }
 
         return new ResolvedMethod($methodInfo);
+    }
+
+    /**
+     * Resolve the class name of the object in an instance member access.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveInstanceAccessClassName(
+        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
+        array $ast,
+    ): ?ClassName {
+        $type = ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+        $classNames = $type?->getResolvableClassNames() ?? [];
+        return $classNames[0] ?? null;
     }
 
     private function resolveStaticCallCallable(StaticCall $call): ?ResolvedCallable
@@ -790,10 +801,7 @@ final class SymbolResolver
         }
         // @codeCoverageIgnoreEnd
 
-        $type = ExpressionTypeResolver::resolveExpressionType($fetch->var, $ast, $this->typeResolver);
-        $classNames = $type?->getResolvableClassNames() ?? [];
-        $className = $classNames[0] ?? null;
-
+        $className = $this->resolveInstanceAccessClassName($fetch, $ast);
         if ($className === null) {
             return null;
         }
