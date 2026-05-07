@@ -370,6 +370,7 @@ final class CompletionHandler implements HandlerInterface
         string $prefix,
         array $ast,
         bool $instantiableOnly = false,
+        bool $typeHintContext = false,
     ): array {
         $items = [];
         $imports = $this->getImports($ast);
@@ -380,6 +381,9 @@ final class CompletionHandler implements HandlerInterface
             }
             /** @var class-string $fqcn */
             if ($instantiableOnly && !$this->symbolResolver->isInstantiable(new ClassName($fqcn))) {
+                continue;
+            }
+            if ($typeHintContext && !$this->symbolResolver->isValidTypeHint(new ClassName($fqcn))) {
                 continue;
             }
             $items[] = [
@@ -522,8 +526,8 @@ final class CompletionHandler implements HandlerInterface
             }
         }
 
-        // Imported classes
-        $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
+        // Imported classes (traits are not valid type hints)
+        $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast, typeHintContext: true));
 
         // Indexed types (traits are not valid type hints)
         $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [

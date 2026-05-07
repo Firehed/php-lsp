@@ -896,6 +896,31 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('never', $labels);
     }
 
+    public function testTypeHintExcludesImportedTraits(): void
+    {
+        // Issue #90: Traits imported via `use` statements should not appear in type hints
+        // Open class fixtures so they're known to the class repository
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Domain/Entity.php');
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/TypeHints.php', 'return_type');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should be detected as type hint context
+        self::assertContains('string', $labels);
+
+        // Imported classes should appear
+        self::assertContains('User', $labels);
+        self::assertContains('Entity', $labels);
+
+        // Imported trait should NOT appear in type hint context
+        self::assertNotContains('SingletonTrait', $labels);
+    }
+
     public function testKeywordCompletions(): void
     {
         $code = '<?php fore';
