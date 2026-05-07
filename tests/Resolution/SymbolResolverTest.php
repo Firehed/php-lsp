@@ -23,6 +23,8 @@ use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
+use Firehed\PhpLsp\Resolution\MemberAccessContext;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedParameter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
@@ -783,5 +785,94 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
 
         self::assertNull($result);
+    }
+
+    public function testGetMemberAccessContextForInstanceAccess(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Instance, $context->kind);
+        self::assertSame(Visibility::Private, $context->minVisibility);
+        self::assertSame('', $context->prefix);
+    }
+
+    public function testGetMemberAccessContextForInstanceAccessWithPrefix(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_prefix');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Instance, $context->kind);
+        self::assertSame('get', $context->prefix);
+    }
+
+    public function testGetMemberAccessContextForNullsafeAccess(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_this_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Instance, $context->kind);
+    }
+
+    public function testGetMemberAccessContextForStaticAccess(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Static, $context->kind);
+        self::assertSame(Visibility::Private, $context->minVisibility);
+    }
+
+    public function testGetMemberAccessContextForParentAccess(): void
+    {
+        $this->openFixture('src/Inheritance/ParentClass.php');
+        $this->openFixture('src/Inheritance/ChildClass.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Parent, $context->kind);
+        self::assertSame(Visibility::Protected, $context->minVisibility);
+    }
+
+    public function testGetMemberAccessContextReturnsNullOutsideMemberAccess(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get('file:///fixtures/src/Domain/User.php');
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, 0, 0);
+
+        self::assertNull($context);
+    }
+
+    public function testGetMemberAccessContextReturnsNullForNoParent(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NoParent.php', 'parent_no_parent');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context);
     }
 }
