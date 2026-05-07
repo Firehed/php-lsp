@@ -18,6 +18,13 @@ class ResolvedVariableTest extends TestCase
         self::assertInstanceOf(ResolvedSymbol::class, $resolved);
     }
 
+    public function testGetName(): void
+    {
+        $resolved = new ResolvedVariable('myVar', new PrimitiveType('string'));
+
+        self::assertSame('myVar', $resolved->getName());
+    }
+
     public function testGetDefinitionLocationAlwaysReturnsNull(): void
     {
         $resolved = new ResolvedVariable('name', new PrimitiveType('string'));
