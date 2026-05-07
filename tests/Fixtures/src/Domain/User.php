@@ -310,4 +310,10 @@ class User implements Entity, Person
     {
         self::nonexistentStatic(/*|sig_nonexistent_static*/);
     }
+
+    public function triggerTraitPropertyFromConsumer(): void
+    {
+        echo $this->createdAt; //hover:trait_property_consumer
+    }
+
 }
