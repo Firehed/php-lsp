@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
@@ -170,8 +171,8 @@ final class CompletionHandler implements HandlerInterface
         // new ClassName completion - suggest imported classes and indexed instantiable types
         if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
-            $items = $this->getImportedClassCompletions($prefix, $ast);
-            $indexedItems = $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_, SymbolKind::Enum_]);
+            $items = $this->getImportedClassCompletions($prefix, $ast, instantiableOnly: true);
+            $indexedItems = $this->getIndexedClassCompletions($prefix, [SymbolKind::Class_], instantiableOnly: true);
             $items = array_merge($items, $indexedItems);
             return $this->deduplicateCompletions($items);
         }
@@ -364,19 +365,27 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getImportedClassCompletions(string $prefix, array $ast): array
-    {
+    private function getImportedClassCompletions(
+        string $prefix,
+        array $ast,
+        bool $instantiableOnly = false,
+    ): array {
         $items = [];
         $imports = $this->getImports($ast);
 
         foreach ($imports as $shortName => $fqcn) {
-            if (self::matchesPrefix($shortName, $prefix)) {
-                $items[] = [
-                    'label' => $shortName,
-                    'kind' => self::KIND_CLASS,
-                    'detail' => $fqcn,
-                ];
+            if (!self::matchesPrefix($shortName, $prefix)) {
+                continue;
             }
+            /** @var class-string $fqcn */
+            if ($instantiableOnly && !$this->symbolResolver->isInstantiable(new ClassName($fqcn))) {
+                continue;
+            }
+            $items[] = [
+                'label' => $shortName,
+                'kind' => self::KIND_CLASS,
+                'detail' => $fqcn,
+            ];
         }
 
         return $items;
@@ -426,16 +435,24 @@ final class CompletionHandler implements HandlerInterface
      * @param list<SymbolKind> $kinds
      * @return list<CompletionItem>
      */
-    private function getIndexedClassCompletions(string $prefix, array $kinds): array
-    {
+    private function getIndexedClassCompletions(
+        string $prefix,
+        array $kinds,
+        bool $instantiableOnly = false,
+    ): array {
         $symbols = $this->symbolIndex->findByPrefix($prefix, $kinds);
         $items = [];
 
         foreach ($symbols as $symbol) {
+            /** @var class-string $fqcn */
+            $fqcn = $symbol->fullyQualifiedName;
+            if ($instantiableOnly && !$this->symbolResolver->isInstantiable(new ClassName($fqcn))) {
+                continue;
+            }
             $items[] = [
                 'label' => $symbol->name,
                 'kind' => self::KIND_CLASS,
-                'detail' => $symbol->fullyQualifiedName,
+                'detail' => $fqcn,
             ];
         }
 
