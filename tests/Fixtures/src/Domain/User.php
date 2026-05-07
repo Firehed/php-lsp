@@ -34,7 +34,7 @@ class User implements Entity, Person
 
     public function getId(): string
     {
-        return $this->id;
+        return $this->id; //hover:promoted_property
     }
 
     public function getName(): string
