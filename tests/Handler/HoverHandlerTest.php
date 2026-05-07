@@ -593,4 +593,17 @@ class HoverHandlerTest extends TestCase
 
         self::assertNull($result);
     }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/6
+     */
+    public function testHoverOnClassConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'class_constant');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('PARENT_CONST', $result['contents']);
+    }
 }
