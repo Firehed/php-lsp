@@ -620,4 +620,19 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('$typed', $result['contents']);
         self::assertStringContainsString('User', $result['contents']);
     }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/8
+     */
+    public function testHoverOnPromotedProperty(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'promoted_property');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$id', $result['contents']);
+        self::assertStringContainsString('string', $result['contents']);
+        self::assertStringContainsString('readonly', $result['contents']);
+    }
 }
