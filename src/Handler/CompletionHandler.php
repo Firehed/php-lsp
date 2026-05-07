@@ -169,8 +169,7 @@ final class CompletionHandler implements HandlerInterface
         array $ast,
         int $line,
         int $character,
-    ): array
-    {
+    ): array {
         $offset = $document->offsetAt($line, $character);
 
         // AST-based member/static access detection
@@ -840,5 +839,4 @@ final class CompletionHandler implements HandlerInterface
 
         return $items;
     }
-
 }
