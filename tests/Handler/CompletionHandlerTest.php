@@ -67,7 +67,6 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
             $this->symbolIndex,
             $this->classRepository,
-            $typeResolver,
             $memberAccessResolver,
             $symbolResolver,
         );

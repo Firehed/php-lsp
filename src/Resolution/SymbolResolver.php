@@ -494,6 +494,38 @@ final class SymbolResolver
                 }
             }
 
+            // Collect foreach variables
+            if ($stmt instanceof Stmt\Foreach_) {
+                if ($stmt->valueVar instanceof Variable && is_string($stmt->valueVar->name)) {
+                    $name = $stmt->valueVar->name;
+                    if (!isset($seen[$name])) {
+                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
+                        $variables[] = new ResolvedVariable($name, $type);
+                        $seen[$name] = true;
+                    }
+                }
+                if ($stmt->keyVar instanceof Variable && is_string($stmt->keyVar->name)) {
+                    $name = $stmt->keyVar->name;
+                    if (!isset($seen[$name])) {
+                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
+                        $variables[] = new ResolvedVariable($name, $type);
+                        $seen[$name] = true;
+                    }
+                }
+            }
+
+            // Collect catch variables
+            if ($stmt instanceof Stmt\Catch_) {
+                if ($stmt->var !== null && is_string($stmt->var->name)) {
+                    $name = $stmt->var->name;
+                    if (!isset($seen[$name])) {
+                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
+                        $variables[] = new ResolvedVariable($name, $type);
+                        $seen[$name] = true;
+                    }
+                }
+            }
+
             // Recursively check nested structures (if/while/etc.)
             if (property_exists($stmt, 'stmts') && is_array($stmt->stmts)) {
                 /** @var array<Stmt|Node> $nestedStmts */

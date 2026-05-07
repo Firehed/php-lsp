@@ -90,7 +90,6 @@ final class Server
             $parser,
             $symbolIndex,
             $classRepository,
-            $typeResolver,
             $memberAccessResolver,
             $symbolResolver,
         );

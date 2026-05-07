@@ -21,6 +21,11 @@ final readonly class ResolvedVariable implements ResolvedSymbol
     ) {
     }
 
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
     public function getDefinitionLocation(): ?Location
     {
         return null;

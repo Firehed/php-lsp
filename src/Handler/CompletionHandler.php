@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -22,11 +23,9 @@ use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
-use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
@@ -39,8 +38,6 @@ use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 
 /**
  * @phpstan-type CompletionItem array{
@@ -90,7 +87,6 @@ final class CompletionHandler implements HandlerInterface
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
         private readonly ClassRepository $classRepository,
-        private readonly TypeResolverInterface $typeResolver,
         private readonly MemberAccessResolver $memberAccessResolver,
         private readonly SymbolResolver $symbolResolver,
     ) {
@@ -155,7 +151,7 @@ final class CompletionHandler implements HandlerInterface
         $lineText = $document->getLine($line);
         $textBeforeCursor = substr($lineText, 0, $character);
 
-        $items = $this->getCompletionItems($textBeforeCursor, $ast, $line, $offset);
+        $items = $this->getCompletionItems($textBeforeCursor, $document, $ast, $line, $character);
 
         return [
             'isIncomplete' => false,
@@ -167,8 +163,16 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getCompletionItems(string $textBeforeCursor, array $ast, int $line, int $offset): array
+    private function getCompletionItems(
+        string $textBeforeCursor,
+        TextDocument $document,
+        array $ast,
+        int $line,
+        int $character,
+    ): array
     {
+        $offset = $document->offsetAt($line, $character);
+
         // AST-based member/static access detection
         // Use offset - 1 because cursor is after the -> and we want the member access node
         $nodeFinder = new NodeAtPosition();
@@ -183,7 +187,7 @@ final class CompletionHandler implements HandlerInterface
         // Variable completion ($var)
         if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
-            return $this->getVariableCompletions($prefix, $ast, $line);
+            return $this->getVariableCompletions($prefix, $document, $line, $character);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
@@ -813,43 +817,23 @@ final class CompletionHandler implements HandlerInterface
     /**
      * Get variable completions for the current scope.
      *
-     * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getVariableCompletions(string $prefix, array $ast, int $cursorLine): array
-    {
-        // Find the innermost function/method/closure containing the cursor
-        $enclosingScope = $this->findEnclosingScope($ast, $cursorLine);
-        if ($enclosingScope === null) {
-            return [];
-        }
+    private function getVariableCompletions(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): array {
+        $variables = $this->symbolResolver->getVariablesInScope($document, $line, $character);
 
-        $inMethod = $enclosingScope instanceof Stmt\ClassMethod;
-        $variables = $this->collectScopeVariables($enclosingScope);
-
-        // Build completion items
         $items = [];
-
-        // Add $this if we're in a method
-        if ($inMethod && self::matchesPrefix('this', $prefix)) {
-            // Use ScopeFinder directly for $this - TypeResolverInterface::resolveVariableType
-            // doesn't handle $this (it only checks parameters, use() vars, and assignments)
-            $classNode = ScopeFinder::findClassAtLine($ast, $cursorLine);
-            $className = $classNode?->namespacedName?->toString() ?? $classNode?->name?->toString();
-            $items[] = [
-                'label' => '$this',
-                'kind' => self::KIND_VARIABLE,
-                'detail' => $className ?? 'self',
-            ];
-        }
-
-        foreach ($variables as $name => $basicType) {
-            if (self::matchesPrefix($name, $prefix)) {
-                $resolvedType = $this->typeResolver->resolveVariableType($name, $enclosingScope, $cursorLine, $ast);
+        foreach ($variables as $variable) {
+            if (self::matchesPrefix($variable->getName(), $prefix)) {
                 $items[] = [
-                    'label' => '$' . $name,
+                    'label' => '$' . $variable->getName(),
                     'kind' => self::KIND_VARIABLE,
-                    'detail' => $resolvedType?->format() ?? $basicType,
+                    'detail' => $variable->getType()?->format() ?? 'mixed',
                 ];
             }
         }
@@ -857,140 +841,4 @@ final class CompletionHandler implements HandlerInterface
         return $items;
     }
 
-    /**
-     * Find the innermost function/method/closure containing the given line.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function findEnclosingScope(
-        array $ast,
-        int $cursorLine,
-    ): Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null {
-        $found = null;
-
-        $visitor = new class ($cursorLine, $found) extends NodeVisitorAbstract {
-            /** @var Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null */
-            public $found = null;
-            private int $cursorLine;
-
-            /**
-             * @param Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction|null $found
-             */
-            public function __construct(int $cursorLine, &$found)
-            {
-                $this->cursorLine = $cursorLine;
-                $this->found = &$found;
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if (
-                    ($node instanceof Stmt\Function_
-                        || $node instanceof Stmt\ClassMethod
-                        || $node instanceof Node\Expr\Closure
-                        || $node instanceof Node\Expr\ArrowFunction)
-                    && ScopeFinder::nodeContainsLine($node, $this->cursorLine)
-                ) {
-                    $this->found = $node;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-
-        return $visitor->found;
-    }
-
-    /**
-     * Collect variables from a function/method/closure scope.
-     *
-     * @return array<string, string> Variable name => type
-     */
-    private function collectScopeVariables(
-        Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $scope,
-    ): array {
-        $variables = [];
-
-        // Collect parameters
-        foreach ($scope->params as $param) {
-            if ($param->var instanceof Variable && is_string($param->var->name)) {
-                $variables[$param->var->name] = TypeFactory::fromNode($param->type)?->format() ?? 'mixed';
-            }
-        }
-
-        // Collect use() variables from closures
-        if ($scope instanceof Node\Expr\Closure) {
-            foreach ($scope->uses as $use) {
-                if (is_string($use->var->name)) {
-                    $variables[$use->var->name] = 'mixed';
-                }
-            }
-        }
-
-        // Traverse the scope body to find assignments and foreach variables
-        $stmts = $scope instanceof Node\Expr\ArrowFunction ? [] : ($scope->stmts ?? []);
-
-        $collector = new class ($variables) extends NodeVisitorAbstract {
-            /** @var array<string, string> */
-            public array $variables;
-
-            /**
-             * @param array<string, string> $variables
-             */
-            public function __construct(array &$variables)
-            {
-                $this->variables = &$variables;
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                // Skip nested function scopes
-                if (
-                    $node instanceof Stmt\Function_
-                    || $node instanceof Stmt\ClassMethod
-                    || $node instanceof Node\Expr\Closure
-                    || $node instanceof Node\Expr\ArrowFunction
-                ) {
-                    return NodeTraverser::DONT_TRAVERSE_CHILDREN;
-                }
-
-                // Collect assignments
-                if ($node instanceof Node\Expr\Assign) {
-                    if ($node->var instanceof Variable && is_string($node->var->name)) {
-                        if (!isset($this->variables[$node->var->name])) {
-                            $this->variables[$node->var->name] = 'mixed';
-                        }
-                    }
-                }
-
-                // Collect foreach variables
-                if ($node instanceof Stmt\Foreach_) {
-                    if ($node->valueVar instanceof Variable && is_string($node->valueVar->name)) {
-                        $this->variables[$node->valueVar->name] = 'mixed';
-                    }
-                    if ($node->keyVar instanceof Variable && is_string($node->keyVar->name)) {
-                        $this->variables[$node->keyVar->name] = 'mixed';
-                    }
-                }
-
-                // Collect catch variables
-                if ($node instanceof Stmt\Catch_) {
-                    if ($node->var !== null && is_string($node->var->name)) {
-                        $this->variables[$node->var->name] = 'Exception';
-                    }
-                }
-
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($collector);
-        $traverser->traverse($stmts);
-
-        return $collector->variables;
-    }
 }
