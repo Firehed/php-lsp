@@ -433,6 +433,23 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('MyInterface', $labels);
     }
 
+    public function testNewCompletionExcludesAbstractClasses(): void
+    {
+        // Index the classes first (AbstractBase is abstract, SealedClass is concrete)
+        $this->openFixture('src/Utility/ClassModifiers.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/NewCompletion.php', 'new_abstract');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Should include concrete class (imported via use statement)
+        self::assertContains('SealedClass', $labels);
+        // Should NOT include abstract class
+        self::assertNotContains('AbstractBase', $labels);
+    }
+
     public function testExpressionCompletionIncludesAllIndexedTypes(): void
     {
         // Add various symbol types to the index

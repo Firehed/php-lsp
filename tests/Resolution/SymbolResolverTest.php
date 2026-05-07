@@ -991,4 +991,39 @@ final class SymbolResolverTest extends TestCase
         self::assertSame(MemberAccessKind::Static, $context->kind);
         self::assertSame(Visibility::Public, $context->minVisibility);
     }
+
+    public function testIsInstantiableReturnsFalseForAbstractClass(): void
+    {
+        $this->openFixture('src/Utility/ClassModifiers.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\AbstractBase')));
+    }
+
+    public function testIsInstantiableReturnsTrueForConcreteClass(): void
+    {
+        $this->openFixture('src/Utility/ClassModifiers.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\SealedClass')));
+    }
+
+    public function testIsInstantiableReturnsFalseForInterface(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Domain\\Entity')));
+    }
+
+    public function testIsInstantiableReturnsFalseForEnum(): void
+    {
+        $this->openFixture('src/Enum/Status.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Enum\\Status')));
+    }
+
+    public function testIsInstantiableReturnsTrueForUnknownClass(): void
+    {
+        // Unknown classes are assumed instantiable (optimistic filtering)
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        self::assertTrue($this->resolver->isInstantiable(new ClassName('NonExistent\\Unknown')));
+    }
 }

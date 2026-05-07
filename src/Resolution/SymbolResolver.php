@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
+use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
@@ -146,6 +147,19 @@ final class SymbolResolver
         }
 
         return $members;
+    }
+
+    /**
+     * Check if a class can be instantiated with `new`.
+     * Returns true for unknown classes (optimistic filtering).
+     */
+    public function isInstantiable(ClassName $className): bool
+    {
+        $classInfo = $this->classRepository->get($className);
+        if ($classInfo === null) {
+            return true;
+        }
+        return !$classInfo->isAbstract && $classInfo->kind === ClassKind::Class_;
     }
 
     /**
