@@ -146,6 +146,26 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('grandparentMethod', $labels);
     }
 
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/185
+     */
+    public function testThisCompletionIncludesTraitMembers(): void
+    {
+        $this->openFixture('src/Traits/HasTimestamps.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'this_inherited');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Trait properties from HasTimestamps
+        self::assertContains('createdAt', $labels);
+        self::assertContains('updatedAt', $labels);
+        // Trait methods from HasTimestamps
+        self::assertContains('getCreatedAt', $labels);
+        self::assertContains('markCreated', $labels);
+    }
+
     public function testStaticMethodCompletion(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/StaticCaller.php', 'external_static');
