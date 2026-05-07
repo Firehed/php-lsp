@@ -163,6 +163,20 @@ final class SymbolResolver
     }
 
     /**
+     * Check if a class-like can be used as a type hint.
+     * Traits are not valid type hints; classes, interfaces, and enums are.
+     * Returns true for unknown classes (optimistic filtering).
+     */
+    public function isValidTypeHint(ClassName $className): bool
+    {
+        $classInfo = $this->classRepository->get($className);
+        if ($classInfo === null) {
+            return true;
+        }
+        return $classInfo->kind !== ClassKind::Trait_;
+    }
+
+    /**
      * Get member access context at position.
      * Used by: Completion (after -> or ::)
      */
