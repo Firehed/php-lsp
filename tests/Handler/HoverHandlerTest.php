@@ -606,4 +606,18 @@ class HoverHandlerTest extends TestCase
         self::assertIsArray($result);
         self::assertStringContainsString('PARENT_CONST', $result['contents']);
     }
+
+    /**
+     * @see https://github.com/Firehed/php-lsp/issues/4
+     */
+    public function testHoverOnTypedVariable(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'variable_typed');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('$typed', $result['contents']);
+        self::assertStringContainsString('User', $result['contents']);
+    }
 }
