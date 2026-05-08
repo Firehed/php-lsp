@@ -163,30 +163,23 @@ final class CompletionHandler implements HandlerInterface
             return $this->handleMemberAccessContext($memberContext);
         }
 
-        // Variable completion ($var)
-        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            $items = $this->getVariableCompletions($prefix, $document, $line, $character);
-            // If inside a call context, also offer named arguments
-            $callContext = $this->symbolResolver->getCallContext($document, $line, $character);
-            if ($callContext !== null) {
-                $namedArgPrefix = $this->extractNamedArgPrefix($textBeforeCursor);
-                $items = array_merge(
-                    $this->getNamedArgumentCompletions($callContext, $namedArgPrefix),
-                    $items,
-                );
-            }
-            return $items;
-        }
-
-        // Named argument completion inside function/method calls
+        // Inside a call context, offer named arguments + variables
         $callContext = $this->symbolResolver->getCallContext($document, $line, $character);
         if ($callContext !== null) {
-            $prefix = $this->extractNamedArgPrefix($textBeforeCursor);
-            $items = $this->getNamedArgumentCompletions($callContext, $prefix);
-            // Also offer variables as they're valid argument expressions
-            $items = array_merge($items, $this->getVariableCompletions('', $document, $line, $character));
-            return $items;
+            $namedArgPrefix = $this->extractNamedArgPrefix($textBeforeCursor);
+            $items = $this->getNamedArgumentCompletions($callContext, $namedArgPrefix);
+
+            // Also offer variables - filter by prefix if cursor is on one
+            $varPrefix = '';
+            if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
+                $varPrefix = $matches[1];
+            }
+            return array_merge($items, $this->getVariableCompletions($varPrefix, $document, $line, $character));
+        }
+
+        // Variable completion outside call context
+        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return $this->getVariableCompletions($matches[1], $document, $line, $character);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types

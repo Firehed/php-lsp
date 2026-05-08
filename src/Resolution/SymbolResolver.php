@@ -536,28 +536,23 @@ final class SymbolResolver
     {
         $nodeFinder = new NodeFinder();
 
-        // Look for PropertyFetch nodes that could be incomplete method calls
-        $propertyFetches = $nodeFinder->findInstanceOf($ast, PropertyFetch::class);
-        foreach ($propertyFetches as $fetch) {
-            $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, MethodCall::class);
-            if ($result !== null) {
-                return $result;
-            }
-        }
+        $fetches = $nodeFinder->find(
+            $ast,
+            fn(Node $n) => $n instanceof PropertyFetch
+                || $n instanceof NullsafePropertyFetch
+                || $n instanceof StaticPropertyFetch,
+        );
 
-        // Check NullsafePropertyFetch
-        $nullsafeFetches = $nodeFinder->findInstanceOf($ast, NullsafePropertyFetch::class);
-        foreach ($nullsafeFetches as $fetch) {
-            $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, NullsafeMethodCall::class);
-            if ($result !== null) {
-                return $result;
+        foreach ($fetches as $fetch) {
+            if ($fetch instanceof StaticPropertyFetch) {
+                $result = $this->checkIncompleteStaticCall($fetch, $offset, $content);
+            } elseif ($fetch instanceof NullsafePropertyFetch) {
+                $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, NullsafeMethodCall::class);
+            } elseif ($fetch instanceof PropertyFetch) {
+                $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, MethodCall::class);
+            } else {
+                continue;
             }
-        }
-
-        // Check StaticPropertyFetch
-        $staticFetches = $nodeFinder->findInstanceOf($ast, StaticPropertyFetch::class);
-        foreach ($staticFetches as $fetch) {
-            $result = $this->checkIncompleteStaticCall($fetch, $offset, $content);
             if ($result !== null) {
                 return $result;
             }
