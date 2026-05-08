@@ -430,8 +430,7 @@ final class SymbolResolver
     private function findCallAtPosition(array $ast, int $offset): ?array
     {
         $finder = new class ($offset) extends NodeVisitorAbstract {
-            /** @var FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null */
-            public ?Node $found = null;
+            public FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null $found = null;
             public int $activeParameter = 0;
             /** @var list<string> */
             public array $usedNames = [];
