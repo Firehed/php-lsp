@@ -536,6 +536,42 @@ class BasicTypeResolverTest extends TestCase
         self::assertSame('GlobalConfig', $type->fqn);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('multiNamespaceFunctionProvider')]
+    public function testResolveFunctionInCorrectNamespace(
+        string $fixturePath,
+        string $functionName,
+        string $expectedFqn,
+    ): void {
+        $ast = $this->parseFixture($fixturePath);
+        $function = $this->findFunctionByName($ast, $functionName);
+        $finder = new \PhpParser\NodeFinder();
+        $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
+        assert($funcCall instanceof Expr\FuncCall);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame($expectedFqn, $type->fqn);
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function multiNamespaceFunctionProvider(): iterable
+    {
+        yield 'stacked namespaces' => [
+            'src/TypeInference/MultiNamespaceFunction.php',
+            'testNamespaceBFunction',
+            'Fixtures\\TypeInference\\NamespaceB\\ConfigB',
+        ];
+        yield 'bracketed namespaces' => [
+            'src/TypeInference/MultiNamespaceBracketed.php',
+            'testBracketedNamespaceBFunction',
+            'Fixtures\\TypeInference\\BracketedB\\BracketedConfigB',
+        ];
+    }
+
     public function testResolveDynamicFunctionCallReturnsNull(): void
     {
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
