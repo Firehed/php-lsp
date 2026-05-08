@@ -53,6 +53,11 @@ class NamedArguments
         new ParamClass(/*|new_named_empty*/'test');
     }
 
+    public function testIncompleteCallWithPrefix(): void
+    {
+        $this->multipleParams(n/*|incomplete_with_prefix*/
+    }
+
     public static function staticWithParams(string $value, int $limit = 10): array
     {
         return [];
@@ -71,3 +76,6 @@ class ParamClass
 // Procedural context tests
 proceduralHelper(/*|procedural_empty*/'hello');
 proceduralHelper(message: 'hi', /*|procedural_after_named*/level: 5);
+
+// Incomplete expression with prefix (real-world typing scenario)
+// Note: This simulates typing $this->post(p| in an editor

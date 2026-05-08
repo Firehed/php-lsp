@@ -426,6 +426,11 @@ final class SymbolResolver
 
         $callInfo = $this->findCallAtPosition($ast, $offset);
         if ($callInfo === null) {
+            // Fallback for incomplete code: parser error recovery may create
+            // PropertyFetch instead of MethodCall for patterns like $this->foo(
+            $callInfo = $this->findIncompleteCallAtPosition($ast, $offset, $document->getContent());
+        }
+        if ($callInfo === null) {
             return null;
         }
 
@@ -504,6 +509,133 @@ final class SymbolResolver
         }
 
         return [$finder->found, $finder->activeParameter, $finder->usedNames];
+    }
+
+    /**
+     * Handle incomplete code where parser creates PropertyFetch instead of MethodCall.
+     * For patterns like `$this->foo(` the parser may not create a MethodCall node,
+     * but we can detect the call context from the PropertyFetch + text after it.
+     *
+     * @param array<Stmt> $ast
+     * @return array{0: MethodCall|NullsafeMethodCall|StaticCall, 1: int, 2: list<string>}|null
+     */
+    private function findIncompleteCallAtPosition(array $ast, int $offset, string $content): ?array
+    {
+        $nodeFinder = new \PhpParser\NodeFinder();
+
+        // Look for PropertyFetch nodes that could be incomplete method calls
+        $propertyFetches = $nodeFinder->findInstanceOf($ast, PropertyFetch::class);
+        foreach ($propertyFetches as $fetch) {
+            $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, MethodCall::class);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        // Check NullsafePropertyFetch
+        $nullsafeFetches = $nodeFinder->findInstanceOf($ast, NullsafePropertyFetch::class);
+        foreach ($nullsafeFetches as $fetch) {
+            $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, NullsafeMethodCall::class);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        // Check StaticPropertyFetch
+        $staticFetches = $nodeFinder->findInstanceOf($ast, StaticPropertyFetch::class);
+        foreach ($staticFetches as $fetch) {
+            $result = $this->checkIncompleteStaticCall($fetch, $offset, $content);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param class-string<MethodCall|NullsafeMethodCall> $callClass
+     * @return array{0: MethodCall|NullsafeMethodCall, 1: int, 2: list<string>}|null
+     */
+    private function checkIncompleteMethodCall(
+        PropertyFetch|NullsafePropertyFetch $fetch,
+        int $offset,
+        string $content,
+        string $callClass,
+    ): ?array {
+        $endPos = $fetch->getEndFilePos();
+
+        // Get text between property fetch and cursor
+        $textAfter = substr($content, $endPos + 1, $offset - $endPos);
+
+        // Handle two cases:
+        // 1. Normal PropertyFetch with Identifier name, followed by `(`
+        // 2. Error node name: parser created `$this->` with Error, method name is in textAfter
+
+        $name = $fetch->name;
+        $methodName = null;
+
+        if ($name instanceof Identifier) {
+            // Case 1: Check if `(` follows the property fetch
+            if (!str_starts_with(ltrim($textAfter), '(')) {
+                return null;
+            }
+            $methodName = $name->name;
+            $parenPos = strpos($content, '(', $endPos + 1);
+        } elseif ($name instanceof \PhpParser\Node\Expr\Error) {
+            // Case 2: Parser error recovery - method name is in textAfter
+            // Pattern: methodName( possibly followed by args
+            if (preg_match('/^(\w+)\s*\(/', $textAfter, $matches) !== 1) {
+                return null;
+            }
+            $methodName = $matches[1];
+            $parenPos = strpos($content, '(', $endPos + 1);
+        } else {
+            return null;
+        }
+
+        // Cursor must be after the `(`
+        if ($parenPos === false || $offset <= $parenPos) {
+            return null;
+        }
+
+        $call = new $callClass($fetch->var, new Identifier($methodName));
+
+        return [$call, 0, []];
+    }
+
+    /**
+     * @return array{0: StaticCall, 1: int, 2: list<string>}|null
+     */
+    private function checkIncompleteStaticCall(
+        StaticPropertyFetch $fetch,
+        int $offset,
+        string $content,
+    ): ?array {
+        $endPos = $fetch->getEndFilePos();
+
+        // Text after the static property fetch must start with `(`
+        $textAfter = substr($content, $endPos + 1, $offset - $endPos);
+        if (!str_starts_with(ltrim($textAfter), '(')) {
+            return null;
+        }
+
+        // Cursor must be after the `(`
+        $parenPos = strpos($content, '(', $endPos + 1);
+        if ($parenPos === false || $offset <= $parenPos) {
+            return null;
+        }
+
+        // Create a synthetic StaticCall from the StaticPropertyFetch
+        $name = $fetch->name;
+        if (!$name instanceof VarLikeIdentifier) {
+            return null;
+        }
+
+        $methodName = new Identifier($name->name);
+        $call = new StaticCall($fetch->class, $methodName);
+
+        return [$call, 0, []];
     }
 
     /**

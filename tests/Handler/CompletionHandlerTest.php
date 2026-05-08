@@ -2252,4 +2252,21 @@ class CompletionHandlerTest extends TestCase
         // Only 'verbose' remains
         self::assertContains('verbose:', $labels);
     }
+
+    public function testNamedArgumentCompletionWithIncompletePrefix(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'incomplete_with_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // multipleParams(string $name, int $count, bool $active)
+        // Prefix 'n' filters to only name: (starts with n)
+        self::assertContains('name:', $labels, 'Got: ' . json_encode($labels));
+        // count: and active: don't start with 'n' so they're filtered out
+        self::assertNotContains('count:', $labels);
+        self::assertNotContains('active:', $labels);
+    }
 }
