@@ -99,7 +99,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         // Function call: functionName()
         if ($expr instanceof Expr\FuncCall) {
             if ($expr->name instanceof Node\Name) {
-                return $this->getFunctionReturnType($expr->name->toString(), $ast);
+                return $this->getFunctionReturnType($expr->name, $ast);
             }
             return null;
         }
@@ -277,16 +277,38 @@ final class BasicTypeResolver implements TypeResolverInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function getFunctionReturnType(string $functionName, array $ast): ?Type
+    private function getFunctionReturnType(Node\Name $functionName, array $ast): ?Type
     {
-        $func = $this->findFunctionInAst($functionName, $ast);
+        $shortName = $functionName->toString();
+
+        // If NameResolver provided a FQN, use it directly
+        $resolvedName = $functionName->getAttribute('resolvedName');
+        if ($resolvedName instanceof Node\Name) {
+            $func = $this->findFunctionInAst($resolvedName->toString(), $ast);
+            if ($func !== null) {
+                return TypeFactory::fromNode($func->returnType);
+            }
+        }
+
+        // For unqualified names, try the enclosing namespace first (PHP's fallback behavior)
+        $namespace = ScopeFinder::findEnclosingNamespace($functionName);
+        if ($namespace !== null && $namespace->name !== null) {
+            $namespacedFqn = $namespace->name->toString() . '\\' . $shortName;
+            $func = $this->findFunctionInAst($namespacedFqn, $ast);
+            if ($func !== null) {
+                return TypeFactory::fromNode($func->returnType);
+            }
+        }
+
+        // Try global namespace
+        $func = $this->findFunctionInAst($shortName, $ast);
         if ($func !== null) {
             return TypeFactory::fromNode($func->returnType);
         }
 
         // Try reflection for built-in functions
         try {
-            $reflection = new \ReflectionFunction($functionName);
+            $reflection = new \ReflectionFunction($shortName);
             return TypeFactory::fromReflection($reflection->getReturnType());
         } catch (\ReflectionException) {
             return null;
@@ -296,16 +318,19 @@ final class BasicTypeResolver implements TypeResolverInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function findFunctionInAst(string $functionName, array $ast): ?Stmt\Function_
+    private function findFunctionInAst(string $functionFqn, array $ast): ?Stmt\Function_
     {
         foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Function_ && $stmt->name->toString() === $functionName) {
+            if ($stmt instanceof Stmt\Function_ && $stmt->name->toString() === $functionFqn) {
                 return $stmt;
             }
             if ($stmt instanceof Stmt\Namespace_) {
                 foreach ($stmt->stmts as $nsStmt) {
-                    if ($nsStmt instanceof Stmt\Function_ && $nsStmt->name->toString() === $functionName) {
-                        return $nsStmt;
+                    if ($nsStmt instanceof Stmt\Function_) {
+                        $fqn = $nsStmt->namespacedName?->toString() ?? $nsStmt->name->toString();
+                        if ($fqn === $functionFqn) {
+                            return $nsStmt;
+                        }
                     }
                 }
             }

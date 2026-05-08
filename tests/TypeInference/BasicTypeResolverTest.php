@@ -572,6 +572,41 @@ class BasicTypeResolverTest extends TestCase
         ];
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('useFunctionImportProvider')]
+    public function testResolveUseFunctionImport(string $methodName, string $expectedFqn): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/UseFunctionImport.php');
+        $method = $this->findMethodByName($ast, $methodName);
+        $finder = new \PhpParser\NodeFinder();
+        $funcCall = $finder->findFirstInstanceOf($method, Expr\FuncCall::class);
+        assert($funcCall instanceof Expr\FuncCall);
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $method, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame($expectedFqn, $type->fqn);
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string}>
+     */
+    public static function useFunctionImportProvider(): iterable
+    {
+        yield 'imported shadows local' => [
+            'testImportedShadowsLocal',
+            'Fixtures\\TypeInference\\ImportSource\\ImportedConfig',
+        ];
+        yield 'FQN calls local despite import' => [
+            'testFqnCallsLocal',
+            'Fixtures\\TypeInference\\ShadowedFunction\\LocalConfig',
+        ];
+        yield 'namespace keyword calls local' => [
+            'testNamespaceKeywordCallsLocal',
+            'Fixtures\\TypeInference\\ShadowedFunction\\LocalConfig',
+        ];
+    }
+
     public function testResolveDynamicFunctionCallReturnsNull(): void
     {
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
