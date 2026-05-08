@@ -574,6 +574,32 @@ class ScopeFinderTest extends TestCase
         self::assertNull($resolved);
     }
 
+    public function testFindEnclosingNamespaceReturnsNamespace(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+        $varNode = self::findVariableNode('this', $ast);
+
+        self::assertNotNull($varNode);
+        $namespace = ScopeFinder::findEnclosingNamespace($varNode);
+
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        self::assertNotNull($namespace->name);
+        self::assertSame('Fixtures\Domain', $namespace->name->toString());
+    }
+
+    public function testFindEnclosingNamespaceReturnsNullOutsideNamespace(): void
+    {
+        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
+        $ast = self::parseWithParents($code);
+        $varNode = self::findVariableNode('this', $ast);
+
+        self::assertNotNull($varNode);
+        $namespace = ScopeFinder::findEnclosingNamespace($varNode);
+
+        self::assertNull($namespace);
+    }
+
     /**
      * @template T of Stmt\ClassLike
      * @param array<Stmt> $stmts

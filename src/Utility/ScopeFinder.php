@@ -64,6 +64,23 @@ final class ScopeFinder
     }
 
     /**
+     * Find the enclosing namespace node for a given node.
+     *
+     * Walks up the parent chain to find the namespace statement, if any.
+     */
+    public static function findEnclosingNamespace(Node $node): ?Stmt\Namespace_
+    {
+        $current = $node->getAttribute('parent');
+        while ($current instanceof Node) {
+            if ($current instanceof Stmt\Namespace_) {
+                return $current;
+            }
+            $current = $current->getAttribute('parent');
+        }
+        return null;
+    }
+
+    /**
      * Resolve a Name node to its fully qualified name.
      *
      * Uses the resolved name attribute if available (from NameResolver),
