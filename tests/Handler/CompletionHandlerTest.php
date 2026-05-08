@@ -2269,4 +2269,36 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('count:', $labels);
         self::assertNotContains('active:', $labels);
     }
+
+    public function testNamedArgumentCompletionExcludesPositionallyFilledWhenMixed(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'mixed_positional_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // name: was filled positionally - should NOT be offered
+        self::assertNotContains('name:', $labels, 'Bug: name: was filled positionally but is being offered');
+        // count: is already used by name - should NOT be offered
+        self::assertNotContains('count:', $labels);
+        // active: is the only remaining unfilled parameter
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionIsAdditive(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'additive_with_variable');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Named argument completions should be present
+        self::assertContains('name:', $labels, 'Named args should be offered');
+        // Variable completions should ALSO be present (additive behavior)
+        self::assertContains('$localVar', $labels, 'Bug: Variable completions missing - named args should be additive');
+    }
 }

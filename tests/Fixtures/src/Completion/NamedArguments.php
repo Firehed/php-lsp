@@ -58,6 +58,17 @@ class NamedArguments
         $this->multipleParams(n/*|incomplete_with_prefix*/
     }
 
+    public function testMixedPositionalAndNamed(): void
+    {
+        $this->multipleParams('positional', /*|mixed_positional_named*/count: 1);
+    }
+
+    public function testAdditiveWithVariable(): void
+    {
+        $localVar = 'test';
+        $this->multipleParams(/*|additive_with_variable*/'test');
+    }
+
     public static function staticWithParams(string $value, int $limit = 10): array
     {
         return [];
