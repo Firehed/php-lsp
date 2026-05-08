@@ -2299,6 +2299,38 @@ class CompletionHandlerTest extends TestCase
         // Named argument completions should be present
         self::assertContains('name:', $labels, 'Named args should be offered');
         // Variable completions should ALSO be present (additive behavior)
-        self::assertContains('$localVar', $labels, 'Bug: Variable completions missing - named args should be additive');
+        self::assertContains('$localVar', $labels, 'Variable completions should also be offered');
+    }
+
+    public function testNamedArgumentCompletionExcludesVariadicParameters(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'variadic_excluded');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // withVariadic(string $name, string ...$values)
+        // Regular param should be offered
+        self::assertContains('name:', $labels, 'Regular param should be offered');
+        // Variadic param should NOT be offered (PHP doesn't support named variadic args)
+        self::assertNotContains('values:', $labels, 'Variadic params cannot be used as named arguments');
+    }
+
+    public function testNamedArgumentCompletionForNullsafeMethodCall(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'nullsafe_method_call');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // multipleParams(string $name, int $count, bool $active)
+        // First param filled positionally, remaining should be offered
+        self::assertNotContains('name:', $labels, 'First param filled positionally');
+        self::assertContains('count:', $labels, 'Nullsafe method call should offer named args');
+        self::assertContains('active:', $labels, 'Nullsafe method call should offer named args');
     }
 }

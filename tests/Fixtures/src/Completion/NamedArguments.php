@@ -18,6 +18,10 @@ class NamedArguments
     {
     }
 
+    public function withVariadic(string $name, string ...$values): void
+    {
+    }
+
     public function testNamedArgEmpty(): void
     {
         $this->multipleParams(/*|named_empty*/'test', 1, true);
@@ -38,9 +42,9 @@ class NamedArguments
         $this->multipleParams(name: 'value', /*|middle_named*/active: true);
     }
 
-    public function testFunctionCallNamedArg(): void
+    public function testVariadicExcluded(): void
     {
-        array_map(/*|function_named_empty*/fn($x) => $x, []);
+        $this->withVariadic(/*|variadic_excluded*/'test');
     }
 
     public function testStaticCallNamedArg(): void
@@ -69,6 +73,17 @@ class NamedArguments
         $this->multipleParams(/*|additive_with_variable*/);
     }
 
+    public function testNullsafeMethodCall(): void
+    {
+        $obj = $this->getNullable();
+        $obj?->multipleParams('test', /*|nullsafe_method_call*/1);
+    }
+
+    private function getNullable(): ?self
+    {
+        return null;
+    }
+
     public static function staticWithParams(string $value, int $limit = 10): array
     {
         return [];
@@ -87,6 +102,3 @@ class ParamClass
 // Procedural context tests
 proceduralHelper(/*|procedural_empty*/'hello');
 proceduralHelper(message: 'hi', /*|procedural_after_named*/level: 5);
-
-// Incomplete expression with prefix (real-world typing scenario)
-// Note: This simulates typing $this->post(p| in an editor
