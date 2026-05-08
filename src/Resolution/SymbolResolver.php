@@ -429,13 +429,9 @@ final class SymbolResolver
 
         $callInfo = $this->findCallAtPosition($ast, $offset);
         if ($callInfo === null) {
-            // Fallback for incomplete code: parser error recovery may create
-            // PropertyFetch instead of MethodCall for patterns like $this->foo(
-            $callInfo = $this->findIncompleteCallAtPosition($ast, $offset, $document->getContent());
-        }
-        if ($callInfo === null) {
-            // Fallback for incomplete new calls: new Foo($arg, : value)
-            $callInfo = $this->findIncompleteNewAtPosition($ast, $offset, $document->getContent());
+            // Fallback: text-based detection for incomplete calls where parser
+            // couldn't create proper call nodes
+            $callInfo = $this->findCallFromText($ast, $offset, $document->getContent(), $line);
         }
         if ($callInfo === null) {
             return null;
@@ -529,221 +525,318 @@ final class SymbolResolver
     }
 
     /**
-     * Handle incomplete code where parser creates PropertyFetch instead of MethodCall.
-     * For patterns like `$this->foo(` the parser may not create a MethodCall node,
-     * but we can detect the call context from the PropertyFetch + text after it.
+     * Text-based fallback for detecting call context when AST-based detection fails.
+     * Handles incomplete code where the parser couldn't create proper call nodes.
      *
      * @param array<Stmt> $ast
-     * @return array{0: MethodCall|NullsafeMethodCall|StaticCall, 1: int, 2: list<string>, 3: int}|null
+     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
      */
-    private function findIncompleteCallAtPosition(array $ast, int $offset, string $content): ?array
+    private function findCallFromText(array $ast, int $offset, string $content, int $line): ?array
     {
-        $nodeFinder = new NodeFinder();
+        // Find the last unclosed `(` before cursor
+        $parenPos = $this->findUnclosedParen($content, $offset);
+        if ($parenPos === null) {
+            return null;
+        }
 
-        $fetches = $nodeFinder->find(
-            $ast,
-            fn(Node $n) => $n instanceof PropertyFetch
-                || $n instanceof NullsafePropertyFetch
-                || $n instanceof StaticPropertyFetch,
-        );
+        // Get text before the opening paren
+        $textBeforeParen = substr($content, 0, $parenPos);
 
-        foreach ($fetches as $fetch) {
-            if ($fetch instanceof StaticPropertyFetch) {
-                $result = $this->checkIncompleteStaticCall($fetch, $offset, $content);
-            } elseif ($fetch instanceof NullsafePropertyFetch) {
-                $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, NullsafeMethodCall::class);
-            } elseif ($fetch instanceof PropertyFetch) {
-                $result = $this->checkIncompleteMethodCall($fetch, $offset, $content, MethodCall::class);
+        // Try to match call patterns and resolve the callable
+        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $line);
+        if ($callNode === null) {
+            return null;
+        }
+
+        // Parse arguments between paren and cursor to determine position/used names
+        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
+        [$activeParam, $usedNames, $positionalCount] = $this->parseArgsFromText($argsText);
+
+        return [$callNode, $activeParam, $usedNames, $positionalCount];
+    }
+
+    /**
+     * Find the position of the last unclosed `(` before the given offset.
+     */
+    private function findUnclosedParen(string $content, int $offset): ?int
+    {
+        $depth = 0;
+        for ($i = $offset - 1; $i >= 0; $i--) {
+            $char = $content[$i];
+            if ($char === ')') {
+                $depth++;
+            } elseif ($char === '(') {
+                if ($depth === 0) {
+                    return $i;
+                }
+                $depth--;
+            } elseif ($char === ';' || $char === '{' || $char === '}') {
+                // Statement boundary - stop searching
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse call pattern from text before opening paren.
+     *
+     * @param array<Stmt> $ast
+     * @return FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null
+     */
+    private function parseCallPattern(
+        string $textBeforeParen,
+        array $ast,
+        int $line,
+    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null {
+        $text = rtrim($textBeforeParen);
+
+        // Static call: ClassName::methodName
+        if (preg_match('/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/', $text, $m) === 1) {
+            $className = $m[1];
+            $methodName = $m[2];
+            $name = $this->resolveNameFromText($className, $ast, $line);
+            return new StaticCall($name, new Identifier($methodName));
+        }
+
+        // Instance call: $var->methodName
+        if (preg_match('/\$(\w+)->(\w+)\s*$/', $text, $m) === 1) {
+            $varName = $m[1];
+            $methodName = $m[2];
+            $var = new Variable($varName);
+            // For $this, store the enclosing class so resolveMethodCallCallable can use it
+            if ($varName === 'this') {
+                $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+                if ($enclosingClass !== null) {
+                    $var->setAttribute('resolvedType', new ClassName($enclosingClass));
+                }
+            }
+            return new MethodCall($var, new Identifier($methodName));
+        }
+
+        // Nullsafe instance call: $var?->methodName
+        if (preg_match('/\$(\w+)\?->(\w+)\s*$/', $text, $m) === 1) {
+            $varName = $m[1];
+            $methodName = $m[2];
+            $var = new Variable($varName);
+            if ($varName === 'this') {
+                $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+                if ($enclosingClass !== null) {
+                    $var->setAttribute('resolvedType', new ClassName($enclosingClass));
+                }
+            }
+            return new NullsafeMethodCall($var, new Identifier($methodName));
+        }
+
+        // Constructor: new ClassName
+        if (preg_match('/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
+            $className = $m[1];
+            $name = $this->resolveNameFromText($className, $ast, $line);
+            return new New_($name);
+        }
+
+        // Function call: functionName
+        if (preg_match('/\b(\w+)\s*$/', $text, $m) === 1) {
+            $funcName = $m[1];
+            $keywords = ['if', 'while', 'for', 'foreach', 'switch', 'catch', 'array', 'list'];
+            if (!in_array(strtolower($funcName), $keywords, true)) {
+                return new FuncCall(new Name($funcName));
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve a class name from text, looking up use statements and namespace.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveNameFromText(string $className, array $ast, int $line): Name
+    {
+        $name = new Name($className);
+
+        // Already fully qualified
+        if (str_starts_with($className, '\\')) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified(ltrim($className, '\\')));
+            return $name;
+        }
+
+        // Check use statements first
+        $resolvedFromUse = $this->resolveFromUseStatements($className, $ast);
+        if ($resolvedFromUse !== null) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedFromUse));
+            return $name;
+        }
+
+        // Fall back to namespace prefix
+        $namespace = $this->findNamespaceForLine($ast, $line);
+        if ($namespace !== null) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified($namespace . '\\' . $className));
+        }
+
+        return $name;
+    }
+
+    /**
+     * Look up a class name in use statements.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveFromUseStatements(string $className, array $ast): ?string
+    {
+        // Get the first part of the name (for aliased or multi-part names)
+        $parts = explode('\\', $className);
+        $firstPart = $parts[0];
+
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $nsStmt) {
+                    if ($nsStmt instanceof Stmt\Use_) {
+                        foreach ($nsStmt->uses as $use) {
+                            $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                            if ($alias === $firstPart) {
+                                if (count($parts) === 1) {
+                                    return $use->name->toString();
+                                }
+                                $parts[0] = $use->name->toString();
+                                return implode('\\', $parts);
+                            }
+                        }
+                    }
+                }
+            } elseif ($stmt instanceof Stmt\Use_) {
+                foreach ($stmt->uses as $use) {
+                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                    if ($alias === $firstPart) {
+                        if (count($parts) === 1) {
+                            return $use->name->toString();
+                        }
+                        $parts[0] = $use->name->toString();
+                        return implode('\\', $parts);
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse argument text to determine active parameter and used named arguments.
+     *
+     * @return array{0: int, 1: list<string>, 2: int}
+     */
+    private function parseArgsFromText(string $argsText): array
+    {
+        $activeParam = 0;
+        $usedNames = [];
+        $positionalCount = 0;
+        $sawNamedArg = false;
+
+        // Simple parsing: count commas and look for `name:` patterns
+        // This is approximate but handles common cases
+        $depth = 0;
+        $currentArg = '';
+
+        for ($i = 0; $i < strlen($argsText); $i++) {
+            $char = $argsText[$i];
+
+            if ($char === '(' || $char === '[' || $char === '{') {
+                $depth++;
+                $currentArg .= $char;
+            } elseif ($char === ')' || $char === ']' || $char === '}') {
+                $depth--;
+                $currentArg .= $char;
+            } elseif ($char === ',' && $depth === 0) {
+                // End of argument
+                $this->processArgText($currentArg, $usedNames, $positionalCount, $sawNamedArg);
+                $activeParam++;
+                $currentArg = '';
             } else {
-                continue;
-            }
-            if ($result !== null) {
-                return $result;
+                $currentArg .= $char;
             }
         }
 
-        return null;
+        // Process final partial argument (cursor is here)
+        // Don't count it as complete
+
+        return [$activeParam, $usedNames, $positionalCount];
     }
 
     /**
-     * @param class-string<MethodCall|NullsafeMethodCall> $callClass
-     * @return array{0: MethodCall|NullsafeMethodCall, 1: int, 2: list<string>, 3: int}|null
+     * Process a single argument's text to extract named arg info.
+     *
+     * @param list<string> $usedNames
      */
-    private function checkIncompleteMethodCall(
-        PropertyFetch|NullsafePropertyFetch $fetch,
-        int $offset,
-        string $content,
-        string $callClass,
-    ): ?array {
-        $endPos = $fetch->getEndFilePos();
-
-        // Get text between property fetch and cursor
-        $textAfter = substr($content, $endPos + 1, $offset - $endPos);
-
-        // Handle two cases:
-        // 1. Normal PropertyFetch with Identifier name, followed by `(`
-        // 2. Error node name: parser created `$this->` with Error, method name is in textAfter
-
-        $name = $fetch->name;
-        $methodName = null;
-
-        if ($name instanceof Identifier) {
-            // Case 1: Check if `(` follows the property fetch
-            if (!str_starts_with(ltrim($textAfter), '(')) {
-                return null;
-            }
-            $methodName = $name->name;
-            $parenPos = strpos($content, '(', $endPos + 1);
-        } elseif ($name instanceof Error) {
-            // Case 2: Parser error recovery - method name is in textAfter
-            // Pattern: methodName( possibly followed by args
-            if (preg_match('/^(\w+)\s*\(/', $textAfter, $matches) !== 1) {
-                return null;
-            }
-            $methodName = $matches[1];
-            $parenPos = strpos($content, '(', $endPos + 1);
-        } else {
-            return null;
+    private function processArgText(string $argText, array &$usedNames, int &$positionalCount, bool &$sawNamedArg): void
+    {
+        $argText = trim($argText);
+        if ($argText === '') {
+            return;
         }
 
-        // Cursor must be after the `(`
-        if ($parenPos === false || $offset <= $parenPos) {
-            return null;
+        // Check for named argument pattern: `name:`
+        if (preg_match('/^(\w+)\s*:/', $argText, $m) === 1) {
+            $usedNames[] = $m[1];
+            $sawNamedArg = true;
+        } elseif (!$sawNamedArg) {
+            $positionalCount++;
         }
-
-        $call = new $callClass($fetch->var, new Identifier($methodName));
-
-        return [$call, 0, [], 0];
     }
 
     /**
-     * @return array{0: StaticCall, 1: int, 2: list<string>, 3: int}|null
-     */
-    private function checkIncompleteStaticCall(
-        StaticPropertyFetch $fetch,
-        int $offset,
-        string $content,
-    ): ?array {
-        $endPos = $fetch->getEndFilePos();
-
-        // Text after the static property fetch must start with `(`
-        $textAfter = substr($content, $endPos + 1, $offset - $endPos);
-        if (!str_starts_with(ltrim($textAfter), '(')) {
-            return null;
-        }
-
-        // Cursor must be after the `(`
-        $parenPos = strpos($content, '(', $endPos + 1);
-        if ($parenPos === false || $offset <= $parenPos) {
-            return null;
-        }
-
-        // Create a synthetic StaticCall from the StaticPropertyFetch
-        $name = $fetch->name;
-        if (!$name instanceof VarLikeIdentifier) {
-            return null;
-        }
-
-        $methodName = new Identifier($name->name);
-        $call = new StaticCall($fetch->class, $methodName);
-
-        return [$call, 0, [], 0];
-    }
-
-    /**
-     * Handle incomplete new calls where the cursor is past the New_ node's end
-     * but still within an argument context. For patterns like `new Foo($arg, : value)`.
+     * Find the namespace string for a given line number.
      *
      * @param array<Stmt> $ast
-     * @return array{0: New_, 1: int, 2: list<string>, 3: int}|null
      */
-    private function findIncompleteNewAtPosition(array $ast, int $offset, string $content): ?array
+    private function findNamespaceForLine(array $ast, int $line): ?string
     {
-        $nodeFinder = new NodeFinder();
-        $newNodes = $nodeFinder->findInstanceOf($ast, New_::class);
-
-        foreach ($newNodes as $newNode) {
-            $endPos = $newNode->getEndFilePos();
-
-            // Only consider New_ nodes that end before the cursor
-            if ($offset <= $endPos) {
-                continue;
-            }
-
-            // Check if we're still in an argument context
-            // Look for the opening paren of the New_ call in the content
-            $classEndPos = $newNode->class->getEndFilePos();
-            $textAfterClass = substr($content, $classEndPos + 1, $offset - $classEndPos - 1);
-
-            // Find opening paren
-            $parenPos = strpos($textAfterClass, '(');
-            if ($parenPos === false) {
-                continue;
-            }
-
-            // Text before cursor (from opening paren onwards)
-            $textInArgs = substr($textAfterClass, $parenPos);
-
-            // Check if the text suggests we're in an argument context
-            // Patterns: ends with comma, ends with opening paren, or ends with whitespace after comma
-            if (preg_match('/[(,]\s*\w*$/', $textInArgs) !== 1) {
-                continue;
-            }
-
-            // Count positional args from the existing args
-            $positionalCount = 0;
-            foreach ($newNode->args as $arg) {
-                if ($arg instanceof Arg && $arg->name === null) {
-                    $positionalCount++;
-                } else {
-                    break;
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_ && $stmt->name !== null) {
+                $startLine = $stmt->getStartLine();
+                $endLine = $stmt->getEndLine();
+                if ($startLine <= $line + 1 && $line + 1 <= $endLine) {
+                    return $stmt->name->toString();
                 }
             }
-
-            // If class is an Error node (parser couldn't identify it), try to extract from text
-            if ($newNode->class instanceof Error) {
-                $nodeToReturn = $this->createSyntheticNewFromText($newNode, $content);
-                if ($nodeToReturn === null) {
-                    continue;
-                }
-                return [$nodeToReturn, $positionalCount, [], $positionalCount];
-            }
-
-            return [$newNode, $positionalCount, [], $positionalCount];
         }
-
         return null;
     }
 
     /**
-     * Create a synthetic New_ node from text when the parser created an Error node for the class.
+     * Find the enclosing class name for a given line number.
+     *
+     * @param array<Stmt> $ast
+     * @return class-string|null
      */
-    private function createSyntheticNewFromText(New_ $originalNode, string $content): ?New_
+    private function findEnclosingClassForLine(array $ast, int $line): ?string
     {
-        $startPos = $originalNode->getStartFilePos();
+        $finder = new NodeFinder();
+        $classLikes = $finder->find($ast, function (Node $node) use ($line) {
+            if (
+                !$node instanceof Stmt\Class_
+                && !$node instanceof Stmt\Trait_
+                && !$node instanceof Stmt\Enum_
+            ) {
+                return false;
+            }
+            $startLine = $node->getStartLine();
+            $endLine = $node->getEndLine();
+            return $startLine <= $line + 1 && $line + 1 <= $endLine;
+        });
 
-        // Extract text from "new" keyword to opening paren
-        $textFromNew = substr($content, $startPos, 100);
-
-        // Match "new ClassName" pattern
-        if (preg_match('/^new\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*\(/', $textFromNew, $matches) !== 1) {
+        if (count($classLikes) === 0) {
             return null;
         }
 
-        $classNameStr = $matches[1];
-
-        // Resolve the class name in context
-        $name = new Name($classNameStr);
-
-        // Find enclosing namespace to resolve the name
-        $namespaceNode = ScopeFinder::findEnclosingNamespace($originalNode);
-        if ($namespaceNode !== null && $namespaceNode->name !== null) {
-            $namespace = $namespaceNode->name->toString();
-            $resolvedName = $namespace . '\\' . $classNameStr;
-            $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedName));
-        }
-
-        return new New_($name, $originalNode->args);
+        $classNode = $classLikes[0];
+        assert(
+            $classNode instanceof Stmt\Class_
+            || $classNode instanceof Stmt\Trait_
+            || $classNode instanceof Stmt\Enum_
+        );
+        return ScopeFinder::getClassLikeName($classNode);
     }
 
     /**
@@ -820,6 +913,11 @@ final class SymbolResolver
         MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
         array $ast,
     ): ?Type {
+        // Check for pre-resolved type from text-based fallback
+        $resolvedType = $node->var->getAttribute('resolvedType');
+        if ($resolvedType instanceof Type) {
+            return $resolvedType;
+        }
         return ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
     }
 

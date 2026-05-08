@@ -1117,4 +1117,70 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(CallContext::class, $context, 'Should detect call context when editing before colon');
         self::assertStringContainsString('__construct', $context->callable->format());
     }
+
+    public function testGetCallContextStaticMethodComplete(): void
+    {
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'static_in_complete');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect static call context');
+        self::assertStringContainsString('staticWithParams', $context->callable->format());
+    }
+
+    public function testGetCallContextStaticMethodIncomplete(): void
+    {
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'static_before_colon');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect static call context');
+        self::assertStringContainsString('staticWithParams', $context->callable->format());
+    }
+
+    public function testGetCallContextStaticMethodEmpty(): void
+    {
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'static_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect static call context with empty args');
+        self::assertStringContainsString('staticWithParams', $context->callable->format());
+    }
+
+    public function testGetCallContextInstanceMethodEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'instance_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect instance call context with empty args');
+        self::assertStringContainsString('instanceMethod', $context->callable->format());
+    }
+
+    public function testGetCallContextFunctionCallEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'function_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect function call context with empty args');
+        self::assertStringContainsString('localHelper', $context->callable->format());
+    }
 }
