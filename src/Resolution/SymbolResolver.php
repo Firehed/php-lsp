@@ -32,6 +32,7 @@ use PhpParser\Node\Expr\Error;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -42,7 +43,6 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\VarLikeIdentifier;
 use PhpParser\Node\Identifier;
-use PhpParser\Node\Name;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Stmt;
 
@@ -434,6 +434,10 @@ final class SymbolResolver
             $callInfo = $this->findIncompleteCallAtPosition($ast, $offset, $document->getContent());
         }
         if ($callInfo === null) {
+            // Fallback for incomplete new calls: new Foo($arg, : value)
+            $callInfo = $this->findIncompleteNewAtPosition($ast, $offset, $document->getContent());
+        }
+        if ($callInfo === null) {
             return null;
         }
 
@@ -644,6 +648,102 @@ final class SymbolResolver
         $call = new StaticCall($fetch->class, $methodName);
 
         return [$call, 0, [], 0];
+    }
+
+    /**
+     * Handle incomplete new calls where the cursor is past the New_ node's end
+     * but still within an argument context. For patterns like `new Foo($arg, : value)`.
+     *
+     * @param array<Stmt> $ast
+     * @return array{0: New_, 1: int, 2: list<string>, 3: int}|null
+     */
+    private function findIncompleteNewAtPosition(array $ast, int $offset, string $content): ?array
+    {
+        $nodeFinder = new NodeFinder();
+        $newNodes = $nodeFinder->findInstanceOf($ast, New_::class);
+
+        foreach ($newNodes as $newNode) {
+            $endPos = $newNode->getEndFilePos();
+
+            // Only consider New_ nodes that end before the cursor
+            if ($offset <= $endPos) {
+                continue;
+            }
+
+            // Check if we're still in an argument context
+            // Look for the opening paren of the New_ call in the content
+            $classEndPos = $newNode->class->getEndFilePos();
+            $textAfterClass = substr($content, $classEndPos + 1, $offset - $classEndPos - 1);
+
+            // Find opening paren
+            $parenPos = strpos($textAfterClass, '(');
+            if ($parenPos === false) {
+                continue;
+            }
+
+            // Text before cursor (from opening paren onwards)
+            $textInArgs = substr($textAfterClass, $parenPos);
+
+            // Check if the text suggests we're in an argument context
+            // Patterns: ends with comma, ends with opening paren, or ends with whitespace after comma
+            if (preg_match('/[(,]\s*\w*$/', $textInArgs) !== 1) {
+                continue;
+            }
+
+            // Count positional args from the existing args
+            $positionalCount = 0;
+            foreach ($newNode->args as $arg) {
+                if ($arg instanceof Arg && $arg->name === null) {
+                    $positionalCount++;
+                } else {
+                    break;
+                }
+            }
+
+            // If class is an Error node (parser couldn't identify it), try to extract from text
+            if ($newNode->class instanceof Error) {
+                $nodeToReturn = $this->createSyntheticNewFromText($newNode, $content);
+                if ($nodeToReturn === null) {
+                    continue;
+                }
+                return [$nodeToReturn, $positionalCount, [], $positionalCount];
+            }
+
+            return [$newNode, $positionalCount, [], $positionalCount];
+        }
+
+        return null;
+    }
+
+    /**
+     * Create a synthetic New_ node from text when the parser created an Error node for the class.
+     */
+    private function createSyntheticNewFromText(New_ $originalNode, string $content): ?New_
+    {
+        $startPos = $originalNode->getStartFilePos();
+
+        // Extract text from "new" keyword to opening paren
+        $textFromNew = substr($content, $startPos, 100);
+
+        // Match "new ClassName" pattern
+        if (preg_match('/^new\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*\(/', $textFromNew, $matches) !== 1) {
+            return null;
+        }
+
+        $classNameStr = $matches[1];
+
+        // Resolve the class name in context
+        $name = new Name($classNameStr);
+
+        // Find enclosing namespace to resolve the name
+        $namespaceNode = ScopeFinder::findEnclosingNamespace($originalNode);
+        if ($namespaceNode !== null && $namespaceNode->name !== null) {
+            $namespace = $namespaceNode->name->toString();
+            $resolvedName = $namespace . '\\' . $classNameStr;
+            $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedName));
+        }
+
+        return new New_($name, $originalNode->args);
     }
 
     /**

@@ -2333,4 +2333,42 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('count:', $labels, 'Nullsafe method call should offer named args');
         self::assertContains('active:', $labels, 'Nullsafe method call should offer named args');
     }
+
+    public function testNamedArgumentCompletionWhileEditingInCompleteCall(): void
+    {
+        // Open the file containing ParamClass so ClassRepository can find it
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'editing_in_complete');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // ParamClass(string $name, int $age = 0)
+        // First param filled positionally, age is already used
+        self::assertNotContains('name:', $labels, 'First param filled positionally');
+        self::assertNotContains('age:', $labels, 'age is already used as named arg');
+    }
+
+    public function testNamedArgumentCompletionWhileEditingBeforeColon(): void
+    {
+        // Open the file containing ParamClass so ClassRepository can find it
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'editing_before_colon');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // For invalid syntax `new ParamClass('test', : 5)`, the call context should still be detected
+        // and named args should be offered
+        self::assertTrue(
+            in_array('name:', $labels, true) || in_array('age:', $labels, true),
+            'Should offer some named args when editing before colon',
+        );
+    }
 }

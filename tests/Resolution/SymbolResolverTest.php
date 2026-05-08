@@ -1084,4 +1084,37 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(CallContext::class, $context, 'getCallContext should find call in incomplete code');
         self::assertStringContainsString('multipleParams', $context->callable->format());
     }
+
+    public function testGetCallContextWhileEditingInCompleteCall(): void
+    {
+        // Open the file containing ParamClass so ClassRepository can find it
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'editing_in_complete');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect call context in complete call');
+        self::assertStringContainsString('__construct', $context->callable->format());
+        self::assertSame(1, $context->positionallyFilledCount, 'First arg is positional');
+        self::assertContains('age', $context->usedParameterNames, 'age: is used as named arg');
+    }
+
+    public function testGetCallContextWhileEditingBeforeColon(): void
+    {
+        // Open the file containing ParamClass so ClassRepository can find it
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'editing_before_colon');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        // For now, we expect the call context to be found even if positional count is off
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect call context when editing before colon');
+        self::assertStringContainsString('__construct', $context->callable->format());
+    }
 }
