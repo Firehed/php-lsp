@@ -607,6 +607,49 @@ class BasicTypeResolverTest extends TestCase
         ];
     }
 
+    public function testResolveImportedFunctionUsesFullyQualifiedName(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/UseFunctionImport.php');
+        $method = $this->findMethodByName($ast, 'testImportedShadowsLocal');
+        $finder = new \PhpParser\NodeFinder();
+        $funcCall = $finder->findFirstInstanceOf($method, Expr\FuncCall::class);
+
+        self::assertNotNull($funcCall, 'No FuncCall found in method');
+
+        // NameResolver replaces the Name with a FullyQualified name for use function imports
+        self::assertInstanceOf(Name\FullyQualified::class, $funcCall->name);
+        self::assertSame(
+            'Fixtures\\TypeInference\\ImportSource\\getConfig',
+            $funcCall->name->toString(),
+        );
+
+        // Verify the type is resolved correctly
+        $type = $this->resolver->resolveExpressionType($funcCall, $method, $ast);
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\TypeInference\\ImportSource\\ImportedConfig', $type->fqn);
+    }
+
+    public function testResolveFunctionWithResolvedNameAttribute(): void
+    {
+        $ast = $this->parseFixture('src/TypeInference/MultiNamespaceFunction.php');
+        $function = $this->findFunctionByName($ast, 'testNamespaceBFunction');
+        $finder = new \PhpParser\NodeFinder();
+        $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
+        assert($funcCall instanceof Expr\FuncCall);
+        assert($funcCall->name instanceof Name);
+
+        // Manually set resolvedName attribute (simulates alternative NameResolver behavior)
+        $funcCall->name->setAttribute(
+            'resolvedName',
+            new Name\FullyQualified('Fixtures\\TypeInference\\NamespaceB\\getConfig'),
+        );
+
+        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame('Fixtures\\TypeInference\\NamespaceB\\ConfigB', $type->fqn);
+    }
+
     public function testResolveDynamicFunctionCallReturnsNull(): void
     {
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
