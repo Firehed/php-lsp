@@ -66,7 +66,7 @@ class NamedArguments
     public function testAdditiveWithVariable(): void
     {
         $localVar = 'test';
-        $this->multipleParams(/*|additive_with_variable*/'test');
+        $this->multipleParams(/*|additive_with_variable*/);
     }
 
     public static function staticWithParams(string $value, int $limit = 10): array

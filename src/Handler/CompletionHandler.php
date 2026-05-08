@@ -166,14 +166,27 @@ final class CompletionHandler implements HandlerInterface
         // Variable completion ($var)
         if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
             $prefix = $matches[1];
-            return $this->getVariableCompletions($prefix, $document, $line, $character);
+            $items = $this->getVariableCompletions($prefix, $document, $line, $character);
+            // If inside a call context, also offer named arguments
+            $callContext = $this->symbolResolver->getCallContext($document, $line, $character);
+            if ($callContext !== null) {
+                $namedArgPrefix = $this->extractNamedArgPrefix($textBeforeCursor);
+                $items = array_merge(
+                    $this->getNamedArgumentCompletions($callContext, $namedArgPrefix),
+                    $items,
+                );
+            }
+            return $items;
         }
 
         // Named argument completion inside function/method calls
         $callContext = $this->symbolResolver->getCallContext($document, $line, $character);
         if ($callContext !== null) {
             $prefix = $this->extractNamedArgPrefix($textBeforeCursor);
-            return $this->getNamedArgumentCompletions($callContext, $prefix);
+            $items = $this->getNamedArgumentCompletions($callContext, $prefix);
+            // Also offer variables as they're valid argument expressions
+            $items = array_merge($items, $this->getVariableCompletions('', $document, $line, $character));
+            return $items;
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
@@ -693,7 +706,7 @@ final class CompletionHandler implements HandlerInterface
         $callable = $callContext->callable;
         $params = $callable->getParameters();
         $usedNames = $callContext->usedParameterNames;
-        $positionalCount = $callContext->activeParameterIndex;
+        $positionallyFilledCount = $callContext->positionallyFilledCount;
 
         $items = [];
         foreach ($params as $param) {
@@ -702,9 +715,8 @@ final class CompletionHandler implements HandlerInterface
                 continue;
             }
 
-            // Skip parameters filled positionally (before the active index)
-            // But only if no named args have been used yet (mixing positional and named is restricted)
-            if ($usedNames === [] && $param->position < $positionalCount) {
+            // Skip parameters filled positionally (before the first named arg)
+            if ($param->position < $positionallyFilledCount) {
                 continue;
             }
 

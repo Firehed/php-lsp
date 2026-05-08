@@ -437,19 +437,19 @@ final class SymbolResolver
             return null;
         }
 
-        [$callNode, $activeParameter, $usedNames] = $callInfo;
+        [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
 
         $callable = $this->resolveCallable($callNode, $ast);
         if ($callable === null) {
             return null;
         }
 
-        return new CallContext($callable, $activeParameter, $usedNames);
+        return new CallContext($callable, $activeParameter, $usedNames, $positionalCount);
     }
 
     /**
      * @param array<Stmt> $ast
-     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>}|null
+     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
      */
     private function findCallAtPosition(array $ast, int $offset): ?array
     {
@@ -458,6 +458,7 @@ final class SymbolResolver
             public int $activeParameter = 0;
             /** @var list<string> */
             public array $usedNames = [];
+            public int $positionalCount = 0;
 
             public function __construct(private readonly int $offset)
             {
@@ -481,15 +482,23 @@ final class SymbolResolver
                 if ($startPos <= $this->offset && $this->offset <= $endPos) {
                     $activeParam = 0;
                     $usedNames = [];
+                    $positionalCount = 0;
+                    $sawNamedArg = false;
 
                     foreach ($node->args as $i => $arg) {
+                        $argEnd = $arg->getEndFilePos();
+                        $argBeforeCursor = $this->offset > $argEnd;
+
                         // Collect ALL named arguments in the call (for completion filtering)
                         if ($arg instanceof Arg && $arg->name !== null) {
                             $usedNames[] = $arg->name->name;
+                            $sawNamedArg = true;
+                        } elseif (!$sawNamedArg && $argBeforeCursor) {
+                            // Only count positional args that are complete and before cursor
+                            $positionalCount++;
                         }
                         // Track active parameter index based on cursor position
-                        $argEnd = $arg->getEndFilePos();
-                        if ($this->offset > $argEnd) {
+                        if ($argBeforeCursor) {
                             $activeParam = $i + 1;
                         }
                     }
@@ -497,6 +506,7 @@ final class SymbolResolver
                     $this->found = $node;
                     $this->activeParameter = $activeParam;
                     $this->usedNames = $usedNames;
+                    $this->positionalCount = $positionalCount;
                 }
 
                 return null;
@@ -511,7 +521,7 @@ final class SymbolResolver
             return null;
         }
 
-        return [$finder->found, $finder->activeParameter, $finder->usedNames];
+        return [$finder->found, $finder->activeParameter, $finder->usedNames, $finder->positionalCount];
     }
 
     /**
@@ -520,7 +530,7 @@ final class SymbolResolver
      * but we can detect the call context from the PropertyFetch + text after it.
      *
      * @param array<Stmt> $ast
-     * @return array{0: MethodCall|NullsafeMethodCall|StaticCall, 1: int, 2: list<string>}|null
+     * @return array{0: MethodCall|NullsafeMethodCall|StaticCall, 1: int, 2: list<string>, 3: int}|null
      */
     private function findIncompleteCallAtPosition(array $ast, int $offset, string $content): ?array
     {
@@ -558,7 +568,7 @@ final class SymbolResolver
 
     /**
      * @param class-string<MethodCall|NullsafeMethodCall> $callClass
-     * @return array{0: MethodCall|NullsafeMethodCall, 1: int, 2: list<string>}|null
+     * @return array{0: MethodCall|NullsafeMethodCall, 1: int, 2: list<string>, 3: int}|null
      */
     private function checkIncompleteMethodCall(
         PropertyFetch|NullsafePropertyFetch $fetch,
@@ -604,11 +614,11 @@ final class SymbolResolver
 
         $call = new $callClass($fetch->var, new Identifier($methodName));
 
-        return [$call, 0, []];
+        return [$call, 0, [], 0];
     }
 
     /**
-     * @return array{0: StaticCall, 1: int, 2: list<string>}|null
+     * @return array{0: StaticCall, 1: int, 2: list<string>, 3: int}|null
      */
     private function checkIncompleteStaticCall(
         StaticPropertyFetch $fetch,
@@ -638,7 +648,7 @@ final class SymbolResolver
         $methodName = new Identifier($name->name);
         $call = new StaticCall($fetch->class, $methodName);
 
-        return [$call, 0, []];
+        return [$call, 0, [], 0];
     }
 
     /**
