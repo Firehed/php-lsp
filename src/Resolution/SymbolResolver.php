@@ -218,6 +218,15 @@ final class SymbolResolver
         // Instance access: $obj->member or $obj?->member
         if (MemberAccessResolver::isMethodCall($node) || MemberAccessResolver::isPropertyFetch($node)) {
             /** @var MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node */
+
+            // For method calls, check if cursor is past the method name (inside argument list)
+            if (MemberAccessResolver::isMethodCall($node) && $node->name instanceof Identifier) {
+                $nameEndPos = $node->name->getEndFilePos();
+                if ($offset > $nameEndPos + 1) {
+                    return null;
+                }
+            }
+
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
             $type = $this->resolveInstanceAccessType($node, $ast);
             if ($type === null) {
@@ -237,6 +246,13 @@ final class SymbolResolver
 
         // Static access: ClassName::member
         if ($node instanceof StaticPropertyFetch || $node instanceof StaticCall || $node instanceof ClassConstFetch) {
+            // For static calls, check if cursor is past the method name (inside argument list)
+            if ($node instanceof StaticCall && $node->name instanceof Identifier) {
+                $nameEndPos = $node->name->getEndFilePos();
+                if ($offset > $nameEndPos + 1) {
+                    return null;
+                }
+            }
             return $this->resolveStaticAccessContext($node, $ast, $line);
         }
 
@@ -459,9 +475,11 @@ final class SymbolResolver
                     $usedNames = [];
 
                     foreach ($node->args as $i => $arg) {
+                        // Collect ALL named arguments in the call (for completion filtering)
                         if ($arg instanceof \PhpParser\Node\Arg && $arg->name !== null) {
                             $usedNames[] = $arg->name->name;
                         }
+                        // Track active parameter index based on cursor position
                         $argEnd = $arg->getEndFilePos();
                         if ($this->offset > $argEnd) {
                             $activeParam = $i + 1;
