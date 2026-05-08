@@ -2118,4 +2118,138 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('getInstanceProp', $labels);
         self::assertNotContains('instanceProp', $labels);
     }
+
+    // Named argument completion tests (issue #126)
+
+    public function testNamedArgumentCompletionEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // All parameters should be suggested
+        self::assertContains('name:', $labels);
+        self::assertContains('count:', $labels);
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionAfterPositional(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_positional');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // First param is used positionally, remaining should be suggested
+        self::assertNotContains('name:', $labels);
+        self::assertContains('count:', $labels);
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionAfterNamed(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'name' and 'count' are both used (count appears after cursor)
+        self::assertNotContains('name:', $labels);
+        self::assertNotContains('count:', $labels);
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionMiddle(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'middle_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'name' and 'active' are used, only 'count' remains
+        self::assertNotContains('name:', $labels);
+        self::assertContains('count:', $labels);
+        self::assertNotContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionForStaticCall(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'static_named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertNotEmpty($result['items'], 'Got: ' . json_encode($labels));
+        self::assertContains('value:', $labels, 'Got: ' . json_encode($labels));
+        self::assertContains('limit:', $labels);
+    }
+
+    public function testNamedArgumentCompletionForConstructor(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'new_named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name:', $labels);
+        self::assertContains('age:', $labels);
+    }
+
+    public function testNamedArgumentCompletionShowsTypeInDetail(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+
+        $nameItems = array_filter($result['items'], fn($item) => $item['label'] === 'name:');
+        self::assertNotEmpty($nameItems);
+        $nameItem = reset($nameItems);
+        self::assertStringContainsString('string', $nameItem['detail'] ?? '');
+    }
+
+    public function testNamedArgumentCompletionInProceduralContext(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'procedural_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('message:', $labels);
+        self::assertContains('level:', $labels);
+        self::assertContains('verbose:', $labels);
+    }
+
+    public function testNamedArgumentCompletionInProceduralContextFiltersUsed(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'procedural_after_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'message' and 'level' are used
+        self::assertNotContains('message:', $labels);
+        self::assertNotContains('level:', $labels);
+        // Only 'verbose' remains
+        self::assertContains('verbose:', $labels);
+    }
 }

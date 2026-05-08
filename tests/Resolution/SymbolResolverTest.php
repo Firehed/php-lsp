@@ -1060,4 +1060,16 @@ final class SymbolResolverTest extends TestCase
         /** @phpstan-ignore argument.type (intentionally non-existent) */
         self::assertTrue($this->resolver->isValidTypeHint(new ClassName('NonExistent\\Unknown')));
     }
+
+    public function testGetCallContextForNamedArguments(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context);
+        self::assertStringContainsString('multipleParams', $context->callable->format());
+    }
 }
