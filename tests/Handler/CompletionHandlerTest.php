@@ -896,6 +896,42 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('never', $labels);
     }
 
+    public function testImportedTraitAppearsInExpressionContext(): void
+    {
+        // Verify traits DO appear in expression context (control for type hint test)
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'trait_expression_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        // Imported trait should appear in expression context
+        self::assertContains('SingletonTrait', $labels);
+    }
+
+    public function testTypeHintExcludesImportedTraits(): void
+    {
+        // Issue #90: Traits imported via `use` statements should not appear in type hints
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'type_hint_return');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should be detected as type hint context
+        self::assertContains('string', $labels);
+
+        // Imported classes should appear
+        self::assertContains('User', $labels);
+
+        // Imported trait should NOT appear in type hint context
+        self::assertNotContains('SingletonTrait', $labels);
+    }
+
     public function testKeywordCompletions(): void
     {
         $code = '<?php fore';

@@ -1026,4 +1026,38 @@ final class SymbolResolverTest extends TestCase
         /** @phpstan-ignore argument.type (intentionally non-existent) */
         self::assertTrue($this->resolver->isInstantiable(new ClassName('NonExistent\\Unknown')));
     }
+
+    public function testIsValidTypeHintReturnsTrueForClass(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Domain\\User')));
+    }
+
+    public function testIsValidTypeHintReturnsTrueForInterface(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Domain\\Entity')));
+    }
+
+    public function testIsValidTypeHintReturnsTrueForEnum(): void
+    {
+        $this->openFixture('src/Enum/Status.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Enum\\Status')));
+    }
+
+    public function testIsValidTypeHintReturnsFalseForTrait(): void
+    {
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+    }
+
+    public function testIsValidTypeHintReturnsTrueForUnknownClass(): void
+    {
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('NonExistent\\Unknown')));
+    }
 }
