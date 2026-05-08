@@ -25,11 +25,14 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Expr\Error;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\Node\Expr\NullsafeMethodCall;
@@ -481,7 +484,7 @@ final class SymbolResolver
 
                     foreach ($node->args as $i => $arg) {
                         // Collect ALL named arguments in the call (for completion filtering)
-                        if ($arg instanceof \PhpParser\Node\Arg && $arg->name !== null) {
+                        if ($arg instanceof Arg && $arg->name !== null) {
                             $usedNames[] = $arg->name->name;
                         }
                         // Track active parameter index based on cursor position
@@ -521,7 +524,7 @@ final class SymbolResolver
      */
     private function findIncompleteCallAtPosition(array $ast, int $offset, string $content): ?array
     {
-        $nodeFinder = new \PhpParser\NodeFinder();
+        $nodeFinder = new NodeFinder();
 
         // Look for PropertyFetch nodes that could be incomplete method calls
         $propertyFetches = $nodeFinder->findInstanceOf($ast, PropertyFetch::class);
@@ -582,7 +585,7 @@ final class SymbolResolver
             }
             $methodName = $name->name;
             $parenPos = strpos($content, '(', $endPos + 1);
-        } elseif ($name instanceof \PhpParser\Node\Expr\Error) {
+        } elseif ($name instanceof Error) {
             // Case 2: Parser error recovery - method name is in textAfter
             // Pattern: methodName( possibly followed by args
             if (preg_match('/^(\w+)\s*\(/', $textAfter, $matches) !== 1) {
