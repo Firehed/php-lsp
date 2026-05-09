@@ -4,19 +4,77 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
+use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(CompletionContext::class)]
 #[CoversClass(ContextDetector::class)]
 class ContextDetectorTest extends TestCase
 {
     use LoadsFixturesTrait;
 
     // =========================================================================
-    // Valid completion contexts
+    // CompletionContext enum tests - verifying specific context types
+    // =========================================================================
+
+    public function testFullContextInNormalPhpCode(): void
+    {
+        $code = $this->loadFixture('ContextDetector/member_access.php');
+        self::assertSame(CompletionContext::Full, ContextDetector::getContext($code, strlen($code)));
+    }
+
+    public function testNoneContextInHtml(): void
+    {
+        $code = $this->loadFixture('ContextDetector/mixed_html_php.php');
+        $htmlPos = strpos($code, '<body>');
+        self::assertIsInt($htmlPos);
+        self::assertSame(CompletionContext::None, ContextDetector::getContext($code, $htmlPos + 3));
+    }
+
+    public function testNoneContextInComment(): void
+    {
+        $code = $this->loadFixture('ContextDetector/single_line_comment.php');
+        self::assertSame(CompletionContext::None, ContextDetector::getContext($code, strlen($code)));
+    }
+
+    public function testNoneContextInSingleQuotedString(): void
+    {
+        $code = $this->loadFixture('ContextDetector/single_quoted_string_open.php');
+        self::assertSame(CompletionContext::None, ContextDetector::getContext($code, strlen($code)));
+    }
+
+    public function testVariablesOnlyContextInDoubleQuotedString(): void
+    {
+        $code = $this->loadFixture('ContextDetector/double_quoted_string_open.php');
+        self::assertSame(CompletionContext::VariablesOnly, ContextDetector::getContext($code, strlen($code)));
+    }
+
+    public function testVariablesOnlyContextInHeredoc(): void
+    {
+        $code = $this->loadFixture('ContextDetector/heredoc_open.php');
+        self::assertSame(CompletionContext::VariablesOnly, ContextDetector::getContext($code, strlen($code)));
+    }
+
+    public function testNoneContextInNowdoc(): void
+    {
+        $code = $this->loadFixture('ContextDetector/nowdoc_open.php');
+        self::assertSame(CompletionContext::None, ContextDetector::getContext($code, strlen($code)));
+    }
+
+    public function testFullContextInStringInterpolationBraces(): void
+    {
+        $code = $this->loadFixture('ContextDetector/interpolation_braces.php');
+        $pos = strpos($code, '->}');
+        self::assertIsInt($pos);
+        self::assertSame(CompletionContext::Full, ContextDetector::getContext($code, $pos + 2));
+    }
+
+    // =========================================================================
+    // Valid completion contexts (legacy isCompletable API)
     // =========================================================================
 
     public function testCompletableInNormalCode(): void
@@ -47,6 +105,30 @@ class ContextDetectorTest extends TestCase
     {
         $code = $this->loadFixture('ContextDetector/use_statement_incomplete.php');
         self::assertTrue(ContextDetector::isCompletable($code, strlen($code)));
+    }
+
+    // =========================================================================
+    // Invalid completion contexts - Outside PHP tags
+    // =========================================================================
+
+    public function testNotCompletableInHtml(): void
+    {
+        $code = $this->loadFixture('ContextDetector/mixed_html_php.php');
+        $htmlPos = strpos($code, '<body>');
+        self::assertIsInt($htmlPos);
+        self::assertFalse(
+            ContextDetector::isCompletable($code, $htmlPos + 3),
+            'Completion should not be offered in HTML outside PHP tags',
+        );
+    }
+
+    public function testCompletableInShortEchoTag(): void
+    {
+        $code = $this->loadFixture('ContextDetector/short_echo.php');
+        self::assertTrue(
+            ContextDetector::isCompletable($code, strlen($code)),
+            'Completion should work inside <?= short echo tags',
+        );
     }
 
     // =========================================================================
@@ -84,19 +166,28 @@ class ContextDetectorTest extends TestCase
     public function testNotCompletableInSingleQuotedString(): void
     {
         $code = $this->loadFixture('ContextDetector/single_quoted_string_open.php');
-        self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
+        self::assertFalse(
+            ContextDetector::isCompletable($code, strlen($code)),
+            'Single-quoted strings do not process variables',
+        );
     }
 
-    public function testNotCompletableInDoubleQuotedString(): void
+    public function testCompletableInDoubleQuotedString(): void
     {
         $code = $this->loadFixture('ContextDetector/double_quoted_string_open.php');
-        self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
+        self::assertTrue(
+            ContextDetector::isCompletable($code, strlen($code)),
+            'Double-quoted strings process variables, so completion should be available',
+        );
     }
 
-    public function testNotCompletableInInterpolatedString(): void
+    public function testCompletableInInterpolatedString(): void
     {
         $code = $this->loadFixture('ContextDetector/interpolated_string_open.php');
-        self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
+        self::assertTrue(
+            ContextDetector::isCompletable($code, strlen($code)),
+            'Interpolated strings process variables, so completion should be available',
+        );
     }
 
     public function testCompletableInsideInterpolationBraces(): void
@@ -111,10 +202,13 @@ class ContextDetectorTest extends TestCase
     // Invalid completion contexts - Heredoc/Nowdoc
     // =========================================================================
 
-    public function testNotCompletableInHeredoc(): void
+    public function testCompletableInHeredoc(): void
     {
         $code = $this->loadFixture('ContextDetector/heredoc_open.php');
-        self::assertFalse(ContextDetector::isCompletable($code, strlen($code)));
+        self::assertTrue(
+            ContextDetector::isCompletable($code, strlen($code)),
+            'Heredocs process variables, so completion should be available',
+        );
     }
 
     public function testNotCompletableInNowdoc(): void
