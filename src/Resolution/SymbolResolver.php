@@ -757,7 +757,11 @@ final class SymbolResolver
         }
 
         // Process final partial argument (cursor is here)
-        // Don't count it as complete
+        // Extract named arg if present, but don't increment positional count
+        // since the argument value isn't complete
+        if (preg_match('/^(\w+)\s*:/', trim($currentArg), $m) === 1) {
+            $usedNames[] = $m[1];
+        }
 
         return [$activeParam, $usedNames, $positionalCount];
     }
