@@ -73,6 +73,16 @@ class NamedArguments
         $this->multipleParams(/*|additive_with_variable*/);
     }
 
+    public function testAfterNamedArgColon(): void
+    {
+        $this->multipleParams(name: /*|after_colon*/
+    }
+
+    public function testAfterNamedArgColonWithPrefix(): void
+    {
+        $this->multipleParams(name: n/*|after_colon_prefix*/
+    }
+
     public function testNullsafeMethodCall(): void
     {
         $obj = $this->getNullable();

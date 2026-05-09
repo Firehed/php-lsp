@@ -2457,4 +2457,43 @@ class CompletionHandlerTest extends TestCase
         // After a double-quoted string, should still detect call context
         self::assertContains('count:', $labels, 'Should offer named args after double-quoted string');
     }
+
+    public function testNoStatementKeywordsAfterNamedArgColon(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_colon');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Statement keywords should NOT be offered after `name: `
+        self::assertNotContains('if', $labels, 'Statement keywords should not appear after named arg colon');
+        self::assertNotContains('class', $labels, 'Declaration keywords should not appear after named arg colon');
+        self::assertNotContains('function', $labels, 'Declaration keywords should not appear after named arg colon');
+        self::assertNotContains('while', $labels, 'Statement keywords should not appear after named arg colon');
+        // Expression keywords SHOULD be offered
+        self::assertContains('new', $labels, 'Expression keywords should appear after named arg colon');
+        self::assertContains('true', $labels, 'Literal keywords should appear after named arg colon');
+        self::assertContains('false', $labels, 'Literal keywords should appear after named arg colon');
+        self::assertContains('null', $labels, 'Literal keywords should appear after named arg colon');
+    }
+
+    public function testExpressionKeywordsFilteredByPrefixAfterColon(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_colon_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'n' prefix should match 'new' and 'null' but not 'true', 'false', 'match'
+        self::assertContains('new', $labels, 'new should match prefix n');
+        self::assertContains('null', $labels, 'null should match prefix n');
+        self::assertNotContains('true', $labels, 'true should not match prefix n');
+        self::assertNotContains('if', $labels, 'Statement keywords should not appear');
+        // name: is already used, should not be offered
+        self::assertNotContains('name:', $labels, 'Already-used named arg should not be offered');
+    }
 }
