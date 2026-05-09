@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompletionContext::class)]
@@ -223,5 +224,40 @@ class ContextDetectorTest extends TestCase
     {
         $code = $this->loadFixture('ContextDetector/mid_edit_statement.php');
         self::assertSame(CompletionContext::Full, ContextDetector::getContext($code, strlen($code)));
+    }
+
+    // =========================================================================
+    // Robustness - handles edge cases without throwing
+    // =========================================================================
+
+    /**
+     * @return array<string, array{string}>
+     * @codeCoverageIgnore
+     */
+    public static function edgeCaseProvider(): array
+    {
+        return [
+            'empty string' => [''],
+            'php tag only' => ['<?php'],
+            'incomplete variable' => ['<?php $'],
+            'unclosed double quote' => ['<?php "unclosed'],
+            'unclosed single quote' => ["<?php 'unclosed"],
+            'unclosed block comment' => ['<?php /* unclosed'],
+            'unclosed docblock' => ['<?php /** unclosed'],
+            'single line comment' => ['<?php // comment'],
+            'unclosed heredoc' => ["<?php <<<EOF\nunclosed"],
+            'incomplete function' => ['<?php function('],
+            'incomplete class' => ['<?php class {'],
+            'incomplete if' => ['<?php if (true'],
+            'binary garbage' => ["\x00\x01\x02"],
+            'large input' => [str_repeat('a', 10000)],
+        ];
+    }
+
+    #[DataProvider('edgeCaseProvider')]
+    public function testHandlesEdgeCaseWithoutThrowing(string $code): void
+    {
+        $context = ContextDetector::getContext($code, strlen($code));
+        self::assertInstanceOf(CompletionContext::class, $context);
     }
 }
