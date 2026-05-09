@@ -2119,7 +2119,40 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('instanceProp', $labels);
     }
 
-    // Named argument completion tests (issue #126)
+    // =========================================================================
+    // Context-based filtering
+    // =========================================================================
+
+    public function testNoCompletionsInComment(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'in_comment');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertSame([], $result['items'], 'No completions should be offered inside comments');
+    }
+
+    public function testOnlyVariablesInHeredoc(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'in_heredoc');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+
+        foreach ($result['items'] as $item) {
+            self::assertSame(
+                6, // KIND_VARIABLE
+                $item['kind'] ?? 0,
+                "Only variable completions should be offered in heredoc, got: {$item['label']}",
+            );
+        }
+    }
+
+    // =========================================================================
+    // Named argument completion (issue #126)
+    // =========================================================================
 
     public function testNamedArgumentCompletionEmpty(): void
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -118,9 +119,10 @@ final class CompletionHandler implements HandlerInterface
             return null;
         }
 
-        // Skip completions inside comments, strings, heredocs
+        // Determine completion context
         $offset = $document->offsetAt($line, $character);
-        if (!ContextDetector::isCompletable($document->getContent(), $offset)) {
+        $context = ContextDetector::getContext($document->getContent(), $offset);
+        if ($context === CompletionContext::None) {
             return [
                 'isIncomplete' => false,
                 'items' => [],
@@ -139,6 +141,14 @@ final class CompletionHandler implements HandlerInterface
         $textBeforeCursor = substr($lineText, 0, $character);
 
         $items = $this->getCompletionItems($textBeforeCursor, $document, $ast, $line, $character);
+
+        // In interpolated strings, only variable completions are valid
+        if ($context === CompletionContext::VariablesOnly) {
+            $items = array_values(array_filter(
+                $items,
+                static fn(array $item): bool => ($item['kind'] ?? 0) === self::KIND_VARIABLE,
+            ));
+        }
 
         return [
             'isIncomplete' => false,
