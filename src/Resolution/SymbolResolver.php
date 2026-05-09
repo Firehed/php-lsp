@@ -45,6 +45,9 @@ use PhpParser\Node\VarLikeIdentifier;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Stmt;
+use LogicException;
+use ReflectionException;
+use ReflectionFunction;
 
 /**
  * Centralizes symbol resolution for LSP handlers.
@@ -88,7 +91,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null with error-collecting handler');
+            throw new LogicException('Parser returned null with error-collecting handler');
             // @codeCoverageIgnoreEnd
         }
 
@@ -191,7 +194,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null');
+            throw new LogicException('Parser returned null');
             // @codeCoverageIgnoreEnd
         }
 
@@ -213,7 +216,7 @@ final class SymbolResolver
             } else {
                 // @codeCoverageIgnoreStart
                 // ParserService always sets parent via NodeConnectingVisitor
-                throw new \LogicException('Node missing parent attribute');
+                throw new LogicException('Node missing parent attribute');
                 // @codeCoverageIgnoreEnd
             }
         }
@@ -366,7 +369,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null');
+            throw new LogicException('Parser returned null');
             // @codeCoverageIgnoreEnd
         }
 
@@ -421,7 +424,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null');
+            throw new LogicException('Parser returned null');
             // @codeCoverageIgnoreEnd
         }
 
@@ -679,15 +682,18 @@ final class SymbolResolver
     }
 
     /**
-     * Look up a class name in use statements.
+     * Look up a simple class name in use statements.
+     *
+     * Only handles single-part names (e.g., "User" not "Foo\User").
+     * Multi-part names are handled by the AST path when parser succeeds.
      *
      * @param array<Stmt> $ast
      */
     private function resolveFromUseStatements(string $className, array $ast): ?string
     {
-        // Get the first part of the name (for aliased or multi-part names)
-        $parts = explode('\\', $className);
-        $firstPart = $parts[0];
+        if (str_contains($className, '\\')) {
+            return null;
+        }
 
         foreach ($ast as $stmt) {
             if ($stmt instanceof Stmt\Namespace_) {
@@ -695,12 +701,8 @@ final class SymbolResolver
                     if ($nsStmt instanceof Stmt\Use_) {
                         foreach ($nsStmt->uses as $use) {
                             $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                            if ($alias === $firstPart) {
-                                if (count($parts) === 1) {
-                                    return $use->name->toString();
-                                }
-                                $parts[0] = $use->name->toString();
-                                return implode('\\', $parts);
+                            if ($alias === $className) {
+                                return $use->name->toString();
                             }
                         }
                     }
@@ -708,12 +710,8 @@ final class SymbolResolver
             } elseif ($stmt instanceof Stmt\Use_) {
                 foreach ($stmt->uses as $use) {
                     $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                    if ($alias === $firstPart) {
-                        if (count($parts) === 1) {
-                            return $use->name->toString();
-                        }
-                        $parts[0] = $use->name->toString();
-                        return implode('\\', $parts);
+                    if ($alias === $className) {
+                        return $use->name->toString();
                     }
                 }
             }
@@ -1208,9 +1206,9 @@ final class SymbolResolver
 
         // Fall back to built-in function via reflection
         try {
-            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($functionName));
+            $funcInfo = FunctionInfo::fromReflection(new ReflectionFunction($functionName));
             return new ResolvedFunction($funcInfo);
-        } catch (\ReflectionException) {
+        } catch (ReflectionException) {
             return null;
         }
     }
@@ -1241,7 +1239,7 @@ final class SymbolResolver
         $enclosingScope = ScopeFinder::findEnclosingScope($param);
         // @codeCoverageIgnoreStart
         if ($enclosingScope === null) {
-            throw new \LogicException('Param node always has enclosing scope');
+            throw new LogicException('Param node always has enclosing scope');
         }
         // @codeCoverageIgnoreEnd
 
@@ -1261,7 +1259,7 @@ final class SymbolResolver
             $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
             // @codeCoverageIgnoreStart
             if ($selfContext === null) {
-                throw new \LogicException('ClassMethod always has enclosing class');
+                throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
             $classInfo = $this->classRepository->get(new ClassName($selfContext));
@@ -1271,7 +1269,7 @@ final class SymbolResolver
         $paramInfo = \Firehed\PhpLsp\Domain\ParameterInfo::fromNode($param, $position, $selfContext, $parentContext);
         // @codeCoverageIgnoreStart
         if ($paramInfo === null) {
-            throw new \LogicException('ParameterInfo::fromNode should not return null for valid Param');
+            throw new LogicException('ParameterInfo::fromNode should not return null for valid Param');
         }
         // @codeCoverageIgnoreEnd
         return new ResolvedParameter($paramInfo);
@@ -1300,7 +1298,7 @@ final class SymbolResolver
             && !$call instanceof StaticCall
             && !$call instanceof New_
         ) {
-            throw new \LogicException('Named arg parent must be a call or attribute');
+            throw new LogicException('Named arg parent must be a call or attribute');
         }
         // @codeCoverageIgnoreEnd
 
@@ -1350,7 +1348,7 @@ final class SymbolResolver
         $propertyName = $fetch->name;
         // @codeCoverageIgnoreStart
         if (!$propertyName instanceof Identifier) {
-            throw new \LogicException('resolvePropertyFetch called with non-Identifier name');
+            throw new LogicException('resolvePropertyFetch called with non-Identifier name');
         }
         // @codeCoverageIgnoreEnd
 
@@ -1377,12 +1375,12 @@ final class SymbolResolver
         $constName = $fetch->name;
         // @codeCoverageIgnoreStart
         if (!$constName instanceof Identifier) {
-            throw new \LogicException('resolveClassConstFetch called with non-Identifier name');
+            throw new LogicException('resolveClassConstFetch called with non-Identifier name');
         }
 
         $class = $fetch->class;
         if (!$class instanceof Name) {
-            throw new \LogicException('resolveClassConstFetch called with non-Name class');
+            throw new LogicException('resolveClassConstFetch called with non-Name class');
         }
         // @codeCoverageIgnoreEnd
 
@@ -1434,12 +1432,12 @@ final class SymbolResolver
         $propertyName = $fetch->name;
         // @codeCoverageIgnoreStart
         if (!$propertyName instanceof VarLikeIdentifier) {
-            throw new \LogicException('resolveStaticPropertyFetch called with non-VarLikeIdentifier name');
+            throw new LogicException('resolveStaticPropertyFetch called with non-VarLikeIdentifier name');
         }
 
         $class = $fetch->class;
         if (!$class instanceof Name) {
-            throw new \LogicException('resolveStaticPropertyFetch called with non-Name class');
+            throw new LogicException('resolveStaticPropertyFetch called with non-Name class');
         }
         // @codeCoverageIgnoreEnd
 

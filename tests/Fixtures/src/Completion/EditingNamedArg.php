@@ -52,7 +52,31 @@ class EditingNamedArg
         localHelper(/*|function_empty*/
     }
 
+    public function testNullsafeMethodEmpty(): void
+    {
+        // Use $this?-> to test nullsafe pattern matching
+        $this?->instanceMethod(/*|nullsafe_empty*/
+    }
+
+    public function testNestedBracketsInArgs(): void
+    {
+        // Cursor after arg containing nested parentheses
+        localHelper(substr('test', 0), /*|nested_brackets*/
+    }
+
+    public function testStatementBoundary(): void
+    {
+        // Cursor after semicolon - should NOT find call context
+        localHelper('done');
+        /*|after_statement*/
+    }
+
     private function instanceMethod(string $name, int $count = 0): void
     {
+    }
+
+    private function getNullable(): ?self
+    {
+        return null;
     }
 }

@@ -992,6 +992,29 @@ final class SymbolResolverTest extends TestCase
         self::assertSame(Visibility::Public, $context->minVisibility);
     }
 
+    public function testGetMemberAccessContextReturnsNullInsideMethodArgs(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/CoverageEdgeCases.php', 'inside_method_args');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'Should return null when cursor is inside method arguments');
+    }
+
+    public function testGetMemberAccessContextReturnsNullInsideStaticArgs(): void
+    {
+        $this->openFixture('src/Completion/NamedArguments.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/CoverageEdgeCases.php', 'inside_static_args');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'Should return null when cursor is inside static call arguments');
+    }
+
     public function testIsInstantiableReturnsFalseForAbstractClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');
@@ -1182,5 +1205,156 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(CallContext::class, $context, 'Should detect function call context with empty args');
         self::assertStringContainsString('localHelper', $context->callable->format());
+    }
+
+    public function testGetCallContextNullsafeMethodEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'nullsafe_empty');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect nullsafe call context');
+        self::assertStringContainsString('instanceMethod', $context->callable->format());
+    }
+
+    public function testGetCallContextWithNestedBrackets(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'nested_brackets');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should handle nested brackets in args');
+        self::assertStringContainsString('localHelper', $context->callable->format());
+        // Nested parens in first arg + comma means cursor is at second param
+        self::assertSame(1, $context->activeParameterIndex, 'Should be on second parameter');
+    }
+
+    public function testGetCallContextAfterStatementBoundary(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_statement');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'Should not find call context after statement boundary');
+    }
+
+    public function testGetCallContextWithImportedClass(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/UseStatementCall.php', 'imported_new');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should resolve imported class');
+        self::assertStringContainsString('__construct', $context->callable->format());
+    }
+
+    public function testGetCallContextKeywordParenNotCall(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/CoverageEdgeCases.php', 'keyword_paren');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'if( should not be detected as function call');
+    }
+
+    public function testGetCallContextFullyQualifiedNew(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/CoverageEdgeCases.php', 'fqn_new');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should resolve FQN class');
+        self::assertStringContainsString('__construct', $context->callable->format());
+    }
+
+    public function testGetCallContextWithNamedArgTracking(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/CoverageEdgeCases.php', 'after_named_arg');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should find call context');
+        self::assertContains('name', $context->usedParameterNames, 'Should track named arg');
+    }
+
+    public function testGetCallContextTopLevelUse(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('NoNamespace/TopLevelUse.php', 'top_level_use');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Should resolve via top-level use');
+        self::assertStringContainsString('__construct', $context->callable->format());
+    }
+
+    public function testGetCallContextNoUseNoNamespace(): void
+    {
+        $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'no_use_no_namespace');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        // Class can't be resolved, so context is null
+        // This exercises the findNamespaceForLine returning null path
+        self::assertNull($context, 'Unresolved class should return null context');
+    }
+
+    public function testGetCallContextMultiPartClassName(): void
+    {
+        $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'multi_part_class');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        // Multi-part class name skips use statement resolution
+        // Class can't be resolved, so context is null
+        self::assertNull($context, 'Unresolved multi-part class should return null context');
+    }
+
+    public function testGetCallContextWhitespaceOnlyArg(): void
+    {
+        $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'whitespace_arg');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        // Function can't be resolved, context is null
+        // But this exercises the empty arg text path
+        self::assertNull($context, 'Unresolved function should return null context');
+    }
+
+    public function testGetCallContextThisOutsideClass(): void
+    {
+        $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'this_outside_class');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        // $this outside class can't resolve, context is null
+        // This exercises the no enclosing class path
+        self::assertNull($context, '$this outside class should return null context');
     }
 }
