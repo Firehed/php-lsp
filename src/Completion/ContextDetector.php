@@ -27,24 +27,6 @@ final class ContextDetector
      */
     public static function getContext(string $code, int $offset): CompletionContext
     {
-        try {
-            return self::detectContext($code, $offset);
-        } catch (Throwable) {
-            // If tokenizer fails for any reason, assume full completions
-            return CompletionContext::Full;
-        }
-    }
-
-    /**
-     * @deprecated Use getContext() instead
-     */
-    public static function isCompletable(string $code, int $offset): bool
-    {
-        return self::getContext($code, $offset) !== CompletionContext::None;
-    }
-
-    private static function detectContext(string $code, int $offset): CompletionContext
-    {
         if ($code === '') {
             return CompletionContext::Full;
         }
@@ -59,8 +41,6 @@ final class ContextDetector
                 $tokenType = $token[0];
                 $tokenText = $token[1];
                 $tokenLength = strlen($tokenText);
-                $tokenStart = $currentPosition;
-                $tokenEnd = $currentPosition + $tokenLength;
 
                 // Track heredoc vs nowdoc (nowdoc has quotes: <<<'IDENT')
                 if ($tokenType === T_START_HEREDOC) {
@@ -69,22 +49,18 @@ final class ContextDetector
                     $inNowdoc = false;
                 }
 
-                // Check if offset falls within this token
-                if ($offset > $tokenStart && $offset <= $tokenEnd) {
+                if ($offset > $currentPosition && $offset <= $currentPosition + $tokenLength) {
                     return self::contextForToken($tokenType, $tokenText, $inNowdoc);
                 }
 
                 $currentPosition += $tokenLength;
             } else {
+                // Single-character tokens (operators, delimiters) - completion works after them
                 $currentPosition += strlen($token);
             }
         }
 
-        // Cursor is at/past end of file - check last token
-        if ($offset >= $currentPosition) {
-            return self::checkUnfinishedContext($tokens);
-        }
-
+        // Cursor is at or past end of all tokens - normal PHP context
         return CompletionContext::Full;
     }
 
@@ -104,36 +80,6 @@ final class ContextDetector
                 return CompletionContext::None;
             }
             return CompletionContext::VariablesOnly;
-        }
-
-        return CompletionContext::Full;
-    }
-
-    /**
-     * @param list<array{0: int, 1: string, 2: int}|string> $tokens
-     */
-    private static function checkUnfinishedContext(array $tokens): CompletionContext
-    {
-        if ($tokens === []) {
-            return CompletionContext::Full;
-        }
-
-        $lastToken = end($tokens);
-        $inNowdoc = false;
-
-        // Check if we're in a nowdoc by scanning for T_START_HEREDOC
-        foreach ($tokens as $token) {
-            if (is_array($token)) {
-                if ($token[0] === T_START_HEREDOC) {
-                    $inNowdoc = str_contains($token[1], "'");
-                } elseif ($token[0] === T_END_HEREDOC) {
-                    $inNowdoc = false;
-                }
-            }
-        }
-
-        if (is_array($lastToken)) {
-            return self::contextForToken($lastToken[0], $lastToken[1], $inNowdoc);
         }
 
         return CompletionContext::Full;
