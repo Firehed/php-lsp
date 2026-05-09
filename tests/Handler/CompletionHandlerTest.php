@@ -2371,4 +2371,57 @@ class CompletionHandlerTest extends TestCase
             'Should offer some named args when editing before colon',
         );
     }
+
+    public function testVariableCompletionInsideCallContext(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'variable_in_call');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Should offer both named args and variables starting with $va
+        self::assertContains('$variable', $labels, 'Should offer variable completions inside call');
+        self::assertContains('name:', $labels, 'Should also offer named args inside call');
+    }
+
+    public function testNamedArgAfterCompleteValue(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_named_value');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // After a complete named arg value without comma, should still offer remaining params
+        self::assertContains('count:', $labels, 'Should offer remaining named args after complete value');
+    }
+
+    public function testNamedArgAfterStringValue(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_string_value');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // After a string value, should still detect call context and offer named args
+        self::assertContains('count:', $labels, 'Should offer named args after string value');
+    }
+
+    public function testNamedArgAfterDoubleQuotedString(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_double_string');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // After a double-quoted string, should still detect call context
+        self::assertContains('count:', $labels, 'Should offer named args after double-quoted string');
+    }
 }

@@ -1357,4 +1357,18 @@ final class SymbolResolverTest extends TestCase
         // This exercises the no enclosing class path
         self::assertNull($context, '$this outside class should return null context');
     }
+
+    public function testGetCallContextAfterStringValue(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_string_value');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        // Check that getMemberAccessContext does NOT steal the context
+        $memberContext = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+        self::assertNull($memberContext, 'String value should not be detected as member access');
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+        self::assertInstanceOf(CallContext::class, $context, 'Should detect call context after string value');
+    }
 }

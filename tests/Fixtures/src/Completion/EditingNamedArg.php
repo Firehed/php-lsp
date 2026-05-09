@@ -71,6 +71,31 @@ class EditingNamedArg
         /*|after_statement*/
     }
 
+    public function testVariablePrefixInCall(): void
+    {
+        $variable = 'test';
+        // Cursor on variable prefix inside call - triggers variable completion too
+        localHelper($va/*|variable_in_call*/
+    }
+
+    public function testAfterCompleteNamedArg(): void
+    {
+        // Cursor after complete named arg value (no trailing comma) - number doesn't match prefix pattern
+        localHelper(name: 123/*|after_named_value*/
+    }
+
+    public function testAfterSingleQuotedString(): void
+    {
+        // Cursor after single-quoted string value
+        localHelper(name: 'value'/*|after_string_value*/
+    }
+
+    public function testAfterDoubleQuotedString(): void
+    {
+        // Cursor after double-quoted string value
+        localHelper(name: "value"/*|after_double_string*/
+    }
+
     private function instanceMethod(string $name, int $count = 0): void
     {
     }

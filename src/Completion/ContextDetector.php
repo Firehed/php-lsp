@@ -63,7 +63,8 @@ final class ContextDetector
 
                 // Check if offset falls within this token
                 // Use > for start because cursor at tokenStart is "before" the token
-                if ($offset > $tokenStart && $offset <= $tokenEnd) {
+                // Use < for end because cursor at tokenEnd is "after" the token
+                if ($offset > $tokenStart && $offset < $tokenEnd) {
                     if (in_array($tokenType, self::NON_COMPLETABLE_TOKENS, true)) {
                         return false;
                     }
