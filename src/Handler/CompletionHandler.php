@@ -251,22 +251,6 @@ final class CompletionHandler implements HandlerInterface
             return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Parameter);
         }
 
-        // After named argument colon - offer expression keywords, variables, and classes
-        // Must check before general keyword completion to avoid offering statement keywords
-        if (preg_match('/\w+:\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            $items = $this->filterKeywords(self::KEYWORDS_EXPRESSION, $prefix);
-            $items = array_merge($items, $this->getVariableCompletions($prefix, $document, $line, $character));
-            $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
-            $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
-                SymbolKind::Class_,
-                SymbolKind::Interface_,
-                SymbolKind::Trait_,
-                SymbolKind::Enum_,
-            ]));
-            return $this->deduplicateCompletions($items);
-        }
-
         // Class body context - only class-level keywords, no functions
         if ($this->isInClassBody($textBeforeCursor)) {
             if (preg_match('/(?:^|[\s{;])(\w+)$/', $textBeforeCursor, $matches) === 1) {
