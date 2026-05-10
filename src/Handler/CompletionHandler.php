@@ -41,6 +41,7 @@ final class CompletionHandler implements HandlerInterface
     // LSP CompletionItemKind constants
     private const KIND_METHOD = 2;
     private const KIND_FUNCTION = 3;
+    private const KIND_FIELD = 5;
     private const KIND_VARIABLE = 6;
     private const KIND_CLASS = 7;
     private const KIND_PROPERTY = 10;
@@ -172,10 +173,38 @@ final class CompletionHandler implements HandlerInterface
             return $this->handleMemberAccessContext($memberContext);
         }
 
-        // Variable completion ($var)
+        // Inside a call context, offer named arguments + variables
+        $callContext = $this->symbolResolver->getCallContext($document, $line, $character);
+        if ($callContext !== null) {
+            $namedArgPrefix = $this->extractNamedArgPrefix($textBeforeCursor);
+            $items = $this->getNamedArgumentCompletions($callContext, $namedArgPrefix);
+
+            // Also offer variables - filter by prefix if cursor is on one
+            $varPrefix = '';
+            if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
+                $varPrefix = $matches[1];
+            }
+            $items = array_merge($items, $this->getVariableCompletions($varPrefix, $document, $line, $character));
+
+            // After named arg colon (value position), also offer expression keywords and classes
+            if (preg_match('/\w+:\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+                $prefix = $matches[1];
+                $items = array_merge($items, $this->filterKeywords(self::KEYWORDS_EXPRESSION, $prefix));
+                $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
+                $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
+                    SymbolKind::Class_,
+                    SymbolKind::Interface_,
+                    SymbolKind::Trait_,
+                    SymbolKind::Enum_,
+                ]));
+            }
+
+            return $this->deduplicateCompletions($items);
+        }
+
+        // Variable completion outside call context
         if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            return $this->getVariableCompletions($prefix, $document, $line, $character);
+            return $this->getVariableCompletions($matches[1], $document, $line, $character);
         }
 
         // new ClassName completion - suggest imported classes and indexed instantiable types
@@ -572,6 +601,13 @@ final class CompletionHandler implements HandlerInterface
 
     private const KEYWORDS_AFTER_VISIBILITY = ['function', 'static', 'readonly', 'const'];
 
+    // Keywords valid at the start of an expression (e.g., after `name: ` in named args)
+    private const KEYWORDS_EXPRESSION = [
+        'new', 'clone', 'yield', 'match', 'fn',
+        'isset', 'empty', 'list',
+        'true', 'false', 'null',
+    ];
+
     /**
      * @param list<string> $keywords
      * @return list<CompletionItem>
@@ -667,6 +703,63 @@ final class CompletionHandler implements HandlerInterface
                     'detail' => $variable->getType()?->format() ?? 'mixed',
                 ];
             }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Extract the prefix for named argument completion from text before cursor.
+     */
+    private function extractNamedArgPrefix(string $textBeforeCursor): string
+    {
+        if (preg_match('/[(,]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return $matches[1];
+        }
+        return '';
+    }
+
+    /**
+     * Get named argument completions for a function/method call.
+     *
+     * @return list<CompletionItem>
+     */
+    private function getNamedArgumentCompletions(
+        \Firehed\PhpLsp\Resolution\CallContext $callContext,
+        string $prefix,
+    ): array {
+        $callable = $callContext->callable;
+        $params = $callable->getParameters();
+        $usedNames = $callContext->usedParameterNames;
+        $positionallyFilledCount = $callContext->positionallyFilledCount;
+
+        $items = [];
+        foreach ($params as $param) {
+            // Skip parameters already used as named arguments
+            if (in_array($param->name, $usedNames, true)) {
+                continue;
+            }
+
+            // Skip parameters filled positionally (before the first named arg)
+            if ($param->position < $positionallyFilledCount) {
+                continue;
+            }
+
+            // Skip variadic parameters as named arguments (they use array syntax instead)
+            if ($param->isVariadic) {
+                continue;
+            }
+
+            // Match prefix
+            if (!self::matchesPrefix($param->name, $prefix)) {
+                continue;
+            }
+
+            $items[] = [
+                'label' => $param->name . ':',
+                'kind' => self::KIND_FIELD,
+                'detail' => $param->format(),
+            ];
         }
 
         return $items;

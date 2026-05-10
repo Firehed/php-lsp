@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
-use Throwable;
-
 /**
  * Detects what kind of completions are appropriate at a given position in PHP code.
  */
@@ -31,7 +29,8 @@ final class ContextDetector
             return CompletionContext::Full;
         }
 
-        $offset = max(0, min($offset, strlen($code)));
+        $codeLength = strlen($code);
+        $offset = max(0, min($offset, $codeLength));
         $tokens = token_get_all($code);
         $currentPosition = 0;
         $inNowdoc = false;
@@ -49,7 +48,13 @@ final class ContextDetector
                     $inNowdoc = false;
                 }
 
-                if ($offset > $currentPosition && $offset <= $currentPosition + $tokenLength) {
+                $tokenEnd = $currentPosition + $tokenLength;
+                // Cursor is inside if: after token start AND before token end
+                // Exception: at EOF, cursor at token end is considered inside (unclosed construct)
+                $isInside = $offset > $currentPosition
+                    && ($offset < $tokenEnd || ($offset === $tokenEnd && $offset === $codeLength));
+
+                if ($isInside) {
                     return self::contextForToken($tokenType, $tokenText, $inNowdoc);
                 }
 

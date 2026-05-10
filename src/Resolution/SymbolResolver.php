@@ -25,11 +25,15 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Expr\Error;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Name;
+use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\Node\Expr\NullsafeMethodCall;
@@ -39,9 +43,11 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\VarLikeIdentifier;
 use PhpParser\Node\Identifier;
-use PhpParser\Node\Name;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Stmt;
+use LogicException;
+use ReflectionException;
+use ReflectionFunction;
 
 /**
  * Centralizes symbol resolution for LSP handlers.
@@ -85,7 +91,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null with error-collecting handler');
+            throw new LogicException('Parser returned null with error-collecting handler');
             // @codeCoverageIgnoreEnd
         }
 
@@ -188,7 +194,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null');
+            throw new LogicException('Parser returned null');
             // @codeCoverageIgnoreEnd
         }
 
@@ -210,7 +216,7 @@ final class SymbolResolver
             } else {
                 // @codeCoverageIgnoreStart
                 // ParserService always sets parent via NodeConnectingVisitor
-                throw new \LogicException('Node missing parent attribute');
+                throw new LogicException('Node missing parent attribute');
                 // @codeCoverageIgnoreEnd
             }
         }
@@ -218,6 +224,15 @@ final class SymbolResolver
         // Instance access: $obj->member or $obj?->member
         if (MemberAccessResolver::isMethodCall($node) || MemberAccessResolver::isPropertyFetch($node)) {
             /** @var MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node */
+
+            // For method calls, check if cursor is past the method name (inside argument list)
+            if (MemberAccessResolver::isMethodCall($node) && $node->name instanceof Identifier) {
+                $nameEndPos = $node->name->getEndFilePos();
+                if ($offset > $nameEndPos + 1) {
+                    return null;
+                }
+            }
+
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
             $type = $this->resolveInstanceAccessType($node, $ast);
             if ($type === null) {
@@ -237,6 +252,13 @@ final class SymbolResolver
 
         // Static access: ClassName::member
         if ($node instanceof StaticPropertyFetch || $node instanceof StaticCall || $node instanceof ClassConstFetch) {
+            // For static calls, check if cursor is past the method name (inside argument list)
+            if ($node instanceof StaticCall && $node->name instanceof Identifier) {
+                $nameEndPos = $node->name->getEndFilePos();
+                if ($offset > $nameEndPos + 1) {
+                    return null;
+                }
+            }
             return $this->resolveStaticAccessContext($node, $ast, $line);
         }
 
@@ -347,7 +369,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null');
+            throw new LogicException('Parser returned null');
             // @codeCoverageIgnoreEnd
         }
 
@@ -402,7 +424,7 @@ final class SymbolResolver
         $ast = $this->parser->parse($document);
         if ($ast === null) {
             // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null');
+            throw new LogicException('Parser returned null');
             // @codeCoverageIgnoreEnd
         }
 
@@ -410,22 +432,27 @@ final class SymbolResolver
 
         $callInfo = $this->findCallAtPosition($ast, $offset);
         if ($callInfo === null) {
+            // Fallback: text-based detection for incomplete calls where parser
+            // couldn't create proper call nodes
+            $callInfo = $this->findCallFromText($ast, $offset, $document->getContent(), $line);
+        }
+        if ($callInfo === null) {
             return null;
         }
 
-        [$callNode, $activeParameter, $usedNames] = $callInfo;
+        [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
 
         $callable = $this->resolveCallable($callNode, $ast);
         if ($callable === null) {
             return null;
         }
 
-        return new CallContext($callable, $activeParameter, $usedNames);
+        return new CallContext($callable, $activeParameter, $usedNames, $positionalCount);
     }
 
     /**
      * @param array<Stmt> $ast
-     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>}|null
+     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
      */
     private function findCallAtPosition(array $ast, int $offset): ?array
     {
@@ -434,6 +461,7 @@ final class SymbolResolver
             public int $activeParameter = 0;
             /** @var list<string> */
             public array $usedNames = [];
+            public int $positionalCount = 0;
 
             public function __construct(private readonly int $offset)
             {
@@ -457,13 +485,23 @@ final class SymbolResolver
                 if ($startPos <= $this->offset && $this->offset <= $endPos) {
                     $activeParam = 0;
                     $usedNames = [];
+                    $positionalCount = 0;
+                    $sawNamedArg = false;
 
                     foreach ($node->args as $i => $arg) {
-                        if ($arg instanceof \PhpParser\Node\Arg && $arg->name !== null) {
-                            $usedNames[] = $arg->name->name;
-                        }
                         $argEnd = $arg->getEndFilePos();
-                        if ($this->offset > $argEnd) {
+                        $argBeforeCursor = $this->offset > $argEnd;
+
+                        // Collect ALL named arguments in the call (for completion filtering)
+                        if ($arg instanceof Arg && $arg->name !== null) {
+                            $usedNames[] = $arg->name->name;
+                            $sawNamedArg = true;
+                        } elseif (!$sawNamedArg && $argBeforeCursor) {
+                            // Only count positional args that are complete and before cursor
+                            $positionalCount++;
+                        }
+                        // Track active parameter index based on cursor position
+                        if ($argBeforeCursor) {
                             $activeParam = $i + 1;
                         }
                     }
@@ -471,6 +509,7 @@ final class SymbolResolver
                     $this->found = $node;
                     $this->activeParameter = $activeParam;
                     $this->usedNames = $usedNames;
+                    $this->positionalCount = $positionalCount;
                 }
 
                 return null;
@@ -485,7 +524,321 @@ final class SymbolResolver
             return null;
         }
 
-        return [$finder->found, $finder->activeParameter, $finder->usedNames];
+        return [$finder->found, $finder->activeParameter, $finder->usedNames, $finder->positionalCount];
+    }
+
+    /**
+     * Text-based fallback for detecting call context when AST-based detection fails.
+     * Handles incomplete code where the parser couldn't create proper call nodes.
+     *
+     * @param array<Stmt> $ast
+     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
+     */
+    private function findCallFromText(array $ast, int $offset, string $content, int $line): ?array
+    {
+        // Find the last unclosed `(` before cursor
+        $parenPos = $this->findUnclosedParen($content, $offset);
+        if ($parenPos === null) {
+            return null;
+        }
+
+        // Get text before the opening paren
+        $textBeforeParen = substr($content, 0, $parenPos);
+
+        // Try to match call patterns and resolve the callable
+        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $line);
+        if ($callNode === null) {
+            return null;
+        }
+
+        // Parse arguments between paren and cursor to determine position/used names
+        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
+        [$activeParam, $usedNames, $positionalCount] = $this->parseArgsFromText($argsText);
+
+        return [$callNode, $activeParam, $usedNames, $positionalCount];
+    }
+
+    /**
+     * Find the position of the last unclosed `(` before the given offset.
+     */
+    private function findUnclosedParen(string $content, int $offset): ?int
+    {
+        $depth = 0;
+        for ($i = $offset - 1; $i >= 0; $i--) {
+            $char = $content[$i];
+            if ($char === ')') {
+                $depth++;
+            } elseif ($char === '(') {
+                if ($depth === 0) {
+                    return $i;
+                }
+                $depth--;
+            } elseif ($char === ';' || $char === '{' || $char === '}') {
+                // Statement boundary - stop searching
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse call pattern from text before opening paren.
+     *
+     * @param array<Stmt> $ast
+     * @return FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null
+     */
+    private function parseCallPattern(
+        string $textBeforeParen,
+        array $ast,
+        int $line,
+    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null {
+        $text = rtrim($textBeforeParen);
+
+        // Static call: ClassName::methodName
+        if (preg_match('/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/', $text, $m) === 1) {
+            $className = $m[1];
+            $methodName = $m[2];
+            $name = $this->resolveNameFromText($className, $ast, $line);
+            return new StaticCall($name, new Identifier($methodName));
+        }
+
+        // Instance call: $var->methodName
+        if (preg_match('/\$(\w+)->(\w+)\s*$/', $text, $m) === 1) {
+            $varName = $m[1];
+            $methodName = $m[2];
+            $var = new Variable($varName);
+            // For $this, store the enclosing class so resolveMethodCallCallable can use it
+            if ($varName === 'this') {
+                $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+                if ($enclosingClass !== null) {
+                    $var->setAttribute('resolvedType', new ClassName($enclosingClass));
+                }
+            }
+            return new MethodCall($var, new Identifier($methodName));
+        }
+
+        // Nullsafe instance call: $var?->methodName
+        if (preg_match('/\$(\w+)\?->(\w+)\s*$/', $text, $m) === 1) {
+            $varName = $m[1];
+            $methodName = $m[2];
+            $var = new Variable($varName);
+            if ($varName === 'this') {
+                $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+                if ($enclosingClass !== null) {
+                    $var->setAttribute('resolvedType', new ClassName($enclosingClass));
+                }
+            }
+            return new NullsafeMethodCall($var, new Identifier($methodName));
+        }
+
+        // Constructor: new ClassName
+        if (preg_match('/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
+            $className = $m[1];
+            $name = $this->resolveNameFromText($className, $ast, $line);
+            return new New_($name);
+        }
+
+        // Function call: functionName
+        if (preg_match('/\b(\w+)\s*$/', $text, $m) === 1) {
+            $funcName = $m[1];
+            $keywords = ['if', 'while', 'for', 'foreach', 'switch', 'catch', 'array', 'list'];
+            if (!in_array(strtolower($funcName), $keywords, true)) {
+                return new FuncCall(new Name($funcName));
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve a class name from text, looking up use statements and namespace.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveNameFromText(string $className, array $ast, int $line): Name
+    {
+        $name = new Name($className);
+
+        // Already fully qualified
+        if (str_starts_with($className, '\\')) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified(ltrim($className, '\\')));
+            return $name;
+        }
+
+        // Check use statements first
+        $resolvedFromUse = $this->resolveFromUseStatements($className, $ast);
+        if ($resolvedFromUse !== null) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedFromUse));
+            return $name;
+        }
+
+        // Fall back to namespace prefix
+        $namespace = $this->findNamespaceForLine($ast, $line);
+        if ($namespace !== null) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified($namespace . '\\' . $className));
+        }
+
+        return $name;
+    }
+
+    /**
+     * Look up a simple class name in use statements.
+     *
+     * Only handles single-part names (e.g., "User" not "Foo\User").
+     * Multi-part names are handled by the AST path when parser succeeds.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveFromUseStatements(string $className, array $ast): ?string
+    {
+        if (str_contains($className, '\\')) {
+            return null;
+        }
+
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $nsStmt) {
+                    if ($nsStmt instanceof Stmt\Use_) {
+                        foreach ($nsStmt->uses as $use) {
+                            $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                            if ($alias === $className) {
+                                return $use->name->toString();
+                            }
+                        }
+                    }
+                }
+            } elseif ($stmt instanceof Stmt\Use_) {
+                foreach ($stmt->uses as $use) {
+                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                    if ($alias === $className) {
+                        return $use->name->toString();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse argument text to determine active parameter and used named arguments.
+     *
+     * @return array{0: int, 1: list<string>, 2: int}
+     */
+    private function parseArgsFromText(string $argsText): array
+    {
+        $activeParam = 0;
+        $usedNames = [];
+        $positionalCount = 0;
+        $sawNamedArg = false;
+
+        // Simple parsing: count commas and look for `name:` patterns
+        // This is approximate but handles common cases
+        $depth = 0;
+        $currentArg = '';
+
+        for ($i = 0; $i < strlen($argsText); $i++) {
+            $char = $argsText[$i];
+
+            if ($char === '(' || $char === '[' || $char === '{') {
+                $depth++;
+                $currentArg .= $char;
+            } elseif ($char === ')' || $char === ']' || $char === '}') {
+                $depth--;
+                $currentArg .= $char;
+            } elseif ($char === ',' && $depth === 0) {
+                // End of argument
+                $this->processArgText($currentArg, $usedNames, $positionalCount, $sawNamedArg);
+                $activeParam++;
+                $currentArg = '';
+            } else {
+                $currentArg .= $char;
+            }
+        }
+
+        // Process final partial argument (cursor is here)
+        // Extract named arg if present, but don't increment positional count
+        // since the argument value isn't complete
+        if (preg_match('/^(\w+)\s*:/', trim($currentArg), $m) === 1) {
+            $usedNames[] = $m[1];
+        }
+
+        return [$activeParam, $usedNames, $positionalCount];
+    }
+
+    /**
+     * Process a single argument's text to extract named arg info.
+     *
+     * @param list<string> $usedNames
+     */
+    private function processArgText(string $argText, array &$usedNames, int &$positionalCount, bool &$sawNamedArg): void
+    {
+        $argText = trim($argText);
+        if ($argText === '') {
+            return;
+        }
+
+        // Check for named argument pattern: `name:`
+        if (preg_match('/^(\w+)\s*:/', $argText, $m) === 1) {
+            $usedNames[] = $m[1];
+            $sawNamedArg = true;
+        } elseif (!$sawNamedArg) {
+            $positionalCount++;
+        }
+    }
+
+    /**
+     * Find the namespace string for a given line number.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function findNamespaceForLine(array $ast, int $line): ?string
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_ && $stmt->name !== null) {
+                $startLine = $stmt->getStartLine();
+                $endLine = $stmt->getEndLine();
+                if ($startLine <= $line + 1 && $line + 1 <= $endLine) {
+                    return $stmt->name->toString();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find the enclosing class name for a given line number.
+     *
+     * @param array<Stmt> $ast
+     * @return class-string|null
+     */
+    private function findEnclosingClassForLine(array $ast, int $line): ?string
+    {
+        $finder = new NodeFinder();
+        $classLikes = $finder->find($ast, function (Node $node) use ($line) {
+            if (
+                !$node instanceof Stmt\Class_
+                && !$node instanceof Stmt\Trait_
+                && !$node instanceof Stmt\Enum_
+            ) {
+                return false;
+            }
+            $startLine = $node->getStartLine();
+            $endLine = $node->getEndLine();
+            return $startLine <= $line + 1 && $line + 1 <= $endLine;
+        });
+
+        if (count($classLikes) === 0) {
+            return null;
+        }
+
+        $classNode = $classLikes[0];
+        assert(
+            $classNode instanceof Stmt\Class_
+            || $classNode instanceof Stmt\Trait_
+            || $classNode instanceof Stmt\Enum_
+        );
+        return ScopeFinder::getClassLikeName($classNode);
     }
 
     /**
@@ -562,6 +915,11 @@ final class SymbolResolver
         MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
         array $ast,
     ): ?Type {
+        // Check for pre-resolved type from text-based fallback
+        $resolvedType = $node->var->getAttribute('resolvedType');
+        if ($resolvedType instanceof Type) {
+            return $resolvedType;
+        }
         return ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
     }
 
@@ -852,9 +1210,9 @@ final class SymbolResolver
 
         // Fall back to built-in function via reflection
         try {
-            $funcInfo = FunctionInfo::fromReflection(new \ReflectionFunction($functionName));
+            $funcInfo = FunctionInfo::fromReflection(new ReflectionFunction($functionName));
             return new ResolvedFunction($funcInfo);
-        } catch (\ReflectionException) {
+        } catch (ReflectionException) {
             return null;
         }
     }
@@ -885,7 +1243,7 @@ final class SymbolResolver
         $enclosingScope = ScopeFinder::findEnclosingScope($param);
         // @codeCoverageIgnoreStart
         if ($enclosingScope === null) {
-            throw new \LogicException('Param node always has enclosing scope');
+            throw new LogicException('Param node always has enclosing scope');
         }
         // @codeCoverageIgnoreEnd
 
@@ -905,7 +1263,7 @@ final class SymbolResolver
             $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
             // @codeCoverageIgnoreStart
             if ($selfContext === null) {
-                throw new \LogicException('ClassMethod always has enclosing class');
+                throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
             $classInfo = $this->classRepository->get(new ClassName($selfContext));
@@ -915,7 +1273,7 @@ final class SymbolResolver
         $paramInfo = \Firehed\PhpLsp\Domain\ParameterInfo::fromNode($param, $position, $selfContext, $parentContext);
         // @codeCoverageIgnoreStart
         if ($paramInfo === null) {
-            throw new \LogicException('ParameterInfo::fromNode should not return null for valid Param');
+            throw new LogicException('ParameterInfo::fromNode should not return null for valid Param');
         }
         // @codeCoverageIgnoreEnd
         return new ResolvedParameter($paramInfo);
@@ -944,7 +1302,7 @@ final class SymbolResolver
             && !$call instanceof StaticCall
             && !$call instanceof New_
         ) {
-            throw new \LogicException('Named arg parent must be a call or attribute');
+            throw new LogicException('Named arg parent must be a call or attribute');
         }
         // @codeCoverageIgnoreEnd
 
@@ -994,7 +1352,7 @@ final class SymbolResolver
         $propertyName = $fetch->name;
         // @codeCoverageIgnoreStart
         if (!$propertyName instanceof Identifier) {
-            throw new \LogicException('resolvePropertyFetch called with non-Identifier name');
+            throw new LogicException('resolvePropertyFetch called with non-Identifier name');
         }
         // @codeCoverageIgnoreEnd
 
@@ -1021,12 +1379,12 @@ final class SymbolResolver
         $constName = $fetch->name;
         // @codeCoverageIgnoreStart
         if (!$constName instanceof Identifier) {
-            throw new \LogicException('resolveClassConstFetch called with non-Identifier name');
+            throw new LogicException('resolveClassConstFetch called with non-Identifier name');
         }
 
         $class = $fetch->class;
         if (!$class instanceof Name) {
-            throw new \LogicException('resolveClassConstFetch called with non-Name class');
+            throw new LogicException('resolveClassConstFetch called with non-Name class');
         }
         // @codeCoverageIgnoreEnd
 
@@ -1078,12 +1436,12 @@ final class SymbolResolver
         $propertyName = $fetch->name;
         // @codeCoverageIgnoreStart
         if (!$propertyName instanceof VarLikeIdentifier) {
-            throw new \LogicException('resolveStaticPropertyFetch called with non-VarLikeIdentifier name');
+            throw new LogicException('resolveStaticPropertyFetch called with non-VarLikeIdentifier name');
         }
 
         $class = $fetch->class;
         if (!$class instanceof Name) {
-            throw new \LogicException('resolveStaticPropertyFetch called with non-Name class');
+            throw new LogicException('resolveStaticPropertyFetch called with non-Name class');
         }
         // @codeCoverageIgnoreEnd
 

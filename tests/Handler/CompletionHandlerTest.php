@@ -2149,4 +2149,351 @@ class CompletionHandlerTest extends TestCase
             );
         }
     }
+
+    // =========================================================================
+    // Named argument completion (issue #126)
+    // =========================================================================
+
+    public function testNamedArgumentCompletionEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // All parameters should be suggested
+        self::assertContains('name:', $labels);
+        self::assertContains('count:', $labels);
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionAfterPositional(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_positional');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // First param is used positionally, remaining should be suggested
+        self::assertNotContains('name:', $labels);
+        self::assertContains('count:', $labels);
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionAfterNamed(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'name' and 'count' are both used (count appears after cursor)
+        self::assertNotContains('name:', $labels);
+        self::assertNotContains('count:', $labels);
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionMiddle(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'middle_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'name' and 'active' are used, only 'count' remains
+        self::assertNotContains('name:', $labels);
+        self::assertContains('count:', $labels);
+        self::assertNotContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionForStaticCall(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'static_named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertNotEmpty($result['items'], 'Got: ' . json_encode($labels));
+        self::assertContains('value:', $labels, 'Got: ' . json_encode($labels));
+        self::assertContains('limit:', $labels);
+    }
+
+    public function testNamedArgumentCompletionForConstructor(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'new_named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name:', $labels);
+        self::assertContains('age:', $labels);
+    }
+
+    public function testNamedArgumentCompletionShowsTypeInDetail(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+
+        $nameItems = array_filter($result['items'], fn($item) => $item['label'] === 'name:');
+        self::assertNotEmpty($nameItems);
+        $nameItem = reset($nameItems);
+        self::assertStringContainsString('string', $nameItem['detail'] ?? '');
+    }
+
+    public function testNamedArgumentCompletionInProceduralContext(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'procedural_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('message:', $labels);
+        self::assertContains('level:', $labels);
+        self::assertContains('verbose:', $labels);
+    }
+
+    public function testNamedArgumentCompletionInProceduralContextFiltersUsed(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'procedural_after_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'message' and 'level' are used
+        self::assertNotContains('message:', $labels);
+        self::assertNotContains('level:', $labels);
+        // Only 'verbose' remains
+        self::assertContains('verbose:', $labels);
+    }
+
+    public function testNamedArgumentCompletionWithIncompletePrefix(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'incomplete_with_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // multipleParams(string $name, int $count, bool $active)
+        // Prefix 'n' filters to only name: (starts with n)
+        self::assertContains('name:', $labels, 'Got: ' . json_encode($labels));
+        // count: and active: don't start with 'n' so they're filtered out
+        self::assertNotContains('count:', $labels);
+        self::assertNotContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionExcludesPositionallyFilledWhenMixed(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'mixed_positional_named');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // name: was filled positionally - should NOT be offered
+        self::assertNotContains('name:', $labels, 'Bug: name: was filled positionally but is being offered');
+        // count: is already used by name - should NOT be offered
+        self::assertNotContains('count:', $labels);
+        // active: is the only remaining unfilled parameter
+        self::assertContains('active:', $labels);
+    }
+
+    public function testNamedArgumentCompletionIsAdditive(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'additive_with_variable');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Named argument completions should be present
+        self::assertContains('name:', $labels, 'Named args should be offered');
+        // Variable completions should ALSO be present (additive behavior)
+        self::assertContains('$localVar', $labels, 'Variable completions should also be offered');
+    }
+
+    public function testNamedArgumentCompletionExcludesVariadicParameters(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'variadic_excluded');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // withVariadic(string $name, string ...$values)
+        // Regular param should be offered
+        self::assertContains('name:', $labels, 'Regular param should be offered');
+        // Variadic param should NOT be offered (PHP doesn't support named variadic args)
+        self::assertNotContains('values:', $labels, 'Variadic params cannot be used as named arguments');
+    }
+
+    public function testNamedArgumentCompletionForNullsafeMethodCall(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'nullsafe_method_call');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // multipleParams(string $name, int $count, bool $active)
+        // First param filled positionally, remaining should be offered
+        self::assertNotContains('name:', $labels, 'First param filled positionally');
+        self::assertContains('count:', $labels, 'Nullsafe method call should offer named args');
+        self::assertContains('active:', $labels, 'Nullsafe method call should offer named args');
+    }
+
+    public function testNamedArgumentCompletionWhileEditingInCompleteCall(): void
+    {
+        // Open the file containing ParamClass so ClassRepository can find it
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'editing_in_complete');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // ParamClass(string $name, int $age = 0)
+        // First param filled positionally, age is already used
+        self::assertNotContains('name:', $labels, 'First param filled positionally');
+        self::assertNotContains('age:', $labels, 'age is already used as named arg');
+    }
+
+    public function testNamedArgumentCompletionWhileEditingBeforeColon(): void
+    {
+        // Open the file containing ParamClass so ClassRepository can find it
+        $this->openFixture('src/Completion/NamedArguments.php');
+
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'editing_before_colon');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // For invalid syntax `new ParamClass('test', : 5)`, the call context should still be detected
+        // and named args should be offered
+        self::assertTrue(
+            in_array('name:', $labels, true) || in_array('age:', $labels, true),
+            'Should offer some named args when editing before colon',
+        );
+    }
+
+    public function testVariableCompletionInsideCallContext(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'variable_in_call');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Should offer both named args and variables starting with $va
+        self::assertContains('$variable', $labels, 'Should offer variable completions inside call');
+        self::assertContains('name:', $labels, 'Should also offer named args inside call');
+    }
+
+    public function testNamedArgAfterCompleteValue(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_named_value');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // After a complete named arg value without comma, should still offer remaining params
+        self::assertContains('count:', $labels, 'Should offer remaining named args after complete value');
+    }
+
+    public function testNamedArgAfterStringValue(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_string_value');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // After a string value, should still detect call context and offer named args
+        self::assertContains('count:', $labels, 'Should offer named args after string value');
+    }
+
+    public function testNamedArgAfterDoubleQuotedString(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'after_double_string');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // After a double-quoted string, should still detect call context
+        self::assertContains('count:', $labels, 'Should offer named args after double-quoted string');
+    }
+
+    public function testNoStatementKeywordsAfterNamedArgColon(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_colon');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // Statement keywords should NOT be offered after `name: `
+        self::assertNotContains('if', $labels, 'Statement keywords should not appear after named arg colon');
+        self::assertNotContains('class', $labels, 'Declaration keywords should not appear after named arg colon');
+        self::assertNotContains('function', $labels, 'Declaration keywords should not appear after named arg colon');
+        self::assertNotContains('while', $labels, 'Statement keywords should not appear after named arg colon');
+        // Expression keywords SHOULD be offered
+        self::assertContains('new', $labels, 'Expression keywords should appear after named arg colon');
+        self::assertContains('true', $labels, 'Literal keywords should appear after named arg colon');
+        self::assertContains('false', $labels, 'Literal keywords should appear after named arg colon');
+        self::assertContains('null', $labels, 'Literal keywords should appear after named arg colon');
+    }
+
+    public function testExpressionKeywordsFilteredByPrefixAfterColon(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_colon_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+        // 'n' prefix should match 'new' and 'null' but not 'true', 'false', 'match'
+        self::assertContains('new', $labels, 'new should match prefix n');
+        self::assertContains('null', $labels, 'null should match prefix n');
+        self::assertNotContains('true', $labels, 'true should not match prefix n');
+        self::assertNotContains('if', $labels, 'Statement keywords should not appear');
+        // name: is already used, should not be offered
+        self::assertNotContains('name:', $labels, 'Already-used named arg should not be offered');
+    }
 }
