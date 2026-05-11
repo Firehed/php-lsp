@@ -1015,6 +1015,62 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($context, 'Should return null when cursor is inside static call arguments');
     }
 
+    // =========================================================================
+    // getMemberAccessContext: Incomplete code in control structures
+    // These test text-based fallback when AST detection fails
+    // =========================================================================
+
+    /**
+     * @return array<string, array{string, MemberAccessKind}>
+     * @codeCoverageIgnore
+     */
+    public static function incompleteCodeMemberAccessProvider(): array
+    {
+        return [
+            'this in if' => ['this_access_if', MemberAccessKind::Instance],
+            'var in while' => ['var_access_while', MemberAccessKind::Instance],
+            'nullsafe in for' => ['nullsafe_access_for', MemberAccessKind::Instance],
+            'static in match' => ['static_access_match', MemberAccessKind::Static],
+            'self in switch' => ['self_access_switch', MemberAccessKind::Static],
+            'this with prefix in if' => ['this_prefix_if', MemberAccessKind::Instance],
+            'in return' => ['in_return', MemberAccessKind::Instance],
+            'in assignment' => ['in_assignment', MemberAccessKind::Instance],
+            'in array' => ['in_array', MemberAccessKind::Instance],
+            'in call arg' => ['in_call_arg', MemberAccessKind::Instance],
+            'in ternary' => ['in_ternary', MemberAccessKind::Instance],
+        ];
+    }
+
+    #[DataProvider('incompleteCodeMemberAccessProvider')]
+    public function testGetMemberAccessContextInIncompleteCode(string $marker, MemberAccessKind $expectedKind): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', $marker);
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            MemberAccessContext::class,
+            $context,
+            "getMemberAccessContext should return context for marker '$marker'",
+        );
+        self::assertSame($expectedKind, $context->kind, "Access kind should match for marker '$marker'");
+    }
+
+    public function testGetMemberAccessContextInIfWithPrefixReturnsPrefix(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'this_prefix_if');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame('get', $context->prefix, 'Prefix should be extracted from incomplete member access');
+    }
+
     public function testIsInstantiableReturnsFalseForAbstractClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');

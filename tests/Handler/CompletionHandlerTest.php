@@ -24,6 +24,7 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompletionHandler::class)]
@@ -2495,5 +2496,124 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('if', $labels, 'Statement keywords should not appear');
         // name: is already used, should not be offered
         self::assertNotContains('name:', $labels, 'Already-used named arg should not be offered');
+    }
+
+    // =========================================================================
+    // Incomplete code in control structures
+    // =========================================================================
+
+    /**
+     * @return array<string, array{string}>
+     * @codeCoverageIgnore
+     */
+    public static function emptyConditionMarkerProvider(): array
+    {
+        return [
+            'if' => ['empty_if'],
+            'while' => ['empty_while'],
+            'for' => ['empty_for'],
+            'foreach' => ['empty_foreach'],
+            'switch' => ['empty_switch'],
+            'match' => ['empty_match'],
+            'do-while' => ['empty_do_while'],
+            'elseif' => ['empty_elseif'],
+        ];
+    }
+
+    #[DataProvider('emptyConditionMarkerProvider')]
+    public function testCompletionInEmptyCondition(string $marker): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', $marker);
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should offer variables in scope
+        self::assertContains('$this', $labels, "Variables should be offered in $marker condition");
+
+        // Should offer expression keywords
+        self::assertContains('new', $labels, "Expression keywords should be offered in $marker condition");
+        self::assertContains('true', $labels, "Boolean literals should be offered in $marker condition");
+    }
+
+    /**
+     * @return array<string, array{string}>
+     * @codeCoverageIgnore
+     */
+    public static function memberAccessInConditionProvider(): array
+    {
+        return [
+            'this in if' => ['this_access_if'],
+            'var in while' => ['var_access_while'],
+            'nullsafe in for' => ['nullsafe_access_for'],
+            'in return' => ['in_return'],
+            'in assignment' => ['in_assignment'],
+            'in array' => ['in_array'],
+            'in call arg' => ['in_call_arg'],
+        ];
+    }
+
+    #[DataProvider('memberAccessInConditionProvider')]
+    public function testCompletionMemberAccessInIncompleteCode(string $marker): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', $marker);
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should offer class members
+        self::assertContains('getName', $labels, "Methods should be offered for marker '$marker'");
+        self::assertContains('name', $labels, "Properties should be offered for marker '$marker'");
+    }
+
+    /**
+     * @return array<string, array{string}>
+     * @codeCoverageIgnore
+     */
+    public static function staticAccessInConditionProvider(): array
+    {
+        return [
+            'static in match' => ['static_access_match'],
+            'self in switch' => ['self_access_switch'],
+        ];
+    }
+
+    #[DataProvider('staticAccessInConditionProvider')]
+    public function testCompletionStaticAccessInIncompleteCode(string $marker): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', $marker);
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+
+        // Should return some completions (static members)
+        self::assertNotEmpty($result['items'], "Static access should return completions for marker '$marker'");
+    }
+
+    public function testCompletionMemberAccessWithPrefixInIncompleteCode(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'this_prefix_if');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should filter by prefix 'get'
+        self::assertContains('getName', $labels, 'Methods matching prefix should be offered');
+        self::assertContains('getUser', $labels, 'Methods matching prefix should be offered');
+        self::assertNotContains('setName', $labels, 'Methods not matching prefix should be filtered');
+        self::assertNotContains('name', $labels, 'Properties not matching prefix should be filtered');
     }
 }
