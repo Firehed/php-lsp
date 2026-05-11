@@ -156,6 +156,117 @@ final class SymbolResolver
     }
 
     /**
+     * Get members from document text when AST-based resolution fails.
+     *
+     * This is a fallback for when the document doesn't parse but we've identified
+     * the class name via text-based detection. It extracts basic member info using regex.
+     *
+     * @return list<ResolvedMember>
+     */
+    public function getAccessibleMembersFromText(
+        TextDocument $document,
+        ClassName $className,
+        Visibility $minVisibility,
+        MemberFilter $filter = MemberFilter::Instance,
+    ): array {
+        $content = $document->getContent();
+        $members = [];
+        $includeStatic = $filter !== MemberFilter::Instance;
+
+        // Find the class declaration to scope our search
+        $classPattern = '/(?:class|trait|enum)\s+' . preg_quote($className->shortName(), '/') . '\b/';
+        if (preg_match($classPattern, $content, $match, PREG_OFFSET_CAPTURE) !== 1) {
+            return [];
+        }
+        $classStart = $match[0][1];
+
+        // Extract text from class declaration onwards (rough approximation)
+        $classContent = substr($content, $classStart);
+
+        // Extract methods
+        $methodPattern = '/^\s*(public|protected|private)\s+(?:static\s+)?function\s+(\w+)\s*\(/m';
+        if (preg_match_all($methodPattern, $classContent, $methodMatches, PREG_SET_ORDER) > 0) {
+            foreach ($methodMatches as $methodMatch) {
+                $visibility = Visibility::fromString($methodMatch[1]);
+                if ($visibility->isAccessibleFrom($minVisibility)) {
+                    $isStatic = str_contains($methodMatch[0], 'static');
+                    $includeThis = $filter === MemberFilter::All
+                        || ($isStatic && $includeStatic)
+                        || (!$isStatic && !$includeStatic);
+                    if ($includeThis) {
+                        $methodInfo = new \Firehed\PhpLsp\Domain\MethodInfo(
+                            name: new \Firehed\PhpLsp\Domain\MethodName($methodMatch[2]),
+                            visibility: $visibility,
+                            isStatic: $isStatic,
+                            isAbstract: false,
+                            isFinal: false,
+                            parameters: [],
+                            returnType: null,
+                            declaringClass: $className,
+                            docblock: null,
+                            file: null,
+                            line: null,
+                        );
+                        $members[] = new ResolvedMethod($methodInfo);
+                    }
+                }
+            }
+        }
+
+        // Extract properties (only for instance filter)
+        if ($filter !== MemberFilter::Static) {
+            // Pattern: visibility, optional static/readonly/type, then $name
+            $propertyPattern = '/^\s*(public|protected|private)\s+'
+                . '(?:static\s+)?(?:readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
+            if (preg_match_all($propertyPattern, $classContent, $propMatches, PREG_SET_ORDER) > 0) {
+                foreach ($propMatches as $propMatch) {
+                    $visibility = Visibility::fromString($propMatch[1]);
+                    if ($visibility->isAccessibleFrom($minVisibility)) {
+                        $isStatic = str_contains($propMatch[0], 'static');
+                        if (!$isStatic || $includeStatic) {
+                            $propertyInfo = new \Firehed\PhpLsp\Domain\PropertyInfo(
+                                name: new \Firehed\PhpLsp\Domain\PropertyName($propMatch[2]),
+                                visibility: $visibility,
+                                isStatic: $isStatic,
+                                isReadonly: str_contains($propMatch[0], 'readonly'),
+                                isPromoted: false,
+                                type: null,
+                                docblock: null,
+                                file: null,
+                                line: null,
+                                declaringClass: $className,
+                            );
+                            $members[] = new ResolvedProperty($propertyInfo);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Extract constants (only for static filter)
+        if ($includeStatic) {
+            $constPattern = '/^\s*(?:public|protected|private)?\s*const\s+(\w+)\s*=/m';
+            if (preg_match_all($constPattern, $classContent, $constMatches, PREG_SET_ORDER) > 0) {
+                foreach ($constMatches as $constMatch) {
+                    $constantInfo = new \Firehed\PhpLsp\Domain\ConstantInfo(
+                        name: new \Firehed\PhpLsp\Domain\ConstantName($constMatch[1]),
+                        visibility: Visibility::Public,
+                        isFinal: false,
+                        type: null,
+                        docblock: null,
+                        file: null,
+                        line: null,
+                        declaringClass: $className,
+                    );
+                    $members[] = new ResolvedConstant($constantInfo);
+                }
+            }
+        }
+
+        return $members;
+    }
+
+    /**
      * Check if a class can be instantiated with `new`.
      * Returns true for unknown classes (optimistic filtering).
      */
@@ -205,7 +316,8 @@ final class SymbolResolver
         $node = $nodeFinder->find($ast, $offset > 0 ? $offset - 1 : 0);
 
         if ($node === null) {
-            return null;
+            // AST-based detection failed completely, try text-based fallback
+            return $this->getMemberAccessContextFromText($document, $ast, $line, $character);
         }
 
         // Handle identifier/error by checking parent
@@ -235,19 +347,19 @@ final class SymbolResolver
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
             $type = $this->resolveInstanceAccessType($node, $ast);
-            if ($type === null) {
-                return null;
+            if ($type !== null) {
+                $isThis = $node->var instanceof Variable && $node->var->name === 'this';
+                $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
+                $classNames = $type->getResolvableClassNames();
+                $className = $classNames[0] ?? null;
+                $isSameClass = $enclosingClassName !== null && $className !== null
+                    && $enclosingClassName === $className->fqn;
+                $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
+
+                return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
             }
-
-            $isThis = $node->var instanceof Variable && $node->var->name === 'this';
-            $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
-            $classNames = $type->getResolvableClassNames();
-            $className = $classNames[0] ?? null;
-            $isSameClass = $enclosingClassName !== null && $className !== null
-                && $enclosingClassName === $className->fqn;
-            $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
-
-            return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+            // AST found the node but couldn't resolve type - try text-based fallback
+            return $this->getMemberAccessContextFromText($document, $ast, $line, $character);
         }
 
         // Static access: ClassName::member
@@ -259,10 +371,215 @@ final class SymbolResolver
                     return null;
                 }
             }
+            // AST found a static access node - if it can't be resolved, that's intentional
+            // (e.g., self:: outside a class). Don't fall through to text-based.
             return $this->resolveStaticAccessContext($node, $ast, $line);
         }
 
+        // Text-based fallback for incomplete code where AST detection failed
+        return $this->getMemberAccessContextFromText($document, $ast, $line, $character);
+    }
+
+    /**
+     * Text-based fallback for member access detection when AST fails.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function getMemberAccessContextFromText(
+        TextDocument $document,
+        array $ast,
+        int $line,
+        int $character,
+    ): ?MemberAccessContext {
+        $lineText = $document->getLine($line);
+        $textBeforeCursor = substr($lineText, 0, $character);
+
+        // Instance access: $var->prefix or $var?->prefix
+        if (preg_match('/\$(\w+)(\?)?->([\w]*)$/', $textBeforeCursor, $matches) === 1) {
+            $varName = $matches[1];
+            $isNullsafe = $matches[2] === '?';
+            $prefix = $matches[3];
+            return $this->resolveInstanceAccessFromText($varName, $prefix, $ast, $line, $document);
+        }
+
+        // Static access: ClassName::prefix or self::prefix or static::prefix or parent::prefix
+        // Negative lookbehind (?<!\$) excludes $variable:: (dynamic class names)
+        if (preg_match('/(?<!\$)([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::([\w]*)$/', $textBeforeCursor, $matches) === 1) {
+            $className = $matches[1];
+            $prefix = $matches[2];
+            return $this->resolveStaticAccessFromText($className, $prefix, $ast, $line, $document);
+        }
+
         return null;
+    }
+
+    /**
+     * Resolve instance member access from text-based detection.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveInstanceAccessFromText(
+        string $varName,
+        string $prefix,
+        array $ast,
+        int $line,
+        TextDocument $document,
+    ): ?MemberAccessContext {
+        // Handle $this specially
+        if ($varName === 'this') {
+            // Try AST-based class lookup first
+            $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+            // Fall back to text-based class lookup
+            if ($enclosingClass === null) {
+                $enclosingClass = $this->findEnclosingClassFromText($document, $line);
+            }
+            if ($enclosingClass === null) {
+                return null;
+            }
+            $type = new ClassName($enclosingClass);
+            return new MemberAccessContext($type, Visibility::Private, MemberAccessKind::Instance, $prefix);
+        }
+
+        // Resolve variable type - requires AST with valid scope
+        // Get offset from line (approximate - use start of line)
+        $offset = 0;
+        for ($i = 0; $i < $line; $i++) {
+            $offset += strlen($document->getLine($i)) + 1; // +1 for newline
+        }
+        $scope = $this->findScopeAtOffset($ast, $offset);
+        if ($scope === null) {
+            // Can't resolve non-$this variables without AST scope
+            return null;
+        }
+        $type = $this->typeResolver->resolveVariableType($varName, $scope, $line, $ast);
+        if ($type === null) {
+            return null;
+        }
+
+        // Determine visibility based on whether the variable type is the enclosing class
+        $enclosingClassName = ScopeFinder::findEnclosingClassName($scope);
+        $classNames = $type->getResolvableClassNames();
+        $className = $classNames[0] ?? null;
+        $isSameClass = $enclosingClassName !== null && $className !== null
+            && $enclosingClassName === $className->fqn;
+        $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
+
+        return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+    }
+
+    /**
+     * Find enclosing class name by scanning document text backwards.
+     *
+     * @return class-string|null
+     */
+    private function findEnclosingClassFromText(TextDocument $document, int $line): ?string
+    {
+        return $this->findEnclosingClassFromContent($document->getContent(), $line);
+    }
+
+    /**
+     * Find enclosing class name by scanning content text backwards.
+     *
+     * @return class-string|null
+     */
+    private function findEnclosingClassFromContent(string $content, int $line): ?string
+    {
+        $lines = explode("\n", $content);
+
+        // Scan backwards from current line looking for class/trait/enum declaration
+        $classPattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|trait|enum)\s+(\w+)/i';
+        for ($i = $line; $i >= 0; $i--) {
+            $lineText = $lines[$i] ?? '';
+            // Match class, trait, or enum declaration
+            if (preg_match($classPattern, $lineText, $matches) === 1) {
+                $shortName = $matches[1];
+                // Find namespace
+                $namespace = $this->findNamespaceFromText($lines, $i);
+                if ($namespace !== null) {
+                    /** @var class-string */
+                    return $namespace . '\\' . $shortName;
+                }
+                /** @var class-string */
+                return $shortName;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find namespace declaration by scanning lines.
+     *
+     * @param list<string> $lines
+     */
+    private function findNamespaceFromText(array $lines, int $beforeLine): ?string
+    {
+        for ($i = $beforeLine - 1; $i >= 0; $i--) {
+            $lineText = $lines[$i] ?? '';
+            if (preg_match('/^\s*namespace\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*[;{]/', $lineText, $matches) === 1) {
+                return $matches[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolve static member access from text-based detection.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveStaticAccessFromText(
+        string $className,
+        string $prefix,
+        array $ast,
+        int $line,
+        TextDocument $document,
+    ): ?MemberAccessContext {
+        // Handle special class names: self, static, parent
+        $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+        // Fall back to text-based class lookup
+        if ($enclosingClass === null) {
+            $enclosingClass = $this->findEnclosingClassFromText($document, $line);
+        }
+        $lowerClassName = strtolower($className);
+
+        if ($lowerClassName === 'self' || $lowerClassName === 'static') {
+            if ($enclosingClass === null) {
+                return null;
+            }
+            $type = new ClassName($enclosingClass);
+            return new MemberAccessContext($type, Visibility::Private, MemberAccessKind::Static, $prefix);
+        }
+
+        if ($lowerClassName === 'parent') {
+            // Parent requires AST to find the extends clause - can't do text-based
+            $classNode = ScopeFinder::findClassAtLine($ast, $line);
+            if ($classNode === null) {
+                return null;
+            }
+            $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+            if ($parentClassName === null) {
+                return null;
+            }
+            $type = new ClassName($parentClassName);
+            return new MemberAccessContext($type, Visibility::Protected, MemberAccessKind::Parent, $prefix);
+        }
+
+        // Regular class name - resolve it
+        $name = $this->resolveNameFromText($className, $ast, $line);
+        $resolvedName = $name->getAttribute('resolvedName');
+        $fqn = $resolvedName instanceof Name\FullyQualified
+            ? $resolvedName->toString()
+            : $className;
+
+        /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
+        $type = new ClassName($fqn);
+
+        // Determine visibility
+        $isSameClass = $enclosingClass !== null && $enclosingClass === $fqn;
+        $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
+
+        return new MemberAccessContext($type, $visibility, MemberAccessKind::Static, $prefix);
     }
 
     /**
@@ -429,20 +746,36 @@ final class SymbolResolver
         }
 
         $offset = $document->offsetAt($line, $character);
+        $content = $document->getContent();
 
         $callInfo = $this->findCallAtPosition($ast, $offset);
-        if ($callInfo === null) {
+        $callable = null;
+        $activeParameter = 0;
+        $usedNames = [];
+        $positionalCount = 0;
+
+        if ($callInfo !== null) {
+            [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
+            $callable = $this->resolveCallable($callNode, $ast);
+            if ($callable === null) {
+                // AST found a call node but couldn't resolve type - try text-based
+                // This happens with $this-> in incomplete code where AST lacks class context
+                $textCallInfo = $this->findCallFromText($ast, $offset, $content, $line);
+                if ($textCallInfo !== null) {
+                    [$callNode, $activeParameter, $usedNames, $positionalCount] = $textCallInfo;
+                    $callable = $this->resolveCallable($callNode, $ast);
+                }
+            }
+        } else {
             // Fallback: text-based detection for incomplete calls where parser
             // couldn't create proper call nodes
-            $callInfo = $this->findCallFromText($ast, $offset, $document->getContent(), $line);
-        }
-        if ($callInfo === null) {
-            return null;
+            $callInfo = $this->findCallFromText($ast, $offset, $content, $line);
+            if ($callInfo !== null) {
+                [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
+                $callable = $this->resolveCallable($callNode, $ast);
+            }
         }
 
-        [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-
-        $callable = $this->resolveCallable($callNode, $ast);
         if ($callable === null) {
             return null;
         }
@@ -546,7 +879,7 @@ final class SymbolResolver
         $textBeforeParen = substr($content, 0, $parenPos);
 
         // Try to match call patterns and resolve the callable
-        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $line);
+        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $line, $content);
         if ($callNode === null) {
             return null;
         }
@@ -591,6 +924,7 @@ final class SymbolResolver
         string $textBeforeParen,
         array $ast,
         int $line,
+        string $content,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null {
         $text = rtrim($textBeforeParen);
 
@@ -610,6 +944,10 @@ final class SymbolResolver
             // For $this, store the enclosing class so resolveMethodCallCallable can use it
             if ($varName === 'this') {
                 $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+                // Fall back to text-based class lookup for incomplete code
+                if ($enclosingClass === null) {
+                    $enclosingClass = $this->findEnclosingClassFromContent($content, $line);
+                }
                 if ($enclosingClass !== null) {
                     $var->setAttribute('resolvedType', new ClassName($enclosingClass));
                 }
@@ -624,6 +962,10 @@ final class SymbolResolver
             $var = new Variable($varName);
             if ($varName === 'this') {
                 $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+                // Fall back to text-based class lookup for incomplete code
+                if ($enclosingClass === null) {
+                    $enclosingClass = $this->findEnclosingClassFromContent($content, $line);
+                }
                 if ($enclosingClass !== null) {
                     $var->setAttribute('resolvedType', new ClassName($enclosingClass));
                 }
