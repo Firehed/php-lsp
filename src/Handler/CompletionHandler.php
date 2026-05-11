@@ -170,7 +170,7 @@ final class CompletionHandler implements HandlerInterface
         // Member/static access via SymbolResolver
         $memberContext = $this->symbolResolver->getMemberAccessContext($document, $line, $character);
         if ($memberContext !== null) {
-            return $this->handleMemberAccessContext($memberContext);
+            return $this->handleMemberAccessContext($memberContext, $document);
         }
 
         // Inside a call context, offer named arguments + variables
@@ -281,7 +281,7 @@ final class CompletionHandler implements HandlerInterface
     /**
      * @return list<CompletionItem>
      */
-    private function handleMemberAccessContext(MemberAccessContext $context): array
+    private function handleMemberAccessContext(MemberAccessContext $context, TextDocument $document): array
     {
         $classNames = $context->type->getResolvableClassNames();
         if ($classNames === []) {
@@ -301,6 +301,16 @@ final class CompletionHandler implements HandlerInterface
                 $context->minVisibility,
                 $filter,
             );
+
+            // Fall back to text-based extraction when AST-based resolution fails
+            if ($members === []) {
+                $members = $this->symbolResolver->getAccessibleMembersFromText(
+                    $document,
+                    $className,
+                    $context->minVisibility,
+                    $filter,
+                );
+            }
 
             foreach ($members as $member) {
                 if ($context->kind === MemberAccessKind::Parent && !$member instanceof ResolvedMethod) {
