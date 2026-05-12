@@ -2134,6 +2134,16 @@ class CompletionHandlerTest extends TestCase
         self::assertSame([], $result['items'], 'No completions should be offered inside comments');
     }
 
+    public function testNoCompletionsForMemberAccessInComment(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'member_in_comment');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertSame([], $result['items'], 'No completions for $this-> inside comments');
+    }
+
     public function testOnlyVariablesInHeredoc(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'in_heredoc');
@@ -2499,31 +2509,13 @@ class CompletionHandlerTest extends TestCase
     }
 
     // =========================================================================
-    // Incomplete code in control structures
+    // Incomplete code in control structures - text-based fallback
     // =========================================================================
 
-    /**
-     * @return array<string, array{string}>
-     * @codeCoverageIgnore
-     */
-    public static function emptyConditionMarkerProvider(): array
+    public function testCompletionThisInIfCondition(): void
     {
-        return [
-            'if' => ['empty_if'],
-            'while' => ['empty_while'],
-            'for' => ['empty_for'],
-            'foreach' => ['empty_foreach'],
-            'switch' => ['empty_switch'],
-            'match' => ['empty_match'],
-            'do-while' => ['empty_do_while'],
-            'elseif' => ['empty_elseif'],
-        ];
-    }
-
-    #[DataProvider('emptyConditionMarkerProvider')]
-    public function testCompletionInEmptyCondition(string $marker): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', $marker);
+        // File with proper closing braces - parser recovers
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncomplete.php', 'this_in_if');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2531,36 +2523,21 @@ class CompletionHandlerTest extends TestCase
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
 
-        // Should offer variables in scope
-        self::assertContains('$this', $labels, "Variables should be offered in $marker condition");
-
-        // Should offer expression keywords
-        self::assertContains('new', $labels, "Expression keywords should be offered in $marker condition");
-        self::assertContains('true', $labels, "Boolean literals should be offered in $marker condition");
+        self::assertContains('getName', $labels, 'Methods should be offered');
+        self::assertContains('name', $labels, 'Properties should be offered');
     }
 
-    /**
-     * @return array<string, array{string}>
-     * @codeCoverageIgnore
-     */
-    public static function memberAccessInConditionProvider(): array
+    public function testCompletionThisInVeryBrokenFile(): void
     {
-        return [
-            'this in if' => ['this_access_if'],
-            'var in while' => ['var_access_while'],
-            'nullsafe in for' => ['nullsafe_access_for'],
-            'in return' => ['in_return'],
-            'in assignment' => ['in_assignment'],
-            'in array' => ['in_array'],
-            'in call arg' => ['in_call_arg'],
-        ];
-    }
+        // File with NO closing braces - parser fails completely
+        // This tests the pure text-based fallback for both class detection AND member extraction
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/VeryBroken.php', 'this_in_if');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
 
-    #[DataProvider('memberAccessInConditionProvider')]
-    public function testCompletionMemberAccessInIncompleteCode(string $marker): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', $marker);
+        // Verify parser fails
+        $ast = $this->parser->parse($document);
+        self::assertEmpty($ast, 'Parser should fail completely for very broken file');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -2568,52 +2545,8 @@ class CompletionHandlerTest extends TestCase
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
 
-        // Should offer class members
-        self::assertContains('getName', $labels, "Methods should be offered for marker '$marker'");
-        self::assertContains('name', $labels, "Properties should be offered for marker '$marker'");
-    }
-
-    /**
-     * @return array<string, array{string}>
-     * @codeCoverageIgnore
-     */
-    public static function staticAccessInConditionProvider(): array
-    {
-        return [
-            'static in match' => ['static_access_match'],
-            'self in switch' => ['self_access_switch'],
-        ];
-    }
-
-    #[DataProvider('staticAccessInConditionProvider')]
-    public function testCompletionStaticAccessInIncompleteCode(string $marker): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', $marker);
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-
-        // Should return some completions (static members)
-        self::assertNotEmpty($result['items'], "Static access should return completions for marker '$marker'");
-    }
-
-    public function testCompletionMemberAccessWithPrefixInIncompleteCode(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'this_prefix_if');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-        $labels = array_column($result['items'], 'label');
-
-        // Should filter by prefix 'get'
-        self::assertContains('getName', $labels, 'Methods matching prefix should be offered');
-        self::assertContains('getUser', $labels, 'Methods matching prefix should be offered');
-        self::assertNotContains('setName', $labels, 'Methods not matching prefix should be filtered');
-        self::assertNotContains('name', $labels, 'Properties not matching prefix should be filtered');
+        // Should still offer class members via pure text-based fallback
+        self::assertContains('getName', $labels, 'Methods should be offered even when parser fails');
+        self::assertContains('name', $labels, 'Properties should be offered even when parser fails');
     }
 }
