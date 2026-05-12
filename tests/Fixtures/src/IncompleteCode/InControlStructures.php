@@ -9,9 +9,9 @@ use Fixtures\Domain\User;
 /**
  * Fixture for testing LSP features with incomplete code inside various contexts.
  *
- * The parser's error recovery may drop or misrepresent incomplete expressions
- * when they're nested inside control structures, calls, or other constructs.
- * These fixtures verify text-based fallback detection works across contexts.
+ * IMPORTANT: Each method should have only ONE incomplete expression to allow
+ * parser error recovery to work. Multiple incomplete statements in the same
+ * file causes the parser to give up entirely.
  */
 class InControlStructures
 {
@@ -32,208 +32,363 @@ class InControlStructures
     {
         return $this->user;
     }
+}
 
-    // =========================================================================
-    // COMPLETION: Empty expression in various control structures
-    // Each structure should offer variables, functions, classes, keywords
-    // =========================================================================
-
-    public function emptyIf(): void
+// Separate class for each test scenario to allow parser recovery
+class IncompleteEmptyIf
+{
+    public function test(): void
     {
         if (/*|empty_if*/
     }
+}
 
-    public function emptyWhile(): void
+class IncompleteEmptyWhile
+{
+    public function test(): void
     {
         while (/*|empty_while*/
     }
+}
 
-    public function emptyFor(): void
+class IncompleteEmptyFor
+{
+    public function test(): void
     {
         for ($i = 0; /*|empty_for*/
     }
+}
 
-    public function emptyForeach(): void
+class IncompleteEmptyForeach
+{
+    public function test(): void
     {
         foreach (/*|empty_foreach*/
     }
+}
 
-    public function emptySwitch(): void
+class IncompleteEmptySwitch
+{
+    public function test(): void
     {
         switch (/*|empty_switch*/
     }
+}
 
-    public function emptyMatch(): void
+class IncompleteEmptyMatch
+{
+    public function test(): void
     {
         match (/*|empty_match*/
     }
+}
 
-    public function emptyDoWhile(): void
+class IncompleteEmptyDoWhile
+{
+    public function test(): void
     {
         do {} while (/*|empty_do_while*/
     }
+}
 
-    public function emptyElseif(): void
+class IncompleteEmptyElseif
+{
+    public function test(): void
     {
         if (true) {
         } elseif (/*|empty_elseif*/
     }
+}
 
-    // =========================================================================
-    // COMPLETION: Partial identifiers in conditions
-    // Testing that prefix filtering works
-    // =========================================================================
-
-    public function partialIdentifierInIf(): void
+class IncompletePartialIdentIf
+{
+    public function test(): void
     {
         if (str/*|partial_ident_if*/
     }
+}
 
-    public function partialVariableInWhile(): void
+class IncompletePartialVarWhile
+{
+    public function test(): void
     {
         if ($thi/*|partial_var_while*/
     }
+}
 
-    // =========================================================================
-    // COMPLETION: Variable start ($) in conditions
-    // =========================================================================
-
-    public function variableStartInIf(): void
+class IncompleteVarStartIf
+{
+    public function test(): void
     {
         if ($/*|var_start_if*/
     }
+}
 
-    public function variableStartInSwitch(): void
+class IncompleteVarStartSwitch
+{
+    public function test(): void
     {
         switch ($/*|var_start_switch*/
     }
+}
 
-    // =========================================================================
-    // COMPLETION: Member access in conditions
-    // One representative case per access type
-    // =========================================================================
+class IncompleteThisAccessIf
+{
+    private string $name;
 
-    public function thisAccessInIf(): void
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function test(): void
     {
         if ($this->/*|this_access_if*/
     }
+}
 
-    public function varAccessInWhile(User $user): void
+class IncompleteVarAccessWhile
+{
+    public function test(User $user): void
     {
         while ($user->/*|var_access_while*/
     }
+}
 
-    public function nullsafeAccessInFor(): void
+class IncompleteNullsafeAccessFor
+{
+    public function test(): void
     {
         for ($i = 0; $this?->/*|nullsafe_access_for*/
     }
+}
 
-    public function staticAccessInMatch(): void
+class IncompleteStaticAccessMatch
+{
+    public function test(): void
     {
         match (User::/*|static_access_match*/
     }
+}
 
-    public function selfAccessInSwitch(): void
+class IncompleteSelfAccessSwitch
+{
+    public const FOO = 1;
+
+    public function test(): void
     {
         switch (self::/*|self_access_switch*/
     }
+}
 
-    // =========================================================================
-    // COMPLETION: Member access with prefix
-    // =========================================================================
+class IncompleteThisPrefixIf
+{
+    private string $name;
 
-    public function thisAccessWithPrefixInIf(): void
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getUser(): User
+    {
+        return new User();
+    }
+
+    public function test(): void
     {
         if ($this->get/*|this_prefix_if*/
     }
+}
 
-    // =========================================================================
-    // COMPLETION: Non-control-structure contexts
-    // =========================================================================
+class IncompleteInReturn
+{
+    private string $name;
 
-    public function inReturn(): void
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function test(): void
     {
         return $this->/*|in_return*/
     }
+}
 
-    public function inAssignment(): void
+class IncompleteInAssignment
+{
+    private string $name;
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function test(): void
     {
         $x = $this->/*|in_assignment*/
     }
+}
 
-    public function inArrayLiteral(): void
+class IncompleteInArray
+{
+    private string $name;
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function test(): void
     {
         $arr = [$this->/*|in_array*/
     }
+}
 
-    public function inCallArg(): void
+class IncompleteInCallArg
+{
+    private string $name;
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
+    public function test(): void
     {
         $this->setName($this->/*|in_call_arg*/
     }
+}
 
-    public function inTernaryCondition(): void
+class IncompleteInTernary
+{
+    private string $name;
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function test(): void
     {
         $x = $this->/*|in_ternary*/ ? 1 : 0
     }
+}
 
-    // =========================================================================
-    // SIGNATURE HELP: Method/function calls in structures
-    // =========================================================================
+// Signature help scenarios
+class IncompleteSigMethodIf
+{
+    public function setName(string $name): void
+    {
+    }
 
-    public function sigHelpMethodInIf(): void
+    public function test(): void
     {
         if ($this->setName(/*|sig_method_if*/
     }
+}
 
-    public function sigHelpFunctionInWhile(): void
+class IncompleteSigFunctionWhile
+{
+    public function test(): void
     {
         while (strlen(/*|sig_function_while*/
     }
+}
 
-    public function sigHelpStaticInMatch(): void
+class IncompleteSigStaticMatch
+{
+    public function test(): void
     {
         match (User::create(/*|sig_static_match*/
     }
+}
 
-    public function sigHelpNestedCalls(): void
+class IncompleteSigNested
+{
+    public function getName(): string
+    {
+        return '';
+    }
+
+    public function setName(string $name): void
+    {
+    }
+
+    public function test(): void
     {
         $this->setName($this->getName(/*|sig_nested*/
     }
+}
 
-    public function sigHelpInReturn(): void
+class IncompleteSigReturn
+{
+    public function setName(string $name): void
+    {
+    }
+
+    public function test(): void
     {
         return $this->setName(/*|sig_return*/
     }
+}
 
-    // =========================================================================
-    // HOVER: Complete expressions in control structures
-    // =========================================================================
+// Hover/Definition - complete expressions in control structures
+class CompleteHoverPropIf
+{
+    private string $name = '';
 
-    public function hoverPropertyInIf(): void
+    public function test(): void
     {
         if ($this->name) {} //hover:hover_prop_if
     }
+}
 
-    public function hoverMethodInWhile(): void
+class CompleteHoverMethodWhile
+{
+    public function getName(): string
+    {
+        return '';
+    }
+
+    public function test(): void
     {
         while ($this->getName()) {} //hover:hover_method_while
     }
+}
 
-    public function hoverVarMethodInFor(User $user): void
+class CompleteHoverVarFor
+{
+    public function test(User $user): void
     {
         for ($i = 0; $user->getName(); $i++) {} //hover:hover_var_for
     }
+}
 
-    // =========================================================================
-    // DEFINITION: Complete expressions in control structures
-    // =========================================================================
+class CompleteDefPropIf
+{
+    private string $name = '';
 
-    public function defPropertyInIf(): void
+    public function test(): void
     {
         if ($this->name) {} //def:def_prop_if
     }
+}
 
-    public function defMethodInSwitch(): void
+class CompleteDefMethodSwitch
+{
+    public function getName(): string
+    {
+        return '';
+    }
+
+    public function test(): void
     {
         switch ($this->getName()) {} //def:def_method_switch
     }
