@@ -274,4 +274,19 @@ class SignatureHelpHandlerTest extends TestCase
 
         self::assertNull($result);
     }
+
+    // =========================================================================
+    // Incomplete code in control structures (#267/#243)
+    // =========================================================================
+
+    public function testSignatureHelpInIncompleteCode(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncompleteSigHelp.php', 'sig_this_call');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
+
+        self::assertIsArray($result, 'Signature help should work in incomplete code');
+        self::assertArrayHasKey('signatures', $result);
+        self::assertNotEmpty($result['signatures'], 'Should have at least one signature');
+        self::assertStringContainsString('getName', $result['signatures'][0]['label']);
+    }
 }
