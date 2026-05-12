@@ -1492,4 +1492,31 @@ final class SymbolResolverTest extends TestCase
         $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
         self::assertInstanceOf(CallContext::class, $context, 'Should detect call context in incomplete code');
     }
+
+    public function testChainedAccessRegexPattern(): void
+    {
+        // Test that the chain pattern matches correctly
+        $text = '        if ($this->user->';
+        $pattern = '/(\$\w+(?:\??->[\w]+(?:\([^)]*\))?)+)\??->([\w]*)$/';
+        self::assertSame(1, preg_match($pattern, $text, $matches), 'Pattern should match chained access');
+        self::assertSame('$this->user', $matches[1], 'Should capture the chain expression');
+        self::assertSame('', $matches[2], 'Should capture empty prefix');
+    }
+
+    public function testGetMemberAccessContextChainedInIncompleteCode(): void
+    {
+        // Open User class first so it's available for type resolution
+        $this->openFixture('src/Domain/User.php');
+
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'chained_in_if');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        // Verify the line text is what we expect
+        $lineText = $document->getLine($cursor['line']);
+        self::assertStringContainsString('$this->user->', $lineText, 'Line should contain chained access');
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+        self::assertNotNull($context, 'Chained access in if() should return context');
+    }
 }

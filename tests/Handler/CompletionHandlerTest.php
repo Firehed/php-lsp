@@ -2549,4 +2549,14 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('getName', $labels, 'Methods should be offered even when parser fails');
         self::assertContains('name', $labels, 'Properties should be offered even when parser fails');
     }
+
+    public function testCompletionChainedAccessInIfCondition(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'chained_in_if');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result, 'Chained access in if() should return completions');
+        self::assertArrayHasKey('items', $result);
+        self::assertNotEmpty($result['items'], 'Should offer LoggerInterface methods');
+    }
 }
