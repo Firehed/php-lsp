@@ -346,7 +346,7 @@ final class SymbolResolver
             }
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
-            $type = $this->resolveInstanceAccessType($node, $ast);
+            $type = $this->resolveInstanceAccessType($node, $ast, $document, $line);
             if ($type !== null) {
                 $isThis = $node->var instanceof Variable && $node->var->name === 'this';
                 $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
@@ -394,7 +394,16 @@ final class SymbolResolver
         $lineText = $document->getLine($line);
         $textBeforeCursor = substr($lineText, 0, $character);
 
-        // Instance access: $var->prefix or $var?->prefix
+        // Chained instance access: $var->member->prefix or $var?->member->prefix
+        // This must be checked BEFORE simple instance access
+        $chainPattern = '/(\$\w+(?:\??->[\w]+(?:\([^)]*\))?)+)\??->([\w]*)$/';
+        if (preg_match($chainPattern, $textBeforeCursor, $matches) === 1) {
+            $chainExpr = $matches[1];
+            $prefix = $matches[2];
+            return $this->resolveChainedAccessFromText($chainExpr, $prefix, $ast, $line, $document);
+        }
+
+        // Simple instance access: $var->prefix or $var?->prefix
         if (preg_match('/\$(\w+)(\?)?->([\w]*)$/', $textBeforeCursor, $matches) === 1) {
             $varName = $matches[1];
             $isNullsafe = $matches[2] === '?';
@@ -465,6 +474,120 @@ final class SymbolResolver
         $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
 
         return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+    }
+
+    /**
+     * Resolve chained member access from text-based detection.
+     *
+     * Handles expressions like $this->logger-> or $this->getLogger()->
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveChainedAccessFromText(
+        string $chainExpr,
+        string $prefix,
+        array $ast,
+        int $line,
+        TextDocument $document,
+    ): ?MemberAccessContext {
+        // Check if chain starts with $this
+        if (!str_starts_with($chainExpr, '$this->')) {
+            return null;
+        }
+
+        // Find enclosing class for $this resolution
+        $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+        if ($enclosingClass === null) {
+            $enclosingClass = $this->findEnclosingClassFromText($document, $line);
+        }
+        if ($enclosingClass === null) {
+            return null;
+        }
+
+        // Parse the chain to resolve the final type
+        // e.g., "$this->logger" -> resolve $this to class, then find logger property type
+        $type = $this->resolveChainType($chainExpr, $enclosingClass);
+        if ($type === null) {
+            return null;
+        }
+
+        return new MemberAccessContext($type, Visibility::Public, MemberAccessKind::Instance, $prefix);
+    }
+
+    /**
+     * Resolve the type of a chained expression.
+     *
+     * @param class-string $thisClass The class that $this refers to
+     */
+    private function resolveChainType(string $chainExpr, string $thisClass): ?Type
+    {
+        // Remove $this-> prefix
+        $chain = substr($chainExpr, 7); // strlen('$this->') = 7
+
+        // Split into parts: "logger" or "getLogger()" etc.
+        // For now, handle simple property chains
+        $parts = preg_split('/\??->/', $chain);
+        if ($parts === false || $parts === []) {
+            return null;
+        }
+
+        $currentType = new ClassName($thisClass);
+        $isFirstPart = true;
+
+        foreach ($parts as $part) {
+            // Skip empty parts
+            if ($part === '') {
+                continue;
+            }
+
+            // Check if it's a method call (has parentheses)
+            $isMethodCall = str_contains($part, '(');
+            $memberName = $isMethodCall ? strstr($part, '(', true) : $part;
+            if ($memberName === false || $memberName === '') {
+                return null;
+            }
+
+            // Resolve the member type
+            $classNames = $currentType->getResolvableClassNames();
+            if ($classNames === []) {
+                return null;
+            }
+
+            $className = $classNames[0];
+
+            // First part is accessed via $this, so use Private visibility
+            // Subsequent parts are accessed on the property's type, so use Public
+            $visibility = $isFirstPart ? Visibility::Private : Visibility::Public;
+            $isFirstPart = false;
+
+            if ($isMethodCall) {
+                $methodInfo = $this->memberResolver->findMethod(
+                    $className,
+                    new \Firehed\PhpLsp\Domain\MethodName($memberName),
+                    $visibility,
+                );
+                if ($methodInfo === null) {
+                    return null;
+                }
+                $currentType = $methodInfo->returnType;
+            } else {
+                $propertyInfo = $this->memberResolver->findProperty(
+                    $className,
+                    new \Firehed\PhpLsp\Domain\PropertyName($memberName),
+                    $visibility,
+                );
+                if ($propertyInfo === null) {
+                    return null;
+                }
+                $currentType = $propertyInfo->type;
+            }
+
+            if ($currentType === null) {
+                return null;
+            }
+        }
+
+        return $currentType;
     }
 
     /**
@@ -1256,13 +1379,77 @@ final class SymbolResolver
     private function resolveInstanceAccessType(
         MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
         array $ast,
+        ?TextDocument $document = null,
+        ?int $line = null,
     ): ?Type {
         // Check for pre-resolved type from text-based fallback
         $resolvedType = $node->var->getAttribute('resolvedType');
         if ($resolvedType instanceof Type) {
             return $resolvedType;
         }
-        return ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+
+        $type = ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+        if ($type !== null) {
+            return $type;
+        }
+
+        // If AST-based resolution failed and we have document context, try text-based
+        // class detection for expressions that start with $this
+        if ($document !== null && $line !== null && $this->expressionStartsWithThis($node->var)) {
+            $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+            if ($enclosingClass === null) {
+                $enclosingClass = $this->findEnclosingClassFromText($document, $line);
+            }
+            if ($enclosingClass !== null) {
+                // Set the resolved type on the $this variable so type resolution can proceed
+                $thisVar = $this->findThisVariable($node->var);
+                if ($thisVar !== null) {
+                    $thisVar->setAttribute('resolvedType', new ClassName($enclosingClass));
+                    // Retry expression type resolution with the $this type set
+                    return ExpressionTypeResolver::resolveExpressionType(
+                        $node->var,
+                        $ast,
+                        $this->typeResolver,
+                    );
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if an expression starts with $this.
+     */
+    private function expressionStartsWithThis(Node\Expr $expr): bool
+    {
+        if ($expr instanceof Variable && $expr->name === 'this') {
+            return true;
+        }
+        if (
+            $expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch
+            || $expr instanceof MethodCall || $expr instanceof NullsafeMethodCall
+        ) {
+            return $this->expressionStartsWithThis($expr->var);
+        }
+        return false;
+    }
+
+    /**
+     * Find the $this variable in an expression chain.
+     */
+    private function findThisVariable(Node\Expr $expr): ?Variable
+    {
+        if ($expr instanceof Variable && $expr->name === 'this') {
+            return $expr;
+        }
+        if (
+            $expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch
+            || $expr instanceof MethodCall || $expr instanceof NullsafeMethodCall
+        ) {
+            return $this->findThisVariable($expr->var);
+        }
+        return null;
     }
 
     /**
