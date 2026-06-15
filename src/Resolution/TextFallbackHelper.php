@@ -373,7 +373,7 @@ final class TextFallbackHelper
 
         $this->extractMethods($classContent, $className, $minVisibility, $filter, $includeStatic, $members);
         $this->extractProperties($classContent, $className, $minVisibility, $filter, $includeStatic, $members);
-        $this->extractConstants($classContent, $className, $includeStatic, $members);
+        $this->extractConstants($classContent, $className, $minVisibility, $includeStatic, $members);
 
         return $members;
     }
@@ -466,6 +466,7 @@ final class TextFallbackHelper
     private function extractConstants(
         string $classContent,
         ClassName $className,
+        Visibility $minVisibility,
         bool $includeStatic,
         array &$members,
     ): void {
@@ -473,12 +474,18 @@ final class TextFallbackHelper
             return;
         }
 
-        $pattern = '/^\s*(?:public|protected|private)?\s*const\s+(\w+)\s*=/m';
+        // Captures: 1=visibility (optional), 2=constant name
+        // Handles PHP 8.1+ typed constants: public const string NAME = ...
+        $pattern = '/^\s*(public|protected|private)?\s*const\s+(?:[\w\\\\|?]+\s+)?(\w+)\s*=/m';
         if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $match) {
+                $visibility = ($match[1] !== '') ? Visibility::fromString($match[1]) : Visibility::Public;
+                if (!$visibility->isAccessibleFrom($minVisibility)) {
+                    continue;
+                }
                 $members[] = new ResolvedConstant(new ConstantInfo(
-                    name: new ConstantName($match[1]),
-                    visibility: Visibility::Public,
+                    name: new ConstantName($match[2]),
+                    visibility: $visibility,
                     isFinal: false,
                     type: null,
                     docblock: null,

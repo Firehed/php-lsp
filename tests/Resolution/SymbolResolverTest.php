@@ -1522,4 +1522,37 @@ final class SymbolResolverTest extends TestCase
         $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
         self::assertNotNull($context, 'Chained access in if() should return context');
     }
+
+    // =========================================================================
+    // getAccessibleMembersFromText: visibility filtering
+    // =========================================================================
+
+    public function testGetAccessibleMembersFromTextRespectsConstantVisibility(): void
+    {
+        $uri = $this->openFixture('src/Repository/ClassInfoPatterns.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // @phpstan-ignore argument.type (test uses fixture class name)
+        $className = new ClassName('Fixtures\\Repository\\ClassInfoPatterns');
+
+        // When accessed from outside (Public visibility), only public constants should be visible
+        $members = $this->resolver->getAccessibleMembersFromText(
+            $document,
+            $className,
+            Visibility::Public,
+            MemberFilter::Static,
+        );
+
+        $constantNames = [];
+        foreach ($members as $member) {
+            if ($member instanceof ResolvedConstant) {
+                $constantNames[] = $member->getName()->name;
+            }
+        }
+
+        self::assertContains('PUBLIC_CONST', $constantNames, 'Public constant should be included');
+        self::assertNotContains('PROTECTED_CONST', $constantNames, 'Protected constant not visible from outside');
+        self::assertNotContains('PRIVATE_CONST', $constantNames, 'Private constant not visible from outside');
+    }
 }
