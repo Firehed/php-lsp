@@ -2557,6 +2557,6 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result, 'Chained access in if() should return completions');
         self::assertArrayHasKey('items', $result);
-        self::assertNotEmpty($result['items'], 'Should offer LoggerInterface methods');
+        self::assertNotEmpty($result['items'], 'Should offer User methods');
     }
 }
