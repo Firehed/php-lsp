@@ -300,79 +300,52 @@ final class SymbolResolver implements CodeResolver
         int $line,
         int $character,
     ): ?MemberAccessContext {
-        $lineText = $document->getLine($line);
-
-        // Try instance access (including chained)
-        $instanceAccess = $this->textFallback->detectInstanceAccess($lineText, $character);
-        if ($instanceAccess !== null) {
-            if ($instanceAccess['isChained'] && $instanceAccess['chainExpr'] !== null) {
-                return $this->resolveChainedAccessFromText(
-                    $instanceAccess['chainExpr'],
-                    $instanceAccess['prefix'],
-                    $ast,
-                    $line,
-                    $document,
-                );
-            }
-            return $this->resolveInstanceAccessFromText(
-                $instanceAccess['varName'],
-                $instanceAccess['prefix'],
-                $ast,
-                $line,
-                $document,
-            );
+        // Try pure text-based resolution first ($this, self::, static::, ClassName::)
+        $context = $this->textFallback->getMemberAccessContext($document, $line, $character, $ast);
+        if ($context !== null) {
+            return $context;
         }
 
-        // Try static access
-        $staticAccess = $this->textFallback->detectStaticAccess($lineText, $character);
-        if ($staticAccess !== null) {
-            return $this->resolveStaticAccessFromText(
-                $staticAccess['className'],
-                $staticAccess['prefix'],
-                $ast,
-                $line,
-                $document,
-            );
-        }
-
-        return null;
+        // For non-$this variables, try AST-based type resolution
+        return $this->resolveVariableAccessWithAst($document, $line, $character, $ast);
     }
 
     /**
-     * Resolve instance member access from text-based detection.
+     * Resolve non-$this variable access using AST scope.
      *
      * @param array<Stmt> $ast
      */
-    private function resolveInstanceAccessFromText(
-        string $varName,
-        string $prefix,
-        array $ast,
-        int $line,
+    private function resolveVariableAccessWithAst(
         TextDocument $document,
+        int $line,
+        int $character,
+        array $ast,
     ): ?MemberAccessContext {
-        // Handle $this specially - can resolve from text alone
+        $lineText = $document->getLine($line);
+        $textBeforeCursor = substr($lineText, 0, $character);
+
+        // Match $var-> but not $this->
+        if (preg_match('/\$(\w+)\??->([\w]*)$/', $textBeforeCursor, $m) !== 1) {
+            return null;
+        }
+        $varName = $m[1];
+        $prefix = $m[2];
+
         if ($varName === 'this') {
-            $enclosingClass = $this->findEnclosingClassForLine($ast, $line)
-                ?? $this->textFallback->findEnclosingClass($document, $line);
-            if ($enclosingClass === null) {
-                return null;
-            }
-            $type = new ClassName($enclosingClass);
-            return new MemberAccessContext($type, Visibility::Private, MemberAccessKind::Instance, $prefix);
+            return null; // Already handled by text fallback
         }
 
-        // Non-$this variables require AST scope for type resolution
         $offset = $document->offsetAt($line, 0);
         $scope = $this->findScopeAtOffset($ast, $offset);
         if ($scope === null) {
             return null;
         }
+
         $type = $this->typeResolver->resolveVariableType($varName, $scope, $line, $ast);
         if ($type === null) {
             return null;
         }
 
-        // Determine visibility based on whether the variable type is the enclosing class
         $enclosingClassName = ScopeFinder::findEnclosingClassName($scope);
         $classNames = $type->getResolvableClassNames();
         $className = $classNames[0] ?? null;
@@ -381,88 +354,6 @@ final class SymbolResolver implements CodeResolver
         $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
 
         return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
-    }
-
-    /**
-     * Resolve chained member access from text-based detection.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveChainedAccessFromText(
-        string $chainExpr,
-        string $prefix,
-        array $ast,
-        int $line,
-        TextDocument $document,
-    ): ?MemberAccessContext {
-        $enclosingClass = $this->findEnclosingClassForLine($ast, $line)
-            ?? $this->textFallback->findEnclosingClass($document, $line);
-        if ($enclosingClass === null) {
-            return null;
-        }
-
-        $type = $this->textFallback->resolveChainType($chainExpr, $enclosingClass);
-        if ($type === null) {
-            return null;
-        }
-
-        return new MemberAccessContext($type, Visibility::Public, MemberAccessKind::Instance, $prefix);
-    }
-
-    /**
-     * Resolve static member access from text-based detection.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveStaticAccessFromText(
-        string $className,
-        string $prefix,
-        array $ast,
-        int $line,
-        TextDocument $document,
-    ): ?MemberAccessContext {
-        // Handle special class names: self, static, parent
-        $enclosingClass = $this->findEnclosingClassForLine($ast, $line)
-            ?? $this->textFallback->findEnclosingClass($document, $line);
-        $lowerClassName = strtolower($className);
-
-        if ($lowerClassName === 'self' || $lowerClassName === 'static') {
-            if ($enclosingClass === null) {
-                return null;
-            }
-            $type = new ClassName($enclosingClass);
-            return new MemberAccessContext($type, Visibility::Private, MemberAccessKind::Static, $prefix);
-        }
-
-        if ($lowerClassName === 'parent') {
-            // Parent requires AST to find the extends clause - can't do text-based
-            $classNode = ScopeFinder::findClassAtLine($ast, $line);
-            if ($classNode === null) {
-                return null;
-            }
-            $parentClassName = ScopeFinder::resolveExtendsName($classNode);
-            if ($parentClassName === null) {
-                return null;
-            }
-            $type = new ClassName($parentClassName);
-            return new MemberAccessContext($type, Visibility::Protected, MemberAccessKind::Parent, $prefix);
-        }
-
-        // Regular class name - resolve it
-        $name = $this->resolveNameFromText($className, $ast, $line);
-        $resolvedName = $name->getAttribute('resolvedName');
-        $fqn = $resolvedName instanceof Name\FullyQualified
-            ? $resolvedName->toString()
-            : $className;
-
-        /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
-        $type = new ClassName($fqn);
-
-        // Determine visibility
-        $isSameClass = $enclosingClass !== null && $enclosingClass === $fqn;
-        $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
-
-        return new MemberAccessContext($type, $visibility, MemberAccessKind::Static, $prefix);
     }
 
     /**
