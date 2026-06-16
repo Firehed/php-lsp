@@ -14,6 +14,9 @@ use Firehed\PhpLsp\Domain\Visibility;
  *
  * Implementations provide symbol resolution, member access detection, and
  * related queries needed by LSP handlers.
+ *
+ * This abstraction allows different parsing strategies (PHP-Parser, tree-sitter)
+ * to provide the same resolution capabilities.
  */
 interface CodeResolver
 {
@@ -34,19 +37,8 @@ interface CodeResolver
      * @return list<ResolvedMember>
      */
     public function getAccessibleMembers(
-        Type $type,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::Instance,
-    ): array;
-
-    /**
-     * Get members from document text when AST-based resolution fails.
-     *
-     * @return list<ResolvedMember>
-     */
-    public function getAccessibleMembersFromText(
         TextDocument $document,
-        ClassName $className,
+        Type $type,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::Instance,
     ): array;

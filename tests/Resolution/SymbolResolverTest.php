@@ -354,13 +354,15 @@ final class SymbolResolverTest extends TestCase
 
     public function testGetAccessibleMembersReturnsMembers(): void
     {
-        $this->openFixture('src/Domain/User.php');
+        $uri = $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
 
         // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Domain\\User');
-        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public);
+        $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
-        self::assertNotEmpty($members);
+        self::assertNotEmpty($members, 'Should return members for User class');
         // For instance access, should return methods and properties (ResolvedMember)
         foreach ($members as $member) {
             self::assertInstanceOf(ResolvedMember::class, $member);
@@ -380,13 +382,15 @@ final class SymbolResolverTest extends TestCase
 
     public function testGetAccessibleMembersFiltersStaticOnly(): void
     {
-        $this->openFixture('src/Domain/User.php');
+        $uri = $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
 
         // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Domain\\User');
-        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, MemberFilter::Static);
+        $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
-        self::assertNotEmpty($members);
+        self::assertNotEmpty($members, 'Should return static members for User class');
 
         // All returned symbols for static access should be static members, constants, or enum cases
         foreach ($members as $member) {
@@ -397,19 +401,25 @@ final class SymbolResolverTest extends TestCase
 
     public function testGetAccessibleMembersReturnsEmptyForPrimitiveType(): void
     {
-        $type = new \Firehed\PhpLsp\Domain\PrimitiveType('string');
-        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public);
+        $uri = $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
 
-        self::assertSame([], $members);
+        $type = new \Firehed\PhpLsp\Domain\PrimitiveType('string');
+        $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
+
+        self::assertSame([], $members, 'Primitive types should have no accessible members');
     }
 
     public function testGetAccessibleMembersReturnsEnumCasesForStaticAccess(): void
     {
-        $this->openFixture('src/Enum/Status.php');
+        $uri = $this->openFixture('src/Enum/Status.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
 
         // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Enum\\Status');
-        $members = $this->resolver->getAccessibleMembers($type, Visibility::Public, MemberFilter::Static);
+        $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
         $hasEnumCase = false;
         foreach ($members as $member) {
@@ -1527,19 +1537,19 @@ final class SymbolResolverTest extends TestCase
     // getAccessibleMembersFromText: visibility filtering
     // =========================================================================
 
-    public function testGetAccessibleMembersFromTextRespectsConstantVisibility(): void
+    public function testGetAccessibleMembersRespectsConstantVisibility(): void
     {
         $uri = $this->openFixture('src/Repository/ClassInfoPatterns.php');
         $document = $this->documents->get($uri);
         assert($document !== null);
 
         // @phpstan-ignore argument.type (test uses fixture class name)
-        $className = new ClassName('Fixtures\\Repository\\ClassInfoPatterns');
+        $type = new ClassName('Fixtures\\Repository\\ClassInfoPatterns');
 
         // When accessed from outside (Public visibility), only public constants should be visible
-        $members = $this->resolver->getAccessibleMembersFromText(
+        $members = $this->resolver->getAccessibleMembers(
             $document,
-            $className,
+            $type,
             Visibility::Public,
             MemberFilter::Static,
         );

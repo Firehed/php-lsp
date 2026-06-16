@@ -116,9 +116,12 @@ final class SymbolResolver implements CodeResolver
      * For instance access: returns methods and properties.
      * For static access: also includes constants and enum cases.
      *
+     * Falls back to text-based extraction when AST-based resolution fails.
+     *
      * @return list<ResolvedMember>
      */
     public function getAccessibleMembers(
+        TextDocument $document,
         Type $type,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::Instance,
@@ -132,47 +135,55 @@ final class SymbolResolver implements CodeResolver
         $includeStatic = $filter !== MemberFilter::Instance;
 
         foreach ($classNames as $className) {
-            $methods = $this->memberResolver->getMethods($className, $minVisibility, $filter);
-            foreach ($methods as $methodInfo) {
-                $members[] = new ResolvedMethod($methodInfo);
+            $classMembers = $this->getMembersForClass($className, $minVisibility, $filter, $includeStatic);
+
+            // Fall back to text-based extraction when AST-based resolution fails
+            if ($classMembers === []) {
+                $classMembers = $this->textFallback->extractMembers($document, $className, $minVisibility, $filter);
             }
 
-            $properties = $this->memberResolver->getProperties($className, $minVisibility, $filter);
-            foreach ($properties as $propertyInfo) {
-                $members[] = new ResolvedProperty($propertyInfo);
-            }
-
-            if ($includeStatic) {
-                $constants = $this->memberResolver->getConstants($className, $minVisibility);
-                foreach ($constants as $constantInfo) {
-                    $members[] = new ResolvedConstant($constantInfo);
-                }
-
-                $enumCases = $this->memberResolver->getEnumCases($className);
-                foreach ($enumCases as $enumCaseInfo) {
-                    $members[] = new ResolvedEnumCase($enumCaseInfo);
-                }
-            }
+            $members = array_merge($members, $classMembers);
         }
 
         return $members;
     }
 
     /**
-     * Get members from document text when AST-based resolution fails.
-     *
-     * This is a fallback for when the document doesn't parse but we've identified
-     * the class name via text-based detection. It extracts basic member info using regex.
+     * Get members for a single class using AST/reflection.
      *
      * @return list<ResolvedMember>
      */
-    public function getAccessibleMembersFromText(
-        TextDocument $document,
+    private function getMembersForClass(
         ClassName $className,
         Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::Instance,
+        MemberFilter $filter,
+        bool $includeStatic,
     ): array {
-        return $this->textFallback->extractMembers($document, $className, $minVisibility, $filter);
+        $members = [];
+
+        $methods = $this->memberResolver->getMethods($className, $minVisibility, $filter);
+        foreach ($methods as $methodInfo) {
+            $members[] = new ResolvedMethod($methodInfo);
+        }
+
+        $properties = $this->memberResolver->getProperties($className, $minVisibility, $filter);
+        foreach ($properties as $propertyInfo) {
+            $members[] = new ResolvedProperty($propertyInfo);
+        }
+
+        if ($includeStatic) {
+            $constants = $this->memberResolver->getConstants($className, $minVisibility);
+            foreach ($constants as $constantInfo) {
+                $members[] = new ResolvedConstant($constantInfo);
+            }
+
+            $enumCases = $this->memberResolver->getEnumCases($className);
+            foreach ($enumCases as $enumCaseInfo) {
+                $members[] = new ResolvedEnumCase($enumCaseInfo);
+            }
+        }
+
+        return $members;
     }
 
     /**

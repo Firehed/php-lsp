@@ -23,7 +23,7 @@ use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
@@ -76,7 +76,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
         private readonly SymbolIndex $symbolIndex,
-        private readonly SymbolResolver $symbolResolver,
+        private readonly CodeResolver $codeResolver,
     ) {
     }
 
@@ -168,13 +168,13 @@ final class CompletionHandler implements HandlerInterface
         int $character,
     ): array {
         // Member/static access via SymbolResolver
-        $memberContext = $this->symbolResolver->getMemberAccessContext($document, $line, $character);
+        $memberContext = $this->codeResolver->getMemberAccessContext($document, $line, $character);
         if ($memberContext !== null) {
             return $this->handleMemberAccessContext($memberContext, $document);
         }
 
         // Inside a call context, offer named arguments + variables
-        $callContext = $this->symbolResolver->getCallContext($document, $line, $character);
+        $callContext = $this->codeResolver->getCallContext($document, $line, $character);
         if ($callContext !== null) {
             $namedArgPrefix = $this->extractNamedArgPrefix($textBeforeCursor);
             $items = $this->getNamedArgumentCompletions($callContext, $namedArgPrefix);
@@ -283,11 +283,6 @@ final class CompletionHandler implements HandlerInterface
      */
     private function handleMemberAccessContext(MemberAccessContext $context, TextDocument $document): array
     {
-        $classNames = $context->type->getResolvableClassNames();
-        if ($classNames === []) {
-            return [];
-        }
-
         $items = [];
         $filter = match ($context->kind) {
             MemberAccessKind::Instance => MemberFilter::Instance,
@@ -295,30 +290,19 @@ final class CompletionHandler implements HandlerInterface
             MemberAccessKind::Parent => MemberFilter::All,
         };
 
-        foreach ($classNames as $className) {
-            $members = $this->symbolResolver->getAccessibleMembers(
-                $className,
-                $context->minVisibility,
-                $filter,
-            );
+        $members = $this->codeResolver->getAccessibleMembers(
+            $document,
+            $context->type,
+            $context->minVisibility,
+            $filter,
+        );
 
-            // Fall back to text-based extraction when AST-based resolution fails
-            if ($members === []) {
-                $members = $this->symbolResolver->getAccessibleMembersFromText(
-                    $document,
-                    $className,
-                    $context->minVisibility,
-                    $filter,
-                );
+        foreach ($members as $member) {
+            if ($context->kind === MemberAccessKind::Parent && !$member instanceof ResolvedMethod) {
+                continue;
             }
-
-            foreach ($members as $member) {
-                if ($context->kind === MemberAccessKind::Parent && !$member instanceof ResolvedMethod) {
-                    continue;
-                }
-                if (self::matchesPrefix($member->getName()->name, $context->prefix)) {
-                    $items[] = $this->formatResolvedMemberCompletion($member);
-                }
+            if (self::matchesPrefix($member->getName()->name, $context->prefix)) {
+                $items[] = $this->formatResolvedMemberCompletion($member);
             }
         }
 
@@ -429,10 +413,10 @@ final class CompletionHandler implements HandlerInterface
                 continue;
             }
             /** @var class-string $fqcn */
-            if ($instantiableOnly && !$this->symbolResolver->isInstantiable(new ClassName($fqcn))) {
+            if ($instantiableOnly && !$this->codeResolver->isInstantiable(new ClassName($fqcn))) {
                 continue;
             }
-            if ($typeHintContext && !$this->symbolResolver->isValidTypeHint(new ClassName($fqcn))) {
+            if ($typeHintContext && !$this->codeResolver->isValidTypeHint(new ClassName($fqcn))) {
                 continue;
             }
             $items[] = [
@@ -500,7 +484,7 @@ final class CompletionHandler implements HandlerInterface
         foreach ($symbols as $symbol) {
             /** @var class-string $fqcn */
             $fqcn = $symbol->fullyQualifiedName;
-            if ($instantiableOnly && !$this->symbolResolver->isInstantiable(new ClassName($fqcn))) {
+            if ($instantiableOnly && !$this->codeResolver->isInstantiable(new ClassName($fqcn))) {
                 continue;
             }
             $items[] = [
@@ -702,7 +686,7 @@ final class CompletionHandler implements HandlerInterface
         int $line,
         int $character,
     ): array {
-        $variables = $this->symbolResolver->getVariablesInScope($document, $line, $character);
+        $variables = $this->codeResolver->getVariablesInScope($document, $line, $character);
 
         $items = [];
         foreach ($variables as $variable) {
