@@ -706,4 +706,50 @@ class ScopeFinderTest extends TestCase
 
         return $visitor->found;
     }
+
+    public function testResolveFromUseStatementsFindsSimpleName(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('Status', $ast);
+
+        self::assertSame('Fixtures\\Enum\\Status', $resolved, 'Should resolve Status to FQN from use statement');
+    }
+
+    public function testResolveFromUseStatementsFindsMultipleImports(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        self::assertSame(
+            'Fixtures\\Enum\\Status',
+            ScopeFinder::resolveFromUseStatements('Status', $ast),
+        );
+        self::assertSame(
+            'Fixtures\\Traits\\HasTimestamps',
+            ScopeFinder::resolveFromUseStatements('HasTimestamps', $ast),
+        );
+    }
+
+    public function testResolveFromUseStatementsReturnsNullForUnknownName(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('UnknownClass', $ast);
+
+        self::assertNull($resolved, 'Should return null for unimported class name');
+    }
+
+    public function testResolveFromUseStatementsReturnsNullForSameNamespaceClass(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        // Entity is in same namespace, not imported via use statement
+        $resolved = ScopeFinder::resolveFromUseStatements('Entity', $ast);
+
+        self::assertNull($resolved, 'Should not resolve class in same namespace without use statement');
+    }
 }

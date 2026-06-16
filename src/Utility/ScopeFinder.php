@@ -269,4 +269,28 @@ final class ScopeFinder
 
         return $visitor->found;
     }
+
+    /**
+     * Resolve a simple class name using use statements from AST.
+     *
+     * Returns the fully qualified name if found in a use statement,
+     * or null if not found.
+     *
+     * @param array<Stmt> $ast
+     */
+    public static function resolveFromUseStatements(string $className, array $ast): ?string
+    {
+        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
+            if ($stmt instanceof Stmt\Use_) {
+                foreach ($stmt->uses as $use) {
+                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                    if ($alias === $className) {
+                        return $use->name->toString();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
 }
