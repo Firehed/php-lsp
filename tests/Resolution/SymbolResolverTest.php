@@ -1036,11 +1036,9 @@ final class SymbolResolverTest extends TestCase
      */
     public static function incompleteCodeMemberAccessProvider(): array
     {
-        // Note: Variable type resolution ($user->) requires AST to resolve parameter types.
-        // Only $this->, self::, static::, and explicit ClassName:: work with pure text fallback.
         return [
             'this in if' => ['this_access_if', MemberAccessKind::Instance],
-            // 'var in while' skipped - requires AST for parameter type resolution
+            'var in while' => ['var_access_while', MemberAccessKind::Instance],
             'nullsafe in for' => ['nullsafe_access_for', MemberAccessKind::Instance],
             'static in match' => ['static_access_match', MemberAccessKind::Static],
             'self in switch' => ['self_access_switch', MemberAccessKind::Static],
@@ -1081,6 +1079,28 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(MemberAccessContext::class, $context);
         self::assertSame('get', $context->prefix, 'Prefix should be extracted from incomplete member access');
+    }
+
+    public function testGetMemberAccessContextForTypedParameterResolvesType(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'var_access_while');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve typed parameter access');
+        self::assertSame(
+            'Fixtures\\Domain\\User',
+            $context->type->format(),
+            'Type should be resolved from parameter type hint',
+        );
+        self::assertSame(
+            Visibility::Public,
+            $context->minVisibility,
+            'Parameter type is different class, visibility should be public',
+        );
     }
 
     public function testDiagnosticTextBeforeCursor(): void

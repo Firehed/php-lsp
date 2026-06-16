@@ -149,6 +149,10 @@ class IncompleteThisAccessIf
 
 class IncompleteVarAccessWhile
 {
+    public function helper(): void
+    {
+    }
+
     public function test(User $user): void
     {
         while ($user->/*|var_access_while*/
