@@ -161,14 +161,15 @@ final class TextFallbackHelper
         }
 
         // Regular class name - resolve via use statements
-        $fqn = $this->resolveClassName($className, $ast, $line);
+        $lines = explode("\n", $document->getContent());
+        $fqn = $this->resolveClassName($className, $lines, $ast, $line);
 
         // Determine visibility based on whether we're inside the same class
         $isSameClass = $enclosingClass !== null && $enclosingClass === $fqn;
         $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
 
         return new MemberAccessContext(
-            /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
+            // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
             new ClassName($fqn),
             $visibility,
             MemberAccessKind::Static,
@@ -299,36 +300,219 @@ final class TextFallbackHelper
     }
 
     /**
-     * Resolve a class name using use statements from AST.
+     * Find the type of a parameter by scanning backwards for method declaration.
      *
+     * @param array<Stmt> $ast AST for use statement resolution
+     */
+    public function findParameterType(
+        TextDocument $document,
+        int $line,
+        string $varName,
+        array $ast,
+    ): ?Type {
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+
+        // Scan backwards to find method/function declaration
+        for ($i = $line; $i >= 0; $i--) {
+            $lineText = $lines[$i] ?? '';
+
+            // Match function/method declaration with parameters
+            // Handles multi-line declarations by accumulating lines
+            if (preg_match('/function\s+\w+\s*\(/', $lineText) === 1) {
+                // Accumulate lines until we find closing paren
+                $declaration = $lineText;
+                for ($j = $i; $j < min($i + 10, count($lines)); $j++) {
+                    if ($j > $i) {
+                        $declaration .= ' ' . $lines[$j];
+                    }
+                    if (str_contains($declaration, ')')) {
+                        break;
+                    }
+                }
+
+                // Extract parameter type for the variable
+                $type = $this->extractParameterType($declaration, $varName, $lines, $ast, $line);
+                if ($type !== null) {
+                    return $type;
+                }
+                break;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract parameter type from a function declaration string.
+     *
+     * @param list<string> $lines
      * @param array<Stmt> $ast
      */
-    private function resolveClassName(string $className, array $ast, int $line): string
+    private function extractParameterType(
+        string $declaration,
+        string $varName,
+        array $lines,
+        array $ast,
+        int $line,
+    ): ?Type {
+        // Pattern: TypeName $varName or ?TypeName $varName
+        $pattern = '/(\??[A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s+\$' . preg_quote($varName, '/') . '\b/';
+        if (preg_match($pattern, $declaration, $matches) !== 1) {
+            return null;
+        }
+
+        $typeStr = $matches[1];
+        $nullable = str_starts_with($typeStr, '?');
+        if ($nullable) {
+            $typeStr = substr($typeStr, 1);
+        }
+
+        // Resolve the class name using use statements
+        $fqn = $this->resolveClassName($typeStr, $lines, $ast, $line);
+
+        /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
+        return new ClassName($fqn);
+    }
+
+    /**
+     * Resolve a class name using use statements.
+     *
+     * Tries AST-based resolution first, falls back to text-based when AST is empty.
+     *
+     * @param list<string> $lines Document lines for text-based fallback
+     * @param array<Stmt> $ast
+     */
+    private function resolveClassName(string $className, array $lines, array $ast, int $line): string
     {
         // Already fully qualified
         if (str_starts_with($className, '\\')) {
             return ltrim($className, '\\');
         }
 
-        // Check use statements
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Use_) {
-                foreach ($stmt->uses as $use) {
-                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                    if ($alias === $className) {
-                        return $use->name->toString();
-                    }
-                }
-            }
+        // Try AST-based resolution first
+        $resolved = ScopeFinder::resolveFromUseStatements($className, $ast);
+        if ($resolved !== null) {
+            return $resolved;
         }
 
-        // Prepend current namespace
-        $namespace = $this->findNamespaceForLine($ast, $line);
+        // Fall back to text-based use statement search
+        $resolved = $this->resolveFromUseStatementsText($className, $lines);
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        // Prepend current namespace (try AST first, then text)
+        $namespace = $this->findNamespaceForLine($ast, $line)
+            ?? $this->findNamespace($lines, $line);
         if ($namespace !== null) {
             return $namespace . '\\' . $className;
         }
 
         return $className;
+    }
+
+    /**
+     * Text-based use statement resolution for when AST is unavailable.
+     *
+     * Handles simple use, aliased use, and group use syntax.
+     * For partially qualified names (e.g., B\CDE where B is aliased),
+     * resolves the first segment and appends the rest.
+     *
+     * @param list<string> $lines
+     */
+    private function resolveFromUseStatementsText(string $className, array $lines): ?string
+    {
+        // Check if className is partially qualified (e.g., B\CDE)
+        $parts = explode('\\', $className);
+        $firstPart = $parts[0];
+        $isPartiallyQualified = count($parts) > 1;
+
+        // Build map of all imports
+        $imports = $this->extractUseStatementsFromText($lines);
+
+        // Check for exact match first
+        if (isset($imports[$className])) {
+            return $imports[$className];
+        }
+
+        // For partially qualified names, resolve first segment
+        if ($isPartiallyQualified && isset($imports[$firstPart])) {
+            $remainder = implode('\\', array_slice($parts, 1));
+            return $imports[$firstPart] . '\\' . $remainder;
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract all use statements from source lines into alias => FQN map.
+     *
+     * @param list<string> $lines
+     * @return array<string, string> Map of alias/simple name to FQN
+     */
+    private function extractUseStatementsFromText(array $lines): array
+    {
+        $imports = [];
+
+        $classDecl = '/^\s*(?:abstract\s+|final\s+|readonly\s+)*(?:class|interface|trait|enum)\s+/';
+        $name = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
+        $simpleName = '[A-Za-z_][A-Za-z0-9_]*';
+
+        foreach ($lines as $lineText) {
+            // Stop at class/interface/trait/enum declaration
+            if (preg_match($classDecl, $lineText) === 1) {
+                break;
+            }
+
+            // Skip non-use lines
+            if (preg_match('/^\s*use\s+/', $lineText) !== 1) {
+                continue;
+            }
+
+            // Group use: use Prefix\{A, B as C, D\E};
+            $groupPattern = '/^\s*use\s+(' . $name . ')\s*\\\\?\s*\{(.+)\}\s*;/';
+            if (preg_match($groupPattern, $lineText, $m) === 1) {
+                $prefix = rtrim($m[1], '\\');
+                $items = preg_split('/\s*,\s*/', $m[2]);
+                if ($items === false) {
+                    continue;
+                }
+                foreach ($items as $item) {
+                    $item = trim($item);
+                    // Item with alias: Something as Alias
+                    $aliasPattern = '/^(' . $name . ')\s+as\s+(' . $simpleName . ')$/';
+                    if (preg_match($aliasPattern, $item, $im) === 1) {
+                        $imports[$im[2]] = $prefix . '\\' . $im[1];
+                    } else {
+                        // Simple item or nested: Something or Sub\Thing
+                        $fqn = $prefix . '\\' . $item;
+                        $lastPart = substr($item, (int)strrpos($item, '\\') + 1);
+                        if ($lastPart === '') {
+                            $lastPart = $item;
+                        }
+                        $imports[$lastPart] = $fqn;
+                    }
+                }
+                continue;
+            }
+
+            // Simple use with alias: use Foo\Bar as Baz;
+            $simpleAliasPattern = '/^\s*use\s+(' . $name . ')\s+as\s+(' . $simpleName . ')\s*;/';
+            if (preg_match($simpleAliasPattern, $lineText, $m) === 1) {
+                $imports[$m[2]] = $m[1];
+                continue;
+            }
+
+            // Simple use: use Foo\Bar\ClassName;
+            if (preg_match('/^\s*use\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*;/', $lineText, $m) === 1) {
+                $fqn = $m[1];
+                $lastPart = substr($fqn, (int)strrpos($fqn, '\\') + 1);
+                $imports[$lastPart] = $fqn;
+            }
+        }
+
+        return $imports;
     }
 
     /**

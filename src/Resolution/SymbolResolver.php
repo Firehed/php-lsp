@@ -348,16 +348,24 @@ final class SymbolResolver implements CodeResolver
 
         $offset = $document->offsetAt($line, 0);
         $scope = $this->findScopeAtOffset($ast, $offset);
-        if ($scope === null) {
-            return null;
+
+        $type = null;
+        if ($scope !== null) {
+            $type = $this->typeResolver->resolveVariableType($varName, $scope, $line, $ast);
         }
 
-        $type = $this->typeResolver->resolveVariableType($varName, $scope, $line, $ast);
+        // Fall back to text-based parameter type resolution when AST scope fails
+        if ($type === null) {
+            $type = $this->textFallback->findParameterType($document, $line, $varName, $ast);
+        }
+
         if ($type === null) {
             return null;
         }
 
-        $enclosingClassName = ScopeFinder::findEnclosingClassName($scope);
+        $enclosingClassName = $scope !== null
+            ? ScopeFinder::findEnclosingClassName($scope)
+            : null;
         $classNames = $type->getResolvableClassNames();
         $className = $classNames[0] ?? null;
         $isSameClass = $enclosingClassName !== null && $className !== null
@@ -775,7 +783,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         // Check use statements first
-        $resolvedFromUse = $this->resolveFromUseStatements($className, $ast);
+        $resolvedFromUse = ScopeFinder::resolveFromUseStatements($className, $ast);
         if ($resolvedFromUse !== null) {
             $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedFromUse));
             return $name;
@@ -788,45 +796,6 @@ final class SymbolResolver implements CodeResolver
         }
 
         return $name;
-    }
-
-    /**
-     * Look up a simple class name in use statements.
-     *
-     * Only handles single-part names (e.g., "User" not "Foo\User").
-     * Multi-part names are handled by the AST path when parser succeeds.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveFromUseStatements(string $className, array $ast): ?string
-    {
-        if (str_contains($className, '\\')) {
-            return null;
-        }
-
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $nsStmt) {
-                    if ($nsStmt instanceof Stmt\Use_) {
-                        foreach ($nsStmt->uses as $use) {
-                            $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                            if ($alias === $className) {
-                                return $use->name->toString();
-                            }
-                        }
-                    }
-                }
-            } elseif ($stmt instanceof Stmt\Use_) {
-                foreach ($stmt->uses as $use) {
-                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                    if ($alias === $className) {
-                        return $use->name->toString();
-                    }
-                }
-            }
-        }
-
-        return null;
     }
 
     /**
