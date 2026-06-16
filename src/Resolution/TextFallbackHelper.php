@@ -343,6 +343,23 @@ final class TextFallbackHelper
         return null;
     }
 
+    private const PRIMITIVES = [
+        'string',
+        'int',
+        'float',
+        'bool',
+        'array',
+        'object',
+        'callable',
+        'iterable',
+        'void',
+        'never',
+        'mixed',
+        'null',
+        'true',
+        'false',
+    ];
+
     /**
      * Extract parameter type from a function declaration string.
      *
@@ -366,6 +383,11 @@ final class TextFallbackHelper
         $nullable = str_starts_with($typeStr, '?');
         if ($nullable) {
             $typeStr = substr($typeStr, 1);
+        }
+
+        // Primitive types have no members - return null to skip member access
+        if (in_array(strtolower($typeStr), self::PRIMITIVES, true)) {
+            return null;
         }
 
         // Resolve the class name using use statements

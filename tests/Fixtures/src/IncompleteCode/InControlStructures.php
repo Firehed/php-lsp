@@ -159,6 +159,22 @@ class IncompleteVarAccessWhile
     }
 }
 
+class IncompletePrimitiveParam
+{
+    public function test(string $name): void
+    {
+        while ($name->/*|primitive_param*/
+    }
+}
+
+class IncompleteNullableParam
+{
+    public function test(?User $user): void
+    {
+        while ($user->/*|nullable_param*/
+    }
+}
+
 class IncompleteNullsafeAccessFor
 {
     public function test(): void

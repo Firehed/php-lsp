@@ -1103,6 +1103,34 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testGetMemberAccessContextForPrimitiveParameterReturnsNull(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'primitive_param');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'Primitive types have no members, should return null');
+    }
+
+    public function testGetMemberAccessContextForNullableParameterResolvesType(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'nullable_param');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve nullable parameter type');
+        self::assertSame(
+            'Fixtures\\Domain\\User',
+            $context->type->format(),
+            'Should resolve underlying type from nullable parameter',
+        );
+    }
+
     public function testDiagnosticTextBeforeCursor(): void
     {
         $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncomplete.php', 'this_in_if');
