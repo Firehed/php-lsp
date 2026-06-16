@@ -1131,6 +1131,41 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testGetMemberAccessContextForAliasedImportResolvesType(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/AliasedImports.php', 'aliased_param');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve aliased parameter type');
+        self::assertSame(
+            'Fixtures\\Domain\\User',
+            $context->type->format(),
+            'Aliased import should resolve to original FQN',
+        );
+    }
+
+    public function testGetMemberAccessContextForGroupImportResolvesType(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Domain/Team.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/GroupImports.php', 'group_user_param');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve group import parameter type');
+        self::assertSame(
+            'Fixtures\\Domain\\User',
+            $context->type->format(),
+            'Group import should resolve to correct FQN',
+        );
+    }
+
     public function testDiagnosticTextBeforeCursor(): void
     {
         $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncomplete.php', 'this_in_if');
