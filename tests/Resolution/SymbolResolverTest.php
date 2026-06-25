@@ -1650,4 +1650,31 @@ final class SymbolResolverTest extends TestCase
         self::assertNotContains('PROTECTED_CONST', $constantNames, 'Protected constant not visible from outside');
         self::assertNotContains('PRIVATE_CONST', $constantNames, 'Private constant not visible from outside');
     }
+
+    public function testGetAccessibleMembersUsesTextFallbackForBrokenClass(): void
+    {
+        // VeryBrokenTarget is missing its opening brace - parser can't recognize it as a class.
+        // But text-based detection finds `VeryBrokenTarget::` and extractMembers can
+        // find the const and static method via regex.
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenClassMembers.php', 'broken_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+        self::assertNotNull($context, 'Should detect static access on broken class');
+        self::assertSame('Fixtures\\IncompleteCode\\VeryBrokenTarget', $context->type->format());
+
+        $members = $this->resolver->getAccessibleMembers(
+            $document,
+            $context->type,
+            $context->minVisibility,
+            MemberFilter::Static,
+        );
+
+        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
+
+        // Text-based extraction should find these even though class has broken syntax
+        self::assertContains('NAME', $memberNames, 'Should extract constant via text fallback');
+        self::assertContains('create', $memberNames, 'Should extract static method via text fallback');
+    }
 }
