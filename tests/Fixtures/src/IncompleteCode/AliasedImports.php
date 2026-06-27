@@ -13,3 +13,11 @@ class IncompleteAliasedParam
         while ($user->/*|aliased_param*/
     }
 }
+
+class IncompleteAliasedStatic
+{
+    public function testStatic(): void
+    {
+        /*brace*/ (AliasedUser::/*|aliased_static_access*/
+    }
+}
