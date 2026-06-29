@@ -1807,4 +1807,15 @@ final class SymbolResolverTest extends TestCase
         self::assertContains('name', $memberNames, 'Should extract property via text fallback');
         self::assertContains('test', $memberNames, 'Should extract method via text fallback');
     }
+
+    public function testGetMemberAccessContextReturnsNullForThisOutsideClass(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/this_access.php', 'this_toplevel');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, '$this outside class should return null');
+    }
 }
