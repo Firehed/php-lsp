@@ -1818,4 +1818,38 @@ final class SymbolResolverTest extends TestCase
 
         self::assertNull($context, '$this outside class should return null');
     }
+
+    public function testGetMemberAccessContextReturnsNullForChainedThisOutsideClass(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/this_access.php', 'this_chained_toplevel');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'Chained $this outside class should return null');
+    }
+
+    public function testGetMemberAccessContextReturnsNullForChainToUntypedProperty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'untyped_chain');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'Chain to untyped property should return null');
+    }
+
+    public function testGetMemberAccessContextReturnsNullForChainToNonExistentProperty(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'nonexistent_chain');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'Chain to non-existent property should return null');
+    }
+
 }
