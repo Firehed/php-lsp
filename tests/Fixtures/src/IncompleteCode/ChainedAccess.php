@@ -37,3 +37,14 @@ class ChainedToNonExistent
     }
 }
 
+class ChainedEmptyPart
+{
+    private \Fixtures\Domain\User $user;
+
+    public function test(): void
+    {
+        // Double arrow creates empty part in chain
+        $this->user->->/*|double_arrow*/
+    }
+}
+

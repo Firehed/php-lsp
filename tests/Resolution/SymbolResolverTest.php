@@ -1852,4 +1852,29 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($context, 'Chain to non-existent property should return null');
     }
 
+    public function testGetMemberAccessContextReturnsNullForBrokenSelfAtTopLevel(): void
+    {
+        // This fixture is severely broken to force text-based fallback
+        $cursor = $this->openFixtureAtCursor('TopLevel/broken_self.php', 'broken_self_toplevel');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($context, 'self:: in broken file at top level should return null');
+    }
+
+    public function testGetMemberAccessContextReturnsNullForDoubleArrowInChain(): void
+    {
+        // Double arrow creates syntax that parser can't recover from
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'double_arrow');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        // Double arrow is too broken to recover
+        self::assertNull($context);
+    }
 }
