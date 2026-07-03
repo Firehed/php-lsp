@@ -1877,4 +1877,18 @@ final class SymbolResolverTest extends TestCase
         // Double arrow is too broken to recover
         self::assertNull($context);
     }
+
+    public function testGetMemberAccessContextResolvesClassInGlobalNamespace(): void
+    {
+        // No namespace, no use statements - class name should be raw
+        $cursor = $this->openFixtureAtCursor('TopLevel/no_ast.php', 'empty_ast_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        // Should resolve to raw class name
+        self::assertNotNull($context);
+        self::assertSame('SomeClass', $context->type->format());
+    }
 }
