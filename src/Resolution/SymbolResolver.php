@@ -1060,7 +1060,9 @@ final class SymbolResolver implements CodeResolver
         ) {
             return $this->findThisVariable($expr->var);
         }
-        return null;
+        // @codeCoverageIgnoreStart
+        throw new \LogicException('findThisVariable called with unhandled expression type');
+        // @codeCoverageIgnoreEnd
     }
 
     /**
