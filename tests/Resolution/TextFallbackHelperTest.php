@@ -43,42 +43,47 @@ class TextFallbackHelperTest extends TestCase
 
     public function testFindEnclosingClassFromContentReturnsNullForCodeOutsideClass(): void
     {
-        $content = "<?php\n\$this->method();\n";
+        $content = $this->loadFixture('TopLevel/this_outside_class.php');
         $result = $this->helper->findEnclosingClassFromContent($content, 1);
         self::assertNull($result);
     }
 
     public function testFindEnclosingClassFromContentFindsClassWithNamespace(): void
     {
-        $content = "<?php\nnamespace App;\nclass Foo {\n    public function test() {}\n}";
+        $content = $this->loadFixture('TopLevel/class_with_namespace.php');
+        // Line 3 is inside class Foo in namespace App
         $result = $this->helper->findEnclosingClassFromContent($content, 3);
         self::assertSame('App\\Foo', $result);
     }
 
     public function testFindEnclosingClassFromContentFindsClassWithoutNamespace(): void
     {
-        $content = "<?php\nclass GlobalClass {\n    public function test() {}\n}";
+        $content = $this->loadFixture('TopLevel/class_without_namespace.php');
+        // Line 2 is inside class GlobalClass
         $result = $this->helper->findEnclosingClassFromContent($content, 2);
         self::assertSame('GlobalClass', $result);
     }
 
     public function testFindNamespaceReturnsNullWhenNoNamespace(): void
     {
-        $lines = ['<?php', '', 'class Foo {}'];
+        $content = $this->loadFixture('TopLevel/no_namespace.php');
+        $lines = explode("\n", $content);
         $result = $this->helper->findNamespace($lines, 2);
         self::assertNull($result);
     }
 
     public function testFindNamespaceFindsNamespaceWithSemicolon(): void
     {
-        $lines = ['<?php', 'namespace App\\Services;', '', 'class Foo {}'];
+        $content = $this->loadFixture('TopLevel/namespace_semicolon.php');
+        $lines = explode("\n", $content);
         $result = $this->helper->findNamespace($lines, 3);
         self::assertSame('App\\Services', $result);
     }
 
     public function testFindNamespaceFindsNamespaceWithBrace(): void
     {
-        $lines = ['<?php', 'namespace App\\Services {', '', 'class Foo {}'];
+        $content = $this->loadFixture('TopLevel/namespace_brace.php');
+        $lines = explode("\n", $content);
         $result = $this->helper->findNamespace($lines, 3);
         self::assertSame('App\\Services', $result);
     }
@@ -94,7 +99,7 @@ class TextFallbackHelperTest extends TestCase
 
     public function testExtractMembersReturnsEmptyForNonMatchingClass(): void
     {
-        $content = "<?php\nclass Foo {}\n";
+        $content = $this->loadFixture('TopLevel/empty_class.php');
         $document = new TextDocument('file:///test.php', 'php', 1, $content);
 
         $members = $this->helper->extractMembers(
@@ -110,24 +115,27 @@ class TextFallbackHelperTest extends TestCase
 
     public function testGetMemberAccessContextReturnsNullForSelfOutsideClass(): void
     {
-        $content = "<?php\nself::";
+        $content = $this->loadFixture('TopLevel/self_outside_class.php');
         $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // Line 1: self::, cursor at position 6
         $result = $this->helper->getMemberAccessContext($document, 1, 6, []);
         self::assertNull($result, 'self:: outside class should return null');
     }
 
     public function testGetMemberAccessContextReturnsNullForStaticOutsideClass(): void
     {
-        $content = "<?php\nstatic::";
+        $content = $this->loadFixture('TopLevel/static_outside_class.php');
         $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // Line 1: static::, cursor at position 8
         $result = $this->helper->getMemberAccessContext($document, 1, 8, []);
         self::assertNull($result, 'static:: outside class should return null');
     }
 
     public function testGetMemberAccessContextReturnsNullForParentOutsideClass(): void
     {
-        $content = "<?php\nparent::";
+        $content = $this->loadFixture('TopLevel/parent_outside_class.php');
         $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // Line 1: parent::, cursor at position 8
         $result = $this->helper->getMemberAccessContext($document, 1, 8, []);
         self::assertNull($result, 'parent:: outside class should return null');
     }
