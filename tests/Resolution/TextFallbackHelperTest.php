@@ -72,6 +72,7 @@ class TextFallbackHelperTest extends TestCase
     public function testResolveChainTypeReturnsClassForSimpleThis(): void
     {
         // $this-> with nothing after returns the class type
+        // @phpstan-ignore argument.type (test uses fake class name)
         $result = $this->helper->resolveChainType('$this->', 'App\\Foo');
         self::assertNotNull($result);
         self::assertSame('App\\Foo', $result->format());
@@ -84,6 +85,7 @@ class TextFallbackHelperTest extends TestCase
 
         $members = $this->helper->extractMembers(
             $document,
+            // @phpstan-ignore argument.type (test uses fake class name)
             new ClassName('NonExistent'),
             Visibility::Public,
             MemberFilter::All,
