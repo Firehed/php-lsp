@@ -288,6 +288,14 @@ final class ScopeFinder
                         return $use->name->toString();
                     }
                 }
+            } elseif ($stmt instanceof Stmt\GroupUse) {
+                $prefix = $stmt->prefix->toString();
+                foreach ($stmt->uses as $use) {
+                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                    if ($alias === $className) {
+                        return $prefix . '\\' . $use->name->toString();
+                    }
+                }
             }
         }
 
