@@ -277,6 +277,24 @@ class TextFallbackHelperTest extends TestCase
         self::assertSame('App\\Services\\InternalClass', $result->type->format());
     }
 
+    public function testGetMemberAccessContextResolvesGlobalNamespaceImport(): void
+    {
+        // When inside a namespace with `use GlobalClass;`, the import should
+        // resolve to GlobalClass (not App\GlobalClass)
+        $content = $this->loadFixture('TopLevel/global_namespace_use_with_ns.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // Line 8 has: GlobalClass::/*|global_ns_use*/
+        // Position after :: is column 13
+        $result = $this->helper->getMemberAccessContext($document, 8, 13, []);
+        self::assertNotNull($result, 'Should resolve global namespace import');
+        // Class should resolve to GlobalClass, NOT App\GlobalClass
+        self::assertSame(
+            'GlobalClass',
+            $result->type->format(),
+            'Global namespace import should resolve to GlobalClass, not App\\GlobalClass',
+        );
+    }
+
     private function loadFixture(string $relativePath): string
     {
         $fullPath = __DIR__ . '/../Fixtures/' . $relativePath;

@@ -752,4 +752,34 @@ class ScopeFinderTest extends TestCase
 
         self::assertNull($resolved, 'Should not resolve class in same namespace without use statement');
     }
+
+    public function testResolveFromUseStatementsHandlesGroupUse(): void
+    {
+        // GroupUseExample.php has: use Fixtures\Domain\{User, Team};
+        $code = $this->loadFixture('src/Utility/GroupUseExample.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('User', $ast);
+
+        self::assertSame(
+            'Fixtures\\Domain\\User',
+            $resolved,
+            'Should resolve class from group use statement',
+        );
+    }
+
+    public function testResolveFromUseStatementsHandlesGroupUseWithAlias(): void
+    {
+        // GroupUseExample.php has: use Fixtures\Enum\{Status, Priority as Pri};
+        $code = $this->loadFixture('src/Utility/GroupUseExample.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('Pri', $ast);
+
+        self::assertSame(
+            'Fixtures\\Enum\\Priority',
+            $resolved,
+            'Should resolve aliased class from group use statement',
+        );
+    }
 }

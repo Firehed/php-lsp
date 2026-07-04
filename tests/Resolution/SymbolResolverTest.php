@@ -1891,4 +1891,42 @@ final class SymbolResolverTest extends TestCase
         self::assertNotNull($context);
         self::assertSame('SomeClass', $context->type->format());
     }
+
+    public function testGetAccessibleMembersIncludesInheritedMembersInTextFallback(): void
+    {
+        // Open ParentClass so MemberResolver can find it for inheritance
+        $this->openFixture('src/Inheritance/ParentClass.php');
+
+        // BrokenChildWithParent has broken syntax (missing opening brace)
+        // but extends ParentClass which is resolvable
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenInheritance.php', 'broken_inherited');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+        self::assertNotNull($context, 'Should resolve $this access');
+
+        $members = $this->resolver->getAccessibleMembers(
+            $document,
+            $context->type,
+            $context->minVisibility,
+            MemberFilter::Instance,
+        );
+
+        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
+
+        // Should include child method extracted via text fallback
+        self::assertContains(
+            'childMethod',
+            $memberNames,
+            'Should extract child class method via text fallback',
+        );
+
+        // Should ALSO include inherited public method from ParentClass
+        self::assertContains(
+            'parentMethod',
+            $memberNames,
+            'Should include inherited methods from resolvable parent class',
+        );
+    }
 }
