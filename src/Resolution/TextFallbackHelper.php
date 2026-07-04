@@ -547,7 +547,8 @@ final class TextFallbackHelper
             // Simple use: use Foo\Bar\ClassName;
             if (preg_match('/^\s*use\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*;/', $lineText, $m) === 1) {
                 $fqn = $m[1];
-                $lastPart = substr($fqn, (int)strrpos($fqn, '\\') + 1);
+                $pos = strrpos($fqn, '\\');
+                $lastPart = $pos === false ? $fqn : substr($fqn, $pos + 1);
                 $imports[$lastPart] = $fqn;
             }
         }
