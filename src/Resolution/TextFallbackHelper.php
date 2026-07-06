@@ -653,11 +653,6 @@ final class TextFallbackHelper
             foreach ($constants as $constantInfo) {
                 $members[] = new ResolvedConstant($constantInfo);
             }
-
-            $enumCases = $this->memberResolver->getEnumCases($parentClassName);
-            foreach ($enumCases as $enumCaseInfo) {
-                $members[] = new ResolvedEnumCase($enumCaseInfo);
-            }
         }
 
         return $members;

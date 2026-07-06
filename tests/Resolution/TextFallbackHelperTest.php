@@ -295,6 +295,22 @@ class TextFallbackHelperTest extends TestCase
         );
     }
 
+    public function testGetMemberAccessContextResolvesAliasedGroupUse(): void
+    {
+        // Test aliased item within group use: use Vendor\Package\{Something as Alias}
+        $content = $this->loadFixture('TopLevel/aliased_group_use.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // Line 6 has: Alias::/*|aliased_group*/
+        // Position after :: is column 7
+        $result = $this->helper->getMemberAccessContext($document, 6, 7, []);
+        self::assertNotNull($result, 'Should resolve aliased group use');
+        self::assertSame(
+            'Vendor\\Package\\Something',
+            $result->type->format(),
+            'Aliased group use should resolve to full FQN',
+        );
+    }
+
     private function loadFixture(string $relativePath): string
     {
         $fullPath = __DIR__ . '/../Fixtures/' . $relativePath;
