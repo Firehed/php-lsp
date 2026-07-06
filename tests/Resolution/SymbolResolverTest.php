@@ -1928,5 +1928,54 @@ final class SymbolResolverTest extends TestCase
             $memberNames,
             'Should include inherited methods from resolvable parent class',
         );
+
+        // Should include inherited property from ParentClass
+        self::assertContains(
+            'parentProperty',
+            $memberNames,
+            'Should include inherited properties from resolvable parent class',
+        );
+    }
+
+    public function testGetAccessibleMembersIncludesInheritedStaticMembersInTextFallback(): void
+    {
+        $this->openFixture('src/Inheritance/ParentClass.php');
+
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenInheritance.php', 'broken_static_inherited');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+        self::assertNotNull($context, 'Should resolve self:: access');
+
+        $members = $this->resolver->getAccessibleMembers(
+            $document,
+            $context->type,
+            $context->minVisibility,
+            MemberFilter::Static,
+        );
+
+        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
+
+        // Should include child constant extracted via text fallback
+        self::assertContains(
+            'CHILD_CONST',
+            $memberNames,
+            'Should extract child class constant via text fallback',
+        );
+
+        // Should include inherited constant from ParentClass
+        self::assertContains(
+            'PARENT_CONST',
+            $memberNames,
+            'Should include inherited constants from resolvable parent class',
+        );
+
+        // Should include inherited static method from ParentClass
+        self::assertContains(
+            'staticMethod',
+            $memberNames,
+            'Should include inherited static methods from resolvable parent class',
+        );
     }
 }
