@@ -669,20 +669,20 @@ final class TextFallbackHelper
         bool $includeStatic,
         array &$members,
     ): void {
-        $pattern = '/^\s*(public|protected|private)\s+(?:static\s+)?function\s+(\w+)\s*\(/m';
+        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(/m';
         if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $match) {
                 $visibility = Visibility::fromString($match[1]);
                 if (!$visibility->isAccessibleFrom($minVisibility)) {
                     continue;
                 }
-                $isStatic = str_contains($match[0], 'static');
+                $isStatic = $match[2] !== '';
                 $includeThis = $filter === MemberFilter::All
                     || ($isStatic && $includeStatic)
                     || (!$isStatic && !$includeStatic);
                 if ($includeThis) {
                     $members[] = new ResolvedMethod(new MethodInfo(
-                        name: new MethodName($match[2]),
+                        name: new MethodName($match[3]),
                         visibility: $visibility,
                         isStatic: $isStatic,
                         isAbstract: false,
@@ -714,20 +714,20 @@ final class TextFallbackHelper
             return;
         }
 
-        $pattern = '/^\s*(public|protected|private)\s+(?:static\s+)?(?:readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
+        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?(readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
         if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $match) {
                 $visibility = Visibility::fromString($match[1]);
                 if (!$visibility->isAccessibleFrom($minVisibility)) {
                     continue;
                 }
-                $isStatic = str_contains($match[0], 'static');
+                $isStatic = $match[2] !== '';
                 if (!$isStatic || $includeStatic) {
                     $members[] = new ResolvedProperty(new PropertyInfo(
-                        name: new PropertyName($match[2]),
+                        name: new PropertyName($match[4]),
                         visibility: $visibility,
                         isStatic: $isStatic,
-                        isReadonly: str_contains($match[0], 'readonly'),
+                        isReadonly: $match[3] !== '',
                         isPromoted: false,
                         type: null,
                         docblock: null,
