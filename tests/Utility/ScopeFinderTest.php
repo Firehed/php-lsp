@@ -782,4 +782,34 @@ class ScopeFinderTest extends TestCase
             'Should resolve aliased class from group use statement',
         );
     }
+
+    public function testFindNamespaceAtLineReturnsNamespaceContainingLine(): void
+    {
+        $code = $this->loadFixture('TopLevel/two_namespaces.php');
+        $ast = self::parseWithParents($code);
+
+        // `class Alpha` is on 1-based line 4 => 0-based line 3 (inside namespace First)
+        self::assertSame('First', ScopeFinder::findNamespaceAtLine($ast, 3));
+        // `class Beta` is on 1-based line 10 => 0-based line 9 (inside namespace Second)
+        self::assertSame('Second', ScopeFinder::findNamespaceAtLine($ast, 9));
+    }
+
+    public function testFindNamespaceAtLineHandlesZeroBasedBoundary(): void
+    {
+        $code = $this->loadFixture('TopLevel/two_namespaces.php');
+        $ast = self::parseWithParents($code);
+
+        // `namespace First {` is on 1-based line 3 => 0-based line 2. A cursor on that
+        // line is inside namespace First; a raw (un-incremented) comparison misses it.
+        self::assertSame('First', ScopeFinder::findNamespaceAtLine($ast, 2));
+    }
+
+    public function testFindNamespaceAtLineReturnsNullOutsideAnyNamespace(): void
+    {
+        $code = $this->loadFixture('TopLevel/two_namespaces.php');
+        $ast = self::parseWithParents($code);
+
+        // 0-based line 0 is the `<?php` line, before any namespace block
+        self::assertNull(ScopeFinder::findNamespaceAtLine($ast, 0));
+    }
 }

@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -308,6 +309,167 @@ class TextFallbackHelperTest extends TestCase
             'Vendor\\Package\\Something',
             $result->type->format(),
             'Aliased group use should resolve to full FQN',
+        );
+    }
+
+    public function testExtractMembersIncludesInstanceMembersNamedStatic(): void
+    {
+        $content = $this->loadFixture('TopLevel/static_named_members.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helper->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses global-namespace fake class name)
+            new ClassName('StaticNamed'),
+            Visibility::Private,
+            MemberFilter::Instance,
+        );
+
+        $names = self::memberNames($members);
+        self::assertContains(
+            'staticFactory',
+            $names,
+            'Instance method named staticFactory must not be misclassified as static',
+        );
+        self::assertContains(
+            'staticCache',
+            $names,
+            'Instance property named staticCache must not be misclassified as static',
+        );
+        self::assertNotContains(
+            'realStatic',
+            $names,
+            'A genuinely static method must be excluded from the instance filter',
+        );
+    }
+
+    public function testExtractMembersDoesNotLeakAcrossClassesInSameFile(): void
+    {
+        $content = $this->loadFixture('TopLevel/two_classes.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helper->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses global-namespace fake class name)
+            new ClassName('FirstClass'),
+            Visibility::Private,
+            MemberFilter::All,
+        );
+
+        $names = self::memberNames($members);
+        self::assertContains('firstMethod', $names, 'The target class own member should be present');
+        self::assertNotContains(
+            'secondMethod',
+            $names,
+            'Members of a later class in the same file must not leak into extraction',
+        );
+        self::assertNotContains(
+            'secretSecond',
+            $names,
+            'Private members of a later class must not leak into extraction',
+        );
+    }
+
+    public function testFindEnclosingClassFromContentFindsInterface(): void
+    {
+        $content = $this->loadFixture('TopLevel/interface_body.php');
+        // Line 6 (0-based) is inside interface MyInterface in namespace App
+        $result = $this->helper->findEnclosingClassFromContent($content, 6);
+        self::assertSame('App\\MyInterface', $result, 'Interface should be recognized as an enclosing class');
+    }
+
+    public function testExtractMembersFindsInterfaceConstants(): void
+    {
+        $content = $this->loadFixture('TopLevel/interface_body.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helper->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses fake class name)
+            new ClassName('App\\MyInterface'),
+            Visibility::Public,
+            MemberFilter::Static,
+        );
+
+        $names = self::memberNames($members);
+        self::assertContains('FOO', $names, 'Interface constants should be extracted for static access');
+    }
+
+    public function testFindParameterTypeResolvesUnionType(): void
+    {
+        $content = $this->loadFixture('TopLevel/union_param.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // Line 8 (0-based) is `$thing->`; the parameter is declared on line 6 as `Foo|Bar $thing`
+        $result = $this->helper->findParameterType($document, 8, 'thing', []);
+
+        self::assertNotNull($result, 'Union-typed parameter should resolve to a type');
+        $fqns = array_map(
+            static fn (ClassName $className): string => $className->fqn,
+            $result->getResolvableClassNames(),
+        );
+        self::assertContains('App\\Foo', $fqns, 'Union type must include its first member');
+        self::assertContains('App\\Bar', $fqns, 'Union type must include its second member');
+    }
+
+    public function testExtractMembersExcludesInheritedPrivateMembers(): void
+    {
+        $content = $this->loadFixture('TopLevel/inherited_child.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helperWithReflection->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses fake child class name)
+            new ClassName('Test\\InheritedChild'),
+            Visibility::Private,
+            MemberFilter::Instance,
+        );
+
+        $names = self::memberNames($members);
+        self::assertContains('parentMethod', $names, 'Public inherited members should be available');
+        self::assertContains('protectedMethod', $names, 'Protected inherited members should be available');
+        self::assertNotContains(
+            'privateMethod',
+            $names,
+            'A parent private method is not accessible from a child and must not be offered',
+        );
+        self::assertNotContains(
+            'privateProperty',
+            $names,
+            'A parent private property is not accessible from a child and must not be offered',
+        );
+    }
+
+    public function testExtractMembersDeduplicatesOverriddenMembers(): void
+    {
+        $content = $this->loadFixture('TopLevel/inherited_child.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helperWithReflection->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses fake child class name)
+            new ClassName('Test\\InheritedChild'),
+            Visibility::Private,
+            MemberFilter::Instance,
+        );
+
+        $names = self::memberNames($members);
+        $occurrences = count(array_filter($names, static fn (string $name): bool => $name === 'overriddenMethod'));
+        self::assertSame(
+            1,
+            $occurrences,
+            'An overridden method must appear once, not duplicated across the child and its parent',
+        );
+    }
+
+    /**
+     * @param list<ResolvedMember> $members
+     * @return list<string>
+     */
+    private static function memberNames(array $members): array
+    {
+        return array_map(
+            static fn (ResolvedMember $member): string => $member->getName()->name,
+            $members,
         );
     }
 
