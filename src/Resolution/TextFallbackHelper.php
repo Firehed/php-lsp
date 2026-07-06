@@ -578,6 +578,8 @@ final class TextFallbackHelper
     /**
      * Extract members from document text using regex.
      *
+     * Also includes inherited members from parent classes when resolvable.
+     *
      * @return list<ResolvedMember>
      */
     public function extractMembers(
@@ -590,16 +592,73 @@ final class TextFallbackHelper
         $members = [];
         $includeStatic = $filter !== MemberFilter::Instance;
 
-        $classPattern = '/(?:class|trait|enum)\s+' . preg_quote($className->shortName(), '/') . '\b/';
+        // Match class declaration with optional extends clause
+        $classPattern = '/(?:class|trait|enum)\s+' . preg_quote($className->shortName(), '/') . '\b'
+            . '(?:\s+extends\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*))?/';
         if (preg_match($classPattern, $content, $match, PREG_OFFSET_CAPTURE) !== 1) {
-            // Class not found in content
             return [];
         }
         $classContent = substr($content, $match[0][1]);
 
+        // Extract members directly defined in this class
         $this->extractMethods($classContent, $className, $minVisibility, $filter, $includeStatic, $members);
         $this->extractProperties($classContent, $className, $minVisibility, $filter, $includeStatic, $members);
         $this->extractConstants($classContent, $className, $minVisibility, $includeStatic, $members);
+
+        // Include inherited members from parent class if resolvable
+        if (isset($match[1]) && $match[1][0] !== '') {
+            $parentName = $match[1][0];
+            $parentMembers = $this->getInheritedMembers($document, $parentName, $minVisibility, $filter);
+            $members = array_merge($members, $parentMembers);
+        }
+
+        return $members;
+    }
+
+    /**
+     * Get inherited members from a parent class.
+     *
+     * @return list<ResolvedMember>
+     */
+    private function getInheritedMembers(
+        TextDocument $document,
+        string $parentName,
+        Visibility $minVisibility,
+        MemberFilter $filter,
+    ): array {
+        $members = [];
+        $lines = explode("\n", $document->getContent());
+
+        // Resolve parent class name using use statements
+        $fqn = $this->resolveClassName($parentName, $lines, [], 0);
+
+        // Get parent members via MemberResolver
+        // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
+        $parentClassName = new ClassName($fqn);
+
+        $methods = $this->memberResolver->getMethods($parentClassName, $minVisibility, $filter);
+        foreach ($methods as $methodInfo) {
+            $members[] = new ResolvedMethod($methodInfo);
+        }
+
+        if ($filter !== MemberFilter::Static) {
+            $properties = $this->memberResolver->getProperties($parentClassName, $minVisibility, $filter);
+            foreach ($properties as $propertyInfo) {
+                $members[] = new ResolvedProperty($propertyInfo);
+            }
+        }
+
+        if ($filter !== MemberFilter::Instance) {
+            $constants = $this->memberResolver->getConstants($parentClassName, $minVisibility);
+            foreach ($constants as $constantInfo) {
+                $members[] = new ResolvedConstant($constantInfo);
+            }
+
+            $enumCases = $this->memberResolver->getEnumCases($parentClassName);
+            foreach ($enumCases as $enumCaseInfo) {
+                $members[] = new ResolvedEnumCase($enumCaseInfo);
+            }
+        }
 
         return $members;
     }
