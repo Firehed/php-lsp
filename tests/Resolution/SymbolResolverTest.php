@@ -33,7 +33,6 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
-use Fixtures\Domain\User;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -586,8 +585,8 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(MemberAccessContext::class, $context);
         self::assertSame(MemberAccessKind::Instance, $context->kind);
-        self::assertSame(Visibility::Public, $context->minVisibility, 'External access from global scope is public-only');
-        self::assertContains(new ClassName(User::class), $context->type->getResolvableClassNames());
+        self::assertSame(Visibility::Public, $context->minVisibility, 'Global access is public-only');
+        self::assertSame('Fixtures\Domain\User', $context->type->format(), 'Resolves to User type');
     }
 
     public function testGetMemberAccessContextForGlobalVariableInNamespace(): void
@@ -601,7 +600,7 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(MemberAccessContext::class, $context);
         self::assertSame(MemberAccessKind::Instance, $context->kind);
-        self::assertContains(new ClassName(User::class), $context->type->getResolvableClassNames());
+        self::assertSame('Fixtures\Domain\User', $context->type->format(), 'Resolves to User type');
     }
 
     public function testResolvesMemberCallInGlobalScope(): void
@@ -627,7 +626,7 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertInstanceOf(ResolvedVariable::class, $result);
-        self::assertSame(User::class, $result->getType()?->format(), 'Global variable type should resolve to User');
+        self::assertSame('Fixtures\Domain\User', $result->getType()?->format(), 'Resolves to User type');
     }
 
     public function testGetCallContextReturnsContext(): void

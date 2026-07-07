@@ -4,13 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Utility;
 
-use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Utility\Scope;
-use Fixtures\Inheritance\Grandparent;
-use Fixtures\Inheritance\ParentClass;
-use Fixtures\Traits\HasTimestamps;
-use Fixtures\Utility\ScopePatterns;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -46,9 +41,9 @@ class ScopeTest extends TestCase
 
         $scope = Scope::forNode($method);
 
-        self::assertSame(ScopePatterns::class, $scope->getSelfContext());
+        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext());
         self::assertNull($scope->getParentContext(), 'ScopePatterns has no parent class');
-        self::assertEquals(new ClassName(ScopePatterns::class), $scope->getThisType());
+        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getThisType()?->format());
     }
 
     public function testForNodeChildMethodResolvesParentContext(): void
@@ -58,8 +53,8 @@ class ScopeTest extends TestCase
 
         $scope = Scope::forNode($method);
 
-        self::assertSame(ParentClass::class, $scope->getSelfContext());
-        self::assertSame(Grandparent::class, $scope->getParentContext());
+        self::assertSame('Fixtures\Inheritance\ParentClass', $scope->getSelfContext());
+        self::assertSame('Fixtures\Inheritance\Grandparent', $scope->getParentContext());
     }
 
     public function testForNodeTraitMethodHasNoParentContext(): void
@@ -69,9 +64,9 @@ class ScopeTest extends TestCase
 
         $scope = Scope::forNode($method);
 
-        self::assertSame(HasTimestamps::class, $scope->getSelfContext());
+        self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getSelfContext());
         self::assertNull($scope->getParentContext(), 'A trait has no extends clause');
-        self::assertEquals(new ClassName(HasTimestamps::class), $scope->getThisType());
+        self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getThisType()?->format());
     }
 
     public function testForNodeClosureExposesUseCaptures(): void
@@ -84,7 +79,7 @@ class ScopeTest extends TestCase
         self::assertTrue($scope->capturesVariable('captured'), 'use($captured) should be a capture');
         self::assertFalse($scope->capturesVariable('notCaptured'));
         self::assertNull($scope->getThisType(), 'A closure is not a method, so $this is not added here');
-        self::assertSame(ScopePatterns::class, $scope->getSelfContext(), 'Closure inherits enclosing class context');
+        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext(), 'Closure inherits class context');
     }
 
     public function testForNodeArrowFunctionHasNoStatements(): void

@@ -24,7 +24,7 @@ use PhpParser\NodeVisitorAbstract;
 final class Scope
 {
     /**
-     * @param list<Node\Param> $params
+     * @param array<Node\Param> $params
      * @param array<Stmt> $statements
      * @param ?class-string $selfContext
      * @param ?class-string $parentContext
@@ -98,7 +98,7 @@ final class Scope
     }
 
     /**
-     * @return list<Node\Param>
+     * @return array<Node\Param>
      */
     public function getParams(): array
     {

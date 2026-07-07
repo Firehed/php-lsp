@@ -52,10 +52,7 @@ final class ExpressionTypeResolver
             return null;
         }
 
-        $scope = ScopeFinder::findEnclosingScope($expr);
-        if ($scope === null) {
-            return null;
-        }
+        $scope = Scope::atOffset($ast, $expr->getStartFilePos());
 
         return $typeResolver->resolveExpressionType($expr, $scope, $ast);
     }
