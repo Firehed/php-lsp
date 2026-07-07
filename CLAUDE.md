@@ -143,6 +143,7 @@ context detection) — never for symbol resolution.
 ### Utility Classes
 
 - `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names, finds functions
+- `Scope` — Value object modelling a lexical scope (params, statements, self/parent context, `$this`, closure captures). Function-like nodes and file-level/global code both map onto it via `Scope::atOffset()`/`forNode()`/`global()`, so type/variable resolution never branches on node type or handles a "no enclosing function" case.
 - `DocblockParser` — Extracts description from docblocks
 - `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
 - `TypeFactory` — Creates Type domain objects from AST nodes and reflection
