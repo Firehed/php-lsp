@@ -1116,6 +1116,29 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('$logger', $labels);
     }
 
+    public function testVariableCompletionWorksInGlobalScope(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_variable.php', 'global_var_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$currentUser', $labels, 'File-level variable should be offered');
+        self::assertNotContains('$loginCount', $labels, 'Prefix "c" should filter out $loginCount');
+    }
+
+    public function testMemberCompletionWorksOnGlobalVariable(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion.php', 'global_member_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('getName', $labels, 'Members of a typed file-level variable should be offered');
+    }
+
     public function testVariableCompletionSuggestsThisInMethod(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'this_prefix');
