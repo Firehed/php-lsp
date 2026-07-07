@@ -5,6 +5,10 @@ class FirstClass
     public function firstMethod(): void
     {
     }
+
+    private function firstPrivate(): void
+    {
+    }
 }
 
 class SecondClass

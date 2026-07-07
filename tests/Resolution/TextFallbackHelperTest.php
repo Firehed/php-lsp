@@ -370,6 +370,29 @@ class TextFallbackHelperTest extends TestCase
         );
     }
 
+    public function testExtractMembersExcludesInaccessibleMethodsByVisibility(): void
+    {
+        $content = $this->loadFixture('TopLevel/two_classes.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        // Public access level: only public members of the class body are reachable
+        $members = $this->helper->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses global-namespace fake class name)
+            new ClassName('FirstClass'),
+            Visibility::Public,
+            MemberFilter::Instance,
+        );
+
+        $names = self::memberNames($members);
+        self::assertContains('firstMethod', $names, 'Public methods should be reachable from a public access level');
+        self::assertNotContains(
+            'firstPrivate',
+            $names,
+            'A private method must be filtered out when only public access is permitted',
+        );
+    }
+
     public function testExtractMembersHandlesUnclosedClassBody(): void
     {
         // Incomplete code: the class body has no closing brace yet
