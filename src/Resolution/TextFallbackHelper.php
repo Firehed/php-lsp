@@ -279,7 +279,7 @@ final class TextFallbackHelper
     {
         $lines = explode("\n", $content);
 
-        $classPattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|trait|enum)\s+(\w+)/i';
+        $classPattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+(\w+)/i';
         for ($i = $line; $i >= 0; $i--) {
             $lineText = $lines[$i] ?? '';
             if (preg_match($classPattern, $lineText, $matches) === 1) {
@@ -593,7 +593,7 @@ final class TextFallbackHelper
         $includeStatic = $filter !== MemberFilter::Instance;
 
         // Match class declaration with optional extends clause
-        $classPattern = '/(?:class|trait|enum)\s+' . preg_quote($className->shortName(), '/') . '\b'
+        $classPattern = '/(?:class|interface|trait|enum)\s+' . preg_quote($className->shortName(), '/') . '\b'
             . '(?:\s+extends\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*))?/';
         if (preg_match($classPattern, $content, $match, PREG_OFFSET_CAPTURE) !== 1) {
             return [];
