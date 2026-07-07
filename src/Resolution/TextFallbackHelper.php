@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\UnionType;
@@ -359,23 +360,6 @@ final class TextFallbackHelper
         return null;
     }
 
-    private const PRIMITIVES = [
-        'string',
-        'int',
-        'float',
-        'bool',
-        'array',
-        'object',
-        'callable',
-        'iterable',
-        'void',
-        'never',
-        'mixed',
-        'null',
-        'true',
-        'false',
-    ];
-
     /**
      * Extract parameter type from a function declaration string.
      *
@@ -399,7 +383,7 @@ final class TextFallbackHelper
         $classTypes = [];
         foreach (explode('|', $matches[1]) as $part) {
             $part = ltrim($part, '?');
-            if ($part === '' || in_array(strtolower($part), self::PRIMITIVES, true)) {
+            if ($part === '' || in_array(strtolower($part), PrimitiveType::NAMES, true)) {
                 continue;
             }
             $fqn = $this->resolveClassName($part, $lines, $ast, $line);
