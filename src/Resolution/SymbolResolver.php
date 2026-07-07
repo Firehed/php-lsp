@@ -16,7 +16,6 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -254,11 +253,11 @@ final class SymbolResolver implements CodeResolver
         }
 
         // Instance access: $obj->member or $obj?->member
-        if (MemberAccessResolver::isMethodCall($node) || MemberAccessResolver::isPropertyFetch($node)) {
+        if (self::isMethodCall($node) || self::isPropertyFetch($node)) {
             /** @var MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node */
 
             // For method calls, check if cursor is past the method name (inside argument list)
-            if (MemberAccessResolver::isMethodCall($node) && $node->name instanceof Identifier) {
+            if (self::isMethodCall($node) && $node->name instanceof Identifier) {
                 $nameEndPos = $node->name->getEndFilePos();
                 if ($offset > $nameEndPos + 1) {
                     return null;
@@ -1260,7 +1259,7 @@ final class SymbolResolver implements CodeResolver
         $parent = $node->getAttribute('parent');
 
         // Instance method call: $obj->method() or $obj?->method()
-        if (MemberAccessResolver::isMethodCall($parent)) {
+        if (self::isMethodCall($parent)) {
             /** @var MethodCall|NullsafeMethodCall $parent */
             return $this->resolveMethodCallCallable($parent, $ast);
         }
@@ -1271,7 +1270,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         // Property fetch: $obj->property or $obj?->property
-        if (MemberAccessResolver::isPropertyFetch($parent)) {
+        if (self::isPropertyFetch($parent)) {
             /** @var PropertyFetch|NullsafePropertyFetch $parent */
             return $this->resolvePropertyFetch($parent, $ast);
         }
@@ -1584,5 +1583,15 @@ final class SymbolResolver implements CodeResolver
         }
 
         return new ResolvedProperty($propertyInfo);
+    }
+
+    private static function isMethodCall(mixed $node): bool
+    {
+        return $node instanceof MethodCall || $node instanceof NullsafeMethodCall;
+    }
+
+    private static function isPropertyFetch(mixed $node): bool
+    {
+        return $node instanceof PropertyFetch || $node instanceof NullsafePropertyFetch;
     }
 }
