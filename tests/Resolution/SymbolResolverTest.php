@@ -33,6 +33,7 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
+use Fixtures\Domain\User;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -543,6 +544,90 @@ final class SymbolResolverTest extends TestCase
 
         $names = array_map(fn($v) => $v->getName(), $variables);
         self::assertContains('ex', $names);
+    }
+
+    public function testGetVariablesInScopeIncludesGlobalScopeVariables(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion.php', 'global_member_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains('currentUser', $names, 'Global-scope assigned variable should be in scope');
+        self::assertContains('loginCount', $names, 'Global-scope assigned variable should be in scope');
+    }
+
+    public function testGetVariablesInScopeIncludesGlobalScopeVariablesInNamespace(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion_ns.php', 'global_member_access_ns');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains(
+            'currentUser',
+            $names,
+            'File-level variable inside a namespace block should be in scope',
+        );
+    }
+
+    public function testGetMemberAccessContextForGlobalVariable(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion.php', 'global_member_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Instance, $context->kind);
+        self::assertSame(Visibility::Public, $context->minVisibility, 'External access from global scope is public-only');
+        self::assertContains(new ClassName(User::class), $context->type->getResolvableClassNames());
+    }
+
+    public function testGetMemberAccessContextForGlobalVariableInNamespace(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion_ns.php', 'global_member_access_ns');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Instance, $context->kind);
+        self::assertContains(new ClassName(User::class), $context->type->getResolvableClassNames());
+    }
+
+    public function testResolvesMemberCallInGlobalScope(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('TopLevel/global_scope_hover.php', 'global_method_call');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedMethod::class, $result);
+        self::assertStringContainsString('getName', $result->format());
+    }
+
+    public function testResolvesGlobalVariableType(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('TopLevel/global_scope_hover.php', 'global_var');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedVariable::class, $result);
+        self::assertSame(User::class, $result->getType()?->format(), 'Global variable type should resolve to User');
     }
 
     public function testGetCallContextReturnsContext(): void
