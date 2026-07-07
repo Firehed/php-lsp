@@ -300,6 +300,23 @@ class BasicTypeResolverTest extends TestCase
         self::assertSame(DateTime::class, $type->fqn);
     }
 
+    public function testResolveVariableTypeReturnsNullForClosureCapture(): void
+    {
+        $ast = $this->parseFixture('src/Utility/ScopePatterns.php');
+        $finder = new \PhpParser\NodeFinder();
+        $closure = $finder->findFirst($ast, fn($n) => $n instanceof Expr\Closure && $n->uses !== []);
+        assert($closure instanceof Expr\Closure);
+
+        $type = $this->resolver->resolveVariableType(
+            'captured',
+            Scope::forNode($closure),
+            $closure->getStartLine(),
+            $ast,
+        );
+
+        self::assertNull($type, 'use() captures cannot be typed from local assignments');
+    }
+
     public function testResolveArrowFunctionParameter(): void
     {
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
