@@ -26,4 +26,13 @@ enum Visibility: int implements Formattable
             self::Public => 'public',
         };
     }
+
+    public static function fromString(string $visibility): self
+    {
+        return match (strtolower($visibility)) {
+            'private' => self::Private,
+            'protected' => self::Protected,
+            default => self::Public,
+        };
+    }
 }

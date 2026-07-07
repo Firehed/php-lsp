@@ -7,6 +7,28 @@ namespace Firehed\PhpLsp\Domain;
 final readonly class PrimitiveType implements Type
 {
     /**
+     * PHP built-in and pseudo type names that are not class-like.
+     *
+     * @var list<string>
+     */
+    public const NAMES = [
+        'string',
+        'int',
+        'float',
+        'bool',
+        'array',
+        'object',
+        'callable',
+        'iterable',
+        'void',
+        'never',
+        'mixed',
+        'null',
+        'true',
+        'false',
+    ];
+
+    /**
      * @param list<Type> $typeArguments
      */
     public function __construct(

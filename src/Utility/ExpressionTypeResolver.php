@@ -23,6 +23,7 @@ final class ExpressionTypeResolver
      * Resolve the type of an expression.
      *
      * Handles:
+     * - Pre-resolved types (from text-based fallback)
      * - $this → enclosing class name
      * - Typed variables → delegated to TypeResolver
      *
@@ -33,6 +34,12 @@ final class ExpressionTypeResolver
         array $ast,
         ?TypeResolverInterface $typeResolver,
     ): ?Type {
+        // Check for pre-resolved type (set by text-based fallback for incomplete code)
+        $resolvedType = $expr->getAttribute('resolvedType');
+        if ($resolvedType instanceof Type) {
+            return $resolvedType;
+        }
+
         if ($expr instanceof Variable && $expr->name === 'this') {
             $className = ScopeFinder::findEnclosingClassName($expr);
             if ($className === null) {

@@ -12,6 +12,11 @@ class ContextFiltering
         // /*|in_comment*/
     }
 
+    public function memberAccessInComment(): void
+    {
+        // $this->/*|member_in_comment*/
+    }
+
     public function inHeredoc(): void
     {
         $localVar = 'test';

@@ -269,4 +269,60 @@ final class ScopeFinder
 
         return $visitor->found;
     }
+
+    /**
+     * Resolve a simple class name using use statements from AST.
+     *
+     * Returns the fully qualified name if found in a use statement,
+     * or null if not found.
+     *
+     * @param array<Stmt> $ast
+     */
+    public static function resolveFromUseStatements(string $className, array $ast): ?string
+    {
+        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
+            if ($stmt instanceof Stmt\Use_) {
+                foreach ($stmt->uses as $use) {
+                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                    if ($alias === $className) {
+                        return $use->name->toString();
+                    }
+                }
+            } elseif ($stmt instanceof Stmt\GroupUse) {
+                $prefix = $stmt->prefix->toString();
+                foreach ($stmt->uses as $use) {
+                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
+                    if ($alias === $className) {
+                        return $prefix . '\\' . $use->name->toString();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find the namespace declaration containing a given zero-based line.
+     *
+     * AST line numbers are one-based, so the incoming line is incremented before
+     * comparison. Returns null when the line is outside any namespace block or the
+     * enclosing namespace is the global namespace.
+     *
+     * @param array<Stmt> $ast
+     */
+    public static function findNamespaceAtLine(array $ast, int $line): ?string
+    {
+        foreach ($ast as $stmt) {
+            if (
+                $stmt instanceof Stmt\Namespace_
+                && $stmt->getStartLine() <= $line + 1
+                && $line + 1 <= $stmt->getEndLine()
+            ) {
+                return $stmt->name?->toString();
+            }
+        }
+
+        return null;
+    }
 }

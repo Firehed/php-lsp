@@ -69,14 +69,17 @@ use ReflectionFunction;
  * FUTURE: Batch operations (for SemanticTokens)
  * - resolveAllSymbols(Document $document): array<ResolvedToken>
  */
-final class SymbolResolver
+final class SymbolResolver implements CodeResolver
 {
+    private readonly TextFallbackHelper $textFallback;
+
     public function __construct(
         private readonly ParserService $parser,
         private readonly ClassRepository $classRepository,
         private readonly MemberResolver $memberResolver,
         private readonly TypeResolverInterface $typeResolver,
     ) {
+        $this->textFallback = new TextFallbackHelper($memberResolver);
     }
 
     /**
@@ -113,9 +116,12 @@ final class SymbolResolver
      * For instance access: returns methods and properties.
      * For static access: also includes constants and enum cases.
      *
+     * Falls back to text-based extraction when AST-based resolution fails.
+     *
      * @return list<ResolvedMember>
      */
     public function getAccessibleMembers(
+        TextDocument $document,
         Type $type,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::Instance,
@@ -129,26 +135,51 @@ final class SymbolResolver
         $includeStatic = $filter !== MemberFilter::Instance;
 
         foreach ($classNames as $className) {
-            $methods = $this->memberResolver->getMethods($className, $minVisibility, $filter);
-            foreach ($methods as $methodInfo) {
-                $members[] = new ResolvedMethod($methodInfo);
+            $classMembers = $this->getMembersForClass($className, $minVisibility, $filter, $includeStatic);
+
+            // Fall back to text-based extraction when AST-based resolution fails
+            if ($classMembers === []) {
+                $classMembers = $this->textFallback->extractMembers($document, $className, $minVisibility, $filter);
             }
 
-            $properties = $this->memberResolver->getProperties($className, $minVisibility, $filter);
-            foreach ($properties as $propertyInfo) {
-                $members[] = new ResolvedProperty($propertyInfo);
+            $members = array_merge($members, $classMembers);
+        }
+
+        return $members;
+    }
+
+    /**
+     * Get members for a single class using AST/reflection.
+     *
+     * @return list<ResolvedMember>
+     */
+    private function getMembersForClass(
+        ClassName $className,
+        Visibility $minVisibility,
+        MemberFilter $filter,
+        bool $includeStatic,
+    ): array {
+        $members = [];
+
+        $methods = $this->memberResolver->getMethods($className, $minVisibility, $filter);
+        foreach ($methods as $methodInfo) {
+            $members[] = new ResolvedMethod($methodInfo);
+        }
+
+        $properties = $this->memberResolver->getProperties($className, $minVisibility, $filter);
+        foreach ($properties as $propertyInfo) {
+            $members[] = new ResolvedProperty($propertyInfo);
+        }
+
+        if ($includeStatic) {
+            $constants = $this->memberResolver->getConstants($className, $minVisibility);
+            foreach ($constants as $constantInfo) {
+                $members[] = new ResolvedConstant($constantInfo);
             }
 
-            if ($includeStatic) {
-                $constants = $this->memberResolver->getConstants($className, $minVisibility);
-                foreach ($constants as $constantInfo) {
-                    $members[] = new ResolvedConstant($constantInfo);
-                }
-
-                $enumCases = $this->memberResolver->getEnumCases($className);
-                foreach ($enumCases as $enumCaseInfo) {
-                    $members[] = new ResolvedEnumCase($enumCaseInfo);
-                }
+            $enumCases = $this->memberResolver->getEnumCases($className);
+            foreach ($enumCases as $enumCaseInfo) {
+                $members[] = new ResolvedEnumCase($enumCaseInfo);
             }
         }
 
@@ -205,7 +236,8 @@ final class SymbolResolver
         $node = $nodeFinder->find($ast, $offset > 0 ? $offset - 1 : 0);
 
         if ($node === null) {
-            return null;
+            // AST-based detection failed completely, try text-based fallback
+            return $this->getMemberAccessContextFromText($document, $ast, $line, $character);
         }
 
         // Handle identifier/error by checking parent
@@ -234,20 +266,20 @@ final class SymbolResolver
             }
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
-            $type = $this->resolveInstanceAccessType($node, $ast);
-            if ($type === null) {
-                return null;
+            $type = $this->resolveInstanceAccessType($node, $ast, $document, $line);
+            if ($type !== null) {
+                $isThis = $node->var instanceof Variable && $node->var->name === 'this';
+                $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
+                $classNames = $type->getResolvableClassNames();
+                $className = $classNames[0] ?? null;
+                $isSameClass = $enclosingClassName !== null && $className !== null
+                    && $enclosingClassName === $className->fqn;
+                $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
+
+                return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
             }
-
-            $isThis = $node->var instanceof Variable && $node->var->name === 'this';
-            $enclosingClassName = ScopeFinder::findEnclosingClassName($node);
-            $classNames = $type->getResolvableClassNames();
-            $className = $classNames[0] ?? null;
-            $isSameClass = $enclosingClassName !== null && $className !== null
-                && $enclosingClassName === $className->fqn;
-            $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
-
-            return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+            // AST found the node but couldn't resolve type - try text-based fallback
+            return $this->getMemberAccessContextFromText($document, $ast, $line, $character);
         }
 
         // Static access: ClassName::member
@@ -259,10 +291,88 @@ final class SymbolResolver
                     return null;
                 }
             }
+            // AST found a static access node - if it can't be resolved, that's intentional
+            // (e.g., self:: outside a class). Don't fall through to text-based.
             return $this->resolveStaticAccessContext($node, $ast, $line);
         }
 
-        return null;
+        // Text-based fallback for incomplete code where AST detection failed
+        return $this->getMemberAccessContextFromText($document, $ast, $line, $character);
+    }
+
+    /**
+     * Text-based fallback for member access detection when AST fails.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function getMemberAccessContextFromText(
+        TextDocument $document,
+        array $ast,
+        int $line,
+        int $character,
+    ): ?MemberAccessContext {
+        // Try pure text-based resolution first ($this, self::, static::, ClassName::)
+        $context = $this->textFallback->getMemberAccessContext($document, $line, $character, $ast);
+        if ($context !== null) {
+            return $context;
+        }
+
+        // For non-$this variables, try AST-based type resolution
+        return $this->resolveVariableAccessWithAst($document, $line, $character, $ast);
+    }
+
+    /**
+     * Resolve non-$this variable access using AST scope.
+     *
+     * @param array<Stmt> $ast
+     */
+    private function resolveVariableAccessWithAst(
+        TextDocument $document,
+        int $line,
+        int $character,
+        array $ast,
+    ): ?MemberAccessContext {
+        $lineText = $document->getLine($line);
+        $textBeforeCursor = substr($lineText, 0, $character);
+
+        // Match $var-> but not $this->
+        if (preg_match('/\$(\w+)\??->([\w]*)$/', $textBeforeCursor, $m) !== 1) {
+            return null;
+        }
+        $varName = $m[1];
+        $prefix = $m[2];
+
+        if ($varName === 'this') {
+            return null; // Already handled by text fallback
+        }
+
+        $offset = $document->offsetAt($line, 0);
+        $scope = $this->findScopeAtOffset($ast, $offset);
+
+        $type = null;
+        if ($scope !== null) {
+            $type = $this->typeResolver->resolveVariableType($varName, $scope, $line, $ast);
+        }
+
+        // Fall back to text-based parameter type resolution when AST scope fails
+        if ($type === null) {
+            $type = $this->textFallback->findParameterType($document, $line, $varName, $ast);
+        }
+
+        if ($type === null) {
+            return null;
+        }
+
+        $enclosingClassName = $scope !== null
+            ? ScopeFinder::findEnclosingClassName($scope)
+            : null;
+        $classNames = $type->getResolvableClassNames();
+        $className = $classNames[0] ?? null;
+        $isSameClass = $enclosingClassName !== null && $className !== null
+            && $enclosingClassName === $className->fqn;
+        $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
+
+        return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
     }
 
     /**
@@ -429,20 +539,36 @@ final class SymbolResolver
         }
 
         $offset = $document->offsetAt($line, $character);
+        $content = $document->getContent();
 
         $callInfo = $this->findCallAtPosition($ast, $offset);
-        if ($callInfo === null) {
+        $callable = null;
+        $activeParameter = 0;
+        $usedNames = [];
+        $positionalCount = 0;
+
+        if ($callInfo !== null) {
+            [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
+            $callable = $this->resolveCallable($callNode, $ast);
+            if ($callable === null) {
+                // AST found a call node but couldn't resolve type - try text-based
+                // This happens with $this-> in incomplete code where AST lacks class context
+                $textCallInfo = $this->findCallFromText($ast, $offset, $content, $line);
+                if ($textCallInfo !== null) {
+                    [$callNode, $activeParameter, $usedNames, $positionalCount] = $textCallInfo;
+                    $callable = $this->resolveCallable($callNode, $ast);
+                }
+            }
+        } else {
             // Fallback: text-based detection for incomplete calls where parser
             // couldn't create proper call nodes
-            $callInfo = $this->findCallFromText($ast, $offset, $document->getContent(), $line);
-        }
-        if ($callInfo === null) {
-            return null;
+            $callInfo = $this->findCallFromText($ast, $offset, $content, $line);
+            if ($callInfo !== null) {
+                [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
+                $callable = $this->resolveCallable($callNode, $ast);
+            }
         }
 
-        [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-
-        $callable = $this->resolveCallable($callNode, $ast);
         if ($callable === null) {
             return null;
         }
@@ -546,7 +672,7 @@ final class SymbolResolver
         $textBeforeParen = substr($content, 0, $parenPos);
 
         // Try to match call patterns and resolve the callable
-        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $line);
+        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $line, $content);
         if ($callNode === null) {
             return null;
         }
@@ -591,6 +717,7 @@ final class SymbolResolver
         string $textBeforeParen,
         array $ast,
         int $line,
+        string $content,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null {
         $text = rtrim($textBeforeParen);
 
@@ -602,33 +729,23 @@ final class SymbolResolver
             return new StaticCall($name, new Identifier($methodName));
         }
 
-        // Instance call: $var->methodName
-        if (preg_match('/\$(\w+)->(\w+)\s*$/', $text, $m) === 1) {
+        // Instance call: $var->methodName or $var?->methodName
+        if (preg_match('/\$(\w+)(\?)?->(\w+)\s*$/', $text, $m) === 1) {
             $varName = $m[1];
-            $methodName = $m[2];
+            $isNullsafe = $m[2] === '?';
+            $methodName = $m[3];
             $var = new Variable($varName);
             // For $this, store the enclosing class so resolveMethodCallCallable can use it
             if ($varName === 'this') {
-                $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
+                $enclosingClass = $this->findEnclosingClassForLine($ast, $line)
+                    ?? $this->textFallback->findEnclosingClassFromContent($content, $line);
                 if ($enclosingClass !== null) {
                     $var->setAttribute('resolvedType', new ClassName($enclosingClass));
                 }
             }
-            return new MethodCall($var, new Identifier($methodName));
-        }
-
-        // Nullsafe instance call: $var?->methodName
-        if (preg_match('/\$(\w+)\?->(\w+)\s*$/', $text, $m) === 1) {
-            $varName = $m[1];
-            $methodName = $m[2];
-            $var = new Variable($varName);
-            if ($varName === 'this') {
-                $enclosingClass = $this->findEnclosingClassForLine($ast, $line);
-                if ($enclosingClass !== null) {
-                    $var->setAttribute('resolvedType', new ClassName($enclosingClass));
-                }
-            }
-            return new NullsafeMethodCall($var, new Identifier($methodName));
+            return $isNullsafe
+                ? new NullsafeMethodCall($var, new Identifier($methodName))
+                : new MethodCall($var, new Identifier($methodName));
         }
 
         // Constructor: new ClassName
@@ -666,58 +783,19 @@ final class SymbolResolver
         }
 
         // Check use statements first
-        $resolvedFromUse = $this->resolveFromUseStatements($className, $ast);
+        $resolvedFromUse = ScopeFinder::resolveFromUseStatements($className, $ast);
         if ($resolvedFromUse !== null) {
             $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedFromUse));
             return $name;
         }
 
         // Fall back to namespace prefix
-        $namespace = $this->findNamespaceForLine($ast, $line);
+        $namespace = ScopeFinder::findNamespaceAtLine($ast, $line);
         if ($namespace !== null) {
             $name->setAttribute('resolvedName', new Name\FullyQualified($namespace . '\\' . $className));
         }
 
         return $name;
-    }
-
-    /**
-     * Look up a simple class name in use statements.
-     *
-     * Only handles single-part names (e.g., "User" not "Foo\User").
-     * Multi-part names are handled by the AST path when parser succeeds.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveFromUseStatements(string $className, array $ast): ?string
-    {
-        if (str_contains($className, '\\')) {
-            return null;
-        }
-
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $nsStmt) {
-                    if ($nsStmt instanceof Stmt\Use_) {
-                        foreach ($nsStmt->uses as $use) {
-                            $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                            if ($alias === $className) {
-                                return $use->name->toString();
-                            }
-                        }
-                    }
-                }
-            } elseif ($stmt instanceof Stmt\Use_) {
-                foreach ($stmt->uses as $use) {
-                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                    if ($alias === $className) {
-                        return $use->name->toString();
-                    }
-                }
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -785,25 +863,6 @@ final class SymbolResolver
         } elseif (!$sawNamedArg) {
             $positionalCount++;
         }
-    }
-
-    /**
-     * Find the namespace string for a given line number.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function findNamespaceForLine(array $ast, int $line): ?string
-    {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_ && $stmt->name !== null) {
-                $startLine = $stmt->getStartLine();
-                $endLine = $stmt->getEndLine();
-                if ($startLine <= $line + 1 && $line + 1 <= $endLine) {
-                    return $stmt->name->toString();
-                }
-            }
-        }
-        return null;
     }
 
     /**
@@ -914,13 +973,77 @@ final class SymbolResolver
     private function resolveInstanceAccessType(
         MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
         array $ast,
+        ?TextDocument $document = null,
+        ?int $line = null,
     ): ?Type {
         // Check for pre-resolved type from text-based fallback
         $resolvedType = $node->var->getAttribute('resolvedType');
         if ($resolvedType instanceof Type) {
             return $resolvedType;
         }
-        return ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+
+        $type = ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+        if ($type !== null) {
+            return $type;
+        }
+
+        // If AST-based resolution failed and we have document context, try text-based
+        // class detection for expressions that start with $this
+        if ($document !== null && $line !== null && $this->expressionStartsWithThis($node->var)) {
+            $enclosingClass = $this->findEnclosingClassForLine($ast, $line)
+                ?? $this->textFallback->findEnclosingClass($document, $line);
+            if ($enclosingClass !== null) {
+                // Set the resolved type on the $this variable so type resolution can proceed
+                $thisVar = $this->findThisVariable($node->var);
+                if ($thisVar !== null) {
+                    $thisVar->setAttribute('resolvedType', new ClassName($enclosingClass));
+                    // Retry expression type resolution with the $this type set
+                    return ExpressionTypeResolver::resolveExpressionType(
+                        $node->var,
+                        $ast,
+                        $this->typeResolver,
+                    );
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if an expression starts with $this.
+     */
+    private function expressionStartsWithThis(Node\Expr $expr): bool
+    {
+        if ($expr instanceof Variable && $expr->name === 'this') {
+            return true;
+        }
+        if (
+            $expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch
+            || $expr instanceof MethodCall || $expr instanceof NullsafeMethodCall
+        ) {
+            return $this->expressionStartsWithThis($expr->var);
+        }
+        return false;
+    }
+
+    /**
+     * Find the $this variable in an expression chain.
+     */
+    private function findThisVariable(Node\Expr $expr): ?Variable
+    {
+        if ($expr instanceof Variable && $expr->name === 'this') {
+            return $expr;
+        }
+        if (
+            $expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch
+            || $expr instanceof MethodCall || $expr instanceof NullsafeMethodCall
+        ) {
+            return $this->findThisVariable($expr->var);
+        }
+        // @codeCoverageIgnoreStart
+        throw new \LogicException('findThisVariable called with unhandled expression type');
+        // @codeCoverageIgnoreEnd
     }
 
     /**
