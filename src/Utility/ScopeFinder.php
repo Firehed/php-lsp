@@ -301,4 +301,28 @@ final class ScopeFinder
 
         return null;
     }
+
+    /**
+     * Find the namespace declaration containing a given zero-based line.
+     *
+     * AST line numbers are one-based, so the incoming line is incremented before
+     * comparison. Returns null when the line is outside any namespace block or the
+     * enclosing namespace is the global namespace.
+     *
+     * @param array<Stmt> $ast
+     */
+    public static function findNamespaceAtLine(array $ast, int $line): ?string
+    {
+        foreach ($ast as $stmt) {
+            if (
+                $stmt instanceof Stmt\Namespace_
+                && $stmt->getStartLine() <= $line + 1
+                && $line + 1 <= $stmt->getEndLine()
+            ) {
+                return $stmt->name?->toString();
+            }
+        }
+
+        return null;
+    }
 }

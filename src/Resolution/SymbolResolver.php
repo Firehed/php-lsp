@@ -790,7 +790,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         // Fall back to namespace prefix
-        $namespace = $this->findNamespaceForLine($ast, $line);
+        $namespace = ScopeFinder::findNamespaceAtLine($ast, $line);
         if ($namespace !== null) {
             $name->setAttribute('resolvedName', new Name\FullyQualified($namespace . '\\' . $className));
         }
@@ -863,25 +863,6 @@ final class SymbolResolver implements CodeResolver
         } elseif (!$sawNamedArg) {
             $positionalCount++;
         }
-    }
-
-    /**
-     * Find the namespace string for a given line number.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function findNamespaceForLine(array $ast, int $line): ?string
-    {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_ && $stmt->name !== null) {
-                $startLine = $stmt->getStartLine();
-                $endLine = $stmt->getEndLine();
-                if ($startLine <= $line + 1 && $line + 1 <= $endLine) {
-                    return $stmt->name->toString();
-                }
-            }
-        }
-        return null;
     }
 
     /**

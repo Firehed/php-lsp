@@ -444,7 +444,7 @@ final class TextFallbackHelper
         }
 
         // Prepend current namespace (try AST first, then text)
-        $namespace = $this->findNamespaceForLine($ast, $line)
+        $namespace = ScopeFinder::findNamespaceAtLine($ast, $line)
             ?? $this->findNamespace($lines, $line);
         if ($namespace !== null) {
             return $namespace . '\\' . $className;
@@ -558,25 +558,6 @@ final class TextFallbackHelper
         }
 
         return $imports;
-    }
-
-    /**
-     * Find namespace for a given line from AST.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function findNamespaceForLine(array $ast, int $line): ?string
-    {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                $startLine = $stmt->getStartLine();
-                $endLine = $stmt->getEndLine();
-                if ($startLine <= $line && $line <= $endLine) {
-                    return $stmt->name?->toString();
-                }
-            }
-        }
-        return null;
     }
 
     /**
