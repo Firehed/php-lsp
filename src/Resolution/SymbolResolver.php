@@ -1127,6 +1127,12 @@ final class SymbolResolver implements CodeResolver
                 continue;
             }
 
+            // Nested function/class declarations introduce their own scope;
+            // their bodies must not contribute variables to this one.
+            if ($stmt instanceof Stmt\Function_ || $stmt instanceof Stmt\ClassLike) {
+                continue;
+            }
+
             if ($stmt instanceof Stmt\Expression && $stmt->expr instanceof Assign) {
                 $assign = $stmt->expr;
                 if ($assign->var instanceof Variable && is_string($assign->var->name)) {
