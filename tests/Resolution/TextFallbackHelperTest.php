@@ -370,6 +370,24 @@ class TextFallbackHelperTest extends TestCase
         );
     }
 
+    public function testExtractMembersHandlesUnclosedClassBody(): void
+    {
+        // Incomplete code: the class body has no closing brace yet
+        $content = $this->loadFixture('TopLevel/unclosed_class.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helper->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses global-namespace fake class name)
+            new ClassName('Unclosed'),
+            Visibility::Private,
+            MemberFilter::All,
+        );
+
+        $names = self::memberNames($members);
+        self::assertContains('unclosedMethod', $names, 'Members of an unclosed class body should still be extracted');
+    }
+
     public function testFindEnclosingClassFromContentFindsInterface(): void
     {
         $content = $this->loadFixture('TopLevel/interface_body.php');

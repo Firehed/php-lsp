@@ -598,7 +598,7 @@ final class TextFallbackHelper
         if (preg_match($classPattern, $content, $match, PREG_OFFSET_CAPTURE) !== 1) {
             return [];
         }
-        $classContent = substr($content, $match[0][1]);
+        $classContent = $this->sliceClassBody($content, $match[0][1]);
 
         // Extract members directly defined in this class
         $this->extractMethods($classContent, $className, $minVisibility, $filter, $includeStatic, $members);
@@ -613,6 +613,31 @@ final class TextFallbackHelper
         }
 
         return $members;
+    }
+
+    /**
+     * Slice a single class body, from its declaration through the matching
+     * closing brace, so member extraction cannot leak into sibling classes
+     * defined later in the same file.
+     */
+    private function sliceClassBody(string $content, int $declOffset): string
+    {
+        $bracePos = strpos($content, '{', $declOffset);
+        if ($bracePos !== false) {
+            $depth = 0;
+            for ($i = $bracePos, $length = strlen($content); $i < $length; $i++) {
+                $char = $content[$i];
+                if ($char === '{') {
+                    $depth++;
+                } elseif ($char === '}' && --$depth === 0) {
+                    return substr($content, $declOffset, $i - $declOffset + 1);
+                }
+            }
+        }
+
+        // No opening brace or unbalanced braces (incomplete code): the class body
+        // runs to the end of the document.
+        return substr($content, $declOffset);
     }
 
     /**
