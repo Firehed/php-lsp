@@ -453,14 +453,14 @@ final class SymbolResolverTest extends TestCase
         self::assertTrue($hasNameParam, 'Expected $name parameter in scope');
     }
 
-    public function testGetVariablesInScopeReturnsEmptyOutsideFunction(): void
+    public function testGetVariablesInScopeReturnsEmptyBeforeFirstStatement(): void
     {
-        // SignatureHelp.php has file-level code outside any function
         $this->openFixture('SignatureHelp.php');
         $document = $this->documents->get('file:///fixtures/SignatureHelp.php');
         assert($document !== null);
 
-        // Line 0, character 0 is at the very start - outside any function
+        // Line 0, character 0 is at the very start, before any statement that
+        // could introduce a variable.
         $variables = $this->resolver->getVariablesInScope($document, 0, 0);
 
         self::assertSame([], $variables);
