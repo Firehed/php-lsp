@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node;
@@ -36,7 +37,7 @@ final class BasicTypeResolver implements TypeResolverInterface
     }
     public function resolveExpressionType(
         Expr $expr,
-        Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction|null $scope,
+        Scope $scope,
         array $ast,
     ): ?Type {
         // new ClassName()
@@ -70,7 +71,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         }
 
         // Variable reference - delegate to resolveVariableType
-        if ($expr instanceof Expr\Variable && is_string($expr->name) && $scope !== null) {
+        if ($expr instanceof Expr\Variable && is_string($expr->name)) {
             return $this->resolveVariableType($expr->name, $scope, $expr->getStartLine() - 1, $ast);
         }
 
@@ -135,22 +136,16 @@ final class BasicTypeResolver implements TypeResolverInterface
 
     public function resolveVariableType(
         string $variableName,
-        Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction $scope,
+        Scope $scope,
         int $line,
         array $ast,
     ): ?Type {
-        // Determine class context for self/static/parent resolution
-        $selfContext = ScopeFinder::findEnclosingClassName($scope);
-        $parentContext = null;
-        if ($selfContext !== null) {
-            $classNode = ScopeFinder::findEnclosingClassNode($scope);
-            if ($classNode instanceof Stmt\Class_) {
-                $parentContext = ScopeFinder::resolveExtendsName($classNode);
-            }
-        }
+        // Class context for self/static/parent resolution
+        $selfContext = $scope->getSelfContext();
+        $parentContext = $scope->getParentContext();
 
         // Check parameters first
-        foreach ($scope->params as $param) {
+        foreach ($scope->getParams() as $param) {
             if (
                 $param->var instanceof Expr\Variable
                 && is_string($param->var->name)
@@ -160,32 +155,26 @@ final class BasicTypeResolver implements TypeResolverInterface
             }
         }
 
-        // Check closure use() variables
-        if ($scope instanceof Expr\Closure) {
-            foreach ($scope->uses as $use) {
-                if (is_string($use->var->name) && $use->var->name === $variableName) {
-                    // Can't determine type of use() variables without more context
-                    return null;
-                }
-            }
+        // Closure use() variables are bound from the enclosing scope; their type
+        // cannot be determined from local assignments.
+        if ($scope->capturesVariable($variableName)) {
+            return null;
         }
 
         // Look for assignments before the current line
         $foundType = null;
-        $stmts = $scope instanceof Expr\ArrowFunction ? [] : ($scope->stmts ?? []);
+        $stmts = $scope->getStatements();
 
         $visitor = new class ($variableName, $line, $foundType, $this, $scope, $ast) extends NodeVisitorAbstract {
             public ?Type $foundType = null;
             private string $variableName;
             private int $line;
             private BasicTypeResolver $resolver;
-            /** @var Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction */
-            private $scope;
+            private Scope $scope;
             /** @var array<Stmt> */
             private array $ast;
 
             /**
-             * @param Stmt\Function_|Stmt\ClassMethod|Expr\Closure|Expr\ArrowFunction $scope
              * @param array<Stmt> $ast
              */
             public function __construct(
@@ -193,7 +182,7 @@ final class BasicTypeResolver implements TypeResolverInterface
                 int $line,
                 ?Type &$foundType,
                 BasicTypeResolver $resolver,
-                $scope,
+                Scope $scope,
                 array $ast,
             ) {
                 $this->variableName = $variableName;

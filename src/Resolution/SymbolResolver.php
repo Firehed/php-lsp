@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
+use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -346,14 +347,11 @@ final class SymbolResolver implements CodeResolver
         }
 
         $offset = $document->offsetAt($line, 0);
-        $scope = $this->findScopeAtOffset($ast, $offset);
+        $scope = Scope::atOffset($ast, $offset);
 
-        $type = null;
-        if ($scope !== null) {
-            $type = $this->typeResolver->resolveVariableType($varName, $scope, $line, $ast);
-        }
+        $type = $this->typeResolver->resolveVariableType($varName, $scope, $line, $ast);
 
-        // Fall back to text-based parameter type resolution when AST scope fails
+        // Fall back to text-based parameter type resolution when AST resolution fails
         if ($type === null) {
             $type = $this->textFallback->findParameterType($document, $line, $varName, $ast);
         }
@@ -362,9 +360,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        $enclosingClassName = $scope !== null
-            ? ScopeFinder::findEnclosingClassName($scope)
-            : null;
+        $enclosingClassName = $scope->getSelfContext();
         $classNames = $type->getResolvableClassNames();
         $className = $classNames[0] ?? null;
         $isSameClass = $enclosingClassName !== null && $className !== null
@@ -484,17 +480,13 @@ final class SymbolResolver implements CodeResolver
 
         $offset = $document->offsetAt($line, $character);
 
-        // Find enclosing scope
-        $scope = $this->findScopeAtOffset($ast, $offset);
-        if ($scope === null) {
-            return [];
-        }
+        $scope = Scope::atOffset($ast, $offset);
 
         $variables = [];
         $seen = [];
 
         // Add parameters
-        foreach ($scope->params as $param) {
+        foreach ($scope->getParams() as $param) {
             if ($param->var instanceof Variable && is_string($param->var->name)) {
                 $name = $param->var->name;
                 if (!isset($seen[$name])) {
@@ -505,18 +497,15 @@ final class SymbolResolver implements CodeResolver
             }
         }
 
-        // Add $this if in a method
-        if ($scope instanceof Stmt\ClassMethod) {
-            $className = ScopeFinder::findEnclosingClassName($scope);
-            if ($className !== null && !isset($seen['this'])) {
-                $variables[] = new ResolvedVariable('this', new ClassName($className));
-                $seen['this'] = true;
-            }
+        // Add $this when bound (non-static methods)
+        $thisType = $scope->getThisType();
+        if ($thisType !== null && !isset($seen['this'])) {
+            $variables[] = new ResolvedVariable('this', $thisType);
+            $seen['this'] = true;
         }
 
         // Find variable assignments before cursor
-        $stmts = $scope->stmts ?? [];
-        $this->collectVariablesFromStatements($stmts, $line, $scope, $ast, $variables, $seen);
+        $this->collectVariablesFromStatements($scope->getStatements(), $line, $scope, $ast, $variables, $seen);
 
         return $variables;
     }
@@ -1118,40 +1107,8 @@ final class SymbolResolver implements CodeResolver
      * @param array<Stmt> $ast
      * @return Stmt\Function_|Stmt\ClassMethod|Closure|null
      */
-    private function findScopeAtOffset(array $ast, int $offset): Stmt\Function_|Stmt\ClassMethod|Closure|null
-    {
-        $visitor = new class ($offset) extends NodeVisitorAbstract {
-            public Stmt\Function_|Stmt\ClassMethod|Closure|null $found = null;
-            private int $offset;
-
-            public function __construct(int $offset)
-            {
-                $this->offset = $offset;
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if (
-                    ($node instanceof Stmt\Function_ || $node instanceof Stmt\ClassMethod || $node instanceof Closure)
-                    && $node->getStartFilePos() <= $this->offset
-                    && $node->getEndFilePos() >= $this->offset
-                ) {
-                    $this->found = $node;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-
-        return $visitor->found;
-    }
-
     /**
      * @param array<Stmt|Node> $stmts
-     * @param Stmt\Function_|Stmt\ClassMethod|Closure $scope
      * @param array<Stmt> $ast
      * @param list<ResolvedVariable> $variables
      * @param array<string, bool> $seen
@@ -1159,7 +1116,7 @@ final class SymbolResolver implements CodeResolver
     private function collectVariablesFromStatements(
         array $stmts,
         int $line,
-        Stmt\Function_|Stmt\ClassMethod|Closure $scope,
+        Scope $scope,
         array $ast,
         array &$variables,
         array &$seen,
@@ -1167,6 +1124,12 @@ final class SymbolResolver implements CodeResolver
         foreach ($stmts as $stmt) {
             $stmtLine = $stmt->getStartLine() - 1; // Convert to 0-based
             if ($stmtLine > $line) {
+                continue;
+            }
+
+            // Nested function/class declarations introduce their own scope;
+            // their bodies must not contribute variables to this one.
+            if ($stmt instanceof Stmt\Function_ || $stmt instanceof Stmt\ClassLike) {
                 continue;
             }
 

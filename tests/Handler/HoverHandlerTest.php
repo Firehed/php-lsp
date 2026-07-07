@@ -128,6 +128,17 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('Updates the user', $result['contents']);
     }
 
+    public function testHoverOnMethodCallInGlobalScope(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('TopLevel/global_scope_hover.php', 'global_method_call');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('getName', $result['contents']);
+    }
+
     public function testHoverOnProperty(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager');

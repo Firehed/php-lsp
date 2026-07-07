@@ -154,6 +154,18 @@ class DefinitionHandlerTest extends TestCase
         self::assertSame(47, $result['range']['start']['line']);
     }
 
+    public function testGoToMethodDefinitionInGlobalScope(): void
+    {
+        $userUri = $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('TopLevel/global_scope_hover.php', 'global_method_call');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($userUri, $result['uri']);
+        self::assertSame(39, $result['range']['start']['line'], 'Jumps to User::getName declaration');
+    }
+
     public function testGoToMethodDefinitionViaAssignment(): void
     {
         $userUri = $this->openFixture('src/Domain/User.php');

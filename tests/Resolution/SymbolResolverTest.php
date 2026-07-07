@@ -453,14 +453,14 @@ final class SymbolResolverTest extends TestCase
         self::assertTrue($hasNameParam, 'Expected $name parameter in scope');
     }
 
-    public function testGetVariablesInScopeReturnsEmptyOutsideFunction(): void
+    public function testGetVariablesInScopeReturnsEmptyBeforeFirstStatement(): void
     {
-        // SignatureHelp.php has file-level code outside any function
         $this->openFixture('SignatureHelp.php');
         $document = $this->documents->get('file:///fixtures/SignatureHelp.php');
         assert($document !== null);
 
-        // Line 0, character 0 is at the very start - outside any function
+        // Line 0, character 0 is at the very start, before any statement that
+        // could introduce a variable.
         $variables = $this->resolver->getVariablesInScope($document, 0, 0);
 
         self::assertSame([], $variables);
@@ -543,6 +543,105 @@ final class SymbolResolverTest extends TestCase
 
         $names = array_map(fn($v) => $v->getName(), $variables);
         self::assertContains('ex', $names);
+    }
+
+    public function testGetVariablesInScopeIncludesGlobalScopeVariables(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion.php', 'global_member_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains('currentUser', $names, 'Global-scope assigned variable should be in scope');
+        self::assertContains('loginCount', $names, 'Global-scope assigned variable should be in scope');
+    }
+
+    public function testGetVariablesInScopeIncludesGlobalScopeVariablesInNamespace(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion_ns.php', 'global_member_access_ns');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains(
+            'currentUser',
+            $names,
+            'File-level variable inside a namespace block should be in scope',
+        );
+    }
+
+    public function testGetVariablesInScopeExcludesNestedScopeVariables(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_nested.php', 'nested_marker');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains('globalOne', $names, 'File-level variable should be in scope');
+        self::assertContains('globalTwo', $names, 'File-level variable should be in scope');
+        self::assertNotContains('localToFunction', $names, 'Function-local variable must not leak to file scope');
+        self::assertNotContains('localToMethod', $names, 'Method-local variable must not leak to file scope');
+    }
+
+    public function testGetMemberAccessContextForGlobalVariable(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion.php', 'global_member_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Instance, $context->kind);
+        self::assertSame(Visibility::Public, $context->minVisibility, 'Global access is public-only');
+        self::assertSame('Fixtures\Domain\User', $context->type->format(), 'Resolves to User type');
+    }
+
+    public function testGetMemberAccessContextForGlobalVariableInNamespace(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion_ns.php', 'global_member_access_ns');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame(MemberAccessKind::Instance, $context->kind);
+        self::assertSame('Fixtures\Domain\User', $context->type->format(), 'Resolves to User type');
+    }
+
+    public function testResolvesMemberCallInGlobalScope(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('TopLevel/global_scope_hover.php', 'global_method_call');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedMethod::class, $result);
+        self::assertStringContainsString('getName', $result->format());
+    }
+
+    public function testResolvesGlobalVariableType(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $cursor = $this->openFixtureAtHoverMarker('TopLevel/global_scope_hover.php', 'global_var');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(ResolvedVariable::class, $result);
+        self::assertSame('Fixtures\Domain\User', $result->getType()?->format(), 'Resolves to User type');
     }
 
     public function testGetCallContextReturnsContext(): void

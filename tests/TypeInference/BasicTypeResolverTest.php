@@ -20,6 +20,7 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Utility\Scope;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
@@ -52,7 +53,7 @@ class BasicTypeResolverTest extends TestCase
         $expr = $finder->findFirstInstanceOf($method, Expr\New_::class);
         assert($expr instanceof Expr\New_);
 
-        $type = $this->resolver->resolveExpressionType($expr, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($expr, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -63,7 +64,7 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
         $method = $this->findMethodByName($ast, 'parameterType');
 
-        $type = $this->resolver->resolveVariableType('dt', $method, $method->getStartLine(), $ast);
+        $type = $this->resolver->resolveVariableType('dt', Scope::forNode($method), $method->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -74,7 +75,7 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/Completion/MethodAccess.php');
         $method = $this->findMethodByName($ast, 'withParameter');
 
-        $type = $this->resolver->resolveVariableType('param', $method, $method->getStartLine(), $ast);
+        $type = $this->resolver->resolveVariableType('param', Scope::forNode($method), $method->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\Completion\\MethodAccess', $type->fqn);
@@ -85,7 +86,7 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/Inheritance/ChildClass.php');
         $method = $this->findMethodByName($ast, 'withParentParam');
 
-        $type = $this->resolver->resolveVariableType('obj', $method, $method->getStartLine(), $ast);
+        $type = $this->resolver->resolveVariableType('obj', Scope::forNode($method), $method->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\Inheritance\\ParentClass', $type->fqn);
@@ -96,7 +97,7 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
         $method = $this->findMethodByName($ast, 'assignmentFromNew');
 
-        $type = $this->resolver->resolveVariableType('x', $method, $method->getStartLine() + 1, $ast);
+        $type = $this->resolver->resolveVariableType('x', Scope::forNode($method), $method->getStartLine() + 1, $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -110,7 +111,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
         assert($methodCall instanceof Expr\MethodCall);
 
-        $objectType = $this->resolver->resolveExpressionType($methodCall->var, $method, $ast);
+        $objectType = $this->resolver->resolveExpressionType($methodCall->var, Scope::forNode($method), $ast);
         self::assertInstanceOf(ClassName::class, $objectType);
         self::assertSame(DateTime::class, $objectType->fqn);
     }
@@ -123,7 +124,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
         assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('string', $type->format());
@@ -137,7 +138,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
         assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, Scope::forNode($method), $ast);
 
         self::assertNull($type);
     }
@@ -150,7 +151,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
         assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('int', $type->format());
@@ -164,7 +165,7 @@ class BasicTypeResolverTest extends TestCase
         $propertyFetch = $finder->findFirstInstanceOf($function, Expr\PropertyFetch::class);
         assert($propertyFetch instanceof Expr\PropertyFetch);
 
-        $type = $this->resolver->resolveExpressionType($propertyFetch, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($propertyFetch, Scope::forNode($function), $ast);
 
         self::assertNull($type);
     }
@@ -175,7 +176,7 @@ class BasicTypeResolverTest extends TestCase
         $function = $this->findFunctionByName($ast, 'thisInFunction');
         $thisVar = $this->findThisVariable([$function]);
 
-        $type = $this->resolver->resolveExpressionType($thisVar, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($thisVar, Scope::forNode($function), $ast);
 
         self::assertNull($type);
     }
@@ -188,7 +189,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($function, Expr\MethodCall::class);
         assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, Scope::forNode($function), $ast);
 
         self::assertNull($type);
     }
@@ -201,7 +202,7 @@ class BasicTypeResolverTest extends TestCase
         $clone = $finder->findFirstInstanceOf($method, Expr\Clone_::class);
         assert($clone instanceof Expr\Clone_);
 
-        $type = $this->resolver->resolveExpressionType($clone, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($clone, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -215,7 +216,7 @@ class BasicTypeResolverTest extends TestCase
         $ternary = $finder->findFirstInstanceOf($method, Expr\Ternary::class);
         assert($ternary instanceof Expr\Ternary);
 
-        $type = $this->resolver->resolveExpressionType($ternary, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($ternary, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -229,7 +230,7 @@ class BasicTypeResolverTest extends TestCase
         $coalesce = $finder->findFirstInstanceOf($method, Expr\BinaryOp\Coalesce::class);
         assert($coalesce instanceof Expr\BinaryOp\Coalesce);
 
-        $type = $this->resolver->resolveExpressionType($coalesce, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($coalesce, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
@@ -241,7 +242,7 @@ class BasicTypeResolverTest extends TestCase
         $method = $this->findMethodByName($ast, 'thisReference');
         $thisVar = $this->findThisVariable([$method]);
 
-        $type = $this->resolver->resolveExpressionType($thisVar, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($thisVar, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\TypeInference\\BuiltinTypes', $type->fqn);
@@ -252,7 +253,7 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
         $method = $this->findMethodByName($ast, 'nullableParameterType');
 
-        $type = $this->resolver->resolveVariableType('dt', $method, $method->getStartLine(), $ast);
+        $type = $this->resolver->resolveVariableType('dt', Scope::forNode($method), $method->getStartLine(), $ast);
 
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
@@ -266,7 +267,7 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
         $method = $this->findMethodByName($ast, 'unionParameterType');
 
-        $type = $this->resolver->resolveVariableType('dt', $method, $method->getStartLine(), $ast);
+        $type = $this->resolver->resolveVariableType('dt', Scope::forNode($method), $method->getStartLine(), $ast);
 
         self::assertInstanceOf(UnionType::class, $type);
         $classNames = $type->getResolvableClassNames();
@@ -280,7 +281,7 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/TypeInference/BuiltinTypes.php');
         $method = $this->findMethodByName($ast, 'unknownVariableCall');
 
-        $type = $this->resolver->resolveVariableType('x', $method, $method->getStartLine() + 1, $ast);
+        $type = $this->resolver->resolveVariableType('x', Scope::forNode($method), $method->getStartLine() + 1, $ast);
 
         self::assertNull($type);
     }
@@ -293,10 +294,27 @@ class BasicTypeResolverTest extends TestCase
         $closure = $finder->findFirstInstanceOf($method, Expr\Closure::class);
         assert($closure instanceof Expr\Closure);
 
-        $type = $this->resolver->resolveVariableType('dt', $closure, $closure->getStartLine(), $ast);
+        $type = $this->resolver->resolveVariableType('dt', Scope::forNode($closure), $closure->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
+    }
+
+    public function testResolveVariableTypeReturnsNullForClosureCapture(): void
+    {
+        $ast = $this->parseFixture('src/Utility/ScopePatterns.php');
+        $finder = new \PhpParser\NodeFinder();
+        $closure = $finder->findFirst($ast, fn($n) => $n instanceof Expr\Closure && $n->uses !== []);
+        assert($closure instanceof Expr\Closure);
+
+        $type = $this->resolver->resolveVariableType(
+            'captured',
+            Scope::forNode($closure),
+            $closure->getStartLine(),
+            $ast,
+        );
+
+        self::assertNull($type, 'use() captures cannot be typed from local assignments');
     }
 
     public function testResolveArrowFunctionParameter(): void
@@ -307,7 +325,7 @@ class BasicTypeResolverTest extends TestCase
         $arrow = $finder->findFirstInstanceOf($method, Expr\ArrowFunction::class);
         assert($arrow instanceof Expr\ArrowFunction);
 
-        $type = $this->resolver->resolveVariableType('dt', $arrow, $arrow->getStartLine(), $ast);
+        $type = $this->resolver->resolveVariableType('dt', Scope::forNode($arrow), $arrow->getStartLine(), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame(DateTime::class, $type->fqn);
@@ -321,7 +339,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($method, Expr\MethodCall::class);
         assert($methodCall instanceof Expr\MethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
@@ -341,7 +359,7 @@ class BasicTypeResolverTest extends TestCase
         $getPreviousCall = $methodCalls[1];
 
         // getPrevious() returns ?Throwable as a UnionType
-        $prevType = $this->resolver->resolveExpressionType($getPreviousCall, $method, $ast);
+        $prevType = $this->resolver->resolveExpressionType($getPreviousCall, Scope::forNode($method), $ast);
         self::assertInstanceOf(UnionType::class, $prevType);
         self::assertTrue($prevType->isNullable());
         $classNames = $prevType->getResolvableClassNames();
@@ -349,7 +367,7 @@ class BasicTypeResolverTest extends TestCase
         self::assertSame(Throwable::class, $classNames[0]->fqn);
 
         // getMessage() returns string as PrimitiveType
-        $msgType = $this->resolver->resolveExpressionType($getMessageCall, $method, $ast);
+        $msgType = $this->resolver->resolveExpressionType($getMessageCall, Scope::forNode($method), $ast);
         self::assertInstanceOf(PrimitiveType::class, $msgType);
         self::assertSame('string', $msgType->format());
     }
@@ -413,7 +431,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($method, Expr\NullsafeMethodCall::class);
         assert($methodCall instanceof Expr\NullsafeMethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('string', $type->format());
@@ -427,7 +445,7 @@ class BasicTypeResolverTest extends TestCase
         $propertyFetch = $finder->findFirstInstanceOf($method, Expr\NullsafePropertyFetch::class);
         assert($propertyFetch instanceof Expr\NullsafePropertyFetch);
 
-        $type = $this->resolver->resolveExpressionType($propertyFetch, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($propertyFetch, Scope::forNode($method), $ast);
         self::assertNull($type);
     }
 
@@ -439,7 +457,7 @@ class BasicTypeResolverTest extends TestCase
         $methodCall = $finder->findFirstInstanceOf($method, Expr\NullsafeMethodCall::class);
         assert($methodCall instanceof Expr\NullsafeMethodCall);
 
-        $type = $this->resolver->resolveExpressionType($methodCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($methodCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(UnionType::class, $type);
         self::assertTrue($type->isNullable());
@@ -491,7 +509,7 @@ class BasicTypeResolverTest extends TestCase
         $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
         assert($funcCall instanceof Expr\FuncCall);
 
-        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, Scope::forNode($function), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\Domain\\User', $type->fqn);
@@ -502,7 +520,12 @@ class BasicTypeResolverTest extends TestCase
         $ast = $this->parseFixture('src/TypeInference/FunctionTypes.php');
         $function = $this->findFunctionByName($ast, 'testNamespacedFunctionUsage');
 
-        $type = $this->resolver->resolveVariableType('user', $function, $function->getStartLine() + 1, $ast);
+        $type = $this->resolver->resolveVariableType(
+            'user',
+            Scope::forNode($function),
+            $function->getStartLine() + 1,
+            $ast,
+        );
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\Domain\\User', $type->fqn);
@@ -516,7 +539,7 @@ class BasicTypeResolverTest extends TestCase
         $funcCall = $finder->findFirstInstanceOf($method, Expr\FuncCall::class);
         assert($funcCall instanceof Expr\FuncCall);
 
-        $type = $this->resolver->resolveExpressionType($funcCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('int', $type->format());
@@ -530,7 +553,7 @@ class BasicTypeResolverTest extends TestCase
         $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
         assert($funcCall instanceof Expr\FuncCall);
 
-        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, Scope::forNode($function), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('GlobalConfig', $type->fqn);
@@ -548,7 +571,7 @@ class BasicTypeResolverTest extends TestCase
         $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
         assert($funcCall instanceof Expr\FuncCall);
 
-        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, Scope::forNode($function), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame($expectedFqn, $type->fqn);
@@ -581,7 +604,7 @@ class BasicTypeResolverTest extends TestCase
         $funcCall = $finder->findFirstInstanceOf($method, Expr\FuncCall::class);
         assert($funcCall instanceof Expr\FuncCall);
 
-        $type = $this->resolver->resolveExpressionType($funcCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame($expectedFqn, $type->fqn);
@@ -624,7 +647,7 @@ class BasicTypeResolverTest extends TestCase
         );
 
         // Verify the type is resolved correctly
-        $type = $this->resolver->resolveExpressionType($funcCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, Scope::forNode($method), $ast);
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\TypeInference\\ImportSource\\ImportedConfig', $type->fqn);
     }
@@ -644,7 +667,7 @@ class BasicTypeResolverTest extends TestCase
             new Name\FullyQualified('Fixtures\\TypeInference\\NamespaceB\\getConfig'),
         );
 
-        $type = $this->resolver->resolveExpressionType($funcCall, $function, $ast);
+        $type = $this->resolver->resolveExpressionType($funcCall, Scope::forNode($function), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\TypeInference\\NamespaceB\\ConfigB', $type->fqn);
@@ -657,7 +680,7 @@ class BasicTypeResolverTest extends TestCase
         $funcCalls = $this->findAllExprsOfType([$method], Expr\FuncCall::class);
         $dynamicCall = $funcCalls[0];
 
-        $type = $this->resolver->resolveExpressionType($dynamicCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($dynamicCall, Scope::forNode($method), $ast);
 
         self::assertNull($type);
     }
@@ -710,7 +733,7 @@ class BasicTypeResolverTest extends TestCase
         $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
         assert($newExpr !== null);
 
-        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($newExpr, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
@@ -724,7 +747,7 @@ class BasicTypeResolverTest extends TestCase
         $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
         assert($newExpr !== null);
 
-        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($newExpr, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
@@ -738,7 +761,7 @@ class BasicTypeResolverTest extends TestCase
         $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
         assert($newExpr !== null);
 
-        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($newExpr, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\Inheritance\\ParentClass', $type->fqn);
@@ -752,7 +775,7 @@ class BasicTypeResolverTest extends TestCase
         $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
         assert($newExpr !== null);
 
-        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($newExpr, Scope::forNode($method), $ast);
 
         self::assertNull($type);
     }
@@ -765,7 +788,7 @@ class BasicTypeResolverTest extends TestCase
         $newExpr = $finder->findFirstInstanceOf($method, Expr\New_::class);
         assert($newExpr !== null);
 
-        $type = $this->resolver->resolveExpressionType($newExpr, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($newExpr, Scope::forNode($method), $ast);
 
         self::assertNull($type);
     }
@@ -779,7 +802,7 @@ class BasicTypeResolverTest extends TestCase
         $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
         assert($staticCall !== null);
 
-        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+        $type = $resolver->resolveExpressionType($staticCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
@@ -794,7 +817,7 @@ class BasicTypeResolverTest extends TestCase
         $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
         assert($staticCall !== null);
 
-        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+        $type = $resolver->resolveExpressionType($staticCall, Scope::forNode($method), $ast);
 
         self::assertInstanceOf(ClassName::class, $type);
         self::assertSame('Fixtures\\TypeInference\\NewKeywords', $type->fqn);
@@ -808,7 +831,7 @@ class BasicTypeResolverTest extends TestCase
         $staticCall = $finder->findFirstInstanceOf($func, Expr\StaticCall::class);
         assert($staticCall !== null);
 
-        $type = $this->resolver->resolveExpressionType($staticCall, $func, $ast);
+        $type = $this->resolver->resolveExpressionType($staticCall, Scope::forNode($func), $ast);
 
         self::assertNull($type);
     }
@@ -821,7 +844,7 @@ class BasicTypeResolverTest extends TestCase
         $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
         assert($staticCall !== null);
 
-        $type = $this->resolver->resolveExpressionType($staticCall, $method, $ast);
+        $type = $this->resolver->resolveExpressionType($staticCall, Scope::forNode($method), $ast);
 
         self::assertNull($type);
     }
@@ -835,7 +858,7 @@ class BasicTypeResolverTest extends TestCase
         $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
         assert($staticCall !== null);
 
-        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+        $type = $resolver->resolveExpressionType($staticCall, Scope::forNode($method), $ast);
 
         // The trait method returns `static`, which should resolve to ConcreteService
         // (the class the method was called on), not SingletonTrait (where it's defined)
@@ -852,7 +875,7 @@ class BasicTypeResolverTest extends TestCase
         $staticCall = $finder->findFirstInstanceOf($method, Expr\StaticCall::class);
         assert($staticCall !== null);
 
-        $type = $resolver->resolveExpressionType($staticCall, $method, $ast);
+        $type = $resolver->resolveExpressionType($staticCall, Scope::forNode($method), $ast);
 
         // The trait method returns `?static`, which should resolve to ?ConcreteService
         self::assertInstanceOf(UnionType::class, $type);
@@ -874,7 +897,7 @@ class BasicTypeResolverTest extends TestCase
                 new Name\FullyQualified('Fixtures\\Traits\\ConcreteService'),
                 'getInstance',
             ),
-            $method,
+            Scope::forNode($method),
             $ast,
         );
 
@@ -894,7 +917,7 @@ class BasicTypeResolverTest extends TestCase
                 new Name\FullyQualified('Fixtures\\TypeInference\\IntersectionReturn'),
                 'getIterableCounter',
             ),
-            $method,
+            Scope::forNode($method),
             $ast,
         );
 
