@@ -18,7 +18,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
-- `src/Utility/` — AST helpers (ScopeFinder, TypeFactory, DocblockParser)
+- `src/Utility/` — AST helpers (ScopeFinder, Scope, TypeFactory, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`)
 - `docs/features/` — Feature status documentation
 - `tests/Fixtures/` — Test fixture files (see Testing section)
