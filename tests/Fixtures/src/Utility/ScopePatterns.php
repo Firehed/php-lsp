@@ -24,4 +24,12 @@ class ScopePatterns
     {
         $fn = fn() => $arrowVar = 1;
     }
+
+    public function methodWithClosureUse(): void
+    {
+        $captured = 1;
+        $fn = function () use ($captured) {
+            return $captured;
+        };
+    }
 }
