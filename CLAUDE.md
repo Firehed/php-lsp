@@ -13,6 +13,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ## Project Structure
 
 - `src/Handler/` — LSP request handlers (completion, hover, definition, etc.)
+- `src/Resolution/` — `CodeResolver`/`SymbolResolver` and the `Resolved*` symbol hierarchy (see Architecture below)
 - `src/Repository/` — Class and member resolution (see Architecture below)
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Symbol indexing and workspace scanning
@@ -23,6 +24,40 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `tests/Fixtures/` — Test fixture files (see Testing section)
 
 ## Architecture
+
+### Resolution Layer
+
+All symbol resolution flows through the `CodeResolver` interface (implemented by
+`SymbolResolver`). Handlers depend on the interface, never on the concrete class.
+
+**Point queries:**
+- `resolveAtPosition(doc, line, char): ?ResolvedSymbol` — Definition, Hover, TypeDefinition
+
+**Context queries:**
+- `getMemberAccessContext(doc, line, char): ?MemberAccessContext` — Completion after `->`/`::`
+- `getAccessibleMembers(doc, type, minVisibility, filter): list<ResolvedMember>` — members of a type
+- `getVariablesInScope(doc, line, char): list<ResolvedVariable>` — Completion of `$`
+- `getCallContext(doc, line, char): ?CallContext` — SignatureHelp, named-argument completion
+
+**Type checks:**
+- `isInstantiable(ClassName): bool` — valid after `new`
+- `isValidTypeHint(ClassName): bool` — valid in a type-hint position (traits are not)
+
+**`ResolvedSymbol` hierarchy** (`src/Resolution/`):
+- `ResolvedSymbol` (base): `getDefinitionLocation()`, `getDocumentation()`, `getType()`, `format()`
+- `ResolvedMember` extends `ResolvedSymbol`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
+- `ResolvedCallable` extends `ResolvedSymbol`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
+- `ResolvedMethod` implements `ResolvedMember` + `ResolvedCallable`
+- `ResolvedProperty`, `ResolvedConstant`, `ResolvedEnumCase` implement `ResolvedMember`
+- `ResolvedFunction` implements `ResolvedCallable`
+- `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbol`
+
+Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver` via
+`TextFallbackHelper`, so handlers do not need their own fallbacks.
+
+**Future (workspace queries):** references, implementations, sub/supertypes, call
+hierarchy, and batch resolution. These require an index and will be added to
+`CodeResolver` when those features are implemented.
 
 ### Repository Pattern
 
