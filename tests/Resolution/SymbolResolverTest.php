@@ -574,6 +574,21 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testGetVariablesInScopeExcludesNestedScopeVariables(): void
+    {
+        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_nested.php', 'nested_marker');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $names = array_map(fn($v) => $v->getName(), $variables);
+        self::assertContains('globalOne', $names, 'File-level variable should be in scope');
+        self::assertContains('globalTwo', $names, 'File-level variable should be in scope');
+        self::assertNotContains('localToFunction', $names, 'Function-local variable must not leak to file scope');
+        self::assertNotContains('localToMethod', $names, 'Method-local variable must not leak to file scope');
+    }
+
     public function testGetMemberAccessContextForGlobalVariable(): void
     {
         $this->openFixture('src/Domain/User.php');
