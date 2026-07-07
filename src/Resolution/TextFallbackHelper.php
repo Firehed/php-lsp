@@ -665,20 +665,25 @@ final class TextFallbackHelper
         // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
         $parentClassName = new ClassName($fqn);
 
-        $methods = $this->memberResolver->getMethods($parentClassName, $minVisibility, $filter);
+        // A subclass cannot access its parent's private members, so never query the
+        // parent below Protected visibility (while still honoring an external Public
+        // access level).
+        $inheritedVisibility = Visibility::from(max($minVisibility->value, Visibility::Protected->value));
+
+        $methods = $this->memberResolver->getMethods($parentClassName, $inheritedVisibility, $filter);
         foreach ($methods as $methodInfo) {
             $members[] = new ResolvedMethod($methodInfo);
         }
 
         if ($filter !== MemberFilter::Static) {
-            $properties = $this->memberResolver->getProperties($parentClassName, $minVisibility, $filter);
+            $properties = $this->memberResolver->getProperties($parentClassName, $inheritedVisibility, $filter);
             foreach ($properties as $propertyInfo) {
                 $members[] = new ResolvedProperty($propertyInfo);
             }
         }
 
         if ($filter !== MemberFilter::Instance) {
-            $constants = $this->memberResolver->getConstants($parentClassName, $minVisibility);
+            $constants = $this->memberResolver->getConstants($parentClassName, $inheritedVisibility);
             foreach ($constants as $constantInfo) {
                 $members[] = new ResolvedConstant($constantInfo);
             }
