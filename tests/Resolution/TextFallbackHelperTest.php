@@ -429,6 +429,16 @@ class TextFallbackHelperTest extends TestCase
         self::assertContains('App\\Bar', $fqns, 'Union type must include its second member');
     }
 
+    public function testFindParameterTypeReturnsNullForPrimitiveType(): void
+    {
+        $content = $this->loadFixture('TopLevel/primitive_param.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // Line 8 (0-based) is `$value->`; the parameter is declared as `string $value`
+        $result = $this->helper->findParameterType($document, 8, 'value', []);
+
+        self::assertNull($result, 'A primitive-typed parameter has no members and should resolve to null');
+    }
+
     public function testExtractMembersExcludesInheritedPrivateMembers(): void
     {
         $content = $this->loadFixture('TopLevel/inherited_child.php');

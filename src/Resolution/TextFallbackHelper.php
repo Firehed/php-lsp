@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -388,28 +389,31 @@ final class TextFallbackHelper
         array $ast,
         int $line,
     ): ?Type {
-        // Pattern: TypeName $varName or ?TypeName $varName
-        $pattern = '/(\??[A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s+\$' . preg_quote($varName, '/') . '\b/';
+        // Pattern: TypeName $varName, ?TypeName $varName, or A|B $varName
+        $pattern = '/([?A-Za-z_\\\\][A-Za-z0-9_\\\\|?]*)\s+\$' . preg_quote($varName, '/') . '\b/';
         if (preg_match($pattern, $declaration, $matches) !== 1) {
             return null;
         }
 
-        $typeStr = $matches[1];
-        $nullable = str_starts_with($typeStr, '?');
-        if ($nullable) {
-            $typeStr = substr($typeStr, 1);
+        // Resolve each union member; primitives are skipped since they have no members
+        $classTypes = [];
+        foreach (explode('|', $matches[1]) as $part) {
+            $part = ltrim($part, '?');
+            if ($part === '' || in_array(strtolower($part), self::PRIMITIVES, true)) {
+                continue;
+            }
+            $fqn = $this->resolveClassName($part, $lines, $ast, $line);
+            /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
+            $classTypes[] = new ClassName($fqn);
         }
 
-        // Primitive types have no members - return null to skip member access
-        if (in_array(strtolower($typeStr), self::PRIMITIVES, true)) {
+        if ($classTypes === []) {
             return null;
         }
-
-        // Resolve the class name using use statements
-        $fqn = $this->resolveClassName($typeStr, $lines, $ast, $line);
-
-        /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
-        return new ClassName($fqn);
+        if (count($classTypes) === 1) {
+            return $classTypes[0];
+        }
+        return new UnionType($classTypes);
     }
 
     /**
