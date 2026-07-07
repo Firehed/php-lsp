@@ -613,9 +613,33 @@ final class TextFallbackHelper
         if (isset($match[1]) && $match[1][0] !== '') {
             $parentName = $match[1][0];
             $parentMembers = $this->getInheritedMembers($document, $parentName, $minVisibility, $filter);
-            $members = array_merge($members, $parentMembers);
+            $members = $this->mergeUniqueMembers($members, $parentMembers);
         }
 
+        return $members;
+    }
+
+    /**
+     * Merge inherited members into the members already collected, skipping any the
+     * subclass overrides (same member kind and name).
+     *
+     * @param list<ResolvedMember> $members
+     * @param list<ResolvedMember> $inherited
+     * @return list<ResolvedMember>
+     */
+    private function mergeUniqueMembers(array $members, array $inherited): array
+    {
+        $seen = [];
+        foreach ($members as $member) {
+            $seen[$member::class . ':' . $member->getName()->name] = true;
+        }
+        foreach ($inherited as $member) {
+            $key = $member::class . ':' . $member->getName()->name;
+            if (!isset($seen[$key])) {
+                $seen[$key] = true;
+                $members[] = $member;
+            }
+        }
         return $members;
     }
 
