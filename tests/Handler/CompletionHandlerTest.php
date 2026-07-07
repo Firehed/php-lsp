@@ -22,8 +22,8 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompletionHandler::class)]
@@ -54,7 +54,6 @@ class CompletionHandlerTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
-        $memberAccessResolver = new MemberAccessResolver($typeResolver);
         $symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
@@ -2133,6 +2132,16 @@ class CompletionHandlerTest extends TestCase
         self::assertSame([], $result['items'], 'No completions should be offered inside comments');
     }
 
+    public function testNoCompletionsForMemberAccessInComment(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'member_in_comment');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        self::assertSame([], $result['items'], 'No completions for $this-> inside comments');
+    }
+
     public function testOnlyVariablesInHeredoc(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'in_heredoc');
@@ -2495,5 +2504,57 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('if', $labels, 'Statement keywords should not appear');
         // name: is already used, should not be offered
         self::assertNotContains('name:', $labels, 'Already-used named arg should not be offered');
+    }
+
+    // =========================================================================
+    // Incomplete code in control structures - text-based fallback
+    // =========================================================================
+
+    public function testCompletionThisInIfCondition(): void
+    {
+        // File with proper closing braces - parser recovers
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncomplete.php', 'this_in_if');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        self::assertContains('getName', $labels, 'Methods should be offered');
+        self::assertContains('name', $labels, 'Properties should be offered');
+    }
+
+    public function testCompletionThisInVeryBrokenFile(): void
+    {
+        // File with NO closing braces - parser fails completely
+        // This tests the pure text-based fallback for both class detection AND member extraction
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/VeryBroken.php', 'this_in_if');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        // Verify parser fails
+        $ast = $this->parser->parse($document);
+        self::assertEmpty($ast, 'Parser should fail completely for very broken file');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
+
+        // Should still offer class members via pure text-based fallback
+        self::assertContains('getName', $labels, 'Methods should be offered even when parser fails');
+        self::assertContains('name', $labels, 'Properties should be offered even when parser fails');
+    }
+
+    public function testCompletionChainedAccessInIfCondition(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'chained_in_if');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result, 'Chained access in if() should return completions');
+        self::assertArrayHasKey('items', $result);
+        self::assertNotEmpty($result['items'], 'Should offer User methods');
     }
 }

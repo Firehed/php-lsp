@@ -56,4 +56,29 @@ class VisibilityTest extends TestCase
     {
         self::assertSame($expected, $visibility->format());
     }
+
+    /**
+     * @return array<string, array{string, Visibility}>
+     * @codeCoverageIgnore
+     */
+    public static function fromStringProvider(): array
+    {
+        return [
+            'private lowercase' => ['private', Visibility::Private],
+            'private uppercase' => ['PRIVATE', Visibility::Private],
+            'private mixed' => ['Private', Visibility::Private],
+            'protected lowercase' => ['protected', Visibility::Protected],
+            'protected uppercase' => ['PROTECTED', Visibility::Protected],
+            'public lowercase' => ['public', Visibility::Public],
+            'public uppercase' => ['PUBLIC', Visibility::Public],
+            'empty string defaults to public' => ['', Visibility::Public],
+            'unknown defaults to public' => ['unknown', Visibility::Public],
+        ];
+    }
+
+    #[DataProvider('fromStringProvider')]
+    public function testFromString(string $input, Visibility $expected): void
+    {
+        self::assertSame($expected, Visibility::fromString($input));
+    }
 }

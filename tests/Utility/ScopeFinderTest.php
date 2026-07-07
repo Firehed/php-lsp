@@ -706,4 +706,110 @@ class ScopeFinderTest extends TestCase
 
         return $visitor->found;
     }
+
+    public function testResolveFromUseStatementsFindsSimpleName(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('Status', $ast);
+
+        self::assertSame('Fixtures\\Enum\\Status', $resolved, 'Should resolve Status to FQN from use statement');
+    }
+
+    public function testResolveFromUseStatementsFindsMultipleImports(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        self::assertSame(
+            'Fixtures\\Enum\\Status',
+            ScopeFinder::resolveFromUseStatements('Status', $ast),
+        );
+        self::assertSame(
+            'Fixtures\\Traits\\HasTimestamps',
+            ScopeFinder::resolveFromUseStatements('HasTimestamps', $ast),
+        );
+    }
+
+    public function testResolveFromUseStatementsReturnsNullForUnknownName(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('UnknownClass', $ast);
+
+        self::assertNull($resolved, 'Should return null for unimported class name');
+    }
+
+    public function testResolveFromUseStatementsReturnsNullForSameNamespaceClass(): void
+    {
+        $code = $this->loadFixture('src/Domain/User.php');
+        $ast = self::parseWithParents($code);
+
+        // Entity is in same namespace, not imported via use statement
+        $resolved = ScopeFinder::resolveFromUseStatements('Entity', $ast);
+
+        self::assertNull($resolved, 'Should not resolve class in same namespace without use statement');
+    }
+
+    public function testResolveFromUseStatementsHandlesGroupUse(): void
+    {
+        // GroupUseExample.php has: use Fixtures\Domain\{User, Team};
+        $code = $this->loadFixture('src/Utility/GroupUseExample.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('User', $ast);
+
+        self::assertSame(
+            'Fixtures\\Domain\\User',
+            $resolved,
+            'Should resolve class from group use statement',
+        );
+    }
+
+    public function testResolveFromUseStatementsHandlesGroupUseWithAlias(): void
+    {
+        // GroupUseExample.php has: use Fixtures\Enum\{Status, Priority as Pri};
+        $code = $this->loadFixture('src/Utility/GroupUseExample.php');
+        $ast = self::parseWithParents($code);
+
+        $resolved = ScopeFinder::resolveFromUseStatements('Pri', $ast);
+
+        self::assertSame(
+            'Fixtures\\Enum\\Priority',
+            $resolved,
+            'Should resolve aliased class from group use statement',
+        );
+    }
+
+    public function testFindNamespaceAtLineReturnsNamespaceContainingLine(): void
+    {
+        $code = $this->loadFixture('TopLevel/two_namespaces.php');
+        $ast = self::parseWithParents($code);
+
+        // `class Alpha` is on 1-based line 4 => 0-based line 3 (inside namespace First)
+        self::assertSame('First', ScopeFinder::findNamespaceAtLine($ast, 3));
+        // `class Beta` is on 1-based line 10 => 0-based line 9 (inside namespace Second)
+        self::assertSame('Second', ScopeFinder::findNamespaceAtLine($ast, 9));
+    }
+
+    public function testFindNamespaceAtLineHandlesZeroBasedBoundary(): void
+    {
+        $code = $this->loadFixture('TopLevel/two_namespaces.php');
+        $ast = self::parseWithParents($code);
+
+        // `namespace First {` is on 1-based line 3 => 0-based line 2. A cursor on that
+        // line is inside namespace First; a raw (un-incremented) comparison misses it.
+        self::assertSame('First', ScopeFinder::findNamespaceAtLine($ast, 2));
+    }
+
+    public function testFindNamespaceAtLineReturnsNullOutsideAnyNamespace(): void
+    {
+        $code = $this->loadFixture('TopLevel/two_namespaces.php');
+        $ast = self::parseWithParents($code);
+
+        // 0-based line 0 is the `<?php` line, before any namespace block
+        self::assertNull(ScopeFinder::findNamespaceAtLine($ast, 0));
+    }
 }

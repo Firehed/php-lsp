@@ -6,13 +6,13 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\CodeResolver;
 
 final class DefinitionHandler implements HandlerInterface
 {
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly SymbolResolver $symbolResolver,
+        private readonly CodeResolver $codeResolver,
     ) {
     }
 
@@ -58,7 +58,7 @@ final class DefinitionHandler implements HandlerInterface
             return null;
         }
 
-        $symbol = $this->symbolResolver->resolveAtPosition($document, $line, $character);
+        $symbol = $this->codeResolver->resolveAtPosition($document, $line, $character);
 
         return $symbol?->getDefinitionLocation()?->toLspLocation();
     }

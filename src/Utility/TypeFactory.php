@@ -22,23 +22,6 @@ use ReflectionUnionType;
 
 final class TypeFactory
 {
-    private const PRIMITIVES = [
-        'string',
-        'int',
-        'float',
-        'bool',
-        'array',
-        'object',
-        'callable',
-        'iterable',
-        'void',
-        'never',
-        'mixed',
-        'null',
-        'true',
-        'false',
-    ];
-
     /**
      * @param class-string|null $selfContext
      * @param class-string|null $parentContext
@@ -76,7 +59,7 @@ final class TypeFactory
                 return new ClassName($fqn);
             }
 
-            if (in_array($name, self::PRIMITIVES, true)) {
+            if (in_array($name, PrimitiveType::NAMES, true)) {
                 return new PrimitiveType($name);
             }
 

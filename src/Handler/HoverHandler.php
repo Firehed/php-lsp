@@ -7,13 +7,13 @@ namespace Firehed\PhpLsp\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\ResolvedSymbol;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\CodeResolver;
 
 final class HoverHandler implements HandlerInterface
 {
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly SymbolResolver $symbolResolver,
+        private readonly CodeResolver $codeResolver,
     ) {
     }
 
@@ -53,7 +53,7 @@ final class HoverHandler implements HandlerInterface
             return null;
         }
 
-        $symbol = $this->symbolResolver->resolveAtPosition($document, $line, $character);
+        $symbol = $this->codeResolver->resolveAtPosition($document, $line, $character);
         if ($symbol === null) {
             return null;
         }

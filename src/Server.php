@@ -22,7 +22,6 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
-use Firehed\PhpLsp\Utility\MemberAccessResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
@@ -61,7 +60,6 @@ final class Server
         $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver);
-        $memberAccessResolver = new MemberAccessResolver($typeResolver);
         $symbolResolver = new SymbolResolver($parser, $classRepository, $memberResolver, $typeResolver);
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);

@@ -650,4 +650,35 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('$createdAt', $result['contents']);
         self::assertStringContainsString('DateTimeImmutable', $result['contents']);
     }
+
+    // =========================================================================
+    // Expressions inside control structures (#267/#243)
+    // =========================================================================
+
+    public function testHoverOnPropertyInIfCondition(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker(
+            'src/IncompleteCode/CompleteInControl.php',
+            'prop_in_if',
+        );
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'Hover should work on property in if condition');
+        self::assertStringContainsString('$name', $result['contents']);
+        self::assertStringContainsString('string', $result['contents']);
+    }
+
+    public function testHoverOnMethodInWhileCondition(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker(
+            'src/IncompleteCode/CompleteInControl.php',
+            'method_in_while',
+        );
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'Hover should work on method in while condition');
+        self::assertStringContainsString('getName', $result['contents']);
+    }
 }

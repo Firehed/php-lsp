@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\CallContext;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\CodeResolver;
 
 /**
  * @phpstan-type ParameterInfoShape array{label: string}
@@ -21,7 +21,7 @@ final class SignatureHelpHandler implements HandlerInterface
 {
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly SymbolResolver $symbolResolver,
+        private readonly CodeResolver $codeResolver,
     ) {
     }
 
@@ -61,7 +61,7 @@ final class SignatureHelpHandler implements HandlerInterface
             return null;
         }
 
-        $context = $this->symbolResolver->getCallContext($document, $line, $character);
+        $context = $this->codeResolver->getCallContext($document, $line, $character);
         if ($context === null) {
             return null;
         }

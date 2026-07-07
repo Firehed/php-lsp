@@ -90,6 +90,37 @@ class ExpressionTypeResolverTest extends TestCase
         self::assertNull($result);
     }
 
+    public function testResolveExpressionTypeReturnsPreResolvedType(): void
+    {
+        $ast = $this->parseFixtureWithParents('src/Domain/User.php');
+        $thisNode = self::findVariableNode('this', $ast);
+        self::assertNotNull($thisNode);
+
+        // Set a pre-resolved type attribute - use built-in class
+        $preResolved = new ClassName(\DateTime::class);
+        $thisNode->setAttribute('resolvedType', $preResolved);
+
+        $result = ExpressionTypeResolver::resolveExpressionType($thisNode, $ast, null);
+
+        self::assertInstanceOf(ClassName::class, $result);
+        self::assertSame(\DateTime::class, $result->fqn);
+    }
+
+    public function testResolveExpressionTypeReturnsNullForVariableOutsideScope(): void
+    {
+        // Create a variable node without any parent scope
+        $varNode = new \PhpParser\Node\Expr\Variable('orphan');
+
+        $typeResolver = self::createStub(TypeResolverInterface::class);
+        // Type resolver should not be called when there's no scope
+        $typeResolver->method('resolveExpressionType')
+            ->willReturn(new ClassName(\DateTime::class));
+
+        $result = ExpressionTypeResolver::resolveExpressionType($varNode, [], $typeResolver);
+
+        self::assertNull($result, 'Should return null when no enclosing scope');
+    }
+
     /**
      * @return array<Stmt>
      */
