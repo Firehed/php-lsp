@@ -19,7 +19,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
 - `src/Utility/` — AST helpers (ScopeFinder, TypeFactory, DocblockParser)
-- `src/Completion/` — Completion context detection (CompletionContextResolver)
+- `src/Completion/` — Completion context detection (`ContextDetector`)
 - `docs/features/` — Feature status documentation
 - `tests/Fixtures/` — Test fixture files (see Testing section)
 
@@ -102,10 +102,43 @@ Key methods:
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
-- **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Handlers should use it consistently rather than calling `TypeResolverInterface` directly.
-- **Use `MemberAccessResolver` for member access.** It handles both `->` and `?->` operators and resolves types via the shared utilities. Handlers should use it instead of duplicating type resolution logic.
+- **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Use it consistently rather than calling `TypeResolverInterface` directly. Inside handlers, prefer `CodeResolver` (see Architecture Invariants) over calling this directly.
+- **Handlers are formatters, not resolvers.** Handlers call `CodeResolver` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
 - **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 - **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
+
+### Architecture Invariants
+
+Rules that MUST be followed. Violating these reintroduces the M×N handler×node bugs
+described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't").
+
+**All symbol resolution goes through `CodeResolver`.**
+
+Handlers do NOT:
+- Parse documents, find nodes at positions, or detect node types
+- Resolve types or look up members
+- Call `MemberResolver`, `ClassRepository`, or `TypeResolverInterface` directly
+
+Handlers DO:
+- Extract LSP message parameters
+- Call `CodeResolver` methods
+- Format the result for their specific LSP response
+
+`CompletionHandler` additionally uses `ParserService` and `SymbolIndex`, but only for
+completion-specific work (import extraction, workspace class lookup, keyword/type-hint
+context detection) — never for symbol resolution.
+
+**Adding support for a new AST node type:**
+1. Add handling in `SymbolResolver` (ONE place)
+2. Create a `ResolvedX` implementation if needed
+3. All handlers support it automatically
+4. Write tests in `SymbolResolverTest`
+
+**Adding a new LSP handler:**
+1. Create the handler with `DocumentManager` + `CodeResolver` dependencies
+2. Call the appropriate `CodeResolver` method
+3. Format the result for the LSP response
+4. Do NOT add resolution logic to the handler
 
 ### Utility Classes
 
@@ -113,7 +146,8 @@ Key methods:
 - `DocblockParser` — Extracts description from docblocks
 - `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
 - `TypeFactory` — Creates Type domain objects from AST nodes and reflection
-- `MemberAccessResolver` — Resolves method calls and property fetches to domain objects; handles both `->` and `?->` operators
+
+Note: `MemberAccessResolver` was removed in #262 — instance/static member access now flows through `SymbolResolver`.
 
 ## Development Workflow
 
@@ -129,7 +163,7 @@ Key methods:
 
 See `docs/features/completion.md` for current capabilities.
 
-Architecture: `CompletionContextResolver` uses AST analysis to detect member/static access contexts (handles both `->` and `?->` automatically). Regex-based detection remains for other contexts (variables, type hints, keywords).
+Architecture: `SymbolResolver::getMemberAccessContext()` uses AST analysis to detect member/static access contexts (handles both `->` and `?->` automatically). `ContextDetector` classifies the broader completion context (e.g. variables-only inside interpolated strings); regex-based detection in `CompletionHandler` covers the remaining positions (type hints, keywords, `new`).
 
 **Prefer AST-based context detection over regex.** The parser's error recovery produces usable AST even for incomplete code like `$this->`. AST detection handles operator variants (e.g., `->` vs `?->`) automatically without pattern duplication.
 
