@@ -21,6 +21,7 @@ use Firehed\PhpLsp\Resolution\ResolvedFunction;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
@@ -370,16 +371,7 @@ final class SymbolResolverTest extends TestCase
             self::assertInstanceOf(ResolvedMember::class, $member);
         }
 
-        // Check that public methods are included
-        $names = array_map(fn($m) => $m->format(), $members);
-        $hasGetName = false;
-        foreach ($names as $name) {
-            if (str_contains($name, 'getName')) {
-                $hasGetName = true;
-                break;
-            }
-        }
-        self::assertTrue($hasGetName, 'Expected getName method in accessible members');
+        self::assertMembersContain($members, 'getName');
     }
 
     public function testGetAccessibleMembersFiltersStaticOnly(): void
@@ -433,6 +425,25 @@ final class SymbolResolverTest extends TestCase
         self::assertTrue($hasEnumCase, 'Expected enum cases in static members');
     }
 
+    public function testGetAccessibleMembersUnionsIntersectionConstituents(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        $uri = $this->openFixture('src/Domain/Person.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $type = new IntersectionType([
+            // @phpstan-ignore argument.type (test uses fixture class name)
+            new ClassName('Fixtures\\Domain\\Entity'),
+            // @phpstan-ignore argument.type (test uses fixture class name)
+            new ClassName('Fixtures\\Domain\\Person'),
+        ]);
+        $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
+
+        // Entity contributes getId(); Person contributes getName() and getAge().
+        self::assertMembersContain($members, 'getId', 'getName', 'getAge');
+    }
+
     public function testGetVariablesInScopeReturnsParameters(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'inside_setName');
@@ -442,15 +453,7 @@ final class SymbolResolverTest extends TestCase
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
         self::assertNotEmpty($variables);
-        $names = array_map(fn($v) => $v->format(), $variables);
-        $hasNameParam = false;
-        foreach ($names as $name) {
-            if (str_contains($name, '$name')) {
-                $hasNameParam = true;
-                break;
-            }
-        }
-        self::assertTrue($hasNameParam, 'Expected $name parameter in scope');
+        self::assertVariablesContain($variables, 'name');
     }
 
     public function testGetVariablesInScopeReturnsEmptyBeforeFirstStatement(): void
@@ -474,15 +477,7 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->format(), $variables);
-        $hasTyped = false;
-        foreach ($names as $name) {
-            if (str_contains($name, '$typed')) {
-                $hasTyped = true;
-                break;
-            }
-        }
-        self::assertTrue($hasTyped, 'Expected $typed variable from assignment');
+        self::assertVariablesContain($variables, 'typed');
     }
 
     public function testGetVariablesInScopeIncludesNestedVariables(): void
@@ -493,19 +488,7 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->format(), $variables);
-        $hasOuter = false;
-        $hasInner = false;
-        foreach ($names as $name) {
-            if (str_contains($name, '$outer')) {
-                $hasOuter = true;
-            }
-            if (str_contains($name, '$inner')) {
-                $hasInner = true;
-            }
-        }
-        self::assertTrue($hasOuter, 'Expected $outer variable');
-        self::assertTrue($hasInner, 'Expected $inner variable from nested block');
+        self::assertVariablesContain($variables, 'outer', 'inner');
     }
 
     public function testGetVariablesInScopeIncludesForeachVariables(): void
@@ -516,8 +499,7 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->getName(), $variables);
-        self::assertContains('item', $names);
+        self::assertVariablesContain($variables, 'item');
     }
 
     public function testGetVariablesInScopeIncludesForeachKeyVariable(): void
@@ -528,9 +510,7 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->getName(), $variables);
-        self::assertContains('key', $names);
-        self::assertContains('value', $names);
+        self::assertVariablesContain($variables, 'key', 'value');
     }
 
     public function testGetVariablesInScopeIncludesCatchVariable(): void
@@ -541,8 +521,7 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->getName(), $variables);
-        self::assertContains('ex', $names);
+        self::assertVariablesContain($variables, 'ex');
     }
 
     public function testGetVariablesInScopeIncludesGlobalScopeVariables(): void
@@ -553,9 +532,7 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->getName(), $variables);
-        self::assertContains('currentUser', $names, 'Global-scope assigned variable should be in scope');
-        self::assertContains('loginCount', $names, 'Global-scope assigned variable should be in scope');
+        self::assertVariablesContain($variables, 'currentUser', 'loginCount');
     }
 
     public function testGetVariablesInScopeIncludesGlobalScopeVariablesInNamespace(): void
@@ -566,12 +543,7 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->getName(), $variables);
-        self::assertContains(
-            'currentUser',
-            $names,
-            'File-level variable inside a namespace block should be in scope',
-        );
+        self::assertVariablesContain($variables, 'currentUser');
     }
 
     public function testGetVariablesInScopeExcludesNestedScopeVariables(): void
@@ -582,11 +554,8 @@ final class SymbolResolverTest extends TestCase
 
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->getName(), $variables);
-        self::assertContains('globalOne', $names, 'File-level variable should be in scope');
-        self::assertContains('globalTwo', $names, 'File-level variable should be in scope');
-        self::assertNotContains('localToFunction', $names, 'Function-local variable must not leak to file scope');
-        self::assertNotContains('localToMethod', $names, 'Method-local variable must not leak to file scope');
+        self::assertVariablesContain($variables, 'globalOne', 'globalTwo');
+        self::assertNotVariablesContain($variables, 'localToFunction', 'localToMethod');
     }
 
     public function testGetMemberAccessContextForGlobalVariable(): void
@@ -861,14 +830,7 @@ final class SymbolResolverTest extends TestCase
         // But $outer and $inner from earlier should be
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
-        $names = array_map(fn($v) => $v->format(), $variables);
-        $hasAfter = false;
-        foreach ($names as $name) {
-            if (str_contains($name, '$after')) {
-                $hasAfter = true;
-            }
-        }
-        self::assertFalse($hasAfter, 'Should not include $after which is assigned after cursor');
+        self::assertNotVariablesContain($variables, 'after');
     }
 
     public function testResolveAtPositionReturnsNullForLiteral(): void
@@ -1230,6 +1192,34 @@ final class SymbolResolverTest extends TestCase
             $context->type->format(),
             'Should resolve underlying type from nullable parameter',
         );
+    }
+
+    public function testGetMemberAccessContextForIntersectionParameterResolvesType(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        $this->openFixture('src/Domain/Person.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/IntersectionAccess.php', 'intersection_access');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve intersection parameter access');
+        self::assertSame(
+            'Fixtures\\Domain\\Entity&Fixtures\\Domain\\Person',
+            $context->type->format(),
+            'Type should be resolved from intersection parameter type hint',
+        );
+        self::assertSame(MemberAccessKind::Instance, $context->kind, 'Access via -> is instance access');
+
+        $members = $this->resolver->getAccessibleMembers(
+            $document,
+            $context->type,
+            $context->minVisibility,
+            MemberFilter::Instance,
+        );
+        // Entity contributes getId(); Person contributes getName() and getAge().
+        self::assertMembersContain($members, 'getId', 'getName', 'getAge');
     }
 
     public function testGetMemberAccessContextForAliasedImportResolvesType(): void
@@ -1738,16 +1728,8 @@ final class SymbolResolverTest extends TestCase
             MemberFilter::Static,
         );
 
-        $constantNames = [];
-        foreach ($members as $member) {
-            if ($member instanceof ResolvedConstant) {
-                $constantNames[] = $member->getName()->name;
-            }
-        }
-
-        self::assertContains('PUBLIC_CONST', $constantNames, 'Public constant should be included');
-        self::assertNotContains('PROTECTED_CONST', $constantNames, 'Protected constant not visible from outside');
-        self::assertNotContains('PRIVATE_CONST', $constantNames, 'Private constant not visible from outside');
+        self::assertMembersContain($members, 'PUBLIC_CONST');
+        self::assertNotMembersContain($members, 'PROTECTED_CONST', 'PRIVATE_CONST');
     }
 
     public function testGetMemberAccessContextResolvesGroupUseStatic(): void
@@ -1814,17 +1796,10 @@ final class SymbolResolverTest extends TestCase
             MemberFilter::All,
         );
 
-        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
-
         // Text-based extraction should find these even though class has broken syntax
-        self::assertContains('NAME', $memberNames, 'Should extract constant via text fallback');
-        self::assertContains('create', $memberNames, 'Should extract static method via text fallback');
-        self::assertContains('publicProp', $memberNames, 'Should extract public property via text fallback');
-
+        self::assertMembersContain($members, 'NAME', 'create', 'publicProp');
         // Private members should be filtered out when accessed externally
-        self::assertNotContains('SECRET', $memberNames, 'Private constant should be filtered');
-        self::assertNotContains('privateHelper', $memberNames, 'Private method should be filtered');
-        self::assertNotContains('privateProp', $memberNames, 'Private property should be filtered');
+        self::assertNotMembersContain($members, 'SECRET', 'privateHelper', 'privateProp');
     }
 
     public function testGetMemberAccessContextHandlesParentInIncompleteCode(): void
@@ -1872,14 +1847,10 @@ final class SymbolResolverTest extends TestCase
             MemberFilter::Static,
         );
 
-        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
-
         // Should include static members
-        self::assertContains('NAME', $memberNames, 'Should extract constant');
-        self::assertContains('create', $memberNames, 'Should extract static method');
-
+        self::assertMembersContain($members, 'NAME', 'create');
         // Should NOT include instance properties (Static filter skips them)
-        self::assertNotContains('publicProp', $memberNames, 'Properties skipped with Static filter');
+        self::assertNotMembersContain($members, 'publicProp');
     }
 
     public function testGetAccessibleMembersExtractsInstanceMembersFromBrokenClass(): void
@@ -1900,11 +1871,8 @@ final class SymbolResolverTest extends TestCase
             MemberFilter::Instance,
         );
 
-        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
-
         // Should find instance members via text extraction
-        self::assertContains('name', $memberNames, 'Should extract property via text fallback');
-        self::assertContains('test', $memberNames, 'Should extract method via text fallback');
+        self::assertMembersContain($members, 'name', 'test');
     }
 
     public function testGetMemberAccessContextReturnsNullForThisOutsideClass(): void
@@ -2012,28 +1980,8 @@ final class SymbolResolverTest extends TestCase
             MemberFilter::Instance,
         );
 
-        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
-
-        // Should include child method extracted via text fallback
-        self::assertContains(
-            'childMethod',
-            $memberNames,
-            'Should extract child class method via text fallback',
-        );
-
-        // Should ALSO include inherited public method from ParentClass
-        self::assertContains(
-            'parentMethod',
-            $memberNames,
-            'Should include inherited methods from resolvable parent class',
-        );
-
-        // Should include inherited property from ParentClass
-        self::assertContains(
-            'parentProperty',
-            $memberNames,
-            'Should include inherited properties from resolvable parent class',
-        );
+        // Child member via text fallback, plus inherited members from ParentClass
+        self::assertMembersContain($members, 'childMethod', 'parentMethod', 'parentProperty');
     }
 
     public function testGetAccessibleMembersIncludesInheritedStaticMembersInTextFallback(): void
@@ -2054,27 +2002,69 @@ final class SymbolResolverTest extends TestCase
             MemberFilter::Static,
         );
 
-        $memberNames = array_map(fn($m) => $m->getName()->name, $members);
+        // Child constant via text fallback, plus inherited static members from ParentClass
+        self::assertMembersContain($members, 'CHILD_CONST', 'PARENT_CONST', 'staticMethod');
+    }
 
-        // Should include child constant extracted via text fallback
-        self::assertContains(
-            'CHILD_CONST',
-            $memberNames,
-            'Should extract child class constant via text fallback',
-        );
+    /**
+     * @param list<ResolvedMember> $members
+     */
+    private static function assertMembersContain(array $members, string ...$expected): void
+    {
+        $names = self::memberNames($members);
+        foreach ($expected as $name) {
+            self::assertContains($name, $names, "Member '$name' should be accessible");
+        }
+    }
 
-        // Should include inherited constant from ParentClass
-        self::assertContains(
-            'PARENT_CONST',
-            $memberNames,
-            'Should include inherited constants from resolvable parent class',
-        );
+    /**
+     * @param list<ResolvedMember> $members
+     */
+    private static function assertNotMembersContain(array $members, string ...$expected): void
+    {
+        $names = self::memberNames($members);
+        foreach ($expected as $name) {
+            self::assertNotContains($name, $names, "Member '$name' should not be accessible");
+        }
+    }
 
-        // Should include inherited static method from ParentClass
-        self::assertContains(
-            'staticMethod',
-            $memberNames,
-            'Should include inherited static methods from resolvable parent class',
-        );
+    /**
+     * @param list<ResolvedMember> $members
+     * @return list<string>
+     */
+    private static function memberNames(array $members): array
+    {
+        return array_map(fn(ResolvedMember $m) => $m->getName()->name, $members);
+    }
+
+    /**
+     * @param list<ResolvedVariable> $variables
+     */
+    private static function assertVariablesContain(array $variables, string ...$expected): void
+    {
+        $names = self::variableNames($variables);
+        foreach ($expected as $name) {
+            self::assertContains($name, $names, "Variable \$$name should be in scope");
+        }
+    }
+
+    /**
+     * @param list<ResolvedVariable> $variables
+     */
+    private static function assertNotVariablesContain(array $variables, string ...$expected): void
+    {
+        $names = self::variableNames($variables);
+        foreach ($expected as $name) {
+            self::assertNotContains($name, $names, "Variable \$$name should not be in scope");
+        }
+    }
+
+    /**
+     * @param list<ResolvedVariable> $variables
+     * @return list<string>
+     */
+    private static function variableNames(array $variables): array
+    {
+        return array_map(fn(ResolvedVariable $v) => $v->getName(), $variables);
     }
 }
