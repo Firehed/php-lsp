@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionContext;
+use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -48,9 +50,6 @@ final class CompletionHandler implements HandlerInterface
     private const KIND_KEYWORD = 14;
     private const KIND_ENUM_MEMBER = 20;
     private const KIND_CONSTANT = 21;
-
-    // Matches property type continuations: "private ?", "public int|", "protected Foo&"
-    private const PROPERTY_TYPE_PATTERN = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
 
     private static function matchesPrefix(string $name, string $prefix): bool
     {
@@ -202,80 +201,73 @@ final class CompletionHandler implements HandlerInterface
             return $this->deduplicateCompletions($items);
         }
 
-        // Variable completion outside call context
-        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            return $this->getVariableCompletions($matches[1], $document, $line, $character);
-        }
+        // Remaining positions are classified by text before the cursor. Detection
+        // stays text-based so completion keeps working on mid-edit, unparseable code.
+        $classification = CompletionClassifier::classify($textBeforeCursor);
+        $prefix = $classification->prefix;
 
-        // new ClassName completion - suggest imported classes and indexed instantiable types
-        if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            $items = $this->getImportedClassCompletions($prefix, $ast, instantiableOnly: true);
-            $kinds = [SymbolKind::Class_, SymbolKind::Enum_];
-            $indexedItems = $this->getIndexedClassCompletions($prefix, $kinds, instantiableOnly: true);
-            $items = array_merge($items, $indexedItems);
-            return $this->deduplicateCompletions($items);
-        }
+        return match ($classification->kind) {
+            CompletionKind::Variable => $this->getVariableCompletions($prefix, $document, $line, $character),
+            CompletionKind::New_ => $this->getNewCompletions($prefix, $ast),
+            CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions($prefix, $ast),
+            CompletionKind::ReturnType => $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType),
+            CompletionKind::PropertyType => $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property),
+            CompletionKind::ParameterType => $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Parameter),
+            CompletionKind::ClassBody => $this->filterKeywords(self::KEYWORDS_CLASS_BODY, $prefix),
+            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $ast),
+            CompletionKind::None => [],
+        };
+    }
 
-        // After visibility keyword - suggest function, static, readonly, const, or types
-        // Must check before general type hint context since both patterns overlap
-        if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            $items = $this->filterKeywords(self::KEYWORDS_AFTER_VISIBILITY, $prefix);
-            $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property));
-            return $this->deduplicateCompletions($items);
-        }
+    /**
+     * Suggest imported classes and indexed instantiable types after `new`.
+     *
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function getNewCompletions(string $prefix, array $ast): array
+    {
+        $items = $this->getImportedClassCompletions($prefix, $ast, instantiableOnly: true);
+        $indexedItems = $this->getIndexedClassCompletions(
+            $prefix,
+            [SymbolKind::Class_, SymbolKind::Enum_],
+            instantiableOnly: true,
+        );
+        $items = array_merge($items, $indexedItems);
+        return $this->deduplicateCompletions($items);
+    }
 
-        // Return type context - after ): with optional space
-        if (preg_match('/\):\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType);
-        }
+    /**
+     * Suggest member keywords or a property type after a visibility keyword.
+     *
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function getAfterVisibilityCompletions(string $prefix, array $ast): array
+    {
+        $items = $this->filterKeywords(self::KEYWORDS_AFTER_VISIBILITY, $prefix);
+        $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property));
+        return $this->deduplicateCompletions($items);
+    }
 
-        // Return type context - nullable/union/intersection (e.g., "): ?", "): int|", "): Foo&")
-        if (preg_match('/\):\s*(?:\?\s*|(?:\w+\s*[|&]\s*)+)(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType);
-        }
-
-        // Property type context - nullable/union/intersection after visibility keyword
-        if (preg_match(self::PROPERTY_TYPE_PATTERN, $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property);
-        }
-
-        // Parameter type context - fallback for type positions not matched above
-        // Matches after (, ,, ?, |, & which occur in parameter lists and complex types
-        if (preg_match('/[(,?|&]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            return $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Parameter);
-        }
-
-        // Class body context - only class-level keywords, no functions
-        if ($this->isInClassBody($textBeforeCursor)) {
-            if (preg_match('/(?:^|[\s{;])(\w+)$/', $textBeforeCursor, $matches) === 1) {
-                $prefix = $matches[1];
-                return $this->filterKeywords(self::KEYWORDS_CLASS_BODY, $prefix);
-            }
-            return [];
-        }
-
-        // Function/class/keyword completion (at start of expression or after operators)
-        if (preg_match('/(?:^|[(\s=,!&|])(\w+)$/', $textBeforeCursor, $matches) === 1) {
-            $prefix = $matches[1];
-            $items = $this->filterKeywords(self::KEYWORDS_ALL, $prefix);
-            $items = array_merge($items, $this->getFunctionCompletions($prefix, $ast));
-            $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
-            $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
-                SymbolKind::Class_,
-                SymbolKind::Interface_,
-                SymbolKind::Trait_,
-                SymbolKind::Enum_,
-            ]));
-            return $this->deduplicateCompletions($items);
-        }
-
-        return [];
+    /**
+     * Suggest keywords, functions, and class names at the start of an expression.
+     *
+     * @param array<Stmt> $ast
+     * @return list<CompletionItem>
+     */
+    private function getExpressionCompletions(string $prefix, array $ast): array
+    {
+        $items = $this->filterKeywords(self::KEYWORDS_ALL, $prefix);
+        $items = array_merge($items, $this->getFunctionCompletions($prefix, $ast));
+        $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
+        $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
+            SymbolKind::Class_,
+            SymbolKind::Interface_,
+            SymbolKind::Trait_,
+            SymbolKind::Enum_,
+        ]));
+        return $this->deduplicateCompletions($items);
     }
 
     /**
@@ -621,58 +613,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $items;
-    }
-
-    /**
-     * Check if cursor is inside a class/interface/trait/enum body (but not inside a method).
-     */
-    private function isInClassBody(string $textBeforeCursor): bool
-    {
-        // Count braces to detect if we're inside a class body
-        // This is a heuristic - look for class/interface/trait/enum followed by unbalanced {
-        if (preg_match('/(?:class|interface|trait|enum)\s+\w+/', $textBeforeCursor) !== 1) {
-            return false;
-        }
-
-        // Count brace depth after the class declaration
-        $classPos = strrpos($textBeforeCursor, 'class ');
-        $interfacePos = strrpos($textBeforeCursor, 'interface ');
-        $traitPos = strrpos($textBeforeCursor, 'trait ');
-        $enumPos = strrpos($textBeforeCursor, 'enum ');
-        $lastClassPos = max(
-            $classPos !== false ? $classPos : 0,
-            $interfacePos !== false ? $interfacePos : 0,
-            $traitPos !== false ? $traitPos : 0,
-            $enumPos !== false ? $enumPos : 0,
-        );
-
-        $afterClass = substr($textBeforeCursor, $lastClassPos);
-        $depth = 0;
-        $inString = false;
-        $stringChar = '';
-
-        for ($i = 0; $i < strlen($afterClass); $i++) {
-            $char = $afterClass[$i];
-
-            if ($inString) {
-                if ($char === $stringChar && ($i === 0 || $afterClass[$i - 1] !== '\\')) {
-                    $inString = false;
-                }
-                continue;
-            }
-
-            if ($char === '"' || $char === "'") {
-                $inString = true;
-                $stringChar = $char;
-            } elseif ($char === '{') {
-                $depth++;
-            } elseif ($char === '}') {
-                $depth--;
-            }
-        }
-
-        // depth === 1 means we're directly inside the class body (not in a method)
-        return $depth === 1;
     }
 
     /**
