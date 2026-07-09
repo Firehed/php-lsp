@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\ContextDetector;
+use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
@@ -34,7 +35,7 @@ final class CompletionHandler implements HandlerInterface
 {
     private static function matchesPrefix(string $name, string $prefix): bool
     {
-        return $prefix === '' || str_starts_with(strtolower($name), strtolower($prefix));
+        return PrefixMatcher::matches($name, $prefix);
     }
 
     public function __construct(
