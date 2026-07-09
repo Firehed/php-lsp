@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
+use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
@@ -42,6 +43,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly ClassCandidates $classCandidates,
         private readonly FunctionCandidates $functionCandidates,
         private readonly KeywordCandidates $keywordCandidates,
+        private readonly VariableCandidates $variableCandidates,
     ) {
     }
 
@@ -140,7 +142,10 @@ final class CompletionHandler implements HandlerInterface
             if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
                 $varPrefix = $matches[1];
             }
-            $items = array_merge($items, $this->getVariableCompletions($varPrefix, $document, $line, $character));
+            $items = array_merge(
+                $items,
+                $this->variableCandidates->find($varPrefix, $document, $line, $character),
+            );
 
             // After named arg colon (value position), also offer expression keywords and classes
             if (preg_match('/\w+:\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
@@ -161,7 +166,7 @@ final class CompletionHandler implements HandlerInterface
         $prefix = $classification->prefix;
 
         return match ($classification->kind) {
-            CompletionKind::Variable => $this->getVariableCompletions($prefix, $document, $line, $character),
+            CompletionKind::Variable => $this->variableCandidates->find($prefix, $document, $line, $character),
             CompletionKind::New_ => $this->getNewCompletions($prefix, $document),
             CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions($prefix, $document),
             CompletionKind::ReturnType => $this->getTypeHintCompletions(
@@ -318,32 +323,6 @@ final class CompletionHandler implements HandlerInterface
         $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::TypeHint));
 
         return $this->deduplicateCompletions($items);
-    }
-
-    /**
-     * Get variable completions for the current scope.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getVariableCompletions(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): array {
-        $variables = $this->codeResolver->getVariablesInScope($document, $line, $character);
-
-        $items = [];
-        foreach ($variables as $variable) {
-            if (self::matchesPrefix($variable->getName(), $prefix)) {
-                $items[] = CompletionItemFactory::forVariable(
-                    $variable->getName(),
-                    $variable->getType()?->format() ?? 'mixed',
-                );
-            }
-        }
-
-        return $items;
     }
 
     /**

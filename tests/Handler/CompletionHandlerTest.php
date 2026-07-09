@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -70,6 +71,7 @@ class CompletionHandlerTest extends TestCase
             new ClassCandidates($this->symbolIndex, $symbolResolver),
             new FunctionCandidates($symbolResolver),
             new KeywordCandidates(),
+            new VariableCandidates($symbolResolver),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
