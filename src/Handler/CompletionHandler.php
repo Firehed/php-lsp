@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
+use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
@@ -42,6 +43,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly KeywordCandidates $keywordCandidates,
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
+        private readonly NamedArgumentCandidates $namedArgumentCandidates,
     ) {
     }
 
@@ -132,8 +134,7 @@ final class CompletionHandler implements HandlerInterface
         // Inside a call context, offer named arguments + variables
         $callContext = $this->codeResolver->getCallContext($document, $line, $character);
         if ($callContext !== null) {
-            $namedArgPrefix = $this->extractNamedArgPrefix($textBeforeCursor);
-            $items = $this->getNamedArgumentCompletions($callContext, $namedArgPrefix);
+            $items = $this->namedArgumentCandidates->find($callContext, $textBeforeCursor);
 
             // Also offer variables - filter by prefix if cursor is on one
             $varPrefix = '';
@@ -286,58 +287,5 @@ final class CompletionHandler implements HandlerInterface
         $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::TypeHint));
 
         return $this->deduplicateCompletions($items);
-    }
-
-    /**
-     * Extract the prefix for named argument completion from text before cursor.
-     */
-    private function extractNamedArgPrefix(string $textBeforeCursor): string
-    {
-        if (preg_match('/[(,]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            return $matches[1];
-        }
-        return '';
-    }
-
-    /**
-     * Get named argument completions for a function/method call.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getNamedArgumentCompletions(
-        \Firehed\PhpLsp\Resolution\CallContext $callContext,
-        string $prefix,
-    ): array {
-        $callable = $callContext->callable;
-        $params = $callable->getParameters();
-        $usedNames = $callContext->usedParameterNames;
-        $positionallyFilledCount = $callContext->positionallyFilledCount;
-
-        $items = [];
-        foreach ($params as $param) {
-            // Skip parameters already used as named arguments
-            if (in_array($param->name, $usedNames, true)) {
-                continue;
-            }
-
-            // Skip parameters filled positionally (before the first named arg)
-            if ($param->position < $positionallyFilledCount) {
-                continue;
-            }
-
-            // Skip variadic parameters as named arguments (they use array syntax instead)
-            if ($param->isVariadic) {
-                continue;
-            }
-
-            // Match prefix
-            if (!self::matchesPrefix($param->name, $prefix)) {
-                continue;
-            }
-
-            $items[] = CompletionItemFactory::forNamedArgument($param);
-        }
-
-        return $items;
     }
 }
