@@ -565,6 +565,21 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function getImports(TextDocument $document): array
+    {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        return ScopeFinder::extractImports($ast);
+    }
+
+    /**
      * @param array<Stmt> $ast
      * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
      */

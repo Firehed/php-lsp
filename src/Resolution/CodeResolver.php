@@ -84,4 +84,12 @@ interface CodeResolver
         int $line,
         int $character,
     ): ?CallContext;
+
+    /**
+     * Get class imports (`use` statements) in a document as short name => FQCN.
+     * Used by: Completion
+     *
+     * @return array<string, string>
+     */
+    public function getImports(TextDocument $document): array;
 }
