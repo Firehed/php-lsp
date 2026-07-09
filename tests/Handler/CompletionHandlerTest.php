@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
+use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -64,8 +65,8 @@ class CompletionHandlerTest extends TestCase
         $this->handler = new CompletionHandler(
             $this->documents,
             $this->parser,
-            $this->symbolIndex,
             $symbolResolver,
+            new ClassCandidates($this->symbolIndex, $symbolResolver),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,

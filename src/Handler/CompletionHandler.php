@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Completion\ClassCandidateFilter;
+use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
@@ -14,10 +16,7 @@ use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
@@ -25,7 +24,6 @@ use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\MemberFilter;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\CodeResolver;
-use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
 
 /**
@@ -41,8 +39,8 @@ final class CompletionHandler implements HandlerInterface
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly ParserService $parser,
-        private readonly SymbolIndex $symbolIndex,
         private readonly CodeResolver $codeResolver,
+        private readonly ClassCandidates $classCandidates,
     ) {
     }
 
@@ -156,13 +154,10 @@ final class CompletionHandler implements HandlerInterface
             if (preg_match('/\w+:\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
                 $prefix = $matches[1];
                 $items = array_merge($items, $this->filterKeywords(self::KEYWORDS_EXPRESSION, $prefix));
-                $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
-                $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
-                    SymbolKind::Class_,
-                    SymbolKind::Interface_,
-                    SymbolKind::Trait_,
-                    SymbolKind::Enum_,
-                ]));
+                $items = array_merge(
+                    $items,
+                    $this->classCandidates->find($prefix, $document, ClassCandidateFilter::Any),
+                );
             }
 
             return $this->deduplicateCompletions($items);
@@ -175,45 +170,50 @@ final class CompletionHandler implements HandlerInterface
 
         return match ($classification->kind) {
             CompletionKind::Variable => $this->getVariableCompletions($prefix, $document, $line, $character),
-            CompletionKind::New_ => $this->getNewCompletions($prefix, $ast),
-            CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions($prefix, $ast),
-            CompletionKind::ReturnType => $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::ReturnType),
-            CompletionKind::PropertyType => $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property),
-            CompletionKind::ParameterType => $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Parameter),
+            CompletionKind::New_ => $this->getNewCompletions($prefix, $document),
+            CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions($prefix, $document),
+            CompletionKind::ReturnType => $this->getTypeHintCompletions(
+                $prefix,
+                $document,
+                TypeHintContext::ReturnType,
+            ),
+            CompletionKind::PropertyType => $this->getTypeHintCompletions(
+                $prefix,
+                $document,
+                TypeHintContext::Property,
+            ),
+            CompletionKind::ParameterType => $this->getTypeHintCompletions(
+                $prefix,
+                $document,
+                TypeHintContext::Parameter,
+            ),
             CompletionKind::ClassBody => $this->filterKeywords(self::KEYWORDS_CLASS_BODY, $prefix),
-            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $ast),
+            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $ast),
             CompletionKind::None => [],
         };
     }
 
     /**
-     * Suggest imported classes and indexed instantiable types after `new`.
+     * Suggest instantiable class names after `new`.
      *
-     * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getNewCompletions(string $prefix, array $ast): array
+    private function getNewCompletions(string $prefix, TextDocument $document): array
     {
-        $items = $this->getImportedClassCompletions($prefix, $ast, instantiableOnly: true);
-        $indexedItems = $this->getIndexedClassCompletions(
-            $prefix,
-            [SymbolKind::Class_, SymbolKind::Enum_],
-            instantiableOnly: true,
+        return $this->deduplicateCompletions(
+            $this->classCandidates->find($prefix, $document, ClassCandidateFilter::Instantiable),
         );
-        $items = array_merge($items, $indexedItems);
-        return $this->deduplicateCompletions($items);
     }
 
     /**
      * Suggest member keywords or a property type after a visibility keyword.
      *
-     * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getAfterVisibilityCompletions(string $prefix, array $ast): array
+    private function getAfterVisibilityCompletions(string $prefix, TextDocument $document): array
     {
         $items = $this->filterKeywords(self::KEYWORDS_AFTER_VISIBILITY, $prefix);
-        $items = array_merge($items, $this->getTypeHintCompletions($prefix, $ast, TypeHintContext::Property));
+        $items = array_merge($items, $this->getTypeHintCompletions($prefix, $document, TypeHintContext::Property));
         return $this->deduplicateCompletions($items);
     }
 
@@ -223,17 +223,11 @@ final class CompletionHandler implements HandlerInterface
      * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getExpressionCompletions(string $prefix, array $ast): array
+    private function getExpressionCompletions(string $prefix, TextDocument $document, array $ast): array
     {
         $items = $this->filterKeywords(self::KEYWORDS_ALL, $prefix);
         $items = array_merge($items, $this->getFunctionCompletions($prefix, $ast));
-        $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast));
-        $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
-            SymbolKind::Class_,
-            SymbolKind::Interface_,
-            SymbolKind::Trait_,
-            SymbolKind::Enum_,
-        ]));
+        $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::Any));
         return $this->deduplicateCompletions($items);
     }
 
@@ -303,102 +297,6 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * Get completions for imported classes (from use statements).
-     *
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function getImportedClassCompletions(
-        string $prefix,
-        array $ast,
-        bool $instantiableOnly = false,
-        bool $typeHintContext = false,
-    ): array {
-        $items = [];
-        $imports = $this->getImports($ast);
-
-        foreach ($imports as $shortName => $fqcn) {
-            if (!self::matchesPrefix($shortName, $prefix)) {
-                continue;
-            }
-            /** @var class-string $fqcn */
-            if ($instantiableOnly && !$this->codeResolver->isInstantiable(new ClassName($fqcn))) {
-                continue;
-            }
-            if ($typeHintContext && !$this->codeResolver->isValidTypeHint(new ClassName($fqcn))) {
-                continue;
-            }
-            $items[] = CompletionItemFactory::forClass($shortName, $fqcn);
-        }
-
-        return $items;
-    }
-
-    /**
-     * Extract all imports from use statements.
-     *
-     * @param array<Stmt> $ast
-     * @return array<string, string> Short name => FQCN
-     */
-    private function getImports(array $ast): array
-    {
-        $imports = [];
-
-        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
-            $this->extractImportsFromUse($stmt, $imports);
-        }
-
-        return $imports;
-    }
-
-    /**
-     * @param array<string, string> $imports
-     */
-    private function extractImportsFromUse(Stmt $stmt, array &$imports): void
-    {
-        if ($stmt instanceof Stmt\Use_) {
-            foreach ($stmt->uses as $use) {
-                $shortName = $use->alias?->toString() ?? $use->name->getLast();
-                $fqcn = $use->name->toString();
-                $imports[$shortName] = $fqcn;
-            }
-        } elseif ($stmt instanceof Stmt\GroupUse) {
-            $prefix = $stmt->prefix->toString();
-            foreach ($stmt->uses as $use) {
-                $shortName = $use->alias?->toString() ?? $use->name->getLast();
-                $fqcn = $prefix . '\\' . $use->name->toString();
-                $imports[$shortName] = $fqcn;
-            }
-        }
-    }
-
-    /**
-     * Get class completions from the workspace symbol index.
-     *
-     * @param list<SymbolKind> $kinds
-     * @return list<CompletionItem>
-     */
-    private function getIndexedClassCompletions(
-        string $prefix,
-        array $kinds,
-        bool $instantiableOnly = false,
-    ): array {
-        $symbols = $this->symbolIndex->findByPrefix($prefix, $kinds);
-        $items = [];
-
-        foreach ($symbols as $symbol) {
-            /** @var class-string $fqcn */
-            $fqcn = $symbol->fullyQualifiedName;
-            if ($instantiableOnly && !$this->codeResolver->isInstantiable(new ClassName($fqcn))) {
-                continue;
-            }
-            $items[] = CompletionItemFactory::forClass($symbol->name, $fqcn);
-        }
-
-        return $items;
-    }
-
-    /**
      * Remove duplicate completions, preferring items that appear earlier.
      *
      * @param list<CompletionItem> $items
@@ -423,10 +321,9 @@ final class CompletionHandler implements HandlerInterface
     /**
      * Get completions for type hint positions.
      *
-     * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getTypeHintCompletions(string $prefix, array $ast, TypeHintContext $context): array
+    private function getTypeHintCompletions(string $prefix, TextDocument $document, TypeHintContext $context): array
     {
         $items = [];
 
@@ -456,15 +353,8 @@ final class CompletionHandler implements HandlerInterface
             }
         }
 
-        // Imported classes (traits are not valid type hints)
-        $items = array_merge($items, $this->getImportedClassCompletions($prefix, $ast, typeHintContext: true));
-
-        // Indexed types (traits are not valid type hints)
-        $items = array_merge($items, $this->getIndexedClassCompletions($prefix, [
-            SymbolKind::Class_,
-            SymbolKind::Interface_,
-            SymbolKind::Enum_,
-        ]));
+        // Class-likes valid as type hints (traits excluded)
+        $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::TypeHint));
 
         return $this->deduplicateCompletions($items);
     }
