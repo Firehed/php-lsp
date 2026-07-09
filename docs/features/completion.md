@@ -43,7 +43,9 @@ CompletionHandler (coordinator)
 │     via CodeResolver (AST-first, text fallback for mid-edit code)
 ├── call context (CodeResolver::getCallContext)
 │     ├── NamedArgumentCandidates     → name: arguments
-│     └── VariableCandidates          → $var in argument position
+│     ├── VariableCandidates          → $var in argument position
+│     └── after name: (value position) → KeywordCandidates (expression)
+│                                         + ClassCandidates (any)
 └── CompletionClassifier (text-based) → typed CompletionKind, dispatched to:
       ├── VariableCandidates          → $var
       ├── ClassCandidates             → new X / expression / type hints (by ClassCandidateFilter)
