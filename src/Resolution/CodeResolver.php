@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 
@@ -92,4 +93,12 @@ interface CodeResolver
      * @return array<string, string>
      */
     public function getImports(TextDocument $document): array;
+
+    /**
+     * Get the user-defined functions declared in a document.
+     * Used by: Completion
+     *
+     * @return list<FunctionInfo>
+     */
+    public function getFileFunctions(TextDocument $document): array;
 }
