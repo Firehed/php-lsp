@@ -19,7 +19,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, TypeFactory, DocblockParser)
-- `src/Completion/` — Completion context detection (`ContextDetector`)
+- `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `docs/features/` — Feature status documentation
 - `tests/Fixtures/` — Test fixture files (see Testing section)
 
@@ -38,6 +38,10 @@ All symbol resolution flows through the `CodeResolver` interface (implemented by
 - `getAccessibleMembers(doc, type, minVisibility, filter): list<ResolvedMember>` — members of a type
 - `getVariablesInScope(doc, line, char): list<ResolvedVariable>` — Completion of `$`
 - `getCallContext(doc, line, char): ?CallContext` — SignatureHelp, named-argument completion
+
+**File queries** (parser-agnostic; keep completion sources off the raw AST):
+- `getImports(doc): array<string, string>` — `use` imports as short name => FQCN
+- `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document
 
 **Type checks:**
 - `isInstantiable(ClassName): bool` — valid after `new`
@@ -124,9 +128,11 @@ Handlers DO:
 - Call `CodeResolver` methods
 - Format the result for their specific LSP response
 
-`CompletionHandler` additionally uses `ParserService` and `SymbolIndex`, but only for
-completion-specific work (import extraction, workspace class lookup, keyword/type-hint
-context detection) — never for symbol resolution.
+`CompletionHandler` is a coordinator: it classifies the position and delegates to
+completion *sources* (`src/Completion/*Candidates`), then merges and deduplicates.
+It no longer parses documents or touches `ParserService`/`SymbolIndex` directly —
+sources own their lookups, and anything parser-derived (imports, file functions,
+members, variables, types) flows through `CodeResolver`. See Completion System.
 
 **Adding support for a new AST node type:**
 1. Add handling in `SymbolResolver` (ONE place)
@@ -164,9 +170,29 @@ Note: `MemberAccessResolver` was removed in #262 — instance/static member acce
 
 See `docs/features/completion.md` for current capabilities.
 
-Architecture: `SymbolResolver::getMemberAccessContext()` uses AST analysis to detect member/static access contexts (handles both `->` and `?->` automatically). `ContextDetector` classifies the broader completion context (e.g. variables-only inside interpolated strings); regex-based detection in `CompletionHandler` covers the remaining positions (type hints, keywords, `new`).
+Architecture (`CompletionHandler` is a coordinator, not a resolver):
 
-**Prefer AST-based context detection over regex.** The parser's error recovery produces usable AST even for incomplete code like `$this->`. AST detection handles operator variants (e.g., `->` vs `?->`) automatically without pattern duplication.
+1. **Coarse gate** — `ContextDetector` (token-based) classifies the broad context
+   (None / VariablesOnly / Full); token analysis survives unparseable code.
+2. **Member/static/call** — detected via `CodeResolver` (`MemberCandidates`,
+   `getCallContext`), which is AST-first with a text fallback (`TextFallbackHelper`).
+3. **Everything else** — `CompletionClassifier` maps the text before the cursor to a
+   typed `CompletionKind`; the handler dispatches to a source per kind.
+
+**Completion sources** (`src/Completion/*Candidates`) each own one candidate kind
+(classes, functions, keywords, variables, members, named arguments, builtin types):
+lookup + prefix filter + item construction (via `CompletionItemFactory`). Adding a
+completion kind = a new source + a `CompletionKind`/enum case, not handler edits.
+`ClassCandidates` is filtered by intent (`ClassCandidateFilter`); the mapping is the
+extension point for context-specific class filtering (e.g. `implements` → interfaces,
+issue #298).
+
+**Detection stays text-based where it is the mid-edit resilience layer.** This is a live
+server: completion must keep working on temporarily-broken code (see
+`CompletionHandlerTest::testCompletionThisInVeryBrokenFile`, where the parser yields no
+AST). `CompletionClassifier` and `ContextDetector` are deliberately text/token-based —
+do **not** convert them to AST analysis. Only member/static/call access flow through the
+AST+fallback `CodeResolver` path.
 
 ## Testing
 
