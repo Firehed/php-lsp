@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -34,6 +35,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompletionHandler::class)]
+#[CoversClass(BuiltinTypeCandidates::class)]
+#[CoversClass(ClassCandidates::class)]
+#[CoversClass(CompletionItemFactory::class)]
+#[CoversClass(FunctionCandidates::class)]
+#[CoversClass(KeywordCandidates::class)]
+#[CoversClass(MemberCandidates::class)]
+#[CoversClass(NamedArgumentCandidates::class)]
+#[CoversClass(VariableCandidates::class)]
 class CompletionHandlerTest extends TestCase
 {
     use OpensDocumentsTrait;
