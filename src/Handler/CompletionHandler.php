@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionContext;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\TypeHintContext;
@@ -20,55 +22,19 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\MemberFilter;
-use Firehed\PhpLsp\Resolution\ResolvedConstant;
-use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
-use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
-use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Resolution\CodeResolver;
-use Firehed\PhpLsp\Utility\DocblockParser;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
 
 /**
- * @phpstan-type CompletionItem array{
- *   label: string,
- *   kind?: int,
- *   detail?: string,
- *   documentation?: string,
- * }
+ * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
 final class CompletionHandler implements HandlerInterface
 {
-    // LSP CompletionItemKind constants
-    private const KIND_METHOD = 2;
-    private const KIND_FUNCTION = 3;
-    private const KIND_FIELD = 5;
-    private const KIND_VARIABLE = 6;
-    private const KIND_CLASS = 7;
-    private const KIND_PROPERTY = 10;
-    private const KIND_KEYWORD = 14;
-    private const KIND_ENUM_MEMBER = 20;
-    private const KIND_CONSTANT = 21;
-
     private static function matchesPrefix(string $name, string $prefix): bool
     {
         return $prefix === '' || str_starts_with(strtolower($name), strtolower($prefix));
-    }
-
-    /**
-     * @param CompletionItem $item
-     * @return CompletionItem
-     */
-    private static function withDocumentation(array $item, string|false|null $docText): array
-    {
-        if ($docText !== null && $docText !== false && $docText !== '') {
-            $doc = DocblockParser::extractDescription($docText);
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
-        return $item;
     }
 
     public function __construct(
@@ -145,7 +111,7 @@ final class CompletionHandler implements HandlerInterface
         if ($context === CompletionContext::VariablesOnly) {
             $items = array_values(array_filter(
                 $items,
-                static fn(array $item): bool => ($item['kind'] ?? 0) === self::KIND_VARIABLE,
+                static fn(array $item): bool => ($item['kind'] ?? 0) === CompletionItemKind::Variable->value,
             ));
         }
 
@@ -294,16 +260,12 @@ final class CompletionHandler implements HandlerInterface
                 continue;
             }
             if (self::matchesPrefix($member->getName()->name, $context->prefix)) {
-                $items[] = $this->formatResolvedMemberCompletion($member);
+                $items[] = CompletionItemFactory::forResolvedMember($member);
             }
         }
 
         if ($context->kind === MemberAccessKind::Static && self::matchesPrefix('class', $context->prefix)) {
-            $items[] = [
-                'label' => 'class',
-                'kind' => self::KIND_CONSTANT,
-                'detail' => 'string (fully qualified class name)',
-            ];
+            $items[] = CompletionItemFactory::forClassConstant();
         }
 
         return $items;
@@ -322,7 +284,7 @@ final class CompletionHandler implements HandlerInterface
             if ($stmt instanceof Stmt\Function_) {
                 $name = $stmt->name->toString();
                 if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = $this->formatFunctionCompletion($stmt);
+                    $items[] = CompletionItemFactory::forFunction(FunctionInfo::fromNode($stmt));
                 }
             }
         }
@@ -331,58 +293,12 @@ final class CompletionHandler implements HandlerInterface
         $definedFunctions = get_defined_functions();
         foreach ($definedFunctions['internal'] as $name) {
             if (self::matchesPrefix($name, $prefix)) {
-                $items[] = [
-                    'label' => $name,
-                    'kind' => self::KIND_FUNCTION,
-                ];
+                $items[] = CompletionItemFactory::forBuiltinFunction($name);
             }
         }
 
         // Limit results
         return array_slice($items, 0, 100);
-    }
-
-    /**
-     * @return CompletionItem
-     */
-    private function formatResolvedMemberCompletion(ResolvedMember $member): array
-    {
-        $kind = match (true) {
-            $member instanceof ResolvedMethod => self::KIND_METHOD,
-            $member instanceof ResolvedProperty => self::KIND_PROPERTY,
-            $member instanceof ResolvedConstant => self::KIND_CONSTANT,
-            $member instanceof ResolvedEnumCase => self::KIND_ENUM_MEMBER,
-            // @codeCoverageIgnoreStart
-            default => throw new \LogicException('Unexpected member type: ' . $member::class),
-            // @codeCoverageIgnoreEnd
-        };
-
-        $item = [
-            'label' => $member->getName()->name,
-            'kind' => $kind,
-            'detail' => $member->format(),
-        ];
-
-        $doc = $member->getDocumentation();
-        if ($doc !== null) {
-            $item['documentation'] = $doc;
-        }
-
-        return $item;
-    }
-
-    /**
-     * @return CompletionItem
-     */
-    private function formatFunctionCompletion(Stmt\Function_ $func): array
-    {
-        $funcInfo = FunctionInfo::fromNode($func);
-
-        return self::withDocumentation([
-            'label' => $funcInfo->name,
-            'kind' => self::KIND_FUNCTION,
-            'detail' => $funcInfo->format(),
-        ], $funcInfo->docblock);
     }
 
     /**
@@ -411,11 +327,7 @@ final class CompletionHandler implements HandlerInterface
             if ($typeHintContext && !$this->codeResolver->isValidTypeHint(new ClassName($fqcn))) {
                 continue;
             }
-            $items[] = [
-                'label' => $shortName,
-                'kind' => self::KIND_CLASS,
-                'detail' => $fqcn,
-            ];
+            $items[] = CompletionItemFactory::forClass($shortName, $fqcn);
         }
 
         return $items;
@@ -479,11 +391,7 @@ final class CompletionHandler implements HandlerInterface
             if ($instantiableOnly && !$this->codeResolver->isInstantiable(new ClassName($fqcn))) {
                 continue;
             }
-            $items[] = [
-                'label' => $symbol->name,
-                'kind' => self::KIND_CLASS,
-                'detail' => $fqcn,
-            ];
+            $items[] = CompletionItemFactory::forClass($symbol->name, $fqcn);
         }
 
         return $items;
@@ -543,11 +451,7 @@ final class CompletionHandler implements HandlerInterface
 
         foreach ($builtinTypes as $type) {
             if (self::matchesPrefix($type, $prefix)) {
-                $items[] = [
-                    'label' => $type,
-                    'kind' => self::KIND_KEYWORD,
-                    'detail' => 'builtin type',
-                ];
+                $items[] = CompletionItemFactory::forBuiltinType($type);
             }
         }
 
@@ -605,10 +509,7 @@ final class CompletionHandler implements HandlerInterface
 
         foreach ($keywords as $keyword) {
             if ($prefix === '' || str_starts_with($keyword, $prefixLower)) {
-                $items[] = [
-                    'label' => $keyword,
-                    'kind' => self::KIND_KEYWORD,
-                ];
+                $items[] = CompletionItemFactory::forKeyword($keyword);
             }
         }
 
@@ -631,11 +532,10 @@ final class CompletionHandler implements HandlerInterface
         $items = [];
         foreach ($variables as $variable) {
             if (self::matchesPrefix($variable->getName(), $prefix)) {
-                $items[] = [
-                    'label' => '$' . $variable->getName(),
-                    'kind' => self::KIND_VARIABLE,
-                    'detail' => $variable->getType()?->format() ?? 'mixed',
-                ];
+                $items[] = CompletionItemFactory::forVariable(
+                    $variable->getName(),
+                    $variable->getType()?->format() ?? 'mixed',
+                );
             }
         }
 
@@ -689,11 +589,7 @@ final class CompletionHandler implements HandlerInterface
                 continue;
             }
 
-            $items[] = [
-                'label' => $param->name . ':',
-                'kind' => self::KIND_FIELD,
-                'detail' => $param->format(),
-            ];
+            $items[] = CompletionItemFactory::forNamedArgument($param);
         }
 
         return $items;
