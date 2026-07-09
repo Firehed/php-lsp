@@ -12,19 +12,17 @@ use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\ContextDetector;
+use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\MemberFilter;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\CodeResolver;
-use PhpParser\Node\Stmt;
 
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
@@ -38,9 +36,9 @@ final class CompletionHandler implements HandlerInterface
 
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly ParserService $parser,
         private readonly CodeResolver $codeResolver,
         private readonly ClassCandidates $classCandidates,
+        private readonly FunctionCandidates $functionCandidates,
     ) {
     }
 
@@ -93,18 +91,11 @@ final class CompletionHandler implements HandlerInterface
             ];
         }
 
-        $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('Parser returned null with error-collecting handler');
-            // @codeCoverageIgnoreEnd
-        }
-
         // Get text before cursor to determine completion context
         $lineText = $document->getLine($line);
         $textBeforeCursor = substr($lineText, 0, $character);
 
-        $items = $this->getCompletionItems($textBeforeCursor, $document, $ast, $line, $character);
+        $items = $this->getCompletionItems($textBeforeCursor, $document, $line, $character);
 
         // In interpolated strings, only variable completions are valid
         if ($context === CompletionContext::VariablesOnly) {
@@ -121,13 +112,11 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
     private function getCompletionItems(
         string $textBeforeCursor,
         TextDocument $document,
-        array $ast,
         int $line,
         int $character,
     ): array {
@@ -188,7 +177,7 @@ final class CompletionHandler implements HandlerInterface
                 TypeHintContext::Parameter,
             ),
             CompletionKind::ClassBody => $this->filterKeywords(self::KEYWORDS_CLASS_BODY, $prefix),
-            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $ast),
+            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document),
             CompletionKind::None => [],
         };
     }
@@ -220,13 +209,12 @@ final class CompletionHandler implements HandlerInterface
     /**
      * Suggest keywords, functions, and class names at the start of an expression.
      *
-     * @param array<Stmt> $ast
      * @return list<CompletionItem>
      */
-    private function getExpressionCompletions(string $prefix, TextDocument $document, array $ast): array
+    private function getExpressionCompletions(string $prefix, TextDocument $document): array
     {
         $items = $this->filterKeywords(self::KEYWORDS_ALL, $prefix);
-        $items = array_merge($items, $this->getFunctionCompletions($prefix, $ast));
+        $items = array_merge($items, $this->functionCandidates->find($prefix, $document));
         $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::Any));
         return $this->deduplicateCompletions($items);
     }
@@ -264,36 +252,6 @@ final class CompletionHandler implements HandlerInterface
         }
 
         return $items;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     * @return list<CompletionItem>
-     */
-    private function getFunctionCompletions(string $prefix, array $ast): array
-    {
-        $items = [];
-
-        // User-defined functions in current file
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Function_) {
-                $name = $stmt->name->toString();
-                if (self::matchesPrefix($name, $prefix)) {
-                    $items[] = CompletionItemFactory::forFunction(FunctionInfo::fromNode($stmt));
-                }
-            }
-        }
-
-        // Built-in functions
-        $definedFunctions = get_defined_functions();
-        foreach ($definedFunctions['internal'] as $name) {
-            if (self::matchesPrefix($name, $prefix)) {
-                $items[] = CompletionItemFactory::forBuiltinFunction($name);
-            }
-        }
-
-        // Limit results
-        return array_slice($items, 0, 100);
     }
 
     /**

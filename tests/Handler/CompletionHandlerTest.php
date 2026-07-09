@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Completion\ClassCandidates;
+use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -64,9 +65,9 @@ class CompletionHandlerTest extends TestCase
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->handler = new CompletionHandler(
             $this->documents,
-            $this->parser,
             $symbolResolver,
             new ClassCandidates($this->symbolIndex, $symbolResolver),
+            new FunctionCandidates($symbolResolver),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
