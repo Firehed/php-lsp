@@ -271,6 +271,34 @@ final class ScopeFinder
     }
 
     /**
+     * Extract all class imports from `use` statements as short name => FQCN.
+     *
+     * @param array<Stmt> $ast
+     * @return array<string, string>
+     */
+    public static function extractImports(array $ast): array
+    {
+        $imports = [];
+
+        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
+            if ($stmt instanceof Stmt\Use_) {
+                foreach ($stmt->uses as $use) {
+                    $shortName = $use->alias?->toString() ?? $use->name->getLast();
+                    $imports[$shortName] = $use->name->toString();
+                }
+            } elseif ($stmt instanceof Stmt\GroupUse) {
+                $prefix = $stmt->prefix->toString();
+                foreach ($stmt->uses as $use) {
+                    $shortName = $use->alias?->toString() ?? $use->name->getLast();
+                    $imports[$shortName] = $prefix . '\\' . $use->name->toString();
+                }
+            }
+        }
+
+        return $imports;
+    }
+
+    /**
      * Resolve a simple class name using use statements from AST.
      *
      * Returns the fully qualified name if found in a use statement,
@@ -280,26 +308,7 @@ final class ScopeFinder
      */
     public static function resolveFromUseStatements(string $className, array $ast): ?string
     {
-        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\Use_) {
-                foreach ($stmt->uses as $use) {
-                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                    if ($alias === $className) {
-                        return $use->name->toString();
-                    }
-                }
-            } elseif ($stmt instanceof Stmt\GroupUse) {
-                $prefix = $stmt->prefix->toString();
-                foreach ($stmt->uses as $use) {
-                    $alias = $use->alias !== null ? $use->alias->name : $use->name->getLast();
-                    if ($alias === $className) {
-                        return $prefix . '\\' . $use->name->toString();
-                    }
-                }
-            }
-        }
-
-        return null;
+        return self::extractImports($ast)[$className] ?? null;
     }
 
     /**
