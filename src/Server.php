@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp;
 
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
+use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
@@ -90,6 +91,7 @@ final class Server
             $symbolResolver,
             new ClassCandidates($symbolIndex, $symbolResolver),
             new FunctionCandidates($symbolResolver),
+            new KeywordCandidates(),
         );
     }
 

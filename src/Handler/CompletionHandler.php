@@ -13,6 +13,8 @@ use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
+use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -39,6 +41,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly CodeResolver $codeResolver,
         private readonly ClassCandidates $classCandidates,
         private readonly FunctionCandidates $functionCandidates,
+        private readonly KeywordCandidates $keywordCandidates,
     ) {
     }
 
@@ -142,7 +145,7 @@ final class CompletionHandler implements HandlerInterface
             // After named arg colon (value position), also offer expression keywords and classes
             if (preg_match('/\w+:\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
                 $prefix = $matches[1];
-                $items = array_merge($items, $this->filterKeywords(self::KEYWORDS_EXPRESSION, $prefix));
+                $items = array_merge($items, $this->keywordCandidates->find($prefix, KeywordGroup::Expression));
                 $items = array_merge(
                     $items,
                     $this->classCandidates->find($prefix, $document, ClassCandidateFilter::Any),
@@ -176,7 +179,7 @@ final class CompletionHandler implements HandlerInterface
                 $document,
                 TypeHintContext::Parameter,
             ),
-            CompletionKind::ClassBody => $this->filterKeywords(self::KEYWORDS_CLASS_BODY, $prefix),
+            CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
             CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document),
             CompletionKind::None => [],
         };
@@ -201,7 +204,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getAfterVisibilityCompletions(string $prefix, TextDocument $document): array
     {
-        $items = $this->filterKeywords(self::KEYWORDS_AFTER_VISIBILITY, $prefix);
+        $items = $this->keywordCandidates->find($prefix, KeywordGroup::AfterVisibility);
         $items = array_merge($items, $this->getTypeHintCompletions($prefix, $document, TypeHintContext::Property));
         return $this->deduplicateCompletions($items);
     }
@@ -213,7 +216,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getExpressionCompletions(string $prefix, TextDocument $document): array
     {
-        $items = $this->filterKeywords(self::KEYWORDS_ALL, $prefix);
+        $items = $this->keywordCandidates->find($prefix, KeywordGroup::All);
         $items = array_merge($items, $this->functionCandidates->find($prefix, $document));
         $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::Any));
         return $this->deduplicateCompletions($items);
@@ -315,54 +318,6 @@ final class CompletionHandler implements HandlerInterface
         $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::TypeHint));
 
         return $this->deduplicateCompletions($items);
-    }
-
-    private const KEYWORDS_ALL = [
-        // Control flow
-        'if', 'else', 'elseif', 'switch', 'case', 'default',
-        'while', 'do', 'for', 'foreach', 'break', 'continue',
-        'return', 'throw', 'try', 'catch', 'finally',
-        // Declarations
-        'function', 'class', 'interface', 'trait', 'enum', 'namespace', 'use',
-        'extends', 'implements', 'const', 'public', 'protected', 'private',
-        'static', 'final', 'abstract', 'readonly',
-        // Operators and other
-        'new', 'instanceof', 'clone', 'yield', 'match',
-        'echo', 'print', 'include', 'include_once', 'require', 'require_once',
-        'global', 'unset', 'isset', 'empty', 'list', 'fn',
-    ];
-
-    private const KEYWORDS_CLASS_BODY = [
-        'public', 'private', 'protected',
-        'static', 'final', 'abstract', 'readonly',
-        'const', 'function', 'use',
-    ];
-
-    private const KEYWORDS_AFTER_VISIBILITY = ['function', 'static', 'readonly', 'const'];
-
-    // Keywords valid at the start of an expression (e.g., after `name: ` in named args)
-    private const KEYWORDS_EXPRESSION = [
-        'new', 'clone', 'yield', 'match', 'fn',
-        'isset', 'empty', 'list',
-        'true', 'false', 'null',
-    ];
-
-    /**
-     * @param list<string> $keywords
-     * @return list<CompletionItem>
-     */
-    private function filterKeywords(array $keywords, string $prefix): array
-    {
-        $items = [];
-        $prefixLower = strtolower($prefix);
-
-        foreach ($keywords as $keyword) {
-            if ($prefix === '' || str_starts_with($keyword, $prefixLower)) {
-                $items[] = CompletionItemFactory::forKeyword($keyword);
-            }
-        }
-
-        return $items;
     }
 
     /**
