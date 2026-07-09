@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
+use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
@@ -76,6 +77,7 @@ class CompletionHandlerTest extends TestCase
             new VariableCandidates($symbolResolver),
             new MemberCandidates($symbolResolver),
             new NamedArgumentCandidates(),
+            new BuiltinTypeCandidates(),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,

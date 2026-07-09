@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionClassifier;
@@ -17,7 +18,6 @@ use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -30,11 +30,6 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  */
 final class CompletionHandler implements HandlerInterface
 {
-    private static function matchesPrefix(string $name, string $prefix): bool
-    {
-        return PrefixMatcher::matches($name, $prefix);
-    }
-
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
@@ -44,6 +39,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
         private readonly NamedArgumentCandidates $namedArgumentCandidates,
+        private readonly BuiltinTypeCandidates $builtinTypeCandidates,
     ) {
     }
 
@@ -255,33 +251,7 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getTypeHintCompletions(string $prefix, TextDocument $document, TypeHintContext $context): array
     {
-        $items = [];
-
-        // Types valid in all contexts
-        $commonTypes = [
-            'string', 'int', 'float', 'bool', 'array', 'object',
-            'mixed', 'null', 'callable', 'iterable', 'true', 'false',
-        ];
-
-        // Context-specific type validity:
-        // | Type   | Property | Parameter | Return |
-        // |--------|----------|-----------|--------|
-        // | void   | No       | No        | Yes    |
-        // | never  | No       | No        | Yes    |
-        // | self   | No       | Yes       | Yes    |
-        // | static | No       | No        | Yes    |
-        // | parent | No       | Yes       | Yes    |
-        $builtinTypes = match ($context) {
-            TypeHintContext::Property => $commonTypes,
-            TypeHintContext::Parameter => [...$commonTypes, 'self', 'parent'],
-            TypeHintContext::ReturnType => [...$commonTypes, 'void', 'never', 'self', 'static', 'parent'],
-        };
-
-        foreach ($builtinTypes as $type) {
-            if (self::matchesPrefix($type, $prefix)) {
-                $items[] = CompletionItemFactory::forBuiltinType($type);
-            }
-        }
+        $items = $this->builtinTypeCandidates->find($prefix, $context);
 
         // Class-likes valid as type hints (traits excluded)
         $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::TypeHint));
