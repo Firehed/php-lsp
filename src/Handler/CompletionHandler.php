@@ -15,16 +15,13 @@ use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
+use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\PrefixMatcher;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Resolution\MemberAccessContext;
-use Firehed\PhpLsp\Resolution\MemberAccessKind;
-use Firehed\PhpLsp\Resolution\MemberFilter;
-use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
 /**
@@ -44,6 +41,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly FunctionCandidates $functionCandidates,
         private readonly KeywordCandidates $keywordCandidates,
         private readonly VariableCandidates $variableCandidates,
+        private readonly MemberCandidates $memberCandidates,
     ) {
     }
 
@@ -125,10 +123,10 @@ final class CompletionHandler implements HandlerInterface
         int $line,
         int $character,
     ): array {
-        // Member/static access via SymbolResolver
-        $memberContext = $this->codeResolver->getMemberAccessContext($document, $line, $character);
-        if ($memberContext !== null) {
-            return $this->handleMemberAccessContext($memberContext, $document);
+        // Member/static access (after -> or ::)
+        $memberItems = $this->memberCandidates->find($document, $line, $character);
+        if ($memberItems !== null) {
+            return $memberItems;
         }
 
         // Inside a call context, offer named arguments + variables
@@ -225,41 +223,6 @@ final class CompletionHandler implements HandlerInterface
         $items = array_merge($items, $this->functionCandidates->find($prefix, $document));
         $items = array_merge($items, $this->classCandidates->find($prefix, $document, ClassCandidateFilter::Any));
         return $this->deduplicateCompletions($items);
-    }
-
-    /**
-     * @return list<CompletionItem>
-     */
-    private function handleMemberAccessContext(MemberAccessContext $context, TextDocument $document): array
-    {
-        $items = [];
-        $filter = match ($context->kind) {
-            MemberAccessKind::Instance => MemberFilter::Instance,
-            MemberAccessKind::Static => MemberFilter::Static,
-            MemberAccessKind::Parent => MemberFilter::All,
-        };
-
-        $members = $this->codeResolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            $filter,
-        );
-
-        foreach ($members as $member) {
-            if ($context->kind === MemberAccessKind::Parent && !$member instanceof ResolvedMethod) {
-                continue;
-            }
-            if (self::matchesPrefix($member->getName()->name, $context->prefix)) {
-                $items[] = CompletionItemFactory::forResolvedMember($member);
-            }
-        }
-
-        if ($context->kind === MemberAccessKind::Static && self::matchesPrefix('class', $context->prefix)) {
-            $items[] = CompletionItemFactory::forClassConstant();
-        }
-
-        return $items;
     }
 
     /**
