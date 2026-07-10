@@ -42,6 +42,14 @@ final class CompletionClassifier
             return new CompletionClassification(CompletionKind::InterfaceList, $matches[1]);
         }
 
+        // interface X extends list - interfaces only (an interface may extend many).
+        // The literal `interface` keyword distinguishes this from `class X extends`,
+        // which resolves to a single class. Like implements, the comma-list form must
+        // be checked before the parameter-type fallback.
+        if (preg_match('/\binterface\s+\w+\s+extends\s+(?:[\w\\\\]+\s*,\s*)*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::InterfaceList, $matches[1]);
+        }
+
         // After visibility keyword - keywords or property type.
         // Must check before the general type hint fallback since both patterns overlap.
         if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
