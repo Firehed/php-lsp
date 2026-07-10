@@ -1155,8 +1155,18 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
+        return $this->resolveConstructorCallable(new ClassName($classNameStr));
+    }
+
+    /**
+     * Resolve a class's constructor to a callable. Shared by `new X(...)` and
+     * attribute usages `#[X(...)]`, which are both constructor calls on the class.
+     * Uses private visibility so promoted/private constructors are found.
+     */
+    private function resolveConstructorCallable(ClassName $className): ?ResolvedCallable
+    {
         $methodInfo = $this->memberResolver->findMethod(
-            new ClassName($classNameStr),
+            $className,
             new MethodName('__construct'),
             Visibility::Private,
         );
@@ -1472,20 +1482,12 @@ final class SymbolResolver implements CodeResolver
     private function resolveAttributeNamedArgument(Identifier $node, Attribute $attribute): ?ResolvedParameter
     {
         $classNameStr = ScopeFinder::resolveClassName($attribute->name);
-        $className = new ClassName($classNameStr);
 
-        // Resolve constructor of attribute class
-        $methodInfo = $this->memberResolver->findMethod(
-            $className,
-            new MethodName('__construct'),
-            Visibility::Private,
-        );
-
-        if ($methodInfo === null) {
+        $callable = $this->resolveConstructorCallable(new ClassName($classNameStr));
+        if ($callable === null) {
             return null;
         }
 
-        $callable = new ResolvedMethod($methodInfo);
         $paramInfo = $callable->getParameterByName($node->toString());
         if ($paramInfo === null) {
             return null;
