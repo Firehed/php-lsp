@@ -87,6 +87,10 @@ class CompletionClassifierTest extends TestCase
             'pub',
         ];
 
+        yield 'implements with prefix' => ['class Foo implements My', CompletionKind::Implements_, 'My'];
+        yield 'implements bare' => ['class Foo implements ', CompletionKind::Implements_, ''];
+        yield 'implements list continuation' => ['class Foo implements A, My', CompletionKind::Implements_, 'My'];
+
         yield 'expression at start' => ['fo', CompletionKind::Expression, 'fo'];
         yield 'expression after assignment' => ['$x = fo', CompletionKind::Expression, 'fo'];
         yield 'expression inside method body' => [
