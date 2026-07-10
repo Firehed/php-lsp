@@ -1380,6 +1380,42 @@ final class SymbolResolverTest extends TestCase
         self::assertTrue($this->resolver->isValidTypeHint(new ClassName('NonExistent\\Unknown')));
     }
 
+    public function testIsInterfaceReturnsTrueForInterface(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isInterface(new ClassName('Fixtures\\Domain\\Entity')));
+    }
+
+    public function testIsInterfaceReturnsFalseForClass(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Domain\\User')));
+    }
+
+    public function testIsInterfaceReturnsFalseForTrait(): void
+    {
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+    }
+
+    public function testIsInterfaceReturnsFalseForEnum(): void
+    {
+        $this->openFixture('src/Enum/Status.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Enum\\Status')));
+    }
+
+    public function testIsInterfaceReturnsFalseForUnknownClass(): void
+    {
+        // Unlike the optimistic predicates, an implements list must only offer
+        // confirmed interfaces, so an unresolvable name is excluded.
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        self::assertFalse($this->resolver->isInterface(new ClassName('NonExistent\\Unknown')));
+    }
+
     public function testGetCallContextForNamedArguments(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');
