@@ -2679,4 +2679,27 @@ class CompletionHandlerTest extends TestCase
             'No function should be offered in an implements list (issue #298)',
         );
     }
+
+    public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
+    {
+        self::markTestSkipped(
+            'Wrapped/multi-line implements is not yet handled: the classifier is single-line, '
+            . 'so continuation lines fall through to Expression completion. See issue #310.',
+        );
+
+        // @phpstan-ignore-next-line deadCode.unreachable (documents the target behavior; unskip with #310)
+        $cursor = $this->openFixtureAtCursor('src/Completion/WrappedImplementsCompletion.php', 'wrapped_implements');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Entity', $labels, 'Interfaces are valid in a wrapped implements list');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into a wrapped implements list (issue #310)',
+        );
+    }
 }
