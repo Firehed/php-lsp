@@ -26,4 +26,7 @@ enum ClassCandidateFilter
 
     /** Only interfaces (e.g. after `implements`) */
     case Interface_;
+
+    /** Only attribute classes (e.g. in a `#[...]` position) */
+    case Attribute;
 }

@@ -92,6 +92,7 @@ final class ClassCandidates
             ClassCandidateFilter::Instantiable => $this->codeResolver->isInstantiable($className),
             ClassCandidateFilter::TypeHint => $this->codeResolver->isValidTypeHint($className),
             ClassCandidateFilter::Interface_ => $this->codeResolver->isInterface($className),
+            ClassCandidateFilter::Attribute => $this->codeResolver->isAttribute($className),
         };
     }
 
@@ -118,6 +119,10 @@ final class ClassCandidates
             ],
             ClassCandidateFilter::Interface_ => [
                 SymbolKind::Interface_,
+            ],
+            // Attributes are always classes; isAttribute narrows further per candidate.
+            ClassCandidateFilter::Attribute => [
+                SymbolKind::Class_,
             ],
         };
     }
