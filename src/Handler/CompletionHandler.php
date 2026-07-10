@@ -179,6 +179,11 @@ final class CompletionHandler implements HandlerInterface
                 $document,
                 TypeHintContext::Parameter,
             ),
+            CompletionKind::InterfaceList => $this->classCandidates->find(
+                $prefix,
+                $document,
+                ClassCandidateFilter::Interface_,
+            ),
             CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
             CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document),
             CompletionKind::None => [],

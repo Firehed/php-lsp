@@ -33,6 +33,9 @@ enum CompletionKind
     /** In a parameter type position, e.g. `(Fo` or `int|Fo` */
     case ParameterType;
 
+    /** In an `implements` list, e.g. `class Foo implements Ba` — interfaces only */
+    case InterfaceList;
+
     /** Directly inside a class body — class-level keywords only */
     case ClassBody;
 
