@@ -228,6 +228,20 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
+     * Check if a class is a PHP attribute.
+     * Returns false for unknown classes: an attribute position must only offer
+     * confirmed attributes.
+     */
+    public function isAttribute(ClassName $className): bool
+    {
+        $classInfo = $this->classRepository->get($className);
+        if ($classInfo === null) {
+            return false;
+        }
+        return $classInfo->isAttribute;
+    }
+
+    /**
      * Get member access context at position.
      * Used by: Completion (after -> or ::)
      */
