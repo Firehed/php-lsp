@@ -121,6 +121,42 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertTrue($info->isReadonly);
     }
 
+    public function testFromAstNodeDetectsAttributeClass(): void
+    {
+        $node = $this->parseClassFromFixture('src/Attributes/Route.php');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertTrue($info->isAttribute, 'A class declared #[Attribute] is an attribute');
+    }
+
+    public function testFromAstNodeMarksPlainClassAsNotAttribute(): void
+    {
+        $node = $this->parseClassFromFixture('src/Domain/User.php');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertFalse($info->isAttribute, 'A class without #[Attribute] is not an attribute');
+    }
+
+    public function testFromReflectionDetectsAttributeClass(): void
+    {
+        $reflection = new ReflectionClass(\Attribute::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertTrue($info->isAttribute, 'The built-in Attribute class is itself an attribute');
+    }
+
+    public function testFromReflectionMarksPlainClassAsNotAttribute(): void
+    {
+        $reflection = new ReflectionClass(\stdClass::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertFalse($info->isAttribute, 'A class without #[Attribute] is not an attribute');
+    }
+
     public function testFromAstNodeExtractsInterfaces(): void
     {
         $node = $this->parseClassFromFixture('src/Domain/User.php');
