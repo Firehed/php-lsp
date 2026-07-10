@@ -126,6 +126,17 @@ class SignatureHelpHandlerTest extends TestCase
         self::assertStringContainsString('int $score', $result['signatures'][0]['label']);
     }
 
+    public function testSignatureHelpOnAttribute(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/AttributeNamedArguments.php', 'attr_arg_empty');
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString('string $path', $result['signatures'][0]['label']);
+        self::assertEquals(0, $result['activeParameter']);
+    }
+
     public function testSignatureHelpOnSelfStaticMethod(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_self_call');

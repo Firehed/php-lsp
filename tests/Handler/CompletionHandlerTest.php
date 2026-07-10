@@ -2223,6 +2223,32 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('active:', $labels);
     }
 
+    public function testAttributeNamedArgumentCompletion(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/AttributeNamedArguments.php', 'attr_arg_empty');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('path:', $labels, 'Attribute constructor named arguments are offered');
+        self::assertContains('method:', $labels, 'Attribute constructor named arguments are offered');
+    }
+
+    public function testAttributeNamedArgumentCompletionAfterPositional(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $cursor = $this->openFixtureAtCursor('src/Completion/AttributeNamedArguments.php', 'attr_arg_second');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertNotContains('path:', $labels, 'The first parameter is already filled positionally');
+        self::assertContains('method:', $labels, 'Remaining named arguments are still offered');
+    }
+
     public function testNamedArgumentCompletionAfterPositional(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'after_positional');
