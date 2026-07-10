@@ -91,6 +91,7 @@ final class ClassCandidates
             ClassCandidateFilter::Any => true,
             ClassCandidateFilter::Instantiable => $this->codeResolver->isInstantiable($className),
             ClassCandidateFilter::TypeHint => $this->codeResolver->isValidTypeHint($className),
+            ClassCandidateFilter::Interface_ => $this->codeResolver->isInterface($className),
         };
     }
 
@@ -114,6 +115,9 @@ final class ClassCandidates
                 SymbolKind::Class_,
                 SymbolKind::Interface_,
                 SymbolKind::Enum_,
+            ],
+            ClassCandidateFilter::Interface_ => [
+                SymbolKind::Interface_,
             ],
         };
     }
