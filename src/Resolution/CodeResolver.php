@@ -60,6 +60,11 @@ interface CodeResolver
     public function isInterface(ClassName $className): bool;
 
     /**
+     * Check if a class is a PHP attribute (e.g. valid in a `#[...]` position).
+     */
+    public function isAttribute(ClassName $className): bool;
+
+    /**
      * Detect member access context at cursor position.
      * Used by: Completion
      */

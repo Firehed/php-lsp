@@ -2603,6 +2603,70 @@ class CompletionHandlerTest extends TestCase
         self::assertNotEmpty($result['items'], 'Should offer User methods');
     }
 
+    public function testAttributeContextOffersOnlyAttributes(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/AttributeCompletion.php', 'attr_empty');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Route', $labels, 'Imported attribute classes are offered in a #[ position');
+        self::assertContains('NoConstructorAttribute', $labels, 'Attribute classes without a constructor are offered');
+        self::assertNotContains('User', $labels, 'A plain class is not an attribute');
+        self::assertNotContains('Entity', $labels, 'An interface is not an attribute');
+        self::assertNotContains('SingletonTrait', $labels, 'A trait is not an attribute');
+        self::assertNotContains('Status', $labels, 'An enum is not an attribute');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into a #[ position (issue #252)',
+        );
+        self::assertNotContains(
+            CompletionItemKind::Keyword->value,
+            $kinds,
+            'Keywords must not leak into a #[ position',
+        );
+    }
+
+    public function testAttributeWithPrefixOffersAttributeNotFunctions(): void
+    {
+        // The #[ analog of the #298 report: `#[date` must not leak `date_*` functions.
+        $cursor = $this->openFixtureAtCursor('src/Completion/AttributePrefixCompletion.php', 'attr_prefix');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Route', $labels, 'An in-scope attribute matching the prefix is offered');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not be offered in a #[ position (issue #252)',
+        );
+    }
+
+    public function testAttributeGroupedContinuationOffersAttributes(): void
+    {
+        // Grouped attributes: `#[A, B` — the position after the comma is still an
+        // attribute-name position.
+        $cursor = $this->openFixtureAtCursor('src/Completion/AttributeGroupedCompletion.php', 'attr_grouped');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Route', $labels, 'Attributes are offered after a comma in a grouped attribute');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into a grouped attribute (issue #252)',
+        );
+    }
+
     /**
      * Interface-list positions (`implements` and `interface … extends`) share one
      * behavior: interfaces from imports/index are offered, everything else is not.

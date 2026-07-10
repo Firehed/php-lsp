@@ -103,6 +103,19 @@ class CompletionClassifierTest extends TestCase
             'My',
         ];
 
+        yield 'attribute with prefix' => ['#[Ro', CompletionKind::Attribute, 'Ro'];
+        yield 'attribute bare' => ['#[', CompletionKind::Attribute, ''];
+        yield 'attribute grouped continuation' => ['#[Foo, Ro', CompletionKind::Attribute, 'Ro'];
+        yield 'attribute grouped after args' => ['#[Foo(1), Ro', CompletionKind::Attribute, 'Ro'];
+        yield 'attribute indented' => ['    #[Ro', CompletionKind::Attribute, 'Ro'];
+        // Inside an attribute's argument list is a value/named-argument position, not
+        // an attribute-name position, so it must not classify as Attribute.
+        yield 'inside attribute args is not attribute name' => [
+            '#[Route(Ro',
+            CompletionKind::ParameterType,
+            'Ro',
+        ];
+
         // `class X extends` resolves to a single class, not an interface list, so it
         // must not match the interface-extends pattern (issue #312).
         yield 'class extends is not an interface list' => [

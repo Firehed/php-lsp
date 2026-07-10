@@ -9,7 +9,7 @@ use Fixtures\Attributes\Route;
 
 class ApiController
 {
-    #[Route('/api/users')]
+    #[Route('/api/users')] //hover:attr_class
     public function listUsers(): array
     {
         return [];

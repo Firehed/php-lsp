@@ -620,4 +620,18 @@ class DefinitionHandlerTest extends TestCase
         // $createdAt is defined on line 17 (0-indexed: 16)
         self::assertSame(16, $result['range']['start']['line']);
     }
+
+    public function testGoToAttributeClassDefinition(): void
+    {
+        $routeUri = $this->openFixture('src/Attributes/Route.php');
+        $this->openFixture('src/Services/ApiController.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Services/ApiController.php', 'attr_class');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame($routeUri, $result['uri'], 'Jumps to the attribute class declaration');
+        // The declaration starts at its attribute group (`#[Attribute(...)]`, line 12; 0-indexed 11).
+        self::assertSame(11, $result['range']['start']['line']);
+    }
 }

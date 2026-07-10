@@ -1416,6 +1416,49 @@ final class SymbolResolverTest extends TestCase
         self::assertFalse($this->resolver->isInterface(new ClassName('NonExistent\\Unknown')));
     }
 
+    public function testIsAttributeReturnsTrueForAttributeClass(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isAttribute(new ClassName('Fixtures\\Attributes\\Route')));
+    }
+
+    public function testIsAttributeReturnsFalseForPlainClass(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Domain\\User')));
+    }
+
+    public function testIsAttributeReturnsFalseForInterface(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Domain\\Entity')));
+    }
+
+    public function testIsAttributeReturnsFalseForTrait(): void
+    {
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+    }
+
+    public function testIsAttributeReturnsFalseForEnum(): void
+    {
+        $this->openFixture('src/Enum/Status.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Enum\\Status')));
+    }
+
+    public function testIsAttributeReturnsFalseForUnknownClass(): void
+    {
+        // Like isInterface, an attribute position must only offer confirmed
+        // attributes, so an unresolvable name is excluded.
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        self::assertFalse($this->resolver->isAttribute(new ClassName('NonExistent\\Unknown')));
+    }
+
     public function testGetCallContextForNamedArguments(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');

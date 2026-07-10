@@ -692,4 +692,16 @@ class HoverHandlerTest extends TestCase
         self::assertIsArray($result, 'Hover should work on method in while condition');
         self::assertStringContainsString('getName', $result['contents']);
     }
+
+    public function testHoverOnAttributeClass(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Services/ApiController.php', 'attr_class');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'Hover should resolve the class in a #[Attribute] usage');
+        self::assertStringContainsString('Route', $result['contents']);
+        self::assertStringContainsString('Defines a route', $result['contents']);
+    }
 }

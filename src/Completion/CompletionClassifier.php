@@ -27,6 +27,11 @@ final class CompletionClassifier
     // Matches an "interface X extends …" list (single or comma-separated).
     private const INTERFACE_EXTENDS_PATTERN = '/\binterface\s+\w+\s+extends\s+(?:[\w\\\\]+\s*,\s*)*(\w*)$/';
 
+    // Matches an attribute-name position: "#[", including grouped attributes
+    // ("#[Foo, Ba", "#[Foo(1), Ba"). It deliberately does not match inside an
+    // attribute's own argument list ("#[Foo(Ba"), which is a value position.
+    private const ATTRIBUTE_PATTERN = '/#\[\s*(?:[\w\\\\]+\s*(?:\([^)]*\))?\s*,\s*)*(\w*)$/';
+
     public static function classify(string $textBeforeCursor): CompletionClassification
     {
         // Variable completion
@@ -37,6 +42,13 @@ final class CompletionClassifier
         // new ClassName completion
         if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::New_, $matches[1]);
+        }
+
+        // Attribute position (#[). Checked early: the "#[" delimiter is unambiguous,
+        // and attributes appear in class bodies and type-hint-adjacent positions that
+        // later, broader patterns would otherwise claim.
+        if (preg_match(self::ATTRIBUTE_PATTERN, $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::Attribute, $matches[1]);
         }
 
         // implements list - interfaces only. Must check before the parameter-type

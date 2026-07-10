@@ -1289,6 +1289,7 @@ final class MemberResolverTest extends TestCase
             isAbstract: false,
             isFinal: false,
             isReadonly: false,
+            isAttribute: false,
             parent: $parent,
             interfaces: $interfaces,
             traits: $traits,

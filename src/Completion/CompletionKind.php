@@ -36,6 +36,9 @@ enum CompletionKind
     /** In an `implements` list, e.g. `class Foo implements Ba` — interfaces only */
     case InterfaceList;
 
+    /** In an attribute position, e.g. `#[Ba` — attribute classes only */
+    case Attribute;
+
     /** Directly inside a class body — class-level keywords only */
     case ClassBody;
 
