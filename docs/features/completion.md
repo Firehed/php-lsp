@@ -12,6 +12,7 @@ This document tracks the current state of code completion in php-lsp.
 | Static access | `ClassName::` | Static methods, constants, static properties (visibility-aware) | ✅ Working |
 | `new` expression | `new ` | Classes from composer classmap | ✅ Working |
 | Function calls | identifier at expression start | Built-in PHP functions + file-local functions | ✅ Working |
+| Keywords | `fore` → `foreach` | Context-aware PHP keywords (statement/expression start, class body, after visibility) | ✅ Working |
 
 All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
@@ -26,7 +27,6 @@ lexical scope, which includes global scope.
 
 | Context | Example | Notes |
 |---------|---------|-------|
-| Keywords | `fore` → `foreach` | No language keyword suggestions |
 | Array keys | `$config['` | No key suggestions from array shapes |
 | Docblock tags | `@par` → `@param` | No PHPDoc completion |
 | Snippets | Method inserting `()` | No snippet support in completion items |
