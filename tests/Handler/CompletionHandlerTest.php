@@ -2626,4 +2626,57 @@ class CompletionHandlerTest extends TestCase
             'Keywords must not leak into an implements list',
         );
     }
+
+    public function testImplementsWithPrefixOffersInterfaceNotFunctions(): void
+    {
+        // The original #298 report: `implements D` offered `date_*` functions
+        // instead of the in-scope interface starting with `D`.
+        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsPrefixCompletion.php', 'implements_d_prefix');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Describable', $labels, 'An in-scope interface starting with D should be offered');
+        self::assertNotContains('date_add', $labels, 'Built-in functions must not be offered in an implements list');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'No function should be offered in an implements list (issue #298)',
+        );
+    }
+
+    public function testImplementsOffersBuiltinInterfaceNotBuiltinClass(): void
+    {
+        // Exercises the reflection resolution path: an imported built-in interface
+        // is offered while the built-in class of the same prefix is excluded.
+        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsBuiltinCompletion.php', 'implements_builtin');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'SessionHandlerInterface',
+            $labels,
+            'A built-in interface (resolved via reflection) is valid in an implements list',
+        );
+        self::assertNotContains(
+            'SessionHandler',
+            $labels,
+            'The built-in SessionHandler class cannot be implemented',
+        );
+        self::assertNotContains(
+            'session_start',
+            $labels,
+            'Built-in functions must not be offered in an implements list',
+        );
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'No function should be offered in an implements list (issue #298)',
+        );
+    }
 }
