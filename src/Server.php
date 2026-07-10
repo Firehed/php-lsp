@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
+use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\ClassCandidates;
+use Firehed\PhpLsp\Completion\FunctionCandidates;
+use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\MemberCandidates;
+use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
@@ -85,9 +92,14 @@ final class Server
         );
         $this->handlers[] = new CompletionHandler(
             $this->documentManager,
-            $parser,
-            $symbolIndex,
             $symbolResolver,
+            new ClassCandidates($symbolIndex, $symbolResolver),
+            new FunctionCandidates($symbolResolver),
+            new KeywordCandidates(),
+            new VariableCandidates($symbolResolver),
+            new MemberCandidates($symbolResolver),
+            new NamedArgumentCandidates(),
+            new BuiltinTypeCandidates(),
         );
     }
 

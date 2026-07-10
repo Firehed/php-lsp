@@ -21,6 +21,7 @@ use Firehed\PhpLsp\Resolution\ResolvedFunction;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
@@ -2066,5 +2067,37 @@ final class SymbolResolverTest extends TestCase
     private static function variableNames(array $variables): array
     {
         return array_map(fn(ResolvedVariable $v) => $v->getName(), $variables);
+    }
+
+    public function testGetImportsIncludesAliasedAndGroupedUses(): void
+    {
+        $uri = $this->openFixture('Namespacing/ImportCompletion.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $imports = $this->resolver->getImports($document);
+
+        self::assertSame(
+            'Fixtures\Namespacing\Models\UserRepository',
+            $imports['Repo'] ?? null,
+            'An aliased import should map the alias to its FQCN',
+        );
+        self::assertArrayHasKey('Post', $imports, 'Group use members should be included');
+        self::assertArrayHasKey('SingletonTrait', $imports, 'Plain imports should be included');
+    }
+
+    public function testGetFileFunctionsFindsNamespacedFunctions(): void
+    {
+        $uri = $this->openFixture('src/Completion/FunctionCompletion.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $names = array_map(
+            static fn(FunctionInfo $fn): string => $fn->name,
+            $this->resolver->getFileFunctions($document),
+        );
+
+        self::assertContains('calculateSum', $names, 'Functions inside a namespace should be found');
+        self::assertContains('getConfig', $names, 'Functions inside a namespace should be found');
     }
 }

@@ -565,6 +565,43 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function getImports(TextDocument $document): array
+    {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        return ScopeFinder::extractImports($ast);
+    }
+
+    /**
+     * @return list<FunctionInfo>
+     */
+    public function getFileFunctions(TextDocument $document): array
+    {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        $functions = [];
+        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
+            if ($stmt instanceof Stmt\Function_) {
+                $functions[] = FunctionInfo::fromNode($stmt);
+            }
+        }
+
+        return $functions;
+    }
+
+    /**
      * @param array<Stmt> $ast
      * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
      */

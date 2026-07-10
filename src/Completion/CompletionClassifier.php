@@ -1,0 +1,133 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp\Completion;
+
+/**
+ * Classifies a cursor position into a {@see CompletionKind} using only the text
+ * before the cursor.
+ *
+ * Detection is deliberately text-based rather than AST-based: this is a live
+ * language server, and completion must keep working while code is temporarily
+ * broken mid-edit (see CompletionHandlerTest::testCompletionThisInVeryBrokenFile,
+ * where the parser produces no AST at all). Member, static, and call-argument
+ * contexts are AST-first with a text fallback and are detected upstream via
+ * {@see \Firehed\PhpLsp\Resolution\CodeResolver}, so they never reach here.
+ *
+ * The ordering of checks is significant: earlier, more specific patterns must be
+ * tested before later, broader ones (e.g. a visibility keyword before the general
+ * type-hint fallback).
+ */
+final class CompletionClassifier
+{
+    // Matches property type continuations: "private ?", "public int|", "protected Foo&"
+    private const PROPERTY_TYPE_PATTERN = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
+
+    public static function classify(string $textBeforeCursor): CompletionClassification
+    {
+        // Variable completion
+        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::Variable, $matches[1]);
+        }
+
+        // new ClassName completion
+        if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::New_, $matches[1]);
+        }
+
+        // After visibility keyword - keywords or property type.
+        // Must check before the general type hint fallback since both patterns overlap.
+        if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::AfterVisibility, $matches[1]);
+        }
+
+        // Return type context - after ): with optional space
+        if (preg_match('/\):\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::ReturnType, $matches[1]);
+        }
+
+        // Return type context - nullable/union/intersection (e.g., "): ?", "): int|", "): Foo&")
+        if (preg_match('/\):\s*(?:\?\s*|(?:\w+\s*[|&]\s*)+)(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::ReturnType, $matches[1]);
+        }
+
+        // Property type context - nullable/union/intersection after visibility keyword
+        if (preg_match(self::PROPERTY_TYPE_PATTERN, $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::PropertyType, $matches[1]);
+        }
+
+        // Parameter type context - fallback for type positions not matched above.
+        // Matches after (, ,, ?, |, & which occur in parameter lists and complex types
+        if (preg_match('/[(,?|&]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::ParameterType, $matches[1]);
+        }
+
+        // Class body context - only class-level keywords, no functions
+        if (self::isInClassBody($textBeforeCursor)) {
+            if (preg_match('/(?:^|[\s{;])(\w+)$/', $textBeforeCursor, $matches) === 1) {
+                return new CompletionClassification(CompletionKind::ClassBody, $matches[1]);
+            }
+            return new CompletionClassification(CompletionKind::None, '');
+        }
+
+        // Function/class/keyword completion (at start of expression or after operators)
+        if (preg_match('/(?:^|[(\s=,!&|])(\w+)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::Expression, $matches[1]);
+        }
+
+        return new CompletionClassification(CompletionKind::None, '');
+    }
+
+    /**
+     * Check if cursor is inside a class/interface/trait/enum body (but not inside a method).
+     */
+    private static function isInClassBody(string $textBeforeCursor): bool
+    {
+        // Count braces to detect if we're inside a class body
+        // This is a heuristic - look for class/interface/trait/enum followed by unbalanced {
+        if (preg_match('/(?:class|interface|trait|enum)\s+\w+/', $textBeforeCursor) !== 1) {
+            return false;
+        }
+
+        // Count brace depth after the class declaration
+        $classPos = strrpos($textBeforeCursor, 'class ');
+        $interfacePos = strrpos($textBeforeCursor, 'interface ');
+        $traitPos = strrpos($textBeforeCursor, 'trait ');
+        $enumPos = strrpos($textBeforeCursor, 'enum ');
+        $lastClassPos = max(
+            $classPos !== false ? $classPos : 0,
+            $interfacePos !== false ? $interfacePos : 0,
+            $traitPos !== false ? $traitPos : 0,
+            $enumPos !== false ? $enumPos : 0,
+        );
+
+        $afterClass = substr($textBeforeCursor, $lastClassPos);
+        $depth = 0;
+        $inString = false;
+        $stringChar = '';
+
+        for ($i = 0; $i < strlen($afterClass); $i++) {
+            $char = $afterClass[$i];
+
+            if ($inString) {
+                if ($char === $stringChar && ($i === 0 || $afterClass[$i - 1] !== '\\')) {
+                    $inString = false;
+                }
+                continue;
+            }
+
+            if ($char === '"' || $char === "'") {
+                $inString = true;
+                $stringChar = $char;
+            } elseif ($char === '{') {
+                $depth++;
+            } elseif ($char === '}') {
+                $depth--;
+            }
+        }
+
+        // depth === 1 means we're directly inside the class body (not in a method)
+        return $depth === 1;
+    }
+}

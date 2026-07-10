@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
+use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\ClassCandidates;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\FunctionCandidates;
+use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\MemberCandidates;
+use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -27,6 +35,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompletionHandler::class)]
+#[CoversClass(BuiltinTypeCandidates::class)]
+#[CoversClass(ClassCandidates::class)]
+#[CoversClass(CompletionItemFactory::class)]
+#[CoversClass(FunctionCandidates::class)]
+#[CoversClass(KeywordCandidates::class)]
+#[CoversClass(MemberCandidates::class)]
+#[CoversClass(NamedArgumentCandidates::class)]
+#[CoversClass(VariableCandidates::class)]
 class CompletionHandlerTest extends TestCase
 {
     use OpensDocumentsTrait;
@@ -63,9 +79,14 @@ class CompletionHandlerTest extends TestCase
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->handler = new CompletionHandler(
             $this->documents,
-            $this->parser,
-            $this->symbolIndex,
             $symbolResolver,
+            new ClassCandidates($this->symbolIndex, $symbolResolver),
+            new FunctionCandidates($symbolResolver),
+            new KeywordCandidates(),
+            new VariableCandidates($symbolResolver),
+            new MemberCandidates($symbolResolver),
+            new NamedArgumentCandidates(),
+            new BuiltinTypeCandidates(),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
