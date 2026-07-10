@@ -139,6 +139,37 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertFalse($info->isAttribute, 'A class without #[Attribute] is not an attribute');
     }
 
+    public function testFromAstNodeMarksClassUsingAnAttributeAsNotAttribute(): void
+    {
+        // A class that carries a class-level attribute is not itself an attribute
+        // unless that attribute is #[Attribute].
+        $node = $this->parseClassFromFixture('src/Attributes/UsesAttribute.php');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertFalse($info->isAttribute, 'Using an attribute does not make a class an attribute');
+    }
+
+    public function testFromAstNodeMarksInterfaceAsNotAttribute(): void
+    {
+        // Only classes can be attributes; interfaces cannot.
+        $node = $this->parseClassFromFixture('src/Domain/Entity.php');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertFalse($info->isAttribute, 'An interface cannot be an attribute');
+    }
+
+    public function testFromAstNodeMarksEnumAsNotAttribute(): void
+    {
+        // Only classes can be attributes; enums cannot.
+        $node = $this->parseClassFromFixture('src/Enum/Status.php');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        self::assertFalse($info->isAttribute, 'An enum cannot be an attribute');
+    }
+
     public function testFromReflectionDetectsAttributeClass(): void
     {
         $reflection = new ReflectionClass(\Attribute::class);
