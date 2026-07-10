@@ -55,6 +55,11 @@ interface CodeResolver
     public function isValidTypeHint(ClassName $className): bool;
 
     /**
+     * Check if a class-like is an interface (e.g. valid in an `implements` list).
+     */
+    public function isInterface(ClassName $className): bool;
+
+    /**
      * Detect member access context at cursor position.
      * Used by: Completion
      */
