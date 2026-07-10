@@ -2693,6 +2693,7 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('Entity', $labels, 'Imported interfaces are valid in an interface extends list');
         self::assertNotContains('User', $labels, 'An interface cannot extend a class');
         self::assertNotContains('SingletonTrait', $labels, 'An interface cannot extend a trait');
+        self::assertNotContains('Status', $labels, 'An interface cannot extend an enum');
 
         $kinds = array_column($result['items'], 'kind');
         self::assertNotContains(
