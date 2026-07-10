@@ -36,6 +36,12 @@ final class CompletionClassifier
             return new CompletionClassification(CompletionKind::New_, $matches[1]);
         }
 
+        // implements list - interfaces only. Must check before the parameter-type
+        // fallback, since the comma in "implements A, Ba" also matches that pattern.
+        if (preg_match('/\bimplements\s+(?:[\w\\\\]+\s*,\s*)*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::InterfaceList, $matches[1]);
+        }
+
         // After visibility keyword - keywords or property type.
         // Must check before the general type hint fallback since both patterns overlap.
         if (preg_match('/(?:public|private|protected)\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {

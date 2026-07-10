@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -2600,5 +2601,105 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result, 'Chained access in if() should return completions');
         self::assertArrayHasKey('items', $result);
         self::assertNotEmpty($result['items'], 'Should offer User methods');
+    }
+
+    public function testImplementsContextOffersOnlyInterfaces(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsCompletion.php', 'implements_empty');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Entity', $labels, 'Imported interfaces are valid in an implements list');
+        self::assertNotContains('User', $labels, 'Classes cannot be implemented');
+        self::assertNotContains('SingletonTrait', $labels, 'Traits cannot be implemented');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into an implements list (issue #298)',
+        );
+        self::assertNotContains(
+            CompletionItemKind::Keyword->value,
+            $kinds,
+            'Keywords must not leak into an implements list',
+        );
+    }
+
+    public function testImplementsWithPrefixOffersInterfaceNotFunctions(): void
+    {
+        // The original #298 report: `implements D` offered `date_*` functions
+        // instead of the in-scope interface starting with `D`.
+        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsPrefixCompletion.php', 'implements_d_prefix');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Describable', $labels, 'An in-scope interface starting with D should be offered');
+        self::assertNotContains('date_add', $labels, 'Built-in functions must not be offered in an implements list');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'No function should be offered in an implements list (issue #298)',
+        );
+    }
+
+    public function testImplementsOffersBuiltinInterfaceNotBuiltinClass(): void
+    {
+        // Exercises the reflection resolution path: an imported built-in interface
+        // is offered while the built-in class of the same prefix is excluded.
+        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsBuiltinCompletion.php', 'implements_builtin');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'SessionHandlerInterface',
+            $labels,
+            'A built-in interface (resolved via reflection) is valid in an implements list',
+        );
+        self::assertNotContains(
+            'SessionHandler',
+            $labels,
+            'The built-in SessionHandler class cannot be implemented',
+        );
+        self::assertNotContains(
+            'session_start',
+            $labels,
+            'Built-in functions must not be offered in an implements list',
+        );
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'No function should be offered in an implements list (issue #298)',
+        );
+    }
+
+    public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
+    {
+        self::markTestSkipped(
+            'Wrapped/multi-line implements is not yet handled: the classifier is single-line, '
+            . 'so continuation lines fall through to Expression completion. See issue #310.',
+        );
+
+        // @phpstan-ignore-next-line deadCode.unreachable (documents the target behavior; unskip with #310)
+        $cursor = $this->openFixtureAtCursor('src/Completion/WrappedImplementsCompletion.php', 'wrapped_implements');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Entity', $labels, 'Interfaces are valid in a wrapped implements list');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into a wrapped implements list (issue #310)',
+        );
     }
 }

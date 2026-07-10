@@ -214,6 +214,20 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
+     * Check if a class-like is an interface.
+     * Returns false for unknown classes: an implements list must only offer
+     * confirmed interfaces.
+     */
+    public function isInterface(ClassName $className): bool
+    {
+        $classInfo = $this->classRepository->get($className);
+        if ($classInfo === null) {
+            return false;
+        }
+        return $classInfo->kind === ClassKind::Interface_;
+    }
+
+    /**
      * Get member access context at position.
      * Used by: Completion (after -> or ::)
      */

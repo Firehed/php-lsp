@@ -23,4 +23,7 @@ enum ClassCandidateFilter
 
     /** Only types valid as a type hint (traits excluded) */
     case TypeHint;
+
+    /** Only interfaces (e.g. after `implements`) */
+    case Interface_;
 }
