@@ -91,6 +91,26 @@ class CompletionClassifierTest extends TestCase
         yield 'implements bare' => ['class Foo implements ', CompletionKind::InterfaceList, ''];
         yield 'implements list continuation' => ['class Foo implements A, My', CompletionKind::InterfaceList, 'My'];
 
+        yield 'interface extends with prefix' => [
+            'interface Foo extends My',
+            CompletionKind::InterfaceList,
+            'My',
+        ];
+        yield 'interface extends bare' => ['interface Foo extends ', CompletionKind::InterfaceList, ''];
+        yield 'interface extends list continuation' => [
+            'interface Foo extends A, My',
+            CompletionKind::InterfaceList,
+            'My',
+        ];
+
+        // `class X extends` resolves to a single class, not an interface list, so it
+        // must not match the interface-extends pattern (issue #312).
+        yield 'class extends is not an interface list' => [
+            'class Foo extends Ba',
+            CompletionKind::Expression,
+            'Ba',
+        ];
+
         yield 'expression at start' => ['fo', CompletionKind::Expression, 'fo'];
         yield 'expression after assignment' => ['$x = fo', CompletionKind::Expression, 'fo'];
         yield 'expression inside method body' => [

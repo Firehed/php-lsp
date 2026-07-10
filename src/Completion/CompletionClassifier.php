@@ -24,6 +24,9 @@ final class CompletionClassifier
     // Matches property type continuations: "private ?", "public int|", "protected Foo&"
     private const PROPERTY_TYPE_PATTERN = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
 
+    // Matches an "interface X extends …" list (single or comma-separated).
+    private const INTERFACE_EXTENDS_PATTERN = '/\binterface\s+\w+\s+extends\s+(?:[\w\\\\]+\s*,\s*)*(\w*)$/';
+
     public static function classify(string $textBeforeCursor): CompletionClassification
     {
         // Variable completion
@@ -39,6 +42,14 @@ final class CompletionClassifier
         // implements list - interfaces only. Must check before the parameter-type
         // fallback, since the comma in "implements A, Ba" also matches that pattern.
         if (preg_match('/\bimplements\s+(?:[\w\\\\]+\s*,\s*)*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::InterfaceList, $matches[1]);
+        }
+
+        // interface X extends list - interfaces only (an interface may extend many).
+        // The literal `interface` keyword distinguishes this from `class X extends`,
+        // which resolves to a single class. Like implements, the comma-list form must
+        // be checked before the parameter-type fallback.
+        if (preg_match(self::INTERFACE_EXTENDS_PATTERN, $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::InterfaceList, $matches[1]);
         }
 

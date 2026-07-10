@@ -2680,6 +2680,82 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testInterfaceExtendsContextOffersOnlyInterfaces(): void
+    {
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/InterfaceExtendsCompletion.php',
+            'interface_extends_empty',
+        );
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Entity', $labels, 'Imported interfaces are valid in an interface extends list');
+        self::assertNotContains('User', $labels, 'An interface cannot extend a class');
+        self::assertNotContains('SingletonTrait', $labels, 'An interface cannot extend a trait');
+        self::assertNotContains('Status', $labels, 'An interface cannot extend an enum');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into an interface extends list (issue #312)',
+        );
+        self::assertNotContains(
+            CompletionItemKind::Keyword->value,
+            $kinds,
+            'Keywords must not leak into an interface extends list',
+        );
+    }
+
+    public function testInterfaceExtendsWithPrefixOffersInterfaceNotFunctions(): void
+    {
+        // Mirrors the #298 report for the extends position: `extends D` must offer the
+        // in-scope interface starting with `D`, not built-in `date_*` functions.
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/InterfaceExtendsPrefixCompletion.php',
+            'interface_extends_d_prefix',
+        );
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Describable', $labels, 'An in-scope interface starting with D should be offered');
+        self::assertNotContains('date_add', $labels, 'Built-in functions must not be offered in an extends list');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'No function should be offered in an interface extends list (issue #312)',
+        );
+    }
+
+    public function testInterfaceExtendsListContinuationOffersInterfaces(): void
+    {
+        // The comma-list form: an interface may extend several interfaces.
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/InterfaceExtendsListCompletion.php',
+            'interface_extends_list',
+        );
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'Describable',
+            $labels,
+            'Interfaces are valid after a comma in an interface extends list',
+        );
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into a comma-separated interface extends list (issue #312)',
+        );
+    }
+
     public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
     {
         self::markTestSkipped(
