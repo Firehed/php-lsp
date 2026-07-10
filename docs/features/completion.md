@@ -16,6 +16,7 @@ This document tracks the current state of code completion in php-lsp.
 | `implements` list | `class Foo implements Ba` | Interfaces only (from imports + workspace index); classes, traits, and functions excluded | ✅ Working |
 | `interface … extends` list | `interface Foo extends Ba` | Interfaces only (from imports + workspace index); distinguished from `class … extends` by the `interface` keyword | ✅ Working |
 | Attribute position | `#[Ro` | Attribute classes only (from imports + workspace index); classes, interfaces, traits, enums, and functions excluded. Grouped (`#[A, Ba`) supported; target-aware filtering is not yet (#252) | ✅ Working |
+| Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
 
 All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
