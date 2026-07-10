@@ -2603,157 +2603,108 @@ class CompletionHandlerTest extends TestCase
         self::assertNotEmpty($result['items'], 'Should offer User methods');
     }
 
-    public function testImplementsContextOffersOnlyInterfaces(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsCompletion.php', 'implements_empty');
+    /**
+     * Interface-list positions (`implements` and `interface … extends`) share one
+     * behavior: interfaces from imports/index are offered, everything else is not.
+     * The cases are data-driven so each new interface-list position (#312–#316)
+     * plugs in as a row rather than a copy-pasted method.
+     *
+     * @param list<string> $expectedPresent interface labels that must be offered
+     * @param list<string> $expectedAbsentLabels non-interface labels that must not be offered
+     * @param list<CompletionItemKind> $expectedAbsentKinds item kinds that must not leak in
+     */
+    #[DataProvider('provideInterfaceListContexts')]
+    public function testInterfaceListContextOffersOnlyInterfaces(
+        string $fixture,
+        string $marker,
+        array $expectedPresent,
+        array $expectedAbsentLabels,
+        array $expectedAbsentKinds,
+    ): void {
+        $cursor = $this->openFixtureAtCursor($fixture, $marker);
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('Entity', $labels, 'Imported interfaces are valid in an implements list');
-        self::assertNotContains('User', $labels, 'Classes cannot be implemented');
-        self::assertNotContains('SingletonTrait', $labels, 'Traits cannot be implemented');
+        foreach ($expectedPresent as $label) {
+            self::assertContains($label, $labels, "Interface {$label} must be offered in an interface list");
+        }
+        foreach ($expectedAbsentLabels as $label) {
+            self::assertNotContains($label, $labels, "{$label} is not an interface and must not be offered");
+        }
 
         $kinds = array_column($result['items'], 'kind');
-        self::assertNotContains(
-            CompletionItemKind::Function->value,
-            $kinds,
-            'Functions must not leak into an implements list (issue #298)',
-        );
-        self::assertNotContains(
-            CompletionItemKind::Keyword->value,
-            $kinds,
-            'Keywords must not leak into an implements list',
-        );
+        foreach ($expectedAbsentKinds as $kind) {
+            self::assertNotContains(
+                $kind->value,
+                $kinds,
+                "{$kind->name} items must not leak into an interface list",
+            );
+        }
     }
 
-    public function testImplementsWithPrefixOffersInterfaceNotFunctions(): void
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{
+     *   string,
+     *   string,
+     *   list<string>,
+     *   list<string>,
+     *   list<CompletionItemKind>,
+     * }>
+     */
+    public static function provideInterfaceListContexts(): iterable
     {
+        // `implements` list (issue #298).
+        yield 'implements empty' => [
+            'src/Completion/ImplementsCompletion.php',
+            'implements_empty',
+            ['Entity'],
+            ['User', 'SingletonTrait', 'Status'],
+            [CompletionItemKind::Function, CompletionItemKind::Keyword],
+        ];
         // The original #298 report: `implements D` offered `date_*` functions
         // instead of the in-scope interface starting with `D`.
-        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsPrefixCompletion.php', 'implements_d_prefix');
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('Describable', $labels, 'An in-scope interface starting with D should be offered');
-        self::assertNotContains('date_add', $labels, 'Built-in functions must not be offered in an implements list');
-
-        $kinds = array_column($result['items'], 'kind');
-        self::assertNotContains(
-            CompletionItemKind::Function->value,
-            $kinds,
-            'No function should be offered in an implements list (issue #298)',
-        );
-    }
-
-    public function testImplementsOffersBuiltinInterfaceNotBuiltinClass(): void
-    {
+        yield 'implements D prefix' => [
+            'src/Completion/ImplementsPrefixCompletion.php',
+            'implements_d_prefix',
+            ['Describable'],
+            ['date_add'],
+            [CompletionItemKind::Function],
+        ];
         // Exercises the reflection resolution path: an imported built-in interface
         // is offered while the built-in class of the same prefix is excluded.
-        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsBuiltinCompletion.php', 'implements_builtin');
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
+        yield 'implements builtin' => [
+            'src/Completion/ImplementsBuiltinCompletion.php',
+            'implements_builtin',
+            ['SessionHandlerInterface'],
+            ['SessionHandler', 'session_start'],
+            [CompletionItemKind::Function],
+        ];
 
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains(
-            'SessionHandlerInterface',
-            $labels,
-            'A built-in interface (resolved via reflection) is valid in an implements list',
-        );
-        self::assertNotContains(
-            'SessionHandler',
-            $labels,
-            'The built-in SessionHandler class cannot be implemented',
-        );
-        self::assertNotContains(
-            'session_start',
-            $labels,
-            'Built-in functions must not be offered in an implements list',
-        );
-
-        $kinds = array_column($result['items'], 'kind');
-        self::assertNotContains(
-            CompletionItemKind::Function->value,
-            $kinds,
-            'No function should be offered in an implements list (issue #298)',
-        );
-    }
-
-    public function testInterfaceExtendsContextOffersOnlyInterfaces(): void
-    {
-        $cursor = $this->openFixtureAtCursor(
+        // `interface … extends` list (issue #312).
+        yield 'interface extends empty' => [
             'src/Completion/InterfaceExtendsCompletion.php',
             'interface_extends_empty',
-        );
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('Entity', $labels, 'Imported interfaces are valid in an interface extends list');
-        self::assertNotContains('User', $labels, 'An interface cannot extend a class');
-        self::assertNotContains('SingletonTrait', $labels, 'An interface cannot extend a trait');
-        self::assertNotContains('Status', $labels, 'An interface cannot extend an enum');
-
-        $kinds = array_column($result['items'], 'kind');
-        self::assertNotContains(
-            CompletionItemKind::Function->value,
-            $kinds,
-            'Functions must not leak into an interface extends list (issue #312)',
-        );
-        self::assertNotContains(
-            CompletionItemKind::Keyword->value,
-            $kinds,
-            'Keywords must not leak into an interface extends list',
-        );
-    }
-
-    public function testInterfaceExtendsWithPrefixOffersInterfaceNotFunctions(): void
-    {
-        // Mirrors the #298 report for the extends position: `extends D` must offer the
-        // in-scope interface starting with `D`, not built-in `date_*` functions.
-        $cursor = $this->openFixtureAtCursor(
+            ['Entity'],
+            ['User', 'SingletonTrait', 'Status'],
+            [CompletionItemKind::Function, CompletionItemKind::Keyword],
+        ];
+        yield 'interface extends D prefix' => [
             'src/Completion/InterfaceExtendsPrefixCompletion.php',
             'interface_extends_d_prefix',
-        );
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('Describable', $labels, 'An in-scope interface starting with D should be offered');
-        self::assertNotContains('date_add', $labels, 'Built-in functions must not be offered in an extends list');
-
-        $kinds = array_column($result['items'], 'kind');
-        self::assertNotContains(
-            CompletionItemKind::Function->value,
-            $kinds,
-            'No function should be offered in an interface extends list (issue #312)',
-        );
-    }
-
-    public function testInterfaceExtendsListContinuationOffersInterfaces(): void
-    {
+            ['Describable'],
+            ['date_add'],
+            [CompletionItemKind::Function],
+        ];
         // The comma-list form: an interface may extend several interfaces.
-        $cursor = $this->openFixtureAtCursor(
+        yield 'interface extends list continuation' => [
             'src/Completion/InterfaceExtendsListCompletion.php',
             'interface_extends_list',
-        );
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains(
-            'Describable',
-            $labels,
-            'Interfaces are valid after a comma in an interface extends list',
-        );
-
-        $kinds = array_column($result['items'], 'kind');
-        self::assertNotContains(
-            CompletionItemKind::Function->value,
-            $kinds,
-            'Functions must not leak into a comma-separated interface extends list (issue #312)',
-        );
+            ['Describable'],
+            [],
+            [CompletionItemKind::Function],
+        ];
     }
 
     public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
