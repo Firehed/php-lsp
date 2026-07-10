@@ -23,6 +23,7 @@ final readonly class ClassInfo implements Formattable
         public bool $isAbstract,
         public bool $isFinal,
         public bool $isReadonly,
+        public bool $isAttribute,
         public ?ClassName $parent,
         public array $interfaces,
         public array $traits,

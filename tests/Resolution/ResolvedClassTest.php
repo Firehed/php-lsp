@@ -60,6 +60,7 @@ class ResolvedClassTest extends TestCase
             isAbstract: false,
             isFinal: false,
             isReadonly: false,
+            isAttribute: false,
             parent: null,
             interfaces: [],
             traits: [],

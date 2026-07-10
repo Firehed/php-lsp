@@ -42,6 +42,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isAbstract: $node instanceof Stmt\Class_ && $node->isAbstract(),
             isFinal: $node instanceof Stmt\Class_ && $node->isFinal(),
             isReadonly: $node instanceof Stmt\Class_ && $node->isReadonly(),
+            isAttribute: $this->isAttributeNode($node),
             parent: $this->resolveParent($node),
             interfaces: $this->extractInterfaces($node),
             traits: $this->extractTraits($node),
@@ -70,6 +71,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isAbstract: $class->isAbstract() && !$class->isInterface(),
             isFinal: $class->isFinal(),
             isReadonly: $class->isReadOnly(),
+            isAttribute: $class->getAttributes(\Attribute::class) !== [],
             parent: $parentClass !== false
                 ? new ClassName($parentClass->getName())
                 : null,
@@ -124,6 +126,27 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             return ClassKind::Enum_;
         }
         return ClassKind::Class_;
+    }
+
+    /**
+     * A class is a PHP attribute when it is itself declared with `#[Attribute]`.
+     * Only classes can be attributes; interfaces, traits, and enums cannot.
+     */
+    private function isAttributeNode(Stmt\ClassLike $node): bool
+    {
+        if (!$node instanceof Stmt\Class_) {
+            return false;
+        }
+
+        foreach ($node->attrGroups as $group) {
+            foreach ($group->attrs as $attr) {
+                if ($this->resolveNameToClassName($attr->name)->fqn === \Attribute::class) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function resolveParent(Stmt\ClassLike $node): ?ClassName
