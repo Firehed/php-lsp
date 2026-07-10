@@ -228,6 +228,21 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
+     * Check if a class-like can be extended by a class.
+     * True for non-final classes (abstract included); false for final classes,
+     * interfaces, traits, enums, and unknown classes: an extends clause must
+     * only offer confirmed base classes.
+     */
+    public function isExtendableClass(ClassName $className): bool
+    {
+        $classInfo = $this->classRepository->get($className);
+        if ($classInfo === null) {
+            return false;
+        }
+        return $classInfo->kind === ClassKind::Class_ && !$classInfo->isFinal;
+    }
+
+    /**
      * Check if a class is a PHP attribute.
      * Returns false for unknown classes: an attribute position must only offer
      * confirmed attributes.
