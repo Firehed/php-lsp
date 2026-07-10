@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -2600,5 +2601,29 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result, 'Chained access in if() should return completions');
         self::assertArrayHasKey('items', $result);
         self::assertNotEmpty($result['items'], 'Should offer User methods');
+    }
+
+    public function testImplementsContextOffersOnlyInterfaces(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/ImplementsCompletion.php', 'implements_empty');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Entity', $labels, 'Imported interfaces are valid in an implements list');
+        self::assertNotContains('User', $labels, 'Classes cannot be implemented');
+        self::assertNotContains('SingletonTrait', $labels, 'Traits cannot be implemented');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into an implements list (issue #298)',
+        );
+        self::assertNotContains(
+            CompletionItemKind::Keyword->value,
+            $kinds,
+            'Keywords must not leak into an implements list',
+        );
     }
 }
