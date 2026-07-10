@@ -1488,6 +1488,22 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testGetCallContextForIncompleteAttribute(): void
+    {
+        $this->openFixture('src/Attributes/Route.php');
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/AttributeNamedArgumentsIncomplete.php',
+            'attr_arg_incomplete',
+        );
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'Call context resolves inside an unclosed #[X(');
+        self::assertStringContainsString('__construct', $context->callable->format());
+    }
+
     public function testGetCallContextForIncompleteCode(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'incomplete_with_prefix');

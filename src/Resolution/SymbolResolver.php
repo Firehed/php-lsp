@@ -631,12 +631,17 @@ final class SymbolResolver implements CodeResolver
 
     /**
      * @param array<Stmt> $ast
-     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
+     * @return array{
+     *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
+     *   1: int,
+     *   2: list<string>,
+     *   3: int,
+     * }|null
      */
     private function findCallAtPosition(array $ast, int $offset): ?array
     {
         $finder = new class ($offset) extends NodeVisitorAbstract {
-            public FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null $found = null;
+            public FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null $found = null;
             public int $activeParameter = 0;
             /** @var list<string> */
             public array $usedNames = [];
@@ -654,6 +659,7 @@ final class SymbolResolver implements CodeResolver
                     && !$node instanceof NullsafeMethodCall
                     && !$node instanceof StaticCall
                     && !$node instanceof New_
+                    && !$node instanceof Attribute
                 ) {
                     return null;
                 }
@@ -711,7 +717,12 @@ final class SymbolResolver implements CodeResolver
      * Handles incomplete code where the parser couldn't create proper call nodes.
      *
      * @param array<Stmt> $ast
-     * @return array{0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_, 1: int, 2: list<string>, 3: int}|null
+     * @return array{
+     *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
+     *   1: int,
+     *   2: list<string>,
+     *   3: int,
+     * }|null
      */
     private function findCallFromText(array $ast, int $offset, string $content, int $line): ?array
     {
@@ -764,15 +775,22 @@ final class SymbolResolver implements CodeResolver
      * Parse call pattern from text before opening paren.
      *
      * @param array<Stmt> $ast
-     * @return FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null
+     * @return FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null
      */
     private function parseCallPattern(
         string $textBeforeParen,
         array $ast,
         int $line,
         string $content,
-    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|null {
+    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
         $text = rtrim($textBeforeParen);
+
+        // Attribute: #[AttributeName — a constructor call on the attribute class.
+        // Checked before the function-call catch-all, which would match the name.
+        if (preg_match('/#\[\s*(?:[\w\\\\]+\s*,\s*)*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
+            $name = $this->resolveNameFromText($m[1], $ast, $line);
+            return new Attribute($name);
+        }
 
         // Static call: ClassName::methodName
         if (preg_match('/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/', $text, $m) === 1) {
@@ -954,11 +972,11 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * @param FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_ $call
+     * @param FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call
      * @param array<Stmt> $ast
      */
     private function resolveCallable(
-        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_ $call,
+        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         array $ast,
     ): ?ResolvedCallable {
         if ($call instanceof FuncCall) {
@@ -971,6 +989,11 @@ final class SymbolResolver implements CodeResolver
 
         if ($call instanceof StaticCall) {
             return $this->resolveStaticCallCallable($call);
+        }
+
+        // An attribute usage `#[X(...)]` is a constructor call on the attribute class.
+        if ($call instanceof Attribute) {
+            return $this->resolveConstructorCallable(new ClassName(ScopeFinder::resolveClassName($call->name)));
         }
 
         // New_ - resolve constructor
