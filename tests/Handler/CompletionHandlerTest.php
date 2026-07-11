@@ -2925,6 +2925,65 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testCatchContextOffersOnlyThrowables(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/CatchCompletion.php', 'catch_empty');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('AppException', $labels, 'A Throwable subclass can be caught');
+        self::assertContains('ExceptionInterface', $labels, 'An interface extending Throwable can be caught');
+        self::assertNotContains('User', $labels, 'A non-Throwable class cannot be caught');
+        self::assertNotContains('Entity', $labels, 'A non-Throwable interface cannot be caught');
+        self::assertNotContains('SingletonTrait', $labels, 'A trait cannot be caught');
+        self::assertNotContains('Status', $labels, 'An enum cannot be caught');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into a catch clause (issue #314)',
+        );
+        self::assertNotContains(
+            CompletionItemKind::Keyword->value,
+            $kinds,
+            'Keywords must not leak into a catch clause (issue #314)',
+        );
+    }
+
+    public function testMultiCatchContinuationOffersThrowables(): void
+    {
+        // The `|`-separated multi-catch form must keep offering Throwables (issue #314).
+        $cursor = $this->openFixtureAtCursor('src/Completion/MultiCatchCompletion.php', 'catch_multi');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('ExceptionInterface', $labels, 'A Throwable is offered after the multi-catch pipe');
+        self::assertNotContains('User', $labels, 'A non-Throwable class cannot be caught');
+    }
+
+    public function testCatchWithPrefixOffersThrowableNotFunctions(): void
+    {
+        // Mirrors the #298 report for the catch position: `catch (A` must offer the
+        // in-scope Throwable starting with `A`, not built-in functions.
+        $cursor = $this->openFixtureAtCursor('src/Completion/CatchPrefixCompletion.php', 'catch_a_prefix');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('AppException', $labels, 'An in-scope Throwable starting with A should be offered');
+        self::assertNotContains('array_map', $labels, 'Built-in functions must not be offered in a catch clause');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'No function should be offered in a catch clause (issue #314)',
+        );
+    }
+
     public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
     {
         self::markTestSkipped(

@@ -48,6 +48,7 @@ use PhpParser\Node\Stmt;
 use LogicException;
 use ReflectionException;
 use ReflectionFunction;
+use Throwable;
 
 /**
  * Centralizes symbol resolution for LSP handlers.
@@ -240,6 +241,26 @@ final class SymbolResolver implements CodeResolver
             return false;
         }
         return $classInfo->kind === ClassKind::Class_ && !$classInfo->isFinal;
+    }
+
+    /**
+     * Check if a class-like can be caught.
+     * True for `Throwable` itself and anything that extends or implements it
+     * transitively (classes and interfaces alike). Returns false for unknown
+     * classes: a catch clause must only offer confirmed Throwables.
+     */
+    public function isThrowable(ClassName $className): bool
+    {
+        $classInfo = $this->classRepository->get($className);
+        if ($classInfo === null) {
+            return false;
+        }
+
+        $throwable = new ClassName(Throwable::class);
+        if ($classInfo->name->equals($throwable)) {
+            return true;
+        }
+        return $this->classRepository->isSubclassOf($className, $throwable);
     }
 
     /**
