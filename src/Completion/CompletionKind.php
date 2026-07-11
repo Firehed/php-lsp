@@ -39,6 +39,9 @@ enum CompletionKind
     /** After `class X extends`, e.g. `class Foo extends Ba` — extendable classes only */
     case ExtendableClass;
 
+    /** In a `catch` clause, e.g. `catch (Ba` or `catch (Foo | Ba` — Throwable types only */
+    case Throwable;
+
     /** In an attribute position, e.g. `#[Ba` — attribute classes only */
     case Attribute;
 

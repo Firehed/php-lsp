@@ -31,6 +31,11 @@ final class CompletionClassifier
     // there is no comma-list form.
     private const CLASS_EXTENDS_PATTERN = '/\bclass\s+\w+\s+extends\s+(\w*)$/';
 
+    // Matches a catch clause's type position, including the `|`-separated multi-catch
+    // continuation ("catch (Foo | Ba"). The caught variable is matched by the variable
+    // pattern, which is checked first, so this only sees type positions.
+    private const CATCH_PATTERN = '/\bcatch\s*\(\s*(?:[\w\\\\]+\s*\|\s*)*(\w*)$/';
+
     // Matches an attribute-name position: "#[", including grouped attributes
     // ("#[Foo, Ba", "#[Foo(1), Ba"). It deliberately does not match inside an
     // attribute's own argument list ("#[Foo(Ba"), which is a value position.
@@ -73,6 +78,12 @@ final class CompletionClassifier
         // and lack of a comma-list distinguish this from `interface X extends`.
         if (preg_match(self::CLASS_EXTENDS_PATTERN, $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::ExtendableClass, $matches[1]);
+        }
+
+        // catch clause - Throwable types only. Must check before the parameter-type
+        // fallback, since the "(" and "|" in "catch (Foo | Ba" also match it.
+        if (preg_match(self::CATCH_PATTERN, $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::Throwable, $matches[1]);
         }
 
         // After visibility keyword - keywords or property type.

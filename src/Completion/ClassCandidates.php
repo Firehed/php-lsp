@@ -93,6 +93,7 @@ final class ClassCandidates
             ClassCandidateFilter::TypeHint => $this->codeResolver->isValidTypeHint($className),
             ClassCandidateFilter::Interface_ => $this->codeResolver->isInterface($className),
             ClassCandidateFilter::ExtendableClass => $this->codeResolver->isExtendableClass($className),
+            ClassCandidateFilter::Throwable => $this->codeResolver->isThrowable($className),
             ClassCandidateFilter::Attribute => $this->codeResolver->isAttribute($className),
         };
     }
@@ -124,6 +125,12 @@ final class ClassCandidates
             // A class extends exactly one class; isExtendableClass excludes final ones.
             ClassCandidateFilter::ExtendableClass => [
                 SymbolKind::Class_,
+            ],
+            // A catch clause accepts classes and interfaces; isThrowable narrows to
+            // Throwable subtypes.
+            ClassCandidateFilter::Throwable => [
+                SymbolKind::Class_,
+                SymbolKind::Interface_,
             ],
             // Attributes are always classes; isAttribute narrows further per candidate.
             ClassCandidateFilter::Attribute => [

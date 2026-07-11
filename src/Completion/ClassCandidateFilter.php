@@ -30,6 +30,9 @@ enum ClassCandidateFilter
     /** Only extendable classes: non-final classes (e.g. after `class X extends`) */
     case ExtendableClass;
 
+    /** Only catchable types: Throwable and its subtypes (e.g. after `catch (`) */
+    case Throwable;
+
     /** Only attribute classes (e.g. in a `#[...]` position) */
     case Attribute;
 }
