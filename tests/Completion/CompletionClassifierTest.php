@@ -116,11 +116,17 @@ class CompletionClassifierTest extends TestCase
             'Ro',
         ];
 
-        // `class X extends` resolves to a single class, not an interface list, so it
-        // must not match the interface-extends pattern (issue #312).
-        yield 'class extends is not an interface list' => [
+        // `class X extends` resolves to a single extendable class, distinct from the
+        // interface-extends list (issues #312, #313).
+        yield 'class extends with prefix' => [
             'class Foo extends Ba',
-            CompletionKind::Expression,
+            CompletionKind::ExtendableClass,
+            'Ba',
+        ];
+        yield 'class extends bare' => ['class Foo extends ', CompletionKind::ExtendableClass, ''];
+        yield 'abstract class extends with prefix' => [
+            'abstract class Foo extends Ba',
+            CompletionKind::ExtendableClass,
             'Ba',
         ];
 
