@@ -66,6 +66,13 @@ interface CodeResolver
     public function isExtendableClass(ClassName $className): bool;
 
     /**
+     * Check if a class-like can be caught (e.g. valid after `catch (`). True for
+     * `Throwable` itself and for any class or interface that extends or implements
+     * it, directly or transitively.
+     */
+    public function isThrowable(ClassName $className): bool;
+
+    /**
      * Check if a class is a PHP attribute (e.g. valid in a `#[...]` position).
      */
     public function isAttribute(ClassName $className): bool;
