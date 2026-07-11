@@ -184,6 +184,11 @@ final class CompletionHandler implements HandlerInterface
                 $document,
                 ClassCandidateFilter::Interface_,
             ),
+            CompletionKind::ExtendableClass => $this->classCandidates->find(
+                $prefix,
+                $document,
+                ClassCandidateFilter::ExtendableClass,
+            ),
             CompletionKind::Attribute => $this->classCandidates->find(
                 $prefix,
                 $document,

@@ -27,6 +27,9 @@ enum ClassCandidateFilter
     /** Only interfaces (e.g. after `implements`) */
     case Interface_;
 
+    /** Only extendable classes: non-final classes (e.g. after `class X extends`) */
+    case ExtendableClass;
+
     /** Only attribute classes (e.g. in a `#[...]` position) */
     case Attribute;
 }

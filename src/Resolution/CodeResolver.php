@@ -60,6 +60,12 @@ interface CodeResolver
     public function isInterface(ClassName $className): bool;
 
     /**
+     * Check if a class-like can be extended by a class (e.g. valid after
+     * `class X extends`). True for non-final classes, abstract included.
+     */
+    public function isExtendableClass(ClassName $className): bool;
+
+    /**
      * Check if a class is a PHP attribute (e.g. valid in a `#[...]` position).
      */
     public function isAttribute(ClassName $className): bool;

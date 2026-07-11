@@ -36,6 +36,9 @@ enum CompletionKind
     /** In an `implements` list, e.g. `class Foo implements Ba` — interfaces only */
     case InterfaceList;
 
+    /** After `class X extends`, e.g. `class Foo extends Ba` — extendable classes only */
+    case ExtendableClass;
+
     /** In an attribute position, e.g. `#[Ba` — attribute classes only */
     case Attribute;
 

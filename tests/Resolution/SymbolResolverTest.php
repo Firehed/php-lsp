@@ -1416,6 +1416,72 @@ final class SymbolResolverTest extends TestCase
         self::assertFalse($this->resolver->isInterface(new ClassName('NonExistent\\Unknown')));
     }
 
+    #[DataProvider('extendableClassProvider')]
+    public function testIsExtendableClass(?string $fixture, string $fqcn, bool $expected, string $message): void
+    {
+        if ($fixture !== null) {
+            $this->openFixture($fixture);
+        }
+        /** @phpstan-ignore argument.type (fixture / intentionally non-existent class) */
+        self::assertSame($expected, $this->resolver->isExtendableClass(new ClassName($fqcn)), $message);
+    }
+
+    /**
+     * @return iterable<string, array{?string, string, bool, string}>
+     * @codeCoverageIgnore
+     */
+    public static function extendableClassProvider(): iterable
+    {
+        yield 'non-final class' => [
+            'src/Domain/User.php',
+            'Fixtures\\Domain\\User',
+            true,
+            'A non-final class can be extended',
+        ];
+        yield 'abstract class' => [
+            'src/Utility/ClassModifiers.php',
+            'Fixtures\\Utility\\AbstractBase',
+            true,
+            'An abstract class can be extended',
+        ];
+        yield 'readonly non-final class' => [
+            'src/Utility/ClassModifiers.php',
+            'Fixtures\\Utility\\ImmutableClass',
+            true,
+            'A readonly but non-final class can be extended',
+        ];
+        yield 'final class' => [
+            'src/Utility/ClassModifiers.php',
+            'Fixtures\\Utility\\SealedClass',
+            false,
+            'A final class cannot be extended',
+        ];
+        yield 'interface' => [
+            'src/Domain/Entity.php',
+            'Fixtures\\Domain\\Entity',
+            false,
+            'An interface is not a class and cannot be extended by a class',
+        ];
+        yield 'trait' => [
+            'src/Traits/SingletonTrait.php',
+            'Fixtures\\Traits\\SingletonTrait',
+            false,
+            'A trait cannot be extended by a class',
+        ];
+        yield 'enum' => [
+            'src/Enum/Status.php',
+            'Fixtures\\Enum\\Status',
+            false,
+            'An enum cannot be extended',
+        ];
+        yield 'unknown class' => [
+            null,
+            'NonExistent\\Unknown',
+            false,
+            'An unresolvable name must not be offered as a base class',
+        ];
+    }
+
     public function testIsAttributeReturnsTrueForAttributeClass(): void
     {
         $this->openFixture('src/Attributes/Route.php');
