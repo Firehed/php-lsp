@@ -16,6 +16,7 @@ This document tracks the current state of code completion in php-lsp.
 | `implements` list | `class Foo implements Ba` | Interfaces only (from imports + workspace index); classes, traits, and functions excluded | ✅ Working |
 | `interface … extends` list | `interface Foo extends Ba` | Interfaces only (from imports + workspace index); distinguished from `class … extends` by the `interface` keyword | ✅ Working |
 | `class … extends` | `class Foo extends Ba` | Extendable (non-final) classes only (from imports + workspace index); final classes, interfaces, traits, enums, and functions excluded | ✅ Working |
+| `catch` clause | `catch (Ba` or `catch (Foo \| Ba` | Throwable types only (from imports + workspace index): `Throwable` and any class or interface extending/implementing it. Multi-catch (`\|`-separated) supported; non-throwable types, functions, and keywords excluded | ✅ Working |
 | Attribute position | `#[Ro` | Attribute classes only (from imports + workspace index); classes, interfaces, traits, enums, and functions excluded. Grouped (`#[A, Ba`) supported; target-aware filtering is not yet (#252) | ✅ Working |
 | Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
 
@@ -53,7 +54,7 @@ CompletionHandler (coordinator)
 │                                         + ClassCandidates (any)
 └── CompletionClassifier (text-based) → typed CompletionKind, dispatched to:
       ├── VariableCandidates          → $var
-      ├── ClassCandidates             → new X / expression / type hints / implements + extends / attributes (by ClassCandidateFilter)
+      ├── ClassCandidates             → new X / expression / type hints / implements + extends / catch / attributes (by ClassCandidateFilter)
       ├── FunctionCandidates          → user-defined + built-in functions
       ├── KeywordCandidates           → keywords (by KeywordGroup)
       └── BuiltinTypeCandidates       → built-in type hints
