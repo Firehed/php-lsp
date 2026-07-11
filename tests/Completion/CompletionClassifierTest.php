@@ -130,6 +130,32 @@ class CompletionClassifierTest extends TestCase
             'Ba',
         ];
 
+        // A catch clause accepts Throwable types only, single or `|`-separated (#314).
+        yield 'catch with prefix' => ['        } catch (Ba', CompletionKind::Throwable, 'Ba'];
+        yield 'catch bare' => ['        } catch (', CompletionKind::Throwable, ''];
+        yield 'catch no space before paren' => ['        } catch(Ba', CompletionKind::Throwable, 'Ba'];
+        yield 'multi-catch continuation' => [
+            '        } catch (Foo | Ba',
+            CompletionKind::Throwable,
+            'Ba',
+        ];
+        yield 'multi-catch continuation without spaces' => [
+            '        } catch (Foo|Ba',
+            CompletionKind::Throwable,
+            'Ba',
+        ];
+        yield 'multi-catch bare continuation' => [
+            '        } catch (Foo\\Bar | ',
+            CompletionKind::Throwable,
+            '',
+        ];
+        // Once the caught variable is reached, the position is no longer a type.
+        yield 'catch variable is not a type' => [
+            '        } catch (Foo $e',
+            CompletionKind::Variable,
+            'e',
+        ];
+
         yield 'expression at start' => ['fo', CompletionKind::Expression, 'fo'];
         yield 'expression after assignment' => ['$x = fo', CompletionKind::Expression, 'fo'];
         yield 'expression inside method body' => [

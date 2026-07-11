@@ -38,6 +38,9 @@ use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Exception;
+use Throwable;
+use TypeError;
 
 #[CoversClass(SymbolResolver::class)]
 #[CoversClass(TextFallbackHelper::class)]
@@ -1479,6 +1482,84 @@ final class SymbolResolverTest extends TestCase
             'NonExistent\\Unknown',
             false,
             'An unresolvable name must not be offered as a base class',
+        ];
+    }
+
+    #[DataProvider('throwableProvider')]
+    public function testIsThrowable(?string $fixture, string $fqcn, bool $expected, string $message): void
+    {
+        if ($fixture !== null) {
+            $this->openFixture($fixture);
+        }
+        /** @phpstan-ignore argument.type (fixture / intentionally non-existent class) */
+        self::assertSame($expected, $this->resolver->isThrowable(new ClassName($fqcn)), $message);
+    }
+
+    /**
+     * @return iterable<string, array{?string, string, bool, string}>
+     * @codeCoverageIgnore
+     */
+    public static function throwableProvider(): iterable
+    {
+        yield 'Throwable itself' => [
+            null,
+            Throwable::class,
+            true,
+            'Throwable is catchable',
+        ];
+        yield 'built-in exception' => [
+            null,
+            Exception::class,
+            true,
+            'A built-in class implementing Throwable is catchable',
+        ];
+        yield 'built-in error' => [
+            null,
+            TypeError::class,
+            true,
+            'Errors are catchable: TypeError transitively implements Throwable',
+        ];
+        yield 'user class extending a built-in exception' => [
+            'src/Exception/AppException.php',
+            'Fixtures\\Exception\\AppException',
+            true,
+            'A class transitively extending a Throwable is catchable',
+        ];
+        yield 'user interface extending Throwable' => [
+            'src/Exception/ExceptionInterface.php',
+            'Fixtures\\Exception\\ExceptionInterface',
+            true,
+            'An interface extending Throwable is catchable',
+        ];
+        yield 'plain class' => [
+            'src/Domain/User.php',
+            'Fixtures\\Domain\\User',
+            false,
+            'A class unrelated to Throwable is not catchable',
+        ];
+        yield 'plain interface' => [
+            'src/Domain/Entity.php',
+            'Fixtures\\Domain\\Entity',
+            false,
+            'An interface unrelated to Throwable is not catchable',
+        ];
+        yield 'trait' => [
+            'src/Traits/SingletonTrait.php',
+            'Fixtures\\Traits\\SingletonTrait',
+            false,
+            'A trait cannot be caught',
+        ];
+        yield 'enum' => [
+            'src/Enum/Status.php',
+            'Fixtures\\Enum\\Status',
+            false,
+            'An enum cannot be caught',
+        ];
+        yield 'unknown class' => [
+            null,
+            'NonExistent\\Unknown',
+            false,
+            'An unresolvable name must not be offered in a catch clause',
         ];
     }
 
