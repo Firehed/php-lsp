@@ -2873,6 +2873,58 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testClassExtendsContextOffersOnlyExtendableClasses(): void
+    {
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/ClassExtendsCompletion.php',
+            'class_extends_empty',
+        );
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('ParentClass', $labels, 'A non-final class can be extended');
+        self::assertNotContains('FinalDescendant', $labels, 'A final class cannot be extended');
+        self::assertNotContains('Entity', $labels, 'A class cannot extend an interface');
+        self::assertNotContains('SingletonTrait', $labels, 'A class cannot extend a trait');
+        self::assertNotContains('Status', $labels, 'A class cannot extend an enum');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not leak into a class extends clause (issue #313)',
+        );
+        self::assertNotContains(
+            CompletionItemKind::Keyword->value,
+            $kinds,
+            'Keywords must not leak into a class extends clause (issue #313)',
+        );
+    }
+
+    public function testClassExtendsWithPrefixOffersClassNotFunctions(): void
+    {
+        // Mirrors the #298 report for the extends position: `extends P` must offer the
+        // in-scope class starting with `P`, not built-in `printf`/`print_r`.
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/ClassExtendsPrefixCompletion.php',
+            'class_extends_p_prefix',
+        );
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('ParentClass', $labels, 'An in-scope class starting with P should be offered');
+        self::assertNotContains('printf', $labels, 'Built-in functions must not be offered in an extends clause');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'No function should be offered in a class extends clause (issue #313)',
+        );
+    }
+
     public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
     {
         self::markTestSkipped(
