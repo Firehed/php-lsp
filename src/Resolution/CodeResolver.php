@@ -118,6 +118,16 @@ interface CodeResolver
     public function getImports(TextDocument $document): array;
 
     /**
+     * Get the name-resolution context at a line: the enclosing namespace and the
+     * import tables (`use`, `use function`, `use const`) in effect there.
+     *
+     * Paired with {@see ReferenceResolver} to decide how a symbol must be written
+     * at the cursor.
+     * Used by: Completion
+     */
+    public function getNameContext(TextDocument $document, int $line): NameContext;
+
+    /**
      * Get the user-defined functions declared in a document.
      * Used by: Completion
      *

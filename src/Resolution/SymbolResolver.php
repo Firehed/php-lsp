@@ -643,6 +643,18 @@ final class SymbolResolver implements CodeResolver
         return ScopeFinder::extractImports($ast);
     }
 
+    public function getNameContext(TextDocument $document, int $line): NameContext
+    {
+        $ast = $this->parser->parse($document);
+        if ($ast === null) {
+            // @codeCoverageIgnoreStart
+            throw new LogicException('Parser returned null');
+            // @codeCoverageIgnoreEnd
+        }
+
+        return NameContextFactory::fromAst($ast, $line);
+    }
+
     /**
      * @return list<FunctionInfo>
      */
