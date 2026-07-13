@@ -53,6 +53,34 @@ class ReferenceResolverTest extends TestCase
         );
     }
 
+    #[DataProvider('provideImportTables')]
+    public function testImportsForConsultsTheTableForTheKind(NameKind $kind, string $expected): void
+    {
+        $context = new NameContext(
+            'App',
+            classImports: ['Thing' => 'Other\Thing'],
+            functionImports: ['helper' => 'Other\helper'],
+            constantImports: ['FOO' => 'Other\FOO'],
+        );
+
+        self::assertSame(
+            [$expected],
+            array_values($context->importsFor($kind)),
+            'An unqualified name is resolved against the import table for its own kind',
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{NameKind, string}>
+     */
+    public static function provideImportTables(): iterable
+    {
+        yield 'class-likes use the class table' => [NameKind::ClassLike, 'Other\Thing'];
+        yield 'functions use the function table' => [NameKind::Function_, 'Other\helper'];
+        yield 'constants use the constant table' => [NameKind::Constant, 'Other\FOO'];
+    }
+
     #[DataProvider('provideReachability')]
     public function testIsReachable(ReferenceKind $kind, bool $expected): void
     {
@@ -174,6 +202,13 @@ class ReferenceResolverTest extends TestCase
             'Psr\Log\LoggerInterface',
             NameKind::ClassLike,
             new NameContext('App', classImports: ['Psr' => 'Psr', 'Log' => 'Psr\Log']),
+            'Log\LoggerInterface',
+            ReferenceKind::PrefixImport,
+        ];
+        yield 'longest prefix import wins regardless of import order' => [
+            'Psr\Log\LoggerInterface',
+            NameKind::ClassLike,
+            new NameContext('App', classImports: ['Log' => 'Psr\Log', 'Psr' => 'Psr']),
             'Log\LoggerInterface',
             ReferenceKind::PrefixImport,
         ];
