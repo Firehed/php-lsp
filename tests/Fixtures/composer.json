@@ -12,5 +12,8 @@
             "Autoload/Classmap/",
             "TypeInference/"
         ]
+    },
+    "require-dev": {
+        "psr/http-message": "^2.0"
     }
 }

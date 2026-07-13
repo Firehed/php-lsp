@@ -204,7 +204,7 @@ Do not write new tests using inlined PHP code. ALWAYS use the fixture tooling wh
 
 ### Test Fixtures
 
-Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own autoloading — run `composer dump-autoload` in `tests/Fixtures/` after adding files outside of the PSR-4 or PSR-0 paths.
+Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own dependencies and autoloading — run `composer install` in `tests/Fixtures/` before running the suite, and again after adding files outside of the PSR-4 or PSR-0 paths.
 
 Re-use existing fixtures whenever possible. Prefer adapting or expanding existing fixtures over adding brand new ones.
 
