@@ -7,6 +7,8 @@ namespace Fixtures\Namespacing\ImportCompletion {
     use Fixtures\Namespacing\Models\User;
     use Fixtures\Namespacing\Models\UserRepository as Repo;
     use Fixtures\Traits\SingletonTrait;
+    use function Fixtures\Namespacing\Models\makeUser;
+    use const Fixtures\Namespacing\Models\DEFAULT_LIMIT;
 
     function triggerImportedClassPartial()
     {

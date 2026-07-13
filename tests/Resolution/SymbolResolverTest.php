@@ -2328,6 +2328,87 @@ final class SymbolResolverTest extends TestCase
         return array_map(fn(ResolvedVariable $v) => $v->getName(), $variables);
     }
 
+    public function testGetNameContextSeparatesImportsByKind(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_class_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            'Fixtures\Namespacing\ImportCompletion',
+            $context->namespace,
+            'The namespace is the one enclosing the cursor',
+        );
+        self::assertSame(
+            'Fixtures\Namespacing\Models\UserRepository',
+            $context->classImports['Repo'] ?? null,
+            'An aliased class import maps the alias to its FQCN',
+        );
+        self::assertSame(
+            ['Fixtures\Namespacing\Models\makeUser'],
+            array_values($context->functionImports),
+            'A `use function` import belongs to the function table',
+        );
+        self::assertSame(
+            ['Fixtures\Namespacing\Models\DEFAULT_LIMIT'],
+            array_values($context->constantImports),
+            'A `use const` import belongs to the constant table',
+        );
+        self::assertArrayNotHasKey(
+            'makeUser',
+            $context->classImports,
+            'A `use function` import must not leak into the class table',
+        );
+        self::assertArrayNotHasKey(
+            'DEFAULT_LIMIT',
+            $context->classImports,
+            'A `use const` import must not leak into the class table',
+        );
+    }
+
+    public function testGetNameContextIsScopedToTheEnclosingNamespaceBlock(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'grouped_import_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            'Fixtures\Namespacing\ImportCompletion\Grouped',
+            $context->namespace,
+            'The namespace is the block containing the cursor, not the first one in the file',
+        );
+        self::assertArrayHasKey(
+            'Post',
+            $context->classImports,
+            'Group use members should be included',
+        );
+        self::assertArrayNotHasKey(
+            'Repo',
+            $context->classImports,
+            'Imports from another namespace block are not in scope here',
+        );
+        self::assertArrayNotHasKey(
+            'makeUser',
+            $context->functionImports,
+            'Function imports from another namespace block are not in scope here',
+        );
+    }
+
+    public function testGetNameContextInTheGlobalNamespace(): void
+    {
+        $uri = $this->openFixture('Namespacing/GlobalNamespace.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, 0);
+
+        self::assertSame('', $context->namespace, 'A file with no namespace declaration is global');
+    }
+
     public function testGetImportsIncludesAliasedAndGroupedUses(): void
     {
         $uri = $this->openFixture('Namespacing/ImportCompletion.php');
