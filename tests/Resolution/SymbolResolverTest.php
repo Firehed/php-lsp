@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedClass;
 use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
@@ -43,6 +44,7 @@ use Throwable;
 use TypeError;
 
 #[CoversClass(SymbolResolver::class)]
+#[CoversClass(NameContextFactory::class)]
 #[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {
@@ -2395,6 +2397,31 @@ final class SymbolResolverTest extends TestCase
             'makeUser',
             $context->functionImports,
             'Function imports from another namespace block are not in scope here',
+        );
+    }
+
+    public function testGetNameContextSplitsAMixedGroupUseByItemKind(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'mixed_group_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            ['UserRepository' => 'Fixtures\Namespacing\Models\UserRepository'],
+            $context->classImports,
+            'In a mixed group use, the kind is carried by the item rather than the statement',
+        );
+        self::assertSame(
+            ['makeUser' => 'Fixtures\Namespacing\Models\makeUser'],
+            $context->functionImports,
+            'A `function` item of a group use belongs to the function table',
+        );
+        self::assertSame(
+            ['DEFAULT_LIMIT' => 'Fixtures\Namespacing\Models\DEFAULT_LIMIT'],
+            $context->constantImports,
+            'A `const` item of a group use belongs to the constant table',
         );
     }
 

@@ -41,3 +41,18 @@ namespace Fixtures\Namespacing\ImportCompletion\Grouped {
     }
 
 }
+
+namespace Fixtures\Namespacing\ImportCompletion\MixedGroup {
+
+    use Fixtures\Namespacing\Models\{
+        UserRepository,
+        function makeUser,
+        const DEFAULT_LIMIT,
+    };
+
+    function triggerMixedGroupPartial()
+    {
+        $x = User/*|mixed_group_partial*/
+    }
+
+}
