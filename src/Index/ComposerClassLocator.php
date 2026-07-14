@@ -20,22 +20,7 @@ final class ComposerClassLocator implements ClassLocator
             return;
         }
 
-        $map = ComposerAutoloadMap::fromProjectRoot($projectRoot);
-        $loader = new ClassLoader();
-
-        foreach ($map->psr4Prefixes() as $namespace => $paths) {
-            $loader->setPsr4($namespace, $paths);
-        }
-
-        foreach ($map->psr0Prefixes() as $namespace => $paths) {
-            $loader->set($namespace, $paths);
-        }
-
-        /** @var array<class-string, string> $classMap */
-        $classMap = $map->classMap();
-        $loader->addClassMap($classMap);
-
-        $this->loader = $loader;
+        $this->loader = ComposerAutoloadMap::fromProjectRoot($projectRoot)->classLoader();
     }
 
     public function locate(ClassName $name): ?string
