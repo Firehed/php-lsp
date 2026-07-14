@@ -107,5 +107,4 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
 
         return $symbols;
     }
-
 }
