@@ -24,10 +24,17 @@ All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
 lexical scope, which includes global scope.
 
+Member completions cover the full type graph: members declared on the type itself,
+plus those inherited through the parent chain, used traits (including traits that
+use other traits), and implemented or extended interfaces at any depth. This holds
+whether the type is read from an open document, parsed from disk, or reflected from
+a built-in.
+
 ## Limitations
 
 - **Visibility**: Typed variable completions only show public members. Use `$this->` for protected/private access within the class.
 - **Union types**: Completions on union types (e.g., `User|Admin`) show only members that exist on ALL types in the union (intersection of members). This is type-safe but may show fewer completions than expected. For intersection types (`User&Admin`), all members from all types are shown.
+- **Trait conflict resolution**: `insteadof` and `as` adaptations are ignored (#73). Methods aliased with `as` are not offered, and when two traits declare the same method the first one listed wins regardless of `insteadof`.
 
 ## Not Yet Supported
 

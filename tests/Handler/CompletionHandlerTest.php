@@ -1519,6 +1519,29 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('hiddenMethod', $labels);
     }
 
+    public function testInterfaceTypedVariableCompletionIncludesExtendedInterfaceMethods(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/PsrRequestAccess.php', 'psr_request_access');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        // Declared on RequestInterface itself
+        self::assertContains('getMethod', $labels, 'methods on the interface itself should be offered');
+        // Declared on MessageInterface, which RequestInterface extends
+        self::assertContains(
+            'getHeaders',
+            $labels,
+            'methods from an extended interface should be offered',
+        );
+        self::assertContains(
+            'getProtocolVersion',
+            $labels,
+            'methods from an extended interface should be offered',
+        );
+    }
+
     public function testStandaloneFunctionAccessExcludesNonPublicMembers(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Mixed/ProceduralWithClass.php', 'standalone_function_access');

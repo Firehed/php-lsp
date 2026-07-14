@@ -176,20 +176,10 @@ final class MemberResolver
             }
         }
 
-        foreach ($classInfo->traits as $traitName) {
-            $traitInfo = $this->classes->get($traitName);
-            if ($traitInfo !== null) {
-                $result = $this->findMethodInHierarchy($traitInfo, $method, $minVisibility, $seen, true);
-                if ($result !== null) {
-                    return $result;
-                }
-            }
-        }
-
-        if ($classInfo->parent !== null) {
-            $parentInfo = $this->classes->get($classInfo->parent);
-            if ($parentInfo !== null) {
-                return $this->findMethodInHierarchy($parentInfo, $method, $minVisibility, $seen, false);
+        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
+            $result = $this->findMethodInHierarchy($superInfo, $method, $minVisibility, $seen, $superIsOrigin);
+            if ($result !== null) {
+                return $result;
             }
         }
 
@@ -219,20 +209,10 @@ final class MemberResolver
             }
         }
 
-        foreach ($classInfo->traits as $traitName) {
-            $traitInfo = $this->classes->get($traitName);
-            if ($traitInfo !== null) {
-                $result = $this->findPropertyInHierarchy($traitInfo, $property, $minVisibility, $seen, true);
-                if ($result !== null) {
-                    return $result;
-                }
-            }
-        }
-
-        if ($classInfo->parent !== null) {
-            $parentInfo = $this->classes->get($classInfo->parent);
-            if ($parentInfo !== null) {
-                return $this->findPropertyInHierarchy($parentInfo, $property, $minVisibility, $seen, false);
+        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
+            $result = $this->findPropertyInHierarchy($superInfo, $property, $minVisibility, $seen, $superIsOrigin);
+            if ($result !== null) {
+                return $result;
             }
         }
 
@@ -262,33 +242,10 @@ final class MemberResolver
             }
         }
 
-        foreach ($classInfo->traits as $traitName) {
-            $traitInfo = $this->classes->get($traitName);
-            if ($traitInfo !== null) {
-                $result = $this->findConstantInHierarchy($traitInfo, $constant, $minVisibility, $seen, true);
-                if ($result !== null) {
-                    return $result;
-                }
-            }
-        }
-
-        if ($classInfo->parent !== null) {
-            $parentInfo = $this->classes->get($classInfo->parent);
-            if ($parentInfo !== null) {
-                $result = $this->findConstantInHierarchy($parentInfo, $constant, $minVisibility, $seen, false);
-                if ($result !== null) {
-                    return $result;
-                }
-            }
-        }
-
-        foreach ($classInfo->interfaces as $interfaceName) {
-            $interfaceInfo = $this->classes->get($interfaceName);
-            if ($interfaceInfo !== null) {
-                $result = $this->findConstantInHierarchy($interfaceInfo, $constant, $minVisibility, $seen, false);
-                if ($result !== null) {
-                    return $result;
-                }
+        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
+            $result = $this->findConstantInHierarchy($superInfo, $constant, $minVisibility, $seen, $superIsOrigin);
+            if ($result !== null) {
+                return $result;
             }
         }
 
@@ -327,18 +284,8 @@ final class MemberResolver
             $methods[$key] = $methodInfo;
         }
 
-        foreach ($classInfo->traits as $traitName) {
-            $traitInfo = $this->classes->get($traitName);
-            if ($traitInfo !== null) {
-                $this->collectMethods($traitInfo, $minVisibility, $filter, $methods, $seen, true);
-            }
-        }
-
-        if ($classInfo->parent !== null) {
-            $parentInfo = $this->classes->get($classInfo->parent);
-            if ($parentInfo !== null) {
-                $this->collectMethods($parentInfo, $minVisibility, $filter, $methods, $seen, false);
-            }
+        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
+            $this->collectMethods($superInfo, $minVisibility, $filter, $methods, $seen, $superIsOrigin);
         }
     }
 
@@ -373,19 +320,45 @@ final class MemberResolver
             $properties[$key] = $propInfo;
         }
 
-        foreach ($classInfo->traits as $traitName) {
-            $traitInfo = $this->classes->get($traitName);
-            if ($traitInfo !== null) {
-                $this->collectProperties($traitInfo, $minVisibility, $filter, $properties, $seen, true);
+        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
+            $this->collectProperties($superInfo, $minVisibility, $filter, $properties, $seen, $superIsOrigin);
+        }
+    }
+
+    /**
+     * The types to search after a class's own members, in PHP's resolution order:
+     * used traits, then the parent chain, then interfaces. Unresolvable types are
+     * skipped.
+     *
+     * Every member lookup walks the type graph through this one method, so all
+     * member kinds see the same hierarchy.
+     *
+     * @return list<array{ClassInfo, bool}> Supertype paired with its isOriginClass
+     *         flag. A trait's members are flattened into the using class, so its
+     *         private members stay visible; a parent's or interface's do not.
+     */
+    private function supertypes(ClassInfo $classInfo): array
+    {
+        $names = [];
+        foreach ($classInfo->traits as $trait) {
+            $names[] = [$trait, true];
+        }
+        if ($classInfo->parent !== null) {
+            $names[] = [$classInfo->parent, false];
+        }
+        foreach ($classInfo->interfaces as $interface) {
+            $names[] = [$interface, false];
+        }
+
+        $supertypes = [];
+        foreach ($names as [$name, $isOriginClass]) {
+            $info = $this->classes->get($name);
+            if ($info !== null) {
+                $supertypes[] = [$info, $isOriginClass];
             }
         }
 
-        if ($classInfo->parent !== null) {
-            $parentInfo = $this->classes->get($classInfo->parent);
-            if ($parentInfo !== null) {
-                $this->collectProperties($parentInfo, $minVisibility, $filter, $properties, $seen, false);
-            }
-        }
+        return $supertypes;
     }
 
     private function matchesFilter(bool $isStatic, MemberFilter $filter): bool
@@ -424,25 +397,8 @@ final class MemberResolver
             $constants[$key] = $constInfo;
         }
 
-        foreach ($classInfo->traits as $traitName) {
-            $traitInfo = $this->classes->get($traitName);
-            if ($traitInfo !== null) {
-                $this->collectConstants($traitInfo, $minVisibility, $constants, $seen, true);
-            }
-        }
-
-        if ($classInfo->parent !== null) {
-            $parentInfo = $this->classes->get($classInfo->parent);
-            if ($parentInfo !== null) {
-                $this->collectConstants($parentInfo, $minVisibility, $constants, $seen, false);
-            }
-        }
-
-        foreach ($classInfo->interfaces as $interfaceName) {
-            $interfaceInfo = $this->classes->get($interfaceName);
-            if ($interfaceInfo !== null) {
-                $this->collectConstants($interfaceInfo, $minVisibility, $constants, $seen, false);
-            }
+        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
+            $this->collectConstants($superInfo, $minVisibility, $constants, $seen, $superIsOrigin);
         }
     }
 

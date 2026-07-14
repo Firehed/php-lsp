@@ -134,6 +134,22 @@ It no longer parses documents or touches `ParserService`/`SymbolIndex` directly 
 sources own their lookups, and anything parser-derived (imports, file functions,
 members, variables, types) flows through `CodeResolver`. See Completion System.
 
+**All type-graph traversal goes through `MemberResolver::supertypes()`.**
+
+The type graph is walked in exactly ONE place. Every member lookup — methods,
+properties, constants — follows the same edges (used traits, then the parent chain,
+then interfaces), so no member kind can see a different hierarchy than another.
+
+Six hand-written traversals is how #334 happened: only the constant lookups ever
+learned to follow `interfaces`, so interface constants inherited while interface
+methods did not, and every feature was wrong at once. Do NOT reintroduce a
+per-member-kind walk. Adding an edge to the graph is a change to `supertypes()`.
+
+`TypeGraphParityTest` enforces this: the members reported for a type must equal the
+members PHP exposes at runtime (reflection is the oracle), across every shape —
+extends, implements, interface-extends-interface, trait-using-trait, and interfaces
+reached via a parent. A traversal that misses an edge fails it.
+
 **Adding support for a new AST node type:**
 1. Add handling in `SymbolResolver` (ONE place)
 2. Create a `ResolvedX` implementation if needed
@@ -204,7 +220,7 @@ Do not write new tests using inlined PHP code. ALWAYS use the fixture tooling wh
 
 ### Test Fixtures
 
-Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own autoloading — run `composer dump-autoload` in `tests/Fixtures/` after adding files outside of the PSR-4 or PSR-0 paths.
+Handler tests use fixture files in `tests/Fixtures/` instead of inline PHP code. Fixtures are a nested Composer project with their own dependencies and autoloading — run `composer install` in `tests/Fixtures/` before running the suite, and again after adding files outside of the PSR-4 or PSR-0 paths.
 
 Re-use existing fixtures whenever possible. Prefer adapting or expanding existing fixtures over adding brand new ones.
 

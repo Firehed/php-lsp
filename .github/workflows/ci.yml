@@ -24,8 +24,8 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Generate fixture autoload
-        run: composer dump-autoload --working-dir=tests/Fixtures
+      - name: Install fixture dependencies
+        run: composer install --prefer-dist --no-progress --working-dir=tests/Fixtures
 
       - name: Run PHPUnit
         run: composer phpunit
