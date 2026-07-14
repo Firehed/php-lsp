@@ -273,6 +273,11 @@ final class ScopeFinder
     /**
      * Extract all class imports from `use` statements as short name => FQCN.
      *
+     * Superseded by {@see NameContextFactory}, which is type-aware and scoped to
+     * one namespace block. This one folds `use function` and `use const` into the
+     * class map and flattens every block in the file; its callers are moved over
+     * in #331, after which it goes away.
+     *
      * @param array<Stmt> $ast
      * @return array<string, string>
      */
