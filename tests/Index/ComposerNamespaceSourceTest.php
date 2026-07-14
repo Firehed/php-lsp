@@ -157,6 +157,19 @@ class ComposerNamespaceSourceTest extends TestCase
         self::assertSame([], $contents->symbols, 'An unknown namespace has no symbols');
     }
 
+    public function testARootNamespacePrefixEnumeratesFromItsDirectory(): void
+    {
+        $source = new ComposerNamespaceSource(new ComposerAutoloadMap(
+            psr4: ['' => [self::FIXTURES_ROOT . '/src']],
+        ));
+
+        self::assertContains(
+            'Domain',
+            $source->childrenOf('')->childNamespaces,
+            'A root-namespace ("": [dir]) mapping lists its directory as children of the global namespace',
+        );
+    }
+
     public function testAProjectWithoutComposerYieldsNothing(): void
     {
         $source = new ComposerNamespaceSource(ComposerAutoloadMap::fromProjectRoot('/nonexistent'));

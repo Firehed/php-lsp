@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Composer\Autoload\ClassLoader;
+
 /**
- * The autoload maps Composer generates for a project.
+ * The autoload maps Composer generates for a project, held in the same
+ * `ClassLoader` Composer itself uses so the data lives in exactly one place.
  *
  * These are what make enumerating `vendor/` affordable. A PSR-4 prefix maps a
  * namespace onto a directory, so the contents of a namespace can be listed by
@@ -17,16 +20,29 @@ namespace Firehed\PhpLsp\Index;
  */
 final class ComposerAutoloadMap
 {
+    private readonly ClassLoader $loader;
+
     /**
      * @param array<string, list<string>> $psr4 Namespace prefix -> directories
      * @param array<string, list<string>> $psr0 Namespace prefix -> directories
      * @param array<string, string> $classMap Fully qualified name -> file
      */
     public function __construct(
-        private readonly array $psr4 = [],
-        private readonly array $psr0 = [],
-        private readonly array $classMap = [],
+        array $psr4 = [],
+        array $psr0 = [],
+        array $classMap = [],
     ) {
+        $loader = new ClassLoader();
+
+        foreach ($psr4 as $prefix => $directories) {
+            $loader->setPsr4($prefix, $directories);
+        }
+        foreach ($psr0 as $prefix => $directories) {
+            $loader->set($prefix, $directories);
+        }
+        $loader->addClassMap($classMap);
+
+        $this->loader = $loader;
     }
 
     public static function fromProjectRoot(string $projectRoot): self
@@ -41,11 +57,19 @@ final class ComposerAutoloadMap
     }
 
     /**
+     * The populated loader, for name -> file lookup via `findFile()`.
+     */
+    public function classLoader(): ClassLoader
+    {
+        return $this->loader;
+    }
+
+    /**
      * @return array<string, list<string>>
      */
     public function psr4Prefixes(): array
     {
-        return $this->psr4;
+        return self::withFallback($this->loader->getPrefixesPsr4(), $this->loader->getFallbackDirsPsr4());
     }
 
     /**
@@ -53,7 +77,7 @@ final class ComposerAutoloadMap
      */
     public function psr0Prefixes(): array
     {
-        return $this->psr0;
+        return self::withFallback($this->loader->getPrefixes(), $this->loader->getFallbackDirs());
     }
 
     /**
@@ -61,7 +85,25 @@ final class ComposerAutoloadMap
      */
     public function classMap(): array
     {
-        return $this->classMap;
+        return $this->loader->getClassMap();
+    }
+
+    /**
+     * A root-namespace mapping (`"": ["src"]`) is a fallback directory in
+     * Composer's loader, not a prefix, so it is absent from the prefix accessors.
+     * Fold it back to the `''` prefix so enumeration sees one uniform shape.
+     *
+     * @param array<string, list<string>> $prefixes
+     * @param list<string> $fallbackDirectories
+     * @return array<string, list<string>>
+     */
+    private static function withFallback(array $prefixes, array $fallbackDirectories): array
+    {
+        if ($fallbackDirectories !== []) {
+            $prefixes[''] = $fallbackDirectories;
+        }
+
+        return $prefixes;
     }
 
     /**
