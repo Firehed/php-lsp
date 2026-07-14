@@ -29,7 +29,7 @@ class ComposerNamespaceSourceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->source = new ComposerNamespaceSource(new ComposerAutoloadMap(self::FIXTURES_ROOT));
+        $this->source = new ComposerNamespaceSource(ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT));
     }
 
     public function testPsr4PrefixesAppearAsNamespacesFromTheGlobalNamespace(): void
@@ -159,12 +159,69 @@ class ComposerNamespaceSourceTest extends TestCase
 
     public function testAProjectWithoutComposerYieldsNothing(): void
     {
-        $source = new ComposerNamespaceSource(new ComposerAutoloadMap('/nonexistent'));
+        $source = new ComposerNamespaceSource(ComposerAutoloadMap::fromProjectRoot('/nonexistent'));
 
         $contents = $source->childrenOf('');
 
         self::assertSame([], $contents->childNamespaces, 'A project with no vendor/ still works');
         self::assertSame([], $contents->symbols, 'A project with no vendor/ still works');
+    }
+
+    public function testAPrefixWhoseDirectoryIsMissingYieldsNothing(): void
+    {
+        $source = new ComposerNamespaceSource(new ComposerAutoloadMap(
+            psr4: ['Stale\\' => ['/nonexistent/src']],
+        ));
+
+        self::assertSame(
+            [],
+            $source->childrenOf('Stale')->symbols,
+            'An autoload map can outlive the directory it points at; that is not a crash',
+        );
+        self::assertSame(
+            [],
+            $source->childrenOf('Stale\Sub')->symbols,
+            'Nor when the walk into the missing directory has segments left to match',
+        );
+    }
+
+    public function testANamespaceWithNoDirectoryUnderItsPrefixYieldsNothing(): void
+    {
+        $contents = $this->source->childrenOf('Fixtures\NotADirectory');
+
+        self::assertSame(
+            [],
+            $contents->symbols,
+            'The prefix matches but nothing on disk does',
+        );
+        self::assertSame([], $contents->childNamespaces, 'The prefix matches but nothing on disk does');
+    }
+
+    public function testNonPhpFilesAreNotSymbols(): void
+    {
+        // The fixtures root holds composer.json and a vendor/ directory beside
+        // its PHP, so pointing a prefix at it exercises both skips.
+        $source = new ComposerNamespaceSource(new ComposerAutoloadMap(
+            psr4: ['Root\\' => [self::FIXTURES_ROOT]],
+        ));
+
+        $contents = $source->childrenOf('Root');
+
+        self::assertNotContains(
+            'Root\composer',
+            self::fqns($contents),
+            'composer.json is not a class-like; only .php files are',
+        );
+        self::assertContains(
+            'Root\NoNamespace',
+            self::fqns($contents),
+            'The .php files beside it still are',
+        );
+        self::assertContains(
+            'Root\src',
+            $contents->childNamespaces,
+            'Directories are child namespaces',
+        );
     }
 
     /**
