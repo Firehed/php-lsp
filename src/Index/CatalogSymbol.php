@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Resolution\NameKind;
+use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * A symbol discovered in a namespace.
@@ -30,10 +31,6 @@ final readonly class CatalogSymbol
 
     public function shortName(): string
     {
-        $separator = strrpos($this->fullyQualifiedName, '\\');
-
-        return $separator === false
-            ? $this->fullyQualifiedName
-            : substr($this->fullyQualifiedName, $separator + 1);
+        return NamespacePath::shortNameOf($this->fullyQualifiedName);
     }
 }
