@@ -17,25 +17,27 @@ namespace Firehed\PhpLsp\Index;
  */
 final class ComposerAutoloadMap
 {
-    /** @var array<string, list<string>> Namespace prefix (trailing separator) -> directories */
-    private array $psr4 = [];
+    /**
+     * @param array<string, list<string>> $psr4 Namespace prefix -> directories
+     * @param array<string, list<string>> $psr0 Namespace prefix -> directories
+     * @param array<string, string> $classMap Fully qualified name -> file
+     */
+    public function __construct(
+        private readonly array $psr4 = [],
+        private readonly array $psr0 = [],
+        private readonly array $classMap = [],
+    ) {
+    }
 
-    /** @var array<string, list<string>> Namespace prefix -> directories */
-    private array $psr0 = [];
-
-    /** @var array<string, string> Fully qualified name -> file */
-    private array $classMap = [];
-
-    public function __construct(string $projectRoot)
+    public static function fromProjectRoot(string $projectRoot): self
     {
         $composerDir = rtrim($projectRoot, '/') . '/vendor/composer';
 
-        /** @var array<string, list<string>> */
-        $this->psr4 = self::load($composerDir . '/autoload_psr4.php');
-        /** @var array<string, list<string>> */
-        $this->psr0 = self::load($composerDir . '/autoload_namespaces.php');
-        /** @var array<string, string> */
-        $this->classMap = self::load($composerDir . '/autoload_classmap.php');
+        return new self(
+            self::loadPrefixes($composerDir . '/autoload_psr4.php'),
+            self::loadPrefixes($composerDir . '/autoload_namespaces.php'),
+            self::loadClassMap($composerDir . '/autoload_classmap.php'),
+        );
     }
 
     /**
@@ -63,7 +65,44 @@ final class ComposerAutoloadMap
     }
 
     /**
-     * @return array<string, mixed>
+     * These files are generated, but they are still data read from disk in a
+     * project we do not control, so their shape is checked rather than assumed.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function loadPrefixes(string $file): array
+    {
+        $prefixes = [];
+
+        foreach (self::load($file) as $prefix => $directories) {
+            if (!is_string($prefix) || !is_array($directories)) {
+                continue;
+            }
+
+            $prefixes[$prefix] = array_values(array_filter($directories, 'is_string'));
+        }
+
+        return $prefixes;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function loadClassMap(string $file): array
+    {
+        $classMap = [];
+
+        foreach (self::load($file) as $fqn => $path) {
+            if (is_string($fqn) && is_string($path)) {
+                $classMap[$fqn] = $path;
+            }
+        }
+
+        return $classMap;
+    }
+
+    /**
+     * @return array<mixed, mixed>
      */
     private static function load(string $file): array
     {
@@ -71,7 +110,14 @@ final class ComposerAutoloadMap
             return [];
         }
 
-        /** @var array<string, mixed> */
-        return require $file;
+        $contents = require $file;
+
+        if (!is_array($contents)) {
+            // @codeCoverageIgnoreStart
+            throw new \LogicException("Composer autoload file did not return an array: $file");
+            // @codeCoverageIgnoreEnd
+        }
+
+        return $contents;
     }
 }
