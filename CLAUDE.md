@@ -63,6 +63,34 @@ Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver` via
 hierarchy, and batch resolution. These require an index and will be added to
 `CodeResolver` when those features are implemented.
 
+### Namespace Catalog (Discovery)
+
+Repositories and reflection answer *lookup* ("resolve this known name"). Completion
+also needs *enumeration* ("what is inside `Psr\Log`?"), which is what the
+`NamespaceCatalog` (`src/Index/`) provides: the child namespaces of a namespace, plus
+the symbols declared directly in it.
+
+- **WorkspaceNamespaceSource** — from `SymbolIndex`. The only source that must NOT be
+  cached: the workspace changes with every keystroke.
+- **ComposerNamespaceSource** — from Composer's autoload maps (`ComposerAutoloadMap`).
+  PSR-4/PSR-0 map a namespace to a directory, so a namespace's contents are a directory
+  listing, not a parse. `vendor/` is never pre-indexed; only namespaces actually visited
+  are read.
+- **ReflectionNamespaceSource** — the language's built-ins. Filter to `isInternal()` (the
+  server's own classes are loaded in the same process), and file each symbol under the
+  namespace its reflected name carries — **internal does not imply global** (`Random\Randomizer`).
+- **CompositeNamespaceCatalog** merges and deduplicates; **CachedNamespaceCatalog** wraps
+  only the stable sources.
+
+Discovery reports a coarse `NameKind` (class-like / function / constant), not which
+flavour of class-like: a PSR-4 listing cannot know without parsing. Deciding whether a
+candidate is valid in a position stays with the `CodeResolver` predicates
+(`isInterface`, `isThrowable`, …), which resolve through the caching `ClassRepository`.
+
+Pair the catalog with `ReferenceResolver` (`src/Resolution/`), which computes the
+shortest reference that resolves at the cursor. Discovery says what exists; resolution
+says how to write it.
+
 ### Repository Pattern
 
 Class and member information flows through a repository layer:
