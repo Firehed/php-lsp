@@ -28,6 +28,12 @@ namespace Firehed\PhpLsp\Resolution;
  * Each unqualified form is only offered when an import has not bound that name
  * to something else; an import always wins over the current namespace, so a
  * shadowed symbol is not reachable by its short name at all.
+ *
+ * The rules are ordered, and in one corner that is not the shortest form: an
+ * import of an *ancestor of the cursor's own namespace* (`use App;` inside
+ * `namespace App\Model;`) makes rule 3 fire with a longer result than rule 4
+ * would give. Both resolve to the symbol; the import is redundant in the first
+ * place, since everything it reaches is already reachable relatively.
  */
 final class ReferenceResolver
 {
@@ -154,8 +160,10 @@ final class ReferenceResolver
             return $allowExact ? '' : null;
         }
 
+        // Everything is below the global namespace. Two empty namespaces are
+        // equal, so they have already been handled above.
         if ($ancestor === '') {
-            return $namespace === '' ? null : $namespace;
+            return $namespace;
         }
 
         $prefix = $ancestor . '\\';
