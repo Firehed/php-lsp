@@ -26,6 +26,14 @@ final class SymbolIndex
         $this->byUri[$symbol->location->uri][] = $symbol->fullyQualifiedName;
     }
 
+    /**
+     * @return list<Symbol>
+     */
+    public function all(): array
+    {
+        return array_values($this->byFqn);
+    }
+
     public function findByFqn(string $fqn): ?Symbol
     {
         return $this->byFqn[$fqn] ?? null;
