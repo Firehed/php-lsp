@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 
@@ -23,7 +24,7 @@ final class NameContextFactory
      */
     public static function fromAst(array $ast, int $line): NameContext
     {
-        $namespace = self::enclosingNamespace($ast, $line);
+        $namespace = ScopeFinder::findNamespaceNodeAtLine($ast, $line);
 
         $imports = [
             Stmt\Use_::TYPE_NORMAL => [],
@@ -51,24 +52,6 @@ final class NameContextFactory
             functionImports: $imports[Stmt\Use_::TYPE_FUNCTION],
             constantImports: $imports[Stmt\Use_::TYPE_CONSTANT],
         );
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private static function enclosingNamespace(array $ast, int $line): ?Stmt\Namespace_
-    {
-        foreach ($ast as $stmt) {
-            if (!$stmt instanceof Stmt\Namespace_) {
-                continue;
-            }
-            // AST lines are one-based.
-            if ($stmt->getStartLine() <= $line + 1 && $line + 1 <= $stmt->getEndLine()) {
-                return $stmt;
-            }
-        }
-
-        return null;
     }
 
     /**

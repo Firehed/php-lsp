@@ -2425,6 +2425,42 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testGetNameContextAfterTheLastStatementOfASemicolonNamespace(): void
+    {
+        $uri = $this->openFixture('Namespacing/FileWide.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // A semicolon-style namespace runs to the end of the file, but the AST
+        // node ends at its last statement. This is the line a cursor lands on
+        // after pressing enter at the end of the file — a routine place to ask
+        // for a completion, and still inside the namespace.
+        $lineAfterLastStatement = substr_count($document->getContent(), "\n");
+
+        $context = $this->resolver->getNameContext($document, $lineAfterLastStatement);
+
+        self::assertSame(
+            'Fixtures\Namespacing',
+            $context->namespace,
+            'A semicolon namespace extends past its last statement, to the end of the file',
+        );
+        self::assertSame(
+            ['Repo' => 'Fixtures\Namespacing\Models\UserRepository'],
+            $context->classImports,
+            'The imports of a semicolon namespace are in effect after its last statement',
+        );
+        self::assertSame(
+            ['makeUser' => 'Fixtures\Namespacing\Models\makeUser'],
+            $context->functionImports,
+            'The function imports of a semicolon namespace are in effect after its last statement',
+        );
+        self::assertSame(
+            ['DEFAULT_LIMIT' => 'Fixtures\Namespacing\Models\DEFAULT_LIMIT'],
+            $context->constantImports,
+            'The constant imports of a semicolon namespace are in effect after its last statement',
+        );
+    }
+
     public function testGetNameContextInTheGlobalNamespace(): void
     {
         $uri = $this->openFixture('Namespacing/GlobalNamespace.php');
