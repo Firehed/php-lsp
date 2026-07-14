@@ -61,7 +61,10 @@ final class ReferenceResolver
         $relative = self::relativeNamespace($namespace, $context->namespace);
         if (
             $relative !== null
-            && !self::isShadowed(self::firstSegment($relative), $fqn, $context->classImports, $kind)
+            // The leading segment of a qualified name is bound by the class
+            // import table (rule 3), so it matches on that table's terms —
+            // case-insensitively — whatever the leaf symbol's kind.
+            && !self::isShadowed(self::firstSegment($relative), $fqn, $context->classImports, NameKind::ClassLike)
         ) {
             return new Reference(
                 self::join([$relative, $shortName]),

@@ -297,5 +297,15 @@ class ReferenceResolverTest extends TestCase
             'MY_CONST',
             ReferenceKind::CurrentNamespace,
         ];
+        // Rule 3 consults the class import table, which is case-insensitive
+        // whatever the leaf symbol's kind: `use Other\sub;` binds the segment
+        // `Sub`, so `Sub\MY_CONST` would resolve to `Other\sub\MY_CONST`.
+        yield 'a class import shadows a qualified constant regardless of the alias case' => [
+            'App\Sub\MY_CONST',
+            NameKind::Constant,
+            new NameContext('App', classImports: ['sub' => 'Other\sub']),
+            '\App\Sub\MY_CONST',
+            ReferenceKind::Unreachable,
+        ];
     }
 }
