@@ -105,6 +105,25 @@ class WorkspaceNamespaceSourceTest extends TestCase
         );
     }
 
+    public function testSymbolsInUnrelatedNamespacesAreIgnored(): void
+    {
+        $this->add('Thing', 'App\Thing', SymbolKind::Class_);
+        $this->add('Other', 'Vendor\Package\Other', SymbolKind::Class_);
+
+        $contents = $this->source->childrenOf('App');
+
+        self::assertSame(
+            ['App\Thing'],
+            self::fqns($contents),
+            'A symbol outside the namespace is neither its content nor below it',
+        );
+        self::assertSame(
+            [],
+            $contents->childNamespaces,
+            'Nor does it imply a child namespace',
+        );
+    }
+
     public function testGlobalNamespaceSymbols(): void
     {
         $this->add('globalHelper', 'globalHelper', SymbolKind::Function_);

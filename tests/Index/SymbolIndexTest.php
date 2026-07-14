@@ -34,6 +34,25 @@ class SymbolIndexTest extends TestCase
         self::assertNull($index->findByFqn('Unknown\\Class'));
     }
 
+    public function testAllReturnsEverySymbol(): void
+    {
+        $index = new SymbolIndex();
+        $location = new Location('file:///test.php', 0, 0, 0, 10);
+        $index->add(new Symbol('MyClass', 'App\\MyClass', SymbolKind::Class_, $location));
+        $index->add(new Symbol('helper', 'App\\helper', SymbolKind::Function_, $location));
+
+        $fqns = array_map(
+            static fn(Symbol $symbol): string => $symbol->fullyQualifiedName,
+            $index->all(),
+        );
+
+        self::assertSame(
+            ['App\\MyClass', 'App\\helper'],
+            $fqns,
+            'Namespace discovery reads the whole index, since symbols are keyed by name, not namespace',
+        );
+    }
+
     public function testClearByUri(): void
     {
         $index = new SymbolIndex();
