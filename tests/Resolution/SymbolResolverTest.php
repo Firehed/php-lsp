@@ -2388,6 +2388,11 @@ final class SymbolResolverTest extends TestCase
             $context->classImports,
             'Group use members should be included',
         );
+        self::assertSame(
+            'Fixtures\Namespacing\Models\UserRepository',
+            $context->classImports['Repos'] ?? null,
+            'An aliased member of a group use binds its alias to the prefixed FQCN',
+        );
         self::assertArrayNotHasKey(
             'Repo',
             $context->classImports,

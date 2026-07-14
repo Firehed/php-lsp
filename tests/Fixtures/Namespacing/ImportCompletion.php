@@ -33,7 +33,7 @@ namespace Fixtures\Namespacing\ImportCompletion {
 
 namespace Fixtures\Namespacing\ImportCompletion\Grouped {
 
-    use Fixtures\Namespacing\Models\{User, Post};
+    use Fixtures\Namespacing\Models\{User, Post, UserRepository as Repos};
 
     function triggerGroupedImportPartial()
     {
