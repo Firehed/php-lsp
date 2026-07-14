@@ -69,7 +69,10 @@ final readonly class NamespaceContents
      * more than one of them reports.
      *
      * Overlap is normal rather than exceptional: a class in an open document is
-     * also on disk under a PSR-4 prefix, and both sources will report it.
+     * also on disk under a PSR-4 prefix, and both sources will report it. The
+     * first source to report a name wins, so sources are passed in order of
+     * authority — the workspace knows how its own symbols are spelled better
+     * than a directory listing does.
      *
      * @param list<NamespaceContents> $contents
      */
@@ -80,7 +83,7 @@ final readonly class NamespaceContents
 
         foreach ($contents as $part) {
             foreach ($part->childNamespaces as $namespace) {
-                $namespaces[strtolower($namespace)] = $namespace;
+                $namespaces[strtolower($namespace)] ??= $namespace;
             }
             foreach ($part->symbols as $symbol) {
                 $symbols[strtolower($symbol->fullyQualifiedName)] ??= $symbol;
