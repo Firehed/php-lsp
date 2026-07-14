@@ -37,6 +37,13 @@ namespace Fixtures\Namespacing\Models {
         }
     }
 
+    const DEFAULT_LIMIT = 25;
+
+    function makeUser(): User
+    {
+        return new User();
+    }
+
 }
 
 namespace Fixtures\Namespacing\Controllers {

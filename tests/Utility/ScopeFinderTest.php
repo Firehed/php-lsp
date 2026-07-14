@@ -804,6 +804,22 @@ class ScopeFinderTest extends TestCase
         self::assertSame('First', ScopeFinder::findNamespaceAtLine($ast, 2));
     }
 
+    public function testFindNamespaceAtLineCoversTheTailOfASemicolonNamespace(): void
+    {
+        $code = $this->loadFixture('Namespacing/FileWide.php');
+        $ast = self::parseWithParents($code);
+
+        // The blank line past the closing brace of the last class. The namespace
+        // node ends at that class, but the namespace itself runs to end of file.
+        $lineAfterLastStatement = substr_count($code, "\n");
+
+        self::assertSame(
+            'Fixtures\Namespacing',
+            ScopeFinder::findNamespaceAtLine($ast, $lineAfterLastStatement),
+            'A semicolon namespace extends past its last statement, to the end of the file',
+        );
+    }
+
     public function testFindNamespaceAtLineReturnsNullOutsideAnyNamespace(): void
     {
         $code = $this->loadFixture('TopLevel/two_namespaces.php');

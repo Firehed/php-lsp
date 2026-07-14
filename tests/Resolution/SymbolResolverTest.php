@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedClass;
 use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
@@ -43,6 +44,7 @@ use Throwable;
 use TypeError;
 
 #[CoversClass(SymbolResolver::class)]
+#[CoversClass(NameContextFactory::class)]
 #[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {
@@ -2326,6 +2328,153 @@ final class SymbolResolverTest extends TestCase
     private static function variableNames(array $variables): array
     {
         return array_map(fn(ResolvedVariable $v) => $v->getName(), $variables);
+    }
+
+    public function testGetNameContextSeparatesImportsByKind(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_class_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            'Fixtures\Namespacing\ImportCompletion',
+            $context->namespace,
+            'The namespace is the one enclosing the cursor',
+        );
+        self::assertSame(
+            'Fixtures\Namespacing\Models\UserRepository',
+            $context->classImports['Repo'] ?? null,
+            'An aliased class import maps the alias to its FQCN',
+        );
+        self::assertSame(
+            ['Fixtures\Namespacing\Models\makeUser'],
+            array_values($context->functionImports),
+            'A `use function` import belongs to the function table',
+        );
+        self::assertSame(
+            ['Fixtures\Namespacing\Models\DEFAULT_LIMIT'],
+            array_values($context->constantImports),
+            'A `use const` import belongs to the constant table',
+        );
+        self::assertArrayNotHasKey(
+            'makeUser',
+            $context->classImports,
+            'A `use function` import must not leak into the class table',
+        );
+        self::assertArrayNotHasKey(
+            'DEFAULT_LIMIT',
+            $context->classImports,
+            'A `use const` import must not leak into the class table',
+        );
+    }
+
+    public function testGetNameContextIsScopedToTheEnclosingNamespaceBlock(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'grouped_import_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            'Fixtures\Namespacing\ImportCompletion\Grouped',
+            $context->namespace,
+            'The namespace is the block containing the cursor, not the first one in the file',
+        );
+        self::assertArrayHasKey(
+            'Post',
+            $context->classImports,
+            'Group use members should be included',
+        );
+        self::assertSame(
+            'Fixtures\Namespacing\Models\UserRepository',
+            $context->classImports['Repos'] ?? null,
+            'An aliased member of a group use binds its alias to the prefixed FQCN',
+        );
+        self::assertArrayNotHasKey(
+            'Repo',
+            $context->classImports,
+            'Imports from another namespace block are not in scope here',
+        );
+        self::assertArrayNotHasKey(
+            'makeUser',
+            $context->functionImports,
+            'Function imports from another namespace block are not in scope here',
+        );
+    }
+
+    public function testGetNameContextSplitsAMixedGroupUseByItemKind(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'mixed_group_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            ['UserRepository' => 'Fixtures\Namespacing\Models\UserRepository'],
+            $context->classImports,
+            'In a mixed group use, the kind is carried by the item rather than the statement',
+        );
+        self::assertSame(
+            ['makeUser' => 'Fixtures\Namespacing\Models\makeUser'],
+            $context->functionImports,
+            'A `function` item of a group use belongs to the function table',
+        );
+        self::assertSame(
+            ['DEFAULT_LIMIT' => 'Fixtures\Namespacing\Models\DEFAULT_LIMIT'],
+            $context->constantImports,
+            'A `const` item of a group use belongs to the constant table',
+        );
+    }
+
+    public function testGetNameContextAfterTheLastStatementOfASemicolonNamespace(): void
+    {
+        $uri = $this->openFixture('Namespacing/FileWide.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        // A semicolon-style namespace runs to the end of the file, but the AST
+        // node ends at its last statement. This is the line a cursor lands on
+        // after pressing enter at the end of the file — a routine place to ask
+        // for a completion, and still inside the namespace.
+        $lineAfterLastStatement = substr_count($document->getContent(), "\n");
+
+        $context = $this->resolver->getNameContext($document, $lineAfterLastStatement);
+
+        self::assertSame(
+            'Fixtures\Namespacing',
+            $context->namespace,
+            'A semicolon namespace extends past its last statement, to the end of the file',
+        );
+        self::assertSame(
+            ['Repo' => 'Fixtures\Namespacing\Models\UserRepository'],
+            $context->classImports,
+            'The imports of a semicolon namespace are in effect after its last statement',
+        );
+        self::assertSame(
+            ['makeUser' => 'Fixtures\Namespacing\Models\makeUser'],
+            $context->functionImports,
+            'The function imports of a semicolon namespace are in effect after its last statement',
+        );
+        self::assertSame(
+            ['DEFAULT_LIMIT' => 'Fixtures\Namespacing\Models\DEFAULT_LIMIT'],
+            $context->constantImports,
+            'The constant imports of a semicolon namespace are in effect after its last statement',
+        );
+    }
+
+    public function testGetNameContextInTheGlobalNamespace(): void
+    {
+        $uri = $this->openFixture('Namespacing/GlobalNamespace.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, 0);
+
+        self::assertSame('', $context->namespace, 'A file with no namespace declaration is global');
     }
 
     public function testGetImportsIncludesAliasedAndGroupedUses(): void
