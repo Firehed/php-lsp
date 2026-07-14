@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Resolution\NameKind;
+use Firehed\PhpLsp\Utility\NamespacePath;
 use ReflectionClass;
 
 /**
@@ -45,14 +46,14 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
         $symbols = [];
 
         foreach (self::internalSymbols() as $fqn => $kind) {
-            $namespace = self::namespaceOf($fqn);
+            $namespace = NamespacePath::namespaceOf($fqn);
 
             $symbols[strtolower($namespace)][] = new CatalogSymbol($fqn, $kind);
 
             // Register the namespace with each of its ancestors, so that
             // `Random\Engine\Xoshiro256StarStar` makes `Random` a child of the
             // global namespace and `Random\Engine` a child of `Random`.
-            foreach (self::ancestorsOf($namespace) as $parent => $child) {
+            foreach (NamespacePath::ancestors($namespace) as $parent => $child) {
                 $existing = $childNamespaces[strtolower($parent)] ?? [];
                 if (!in_array($child, $existing, true)) {
                     $existing[] = $child;
@@ -107,34 +108,4 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
         return $symbols;
     }
 
-    /**
-     * Each ancestor of a namespace mapped to the child leading towards it:
-     * `A\B\C` yields `'' => 'A'`, `'A' => 'A\B'`, `'A\B' => 'A\B\C'`.
-     *
-     * @return array<string, string>
-     */
-    private static function ancestorsOf(string $namespace): array
-    {
-        if ($namespace === '') {
-            return [];
-        }
-
-        $ancestors = [];
-        $parent = '';
-
-        foreach (explode('\\', $namespace) as $segment) {
-            $child = $parent === '' ? $segment : $parent . '\\' . $segment;
-            $ancestors[$parent] = $child;
-            $parent = $child;
-        }
-
-        return $ancestors;
-    }
-
-    private static function namespaceOf(string $fqn): string
-    {
-        $separator = strrpos($fqn, '\\');
-
-        return $separator === false ? '' : substr($fqn, 0, $separator);
-    }
 }
