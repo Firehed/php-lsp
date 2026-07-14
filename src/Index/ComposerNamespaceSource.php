@@ -193,37 +193,11 @@ final class ComposerNamespaceSource implements NamespaceCatalog
 
     private function fromClassMap(string $namespace): NamespaceContents
     {
-        $this->classMapIndex ??= self::indexClassMap($this->map->classMap());
+        $this->classMapIndex ??= NamespaceContents::indexByNamespace(array_map(
+            static fn(string $fqn): CatalogSymbol => new CatalogSymbol($fqn, NameKind::ClassLike),
+            array_keys($this->map->classMap()),
+        ));
 
         return $this->classMapIndex[strtolower($namespace)] ?? new NamespaceContents();
-    }
-
-    /**
-     * @param array<string, string> $classMap
-     * @return array<string, NamespaceContents>
-     */
-    private static function indexClassMap(array $classMap): array
-    {
-        $childNamespaces = [];
-        $symbols = [];
-
-        foreach (array_keys($classMap) as $fqn) {
-            $namespace = NamespacePath::namespaceOf($fqn);
-            $symbols[strtolower($namespace)][] = new CatalogSymbol($fqn, NameKind::ClassLike);
-
-            foreach (NamespacePath::ancestors($namespace) as $parent => $child) {
-                $childNamespaces[strtolower($parent)][strtolower($child)] = $child;
-            }
-        }
-
-        $contents = [];
-        foreach (array_keys($childNamespaces + $symbols) as $namespace) {
-            $contents[$namespace] = new NamespaceContents(
-                array_values($childNamespaces[$namespace] ?? []),
-                $symbols[$namespace] ?? [],
-            );
-        }
-
-        return $contents;
     }
 }
