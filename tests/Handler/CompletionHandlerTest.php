@@ -228,7 +228,7 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains(
             'Thing',
             $labels,
-            'A class in an unrelated namespace has no unqualified reference here, so it must not be offered as a bare name',
+            'A class in an unrelated namespace has no unqualified reference here, so it is not offered as a bare name',
         );
     }
 

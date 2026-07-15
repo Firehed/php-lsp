@@ -9,6 +9,9 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\NameKind;
+use Firehed\PhpLsp\Resolution\ReferenceResolver;
 
 /**
  * Produces class-name completion items from two sources: classes imported via
@@ -33,10 +36,12 @@ final class ClassCandidates
     /**
      * @return list<CompletionItem>
      */
-    public function find(string $prefix, TextDocument $document, ClassCandidateFilter $filter): array
+    public function find(string $prefix, TextDocument $document, int $line, ClassCandidateFilter $filter): array
     {
+        $context = $this->codeResolver->getNameContext($document, $line);
+
         $items = $this->fromImports($prefix, $document, $filter);
-        return array_merge($items, $this->fromIndex($prefix, $filter));
+        return array_merge($items, $this->fromIndex($prefix, $filter, $context));
     }
 
     /**
@@ -62,7 +67,7 @@ final class ClassCandidates
     /**
      * @return list<CompletionItem>
      */
-    private function fromIndex(string $prefix, ClassCandidateFilter $filter): array
+    private function fromIndex(string $prefix, ClassCandidateFilter $filter, NameContext $context): array
     {
         $symbols = $this->symbolIndex->findByPrefix($prefix, $this->indexKinds($filter));
         $items = [];
@@ -71,6 +76,13 @@ final class ClassCandidates
             /** @var class-string $fqcn */
             $fqcn = $symbol->fullyQualifiedName;
             if (!$this->passesResolutionFilter(new ClassName($fqcn), $filter)) {
+                continue;
+            }
+            // The index is keyed by short name, but a class in another namespace
+            // may have no unqualified reference at the cursor. Offering the bare
+            // name there inserts a reference that resolves elsewhere or nowhere,
+            // so only offer a class where it actually resolves.
+            if (!ReferenceResolver::resolve($fqcn, NameKind::ClassLike, $context)->isReachable()) {
                 continue;
             }
             $items[] = CompletionItemFactory::forClass($symbol->name, $fqcn);
