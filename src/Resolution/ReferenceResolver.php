@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Utility\NamespacePath;
+
 /**
  * Computes how a symbol must be written at a given cursor: the shortest
  * reference that resolves back to it, or that no unqualified reference does.
@@ -40,11 +42,11 @@ final class ReferenceResolver
     public static function resolve(string $fullyQualifiedName, NameKind $kind, NameContext $context): Reference
     {
         $fqn = ltrim($fullyQualifiedName, '\\');
-        $namespace = self::namespaceOf($fqn);
-        $shortName = self::shortNameOf($fqn);
+        $namespace = NamespacePath::namespaceOf($fqn);
+        $shortName = NamespacePath::shortNameOf($fqn);
 
         if (
-            self::namespacesMatch($namespace, $context->namespace)
+            NamespacePath::equals($namespace, $context->namespace)
             && !self::isShadowed($shortName, $fqn, $context->importsFor($kind), $kind)
         ) {
             return new Reference($shortName, ReferenceKind::CurrentNamespace);
@@ -59,7 +61,7 @@ final class ReferenceResolver
         if ($viaPrefix !== null) {
             [$prefixAlias, $remainder] = $viaPrefix;
             return new Reference(
-                self::join([$prefixAlias, $remainder, $shortName]),
+                NamespacePath::join($prefixAlias, $remainder, $shortName),
                 ReferenceKind::PrefixImport,
             );
         }
@@ -70,10 +72,15 @@ final class ReferenceResolver
             // The leading segment of a qualified name is bound by the class
             // import table (rule 3), so it matches on that table's terms —
             // case-insensitively — whatever the leaf symbol's kind.
-            && !self::isShadowed(self::firstSegment($relative), $fqn, $context->classImports, NameKind::ClassLike)
+            && !self::isShadowed(
+                NamespacePath::firstSegment($relative),
+                $fqn,
+                $context->classImports,
+                NameKind::ClassLike,
+            )
         ) {
             return new Reference(
-                self::join([$relative, $shortName]),
+                NamespacePath::join($relative, $shortName),
                 ReferenceKind::SubNamespace,
             );
         }
@@ -156,66 +163,24 @@ final class ReferenceResolver
      */
     private static function relativeNamespace(string $namespace, string $ancestor, bool $allowExact = false): ?string
     {
-        if (self::namespacesMatch($namespace, $ancestor)) {
-            return $allowExact ? '' : null;
+        if ($allowExact && NamespacePath::equals($namespace, $ancestor)) {
+            return '';
         }
 
-        // Everything is below the global namespace. Two empty namespaces are
-        // equal, so they have already been handled above.
-        if ($ancestor === '') {
-            return $namespace;
-        }
-
-        $prefix = $ancestor . '\\';
-        if (strncasecmp($namespace, $prefix, strlen($prefix)) !== 0) {
-            return null;
-        }
-
-        return substr($namespace, strlen($prefix));
-    }
-
-    private static function namespaceOf(string $fqn): string
-    {
-        $separator = strrpos($fqn, '\\');
-        return $separator === false ? '' : substr($fqn, 0, $separator);
-    }
-
-    private static function shortNameOf(string $fqn): string
-    {
-        $separator = strrpos($fqn, '\\');
-        return $separator === false ? $fqn : substr($fqn, $separator + 1);
-    }
-
-    private static function firstSegment(string $name): string
-    {
-        $separator = strpos($name, '\\');
-        return $separator === false ? $name : substr($name, 0, $separator);
+        return NamespacePath::relativeTo($namespace, $ancestor);
     }
 
     /**
-     * Namespaces are always case-insensitive, even for constants — only a
-     * constant's final segment is case-sensitive.
+     * Namespaces are case-insensitive even for constants — only a constant's
+     * final segment is case-sensitive.
      */
-    private static function namespacesMatch(string $a, string $b): bool
-    {
-        return strcasecmp($a, $b) === 0;
-    }
-
     private static function namesMatch(string $a, string $b, NameKind $kind): bool
     {
         if (!$kind->isCaseSensitive()) {
             return strcasecmp($a, $b) === 0;
         }
 
-        return self::namespacesMatch(self::namespaceOf($a), self::namespaceOf($b))
-            && self::shortNameOf($a) === self::shortNameOf($b);
-    }
-
-    /**
-     * @param list<string> $segments
-     */
-    private static function join(array $segments): string
-    {
-        return implode('\\', array_filter($segments, static fn(string $s): bool => $s !== ''));
+        return NamespacePath::equals(NamespacePath::namespaceOf($a), NamespacePath::namespaceOf($b))
+            && NamespacePath::shortNameOf($a) === NamespacePath::shortNameOf($b);
     }
 }

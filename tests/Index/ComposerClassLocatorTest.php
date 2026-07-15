@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
+use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -23,6 +24,17 @@ final class ComposerClassLocatorTest extends TestCase
         $path = $locator->locateClass(ClassmapFixture::class);
 
         self::assertNotNull($path);
+        self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
+    }
+
+    public function testLocateResolvesAClassName(): void
+    {
+        $locator = new ComposerClassLocator(self::FIXTURES_ROOT);
+
+        // @phpstan-ignore class.notFound
+        $path = $locator->locate(new ClassName(ClassmapFixture::class));
+
+        self::assertNotNull($path, 'The ClassLocator interface takes a ClassName rather than a string');
         self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
     }
 
