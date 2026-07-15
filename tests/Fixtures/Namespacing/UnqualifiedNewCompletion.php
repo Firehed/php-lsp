@@ -14,4 +14,9 @@ class Trigger
     {
         new Th/*|unqualified_new*/
     }
+
+    public function sub(): void
+    {
+        new Th/*|subnamespace_new*/
+    }
 }

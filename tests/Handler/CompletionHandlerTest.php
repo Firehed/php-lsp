@@ -232,6 +232,27 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testSubNamespaceClassOfferedWithRelativeReference(): void
+    {
+        $this->openFixture('Namespacing/SubNamespaceClass.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'subnamespace_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'Sub\Thing',
+            $labels,
+            'A class in a sub-namespace is offered as the relative reference that resolves to it',
+        );
+        self::assertNotContains(
+            'Thing',
+            $labels,
+            'It must not be offered bare, which would resolve to a different, nonexistent class',
+        );
+    }
+
     public function testStaticCompletionResolvesImportedClassName(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/MultiNamespaceImports.php', 'imported_static');
