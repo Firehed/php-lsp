@@ -19,4 +19,9 @@ class Trigger
     {
         new Th/*|subnamespace_new*/
     }
+
+    public function builtin(): void
+    {
+        new Ex/*|builtin_new*/
+    }
 }

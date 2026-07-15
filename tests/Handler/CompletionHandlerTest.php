@@ -282,6 +282,23 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testBuiltinClassLikesAreNotOfferedInNamespacedNew(): void
+    {
+        // No dependencies opened: only built-ins exist, and #331 sources classes
+        // from the workspace and imports — never from reflection or vendor.
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'builtin_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertNotContains(
+            'Exception',
+            $labels,
+            'A built-in class-like is not a candidate here; reaching it is navigation (\\Exception), owned by #330',
+        );
+    }
+
     public function testImportedPrefixContributesQualifiedChildren(): void
     {
         $this->openFixture('Namespacing/PrefixImportUser.php');
