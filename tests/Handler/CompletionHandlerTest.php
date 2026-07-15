@@ -211,6 +211,27 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('NAME', $labels);
     }
 
+    public function testUnrelatedNamespaceClassNotOfferedUnqualified(): void
+    {
+        $this->openFixture('Namespacing/UnrelatedNamespaceClass.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'unqualified_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'Theme',
+            $labels,
+            'A class in the current namespace resolves unqualified and is offered',
+        );
+        self::assertNotContains(
+            'Thing',
+            $labels,
+            'A class in an unrelated namespace has no unqualified reference here, so it must not be offered as a bare name',
+        );
+    }
+
     public function testStaticCompletionResolvesImportedClassName(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/MultiNamespaceImports.php', 'imported_static');
