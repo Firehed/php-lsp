@@ -219,16 +219,18 @@ class CompletionHandlerTest extends TestCase
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains(
-            'Theme',
-            $labels,
-            'A class in the current namespace resolves unqualified and is offered',
+        // label => the FQCN it resolves to, so the reference is verified against
+        // the actual class, not just its spelling.
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'App\Theme',
+            $byLabel['Theme'] ?? null,
+            'A class in the current namespace is offered bare and resolves back to itself',
         );
         self::assertNotContains(
-            'Thing',
-            $labels,
-            'A class in an unrelated namespace has no unqualified reference here, so it is not offered as a bare name',
+            'Other\Thing',
+            $byLabel,
+            'The unrelated-namespace class is offered under no reference at all, not merely not as a bare name',
         );
     }
 
@@ -240,16 +242,43 @@ class CompletionHandlerTest extends TestCase
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains(
-            'Sub\Thing',
-            $labels,
-            'A class in a sub-namespace is offered as the relative reference that resolves to it',
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'App\Sub\Thing',
+            $byLabel['Sub\Thing'] ?? null,
+            'A sub-namespace class is offered as the relative reference that resolves to exactly it',
         );
-        self::assertNotContains(
+        self::assertArrayNotHasKey(
             'Thing',
-            $labels,
+            $byLabel,
             'It must not be offered bare, which would resolve to a different, nonexistent class',
+        );
+    }
+
+    public function testSameShortNameInTwoNamespacesEachResolvesDistinctly(): void
+    {
+        $this->openFixture('Namespacing/SubNamespaceClass.php');
+        $this->openFixture('Namespacing/SecondSubNamespaceClass.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'subnamespace_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'App\Sub\Thing',
+            $byLabel['Sub\Thing'] ?? null,
+            'Two classes share the short name Thing; each is offered under the reference that resolves to it',
+        );
+        self::assertSame(
+            'App\Deep\Thing',
+            $byLabel['Deep\Thing'] ?? null,
+            'The other Thing resolves to its own FQCN under its own reference',
+        );
+        self::assertArrayNotHasKey(
+            'Thing',
+            $byLabel,
+            'Neither is offered bare, which would be ambiguous and resolve to neither',
         );
     }
 
