@@ -432,7 +432,7 @@ class CompletionHandlerTest extends TestCase
         // Add a class to the index
         $this->symbolIndex->add(new Symbol(
             'MyIndexedClass',
-            'App\MyIndexedClass',
+            'MyIndexedClass',
             SymbolKind::Class_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
@@ -462,13 +462,13 @@ class CompletionHandlerTest extends TestCase
         // Add an interface and a class to the index
         $this->symbolIndex->add(new Symbol(
             'MyInterface',
-            'App\MyInterface',
+            'MyInterface',
             SymbolKind::Interface_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
         $this->symbolIndex->add(new Symbol(
             'MyClass',
-            'App\MyClass',
+            'MyClass',
             SymbolKind::Class_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
@@ -518,19 +518,19 @@ class CompletionHandlerTest extends TestCase
         // Add various symbol types to the index
         $this->symbolIndex->add(new Symbol(
             'MyClass',
-            'App\MyClass',
+            'MyClass',
             SymbolKind::Class_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
         $this->symbolIndex->add(new Symbol(
             'MyInterface',
-            'App\MyInterface',
+            'MyInterface',
             SymbolKind::Interface_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
         $this->symbolIndex->add(new Symbol(
             'MyTrait',
-            'App\MyTrait',
+            'MyTrait',
             SymbolKind::Trait_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));

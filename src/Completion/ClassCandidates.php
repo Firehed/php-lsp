@@ -79,13 +79,14 @@ final class ClassCandidates
                 continue;
             }
             // The index is keyed by short name, but a class in another namespace
-            // may have no unqualified reference at the cursor. Offering the bare
-            // name there inserts a reference that resolves elsewhere or nowhere,
-            // so only offer a class where it actually resolves.
-            if (!ReferenceResolver::resolve($fqcn, NameKind::ClassLike, $context)->isReachable()) {
+            // may need a qualified reference — or none may reach it at all. Offer
+            // it only where it resolves, and label it with the reference that
+            // does, so selecting it inserts a name that resolves back to it.
+            $reference = ReferenceResolver::resolve($fqcn, NameKind::ClassLike, $context);
+            if (!$reference->isReachable()) {
                 continue;
             }
-            $items[] = CompletionItemFactory::forClass($symbol->name, $fqcn);
+            $items[] = CompletionItemFactory::forClass($reference->text, $fqcn);
         }
 
         return $items;
