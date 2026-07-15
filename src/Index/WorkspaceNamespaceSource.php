@@ -27,24 +27,18 @@ final class WorkspaceNamespaceSource implements NamespaceCatalog
 
     public function childrenOf(string $namespace): NamespaceContents
     {
-        $childNamespaces = [];
         $symbols = [];
-
-        foreach ($this->index->all() as $symbol) {
+        foreach ($this->index->inNamespace($namespace) as $symbol) {
             $kind = self::nameKindOf($symbol->kind);
-            if ($kind === null) {
-                continue;
-            }
-
-            $symbolNamespace = NamespacePath::namespaceOf($symbol->fullyQualifiedName);
-
-            if (NamespacePath::equals($symbolNamespace, $namespace)) {
+            if ($kind !== null) {
                 $symbols[] = new CatalogSymbol($symbol->fullyQualifiedName, $kind);
-                continue;
             }
+        }
 
-            // A symbol deeper in the tree still tells us the namespace on the way
-            // to it exists, even if nothing is declared there directly.
+        // A namespace deeper in the tree still tells us the namespace on the way
+        // to it exists, even if nothing is declared there directly.
+        $childNamespaces = [];
+        foreach ($this->index->namespaces() as $symbolNamespace) {
             $below = NamespacePath::relativeTo($symbolNamespace, $namespace);
             if ($below === null) {
                 continue;

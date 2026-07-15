@@ -34,22 +34,46 @@ class SymbolIndexTest extends TestCase
         self::assertNull($index->findByFqn('Unknown\\Class'));
     }
 
-    public function testAllReturnsEverySymbol(): void
+    public function testInNamespaceReturnsSymbolsDeclaredThere(): void
     {
         $index = new SymbolIndex();
         $location = new Location('file:///test.php', 0, 0, 0, 10);
-        $index->add(new Symbol('MyClass', 'App\\MyClass', SymbolKind::Class_, $location));
-        $index->add(new Symbol('helper', 'App\\helper', SymbolKind::Function_, $location));
+        $index->add(new Symbol('Thing', 'App\\Thing', SymbolKind::Class_, $location));
+        $index->add(new Symbol('Deep', 'App\\Sub\\Deep', SymbolKind::Class_, $location));
 
         $fqns = array_map(
             static fn(Symbol $symbol): string => $symbol->fullyQualifiedName,
-            $index->all(),
+            $index->inNamespace('App'),
         );
 
         self::assertSame(
-            ['App\\MyClass', 'App\\helper'],
+            ['App\\Thing'],
             $fqns,
-            'Namespace discovery reads the whole index, since symbols are keyed by name, not namespace',
+            'Only symbols declared directly in the namespace, not those in a child of it',
+        );
+    }
+
+    public function testInNamespaceIsCaseInsensitive(): void
+    {
+        $index = new SymbolIndex();
+        $location = new Location('file:///test.php', 0, 0, 0, 10);
+        $index->add(new Symbol('Thing', 'App\\Thing', SymbolKind::Class_, $location));
+
+        self::assertCount(1, $index->inNamespace('app'), 'PHP namespaces are case-insensitive');
+    }
+
+    public function testNamespacesListsEachNamespaceOnceInRealCasing(): void
+    {
+        $index = new SymbolIndex();
+        $location = new Location('file:///test.php', 0, 0, 0, 10);
+        $index->add(new Symbol('Thing', 'App\\Model\\Thing', SymbolKind::Class_, $location));
+        $index->add(new Symbol('Other', 'App\\Model\\Other', SymbolKind::Class_, $location));
+        $index->add(new Symbol('globalHelper', 'globalHelper', SymbolKind::Function_, $location));
+
+        self::assertSame(
+            ['App\\Model', ''],
+            $index->namespaces(),
+            'One entry per namespace that has symbols, spelled as declared; child namespaces are derived elsewhere',
         );
     }
 
@@ -66,6 +90,38 @@ class SymbolIndexTest extends TestCase
 
         self::assertNull($index->findByFqn('ClassA'));
         self::assertNotNull($index->findByFqn('ClassB'));
+    }
+
+    public function testClearByUriRemovesFromTheNamespaceIndex(): void
+    {
+        $index = new SymbolIndex();
+        $index->add(new Symbol('Thing', 'App\\Thing', SymbolKind::Class_, new Location('file:///a.php', 0, 0, 0, 10)));
+        $index->add(new Symbol('Other', 'App\\Other', SymbolKind::Class_, new Location('file:///b.php', 0, 0, 0, 10)));
+
+        $index->clearByUri('file:///a.php');
+
+        $fqns = array_map(
+            static fn(Symbol $symbol): string => $symbol->fullyQualifiedName,
+            $index->inNamespace('App'),
+        );
+
+        self::assertSame(
+            ['App\\Other'],
+            $fqns,
+            'A removed symbol is gone from the namespace index; the ones sharing its namespace remain',
+        );
+        self::assertSame(['App'], $index->namespaces(), 'The namespace still has a symbol, so it stays');
+    }
+
+    public function testClearByUriDropsANamespaceLeftEmpty(): void
+    {
+        $index = new SymbolIndex();
+        $index->add(new Symbol('Only', 'App\\Only', SymbolKind::Class_, new Location('file:///a.php', 0, 0, 0, 10)));
+
+        $index->clearByUri('file:///a.php');
+
+        self::assertSame([], $index->namespaces(), 'A namespace with no symbols left is not reported');
+        self::assertSame([], $index->inNamespace('App'), 'Nor does it hold symbols');
     }
 
     public function testFindByName(): void

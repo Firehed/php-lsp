@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Utility\NamespacePath;
+
 final class SymbolIndex
 {
     /** @var array<string, Symbol> FQN -> Symbol */
@@ -15,6 +17,9 @@ final class SymbolIndex
     /** @var array<string, list<string>> URI -> FQNs */
     private array $byUri = [];
 
+    /** @var array<string, array<string, Symbol>> Lowercase namespace -> FQN -> Symbol */
+    private array $byNamespace = [];
+
     public function add(Symbol $symbol): void
     {
         $this->byFqn[$symbol->fullyQualifiedName] = $symbol;
@@ -24,14 +29,41 @@ final class SymbolIndex
 
         $this->byUri[$symbol->location->uri] ??= [];
         $this->byUri[$symbol->location->uri][] = $symbol->fullyQualifiedName;
+
+        $namespace = strtolower(NamespacePath::namespaceOf($symbol->fullyQualifiedName));
+        $this->byNamespace[$namespace][$symbol->fullyQualifiedName] = $symbol;
     }
 
     /**
+     * The symbols declared directly in a namespace, keyed on it at write time so
+     * that discovery does not rescan the whole workspace on every keystroke.
+     *
      * @return list<Symbol>
      */
-    public function all(): array
+    public function inNamespace(string $namespace): array
     {
-        return array_values($this->byFqn);
+        return array_values($this->byNamespace[strtolower($namespace)] ?? []);
+    }
+
+    /**
+     * Every namespace that declares at least one symbol, in its real casing.
+     * Intermediate namespaces that only contain deeper ones are not listed —
+     * they are derivable from the descendant that witnesses them.
+     *
+     * @return list<string>
+     */
+    public function namespaces(): array
+    {
+        $namespaces = [];
+
+        foreach ($this->byNamespace as $symbols) {
+            foreach ($symbols as $symbol) {
+                $namespaces[] = NamespacePath::namespaceOf($symbol->fullyQualifiedName);
+                break;
+            }
+        }
+
+        return $namespaces;
     }
 
     public function findByFqn(string $fqn): ?Symbol
@@ -86,6 +118,12 @@ final class SymbolIndex
                 ));
                 if ($this->byName[$symbol->name] === []) {
                     unset($this->byName[$symbol->name]);
+                }
+
+                $namespace = strtolower(NamespacePath::namespaceOf($fqn));
+                unset($this->byNamespace[$namespace][$fqn]);
+                if (($this->byNamespace[$namespace] ?? []) === []) {
+                    unset($this->byNamespace[$namespace]);
                 }
             }
         }
