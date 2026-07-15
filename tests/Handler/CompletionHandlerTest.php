@@ -282,6 +282,33 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testImportedPrefixContributesQualifiedChildren(): void
+    {
+        $this->openFixture('Namespacing/PrefixImportUser.php');
+        $this->openFixture('Namespacing/PrefixImportChildren.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/PrefixImportConsumer.php', 'imported_prefix');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'App\Model\User',
+            $byLabel['User'] ?? null,
+            'The imported class itself is still offered',
+        );
+        self::assertSame(
+            'App\Model\User\Repository',
+            $byLabel['User\Repository'] ?? null,
+            'A class in the namespace the import also names is offered as a qualified child of it',
+        );
+        self::assertArrayNotHasKey(
+            'User\Contract',
+            $byLabel,
+            'A child that is an interface is still excluded from an instantiable position',
+        );
+    }
+
     public function testStaticCompletionResolvesImportedClassName(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/MultiNamespaceImports.php', 'imported_static');
