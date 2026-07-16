@@ -10,7 +10,7 @@ This document tracks the current state of code completion in php-lsp.
 | Typed variable member access | `$user->` or `$user?->` | Public methods and properties when type is known (parameter types, `new` expressions) | ✅ Working |
 | Variable completions | `$log` | Local variables, parameters, `$this` in methods, and file-level variables in procedural code | ✅ Working |
 | Static access | `ClassName::` | Static methods, constants, static properties (visibility-aware) | ✅ Working |
-| `new` expression | `new ` | Classes from composer classmap | ✅ Working |
+| `new` expression | `new ` | Instantiable classes from imports + workspace index, with namespace-correct references | ✅ Working |
 | Function calls | identifier at expression start | Built-in PHP functions + file-local functions | ✅ Working |
 | Keywords | `fore` → `foreach` | Context-aware PHP keywords (statement/expression start, class body, after visibility) | ✅ Working |
 | `implements` list | `class Foo implements Ba` | Interfaces only (from imports + workspace index); classes, traits, and functions excluded | ✅ Working |
@@ -29,6 +29,17 @@ plus those inherited through the parent chain, used traits (including traits tha
 use other traits), and implemented or extended interfaces at any depth. This holds
 whether the type is read from an open document, parsed from disk, or reflected from
 a built-in.
+
+Class-like completions are **namespace-correct**: a candidate is offered only where a
+reference resolves to it at the cursor, and is labelled with that reference. A class in
+the current namespace is offered by its short name; one in a sub-namespace as a relative
+reference (`Sub\Thing`); and a class in the namespace an import opens as a prefixed
+reference (`use App\Model\User;` also offers `User\Repository`). A class with no
+unqualified reference at the cursor — an unrelated, unimported namespace — is not offered,
+rather than offered as a bare name that would insert broken code; reaching it is navigation
+(`\Other\Thing`) or an import. Built-in and vendor class-likes are not sourced here yet;
+they are reached by navigation (#330). Functions (#239) and constants (#317) get the same
+namespace-correct treatment in their own issues.
 
 ## Limitations
 

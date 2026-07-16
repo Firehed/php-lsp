@@ -211,6 +211,94 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('NAME', $labels);
     }
 
+    public function testUnrelatedNamespaceClassNotOfferedUnqualified(): void
+    {
+        $this->openFixture('Namespacing/UnrelatedNamespaceClass.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'unqualified_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        // label => the FQCN it resolves to, so the reference is verified against
+        // the actual class, not just its spelling.
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'App\Theme',
+            $byLabel['Theme'] ?? null,
+            'A class in the current namespace is offered bare and resolves back to itself',
+        );
+        self::assertNotContains(
+            'Other\Thing',
+            $byLabel,
+            'The unrelated-namespace class is offered under no reference at all, not merely not as a bare name',
+        );
+    }
+
+    public function testSubNamespaceClassOfferedWithRelativeReference(): void
+    {
+        $this->openFixture('Namespacing/SubNamespaceClass.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'subnamespace_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'App\Sub\Thing',
+            $byLabel['Sub\Thing'] ?? null,
+            'A sub-namespace class is offered as the relative reference that resolves to exactly it',
+        );
+        self::assertArrayNotHasKey(
+            'Thing',
+            $byLabel,
+            'It must not be offered bare, which would resolve to a different, nonexistent class',
+        );
+    }
+
+    public function testSameShortNameInTwoNamespacesEachResolvesDistinctly(): void
+    {
+        $this->openFixture('Namespacing/SubNamespaceClass.php');
+        $this->openFixture('Namespacing/SecondSubNamespaceClass.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'subnamespace_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'App\Sub\Thing',
+            $byLabel['Sub\Thing'] ?? null,
+            'Two classes share the short name Thing; each is offered under the reference that resolves to it',
+        );
+        self::assertSame(
+            'App\Deep\Thing',
+            $byLabel['Deep\Thing'] ?? null,
+            'The other Thing resolves to its own FQCN under its own reference',
+        );
+        self::assertArrayNotHasKey(
+            'Thing',
+            $byLabel,
+            'Neither is offered bare, which would be ambiguous and resolve to neither',
+        );
+    }
+
+    public function testBuiltinClassLikesAreNotOfferedInNamespacedNew(): void
+    {
+        // No dependencies opened: only built-ins exist, and #331 sources classes
+        // from the workspace and imports — never from reflection or vendor.
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'builtin_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertNotContains(
+            'Exception',
+            $labels,
+            'A built-in class-like is not a candidate here; reaching it is navigation (\\Exception), owned by #330',
+        );
+    }
+
     public function testStaticCompletionResolvesImportedClassName(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/MultiNamespaceImports.php', 'imported_static');
@@ -390,7 +478,7 @@ class CompletionHandlerTest extends TestCase
         // Add a class to the index
         $this->symbolIndex->add(new Symbol(
             'MyIndexedClass',
-            'App\MyIndexedClass',
+            'MyIndexedClass',
             SymbolKind::Class_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
@@ -420,13 +508,13 @@ class CompletionHandlerTest extends TestCase
         // Add an interface and a class to the index
         $this->symbolIndex->add(new Symbol(
             'MyInterface',
-            'App\MyInterface',
+            'MyInterface',
             SymbolKind::Interface_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
         $this->symbolIndex->add(new Symbol(
             'MyClass',
-            'App\MyClass',
+            'MyClass',
             SymbolKind::Class_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
@@ -476,19 +564,19 @@ class CompletionHandlerTest extends TestCase
         // Add various symbol types to the index
         $this->symbolIndex->add(new Symbol(
             'MyClass',
-            'App\MyClass',
+            'MyClass',
             SymbolKind::Class_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
         $this->symbolIndex->add(new Symbol(
             'MyInterface',
-            'App\MyInterface',
+            'MyInterface',
             SymbolKind::Interface_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
         $this->symbolIndex->add(new Symbol(
             'MyTrait',
-            'App\MyTrait',
+            'MyTrait',
             SymbolKind::Trait_,
             new Location('file:///other.php', 0, 0, 0, 0),
         ));
