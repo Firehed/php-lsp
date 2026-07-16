@@ -109,8 +109,11 @@ class NamespaceCandidatesTest extends TestCase
         );
     }
 
-    public function testNodeInsertsBareSegmentViaTextEdit(): void
+    public function testNodeInsertsSegmentWithTrailingSlashViaTextEdit(): void
     {
+        // The separator must be in the inserted text, not just the label: clients
+        // display the text they insert (Vim/ale shows textEdit.newText, not label),
+        // so a bare segment would render indistinguishably from a same-named class.
         $candidates = new NamespaceCandidates(
             self::catalog(['Psr' => new NamespaceContents(['Psr\Http'], [])]),
             self::createStub(CodeResolver::class),
@@ -122,11 +125,10 @@ class NamespaceCandidatesTest extends TestCase
         self::assertSame(
             [
                 'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 2]],
-                'newText' => 'Http',
+                'newText' => 'Http\\',
             ],
             $items[0]['textEdit'] ?? null,
-            'A node inserts the bare segment via a textEdit replacing the typed partial segment, so the '
-                . 'user types the next separator to navigate deeper',
+            'A node inserts the next segment with its trailing separator, replacing the typed partial segment',
         );
     }
 

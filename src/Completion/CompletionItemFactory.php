@@ -113,12 +113,13 @@ final class CompletionItemFactory
     }
 
     /**
-     * A namespace offered as a navigable node. The label shows the reference plus a
-     * separator (`Http\`) as an affordance, but the textEdit inserts the bare
-     * reference — so accepting it leaves `\Psr\Http` (cursor before the next `\`).
-     * The user then types `\`, an advertised trigger character, and completion
-     * re-fires to walk one segment deeper: portable, with no client-specific
-     * command.
+     * A namespace offered as a navigable node. Both the label and the inserted text
+     * are the reference plus a trailing separator (`Http\`): the separator has to be
+     * in the inserted text, not just the label, because clients display the text
+     * they insert — e.g. Vim/ale sets the menu entry's `word` to `textEdit.newText`
+     * and ignores `label`, so a bare segment would render indistinguishably from a
+     * same-named class. Accepting the node leaves the cursor after the `\`; typing
+     * the next segment fires completion one level deeper.
      *
      * The reference is normally the next segment (`Http`), but an inlined grandchild
      * carries its qualified path (`Small\Deep`) so it navigates from the current
@@ -135,7 +136,7 @@ final class CompletionItemFactory
             'filterText' => $reference,
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
-                'newText' => $reference,
+                'newText' => $reference . '\\',
             ],
         ];
     }

@@ -47,9 +47,12 @@ same namespace-correct treatment in their own issues.
 Typing an absolute name (`new \Ps`, `catch (\E`, `function f(\Ps`) walks the namespace
 tree, sourced from the catalog so vendor and built-in symbols appear without their files
 being open. At each step the current namespace contributes both its class-likes (offered
-by leaf name) and its child namespaces as `Module` nodes. A node inserts the bare segment;
-typing the trailing `\` — an advertised trigger character — re-fires completion one level
-deeper, with no client-specific command. A namespace with five or fewer members is inlined
+by leaf name) and its child namespaces as `Module` nodes. A node inserts the next segment
+with its trailing separator (`User\`) — the separator is in the inserted text, not just the
+label, because clients render the text they insert (Vim/ale shows `textEdit.newText`, not
+`label`), so a bare segment would be indistinguishable from a same-named class. Typing the
+following segment then fires completion one level deeper. A namespace with five or fewer
+members is inlined
 (its contents offered directly, qualified by the segment) instead of a node, so a class and
 a same-named companion namespace are offered side by side. Directly-insertable symbols rank
 above nodes, and the result is capped with `isIncomplete` set so the client re-queries as
