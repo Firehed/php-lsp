@@ -45,6 +45,15 @@ interface CodeResolver
     ): array;
 
     /**
+     * Check if a name resolves to a real class-like (class, interface, trait, or
+     * enum). Unlike the position predicates below, this is an existence check: it
+     * exists to reject catalog directory-listing phantoms (a `functions.php`
+     * surfaced as a coarse class-like) before a position filter, which is
+     * optimistic for unknown names, would let them through.
+     */
+    public function isClassLike(ClassName $className): bool;
+
+    /**
      * Check if a class can be instantiated with `new`.
      */
     public function isInstantiable(ClassName $className): bool;

@@ -188,6 +188,16 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
+     * Check if a name resolves to a real class-like.
+     * Returns false for unknown names: a phantom must be dropped, so this cannot
+     * share the optimism of the position predicates.
+     */
+    public function isClassLike(ClassName $className): bool
+    {
+        return $this->classRepository->get($className) !== null;
+    }
+
+    /**
      * Check if a class can be instantiated with `new`.
      * Returns true for unknown classes (optimistic filtering).
      */
