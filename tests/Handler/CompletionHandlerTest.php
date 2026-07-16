@@ -415,10 +415,10 @@ class CompletionHandlerTest extends TestCase
                 $modules[] = $item['label'];
             }
         }
-        self::assertContains(
-            'Psr\\',
-            $modules,
-            "Namespace navigation fires in the {$marker} position",
+        $psrNodes = array_filter($modules, static fn(string $label): bool => str_starts_with($label, 'Psr\\'));
+        self::assertNotEmpty(
+            $psrNodes,
+            "Namespace navigation fires in the {$marker} position, offering a Psr-rooted node",
         );
     }
 
@@ -446,10 +446,10 @@ class CompletionHandlerTest extends TestCase
                 $modules[] = $item['label'];
             }
         }
-        self::assertContains(
-            'Psr\\',
-            $modules,
-            'Typing `new \\Ps` navigates from the global namespace and offers the Psr\\ node',
+        $psrNodes = array_filter($modules, static fn(string $label): bool => str_starts_with($label, 'Psr\\'));
+        self::assertNotEmpty(
+            $psrNodes,
+            'Typing `new \\Ps` navigates from the global namespace and offers a Psr-rooted node',
         );
     }
 

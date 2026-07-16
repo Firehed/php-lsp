@@ -87,15 +87,21 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forClass(string $reference, string $fullyQualifiedName, Range $replaceRange): array
-    {
+    public static function forClass(
+        string $reference,
+        string $fullyQualifiedName,
+        Range $replaceRange,
+        ?string $filterText = null,
+    ): array {
         return [
             'label' => $reference,
             'kind' => CompletionItemKind::Class_->value,
             'detail' => $fullyQualifiedName,
-            // Clients filter on the short name, so a relative reference like
-            // `Sub\Thing` still matches when only `Thing` has been typed.
-            'filterText' => NamespacePath::shortNameOf($reference),
+            // Clients filter on the short name by default, so a relative reference
+            // like `Sub\Thing` still matches when only `Thing` has been typed. An
+            // inlined navigation entry overrides this with its qualified reference,
+            // since the user reaches it by typing the parent segment, not the leaf.
+            'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
             // Replace the whole typed token with the reference, so a qualified
             // name never duplicates the segments already on screen.
             'textEdit' => [
@@ -106,26 +112,29 @@ final class CompletionItemFactory
     }
 
     /**
-     * A namespace offered as a navigable node. The label shows the next segment
-     * plus a separator (`Http\`) as an affordance, but the textEdit inserts the
-     * bare segment — so accepting it leaves `\Psr\Http` (cursor before the next
-     * `\`). The user then types `\`, an advertised trigger character, and
-     * completion re-fires to walk one segment deeper: portable, with no
-     * client-specific command.
+     * A namespace offered as a navigable node. The label shows the reference plus a
+     * separator (`Http\`) as an affordance, but the textEdit inserts the bare
+     * reference — so accepting it leaves `\Psr\Http` (cursor before the next `\`).
+     * The user then types `\`, an advertised trigger character, and completion
+     * re-fires to walk one segment deeper: portable, with no client-specific
+     * command.
+     *
+     * The reference is normally the next segment (`Http`), but an inlined grandchild
+     * carries its qualified path (`Small\Deep`) so it navigates from the current
+     * point without duplicating segments.
      *
      * @return CompletionItem
      */
-    public static function forNamespace(string $fullyQualifiedName, Range $replaceRange): array
+    public static function forNamespace(string $reference, string $fullyQualifiedName, Range $replaceRange): array
     {
-        $segment = NamespacePath::shortNameOf($fullyQualifiedName);
         return [
-            'label' => $segment . '\\',
+            'label' => $reference . '\\',
             'kind' => CompletionItemKind::Module->value,
             'detail' => $fullyQualifiedName,
-            'filterText' => $segment,
+            'filterText' => $reference,
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
-                'newText' => $segment,
+                'newText' => $reference,
             ],
         ];
     }
