@@ -1351,6 +1351,32 @@ final class SymbolResolverTest extends TestCase
         self::assertTrue($this->resolver->isInstantiable(new ClassName('NonExistent\\Unknown')));
     }
 
+    public function testIsClassLikeReturnsTrueForEveryClassLikeKind(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Domain/Entity.php');
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        $this->openFixture('src/Enum/Status.php');
+
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Domain\\User')), 'a class is a class-like');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Domain\\Entity')), 'an interface is a class-like');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Traits\\SingletonTrait')), 'a trait is a class-like');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Enum\\Status')), 'an enum is a class-like');
+    }
+
+    public function testIsClassLikeReturnsFalseForNameWithNoClassLikeBehindIt(): void
+    {
+        // A catalog directory listing reports every .php file as a coarse
+        // class-like without parsing it, so a functions.php arrives as a phantom
+        // name that resolves to nothing. It must not be treated as a class-like.
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        self::assertFalse($this->resolver->isClassLike(new ClassName('NonExistent\\Unknown')), 'a name with no class-like behind it is not a class-like');
+    }
+
     public function testIsValidTypeHintReturnsTrueForClass(): void
     {
         $this->openFixture('src/Domain/User.php');
