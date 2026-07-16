@@ -19,6 +19,7 @@ This document tracks the current state of code completion in php-lsp.
 | `catch` clause | `catch (Ba` or `catch (Foo \| Ba` | Throwable types only (from imports + workspace index): `Throwable` and any class or interface extending/implementing it. Multi-catch (`\|`-separated) supported; non-throwable types, functions, and keywords excluded | ✅ Working |
 | Attribute position | `#[Ro` | Attribute classes only (from imports + workspace index); classes, interfaces, traits, enums, and functions excluded. Grouped (`#[A, Ba`) supported; target-aware filtering is not yet (#252) | ✅ Working |
 | Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
+| Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Absolute (`\`-rooted) names only; unqualified/imported prefixes are #339 | ✅ Working |
 
 All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
@@ -37,9 +38,26 @@ reference (`Sub\Thing`); and a class in the namespace an import opens as a prefi
 reference (`use App\Model\User;` also offers `User\Repository`). A class with no
 unqualified reference at the cursor — an unrelated, unimported namespace — is not offered,
 rather than offered as a bare name that would insert broken code; reaching it is navigation
-(`\Other\Thing`) or an import. Built-in and vendor class-likes are not sourced here yet;
-they are reached by navigation (#330). Functions (#239) and constants (#317) get the same
-namespace-correct treatment in their own issues.
+(`\Other\Thing`) or an import. Built-in and vendor class-likes are reached by namespace
+navigation on an absolute name (see below). Functions (#239) and constants (#317) get the
+same namespace-correct treatment in their own issues.
+
+### Namespace navigation
+
+Typing an absolute name (`new \Ps`, `catch (\E`, `function f(\Ps`) walks the namespace
+tree, sourced from the catalog so vendor and built-in symbols appear without their files
+being open. At each step the current namespace contributes both its class-likes (offered
+by leaf name) and its child namespaces as `Module` nodes. A node inserts the bare segment;
+typing the trailing `\` — an advertised trigger character — re-fires completion one level
+deeper, with no client-specific command. A namespace with five or fewer members is inlined
+(its contents offered directly, qualified by the segment) instead of a node, so a class and
+a same-named companion namespace are offered side by side. Directly-insertable symbols rank
+above nodes, and the result is capped with `isIncomplete` set so the client re-queries as
+the prefix narrows. Catalog candidates are resolved before being offered, so a
+`functions.php` picked up from a directory listing is never offered as a class.
+
+Navigation fires on **absolute** (`\`-rooted) names. Reaching a namespace by an unqualified
+or imported prefix (`new Env\R`) is #339.
 
 ## Limitations
 
