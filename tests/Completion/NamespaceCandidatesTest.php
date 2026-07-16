@@ -85,6 +85,28 @@ class NamespaceCandidatesTest extends TestCase
         );
     }
 
+    public function testNodeInsertsBareSegmentViaTextEdit(): void
+    {
+        $candidates = new NamespaceCandidates(
+            self::catalogWith(['Psr\Http']),
+            self::createStub(CodeResolver::class),
+        );
+
+        $items = $candidates->find('Psr', 'Ht', 0, 2, ClassCandidateFilter::Any);
+
+        self::assertCount(1, $items);
+        self::assertSame(
+            'Http',
+            $items[0]['textEdit']['newText'] ?? null,
+            'A node inserts the bare segment, so the user types the next separator to navigate deeper',
+        );
+        self::assertSame(
+            ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 2]],
+            $items[0]['textEdit']['range'] ?? null,
+            'The textEdit replaces just the partial segment the user typed',
+        );
+    }
+
     public function testOffersClassLikesButNotOtherKinds(): void
     {
         $catalog = self::catalogWith([], [
