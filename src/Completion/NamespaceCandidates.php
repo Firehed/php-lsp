@@ -51,7 +51,7 @@ final class NamespaceCandidates
         $items = [];
         foreach ($contents->childNamespaces as $child) {
             if (PrefixMatcher::matches(NamespacePath::shortNameOf($child), $prefix)) {
-                $items[] = CompletionItemFactory::forNamespace($child);
+                $items[] = CompletionItemFactory::forNamespace($child, $replaceRange);
             }
         }
         // The classes declared directly in the navigated namespace, discovered on

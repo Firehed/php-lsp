@@ -106,19 +106,27 @@ final class CompletionItemFactory
     }
 
     /**
-     * A namespace offered as a navigable node. The label is the next segment plus
-     * a separator (`Http\`), so accepting it leaves the cursor on the trailing
-     * `\` — an advertised trigger character — and completion re-fires to walk one
-     * segment deeper, with no client-specific command.
+     * A namespace offered as a navigable node. The label shows the next segment
+     * plus a separator (`Http\`) as an affordance, but the textEdit inserts the
+     * bare segment — so accepting it leaves `\Psr\Http` (cursor before the next
+     * `\`). The user then types `\`, an advertised trigger character, and
+     * completion re-fires to walk one segment deeper: portable, with no
+     * client-specific command.
      *
      * @return CompletionItem
      */
-    public static function forNamespace(string $fullyQualifiedName): array
+    public static function forNamespace(string $fullyQualifiedName, Range $replaceRange): array
     {
+        $segment = NamespacePath::shortNameOf($fullyQualifiedName);
         return [
-            'label' => NamespacePath::shortNameOf($fullyQualifiedName) . '\\',
+            'label' => $segment . '\\',
             'kind' => CompletionItemKind::Module->value,
             'detail' => $fullyQualifiedName,
+            'filterText' => $segment,
+            'textEdit' => [
+                'range' => $replaceRange->toArray(),
+                'newText' => $segment,
+            ],
         ];
     }
 
