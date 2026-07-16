@@ -397,6 +397,42 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    #[DataProvider('provideAbsoluteNavigationMarkers')]
+    public function testAbsoluteNavigationFiresInEveryClassPosition(string $marker): void
+    {
+        // `new \Ps` already navigates; navigation must fire the same way in every
+        // other absolute class position (catch, parameter type, return type). The
+        // Psr\ node is a child namespace, offered regardless of the position filter,
+        // so its presence proves navigation ran there.
+        $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', $marker);
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $modules = [];
+        foreach ($result['items'] as $item) {
+            if (($item['kind'] ?? null) === CompletionItemKind::Module->value) {
+                $modules[] = $item['label'];
+            }
+        }
+        self::assertContains(
+            'Psr\\',
+            $modules,
+            "Namespace navigation fires in the {$marker} position",
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAbsoluteNavigationMarkers(): iterable
+    {
+        yield 'catch clause' => ['catch_nav'];
+        yield 'parameter type' => ['param_nav'];
+        yield 'return type' => ['return_nav'];
+    }
+
     public function testBackslashNavigationOffersNamespaceNodes(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'nav_global');
