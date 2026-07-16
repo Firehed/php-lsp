@@ -67,7 +67,7 @@ final class ClassCandidates
                 continue;
             }
             /** @var class-string $fqcn */
-            if (!$this->passesResolutionFilter(new ClassName($fqcn), $filter)) {
+            if (!$filter->accepts(new ClassName($fqcn), $this->codeResolver)) {
                 continue;
             }
             $items[] = CompletionItemFactory::forClass($shortName, $fqcn, $replaceRange);
@@ -91,7 +91,7 @@ final class ClassCandidates
         foreach ($symbols as $symbol) {
             /** @var class-string $fqcn */
             $fqcn = $symbol->fullyQualifiedName;
-            if (!$this->passesResolutionFilter(new ClassName($fqcn), $filter)) {
+            if (!$filter->accepts(new ClassName($fqcn), $this->codeResolver)) {
                 continue;
             }
             // The index is keyed by short name, but a class in another namespace
@@ -106,25 +106,6 @@ final class ClassCandidates
         }
 
         return $items;
-    }
-
-    /**
-     * The same semantic rule applies to both sources: a type that is invalid in
-     * the target position is excluded regardless of whether it came from an
-     * import or the index. The index kind pre-filter is an optimization, not a
-     * separate policy.
-     */
-    private function passesResolutionFilter(ClassName $className, ClassCandidateFilter $filter): bool
-    {
-        return match ($filter) {
-            ClassCandidateFilter::Any => true,
-            ClassCandidateFilter::Instantiable => $this->codeResolver->isInstantiable($className),
-            ClassCandidateFilter::TypeHint => $this->codeResolver->isValidTypeHint($className),
-            ClassCandidateFilter::Interface_ => $this->codeResolver->isInterface($className),
-            ClassCandidateFilter::ExtendableClass => $this->codeResolver->isExtendableClass($className),
-            ClassCandidateFilter::Throwable => $this->codeResolver->isThrowable($className),
-            ClassCandidateFilter::Attribute => $this->codeResolver->isAttribute($className),
-        };
     }
 
     /**

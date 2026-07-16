@@ -96,7 +96,10 @@ final class Server
             $this->documentManager,
             $symbolResolver,
             new ClassCandidates($symbolIndex, $symbolResolver),
-            new NamespaceCandidates(NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot)),
+            new NamespaceCandidates(
+                NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
+                $symbolResolver,
+            ),
             new FunctionCandidates($symbolResolver),
             new KeywordCandidates(),
             new VariableCandidates($symbolResolver),

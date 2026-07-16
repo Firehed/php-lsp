@@ -241,7 +241,10 @@ final class CompletionHandler implements HandlerInterface
             $character,
             ClassCandidateFilter::Instantiable,
         );
-        $items = array_merge($items, $this->namespaceNavigationItems($prefix, $line, $character));
+        $items = array_merge(
+            $items,
+            $this->namespaceNavigationItems($prefix, $line, $character, ClassCandidateFilter::Instantiable),
+        );
 
         return $this->deduplicateCompletions($items);
     }
@@ -250,12 +253,17 @@ final class CompletionHandler implements HandlerInterface
      * Namespace nodes and classes when the cursor is on a fully-qualified name
      * (`new \Ps`), so the user can walk the tree into vendor and built-in
      * namespaces. The leading `\` roots the walk at the global namespace; the
-     * segment already typed filters the children.
+     * segment already typed filters the children, and $filter keeps the classes
+     * valid for the position.
      *
      * @return list<CompletionItem>
      */
-    private function namespaceNavigationItems(string $prefix, int $line, int $character): array
-    {
+    private function namespaceNavigationItems(
+        string $prefix,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
         if (!str_starts_with($prefix, '\\')) {
             return [];
         }
@@ -267,6 +275,7 @@ final class CompletionHandler implements HandlerInterface
             NamespacePath::shortNameOf($qualified),
             $line,
             $character,
+            $filter,
         );
     }
 

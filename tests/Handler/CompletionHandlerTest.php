@@ -84,7 +84,10 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $symbolResolver,
             new ClassCandidates($this->symbolIndex, $symbolResolver),
-            new NamespaceCandidates(NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures')),
+            new NamespaceCandidates(
+                NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures'),
+                $symbolResolver,
+            ),
             new FunctionCandidates($symbolResolver),
             new KeywordCandidates(),
             new VariableCandidates($symbolResolver),
@@ -353,6 +356,24 @@ class CompletionHandlerTest extends TestCase
             'Fixtures\Domain\User',
             $byLabel['User'] ?? null,
             'A class that was never opened is offered, discovered on disk via the catalog',
+        );
+    }
+
+    public function testNavigationExcludesNonInstantiableOnDiskClassLikes(): void
+    {
+        // Psr\Http\Message\RequestInterface exists on disk (fixtures vendor) but is
+        // an interface — invalid after `new`. It must be filtered by the same
+        // predicate the index and imports use, not offered just because the catalog
+        // discovered it.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CatalogProbe.php', 'ondisk_interface');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertNotContains(
+            'RequestInterface',
+            array_column($result['items'], 'label'),
+            'An interface discovered on disk is not offered after `new`',
         );
     }
 

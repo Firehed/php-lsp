@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Protocol\Range;
+use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\NameKind;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
@@ -23,16 +26,24 @@ final class NamespaceCandidates
 {
     public function __construct(
         private readonly NamespaceCatalog $catalog,
+        private readonly CodeResolver $codeResolver,
     ) {
     }
 
     /**
-     * The child namespaces of $namespace whose next segment matches $prefix.
+     * The child namespaces of $namespace, plus the class-likes declared in it that
+     * are valid in the target position — matched by their next segment against
+     * $prefix.
      *
      * @return list<CompletionItem>
      */
-    public function find(string $namespace, string $prefix, int $line, int $character): array
-    {
+    public function find(
+        string $namespace,
+        string $prefix,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
         $contents = $this->catalog->childrenOf($namespace);
         // The partial segment the user is typing; a selection replaces just it.
         $replaceRange = Range::onLine($line, $character - strlen($prefix), $character);
@@ -46,14 +57,20 @@ final class NamespaceCandidates
         // The classes declared directly in the navigated namespace, discovered on
         // disk through the catalog. The reference is the leaf name — the earlier
         // segments are already typed — and the textEdit replaces the partial one.
+        // Validity in the position is the same rule the index and imports use.
         foreach ($contents->symbols as $symbol) {
-            if (PrefixMatcher::matches($symbol->shortName(), $prefix)) {
-                $items[] = CompletionItemFactory::forClass(
-                    $symbol->shortName(),
-                    $symbol->fullyQualifiedName,
-                    $replaceRange,
-                );
+            if ($symbol->kind !== NameKind::ClassLike) {
+                continue;
             }
+            /** @var class-string $fqcn */
+            $fqcn = $symbol->fullyQualifiedName;
+            if (!PrefixMatcher::matches($symbol->shortName(), $prefix)) {
+                continue;
+            }
+            if (!$filter->accepts(new ClassName($fqcn), $this->codeResolver)) {
+                continue;
+            }
+            $items[] = CompletionItemFactory::forClass($symbol->shortName(), $fqcn, $replaceRange);
         }
 
         return $items;
