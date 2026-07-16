@@ -67,7 +67,14 @@ final class NamespaceCandidates
             if (!PrefixMatcher::matches($symbol->shortName(), $prefix)) {
                 continue;
             }
-            if (!$filter->accepts(new ClassName($fqcn), $this->codeResolver)) {
+            $className = new ClassName($fqcn);
+            // The catalog reports a coarse class-like for every .php file without
+            // parsing it, so a functions.php surfaces as a phantom. Drop it before
+            // the position filter, which is optimistic for names it cannot resolve.
+            if (!$this->codeResolver->isClassLike($className)) {
+                continue;
+            }
+            if (!$filter->accepts($className, $this->codeResolver)) {
                 continue;
             }
             $items[] = CompletionItemFactory::forClass($symbol->shortName(), $fqcn, $replaceRange);
