@@ -6,23 +6,28 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Utility\DocblockParser;
+use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * Builds LSP completion items. Centralizing construction here keeps item shape,
  * kind assignment, and documentation extraction consistent across every
  * completion source.
  *
+ * @phpstan-import-type LspRange from Range
  * @phpstan-type CompletionItem array{
  *   label: string,
  *   kind?: int,
  *   detail?: string,
  *   documentation?: string,
+ *   filterText?: string,
+ *   textEdit?: array{range: LspRange, newText: string},
  * }
  */
 final class CompletionItemFactory
@@ -82,12 +87,21 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forClass(string $shortName, string $fullyQualifiedName): array
+    public static function forClass(string $reference, string $fullyQualifiedName, Range $replaceRange): array
     {
         return [
-            'label' => $shortName,
+            'label' => $reference,
             'kind' => CompletionItemKind::Class_->value,
             'detail' => $fullyQualifiedName,
+            // Clients filter on the short name, so a relative reference like
+            // `Sub\Thing` still matches when only `Thing` has been typed.
+            'filterText' => NamespacePath::shortNameOf($reference),
+            // Replace the whole typed token with the reference, so a qualified
+            // name never duplicates the segments already on screen.
+            'textEdit' => [
+                'range' => $replaceRange->toArray(),
+                'newText' => $reference,
+            ],
         ];
     }
 
