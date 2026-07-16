@@ -21,27 +21,39 @@ use PHPUnit\Framework\TestCase;
 class NamespaceCandidatesTest extends TestCase
 {
     /**
-     * @param list<string> $childNamespaces
-     * @param list<CatalogSymbol> $symbols
+     * A namespace-aware catalog: each namespace maps to its contents, and any
+     * namespace not in the map is empty. Navigation peeks one level into a child
+     * namespace to decide node-vs-inline, so children must resolve independently.
+     *
+     * @param array<string, NamespaceContents> $byNamespace
      */
-    private static function catalogWith(array $childNamespaces, array $symbols = []): NamespaceCatalog
+    private static function catalog(array $byNamespace): NamespaceCatalog
     {
-        return new class ($childNamespaces, $symbols) implements NamespaceCatalog {
-            /**
-             * @param list<string> $childNamespaces
-             * @param list<CatalogSymbol> $symbols
-             */
-            public function __construct(
-                private readonly array $childNamespaces,
-                private readonly array $symbols,
-            ) {
+        return new class ($byNamespace) implements NamespaceCatalog {
+            /** @param array<string, NamespaceContents> $byNamespace */
+            public function __construct(private readonly array $byNamespace)
+            {
             }
 
             public function childrenOf(string $namespace): NamespaceContents
             {
-                return new NamespaceContents($this->childNamespaces, $this->symbols);
+                return $this->byNamespace[$namespace] ?? new NamespaceContents([], []);
             }
         };
+    }
+
+    /**
+     * More class-likes than the inline threshold, so a namespace holding them is
+     * offered as a node rather than inlined.
+     *
+     * @return list<CatalogSymbol>
+     */
+    private static function manyClassLikes(string $namespace): array
+    {
+        return array_map(
+            static fn(int $i): CatalogSymbol => new CatalogSymbol($namespace . '\\C' . $i, NameKind::ClassLike),
+            range(1, 6),
+        );
     }
 
     /**
@@ -59,7 +71,7 @@ class NamespaceCandidatesTest extends TestCase
     public function testOffersChildNamespacesAsModuleNodes(): void
     {
         $candidates = new NamespaceCandidates(
-            self::catalogWith(['Psr\Http', 'Psr\Log']),
+            self::catalog(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
             self::createStub(CodeResolver::class),
         );
 
@@ -84,7 +96,7 @@ class NamespaceCandidatesTest extends TestCase
     public function testFiltersChildrenByTheSegmentPrefix(): void
     {
         $candidates = new NamespaceCandidates(
-            self::catalogWith(['Psr\Http', 'Psr\Log']),
+            self::catalog(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
             self::createStub(CodeResolver::class),
         );
 
@@ -100,7 +112,7 @@ class NamespaceCandidatesTest extends TestCase
     public function testNodeInsertsBareSegmentViaTextEdit(): void
     {
         $candidates = new NamespaceCandidates(
-            self::catalogWith(['Psr\Http']),
+            self::catalog(['Psr' => new NamespaceContents(['Psr\Http'], [])]),
             self::createStub(CodeResolver::class),
         );
 
@@ -120,10 +132,10 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testOffersClassLikesButNotOtherKinds(): void
     {
-        $catalog = self::catalogWith([], [
+        $catalog = self::catalog(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\helper', NameKind::Function_),
-        ]);
+        ])]);
         // Any accepts every class-like, so only the kind gate is exercised here.
         $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
 
@@ -135,10 +147,10 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testFiltersSymbolsByTheSegmentPrefix(): void
     {
-        $catalog = self::catalogWith([], [
+        $catalog = self::catalog(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\Gadget', NameKind::ClassLike),
-        ]);
+        ])]);
         $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
 
         $labels = array_column($candidates->find('App', 'Wi', 0, 2, ClassCandidateFilter::Any), 'label');
@@ -148,7 +160,9 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testExcludesClassLikesTheFilterRejects(): void
     {
-        $catalog = self::catalogWith([], [new CatalogSymbol('App\Contract', NameKind::ClassLike)]);
+        $catalog = self::catalog(['App' => new NamespaceContents([], [
+            new CatalogSymbol('App\Contract', NameKind::ClassLike),
+        ])]);
         // isClassLike is true (a real class-like) but isInstantiable is false,
         // standing in for an interface after `new`: the position filter rejects
         // it, via the same predicate the index and imports use.
@@ -166,7 +180,9 @@ class NamespaceCandidatesTest extends TestCase
         // The catalog reports every .php file as a coarse class-like without
         // parsing it, so a functions.php arrives as a phantom name. The existence
         // gate drops it even where the position (Any) accepts anything.
-        $catalog = self::catalogWith([], [new CatalogSymbol('App\functions', NameKind::ClassLike)]);
+        $catalog = self::catalog(['App' => new NamespaceContents([], [
+            new CatalogSymbol('App\functions', NameKind::ClassLike),
+        ])]);
         $resolver = self::createStub(CodeResolver::class);
         $resolver->method('isClassLike')->willReturn(false);
         $candidates = new NamespaceCandidates($catalog, $resolver);
@@ -175,6 +191,84 @@ class NamespaceCandidatesTest extends TestCase
             [],
             $candidates->find('App', '', 0, 0, ClassCandidateFilter::Any),
             'A catalog phantom with no class-like behind the name is never offered',
+        );
+    }
+
+    public function testInlinesSmallChildNamespaceAlongsideItsSameNamedClass(): void
+    {
+        // App\Env is both a class and a small namespace. The class and the
+        // namespace's contents are offered directly; the Env\ node is omitted,
+        // since stepping through a handful of entries is needless.
+        $catalog = self::catalog([
+            'App' => new NamespaceContents(['App\Env'], [new CatalogSymbol('App\Env', NameKind::ClassLike)]),
+            'App\Env' => new NamespaceContents([], [new CatalogSymbol('App\Env\Repository', NameKind::ClassLike)]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
+
+        self::assertContains('Env', $labels, 'The same-named class is offered');
+        self::assertContains('Env\Repository', $labels, 'A small namespace is inlined, qualified by its segment');
+        self::assertNotContains('Env\\', $labels, 'The node is omitted when the namespace is inlined');
+    }
+
+    public function testInlinedEntryFiltersOnItsQualifiedReference(): void
+    {
+        // The user reaches an inlined entry by typing the parent segment (E ->
+        // Env), so the entry must filter on the qualified reference, not its leaf,
+        // or a client filtering locally would hide it.
+        $catalog = self::catalog([
+            'App' => new NamespaceContents(['App\Env'], []),
+            'App\Env' => new NamespaceContents([], [new CatalogSymbol('App\Env\Repository', NameKind::ClassLike)]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $byLabel = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'filterText', 'label');
+
+        self::assertSame(
+            'Env\Repository',
+            $byLabel['Env\Repository'] ?? null,
+            'An inlined entry filters on its qualified reference so typing the parent segment keeps it',
+        );
+    }
+
+    public function testInlinesGrandchildNamespaceAsQualifiedNode(): void
+    {
+        // Inlining is one level: a small namespace exposes a grandchild namespace
+        // as a qualified node to step into, not by recursing into it.
+        $catalog = self::catalog([
+            'App' => new NamespaceContents(['App\Small'], []),
+            'App\Small' => new NamespaceContents(['App\Small\Deep'], []),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
+
+        self::assertContains('Small\Deep\\', $labels, 'An inlined namespace exposes a grandchild as a qualified node');
+        self::assertNotContains('Small\\', $labels, 'The inlined namespace itself is not offered as a node');
+    }
+
+    public function testOffersNodeAndClassWhenNamespaceExceedsInlineThreshold(): void
+    {
+        // A namespace with more than five members is offered as a node to step
+        // through; its same-named class is still offered alongside.
+        $catalog = self::catalog([
+            'App\Entities' => new NamespaceContents(
+                ['App\Entities\Env'],
+                [new CatalogSymbol('App\Entities\Env', NameKind::ClassLike)],
+            ),
+            'App\Entities\Env' => new NamespaceContents([], self::manyClassLikes('App\Entities\Env')),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $labels = array_column($candidates->find('App\Entities', '', 0, 0, ClassCandidateFilter::Any), 'label');
+
+        self::assertContains('Env', $labels, 'The same-named class is offered');
+        self::assertContains('Env\\', $labels, 'A namespace above the threshold is a node to navigate into');
+        self::assertNotContains(
+            'Env\C1',
+            $labels,
+            'A namespace above the threshold is not inlined',
         );
     }
 }
