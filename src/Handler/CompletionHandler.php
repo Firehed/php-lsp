@@ -193,28 +193,28 @@ final class CompletionHandler implements HandlerInterface
                 $character,
                 TypeHintContext::Parameter,
             ),
-            CompletionKind::InterfaceList => $this->classCandidates->find(
+            CompletionKind::InterfaceList => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
                 $character,
                 ClassCandidateFilter::Interface_,
             ),
-            CompletionKind::ExtendableClass => $this->classCandidates->find(
+            CompletionKind::ExtendableClass => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
                 $character,
                 ClassCandidateFilter::ExtendableClass,
             ),
-            CompletionKind::Throwable => $this->classCandidates->find(
+            CompletionKind::Throwable => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
                 $character,
                 ClassCandidateFilter::Throwable,
             ),
-            CompletionKind::Attribute => $this->classCandidates->find(
+            CompletionKind::Attribute => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
@@ -234,16 +234,27 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getNewCompletions(string $prefix, TextDocument $document, int $line, int $character): array
     {
-        $items = $this->classCandidates->find(
-            $prefix,
-            $document,
-            $line,
-            $character,
-            ClassCandidateFilter::Instantiable,
-        );
+        return $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::Instantiable);
+    }
+
+    /**
+     * Class-name candidates valid for a position, from the workspace index and
+     * imports, plus namespace-navigation items when the cursor is on an absolute
+     * (`\`-rooted) name. Every class position routes through here, so navigation
+     * is offered consistently and filtered by the same predicate everywhere.
+     *
+     * @return list<CompletionItem>
+     */
+    private function getClassCompletions(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
         $items = array_merge(
-            $items,
-            $this->namespaceNavigationItems($prefix, $line, $character, ClassCandidateFilter::Instantiable),
+            $this->classCandidates->find($prefix, $document, $line, $character, $filter),
+            $this->namespaceNavigationItems($prefix, $line, $character, $filter),
         );
 
         return $this->deduplicateCompletions($items);
@@ -354,10 +365,11 @@ final class CompletionHandler implements HandlerInterface
     ): array {
         $items = $this->builtinTypeCandidates->find($prefix, $context);
 
-        // Class-likes valid as type hints (traits excluded)
+        // Class-likes valid as type hints (traits excluded), plus navigation into
+        // absolute namespaces (`function f(\Ps`), via the shared class path.
         $items = array_merge(
             $items,
-            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::TypeHint),
+            $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::TypeHint),
         );
 
         return $this->deduplicateCompletions($items);
