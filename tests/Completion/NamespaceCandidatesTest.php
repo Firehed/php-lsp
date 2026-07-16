@@ -44,6 +44,18 @@ class NamespaceCandidatesTest extends TestCase
         };
     }
 
+    /**
+     * A resolver for which every candidate is a real class-like, so tests of the
+     * kind gate, prefix filter, and position filter are not masked by the
+     * existence gate that drops directory-listing phantoms.
+     */
+    private static function classLikeResolver(): CodeResolver
+    {
+        $resolver = self::createStub(CodeResolver::class);
+        $resolver->method('isClassLike')->willReturn(true);
+        return $resolver;
+    }
+
     public function testOffersChildNamespacesAsModuleNodes(): void
     {
         $candidates = new NamespaceCandidates(
@@ -114,7 +126,7 @@ class NamespaceCandidatesTest extends TestCase
             new CatalogSymbol('App\helper', NameKind::Function_),
         ]);
         // Any accepts every class-like, so only the kind gate is exercised here.
-        $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -128,7 +140,7 @@ class NamespaceCandidatesTest extends TestCase
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\Gadget', NameKind::ClassLike),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
 
         $labels = array_column($candidates->find('App', 'Wi', 0, 2, ClassCandidateFilter::Any), 'label');
 
@@ -138,14 +150,32 @@ class NamespaceCandidatesTest extends TestCase
     public function testExcludesClassLikesTheFilterRejects(): void
     {
         $catalog = self::catalogWith([], [new CatalogSymbol('App\Contract', NameKind::ClassLike)]);
-        // A stub CodeResolver returns false for isInstantiable, standing in for an
-        // interface after `new`. The same predicate the index and imports use.
-        $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
+        // isClassLike is true (a real class-like) but isInstantiable is false,
+        // standing in for an interface after `new`: the position filter rejects
+        // it, via the same predicate the index and imports use.
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
 
         self::assertSame(
             [],
             $candidates->find('App', '', 0, 0, ClassCandidateFilter::Instantiable),
             'A class-like the position rejects is filtered out, via the shared filter predicate',
+        );
+    }
+
+    public function testDropsSymbolsWithNoClassLikeBehindThem(): void
+    {
+        // The catalog reports every .php file as a coarse class-like without
+        // parsing it, so a functions.php arrives as a phantom name. The existence
+        // gate drops it even where the position (Any) accepts anything.
+        $catalog = self::catalogWith([], [new CatalogSymbol('App\functions', NameKind::ClassLike)]);
+        $resolver = self::createStub(CodeResolver::class);
+        $resolver->method('isClassLike')->willReturn(false);
+        $candidates = new NamespaceCandidates($catalog, $resolver);
+
+        self::assertSame(
+            [],
+            $candidates->find('App', '', 0, 0, ClassCandidateFilter::Any),
+            'A catalog phantom with no class-like behind the name is never offered',
         );
     }
 }
