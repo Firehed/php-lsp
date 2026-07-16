@@ -1359,13 +1359,18 @@ final class SymbolResolverTest extends TestCase
         $this->openFixture('src/Enum/Status.php');
 
         /** @phpstan-ignore argument.type (fixture class) */
-        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Domain\\User')), 'a class is a class-like');
+        $class = new ClassName('Fixtures\\Domain\\User');
         /** @phpstan-ignore argument.type (fixture class) */
-        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Domain\\Entity')), 'an interface is a class-like');
+        $interface = new ClassName('Fixtures\\Domain\\Entity');
         /** @phpstan-ignore argument.type (fixture class) */
-        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Traits\\SingletonTrait')), 'a trait is a class-like');
+        $trait = new ClassName('Fixtures\\Traits\\SingletonTrait');
         /** @phpstan-ignore argument.type (fixture class) */
-        self::assertTrue($this->resolver->isClassLike(new ClassName('Fixtures\\Enum\\Status')), 'an enum is a class-like');
+        $enum = new ClassName('Fixtures\\Enum\\Status');
+
+        self::assertTrue($this->resolver->isClassLike($class), 'a class is a class-like');
+        self::assertTrue($this->resolver->isClassLike($interface), 'an interface is a class-like');
+        self::assertTrue($this->resolver->isClassLike($trait), 'a trait is a class-like');
+        self::assertTrue($this->resolver->isClassLike($enum), 'an enum is a class-like');
     }
 
     public function testIsClassLikeReturnsFalseForNameWithNoClassLikeBehindIt(): void
@@ -1374,7 +1379,11 @@ final class SymbolResolverTest extends TestCase
         // class-like without parsing it, so a functions.php arrives as a phantom
         // name that resolves to nothing. It must not be treated as a class-like.
         /** @phpstan-ignore argument.type (intentionally non-existent) */
-        self::assertFalse($this->resolver->isClassLike(new ClassName('NonExistent\\Unknown')), 'a name with no class-like behind it is not a class-like');
+        $unknown = new ClassName('NonExistent\\Unknown');
+        self::assertFalse(
+            $this->resolver->isClassLike($unknown),
+            'a name with no class-like behind it is not a class-like',
+        );
     }
 
     public function testIsValidTypeHintReturnsTrueForClass(): void
