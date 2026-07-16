@@ -255,6 +255,41 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testQualifiedClassCarriesFilterTextAndTextEdit(): void
+    {
+        $this->openFixture('Namespacing/SubNamespaceClass.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'subnamespace_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $item = null;
+        foreach ($result['items'] as $candidate) {
+            if (($candidate['label'] ?? null) === 'Sub\Thing') {
+                $item = $candidate;
+                break;
+            }
+        }
+        self::assertIsArray($item, 'The sub-namespace class is offered as `Sub\Thing`');
+
+        self::assertSame(
+            'Thing',
+            $item['filterText'] ?? null,
+            'The short name is the filter text, so the client keeps the item when the short prefix is typed',
+        );
+        self::assertSame(
+            [
+                'range' => [
+                    'start' => ['line' => $cursor['line'], 'character' => $cursor['character'] - 2],
+                    'end' => ['line' => $cursor['line'], 'character' => $cursor['character']],
+                ],
+                'newText' => 'Sub\Thing',
+            ],
+            $item['textEdit'] ?? null,
+            'The textEdit replaces the whole typed prefix (`Th`) with the reference, so it never duplicates',
+        );
+    }
+
     public function testSameShortNameInTwoNamespacesEachResolvesDistinctly(): void
     {
         $this->openFixture('Namespacing/SubNamespaceClass.php');
