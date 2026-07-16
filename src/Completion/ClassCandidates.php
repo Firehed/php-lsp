@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
+use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\NameKind;
@@ -36,19 +37,30 @@ final class ClassCandidates
     /**
      * @return list<CompletionItem>
      */
-    public function find(string $prefix, TextDocument $document, int $line, ClassCandidateFilter $filter): array
-    {
+    public function find(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
         $context = $this->codeResolver->getNameContext($document, $line);
+        // What a selected item replaces: the token the cursor sits at the end of.
+        $replaceRange = Range::onLine($line, $character - strlen($prefix), $character);
 
-        $items = $this->fromImports($prefix, $document, $filter);
-        return array_merge($items, $this->fromIndex($prefix, $filter, $context));
+        $items = $this->fromImports($prefix, $document, $filter, $replaceRange);
+        return array_merge($items, $this->fromIndex($prefix, $filter, $context, $replaceRange));
     }
 
     /**
      * @return list<CompletionItem>
      */
-    private function fromImports(string $prefix, TextDocument $document, ClassCandidateFilter $filter): array
-    {
+    private function fromImports(
+        string $prefix,
+        TextDocument $document,
+        ClassCandidateFilter $filter,
+        Range $replaceRange,
+    ): array {
         $items = [];
         foreach ($this->codeResolver->getImports($document) as $shortName => $fqcn) {
             if (!PrefixMatcher::matches($shortName, $prefix)) {
@@ -58,7 +70,7 @@ final class ClassCandidates
             if (!$this->passesResolutionFilter(new ClassName($fqcn), $filter)) {
                 continue;
             }
-            $items[] = CompletionItemFactory::forClass($shortName, $fqcn);
+            $items[] = CompletionItemFactory::forClass($shortName, $fqcn, $replaceRange);
         }
 
         return $items;
@@ -67,8 +79,12 @@ final class ClassCandidates
     /**
      * @return list<CompletionItem>
      */
-    private function fromIndex(string $prefix, ClassCandidateFilter $filter, NameContext $context): array
-    {
+    private function fromIndex(
+        string $prefix,
+        ClassCandidateFilter $filter,
+        NameContext $context,
+        Range $replaceRange,
+    ): array {
         $symbols = $this->symbolIndex->findByPrefix($prefix, $this->indexKinds($filter));
         $items = [];
 
@@ -86,7 +102,7 @@ final class ClassCandidates
             if (!$reference->isReachable()) {
                 continue;
             }
-            $items[] = CompletionItemFactory::forClass($reference->text, $fqcn);
+            $items[] = CompletionItemFactory::forClass($reference->text, $fqcn, $replaceRange);
         }
 
         return $items;

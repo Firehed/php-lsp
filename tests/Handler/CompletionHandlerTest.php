@@ -265,7 +265,7 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result);
         $item = null;
         foreach ($result['items'] as $candidate) {
-            if (($candidate['label'] ?? null) === 'Sub\Thing') {
+            if ($candidate['label'] === 'Sub\Thing') {
                 $item = $candidate;
                 break;
             }

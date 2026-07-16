@@ -148,7 +148,7 @@ final class CompletionHandler implements HandlerInterface
                 $items = array_merge($items, $this->keywordCandidates->find($prefix, KeywordGroup::Expression));
                 $items = array_merge(
                     $items,
-                    $this->classCandidates->find($prefix, $document, $line, ClassCandidateFilter::Any),
+                    $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::Any),
                 );
             }
 
@@ -162,52 +162,64 @@ final class CompletionHandler implements HandlerInterface
 
         return match ($classification->kind) {
             CompletionKind::Variable => $this->variableCandidates->find($prefix, $document, $line, $character),
-            CompletionKind::New_ => $this->getNewCompletions($prefix, $document, $line),
-            CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions($prefix, $document, $line),
+            CompletionKind::New_ => $this->getNewCompletions($prefix, $document, $line, $character),
+            CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions(
+                $prefix,
+                $document,
+                $line,
+                $character,
+            ),
             CompletionKind::ReturnType => $this->getTypeHintCompletions(
                 $prefix,
                 $document,
                 $line,
+                $character,
                 TypeHintContext::ReturnType,
             ),
             CompletionKind::PropertyType => $this->getTypeHintCompletions(
                 $prefix,
                 $document,
                 $line,
+                $character,
                 TypeHintContext::Property,
             ),
             CompletionKind::ParameterType => $this->getTypeHintCompletions(
                 $prefix,
                 $document,
                 $line,
+                $character,
                 TypeHintContext::Parameter,
             ),
             CompletionKind::InterfaceList => $this->classCandidates->find(
                 $prefix,
                 $document,
                 $line,
+                $character,
                 ClassCandidateFilter::Interface_,
             ),
             CompletionKind::ExtendableClass => $this->classCandidates->find(
                 $prefix,
                 $document,
                 $line,
+                $character,
                 ClassCandidateFilter::ExtendableClass,
             ),
             CompletionKind::Throwable => $this->classCandidates->find(
                 $prefix,
                 $document,
                 $line,
+                $character,
                 ClassCandidateFilter::Throwable,
             ),
             CompletionKind::Attribute => $this->classCandidates->find(
                 $prefix,
                 $document,
                 $line,
+                $character,
                 ClassCandidateFilter::Attribute,
             ),
             CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
-            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $line),
+            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $line, $character),
             CompletionKind::None => [],
         };
     }
@@ -217,10 +229,10 @@ final class CompletionHandler implements HandlerInterface
      *
      * @return list<CompletionItem>
      */
-    private function getNewCompletions(string $prefix, TextDocument $document, int $line): array
+    private function getNewCompletions(string $prefix, TextDocument $document, int $line, int $character): array
     {
         return $this->deduplicateCompletions(
-            $this->classCandidates->find($prefix, $document, $line, ClassCandidateFilter::Instantiable),
+            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::Instantiable),
         );
     }
 
@@ -229,12 +241,16 @@ final class CompletionHandler implements HandlerInterface
      *
      * @return list<CompletionItem>
      */
-    private function getAfterVisibilityCompletions(string $prefix, TextDocument $document, int $line): array
-    {
+    private function getAfterVisibilityCompletions(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): array {
         $items = $this->keywordCandidates->find($prefix, KeywordGroup::AfterVisibility);
         $items = array_merge(
             $items,
-            $this->getTypeHintCompletions($prefix, $document, $line, TypeHintContext::Property),
+            $this->getTypeHintCompletions($prefix, $document, $line, $character, TypeHintContext::Property),
         );
         return $this->deduplicateCompletions($items);
     }
@@ -244,13 +260,17 @@ final class CompletionHandler implements HandlerInterface
      *
      * @return list<CompletionItem>
      */
-    private function getExpressionCompletions(string $prefix, TextDocument $document, int $line): array
-    {
+    private function getExpressionCompletions(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): array {
         $items = $this->keywordCandidates->find($prefix, KeywordGroup::All);
         $items = array_merge($items, $this->functionCandidates->find($prefix, $document));
         $items = array_merge(
             $items,
-            $this->classCandidates->find($prefix, $document, $line, ClassCandidateFilter::Any),
+            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::Any),
         );
         return $this->deduplicateCompletions($items);
     }
@@ -286,6 +306,7 @@ final class CompletionHandler implements HandlerInterface
         string $prefix,
         TextDocument $document,
         int $line,
+        int $character,
         TypeHintContext $context,
     ): array {
         $items = $this->builtinTypeCandidates->find($prefix, $context);
@@ -293,7 +314,7 @@ final class CompletionHandler implements HandlerInterface
         // Class-likes valid as type hints (traits excluded)
         $items = array_merge(
             $items,
-            $this->classCandidates->find($prefix, $document, $line, ClassCandidateFilter::TypeHint),
+            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::TypeHint),
         );
 
         return $this->deduplicateCompletions($items);
