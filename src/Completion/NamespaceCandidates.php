@@ -114,6 +114,11 @@ final class NamespaceCandidates
         ClassCandidateFilter $filter,
         Range $range,
     ): array {
+        // One catalog lookup per matching child, to decide node-vs-inline. This is
+        // discovery, which the handler's cap does not bound — the cap limits output,
+        // not how many children are inspected. The cost is a directory listing per
+        // child, memoised by CachedNamespaceCatalog for the stable (vendor/built-in)
+        // sources, so a namespace is inspected at most once per session.
         $contents = $this->catalog->childrenOf($child);
         $elementCount = count($contents->childNamespaces) + count($contents->symbols);
         if ($elementCount === 0 || $elementCount > self::INLINE_THRESHOLD) {
