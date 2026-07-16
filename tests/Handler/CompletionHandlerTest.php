@@ -453,11 +453,15 @@ class CompletionHandlerTest extends TestCase
                 $modules[] = $item['label'];
             }
         }
-        $psrNodes = array_filter($modules, static fn(string $label): bool => str_starts_with($label, 'Psr\\'));
-        self::assertNotEmpty(
-            $psrNodes,
-            'Typing `new \\Ps` navigates from the global namespace and offers a Psr-rooted node',
+        // The fixtures install only psr/http-message, so Psr has a single child
+        // (Http) and is inlined rather than offered as a bare node — proving the
+        // inline heuristic fires against the real catalog, not just a stub.
+        self::assertContains(
+            'Psr\\Http\\',
+            $modules,
+            'Typing `new \\Ps` navigates the global namespace; a one-child Psr inlines to its Http node',
         );
+        self::assertNotContains('Psr\\', $modules, 'The inlined namespace is not also offered as a bare node');
         self::assertFalse($result['isIncomplete'], 'A result set within the cap is complete');
     }
 
