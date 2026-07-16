@@ -32,6 +32,11 @@ use Firehed\PhpLsp\Utility\NamespacePath;
  */
 final class CompletionHandler implements HandlerInterface
 {
+    // The widest position is a bare `\`: every root namespace plus every global
+    // class-like. Cap the response and report isIncomplete so the client re-queries
+    // as the prefix narrows, rather than shipping thousands of items.
+    private const RESULT_LIMIT = 100;
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
@@ -109,9 +114,34 @@ final class CompletionHandler implements HandlerInterface
             ));
         }
 
+        return $this->capped($items);
+    }
+
+    /**
+     * Cap the response, ranking before truncating so the cap keeps the best
+     * candidates rather than whichever the sources happened to emit first. Items
+     * carry a sortText where they rank (namespace navigation); others fall back to
+     * their label. When truncated, isIncomplete tells the client to re-query as the
+     * prefix narrows.
+     *
+     * @param list<CompletionItem> $items
+     * @return array{isIncomplete: bool, items: list<CompletionItem>}
+     */
+    private function capped(array $items): array
+    {
+        if (count($items) <= self::RESULT_LIMIT) {
+            return ['isIncomplete' => false, 'items' => $items];
+        }
+
+        usort(
+            $items,
+            static fn(array $a, array $b): int
+                => ($a['sortText'] ?? $a['label']) <=> ($b['sortText'] ?? $b['label']),
+        );
+
         return [
-            'isIncomplete' => false,
-            'items' => $items,
+            'isIncomplete' => true,
+            'items' => array_slice($items, 0, self::RESULT_LIMIT),
         ];
     }
 

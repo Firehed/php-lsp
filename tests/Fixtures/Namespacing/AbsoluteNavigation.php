@@ -26,4 +26,9 @@ class AbsoluteNavigation
     public function withReturn(): \Ps/*|return_nav*/
     {
     }
+
+    public function flood(): void
+    {
+        new \Flood\/*|flood_nav*/
+    }
 }

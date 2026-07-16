@@ -19,6 +19,8 @@ use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Location;
+use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
@@ -56,6 +58,7 @@ class CompletionHandlerTest extends TestCase
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
+    private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -73,27 +76,15 @@ class CompletionHandlerTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
-        $symbolResolver = new SymbolResolver(
+        $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
             $typeResolver,
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
-        $this->handler = new CompletionHandler(
-            $this->documents,
-            $symbolResolver,
-            new ClassCandidates($this->symbolIndex, $symbolResolver),
-            new NamespaceCandidates(
-                NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures'),
-                $symbolResolver,
-            ),
-            new FunctionCandidates($symbolResolver),
-            new KeywordCandidates(),
-            new VariableCandidates($symbolResolver),
-            new MemberCandidates($symbolResolver),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
+        $this->handler = $this->makeHandler(
+            NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures'),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -101,6 +92,22 @@ class CompletionHandlerTest extends TestCase
             $this->classRepository,
             $this->classInfoFactory,
             $indexer,
+        );
+    }
+
+    private function makeHandler(NamespaceCatalog $catalog): CompletionHandler
+    {
+        return new CompletionHandler(
+            $this->documents,
+            $this->symbolResolver,
+            new ClassCandidates($this->symbolIndex, $this->symbolResolver),
+            new NamespaceCandidates($catalog, $this->symbolResolver),
+            new FunctionCandidates($this->symbolResolver),
+            new KeywordCandidates(),
+            new VariableCandidates($this->symbolResolver),
+            new MemberCandidates($this->symbolResolver),
+            new NamedArgumentCandidates(),
+            new BuiltinTypeCandidates(),
         );
     }
 
@@ -451,6 +458,42 @@ class CompletionHandlerTest extends TestCase
             $psrNodes,
             'Typing `new \\Ps` navigates from the global namespace and offers a Psr-rooted node',
         );
+        self::assertFalse($result['isIncomplete'], 'A result set within the cap is complete');
+    }
+
+    public function testCapsResultsAndReportsIncompleteWhenNavigationOverflows(): void
+    {
+        // A namespace with far more children than the cap floods navigation. The
+        // response is capped and flagged incomplete; ranking runs before the cap,
+        // so it keeps the first-sorted nodes rather than raw source order.
+        $children = array_map(
+            static fn(int $i): string => sprintf('Flood\\N%03d', $i),
+            range(150, 1, -1),
+        );
+        $catalog = new class ($children) implements NamespaceCatalog {
+            /** @param list<string> $children */
+            public function __construct(private readonly array $children)
+            {
+            }
+
+            public function childrenOf(string $namespace): NamespaceContents
+            {
+                return $namespace === 'Flood'
+                    ? new NamespaceContents($this->children, [])
+                    : new NamespaceContents([], []);
+            }
+        };
+        $handler = $this->makeHandler($catalog);
+        $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', 'flood_nav');
+
+        $result = $handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertTrue($result['isIncomplete'], 'An overflowing result set is reported incomplete');
+        self::assertCount(100, $result['items'], 'The result set is capped at the limit');
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('N001\\', $labels, 'Ranking runs before the cap, keeping the first-sorted node');
+        self::assertNotContains('N150\\', $labels, 'A node sorted past the cap is dropped');
     }
 
     public function testStaticCompletionResolvesImportedClassName(): void

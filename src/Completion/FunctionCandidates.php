@@ -16,8 +16,6 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  */
 final class FunctionCandidates
 {
-    private const RESULT_LIMIT = 100;
-
     public function __construct(
         private readonly CodeResolver $codeResolver,
     ) {
@@ -42,6 +40,8 @@ final class FunctionCandidates
             }
         }
 
-        return array_slice($items, 0, self::RESULT_LIMIT);
+        // Capping happens centrally in the handler, after ranking across all
+        // sources — not here in arbitrary source order.
+        return $items;
     }
 }
