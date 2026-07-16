@@ -119,10 +119,17 @@ final class CompletionHandler implements HandlerInterface
 
     /**
      * Cap the response, ranking before truncating so the cap keeps the best
-     * candidates rather than whichever the sources happened to emit first. Items
-     * carry a sortText where they rank (namespace navigation); others fall back to
-     * their label. When truncated, isIncomplete tells the client to re-query as the
-     * prefix narrows.
+     * candidates rather than whichever the sources happened to emit first. When
+     * truncated, isIncomplete tells the client to re-query as the prefix narrows.
+     *
+     * The ranking invariant: only items that ask to be ordered carry a sortText —
+     * namespace navigation, where a symbol must beat a node. Everything else
+     * (members, variables, functions, flat classes) falls back to its label, i.e.
+     * an alphabetical cap. That is deliberate: it is deterministic, and by ASCII a
+     * PascalCase project symbol (`MyClass`) sorts ahead of a lowercase builtin
+     * (`mysqli_connect`), so a user's own types survive the cap over the standard
+     * library when a broad prefix matches both. The trade is that a >limit member
+     * list is alphabetised rather than kept in resolution order — benign, and rare.
      *
      * @param list<CompletionItem> $items
      * @return array{isIncomplete: bool, items: list<CompletionItem>}

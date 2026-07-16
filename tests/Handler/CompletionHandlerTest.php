@@ -500,6 +500,40 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('N150\\', $labels, 'A node sorted past the cap is dropped');
     }
 
+    public function testCapAppliesToUnrankedCompletions(): void
+    {
+        // Flat class candidates (like members, variables, and functions) carry no
+        // sortText. When more than the cap match, the response is still truncated
+        // and flagged incomplete — the cap is a response-level limit, not one
+        // special to navigation — via the sentinel that sorts unranked items last.
+        foreach (range(0, 100) as $i) {
+            $name = sprintf('FloodClass%03d', $i);
+            $this->symbolIndex->add(new Symbol(
+                $name,
+                $name,
+                SymbolKind::Class_,
+                new Location('file:///other.php', 0, 0, 0, 0),
+            ));
+        }
+        $this->openDocument('file:///flood.php', '<?php new FloodClass');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///flood.php'],
+                'position' => ['line' => 0, 'character' => 20],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertTrue($result['isIncomplete'], 'An overflowing unranked result set is reported incomplete');
+        self::assertCount(100, $result['items'], 'Unranked completions are capped at the limit');
+    }
+
     public function testStaticCompletionResolvesImportedClassName(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/MultiNamespaceImports.php', 'imported_static');
