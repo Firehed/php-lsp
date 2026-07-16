@@ -377,6 +377,26 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testNavigationDropsDirectoryListingPhantoms(): void
+    {
+        // Fixtures\Catalog holds a real class (Fixture.php) beside a helpers file
+        // (functions.php). The catalog reports both as coarse class-likes from the
+        // directory listing; the existence gate must offer the class and drop the
+        // phantom that has no class-like behind it.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CatalogProbe.php', 'ondisk_phantom');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Fixture', $labels, 'The real class in the navigated namespace is offered');
+        self::assertNotContains(
+            'functions',
+            $labels,
+            'A functions.php phantom from the directory listing is not offered as a class',
+        );
+    }
+
     public function testBackslashNavigationOffersNamespaceNodes(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'nav_global');

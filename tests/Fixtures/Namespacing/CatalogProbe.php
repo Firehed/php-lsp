@@ -15,4 +15,9 @@ class CatalogProbe
     {
         new \Psr\Http\Message\R/*|ondisk_interface*/
     }
+
+    public function phantom(): void
+    {
+        new \Fixtures\Catalog\F/*|ondisk_phantom*/
+    }
 }
