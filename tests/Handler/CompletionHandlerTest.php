@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
@@ -20,6 +21,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
+use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -82,6 +84,7 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $symbolResolver,
             new ClassCandidates($this->symbolIndex, $symbolResolver),
+            new NamespaceCandidates(NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures')),
             new FunctionCandidates($symbolResolver),
             new KeywordCandidates(),
             new VariableCandidates($symbolResolver),
@@ -331,6 +334,45 @@ class CompletionHandlerTest extends TestCase
             'Exception',
             $labels,
             'A built-in class-like is not a candidate here; reaching it is navigation (\\Exception), owned by #330',
+        );
+    }
+
+    public function testCatalogOffersOnDiskClassNeverOpened(): void
+    {
+        // NOTHING here opens Fixtures\Domain\User. It exists only on disk, and is
+        // discoverable solely through Composer's autoload map (the fixtures vendor
+        // project). If it shows up, the catalog put an unopened class into a
+        // completion response end-to-end.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CatalogProbe.php', 'ondisk_class');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Domain\User',
+            $byLabel['User'] ?? null,
+            'A class that was never opened is offered, discovered on disk via the catalog',
+        );
+    }
+
+    public function testBackslashNavigationOffersNamespaceNodes(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'nav_global');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $modules = [];
+        foreach ($result['items'] as $item) {
+            if (($item['kind'] ?? null) === CompletionItemKind::Module->value) {
+                $modules[] = $item['label'];
+            }
+        }
+        self::assertContains(
+            'Psr\\',
+            $modules,
+            'Typing `new \\Ps` navigates from the global namespace and offers the Psr\\ node',
         );
     }
 

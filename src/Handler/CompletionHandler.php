@@ -18,12 +18,14 @@ use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
@@ -34,6 +36,7 @@ final class CompletionHandler implements HandlerInterface
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
         private readonly ClassCandidates $classCandidates,
+        private readonly NamespaceCandidates $namespaceCandidates,
         private readonly FunctionCandidates $functionCandidates,
         private readonly KeywordCandidates $keywordCandidates,
         private readonly VariableCandidates $variableCandidates,
@@ -231,8 +234,39 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getNewCompletions(string $prefix, TextDocument $document, int $line, int $character): array
     {
-        return $this->deduplicateCompletions(
-            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::Instantiable),
+        $items = $this->classCandidates->find(
+            $prefix,
+            $document,
+            $line,
+            $character,
+            ClassCandidateFilter::Instantiable,
+        );
+        $items = array_merge($items, $this->namespaceNavigationItems($prefix, $line, $character));
+
+        return $this->deduplicateCompletions($items);
+    }
+
+    /**
+     * Namespace nodes and classes when the cursor is on a fully-qualified name
+     * (`new \Ps`), so the user can walk the tree into vendor and built-in
+     * namespaces. The leading `\` roots the walk at the global namespace; the
+     * segment already typed filters the children.
+     *
+     * @return list<CompletionItem>
+     */
+    private function namespaceNavigationItems(string $prefix, int $line, int $character): array
+    {
+        if (!str_starts_with($prefix, '\\')) {
+            return [];
+        }
+
+        $qualified = substr($prefix, 1);
+
+        return $this->namespaceCandidates->find(
+            NamespacePath::namespaceOf($qualified),
+            NamespacePath::shortNameOf($qualified),
+            $line,
+            $character,
         );
     }
 

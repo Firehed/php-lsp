@@ -24,4 +24,9 @@ class Trigger
     {
         new Ex/*|builtin_new*/
     }
+
+    public function navigate(): void
+    {
+        new \Ps/*|nav_global*/
+    }
 }

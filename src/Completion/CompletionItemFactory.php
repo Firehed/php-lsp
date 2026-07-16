@@ -106,6 +106,23 @@ final class CompletionItemFactory
     }
 
     /**
+     * A namespace offered as a navigable node. The label is the next segment plus
+     * a separator (`Http\`), so accepting it leaves the cursor on the trailing
+     * `\` — an advertised trigger character — and completion re-fires to walk one
+     * segment deeper, with no client-specific command.
+     *
+     * @return CompletionItem
+     */
+    public static function forNamespace(string $fullyQualifiedName): array
+    {
+        return [
+            'label' => NamespacePath::shortNameOf($fullyQualifiedName) . '\\',
+            'kind' => CompletionItemKind::Module->value,
+            'detail' => $fullyQualifiedName,
+        ];
+    }
+
+    /**
      * @return CompletionItem
      */
     public static function forKeyword(string $keyword): array

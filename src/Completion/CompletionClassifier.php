@@ -48,8 +48,10 @@ final class CompletionClassifier
             return new CompletionClassification(CompletionKind::Variable, $matches[1]);
         }
 
-        // new ClassName completion
-        if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        // new ClassName completion. The prefix keeps a leading `\` and embedded
+        // separators so a qualified/navigated name (`new \Ps`, `new Psr\Ht`) reaches
+        // the handler intact rather than being truncated to its last segment.
+        if (preg_match('/new\s+(\\\\?[\w\\\\]*)$/', $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::New_, $matches[1]);
         }
 
