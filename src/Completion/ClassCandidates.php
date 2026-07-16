@@ -40,59 +40,25 @@ final class ClassCandidates
     {
         $context = $this->codeResolver->getNameContext($document, $line);
 
-        $items = $this->fromImports($prefix, $document, $filter, $context);
+        $items = $this->fromImports($prefix, $document, $filter);
         return array_merge($items, $this->fromIndex($prefix, $filter, $context));
     }
 
     /**
      * @return list<CompletionItem>
      */
-    private function fromImports(
-        string $prefix,
-        TextDocument $document,
-        ClassCandidateFilter $filter,
-        NameContext $context,
-    ): array {
+    private function fromImports(string $prefix, TextDocument $document, ClassCandidateFilter $filter): array
+    {
         $items = [];
         foreach ($this->codeResolver->getImports($document) as $shortName => $fqcn) {
             if (!PrefixMatcher::matches($shortName, $prefix)) {
                 continue;
             }
             /** @var class-string $fqcn */
-            if ($this->passesResolutionFilter(new ClassName($fqcn), $filter)) {
-                $items[] = CompletionItemFactory::forClass($shortName, $fqcn);
-            }
-            // An import also opens the namespace of the same name: `use App\Model\User;`
-            // makes a class in `App\Model\User` reachable as `User\Repository`.
-            foreach ($this->fromImportedNamespace($fqcn, $filter, $context) as $item) {
-                $items[] = $item;
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * Classes declared in the namespace an import also names. Everything directly
-     * in that namespace is reachable as a prefixed reference through the import,
-     * so the reference is always the label to offer.
-     *
-     * @return list<CompletionItem>
-     */
-    private function fromImportedNamespace(
-        string $namespace,
-        ClassCandidateFilter $filter,
-        NameContext $context,
-    ): array {
-        $items = [];
-        foreach ($this->symbolIndex->inNamespace($namespace) as $symbol) {
-            /** @var class-string $fqcn */
-            $fqcn = $symbol->fullyQualifiedName;
             if (!$this->passesResolutionFilter(new ClassName($fqcn), $filter)) {
                 continue;
             }
-            $reference = ReferenceResolver::resolve($fqcn, NameKind::ClassLike, $context);
-            $items[] = CompletionItemFactory::forClass($reference->text, $fqcn);
+            $items[] = CompletionItemFactory::forClass($shortName, $fqcn);
         }
 
         return $items;
