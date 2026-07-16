@@ -248,6 +248,25 @@ class NamespaceCandidatesTest extends TestCase
         self::assertNotContains('Small\\', $labels, 'The inlined namespace itself is not offered as a node');
     }
 
+    public function testRanksSymbolsAboveNamespaceNodes(): void
+    {
+        $catalog = self::catalog([
+            'App' => new NamespaceContents(['App\Big'], [new CatalogSymbol('App\Widget', NameKind::ClassLike)]),
+            'App\Big' => new NamespaceContents([], self::manyClassLikes('App\Big')),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $byLabel = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'sortText', 'label');
+
+        self::assertArrayHasKey('Widget', $byLabel, 'The class symbol is offered');
+        self::assertArrayHasKey('Big\\', $byLabel, 'The namespace node is offered');
+        self::assertLessThan(
+            $byLabel['Big\\'],
+            $byLabel['Widget'],
+            'A directly-insertable symbol ranks above a namespace node',
+        );
+    }
+
     public function testOffersNodeAndClassWhenNamespaceExceedsInlineThreshold(): void
     {
         // A namespace with more than five members is offered as a node to step

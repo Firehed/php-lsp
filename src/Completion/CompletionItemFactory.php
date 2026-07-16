@@ -27,6 +27,7 @@ use Firehed\PhpLsp\Utility\NamespacePath;
  *   detail?: string,
  *   documentation?: string,
  *   filterText?: string,
+ *   sortText?: string,
  *   textEdit?: array{range: LspRange, newText: string},
  * }
  */

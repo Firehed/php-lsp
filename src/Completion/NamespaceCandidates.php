@@ -77,6 +77,23 @@ final class NamespaceCandidates
             }
         }
 
+        return $this->ranked($items);
+    }
+
+    /**
+     * Rank directly-insertable symbols above namespace nodes: a class you can use
+     * now beats a prefix you would keep typing. Within each group, order by label.
+     *
+     * @param list<CompletionItem> $items
+     * @return list<CompletionItem>
+     */
+    private function ranked(array $items): array
+    {
+        foreach ($items as $index => $item) {
+            $isNode = ($item['kind'] ?? null) === CompletionItemKind::Module->value;
+            $items[$index]['sortText'] = ($isNode ? '1' : '0') . '_' . $item['label'];
+        }
+
         return $items;
     }
 
