@@ -36,14 +36,17 @@ composer install
 # Generate test fixture autoload
 composer dump-autoload --working-dir=tests/Fixtures
 
-# Run tests and static analysis
-composer check
+# Run tests, static analysis, and linters
+composer test
 
 # Run just tests
-composer phpunit
+composer unit
 
 # Run just static analysis
 composer phpstan
+
+# Run just linters
+composer phpcs
 ```
 
 ## Editor Integration

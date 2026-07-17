@@ -6,12 +6,12 @@ on:
   pull_request:
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         php: ['8.3', '8.4', '8.5']
-    name: PHP ${{ matrix.php }}
+    name: Unit Tests - ${{ matrix.php }}
     steps:
       - uses: actions/checkout@v7
 
@@ -28,7 +28,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --working-dir=tests/Fixtures
 
       - name: Run PHPUnit
-        run: composer phpunit
+        run: composer unit
           --
           --coverage-clover coverage.xml
           --log-junit junit.xml
@@ -45,6 +45,3 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-
-      - name: PHPStan
-        run: composer phpstan
