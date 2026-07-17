@@ -27,6 +27,7 @@ use Firehed\PhpLsp\Utility\NamespacePath;
  *   detail?: string,
  *   documentation?: string,
  *   filterText?: string,
+ *   sortText?: string,
  *   textEdit?: array{range: LspRange, newText: string},
  * }
  */
@@ -87,20 +88,55 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forClass(string $reference, string $fullyQualifiedName, Range $replaceRange): array
-    {
+    public static function forClass(
+        string $reference,
+        string $fullyQualifiedName,
+        Range $replaceRange,
+        ?string $filterText = null,
+    ): array {
         return [
             'label' => $reference,
             'kind' => CompletionItemKind::Class_->value,
             'detail' => $fullyQualifiedName,
-            // Clients filter on the short name, so a relative reference like
-            // `Sub\Thing` still matches when only `Thing` has been typed.
-            'filterText' => NamespacePath::shortNameOf($reference),
+            // Clients filter on the short name by default, so a relative reference
+            // like `Sub\Thing` still matches when only `Thing` has been typed. An
+            // inlined navigation entry overrides this with its qualified reference,
+            // since the user reaches it by typing the parent segment, not the leaf.
+            'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
             // Replace the whole typed token with the reference, so a qualified
             // name never duplicates the segments already on screen.
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
                 'newText' => $reference,
+            ],
+        ];
+    }
+
+    /**
+     * A namespace offered as a navigable node. Both the label and the inserted text
+     * are the reference plus a trailing separator (`Http\`): the separator has to be
+     * in the inserted text, not just the label, because clients display the text
+     * they insert — e.g. Vim/ale sets the menu entry's `word` to `textEdit.newText`
+     * and ignores `label`, so a bare segment would render indistinguishably from a
+     * same-named class. Accepting the node leaves the cursor after the `\`; typing
+     * the next segment fires completion one level deeper.
+     *
+     * The reference is normally the next segment (`Http`), but an inlined grandchild
+     * carries its qualified path (`Small\Deep`) so it navigates from the current
+     * point without duplicating segments.
+     *
+     * @return CompletionItem
+     */
+    public static function forNamespace(string $reference, string $fullyQualifiedName, Range $replaceRange): array
+    {
+        return [
+            'label' => $reference . '\\',
+            'kind' => CompletionItemKind::Module->value,
+            'detail' => $fullyQualifiedName,
+            'filterText' => $reference,
+            'textEdit' => [
+                'range' => $replaceRange->toArray(),
+                'newText' => $reference . '\\',
             ],
         ];
     }

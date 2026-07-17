@@ -12,12 +12,16 @@ use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Location;
+use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
+use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -54,6 +58,7 @@ class CompletionHandlerTest extends TestCase
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
+    private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -71,23 +76,15 @@ class CompletionHandlerTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver);
-        $symbolResolver = new SymbolResolver(
+        $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
             $this->memberResolver,
             $typeResolver,
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
-        $this->handler = new CompletionHandler(
-            $this->documents,
-            $symbolResolver,
-            new ClassCandidates($this->symbolIndex, $symbolResolver),
-            new FunctionCandidates($symbolResolver),
-            new KeywordCandidates(),
-            new VariableCandidates($symbolResolver),
-            new MemberCandidates($symbolResolver),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
+        $this->handler = $this->makeHandler(
+            NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures'),
         );
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -95,6 +92,22 @@ class CompletionHandlerTest extends TestCase
             $this->classRepository,
             $this->classInfoFactory,
             $indexer,
+        );
+    }
+
+    private function makeHandler(NamespaceCatalog $catalog): CompletionHandler
+    {
+        return new CompletionHandler(
+            $this->documents,
+            $this->symbolResolver,
+            new ClassCandidates($this->symbolIndex, $this->symbolResolver),
+            new NamespaceCandidates($catalog, $this->symbolResolver),
+            new FunctionCandidates($this->symbolResolver),
+            new KeywordCandidates(),
+            new VariableCandidates($this->symbolResolver),
+            new MemberCandidates($this->symbolResolver),
+            new NamedArgumentCandidates(),
+            new BuiltinTypeCandidates(),
         );
     }
 
@@ -332,6 +345,193 @@ class CompletionHandlerTest extends TestCase
             $labels,
             'A built-in class-like is not a candidate here; reaching it is navigation (\\Exception), owned by #330',
         );
+    }
+
+    public function testCatalogOffersOnDiskClassNeverOpened(): void
+    {
+        // NOTHING here opens Fixtures\Domain\User. It exists only on disk, and is
+        // discoverable solely through Composer's autoload map (the fixtures vendor
+        // project). If it shows up, the catalog put an unopened class into a
+        // completion response end-to-end.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CatalogProbe.php', 'ondisk_class');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Domain\User',
+            $byLabel['User'] ?? null,
+            'A class that was never opened is offered, discovered on disk via the catalog',
+        );
+    }
+
+    public function testNavigationExcludesNonInstantiableOnDiskClassLikes(): void
+    {
+        // Psr\Http\Message\RequestInterface exists on disk (fixtures vendor) but is
+        // an interface — invalid after `new`. It must be filtered by the same
+        // predicate the index and imports use, not offered just because the catalog
+        // discovered it.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CatalogProbe.php', 'ondisk_interface');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertNotContains(
+            'RequestInterface',
+            array_column($result['items'], 'label'),
+            'An interface discovered on disk is not offered after `new`',
+        );
+    }
+
+    public function testNavigationDropsDirectoryListingPhantoms(): void
+    {
+        // Fixtures\Catalog holds a real class (Fixture.php) beside a helpers file
+        // (functions.php). The catalog reports both as coarse class-likes from the
+        // directory listing; the existence gate must offer the class and drop the
+        // phantom that has no class-like behind it.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CatalogProbe.php', 'ondisk_phantom');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Fixture', $labels, 'The real class in the navigated namespace is offered');
+        self::assertNotContains(
+            'functions',
+            $labels,
+            'A functions.php phantom from the directory listing is not offered as a class',
+        );
+    }
+
+    #[DataProvider('provideAbsoluteNavigationMarkers')]
+    public function testAbsoluteNavigationFiresInEveryClassPosition(string $marker): void
+    {
+        // `new \Ps` already navigates; navigation must fire the same way in every
+        // other absolute class position (catch, parameter type, return type). The
+        // Psr\ node is a child namespace, offered regardless of the position filter,
+        // so its presence proves navigation ran there.
+        $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', $marker);
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $modules = [];
+        foreach ($result['items'] as $item) {
+            if (($item['kind'] ?? null) === CompletionItemKind::Module->value) {
+                $modules[] = $item['label'];
+            }
+        }
+        $psrNodes = array_filter($modules, static fn(string $label): bool => str_starts_with($label, 'Psr\\'));
+        self::assertNotEmpty(
+            $psrNodes,
+            "Namespace navigation fires in the {$marker} position, offering a Psr-rooted node",
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAbsoluteNavigationMarkers(): iterable
+    {
+        yield 'catch clause' => ['catch_nav'];
+        yield 'parameter type' => ['param_nav'];
+        yield 'return type' => ['return_nav'];
+    }
+
+    public function testBackslashNavigationOffersNamespaceNodes(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'nav_global');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $modules = [];
+        foreach ($result['items'] as $item) {
+            if (($item['kind'] ?? null) === CompletionItemKind::Module->value) {
+                $modules[] = $item['label'];
+            }
+        }
+        // The fixtures install only psr/http-message, so Psr has a single child
+        // (Http) and is inlined rather than offered as a bare node — proving the
+        // inline heuristic fires against the real catalog, not just a stub.
+        self::assertContains(
+            'Psr\\Http\\',
+            $modules,
+            'Typing `new \\Ps` navigates the global namespace; a one-child Psr inlines to its Http node',
+        );
+        self::assertNotContains('Psr\\', $modules, 'The inlined namespace is not also offered as a bare node');
+        self::assertFalse($result['isIncomplete'], 'A result set within the cap is complete');
+    }
+
+    public function testCapsResultsAndReportsIncompleteWhenNavigationOverflows(): void
+    {
+        // A namespace with far more children than the cap floods navigation. The
+        // response is capped and flagged incomplete; ranking runs before the cap,
+        // so it keeps the first-sorted nodes rather than raw source order.
+        $children = array_map(
+            static fn(int $i): string => sprintf('Flood\\N%03d', $i),
+            range(150, 1, -1),
+        );
+        $catalog = new class ($children) implements NamespaceCatalog {
+            /** @param list<string> $children */
+            public function __construct(private readonly array $children)
+            {
+            }
+
+            public function childrenOf(string $namespace): NamespaceContents
+            {
+                return $namespace === 'Flood'
+                    ? new NamespaceContents($this->children, [])
+                    : new NamespaceContents([], []);
+            }
+        };
+        $handler = $this->makeHandler($catalog);
+        $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', 'flood_nav');
+
+        $result = $handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertTrue($result['isIncomplete'], 'An overflowing result set is reported incomplete');
+        self::assertCount(100, $result['items'], 'The result set is capped at the limit');
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('N001\\', $labels, 'Ranking runs before the cap, keeping the first-sorted node');
+        self::assertNotContains('N150\\', $labels, 'A node sorted past the cap is dropped');
+    }
+
+    public function testCapAppliesToUnrankedCompletions(): void
+    {
+        // Flat class candidates (like members, variables, and functions) carry no
+        // sortText. When more than the cap match, the response is still truncated
+        // and flagged incomplete — the cap is a response-level limit, not one
+        // special to navigation — via the sentinel that sorts unranked items last.
+        foreach (range(0, 100) as $i) {
+            $name = sprintf('FloodClass%03d', $i);
+            $this->symbolIndex->add(new Symbol(
+                $name,
+                $name,
+                SymbolKind::Class_,
+                new Location('file:///other.php', 0, 0, 0, 0),
+            ));
+        }
+        $this->openDocument('file:///flood.php', '<?php new FloodClass');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///flood.php'],
+                'position' => ['line' => 0, 'character' => 20],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        self::assertTrue($result['isIncomplete'], 'An overflowing unranked result set is reported incomplete');
+        self::assertCount(100, $result['items'], 'Unranked completions are capped at the limit');
     }
 
     public function testStaticCompletionResolvesImportedClassName(): void

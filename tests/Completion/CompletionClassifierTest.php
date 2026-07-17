@@ -65,6 +65,39 @@ class CompletionClassifierTest extends TestCase
         yield 'parameter type bare paren' => ['    public function f(', CompletionKind::ParameterType, ''];
         yield 'parameter type nullable' => ['    public function f(?Fo', CompletionKind::ParameterType, 'Fo'];
 
+        // Leading-backslash (absolute) references keep the `\` and any interior
+        // separators in the prefix, so namespace navigation reaches the handler
+        // intact — the same treatment `new \Ps` already gets (#330).
+        yield 'catch absolute' => ['        } catch (\\Ru', CompletionKind::Throwable, '\\Ru'];
+        yield 'catch absolute qualified' => ['        } catch (\\App\\Ex', CompletionKind::Throwable, '\\App\\Ex'];
+        yield 'multi-catch absolute continuation' => [
+            '        } catch (Foo | \\Ba',
+            CompletionKind::Throwable,
+            '\\Ba',
+        ];
+        yield 'parameter type absolute' => ['    public function f(\\Da', CompletionKind::ParameterType, '\\Da'];
+        yield 'parameter type absolute qualified' => [
+            '    public function f(\\App\\Da',
+            CompletionKind::ParameterType,
+            '\\App\\Da',
+        ];
+        yield 'return type absolute' => ['    public function f(): \\Da', CompletionKind::ReturnType, '\\Da'];
+        yield 'return type absolute nullable' => ['    public function f(): ?\\Da', CompletionKind::ReturnType, '\\Da'];
+        yield 'property type absolute nullable' => ['    private ?\\Da', CompletionKind::PropertyType, '\\Da'];
+        yield 'implements absolute' => ['class Foo implements \\My', CompletionKind::InterfaceList, '\\My'];
+        yield 'implements absolute continuation' => [
+            'class Foo implements A, \\My',
+            CompletionKind::InterfaceList,
+            '\\My',
+        ];
+        yield 'interface extends absolute' => [
+            'interface Foo extends \\My',
+            CompletionKind::InterfaceList,
+            '\\My',
+        ];
+        yield 'class extends absolute' => ['class Foo extends \\Ba', CompletionKind::ExtendableClass, '\\Ba'];
+        yield 'attribute absolute' => ['#[\\Ro', CompletionKind::Attribute, '\\Ro'];
+
         yield 'class body member' => ['class Foo { pub', CompletionKind::ClassBody, 'pub'];
         yield 'interface body member' => ['interface Foo { pub', CompletionKind::ClassBody, 'pub'];
         yield 'trait body member' => ['trait Foo { pub', CompletionKind::ClassBody, 'pub'];

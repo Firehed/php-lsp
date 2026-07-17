@@ -21,25 +21,42 @@ namespace Firehed\PhpLsp\Completion;
  */
 final class CompletionClassifier
 {
+    // The captured class/type-reference prefix: an optional leading `\` and any
+    // interior separators, so an absolute or qualified name (`\Ru`, `\App\Ex`)
+    // reaches the handler intact instead of being truncated to its last segment.
+    // Shared by every class-reference position, mirroring the `new` pattern.
+    private const QUALIFIED_TAIL = '(\\\\?[\w\\\\]*)';
+
     // Matches property type continuations: "private ?", "public int|", "protected Foo&"
-    private const PROPERTY_TYPE_PATTERN = '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*(\w*)$/';
+    private const PROPERTY_TYPE_PATTERN =
+        '/(?:public|private|protected)\s+(?:readonly\s+)?(?:\w+\s*)?[?|&]\s*' . self::QUALIFIED_TAIL . '$/';
+
+    // Matches an "implements …" list (single or comma-separated).
+    private const IMPLEMENTS_PATTERN =
+        '/\bimplements\s+(?:[\w\\\\]+\s*,\s*)*' . self::QUALIFIED_TAIL . '$/';
 
     // Matches an "interface X extends …" list (single or comma-separated).
-    private const INTERFACE_EXTENDS_PATTERN = '/\binterface\s+\w+\s+extends\s+(?:[\w\\\\]+\s*,\s*)*(\w*)$/';
+    private const INTERFACE_EXTENDS_PATTERN =
+        '/\binterface\s+\w+\s+extends\s+(?:[\w\\\\]+\s*,\s*)*' . self::QUALIFIED_TAIL . '$/';
+
+    // Matches a return type with a nullable/union/intersection lead ("): ?", "): int|").
+    private const RETURN_TYPE_COMPLEX_PATTERN =
+        '/\):\s*(?:\?\s*|(?:\w+\s*[|&]\s*)+)' . self::QUALIFIED_TAIL . '$/';
 
     // Matches a "class X extends …" clause. A class extends exactly one class, so
     // there is no comma-list form.
-    private const CLASS_EXTENDS_PATTERN = '/\bclass\s+\w+\s+extends\s+(\w*)$/';
+    private const CLASS_EXTENDS_PATTERN = '/\bclass\s+\w+\s+extends\s+' . self::QUALIFIED_TAIL . '$/';
 
     // Matches a catch clause's type position, including the `|`-separated multi-catch
     // continuation ("catch (Foo | Ba"). The caught variable is matched by the variable
     // pattern, which is checked first, so this only sees type positions.
-    private const CATCH_PATTERN = '/\bcatch\s*\(\s*(?:[\w\\\\]+\s*\|\s*)*(\w*)$/';
+    private const CATCH_PATTERN = '/\bcatch\s*\(\s*(?:[\w\\\\]+\s*\|\s*)*' . self::QUALIFIED_TAIL . '$/';
 
     // Matches an attribute-name position: "#[", including grouped attributes
     // ("#[Foo, Ba", "#[Foo(1), Ba"). It deliberately does not match inside an
     // attribute's own argument list ("#[Foo(Ba"), which is a value position.
-    private const ATTRIBUTE_PATTERN = '/#\[\s*(?:[\w\\\\]+\s*(?:\([^)]*\))?\s*,\s*)*(\w*)$/';
+    private const ATTRIBUTE_PATTERN =
+        '/#\[\s*(?:[\w\\\\]+\s*(?:\([^)]*\))?\s*,\s*)*' . self::QUALIFIED_TAIL . '$/';
 
     public static function classify(string $textBeforeCursor): CompletionClassification
     {
@@ -48,8 +65,10 @@ final class CompletionClassifier
             return new CompletionClassification(CompletionKind::Variable, $matches[1]);
         }
 
-        // new ClassName completion
-        if (preg_match('/new\s+(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        // new ClassName completion. The prefix keeps a leading `\` and embedded
+        // separators so a qualified/navigated name (`new \Ps`, `new Psr\Ht`) reaches
+        // the handler intact rather than being truncated to its last segment.
+        if (preg_match('/new\s+' . self::QUALIFIED_TAIL . '$/', $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::New_, $matches[1]);
         }
 
@@ -62,7 +81,7 @@ final class CompletionClassifier
 
         // implements list - interfaces only. Must check before the parameter-type
         // fallback, since the comma in "implements A, Ba" also matches that pattern.
-        if (preg_match('/\bimplements\s+(?:[\w\\\\]+\s*,\s*)*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        if (preg_match(self::IMPLEMENTS_PATTERN, $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::InterfaceList, $matches[1]);
         }
 
@@ -93,12 +112,12 @@ final class CompletionClassifier
         }
 
         // Return type context - after ): with optional space
-        if (preg_match('/\):\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        if (preg_match('/\):\s*' . self::QUALIFIED_TAIL . '$/', $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::ReturnType, $matches[1]);
         }
 
         // Return type context - nullable/union/intersection (e.g., "): ?", "): int|", "): Foo&")
-        if (preg_match('/\):\s*(?:\?\s*|(?:\w+\s*[|&]\s*)+)(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        if (preg_match(self::RETURN_TYPE_COMPLEX_PATTERN, $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::ReturnType, $matches[1]);
         }
 
@@ -109,7 +128,7 @@ final class CompletionClassifier
 
         // Parameter type context - fallback for type positions not matched above.
         // Matches after (, ,, ?, |, & which occur in parameter lists and complex types
-        if (preg_match('/[(,?|&]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        if (preg_match('/[(,?|&]\s*' . self::QUALIFIED_TAIL . '$/', $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::ParameterType, $matches[1]);
         }
 

@@ -1351,6 +1351,41 @@ final class SymbolResolverTest extends TestCase
         self::assertTrue($this->resolver->isInstantiable(new ClassName('NonExistent\\Unknown')));
     }
 
+    public function testIsClassLikeReturnsTrueForEveryClassLikeKind(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Domain/Entity.php');
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        $this->openFixture('src/Enum/Status.php');
+
+        /** @phpstan-ignore argument.type (fixture class) */
+        $class = new ClassName('Fixtures\\Domain\\User');
+        /** @phpstan-ignore argument.type (fixture class) */
+        $interface = new ClassName('Fixtures\\Domain\\Entity');
+        /** @phpstan-ignore argument.type (fixture class) */
+        $trait = new ClassName('Fixtures\\Traits\\SingletonTrait');
+        /** @phpstan-ignore argument.type (fixture class) */
+        $enum = new ClassName('Fixtures\\Enum\\Status');
+
+        self::assertTrue($this->resolver->isClassLike($class), 'a class is a class-like');
+        self::assertTrue($this->resolver->isClassLike($interface), 'an interface is a class-like');
+        self::assertTrue($this->resolver->isClassLike($trait), 'a trait is a class-like');
+        self::assertTrue($this->resolver->isClassLike($enum), 'an enum is a class-like');
+    }
+
+    public function testIsClassLikeReturnsFalseForNameWithNoClassLikeBehindIt(): void
+    {
+        // A catalog directory listing reports every .php file as a coarse
+        // class-like without parsing it, so a functions.php arrives as a phantom
+        // name that resolves to nothing. It must not be treated as a class-like.
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        $unknown = new ClassName('NonExistent\\Unknown');
+        self::assertFalse(
+            $this->resolver->isClassLike($unknown),
+            'a name with no class-like behind it is not a class-like',
+        );
+    }
+
     public function testIsValidTypeHintReturnsTrueForClass(): void
     {
         $this->openFixture('src/Domain/User.php');

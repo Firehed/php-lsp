@@ -16,6 +16,7 @@ enum CompletionItemKind: int
     case Field = 5;
     case Variable = 6;
     case Class_ = 7;
+    case Module = 9;
     case Property = 10;
     case Keyword = 14;
     case EnumMember = 20;

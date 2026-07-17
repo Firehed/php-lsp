@@ -18,22 +18,30 @@ use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
 final class CompletionHandler implements HandlerInterface
 {
+    // The widest position is a bare `\`: every root namespace plus every global
+    // class-like. Cap the response and report isIncomplete so the client re-queries
+    // as the prefix narrows, rather than shipping thousands of items.
+    private const RESULT_LIMIT = 100;
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
         private readonly ClassCandidates $classCandidates,
+        private readonly NamespaceCandidates $namespaceCandidates,
         private readonly FunctionCandidates $functionCandidates,
         private readonly KeywordCandidates $keywordCandidates,
         private readonly VariableCandidates $variableCandidates,
@@ -106,9 +114,41 @@ final class CompletionHandler implements HandlerInterface
             ));
         }
 
+        return $this->capped($items);
+    }
+
+    /**
+     * Cap the response, ranking before truncating so the cap keeps the best
+     * candidates rather than whichever the sources happened to emit first. When
+     * truncated, isIncomplete tells the client to re-query as the prefix narrows.
+     *
+     * The ranking invariant: only items that ask to be ordered carry a sortText —
+     * namespace navigation, where a symbol must beat a node. Everything else
+     * (members, variables, functions, flat classes) falls back to its label, i.e.
+     * an alphabetical cap. That is deliberate: it is deterministic, and by ASCII a
+     * PascalCase project symbol (`MyClass`) sorts ahead of a lowercase builtin
+     * (`mysqli_connect`), so a user's own types survive the cap over the standard
+     * library when a broad prefix matches both. The trade is that a >limit member
+     * list is alphabetised rather than kept in resolution order — benign, and rare.
+     *
+     * @param list<CompletionItem> $items
+     * @return array{isIncomplete: bool, items: list<CompletionItem>}
+     */
+    private function capped(array $items): array
+    {
+        if (count($items) <= self::RESULT_LIMIT) {
+            return ['isIncomplete' => false, 'items' => $items];
+        }
+
+        usort(
+            $items,
+            static fn(array $a, array $b): int
+                => ($a['sortText'] ?? $a['label']) <=> ($b['sortText'] ?? $b['label']),
+        );
+
         return [
-            'isIncomplete' => false,
-            'items' => $items,
+            'isIncomplete' => true,
+            'items' => array_slice($items, 0, self::RESULT_LIMIT),
         ];
     }
 
@@ -190,28 +230,28 @@ final class CompletionHandler implements HandlerInterface
                 $character,
                 TypeHintContext::Parameter,
             ),
-            CompletionKind::InterfaceList => $this->classCandidates->find(
+            CompletionKind::InterfaceList => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
                 $character,
                 ClassCandidateFilter::Interface_,
             ),
-            CompletionKind::ExtendableClass => $this->classCandidates->find(
+            CompletionKind::ExtendableClass => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
                 $character,
                 ClassCandidateFilter::ExtendableClass,
             ),
-            CompletionKind::Throwable => $this->classCandidates->find(
+            CompletionKind::Throwable => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
                 $character,
                 ClassCandidateFilter::Throwable,
             ),
-            CompletionKind::Attribute => $this->classCandidates->find(
+            CompletionKind::Attribute => $this->getClassCompletions(
                 $prefix,
                 $document,
                 $line,
@@ -231,8 +271,59 @@ final class CompletionHandler implements HandlerInterface
      */
     private function getNewCompletions(string $prefix, TextDocument $document, int $line, int $character): array
     {
-        return $this->deduplicateCompletions(
-            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::Instantiable),
+        return $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::Instantiable);
+    }
+
+    /**
+     * Class-name candidates valid for a position, from the workspace index and
+     * imports, plus namespace-navigation items when the cursor is on an absolute
+     * (`\`-rooted) name. Every class position routes through here, so navigation
+     * is offered consistently and filtered by the same predicate everywhere.
+     *
+     * @return list<CompletionItem>
+     */
+    private function getClassCompletions(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
+        $items = array_merge(
+            $this->classCandidates->find($prefix, $document, $line, $character, $filter),
+            $this->namespaceNavigationItems($prefix, $line, $character, $filter),
+        );
+
+        return $this->deduplicateCompletions($items);
+    }
+
+    /**
+     * Namespace nodes and classes when the cursor is on a fully-qualified name
+     * (`new \Ps`), so the user can walk the tree into vendor and built-in
+     * namespaces. The leading `\` roots the walk at the global namespace; the
+     * segment already typed filters the children, and $filter keeps the classes
+     * valid for the position.
+     *
+     * @return list<CompletionItem>
+     */
+    private function namespaceNavigationItems(
+        string $prefix,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
+        if (!str_starts_with($prefix, '\\')) {
+            return [];
+        }
+
+        $qualified = substr($prefix, 1);
+
+        return $this->namespaceCandidates->find(
+            NamespacePath::namespaceOf($qualified),
+            NamespacePath::shortNameOf($qualified),
+            $line,
+            $character,
+            $filter,
         );
     }
 
@@ -311,10 +402,11 @@ final class CompletionHandler implements HandlerInterface
     ): array {
         $items = $this->builtinTypeCandidates->find($prefix, $context);
 
-        // Class-likes valid as type hints (traits excluded)
+        // Class-likes valid as type hints (traits excluded), plus navigation into
+        // absolute namespaces (`function f(\Ps`), via the shared class path.
         $items = array_merge(
             $items,
-            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::TypeHint),
+            $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::TypeHint),
         );
 
         return $this->deduplicateCompletions($items);

@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
@@ -21,6 +22,7 @@ use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\DocumentIndexer;
+use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -94,6 +96,10 @@ final class Server
             $this->documentManager,
             $symbolResolver,
             new ClassCandidates($symbolIndex, $symbolResolver),
+            new NamespaceCandidates(
+                NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
+                $symbolResolver,
+            ),
             new FunctionCandidates($symbolResolver),
             new KeywordCandidates(),
             new VariableCandidates($symbolResolver),
