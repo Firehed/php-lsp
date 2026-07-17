@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\NamespaceCandidates;
+use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
@@ -232,6 +233,48 @@ class NamespaceCandidatesTest extends TestCase
             $byLabel['Env\Repository'] ?? null,
             'An inlined entry filters on its qualified reference so typing the parent segment keeps it',
         );
+    }
+
+    public function testInlineSkipsSymbolsWithNoClassLikeBehindThem(): void
+    {
+        // A small namespace is inlined, but one of its entries is a phantom (a
+        // functions.php). The inline path drops it, offering only the real class.
+        $catalog = self::catalog([
+            'App' => new NamespaceContents(['App\Env'], []),
+            'App\Env' => new NamespaceContents([], [
+                new CatalogSymbol('App\Env\Repository', NameKind::ClassLike),
+                new CatalogSymbol('App\Env\functions', NameKind::ClassLike),
+            ]),
+        ]);
+        $resolver = self::createStub(CodeResolver::class);
+        $resolver->method('isClassLike')->willReturnCallback(
+            static fn(ClassName $name): bool => str_ends_with($name->fqn, 'Repository'),
+        );
+        $candidates = new NamespaceCandidates($catalog, $resolver);
+
+        $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
+
+        self::assertContains('Env\Repository', $labels, 'A real inlined class-like is offered');
+        self::assertNotContains('Env\functions', $labels, 'A phantom inlined symbol is skipped');
+    }
+
+    public function testInlinesNamespaceAtExactlyTheThreshold(): void
+    {
+        // Five members (the threshold) still inlines; a sixth would make it a node.
+        $five = array_map(
+            static fn(int $i): CatalogSymbol => new CatalogSymbol("App\\Five\\C{$i}", NameKind::ClassLike),
+            range(1, 5),
+        );
+        $catalog = self::catalog([
+            'App' => new NamespaceContents(['App\Five'], []),
+            'App\Five' => new NamespaceContents([], $five),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
+
+        self::assertNotContains('Five\\', $labels, 'A namespace at exactly the threshold is inlined, not a node');
+        self::assertContains('Five\C1', $labels, 'Its members are inlined, qualified by the segment');
     }
 
     public function testInlinesGrandchildNamespaceAsQualifiedNode(): void
