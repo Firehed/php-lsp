@@ -534,6 +534,125 @@ class CompletionHandlerTest extends TestCase
         self::assertCount(100, $result['items'], 'Unranked completions are capped at the limit');
     }
 
+    #[DataProvider('provideImportedPrefixMarkers')]
+    public function testImportedPrefixOffersCatalogChild(string $marker): void
+    {
+        // Repository.php is NOT opened; it is discovered on disk through the catalog
+        // via the `use Fixtures\Model\Env;` import, whether typed as `Env`, `Env\`,
+        // or `Env\R`.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', $marker);
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Model\Env\Repository',
+            $byLabel['Env\Repository'] ?? null,
+            "The imported namespace's child is offered import-relative with its FQCN detail",
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string}>
+     */
+    public static function provideImportedPrefixMarkers(): iterable
+    {
+        yield 'bare import name' => ['imported_bare'];
+        yield 'trailing slash' => ['imported_slash'];
+        yield 'partial child' => ['imported_partial'];
+    }
+
+    public function testImportedPrefixInsertsQualifiedReferenceWithoutDuplication(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = [];
+        foreach ($result['items'] as $item) {
+            $byLabel[$item['label']] = $item['textEdit']['newText'] ?? null;
+        }
+        self::assertSame(
+            'Env\Repository',
+            $byLabel['Env\Repository'] ?? null,
+            'Accepting at `new Env\\R` inserts Env\\Repository, never Env\\Env\\Repository',
+        );
+    }
+
+    public function testImportedPrefixExcludesInterfaceAfterNew(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_iface_new');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertNotContains(
+            'Env\Handler',
+            array_column($result['items'], 'label'),
+            'An interface child is not offered after `new`',
+        );
+    }
+
+    public function testImportedPrefixOffersInterfaceAsTypeHint(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_iface_type');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertContains(
+            'Env\Handler',
+            array_column($result['items'], 'label'),
+            'An interface child is offered in a type-hint position',
+        );
+    }
+
+    public function testImportedPrefixDoesNotLeakMembersWhenChildIsOpen(): void
+    {
+        // Opening the child's file must not cause its methods to be offered as
+        // class candidates — the reverted #331 attempt's regression.
+        $this->openFixture('src/Model/Env/Repository.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_slash');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('Env\Repository', $labels, 'The class child is still offered');
+        self::assertNotContains('persist', $labels, "The child's method is not offered as a class candidate");
+    }
+
+    public function testImportedPrefixOffersNothingForUnmatchedChild(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_no_match');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $envItems = array_filter(
+            array_column($result['items'], 'label'),
+            static fn(string $label): bool => str_starts_with($label, 'Env\\'),
+        );
+        self::assertSame([], array_values($envItems), 'No child matches `Env\\Zz`, so none is offered');
+    }
+
+    public function testUnimportedPrefixIsNotReached(): void
+    {
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_unrelated');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $otherItems = array_filter(
+            array_column($result['items'], 'label'),
+            static fn(string $label): bool => str_starts_with($label, 'Other\\'),
+        );
+        self::assertSame([], array_values($otherItems), 'An unimported prefix opens no namespace');
+    }
+
     public function testStaticCompletionResolvesImportedClassName(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/MultiNamespaceImports.php', 'imported_static');
