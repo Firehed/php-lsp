@@ -316,8 +316,12 @@ class NamespaceCandidatesTest extends TestCase
     {
         $catalog = self::catalog([
             'App' => new NamespaceContents([], []),
-            'Vendor\Mapping' => new NamespaceContents([], [new CatalogSymbol('Vendor\Mapping\Column', NameKind::ClassLike)]),
-            'Vendor\Other' => new NamespaceContents([], [new CatalogSymbol('Vendor\Other\Thing', NameKind::ClassLike)]),
+            'Vendor\Mapping' => new NamespaceContents([], [
+                new CatalogSymbol('Vendor\Mapping\Column', NameKind::ClassLike),
+            ]),
+            'Vendor\Other' => new NamespaceContents([], [
+                new CatalogSymbol('Vendor\Other\Thing', NameKind::ClassLike),
+            ]),
         ]);
         $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
         $context = new NameContext('App', ['Mapping' => 'Vendor\Mapping', 'Other' => 'Vendor\Other']);
