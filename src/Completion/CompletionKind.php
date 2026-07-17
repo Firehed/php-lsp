@@ -45,6 +45,9 @@ enum CompletionKind
     /** In an attribute position, e.g. `#[Ba` — attribute classes only */
     case Attribute;
 
+    /** On the right of `instanceof`, e.g. `$x instanceof Ba` — class-likes except traits */
+    case Instanceof_;
+
     /** Directly inside a class body — class-level keywords only */
     case ClassBody;
 

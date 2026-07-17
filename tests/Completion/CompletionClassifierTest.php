@@ -189,6 +189,18 @@ class CompletionClassifierTest extends TestCase
             'e',
         ];
 
+        // The right-hand side of `instanceof` is a class-like position (classes,
+        // interfaces, enums), so it classifies distinctly from the surrounding
+        // expression and keeps a leading `\` for navigation (#315).
+        yield 'instanceof with prefix' => ['        if ($x instanceof Ba', CompletionKind::Instanceof_, 'Ba'];
+        yield 'instanceof bare' => ['        if ($x instanceof ', CompletionKind::Instanceof_, ''];
+        yield 'instanceof absolute' => ['        if ($x instanceof \\Ba', CompletionKind::Instanceof_, '\\Ba'];
+        yield 'instanceof absolute qualified' => [
+            '        if ($x instanceof \\App\\Ba',
+            CompletionKind::Instanceof_,
+            '\\App\\Ba',
+        ];
+
         yield 'expression at start' => ['fo', CompletionKind::Expression, 'fo'];
         yield 'expression after assignment' => ['$x = fo', CompletionKind::Expression, 'fo'];
         yield 'expression inside method body' => [
