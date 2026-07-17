@@ -29,4 +29,9 @@ class Trigger
     {
         new \Ps/*|nav_global*/
     }
+
+    public function navigateBuiltinClass(): void
+    {
+        new \Spl/*|nav_global_class*/
+    }
 }
