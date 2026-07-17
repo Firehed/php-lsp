@@ -690,16 +690,19 @@ class CompletionHandlerTest extends TestCase
 
     public function testUnimportedUnrelatedPrefixIsNotReached(): void
     {
+        // `new Other\R`: Other is neither an import nor a child of the current
+        // namespace, so it resolves to a namespace that does not exist. Nothing is
+        // offered — in particular Env's children (Repository/Handler) do not leak in.
         $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_unrelated');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
-        $otherItems = array_filter(
-            array_column($result['items'], 'label'),
-            static fn(string $label): bool => str_starts_with($label, 'Other'),
+        self::assertSame(
+            [],
+            $result['items'],
+            'A prefix that is neither imported nor a current-namespace child reaches nothing',
         );
-        self::assertSame([], array_values($otherItems), 'A prefix that is neither imported nor a current-NS child reaches nothing');
     }
 
     public function testStaticCompletionResolvesImportedClassName(): void
