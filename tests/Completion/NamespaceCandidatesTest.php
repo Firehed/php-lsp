@@ -311,7 +311,7 @@ class NamespaceCandidatesTest extends TestCase
 
         self::assertCount(1, $items);
         self::assertSame('Env\Repository', $items[0]['label'], 'The reference is written import-relative');
-        self::assertSame('App\Model\Env\Repository', $items[0]['detail'], 'The detail is the FQCN');
+        self::assertSame('App\Model\Env\Repository', $items[0]['detail'] ?? null, 'The detail is the FQCN');
         self::assertSame('Env\Repository', $items[0]['filterText'] ?? null, 'It filters on the qualified reference');
         self::assertSame(
             ['range' => $range->toArray(), 'newText' => 'Env\Repository'],

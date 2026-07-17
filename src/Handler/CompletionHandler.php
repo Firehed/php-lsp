@@ -24,6 +24,7 @@ use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
@@ -292,9 +293,52 @@ final class CompletionHandler implements HandlerInterface
         $items = array_merge(
             $this->classCandidates->find($prefix, $document, $line, $character, $filter),
             $this->namespaceNavigationItems($prefix, $line, $character, $filter),
+            $this->importedPrefixNavigationItems($prefix, $document, $line, $character, $filter),
         );
 
         return $this->deduplicateCompletions($items);
+    }
+
+    /**
+     * Navigation into a `use` import that is also a namespace: `use App\Model\Env;`
+     * makes `App\Model\Env\Repository` writable as `Env\Repository`, so `new Env`,
+     * `new Env\`, and `new Env\R` all reach it (#339). The children are catalog-
+     * sourced (on disk, no open file needed) and written import-relative; the
+     * textEdit replaces the whole typed alias so the insertion never duplicates it.
+     *
+     * @return list<CompletionItem>
+     */
+    private function importedPrefixNavigationItems(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
+        // Absolute names are namespaceNavigationItems' job; here the first segment
+        // must be an unqualified import.
+        if (str_starts_with($prefix, '\\')) {
+            return [];
+        }
+        $alias = NamespacePath::firstSegment($prefix);
+        $imports = $this->codeResolver->getImports($document);
+        if ($alias === '' || !array_key_exists($alias, $imports)) {
+            return [];
+        }
+
+        // The path typed after the alias: `R` in `Env\R`, `Sub\R` in `Env\Sub\R`, ''.
+        $rest = str_contains($prefix, '\\') ? substr($prefix, strlen($alias) + 1) : '';
+        $middle = NamespacePath::namespaceOf($rest);
+
+        return $this->namespaceCandidates->find(
+            NamespacePath::join($imports[$alias], $middle),
+            NamespacePath::shortNameOf($rest),
+            $line,
+            $character,
+            $filter,
+            NamespacePath::join($alias, $middle),
+            Range::onLine($line, $character - strlen($prefix), $character),
+        );
     }
 
     /**
