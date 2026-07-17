@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameKind;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -291,6 +292,50 @@ class NamespaceCandidatesTest extends TestCase
 
         self::assertContains('Small\Deep\\', $labels, 'An inlined namespace exposes a grandchild as a qualified node');
         self::assertNotContains('Small\\', $labels, 'The inlined namespace itself is not offered as a node');
+    }
+
+    public function testQualifiesSymbolReferencesWithTheReferenceBase(): void
+    {
+        // An imported prefix (`use App\Model\Env;`) roots enumeration at the import
+        // target but writes references import-relative (`Env\Repository`) and
+        // replaces the whole typed span, so `new Env\R` never duplicates `Env\`.
+        $catalog = self::catalog([
+            'App\Model\Env' => new NamespaceContents([], [
+                new CatalogSymbol('App\Model\Env\Repository', NameKind::ClassLike),
+            ]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $range = Range::onLine(0, 4, 9);
+
+        $items = $candidates->find('App\Model\Env', 'R', 0, 9, ClassCandidateFilter::Any, 'Env', $range);
+
+        self::assertCount(1, $items);
+        self::assertSame('Env\Repository', $items[0]['label'], 'The reference is written import-relative');
+        self::assertSame('App\Model\Env\Repository', $items[0]['detail'], 'The detail is the FQCN');
+        self::assertSame('Env\Repository', $items[0]['filterText'] ?? null, 'It filters on the qualified reference');
+        self::assertSame(
+            ['range' => $range->toArray(), 'newText' => 'Env\Repository'],
+            $items[0]['textEdit'] ?? null,
+            'The textEdit inserts the qualified reference over the provided range',
+        );
+    }
+
+    public function testQualifiesNamespaceNodesWithTheReferenceBase(): void
+    {
+        $catalog = self::catalog([
+            'App\Model\Env' => new NamespaceContents(['App\Model\Env\Sub'], []),
+            'App\Model\Env\Sub' => new NamespaceContents([], self::manyClassLikes('App\Model\Env\Sub')),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $range = Range::onLine(0, 4, 8);
+
+        $items = $candidates->find('App\Model\Env', '', 0, 8, ClassCandidateFilter::Any, 'Env', $range);
+
+        self::assertContains(
+            'Env\Sub\\',
+            array_column($items, 'label'),
+            'A child namespace node is written import-relative',
+        );
     }
 
     public function testRanksSymbolsAboveNamespaceNodes(): void
