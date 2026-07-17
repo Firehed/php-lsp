@@ -535,6 +535,32 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testClosureUseCaptureIsNotImportNavigation(): void
+    {
+        // A closure's `use (...)` clause captures variables from the enclosing
+        // scope; it shares the `use` keyword with an import but is an unrelated
+        // construct. Like a trait `use`, it must never enter the absolute namespace
+        // navigation an import `use` triggers — no namespaces, no class-likes.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ClosureUseCompletion.php', 'closure_capture');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $navigation = array_filter(
+            $result['items'],
+            static fn(array $item): bool => in_array(
+                $item['kind'] ?? null,
+                [CompletionItemKind::Module->value, CompletionItemKind::Class_->value],
+                true,
+            ),
+        );
+        self::assertSame(
+            [],
+            $navigation,
+            'A closure `use` offers no namespace or class navigation; it is not import navigation',
+        );
+    }
+
     public function testBackslashNavigationOffersGlobalBuiltinClasses(): void
     {
         // Issue #38: typing an absolute name whose prefix matches a class declared
