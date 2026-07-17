@@ -7,9 +7,9 @@ on:
   pull_request:
 
 jobs:
-  test:
+  phpstan:
     runs-on: ubuntu-latest
-    name: PHP ${{ matrix.php }}
+    name: PHPStan
     steps:
       - uses: actions/checkout@v7
 
