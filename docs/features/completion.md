@@ -19,6 +19,7 @@ This document tracks the current state of code completion in php-lsp.
 | `catch` clause | `catch (Ba` or `catch (Foo \| Ba` | Throwable types only (from imports + workspace index): `Throwable` and any class or interface extending/implementing it. Multi-catch (`\|`-separated) supported; non-throwable types, functions, and keywords excluded | ✅ Working |
 | Attribute position | `#[Ro` | Attribute classes only (from imports + workspace index); classes, interfaces, traits, enums, and functions excluded. Grouped (`#[A, Ba`) supported; target-aware filtering is not yet (#252) | ✅ Working |
 | Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
+| `instanceof` right-hand side | `$x instanceof Ba` | Class-likes valid as a type (classes, interfaces, enums) from imports + workspace index; traits excluded (a trait `instanceof` check is always false), as are scalar type keywords and functions | ✅ Working |
 | Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Works on absolute (`\`-rooted) names and on relative prefixes resolved through a `use` import or the current namespace (`use App\Model\Env;` or being inside `App\Model` → `new Env\R`) | ✅ Working |
 
 All of the above work identically in class methods, free functions, and

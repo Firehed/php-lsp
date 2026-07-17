@@ -257,6 +257,13 @@ final class CompletionHandler implements HandlerInterface
                 $character,
                 ClassCandidateFilter::Attribute,
             ),
+            CompletionKind::Instanceof_ => $this->getClassCompletions(
+                $prefix,
+                $document,
+                $line,
+                $character,
+                ClassCandidateFilter::TypeHint,
+            ),
             CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
             CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $line, $character),
             CompletionKind::None => [],

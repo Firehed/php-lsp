@@ -72,6 +72,13 @@ final class CompletionClassifier
             return new CompletionClassification(CompletionKind::New_, $matches[1]);
         }
 
+        // instanceof right-hand side. Checked before the broader operator/expression
+        // fallbacks, which would otherwise claim `instanceof Ba` as an Expression. The
+        // prefix keeps a leading `\` so absolute navigation reaches the handler intact.
+        if (preg_match('/\binstanceof\s+' . self::QUALIFIED_TAIL . '$/', $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::Instanceof_, $matches[1]);
+        }
+
         // Attribute position (#[). Checked early: the "#[" delimiter is unambiguous,
         // and attributes appear in class bodies and type-hint-adjacent positions that
         // later, broader patterns would otherwise claim.

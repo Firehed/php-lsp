@@ -3543,6 +3543,35 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testInstanceofOffersClassLikesNotTraits(): void
+    {
+        // Issue #315: the right-hand side of `instanceof` accepts classes, interfaces,
+        // and enums, but not traits — `$x instanceof SomeTrait` is always false. Scalar
+        // type keywords and functions are not valid there either.
+        $cursor = $this->openFixtureAtCursor('src/Completion/InstanceofCompletion.php', 'instanceof_empty');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('User', $labels, 'A class is valid on the right of instanceof');
+        self::assertContains('Entity', $labels, 'An interface is valid on the right of instanceof');
+        self::assertContains('Status', $labels, 'An enum is valid on the right of instanceof');
+        self::assertNotContains('SingletonTrait', $labels, 'A trait instanceof check is always false');
+        self::assertNotContains('string', $labels, 'A scalar type keyword is not valid after instanceof');
+
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            'Functions must not be offered on the right of instanceof',
+        );
+        self::assertNotContains(
+            CompletionItemKind::Keyword->value,
+            $kinds,
+            'Keywords must not be offered on the right of instanceof',
+        );
+    }
+
     public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
     {
         self::markTestSkipped(
