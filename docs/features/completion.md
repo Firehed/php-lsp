@@ -62,7 +62,10 @@ the prefix narrows. Catalog candidates are resolved before being offered, so a
 Navigation also works from a **relative prefix** whose first segment is a `use` import or a
 child of the current namespace. With `use App\Model\Env;` (or from inside `App\Model`),
 `new Env\` and `new Env\R` navigate `App\Model\Env` and offer its children, and `new Env`
-offers an `Env\` descent node. Discovery is catalog-sourced (no open file needed), and — as
+descends into it directly. A relative name behaves **identically to the absolute form** once
+the first segment is resolved — the `\` only changes how the root is qualified — so `new Env`
+inlines a small target (offering `Env\Repository` …) and nodes a large one (`Env\`), exactly
+as `new \App\Model\Env` would. Discovery is catalog-sourced (no open file needed), and — as
 with absolute navigation — insertion is **leaf-relative**: at `new Env\R` only `Repository`
 is inserted, replacing the segment after the last `\`, so the typed `Env\` stands and is
 never duplicated (the FQCN is carried in the item's detail). The position filter still

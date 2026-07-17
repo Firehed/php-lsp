@@ -44,8 +44,9 @@ final class NamespaceCandidates
      * the name is rooted so name resolution stays out of the handler:
      *
      * - absolute (`\Ps`) walks from the global namespace;
-     * - a bare relative name (`Env`) offers descent nodes for imports and children
-     *   of the current namespace;
+     * - a bare relative name (`Env`) descends into imports and children of the
+     *   current namespace, inlining a small target and noding a large one, exactly
+     *   as the absolute form would once the first segment is resolved;
      * - a qualified relative name (`Env\R`) resolves its first segment through the
      *   imports, else the current namespace, and walks from there.
      *
@@ -74,7 +75,7 @@ final class NamespaceCandidates
         }
 
         if (!str_contains($prefix, '\\')) {
-            return $this->descentNodes($context, $prefix, $line, $character);
+            return $this->descend($context, $prefix, $line, $character, $filter);
         }
 
         $alias = NamespacePath::firstSegment($prefix);
@@ -135,15 +136,22 @@ final class NamespaceCandidates
     }
 
     /**
-     * Descent nodes for a bare relative name: an `Env\` node for each `use` import
-     * or child of the current namespace whose name the typed $prefix begins and
-     * which is itself a navigable namespace. Imports win a name clash with a
-     * current-namespace child, matching PHP name resolution.
+     * Candidates for a bare relative name: each `use` import or child of the current
+     * namespace whose name the typed $prefix begins and which is itself a navigable
+     * namespace. Each is offered through the same {@see offerChildNamespace()} as
+     * absolute navigation, so a small target inlines and a large one is a node —
+     * identically, whichever way the namespace was reached. Imports win a name clash
+     * with a current-namespace child, matching PHP name resolution.
      *
      * @return list<CompletionItem>
      */
-    public function descentNodes(NameContext $context, string $prefix, int $line, int $character): array
-    {
+    public function descend(
+        NameContext $context,
+        string $prefix,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
         $range = Range::onLine($line, $character - strlen($prefix), $character);
 
         $targets = [];
@@ -159,7 +167,7 @@ final class NamespaceCandidates
             if (!PrefixMatcher::matches($reference, $prefix) || !$this->isNavigable($fqcn)) {
                 continue;
             }
-            $items[] = CompletionItemFactory::forNamespace($reference, $fqcn, $range);
+            $items = array_merge($items, $this->offerChildNamespace($fqcn, $reference, $filter, $range));
         }
 
         return $this->ranked($items);

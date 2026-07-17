@@ -294,41 +294,43 @@ class NamespaceCandidatesTest extends TestCase
         self::assertNotContains('Small\\', $labels, 'The inlined namespace itself is not offered as a node');
     }
 
-    public function testDescentNodesOfferImportsAndCurrentNamespaceChildren(): void
+    public function testDescendInlinesSmallTargetsAndNodesLargeOnes(): void
     {
+        // A bare name reaches its candidates through the same offerChildNamespace as
+        // absolute navigation, so a small one inlines and a large one is a node.
         $catalog = self::catalog([
-            'App' => new NamespaceContents(['App\Models'], []),
-            'App\Models' => new NamespaceContents([], [new CatalogSymbol('App\Models\User', NameKind::ClassLike)]),
-            'Vendor\Pkg' => new NamespaceContents([], [new CatalogSymbol('Vendor\Pkg\Thing', NameKind::ClassLike)]),
+            'App' => new NamespaceContents(['App\Small'], []),
+            'App\Small' => new NamespaceContents([], [new CatalogSymbol('App\Small\Thing', NameKind::ClassLike)]),
+            'Vendor\Big' => new NamespaceContents([], self::manyClassLikes('Vendor\Big')),
             'Vendor\Plain' => new NamespaceContents([], []),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
-        $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg', 'Plain' => 'Vendor\Plain']);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $context = new NameContext('App', ['Big' => 'Vendor\Big', 'Plain' => 'Vendor\Plain']);
 
-        $labels = array_column($candidates->descentNodes($context, '', 0, 0), 'label');
+        $labels = array_column($candidates->descend($context, '', 0, 0, ClassCandidateFilter::Any), 'label');
 
-        self::assertContains('Models\\', $labels, 'A navigable child of the current namespace is a descent node');
-        self::assertContains('Pkg\\', $labels, 'A navigable import is a descent node');
-        self::assertNotContains('Plain\\', $labels, 'An import that is not a namespace is not a descent node');
+        self::assertContains(
+            'Small\Thing',
+            $labels,
+            'A small current-namespace child inlines, like absolute navigation',
+        );
+        self::assertContains('Big\\', $labels, 'A large import is a node');
+        self::assertNotContains('Plain\\', $labels, 'An import that is not a namespace is skipped');
     }
 
-    public function testDescentNodesFilterByPrefix(): void
+    public function testDescendFiltersByPrefix(): void
     {
         $catalog = self::catalog([
             'App' => new NamespaceContents([], []),
-            'Vendor\Mapping' => new NamespaceContents([], [
-                new CatalogSymbol('Vendor\Mapping\Column', NameKind::ClassLike),
-            ]),
-            'Vendor\Other' => new NamespaceContents([], [
-                new CatalogSymbol('Vendor\Other\Thing', NameKind::ClassLike),
-            ]),
+            'Vendor\Mapping' => new NamespaceContents([], self::manyClassLikes('Vendor\Mapping')),
+            'Vendor\Other' => new NamespaceContents([], self::manyClassLikes('Vendor\Other')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
         $context = new NameContext('App', ['Mapping' => 'Vendor\Mapping', 'Other' => 'Vendor\Other']);
 
-        $labels = array_column($candidates->descentNodes($context, 'Map', 0, 3), 'label');
+        $labels = array_column($candidates->descend($context, 'Map', 0, 3, ClassCandidateFilter::Any), 'label');
 
-        self::assertSame(['Mapping\\'], $labels, 'Only imports/children whose name begins with the prefix are offered');
+        self::assertSame(['Mapping\\'], $labels, 'Only imports whose name begins with the prefix are offered');
     }
 
     public function testNavigateWalksAbsoluteNames(): void
@@ -349,20 +351,18 @@ class NamespaceCandidatesTest extends TestCase
         );
     }
 
-    public function testNavigateOffersDescentNodesForBareNames(): void
+    public function testNavigateDescendsForBareNames(): void
     {
         $catalog = self::catalog([
             'App' => new NamespaceContents([], []),
-            'Vendor\Pkg' => new NamespaceContents([], [
-                new CatalogSymbol('Vendor\Pkg\Thing', NameKind::ClassLike),
-            ]),
+            'Vendor\Pkg' => new NamespaceContents([], self::manyClassLikes('Vendor\Pkg')),
         ]);
         $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
         $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg']);
 
         $items = $candidates->navigate('Pk', $context, 0, 2, ClassCandidateFilter::Any);
 
-        self::assertContains('Pkg\\', array_column($items, 'label'), 'A bare name offers descent nodes');
+        self::assertContains('Pkg\\', array_column($items, 'label'), 'A bare name descends into an imported namespace');
     }
 
     public function testNavigateResolvesQualifiedNamesThroughImports(): void
