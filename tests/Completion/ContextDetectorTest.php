@@ -285,6 +285,41 @@ class ContextDetectorTest extends TestCase
     }
 
     // =========================================================================
+    // Closure-use detection - telling a capture list apart from an import `use`
+    // =========================================================================
+
+    #[DataProvider('provideClosureUseScenarios')]
+    public function testIsClosureUse(string $code, bool $expected): void
+    {
+        self::assertSame(
+            $expected,
+            ContextDetector::isClosureUse($code, strlen($code)),
+            'The cursor position should be recognised as (not) a closure `use()` capture list',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     * @codeCoverageIgnore
+     */
+    public static function provideClosureUseScenarios(): iterable
+    {
+        // A closure capture list is the only `use` that follows a closing `)`.
+        yield 'closure use' => ["<?php\n\$f = function () use ", true];
+        // The `)` may sit on an earlier line; the whole-document walk still sees it.
+        yield 'closure use across lines' => ["<?php\n\$f = function ()\n    use ", true];
+
+        // An import or trait `use` follows a statement boundary, never a `)`.
+        yield 'top-level import' => ["<?php\nuse ", false];
+        yield 'import with a prefix' => ["<?php\nuse Psr\\Lo", false];
+        yield 'trait use in a class body' => ["<?php\nclass A {\n    use ", false];
+
+        // Degenerate inputs must not read past the start of the token stream.
+        yield 'empty document' => ['', false];
+        yield 'no use keyword' => ['<?php', false];
+    }
+
+    // =========================================================================
     // Robustness - handles edge cases without throwing
     // =========================================================================
 

@@ -112,6 +112,20 @@ final class ContextDetector
     }
 
     /**
+     * Whether $offset sits in a closure's `use (...)` capture list, where a `use`
+     * captures variables from the enclosing scope rather than importing a namespace
+     * — again two unrelated constructs that share the keyword. The capture list is
+     * the only place a `use` follows a `)` (a closing parameter list); an import or
+     * trait `use` follows a statement boundary. Token-based and whole-document, so
+     * it survives mid-edit breakage and sees a `)` on an earlier line.
+     */
+    public static function isClosureUse(string $code, int $offset): bool
+    {
+        // `) use` — the closure's parameter list closes, then the capture keyword.
+        return array_slice(self::significantTokensBefore($code, $offset), -2) === [')', T_USE];
+    }
+
+    /**
      * The significant tokens (whitespace, comments, and docblocks removed) that
      * begin before $offset, each reduced to its token id (array tokens) or literal
      * text (single-character tokens). Only code up to the cursor defines its scope,
