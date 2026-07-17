@@ -264,6 +264,7 @@ final class CompletionHandler implements HandlerInterface
                 $character,
                 ClassCandidateFilter::TypeHint,
             ),
+            CompletionKind::Use_ => $this->getUseCompletions($prefix, $line, $character),
             CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
             CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $line, $character),
             CompletionKind::None => [],
@@ -308,6 +309,25 @@ final class CompletionHandler implements HandlerInterface
         );
 
         return $this->deduplicateCompletions($items);
+    }
+
+    /**
+     * Suggest namespaces and class-likes for a `use` import statement. A `use` name
+     * is fully qualified — resolved from the global namespace regardless of the
+     * file's own namespace or imports — so navigation walks the tree absolutely
+     * rather than through the current-namespace/import resolution the other class
+     * positions use. Any class-like is importable, so no position filter narrows it.
+     *
+     * @return list<CompletionItem>
+     */
+    private function getUseCompletions(string $prefix, int $line, int $character): array
+    {
+        return $this->namespaceCandidates->useStatement(
+            $prefix,
+            $line,
+            $character,
+            ClassCandidateFilter::Any,
+        );
     }
 
     /**

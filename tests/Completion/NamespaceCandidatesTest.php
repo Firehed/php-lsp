@@ -398,6 +398,61 @@ class NamespaceCandidatesTest extends TestCase
         );
     }
 
+    public function testUseStatementWalksQualifiedNameFromGlobal(): void
+    {
+        $catalog = self::catalog([
+            'Psr\Http' => new NamespaceContents([], [
+                new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
+            ]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $items = $candidates->useStatement('Psr\Http\M', 0, 10, ClassCandidateFilter::Any);
+
+        self::assertContains(
+            'Message',
+            array_column($items, 'label'),
+            'A `use` name walks from the global namespace, offering the leaf at the final segment',
+        );
+    }
+
+    public function testUseStatementIgnoresOptionalLeadingBackslash(): void
+    {
+        $catalog = self::catalog([
+            'Psr\Http' => new NamespaceContents([], [
+                new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
+            ]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $items = $candidates->useStatement('\Psr\Http\M', 0, 11, ClassCandidateFilter::Any);
+
+        self::assertContains(
+            'Message',
+            array_column($items, 'label'),
+            'A leading `\` is accepted and ignored: `use \Foo` names the same symbol as `use Foo`',
+        );
+    }
+
+    public function testUseStatementNavigatesFirstSegmentFromGlobal(): void
+    {
+        // A single typed segment (no separator) walks the global namespace's
+        // children, so a root namespace is offered as a node to step into.
+        $catalog = self::catalog([
+            '' => new NamespaceContents(['Psr'], []),
+            'Psr' => new NamespaceContents([], self::manyClassLikes('Psr')),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $labels = array_column($candidates->useStatement('Ps', 0, 2, ClassCandidateFilter::Any), 'label');
+
+        self::assertContains(
+            'Psr\\',
+            $labels,
+            'A bare first segment navigates the global namespace, not the current one',
+        );
+    }
+
     public function testRanksSymbolsAboveNamespaceNodes(): void
     {
         $catalog = self::catalog([

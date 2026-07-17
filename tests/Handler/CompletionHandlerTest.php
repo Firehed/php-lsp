@@ -465,6 +465,47 @@ class CompletionHandlerTest extends TestCase
         self::assertFalse($result['isIncomplete'], 'A result set within the cap is complete');
     }
 
+    public function testUseStatementNavigatesFromGlobalNamespace(): void
+    {
+        // Issue #40: typing a `use` import offers namespaces from the global
+        // namespace, even in a file whose own namespace is `App` — a `use` name is
+        // absolute. The fixtures install only psr/http-message, so Psr has a single
+        // child (Http) and inlines to its Http node, exactly as `new \Ps` does.
+        $cursor = $this->openFixtureAtCursor('Namespacing/UseCompletion.php', 'use_first_segment');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $modules = [];
+        foreach ($result['items'] as $item) {
+            if (($item['kind'] ?? null) === CompletionItemKind::Module->value) {
+                $modules[] = $item['label'];
+            }
+        }
+        self::assertContains(
+            'Psr\\Http\\',
+            $modules,
+            'A `use` import navigates the global namespace absolutely, ignoring the file\'s own `App` namespace',
+        );
+    }
+
+    public function testUseStatementOffersWorkspaceClassLeaf(): void
+    {
+        // A `use` import navigates workspace/vendor namespaces through the catalog:
+        // Fixtures\Domain\ is a PSR-4 namespace on disk, so its classes are offered
+        // by their leaf name without the file being open.
+        $cursor = $this->openFixtureAtCursor('Namespacing/UseCompletion.php', 'use_workspace_class');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertContains(
+            'User',
+            array_column($result['items'], 'label'),
+            'A class in a navigated workspace namespace is offered by its leaf name in a `use` import',
+        );
+    }
+
     public function testBackslashNavigationOffersGlobalBuiltinClasses(): void
     {
         // Issue #38: typing an absolute name whose prefix matches a class declared
