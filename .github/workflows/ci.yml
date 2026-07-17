@@ -12,6 +12,9 @@ jobs:
       matrix:
         php: ['8.3', '8.4', '8.5']
     name: PHP ${{ matrix.php }}
+    permissions:
+      contents: read
+      code-quality: write
     steps:
       - uses: actions/checkout@v7
 
@@ -31,6 +34,7 @@ jobs:
         run: composer phpunit
           --
           --coverage-clover coverage.xml
+          --coverage-cobertura cobertura.xml
           --log-junit junit.xml
 
       - name: Upload coverage reports to Codecov
@@ -45,6 +49,13 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
+
+      - name: Upload to GH coverage
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: cobertura.xml
+          language: PHP
+          label: coverage
 
       - name: PHPStan
         run: composer phpstan
