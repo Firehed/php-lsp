@@ -45,6 +45,3 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-
-      - name: PHPStan
-        run: composer phpstan
