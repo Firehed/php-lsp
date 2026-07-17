@@ -43,6 +43,13 @@ final class NamespaceCandidates
      * are valid in the target position — matched by their next segment against
      * $prefix.
      *
+     * References default to the child's leaf name, for absolute navigation where the
+     * earlier segments are literally typed (`\Psr\Log\`). $referenceBase prepends an
+     * alias instead, for an imported prefix reached through a `use` (`Env\Repository`
+     * for a class in `App\Model\Env` imported as `Env`); $replaceRange then covers the
+     * whole typed alias so the insertion never duplicates it (#339). When omitted, the
+     * range is the partial leaf, the absolute-navigation default.
+     *
      * @return list<CompletionItem>
      */
     public function find(
@@ -51,10 +58,12 @@ final class NamespaceCandidates
         int $line,
         int $character,
         ClassCandidateFilter $filter,
+        string $referenceBase = '',
+        ?Range $replaceRange = null,
     ): array {
         $contents = $this->catalog->childrenOf($namespace);
         // The partial segment the user is typing; a selection replaces just it.
-        $replaceRange = Range::onLine($line, $character - strlen($prefix), $character);
+        $replaceRange ??= Range::onLine($line, $character - strlen($prefix), $character);
 
         $items = [];
         foreach ($contents->childNamespaces as $child) {
@@ -62,22 +71,29 @@ final class NamespaceCandidates
             if (!PrefixMatcher::matches($segment, $prefix)) {
                 continue;
             }
-            $items = array_merge($items, $this->offerChildNamespace($child, $segment, $filter, $replaceRange));
+            $reference = self::qualify($referenceBase, $segment);
+            $items = array_merge($items, $this->offerChildNamespace($child, $reference, $filter, $replaceRange));
         }
         // The classes declared directly in the navigated namespace, discovered on
-        // disk through the catalog. The reference is the leaf name — the earlier
-        // segments are already typed — and the textEdit replaces the partial one.
+        // disk through the catalog. The reference is the leaf name (or alias-qualified
+        // via $referenceBase), and the textEdit replaces the typed span.
         foreach ($contents->symbols as $symbol) {
             if (!PrefixMatcher::matches($symbol->shortName(), $prefix)) {
                 continue;
             }
-            $item = $this->offerSymbol($symbol, $symbol->shortName(), null, $filter, $replaceRange);
+            $reference = self::qualify($referenceBase, $symbol->shortName());
+            $item = $this->offerSymbol($symbol, $reference, $filter, $replaceRange);
             if ($item !== null) {
                 $items[] = $item;
             }
         }
 
         return $this->ranked($items);
+    }
+
+    private static function qualify(string $base, string $segment): string
+    {
+        return $base === '' ? $segment : $base . '\\' . $segment;
     }
 
     /**
@@ -110,7 +126,7 @@ final class NamespaceCandidates
      */
     private function offerChildNamespace(
         string $child,
-        string $segment,
+        string $reference,
         ClassCandidateFilter $filter,
         Range $range,
     ): array {
@@ -122,19 +138,17 @@ final class NamespaceCandidates
         $contents = $this->catalog->childrenOf($child);
         $elementCount = count($contents->childNamespaces) + count($contents->symbols);
         if ($elementCount === 0 || $elementCount > self::INLINE_THRESHOLD) {
-            return [CompletionItemFactory::forNamespace($segment, $child, $range)];
+            return [CompletionItemFactory::forNamespace($reference, $child, $range)];
         }
 
         $items = [];
         foreach ($contents->childNamespaces as $grandchild) {
-            $reference = $segment . '\\' . NamespacePath::shortNameOf($grandchild);
-            $items[] = CompletionItemFactory::forNamespace($reference, $grandchild, $range);
+            $grandReference = $reference . '\\' . NamespacePath::shortNameOf($grandchild);
+            $items[] = CompletionItemFactory::forNamespace($grandReference, $grandchild, $range);
         }
         foreach ($contents->symbols as $symbol) {
-            $reference = $segment . '\\' . $symbol->shortName();
-            // The user reaches an inlined entry by typing the parent segment, so it
-            // filters on the qualified reference rather than its leaf.
-            $item = $this->offerSymbol($symbol, $reference, $reference, $filter, $range);
+            $symbolReference = $reference . '\\' . $symbol->shortName();
+            $item = $this->offerSymbol($symbol, $symbolReference, $filter, $range);
             if ($item !== null) {
                 $items[] = $item;
             }
@@ -155,7 +169,6 @@ final class NamespaceCandidates
     private function offerSymbol(
         CatalogSymbol $symbol,
         string $reference,
-        ?string $filterText,
         ClassCandidateFilter $filter,
         Range $range,
     ): ?array {
@@ -172,6 +185,8 @@ final class NamespaceCandidates
             return null;
         }
 
-        return CompletionItemFactory::forClass($reference, $fqcn, $range, $filterText);
+        // The user reaches a navigation entry by typing its qualified reference, so
+        // it filters on that reference rather than on its bare leaf.
+        return CompletionItemFactory::forClass($reference, $fqcn, $range, $reference);
     }
 }
