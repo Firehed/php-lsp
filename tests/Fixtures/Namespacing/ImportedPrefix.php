@@ -46,4 +46,9 @@ class ImportedPrefix
     {
         new Other\R/*|imported_unrelated*/
     }
+
+    public function deep(): void
+    {
+        new Env\Sub\T/*|imported_deep*/
+    }
 }

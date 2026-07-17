@@ -639,6 +639,23 @@ class CompletionHandlerTest extends TestCase
         self::assertSame([], array_values($envItems), 'No child matches `Env\\Zz`, so none is offered');
     }
 
+    public function testImportedPrefixNavigatesDeeperNamespaces(): void
+    {
+        // `Env\Sub\T` descends two levels below the import: the enumerated namespace
+        // is the import target plus the middle path, and the reference carries both.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_deep');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Model\Env\Sub\Thing',
+            $byLabel['Env\Sub\Thing'] ?? null,
+            'A grandchild is reached and written import-relative',
+        );
+    }
+
     public function testUnimportedPrefixIsNotReached(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_unrelated');
