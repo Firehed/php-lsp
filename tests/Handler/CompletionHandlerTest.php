@@ -465,6 +465,30 @@ class CompletionHandlerTest extends TestCase
         self::assertFalse($result['isIncomplete'], 'A result set within the cap is complete');
     }
 
+    public function testBackslashNavigationOffersGlobalBuiltinClasses(): void
+    {
+        // Issue #38: typing an absolute name whose prefix matches a class declared
+        // directly in the global namespace (`new \Spl`) offers that built-in class as
+        // a leaf, not merely a namespace node. SplFixedArray is instantiable, so the
+        // `new` position's Instantiable filter keeps it.
+        $cursor = $this->openFixtureAtCursor('Namespacing/UnqualifiedNewCompletion.php', 'nav_global_class');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $classLeaves = [];
+        foreach ($result['items'] as $item) {
+            if (($item['kind'] ?? null) === CompletionItemKind::Class_->value) {
+                $classLeaves[] = $item['label'];
+            }
+        }
+        self::assertContains(
+            'SplFixedArray',
+            $classLeaves,
+            'Navigating `new \\Spl` offers the instantiable global built-in class as a leaf',
+        );
+    }
+
     public function testCapsResultsAndReportsIncompleteWhenNavigationOverflows(): void
     {
         // A namespace with far more children than the cap floods navigation. The
