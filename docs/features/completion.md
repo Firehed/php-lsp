@@ -19,7 +19,7 @@ This document tracks the current state of code completion in php-lsp.
 | `catch` clause | `catch (Ba` or `catch (Foo \| Ba` | Throwable types only (from imports + workspace index): `Throwable` and any class or interface extending/implementing it. Multi-catch (`\|`-separated) supported; non-throwable types, functions, and keywords excluded | ✅ Working |
 | Attribute position | `#[Ro` | Attribute classes only (from imports + workspace index); classes, interfaces, traits, enums, and functions excluded. Grouped (`#[A, Ba`) supported; target-aware filtering is not yet (#252) | ✅ Working |
 | Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
-| Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Absolute (`\`-rooted) names only; unqualified/imported prefixes are #339 | ✅ Working |
+| Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Works on absolute (`\`-rooted) names and on relative prefixes resolved through a `use` import or the current namespace (`use App\Model\Env;` or being inside `App\Model` → `new Env\R`) | ✅ Working |
 
 All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
@@ -59,8 +59,21 @@ above nodes, and the result is capped with `isIncomplete` set so the client re-q
 the prefix narrows. Catalog candidates are resolved before being offered, so a
 `functions.php` picked up from a directory listing is never offered as a class.
 
-Navigation fires on **absolute** (`\`-rooted) names. Reaching a namespace by an unqualified
-or imported prefix (`new Env\R`) is #339.
+Navigation also works from a **relative prefix** whose first segment is a `use` import or a
+child of the current namespace. With `use App\Model\Env;` (or from inside `App\Model`),
+`new Env\` and `new Env\R` navigate `App\Model\Env` and offer its children, and `new Env`
+offers an `Env\` descent node. Discovery is catalog-sourced (no open file needed), and — as
+with absolute navigation — insertion is **leaf-relative**: at `new Env\R` only `Repository`
+is inserted, replacing the segment after the last `\`, so the typed `Env\` stands and is
+never duplicated (the FQCN is carried in the item's detail). The position filter still
+applies (an interface child is offered as a type hint but not after `new`), and only an
+imported alias or a real current-namespace child opens a namespace — an unrelated prefix
+reaches nothing.
+
+Leaf-relative insertion is also what keeps this working in editors that don't apply the LSP
+`textEdit` range and instead replace the word under the cursor (e.g. Vim/ale, see
+[dense-analysis/ale#4274](https://github.com/dense-analysis/ale/issues/4274)); the inserted
+text is aligned to that word boundary rather than spanning the whole qualified name.
 
 ## Limitations
 

@@ -25,7 +25,6 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\CodeResolver;
-use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
@@ -276,9 +275,10 @@ final class CompletionHandler implements HandlerInterface
 
     /**
      * Class-name candidates valid for a position, from the workspace index and
-     * imports, plus namespace-navigation items when the cursor is on an absolute
-     * (`\`-rooted) name. Every class position routes through here, so navigation
-     * is offered consistently and filtered by the same predicate everywhere.
+     * imports, plus namespace navigation from the catalog. Every class position
+     * routes through here, so navigation is offered consistently and filtered by the
+     * same predicate everywhere. Name resolution (absolute vs import vs
+     * current-namespace) lives in {@see NamespaceCandidates::navigate()}, not here.
      *
      * @return list<CompletionItem>
      */
@@ -291,40 +291,16 @@ final class CompletionHandler implements HandlerInterface
     ): array {
         $items = array_merge(
             $this->classCandidates->find($prefix, $document, $line, $character, $filter),
-            $this->namespaceNavigationItems($prefix, $line, $character, $filter),
+            $this->namespaceCandidates->navigate(
+                $prefix,
+                $this->codeResolver->getNameContext($document, $line),
+                $line,
+                $character,
+                $filter,
+            ),
         );
 
         return $this->deduplicateCompletions($items);
-    }
-
-    /**
-     * Namespace nodes and classes when the cursor is on a fully-qualified name
-     * (`new \Ps`), so the user can walk the tree into vendor and built-in
-     * namespaces. The leading `\` roots the walk at the global namespace; the
-     * segment already typed filters the children, and $filter keeps the classes
-     * valid for the position.
-     *
-     * @return list<CompletionItem>
-     */
-    private function namespaceNavigationItems(
-        string $prefix,
-        int $line,
-        int $character,
-        ClassCandidateFilter $filter,
-    ): array {
-        if (!str_starts_with($prefix, '\\')) {
-            return [];
-        }
-
-        $qualified = substr($prefix, 1);
-
-        return $this->namespaceCandidates->find(
-            NamespacePath::namespaceOf($qualified),
-            NamespacePath::shortNameOf($qualified),
-            $line,
-            $character,
-            $filter,
-        );
     }
 
     /**

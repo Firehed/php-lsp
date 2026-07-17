@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\NameKind;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
@@ -36,6 +37,59 @@ final class NamespaceCandidates
         private readonly NamespaceCatalog $catalog,
         private readonly CodeResolver $codeResolver,
     ) {
+    }
+
+    /**
+     * Navigate the namespace tree for a class-position $prefix, dispatching on how
+     * the name is rooted so name resolution stays out of the handler:
+     *
+     * - absolute (`\Ps`) walks from the global namespace;
+     * - a bare relative name (`Env`) offers descent nodes for imports and children
+     *   of the current namespace;
+     * - a qualified relative name (`Env\R`) resolves its first segment through the
+     *   imports, else the current namespace, and walks from there.
+     *
+     * Every case inserts leaf-relative (see {@see find()}), so the typed segments
+     * stand and are never duplicated.
+     *
+     * @return list<CompletionItem>
+     */
+    public function navigate(
+        string $prefix,
+        NameContext $context,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
+        if (str_starts_with($prefix, '\\')) {
+            $qualified = substr($prefix, 1);
+
+            return $this->find(
+                NamespacePath::namespaceOf($qualified),
+                NamespacePath::shortNameOf($qualified),
+                $line,
+                $character,
+                $filter,
+            );
+        }
+
+        if (!str_contains($prefix, '\\')) {
+            return $this->descentNodes($context, $prefix, $line, $character);
+        }
+
+        $alias = NamespacePath::firstSegment($prefix);
+        $base = array_key_exists($alias, $context->classImports)
+            ? $context->classImports[$alias]
+            : NamespacePath::join($context->namespace, $alias);
+        $rest = substr($prefix, strlen($alias) + 1);
+
+        return $this->find(
+            NamespacePath::join($base, NamespacePath::namespaceOf($rest)),
+            NamespacePath::shortNameOf($rest),
+            $line,
+            $character,
+            $filter,
+        );
     }
 
     /**
@@ -78,6 +132,44 @@ final class NamespaceCandidates
         }
 
         return $this->ranked($items);
+    }
+
+    /**
+     * Descent nodes for a bare relative name: an `Env\` node for each `use` import
+     * or child of the current namespace whose name the typed $prefix begins and
+     * which is itself a navigable namespace. Imports win a name clash with a
+     * current-namespace child, matching PHP name resolution.
+     *
+     * @return list<CompletionItem>
+     */
+    public function descentNodes(NameContext $context, string $prefix, int $line, int $character): array
+    {
+        $range = Range::onLine($line, $character - strlen($prefix), $character);
+
+        $targets = [];
+        foreach ($this->catalog->childrenOf($context->namespace)->childNamespaces as $child) {
+            $targets[NamespacePath::shortNameOf($child)] = $child;
+        }
+        foreach ($context->classImports as $alias => $fqcn) {
+            $targets[$alias] = $fqcn;
+        }
+
+        $items = [];
+        foreach ($targets as $reference => $fqcn) {
+            if (!PrefixMatcher::matches($reference, $prefix) || !$this->isNavigable($fqcn)) {
+                continue;
+            }
+            $items[] = CompletionItemFactory::forNamespace($reference, $fqcn, $range);
+        }
+
+        return $this->ranked($items);
+    }
+
+    private function isNavigable(string $namespace): bool
+    {
+        $contents = $this->catalog->childrenOf($namespace);
+
+        return count($contents->childNamespaces) > 0 || count($contents->symbols) > 0;
     }
 
     /**
