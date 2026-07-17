@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App;
 
 use Fixtures\Model\Env;
+use Psr\Http\Message;
 
 /**
  * Completion of an imported name that is also a namespace prefix (#339). Each
@@ -50,5 +51,10 @@ class ImportedPrefix
     public function deep(): void
     {
         new Env\Sub\T/*|imported_deep*/
+    }
+
+    public function large(): void
+    {
+        new Message/*|imported_large*/
     }
 }

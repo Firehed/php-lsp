@@ -563,10 +563,10 @@ class CompletionHandlerTest extends TestCase
         yield 'partial child' => ['imported_partial'];
     }
 
-    public function testBareImportedPrefixOffersDescentNode(): void
+    public function testBareImportedPrefixInlinesSmallTarget(): void
     {
-        // `new Env` offers an `Env\` node to step into the imported namespace, since
-        // the import target is itself a namespace.
+        // `new Env` reaches the same offerChildNamespace path as `new \Fixtures\Model\Env`,
+        // so a small imported namespace inlines its members rather than offering a node.
         $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_bare');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
@@ -574,9 +574,27 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result);
         $byLabel = array_column($result['items'], 'detail', 'label');
         self::assertSame(
-            'Fixtures\Model\Env',
-            $byLabel['Env\\'] ?? null,
-            'The imported namespace is offered as an Env\\ descent node',
+            'Fixtures\Model\Env\Repository',
+            $byLabel['Env\Repository'] ?? null,
+            'A small imported namespace inlines its members, identically to absolute navigation',
+        );
+        self::assertArrayNotHasKey('Env\\', $byLabel, 'A small target is not also offered as a bare node');
+    }
+
+    public function testBareImportedPrefixNodesLargeTarget(): void
+    {
+        // `use Psr\Http\Message;` then `new Message`: the target has many members, so
+        // it stays a `Message\` node to step into — the Doctrine\ORM\Mapping case.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_large');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Psr\Http\Message',
+            $byLabel['Message\\'] ?? null,
+            'A large imported namespace stays a descent node',
         );
     }
 
