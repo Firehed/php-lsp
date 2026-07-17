@@ -331,6 +331,73 @@ class NamespaceCandidatesTest extends TestCase
         self::assertSame(['Mapping\\'], $labels, 'Only imports/children whose name begins with the prefix are offered');
     }
 
+    public function testNavigateWalksAbsoluteNames(): void
+    {
+        $catalog = self::catalog([
+            'Psr\Http' => new NamespaceContents([], [
+                new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
+            ]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $items = $candidates->navigate('\Psr\Http\M', new NameContext(''), 0, 12, ClassCandidateFilter::Any);
+
+        self::assertContains(
+            'Message',
+            array_column($items, 'label'),
+            'An absolute name walks from the global namespace',
+        );
+    }
+
+    public function testNavigateOffersDescentNodesForBareNames(): void
+    {
+        $catalog = self::catalog([
+            'App' => new NamespaceContents([], []),
+            'Vendor\Pkg' => new NamespaceContents([], [
+                new CatalogSymbol('Vendor\Pkg\Thing', NameKind::ClassLike),
+            ]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg']);
+
+        $items = $candidates->navigate('Pk', $context, 0, 2, ClassCandidateFilter::Any);
+
+        self::assertContains('Pkg\\', array_column($items, 'label'), 'A bare name offers descent nodes');
+    }
+
+    public function testNavigateResolvesQualifiedNamesThroughImports(): void
+    {
+        $catalog = self::catalog([
+            'Vendor\Pkg' => new NamespaceContents([], [
+                new CatalogSymbol('Vendor\Pkg\Thing', NameKind::ClassLike),
+            ]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg']);
+
+        $items = $candidates->navigate('Pkg\T', $context, 0, 5, ClassCandidateFilter::Any);
+
+        self::assertContains('Thing', array_column($items, 'label'), 'A qualified name resolves through the imports');
+    }
+
+    public function testNavigateResolvesQualifiedNamesRelativeToTheCurrentNamespace(): void
+    {
+        $catalog = self::catalog([
+            'App\Sub' => new NamespaceContents([], [
+                new CatalogSymbol('App\Sub\Thing', NameKind::ClassLike),
+            ]),
+        ]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+
+        $items = $candidates->navigate('Sub\T', new NameContext('App'), 0, 5, ClassCandidateFilter::Any);
+
+        self::assertContains(
+            'Thing',
+            array_column($items, 'label'),
+            'A qualified name falls back to the current namespace',
+        );
+    }
+
     public function testRanksSymbolsAboveNamespaceNodes(): void
     {
         $catalog = self::catalog([

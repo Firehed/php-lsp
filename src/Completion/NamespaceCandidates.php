@@ -40,6 +40,59 @@ final class NamespaceCandidates
     }
 
     /**
+     * Navigate the namespace tree for a class-position $prefix, dispatching on how
+     * the name is rooted so name resolution stays out of the handler:
+     *
+     * - absolute (`\Ps`) walks from the global namespace;
+     * - a bare relative name (`Env`) offers descent nodes for imports and children
+     *   of the current namespace;
+     * - a qualified relative name (`Env\R`) resolves its first segment through the
+     *   imports, else the current namespace, and walks from there.
+     *
+     * Every case inserts leaf-relative (see {@see find()}), so the typed segments
+     * stand and are never duplicated.
+     *
+     * @return list<CompletionItem>
+     */
+    public function navigate(
+        string $prefix,
+        NameContext $context,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
+        if (str_starts_with($prefix, '\\')) {
+            $qualified = substr($prefix, 1);
+
+            return $this->find(
+                NamespacePath::namespaceOf($qualified),
+                NamespacePath::shortNameOf($qualified),
+                $line,
+                $character,
+                $filter,
+            );
+        }
+
+        if (!str_contains($prefix, '\\')) {
+            return $this->descentNodes($context, $prefix, $line, $character);
+        }
+
+        $alias = NamespacePath::firstSegment($prefix);
+        $base = array_key_exists($alias, $context->classImports)
+            ? $context->classImports[$alias]
+            : NamespacePath::join($context->namespace, $alias);
+        $rest = substr($prefix, strlen($alias) + 1);
+
+        return $this->find(
+            NamespacePath::join($base, NamespacePath::namespaceOf($rest)),
+            NamespacePath::shortNameOf($rest),
+            $line,
+            $character,
+            $filter,
+        );
+    }
+
+    /**
      * The child namespaces of $namespace, plus the class-likes declared in it that
      * are valid in the target position — matched by their next segment against
      * $prefix.

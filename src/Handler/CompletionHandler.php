@@ -25,7 +25,6 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Resolution\CodeResolver;
-use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
@@ -276,9 +275,10 @@ final class CompletionHandler implements HandlerInterface
 
     /**
      * Class-name candidates valid for a position, from the workspace index and
-     * imports, plus namespace-navigation items when the cursor is on an absolute
-     * (`\`-rooted) name. Every class position routes through here, so navigation
-     * is offered consistently and filtered by the same predicate everywhere.
+     * imports, plus namespace navigation from the catalog. Every class position
+     * routes through here, so navigation is offered consistently and filtered by the
+     * same predicate everywhere. Name resolution (absolute vs import vs
+     * current-namespace) lives in {@see NamespaceCandidates::navigate()}, not here.
      *
      * @return list<CompletionItem>
      */
@@ -291,89 +291,16 @@ final class CompletionHandler implements HandlerInterface
     ): array {
         $items = array_merge(
             $this->classCandidates->find($prefix, $document, $line, $character, $filter),
-            $this->namespaceNavigationItems($prefix, $line, $character, $filter),
-            $this->relativePrefixNavigationItems($prefix, $document, $line, $character, $filter),
+            $this->namespaceCandidates->navigate(
+                $prefix,
+                $this->codeResolver->getNameContext($document, $line),
+                $line,
+                $character,
+                $filter,
+            ),
         );
 
         return $this->deduplicateCompletions($items);
-    }
-
-    /**
-     * Navigation into a name reached relative to the file — a `use` import that is
-     * also a namespace, or a child of the current namespace (#339). With
-     * `use App\Model\Env;` (or from inside `App\Model`), `App\Model\Env\Repository`
-     * is written `Env\Repository`, so `new Env\R` reaches it and `new Env` offers an
-     * `Env\` descent node. Discovery is catalog-sourced (on disk, no open file), and
-     * insertion is leaf-relative — the same model as absolute navigation — so the
-     * typed `Env\` stands and is never duplicated.
-     *
-     * @return list<CompletionItem>
-     */
-    private function relativePrefixNavigationItems(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-        ClassCandidateFilter $filter,
-    ): array {
-        // Absolute names are namespaceNavigationItems' job.
-        if (str_starts_with($prefix, '\\')) {
-            return [];
-        }
-        $context = $this->codeResolver->getNameContext($document, $line);
-
-        if (!str_contains($prefix, '\\')) {
-            // Bare name: offer a descent node for each import or current-namespace
-            // child whose name the prefix begins.
-            return $this->namespaceCandidates->descentNodes($context, $prefix, $line, $character);
-        }
-
-        // Qualified name: resolve the first segment through the imports, else
-        // relative to the current namespace, then navigate it. `find()` inserts the
-        // leaf, replacing only the segment after the last `\`.
-        $alias = NamespacePath::firstSegment($prefix);
-        $base = array_key_exists($alias, $context->classImports)
-            ? $context->classImports[$alias]
-            : NamespacePath::join($context->namespace, $alias);
-        $rest = substr($prefix, strlen($alias) + 1);
-
-        return $this->namespaceCandidates->find(
-            NamespacePath::join($base, NamespacePath::namespaceOf($rest)),
-            NamespacePath::shortNameOf($rest),
-            $line,
-            $character,
-            $filter,
-        );
-    }
-
-    /**
-     * Namespace nodes and classes when the cursor is on a fully-qualified name
-     * (`new \Ps`), so the user can walk the tree into vendor and built-in
-     * namespaces. The leading `\` roots the walk at the global namespace; the
-     * segment already typed filters the children, and $filter keeps the classes
-     * valid for the position.
-     *
-     * @return list<CompletionItem>
-     */
-    private function namespaceNavigationItems(
-        string $prefix,
-        int $line,
-        int $character,
-        ClassCandidateFilter $filter,
-    ): array {
-        if (!str_starts_with($prefix, '\\')) {
-            return [];
-        }
-
-        $qualified = substr($prefix, 1);
-
-        return $this->namespaceCandidates->find(
-            NamespacePath::namespaceOf($qualified),
-            NamespacePath::shortNameOf($qualified),
-            $line,
-            $character,
-            $filter,
-        );
     }
 
     /**
