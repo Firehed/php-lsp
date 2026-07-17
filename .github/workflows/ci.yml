@@ -28,7 +28,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --working-dir=tests/Fixtures
 
       - name: Run PHPUnit
-        run: composer phpunit
+        run: composer unit
           --
           --coverage-clover coverage.xml
           --log-junit junit.xml
