@@ -24,7 +24,6 @@ use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
@@ -293,51 +292,57 @@ final class CompletionHandler implements HandlerInterface
         $items = array_merge(
             $this->classCandidates->find($prefix, $document, $line, $character, $filter),
             $this->namespaceNavigationItems($prefix, $line, $character, $filter),
-            $this->importedPrefixNavigationItems($prefix, $document, $line, $character, $filter),
+            $this->relativePrefixNavigationItems($prefix, $document, $line, $character, $filter),
         );
 
         return $this->deduplicateCompletions($items);
     }
 
     /**
-     * Navigation into a `use` import that is also a namespace: `use App\Model\Env;`
-     * makes `App\Model\Env\Repository` writable as `Env\Repository`, so `new Env`,
-     * `new Env\`, and `new Env\R` all reach it (#339). The children are catalog-
-     * sourced (on disk, no open file needed) and written import-relative; the
-     * textEdit replaces the whole typed alias so the insertion never duplicates it.
+     * Navigation into a name reached relative to the file — a `use` import that is
+     * also a namespace, or a child of the current namespace (#339). With
+     * `use App\Model\Env;` (or from inside `App\Model`), `App\Model\Env\Repository`
+     * is written `Env\Repository`, so `new Env\R` reaches it and `new Env` offers an
+     * `Env\` descent node. Discovery is catalog-sourced (on disk, no open file), and
+     * insertion is leaf-relative — the same model as absolute navigation — so the
+     * typed `Env\` stands and is never duplicated.
      *
      * @return list<CompletionItem>
      */
-    private function importedPrefixNavigationItems(
+    private function relativePrefixNavigationItems(
         string $prefix,
         TextDocument $document,
         int $line,
         int $character,
         ClassCandidateFilter $filter,
     ): array {
-        // Absolute names are namespaceNavigationItems' job; here the first segment
-        // must be an unqualified import.
+        // Absolute names are namespaceNavigationItems' job.
         if (str_starts_with($prefix, '\\')) {
             return [];
         }
-        $alias = NamespacePath::firstSegment($prefix);
-        $imports = $this->codeResolver->getImports($document);
-        if ($alias === '' || !array_key_exists($alias, $imports)) {
-            return [];
+        $context = $this->codeResolver->getNameContext($document, $line);
+
+        if (!str_contains($prefix, '\\')) {
+            // Bare name: offer a descent node for each import or current-namespace
+            // child whose name the prefix begins.
+            return $this->namespaceCandidates->descentNodes($context, $prefix, $line, $character);
         }
 
-        // The path typed after the alias: `R` in `Env\R`, `Sub\R` in `Env\Sub\R`, ''.
-        $rest = str_contains($prefix, '\\') ? substr($prefix, strlen($alias) + 1) : '';
-        $middle = NamespacePath::namespaceOf($rest);
+        // Qualified name: resolve the first segment through the imports, else
+        // relative to the current namespace, then navigate it. `find()` inserts the
+        // leaf, replacing only the segment after the last `\`.
+        $alias = NamespacePath::firstSegment($prefix);
+        $base = array_key_exists($alias, $context->classImports)
+            ? $context->classImports[$alias]
+            : NamespacePath::join($context->namespace, $alias);
+        $rest = substr($prefix, strlen($alias) + 1);
 
         return $this->namespaceCandidates->find(
-            NamespacePath::join($imports[$alias], $middle),
+            NamespacePath::join($base, NamespacePath::namespaceOf($rest)),
             NamespacePath::shortNameOf($rest),
             $line,
             $character,
             $filter,
-            NamespacePath::join($alias, $middle),
-            Range::onLine($line, $character - strlen($prefix), $character),
         );
     }
 

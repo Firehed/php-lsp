@@ -534,12 +534,12 @@ class CompletionHandlerTest extends TestCase
         self::assertCount(100, $result['items'], 'Unranked completions are capped at the limit');
     }
 
-    #[DataProvider('provideImportedPrefixMarkers')]
-    public function testImportedPrefixOffersCatalogChild(string $marker): void
+    #[DataProvider('provideQualifiedImportedPrefixMarkers')]
+    public function testQualifiedImportedPrefixOffersLeafChild(string $marker): void
     {
         // Repository.php is NOT opened; it is discovered on disk through the catalog
-        // via the `use Fixtures\Model\Env;` import, whether typed as `Env`, `Env\`,
-        // or `Env\R`.
+        // via the `use Fixtures\Model\Env;` import. The child is offered by its leaf
+        // (Repository) with the FQCN as detail — the typed `Env\` stands.
         $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', $marker);
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
@@ -548,8 +548,8 @@ class CompletionHandlerTest extends TestCase
         $byLabel = array_column($result['items'], 'detail', 'label');
         self::assertSame(
             'Fixtures\Model\Env\Repository',
-            $byLabel['Env\Repository'] ?? null,
-            "The imported namespace's child is offered import-relative with its FQCN detail",
+            $byLabel['Repository'] ?? null,
+            "The imported namespace's child is offered by its leaf with the FQCN detail",
         );
     }
 
@@ -557,14 +557,30 @@ class CompletionHandlerTest extends TestCase
      * @codeCoverageIgnore
      * @return iterable<string, array{string}>
      */
-    public static function provideImportedPrefixMarkers(): iterable
+    public static function provideQualifiedImportedPrefixMarkers(): iterable
     {
-        yield 'bare import name' => ['imported_bare'];
         yield 'trailing slash' => ['imported_slash'];
         yield 'partial child' => ['imported_partial'];
     }
 
-    public function testImportedPrefixInsertsQualifiedReferenceWithoutDuplication(): void
+    public function testBareImportedPrefixOffersDescentNode(): void
+    {
+        // `new Env` offers an `Env\` node to step into the imported namespace, since
+        // the import target is itself a namespace.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_bare');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Model\Env',
+            $byLabel['Env\\'] ?? null,
+            'The imported namespace is offered as an Env\\ descent node',
+        );
+    }
+
+    public function testQualifiedImportedPrefixInsertsLeafWithoutDuplication(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_partial');
 
@@ -576,9 +592,9 @@ class CompletionHandlerTest extends TestCase
             $byLabel[$item['label']] = $item['textEdit']['newText'] ?? null;
         }
         self::assertSame(
-            'Env\Repository',
-            $byLabel['Env\Repository'] ?? null,
-            'Accepting at `new Env\\R` inserts Env\\Repository, never Env\\Env\\Repository',
+            'Repository',
+            $byLabel['Repository'] ?? null,
+            'At `new Env\\R` only the leaf is inserted, so the typed `Env\\` is never duplicated',
         );
     }
 
@@ -590,7 +606,7 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         self::assertNotContains(
-            'Env\Handler',
+            'Handler',
             array_column($result['items'], 'label'),
             'An interface child is not offered after `new`',
         );
@@ -604,7 +620,7 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         self::assertContains(
-            'Env\Handler',
+            'Handler',
             array_column($result['items'], 'label'),
             'An interface child is offered in a type-hint position',
         );
@@ -621,7 +637,7 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('Env\Repository', $labels, 'The class child is still offered');
+        self::assertContains('Repository', $labels, 'The class child is still offered');
         self::assertNotContains('persist', $labels, "The child's method is not offered as a class candidate");
     }
 
@@ -632,17 +648,15 @@ class CompletionHandlerTest extends TestCase
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
-        $envItems = array_filter(
-            array_column($result['items'], 'label'),
-            static fn(string $label): bool => str_starts_with($label, 'Env\\'),
-        );
-        self::assertSame([], array_values($envItems), 'No child matches `Env\\Zz`, so none is offered');
+        $labels = array_column($result['items'], 'label');
+        self::assertNotContains('Repository', $labels, 'No child matches `Env\\Zz`, so none is offered');
+        self::assertNotContains('Handler', $labels, 'No child matches `Env\\Zz`, so none is offered');
     }
 
     public function testImportedPrefixNavigatesDeeperNamespaces(): void
     {
-        // `Env\Sub\T` descends two levels below the import: the enumerated namespace
-        // is the import target plus the middle path, and the reference carries both.
+        // `Env\Sub\T` descends two levels: the enumerated namespace is the import
+        // target plus the middle path, and only the leaf (Thing) is inserted.
         $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_deep');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
@@ -651,12 +665,30 @@ class CompletionHandlerTest extends TestCase
         $byLabel = array_column($result['items'], 'detail', 'label');
         self::assertSame(
             'Fixtures\Model\Env\Sub\Thing',
-            $byLabel['Env\Sub\Thing'] ?? null,
-            'A grandchild is reached and written import-relative',
+            $byLabel['Thing'] ?? null,
+            'A grandchild is reached and offered by its leaf',
         );
     }
 
-    public function testUnimportedPrefixIsNotReached(): void
+    public function testCurrentNamespaceChildIsNavigableWithoutAnImport(): void
+    {
+        // In a file whose namespace is Fixtures\Model, `Env` is a child namespace,
+        // not an import. `new Env\R` still resolves it relative to the current
+        // namespace and offers Repository.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CurrentNamespaceProbe.php', 'current_ns_child');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Model\Env\Repository',
+            $byLabel['Repository'] ?? null,
+            'A child of the current namespace is navigable without an import',
+        );
+    }
+
+    public function testUnimportedUnrelatedPrefixIsNotReached(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/ImportedPrefix.php', 'imported_unrelated');
 
@@ -665,9 +697,9 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result);
         $otherItems = array_filter(
             array_column($result['items'], 'label'),
-            static fn(string $label): bool => str_starts_with($label, 'Other\\'),
+            static fn(string $label): bool => str_starts_with($label, 'Other'),
         );
-        self::assertSame([], array_values($otherItems), 'An unimported prefix opens no namespace');
+        self::assertSame([], array_values($otherItems), 'A prefix that is neither imported nor a current-NS child reaches nothing');
     }
 
     public function testStaticCompletionResolvesImportedClassName(): void
