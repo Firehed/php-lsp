@@ -227,6 +227,64 @@ class ContextDetectorTest extends TestCase
     }
 
     // =========================================================================
+    // Class-body detection - telling a trait `use` apart from an import `use`
+    // =========================================================================
+
+    #[DataProvider('provideClassBodyScenarios')]
+    public function testIsInsideClassBody(string $code, bool $expected): void
+    {
+        self::assertSame(
+            $expected,
+            ContextDetector::isInsideClassBody($code, strlen($code)),
+            'The cursor position should be recognised as (not) directly inside a class-like body',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     * @codeCoverageIgnore
+     */
+    public static function provideClassBodyScenarios(): iterable
+    {
+        // A top-level import is not in a class body — the case that must navigate.
+        yield 'top-level import' => ["<?php\nnamespace App;\nuse Psr\\Log\\Lo", false];
+        yield 'import after a closed class' => ["<?php\nclass A {}\nuse Ha", false];
+        // A braced namespace's brace is not a class body: the `use` is still an import.
+        yield 'import in a braced namespace' => ["<?php\nnamespace App {\n    use Ha", false];
+        // `::class` is a constant reference, not a declaration; it opens no class body.
+        yield 'class constant reference is not a declaration' => ["<?php\n\$c = Foo::class;\nuse Ha", false];
+
+        // A `use` directly in any class-like body is a trait application, not an import.
+        yield 'class body' => ["<?php\nclass A\n{\n    use Ha", true];
+        yield 'interface body' => ["<?php\ninterface I\n{\n    use Ha", true];
+        yield 'trait body' => ["<?php\ntrait T\n{\n    use Ha", true];
+        yield 'enum body' => ["<?php\nenum E\n{\n    use Ha", true];
+        yield 'anonymous class body' => ["<?php\n\$x = new class {\n    use Ha", true];
+
+        // Inside a method the innermost scope is the method, not the class body.
+        yield 'method body' => ["<?php\nclass A {\n    function m() {\n        use Ha", false];
+        // Interpolation braces must be balanced so a later top-level `use` is not
+        // mistaken for a trait application.
+        yield 'top-level import after interpolation braces' => [
+            "<?php\nclass A { function m() { echo \"{\$x->y}\"; } }\nuse Ha",
+            false,
+        ];
+    }
+
+    public function testIsInsideClassBodyIgnoresCodeAfterCursor(): void
+    {
+        // Only code up to the cursor defines its scope; a class opened further down
+        // the file must not leak in and turn a top-level import into a trait `use`.
+        $code = "<?php\nuse Ha\n\nclass Widget\n{\n}\n";
+        $offset = strpos($code, 'Ha');
+        self::assertIsInt($offset);
+        self::assertFalse(
+            ContextDetector::isInsideClassBody($code, $offset + 2),
+            'A class declared after the cursor does not enclose it',
+        );
+    }
+
+    // =========================================================================
     // Robustness - handles edge cases without throwing
     // =========================================================================
 

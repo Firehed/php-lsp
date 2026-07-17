@@ -264,7 +264,7 @@ final class CompletionHandler implements HandlerInterface
                 $character,
                 ClassCandidateFilter::TypeHint,
             ),
-            CompletionKind::Use_ => $this->getUseCompletions($prefix, $line, $character),
+            CompletionKind::Use_ => $this->getUseCompletions($prefix, $document, $line, $character),
             CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
             CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $line, $character),
             CompletionKind::None => [],
@@ -312,16 +312,31 @@ final class CompletionHandler implements HandlerInterface
     }
 
     /**
-     * Suggest namespaces and class-likes for a `use` import statement. A `use` name
-     * is fully qualified — resolved from the global namespace regardless of the
-     * file's own namespace or imports — so navigation walks the tree absolutely
-     * rather than through the current-namespace/import resolution the other class
-     * positions use. Any class-like is importable, so no position filter narrows it.
+     * Suggest completions for a `use` keyword, which names two unrelated constructs
+     * that happen to share it. A top-level `use` is an import: its name is fully
+     * qualified — resolved from the global namespace regardless of the file's own
+     * namespace or imports — so it navigates the namespace tree absolutely, and any
+     * class-like is importable (no position filter). A `use` inside a class body is
+     * a trait application, resolved relative to the file like any class reference;
+     * it keeps the ordinary expression-position behavior until trait-specific
+     * completion exists, and must never enter absolute import navigation.
+     *
+     * The two are indistinguishable on the single line the classifier sees, so the
+     * structural check reads the whole document here.
      *
      * @return list<CompletionItem>
      */
-    private function getUseCompletions(string $prefix, int $line, int $character): array
-    {
+    private function getUseCompletions(
+        string $prefix,
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): array {
+        $offset = $document->offsetAt($line, $character);
+        if (ContextDetector::isInsideClassBody($document->getContent(), $offset)) {
+            return $this->getExpressionCompletions($prefix, $document, $line, $character);
+        }
+
         return $this->namespaceCandidates->useStatement(
             $prefix,
             $line,

@@ -69,6 +69,74 @@ final class ContextDetector
         return CompletionContext::Full;
     }
 
+    /**
+     * Whether $offset sits directly inside a class-like body (class, interface,
+     * trait, or enum), where a `use` is a trait application rather than a namespace
+     * import — two unrelated constructs that share the keyword. Token-based so it
+     * survives mid-edit breakage, like the rest of this detector, and structural so
+     * it can tell the two `use` forms apart, which the single line the classifier
+     * sees cannot.
+     */
+    public static function isInsideClassBody(string $code, int $offset): bool
+    {
+        $tokens = token_get_all($code);
+        // One entry per open brace, true when that brace opened a class-like body.
+        // The innermost (last) entry is the scope the cursor sits directly in.
+        $braceOpensClassBody = [];
+        $nextBraceOpensClassBody = false;
+        $previousSignificant = null;
+        $position = 0;
+
+        foreach ($tokens as $token) {
+            // Only code up to the cursor defines its scope; stop before it.
+            if ($position >= $offset) {
+                break;
+            }
+
+            if (is_array($token)) {
+                $position += strlen($token[1]);
+                $id = $token[0];
+
+                if ($id === T_WHITESPACE || $id === T_COMMENT || $id === T_DOC_COMMENT) {
+                    continue;
+                }
+
+                // Interpolation braces (`"{$x}"`, `"${x}"`) open a scope closed by a
+                // plain `}`, so they are tracked to keep the brace stack balanced.
+                if ($id === T_CURLY_OPEN || $id === T_DOLLAR_OPEN_CURLY_BRACES) {
+                    $braceOpensClassBody[] = false;
+                    $nextBraceOpensClassBody = false;
+                    $previousSignificant = $id;
+                    continue;
+                }
+
+                // A class-like declaration marks the next `{` as a class body. The
+                // `::class` constant reference is not a declaration and is excluded.
+                if (
+                    ($id === T_CLASS || $id === T_INTERFACE || $id === T_TRAIT || $id === T_ENUM)
+                    && $previousSignificant !== T_DOUBLE_COLON
+                ) {
+                    $nextBraceOpensClassBody = true;
+                }
+
+                $previousSignificant = $id;
+                continue;
+            }
+
+            $position += strlen($token);
+            $previousSignificant = $token;
+
+            if ($token === '{') {
+                $braceOpensClassBody[] = $nextBraceOpensClassBody;
+                $nextBraceOpensClassBody = false;
+            } elseif ($token === '}') {
+                array_pop($braceOpensClassBody);
+            }
+        }
+
+        return $braceOpensClassBody !== [] && end($braceOpensClassBody) === true;
+    }
+
     private static function contextForToken(int $tokenType, string $tokenText, bool $inNowdoc): CompletionContext
     {
         if (in_array($tokenType, self::NO_COMPLETION_TOKENS, true)) {

@@ -506,6 +506,35 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testTraitUseInClassBodyIsNotImportNavigation(): void
+    {
+        // A `use` inside a class body is a trait application, not an import: it must
+        // resolve like any class reference (through the file's imports), not enter
+        // the absolute namespace navigation an import `use` triggers. The imported
+        // trait is offered by its short name — which absolute import navigation,
+        // walking the global namespace, would never surface.
+        $cursor = $this->openFixtureAtCursor('Namespacing/TraitUseCompletion.php', 'trait_use');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'HasTimestamps',
+            $labels,
+            'A trait `use` keeps class-reference behavior, offering the imported trait by its short name',
+        );
+        $modules = array_filter(
+            $result['items'],
+            static fn(array $item): bool => ($item['kind'] ?? null) === CompletionItemKind::Module->value,
+        );
+        self::assertSame(
+            [],
+            $modules,
+            'A trait `use` offers no namespace-navigation nodes; it is not import navigation',
+        );
+    }
+
     public function testBackslashNavigationOffersGlobalBuiltinClasses(): void
     {
         // Issue #38: typing an absolute name whose prefix matches a class declared

@@ -21,7 +21,7 @@ This document tracks the current state of code completion in php-lsp.
 | Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
 | `instanceof` right-hand side | `$x instanceof Ba` | Class-likes valid as a type (classes, interfaces, enums) from imports + workspace index; traits excluded (a trait `instanceof` check is always false), as are scalar type keywords and functions | ✅ Working |
 | Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Works on absolute (`\`-rooted) names and on relative prefixes resolved through a `use` import or the current namespace (`use App\Model\Env;` or being inside `App\Model` → `new Env\R`) | ✅ Working |
-| `use` import statement | `use Psr\Lo` | Namespaces and class-likes (any kind) from the catalog, walked one segment at a time. The name is **absolute** — resolved from the global namespace regardless of the file's own namespace or imports — so it navigates the same tree as `new \Ps`. `use function` / `use const` are not yet offered (#239, #317) | ✅ Working |
+| `use` import statement | `use Psr\Lo` | Namespaces and class-likes (any kind) from the catalog, walked one segment at a time. The name is **absolute** — resolved from the global namespace regardless of the file's own namespace or imports — so it navigates the same tree as `new \Ps`. Applies to top-level imports only; a `use` in a class body is a trait application (see below). `use function` / `use const` are not yet offered (#239, #317) | ✅ Working |
 
 All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
@@ -80,6 +80,12 @@ a `use` name resolves from the global namespace regardless of the file's own nam
 imports, so `use Ps` and `use Psr\Http\` navigate the tree exactly as `new \Ps` and
 `new \Psr\Http\` do, offering any kind of class-like (a `use` can import a class, interface,
 trait, or enum). `use function` and `use const` are out of scope here (#239, #317).
+
+Only a **top-level** `use` is an import. A `use` inside a class body is a trait
+application — an unrelated construct that shares the keyword — and resolves relative to the
+file like any class reference, so it keeps the ordinary expression-position behavior and
+never enters absolute import navigation. The two are indistinguishable on a single line, so
+the import/trait distinction is made structurally from the whole document.
 
 Leaf-relative insertion is also what keeps this working in editors that don't apply the LSP
 `textEdit` range and instead replace the word under the cursor (e.g. Vim/ale, see
