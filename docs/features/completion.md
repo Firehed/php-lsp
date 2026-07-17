@@ -19,7 +19,7 @@ This document tracks the current state of code completion in php-lsp.
 | `catch` clause | `catch (Ba` or `catch (Foo \| Ba` | Throwable types only (from imports + workspace index): `Throwable` and any class or interface extending/implementing it. Multi-catch (`\|`-separated) supported; non-throwable types, functions, and keywords excluded | ✅ Working |
 | Attribute position | `#[Ro` | Attribute classes only (from imports + workspace index); classes, interfaces, traits, enums, and functions excluded. Grouped (`#[A, Ba`) supported; target-aware filtering is not yet (#252) | ✅ Working |
 | Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
-| Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Absolute (`\`-rooted) names only; unqualified/imported prefixes are #339 | ✅ Working |
+| Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Works on absolute (`\`-rooted) names and on imported prefixes that are also namespaces (`use App\Model\Env;` → `new Env\R`) | ✅ Working |
 
 All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
@@ -59,8 +59,13 @@ above nodes, and the result is capped with `isIncomplete` set so the client re-q
 the prefix narrows. Catalog candidates are resolved before being offered, so a
 `functions.php` picked up from a directory listing is never offered as a class.
 
-Navigation fires on **absolute** (`\`-rooted) names. Reaching a namespace by an unqualified
-or imported prefix (`new Env\R`) is #339.
+Navigation also works from an **imported prefix** that is itself a namespace: with
+`use App\Model\Env;`, the class in `App\Model\Env\Repository` is written `Env\Repository`,
+so `new Env`, `new Env\`, and `new Env\R` all offer it — catalog-sourced (no open file
+needed), inserted import-relative via `textEdit` so `new Env\R` never becomes
+`new Env\Env\Repository`. The position filter still applies (an interface child is offered
+as a type hint but not after `new`), and only the imported alias opens its namespace — an
+unrelated, unimported prefix reaches nothing.
 
 ## Limitations
 
