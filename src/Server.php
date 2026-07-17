@@ -6,11 +6,11 @@ namespace Firehed\PhpLsp;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
-use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
