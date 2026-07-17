@@ -81,11 +81,12 @@ imports, so `use Ps` and `use Psr\Http\` navigate the tree exactly as `new \Ps` 
 `new \Psr\Http\` do, offering any kind of class-like (a `use` can import a class, interface,
 trait, or enum). `use function` and `use const` are out of scope here (#239, #317).
 
-Only a **top-level** `use` is an import. A `use` inside a class body is a trait
-application — an unrelated construct that shares the keyword — and resolves relative to the
-file like any class reference, so it keeps the ordinary expression-position behavior and
-never enters absolute import navigation. The two are indistinguishable on a single line, so
-the import/trait distinction is made structurally from the whole document.
+Only a **top-level** `use` is an import. The keyword is shared by two unrelated constructs
+that are not: a `use` inside a class body is a trait application, and resolves relative to
+the file like any class reference (the ordinary expression-position behavior); a `use` after
+a closure's parameter list (`function () use (`) is a capture list, a variable position.
+Neither enters absolute import navigation. The three are indistinguishable on a single line,
+so the distinction is made structurally from the whole document.
 
 Leaf-relative insertion is also what keeps this working in editors that don't apply the LSP
 `textEdit` range and instead replace the word under the cursor (e.g. Vim/ale, see
