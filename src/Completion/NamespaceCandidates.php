@@ -44,8 +44,9 @@ final class NamespaceCandidates
      * the name is rooted so name resolution stays out of the handler:
      *
      * - absolute (`\Ps`) walks from the global namespace;
-     * - a bare relative name (`Env`) offers descent nodes for imports and children
-     *   of the current namespace;
+     * - a bare relative name (`Env`) descends into imports and children of the
+     *   current namespace, inlining a small target and noding a large one, exactly
+     *   as the absolute form would once the first segment is resolved;
      * - a qualified relative name (`Env\R`) resolves its first segment through the
      *   imports, else the current namespace, and walks from there.
      *
