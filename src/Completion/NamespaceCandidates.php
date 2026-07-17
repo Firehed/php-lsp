@@ -63,15 +63,7 @@ final class NamespaceCandidates
         ClassCandidateFilter $filter,
     ): array {
         if (str_starts_with($prefix, '\\')) {
-            $qualified = substr($prefix, 1);
-
-            return $this->find(
-                NamespacePath::namespaceOf($qualified),
-                NamespacePath::shortNameOf($qualified),
-                $line,
-                $character,
-                $filter,
-            );
+            return $this->findAbsolute(substr($prefix, 1), $line, $character, $filter);
         }
 
         if (!str_contains($prefix, '\\')) {
@@ -91,6 +83,24 @@ final class NamespaceCandidates
             $character,
             $filter,
         );
+    }
+
+    /**
+     * Navigate the namespace tree for a `use` import, whose name is fully qualified
+     * — resolved from the global namespace regardless of the file's own namespace or
+     * imports. An optional leading `\` is accepted and ignored (`use Foo` and
+     * `use \Foo` name the same symbol). Unlike {@see navigate()}, no
+     * {@see NameContext} is consulted: nothing in a `use` statement is relative.
+     *
+     * @return list<CompletionItem>
+     */
+    public function useStatement(
+        string $prefix,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
+        return $this->findAbsolute(ltrim($prefix, '\\'), $line, $character, $filter);
     }
 
     /**
@@ -171,6 +181,29 @@ final class NamespaceCandidates
         }
 
         return $this->ranked($items);
+    }
+
+    /**
+     * Walk absolutely from the global namespace for a $qualified name (no leading
+     * separator), offering the child namespaces and class-likes reached at its
+     * final typed segment. Shared by absolute (`\`-rooted) navigation and by `use`
+     * imports, which name symbols from the global namespace the same way.
+     *
+     * @return list<CompletionItem>
+     */
+    private function findAbsolute(
+        string $qualified,
+        int $line,
+        int $character,
+        ClassCandidateFilter $filter,
+    ): array {
+        return $this->find(
+            NamespacePath::namespaceOf($qualified),
+            NamespacePath::shortNameOf($qualified),
+            $line,
+            $character,
+            $filter,
+        );
     }
 
     private function isNavigable(string $namespace): bool

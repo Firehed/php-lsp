@@ -48,6 +48,9 @@ enum CompletionKind
     /** On the right of `instanceof`, e.g. `$x instanceof Ba` — class-likes except traits */
     case Instanceof_;
 
+    /** In a `use` import statement, e.g. `use Psr\Lo` — namespaces and class-likes, named absolutely */
+    case Use_;
+
     /** Directly inside a class body — class-level keywords only */
     case ClassBody;
 

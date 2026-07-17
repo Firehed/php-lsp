@@ -201,6 +201,27 @@ class CompletionClassifierTest extends TestCase
             '\\App\\Ba',
         ];
 
+        // A `use` import statement names a symbol absolutely, so the whole qualified
+        // prefix (including a leading `\`) is captured for navigation from the global
+        // namespace (#40).
+        yield 'use with prefix' => ['use Fo', CompletionKind::Use_, 'Fo'];
+        yield 'use bare' => ['use ', CompletionKind::Use_, ''];
+        yield 'use qualified' => ['use Psr\\Log', CompletionKind::Use_, 'Psr\\Log'];
+        yield 'use trailing separator' => ['use Psr\\', CompletionKind::Use_, 'Psr\\'];
+        yield 'use absolute' => ['use \\Ru', CompletionKind::Use_, '\\Ru'];
+        yield 'use indented' => ['    use Fo', CompletionKind::Use_, 'Fo'];
+        // A closure capture list shares the keyword; the single-line classifier
+        // cannot tell it from an import, so it classifies broadly as Use_ and the
+        // handler disambiguates structurally from the whole document.
+        yield 'closure use classifies broadly' => ['$f = function () use ', CompletionKind::Use_, ''];
+        // `use function` / `use const` import functions and constants, out of this
+        // position's scope, so they are not classified as a class-like `use`.
+        yield 'use function is not a class-like use' => [
+            'use function Foo\\ba',
+            CompletionKind::None,
+            '',
+        ];
+
         yield 'expression at start' => ['fo', CompletionKind::Expression, 'fo'];
         yield 'expression after assignment' => ['$x = fo', CompletionKind::Expression, 'fo'];
         yield 'expression inside method body' => [

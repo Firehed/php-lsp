@@ -69,6 +69,98 @@ final class ContextDetector
         return CompletionContext::Full;
     }
 
+    /**
+     * Whether $offset sits directly inside a class-like body (class, interface,
+     * trait, or enum), where a `use` is a trait application rather than a namespace
+     * import — two unrelated constructs that share the keyword. Token-based so it
+     * survives mid-edit breakage, like the rest of this detector, and structural so
+     * it can tell the two `use` forms apart, which the single line the classifier
+     * sees cannot.
+     */
+    public static function isInsideClassBody(string $code, int $offset): bool
+    {
+        // One entry per open brace, true when that brace opened a class-like body.
+        // The innermost (last) entry is the scope the cursor sits directly in.
+        $braceOpensClassBody = [];
+        $nextBraceOpensClassBody = false;
+        $previousSignificant = null;
+
+        foreach (self::significantTokensBefore($code, $offset) as $token) {
+            // Interpolation braces (`"{$x}"`, `"${x}"`) open a scope closed by a
+            // plain `}`, so they are tracked to keep the brace stack balanced.
+            if ($token === T_CURLY_OPEN || $token === T_DOLLAR_OPEN_CURLY_BRACES) {
+                $braceOpensClassBody[] = false;
+                $nextBraceOpensClassBody = false;
+            } elseif (
+                // A class-like declaration marks the next `{` as a class body. The
+                // `::class` constant reference is not a declaration and is excluded.
+                ($token === T_CLASS || $token === T_INTERFACE || $token === T_TRAIT || $token === T_ENUM)
+                && $previousSignificant !== T_DOUBLE_COLON
+            ) {
+                $nextBraceOpensClassBody = true;
+            } elseif ($token === '{') {
+                $braceOpensClassBody[] = $nextBraceOpensClassBody;
+                $nextBraceOpensClassBody = false;
+            } elseif ($token === '}') {
+                array_pop($braceOpensClassBody);
+            }
+
+            $previousSignificant = $token;
+        }
+
+        return $braceOpensClassBody !== [] && end($braceOpensClassBody) === true;
+    }
+
+    /**
+     * Whether $offset sits in a closure's `use (...)` capture list, where a `use`
+     * captures variables from the enclosing scope rather than importing a namespace
+     * — again two unrelated constructs that share the keyword. The capture list is
+     * the only place a `use` follows a `)` (a closing parameter list); an import or
+     * trait `use` follows a statement boundary. Token-based and whole-document, so
+     * it survives mid-edit breakage and sees a `)` on an earlier line.
+     */
+    public static function isClosureUse(string $code, int $offset): bool
+    {
+        // `) use` — the closure's parameter list closes, then the capture keyword.
+        return array_slice(self::significantTokensBefore($code, $offset), -2) === [')', T_USE];
+    }
+
+    /**
+     * The significant tokens (whitespace, comments, and docblocks removed) that
+     * begin before $offset, each reduced to its token id (array tokens) or literal
+     * text (single-character tokens). Only code up to the cursor defines its scope,
+     * so scanning stops there. Shared by the structural `use`-disambiguation checks
+     * so they walk the document identically.
+     *
+     * @return list<int|string>
+     */
+    private static function significantTokensBefore(string $code, int $offset): array
+    {
+        $significant = [];
+        $position = 0;
+
+        foreach (token_get_all($code) as $token) {
+            if ($position >= $offset) {
+                break;
+            }
+
+            if (is_array($token)) {
+                $position += strlen($token[1]);
+                $id = $token[0];
+                if ($id === T_WHITESPACE || $id === T_COMMENT || $id === T_DOC_COMMENT) {
+                    continue;
+                }
+                $significant[] = $id;
+                continue;
+            }
+
+            $position += strlen($token);
+            $significant[] = $token;
+        }
+
+        return $significant;
+    }
+
     private static function contextForToken(int $tokenType, string $tokenText, bool $inNowdoc): CompletionContext
     {
         if (in_array($tokenType, self::NO_COMPLETION_TOKENS, true)) {

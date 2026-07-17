@@ -58,6 +58,14 @@ final class CompletionClassifier
     private const ATTRIBUTE_PATTERN =
         '/#\[\s*(?:[\w\\\\]+\s*(?:\([^)]*\))?\s*,\s*)*' . self::QUALIFIED_TAIL . '$/';
 
+    // Matches a `use` import statement's name: "use ", an optional leading `\`, and
+    // the qualified name typed so far. A `use` name is always fully qualified — it
+    // resolves from the global namespace regardless of the file's own namespace or
+    // imports — so the whole path is captured for an absolute walk. `use function`
+    // and `use const` are deliberately not matched: they import functions and
+    // constants, which are out of this position's scope (#239, #317).
+    private const USE_PATTERN = '/\buse\s+' . self::QUALIFIED_TAIL . '$/';
+
     public static function classify(string $textBeforeCursor): CompletionClassification
     {
         // Variable completion
@@ -145,6 +153,14 @@ final class CompletionClassifier
                 return new CompletionClassification(CompletionKind::ClassBody, $matches[1]);
             }
             return new CompletionClassification(CompletionKind::None, '');
+        }
+
+        // `use` import statement. Checked after the class-body block (a same-line
+        // trait `use` is consumed there) and before the expression fallback, which
+        // would otherwise claim `use Fo` as an Expression. The name is navigated
+        // absolutely; see USE_PATTERN.
+        if (preg_match(self::USE_PATTERN, $textBeforeCursor, $matches) === 1) {
+            return new CompletionClassification(CompletionKind::Use_, $matches[1]);
         }
 
         // Function/class/keyword completion (at start of expression or after operators)
