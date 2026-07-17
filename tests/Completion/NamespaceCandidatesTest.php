@@ -12,8 +12,8 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\NameKind;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -294,48 +294,37 @@ class NamespaceCandidatesTest extends TestCase
         self::assertNotContains('Small\\', $labels, 'The inlined namespace itself is not offered as a node');
     }
 
-    public function testQualifiesSymbolReferencesWithTheReferenceBase(): void
+    public function testDescentNodesOfferImportsAndCurrentNamespaceChildren(): void
     {
-        // An imported prefix (`use App\Model\Env;`) roots enumeration at the import
-        // target but writes references import-relative (`Env\Repository`) and
-        // replaces the whole typed span, so `new Env\R` never duplicates `Env\`.
         $catalog = self::catalog([
-            'App\Model\Env' => new NamespaceContents([], [
-                new CatalogSymbol('App\Model\Env\Repository', NameKind::ClassLike),
-            ]),
+            'App' => new NamespaceContents(['App\Models'], []),
+            'App\Models' => new NamespaceContents([], [new CatalogSymbol('App\Models\User', NameKind::ClassLike)]),
+            'Vendor\Pkg' => new NamespaceContents([], [new CatalogSymbol('Vendor\Pkg\Thing', NameKind::ClassLike)]),
+            'Vendor\Plain' => new NamespaceContents([], []),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
-        $range = Range::onLine(0, 4, 9);
+        $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
+        $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg', 'Plain' => 'Vendor\Plain']);
 
-        $items = $candidates->find('App\Model\Env', 'R', 0, 9, ClassCandidateFilter::Any, 'Env', $range);
+        $labels = array_column($candidates->descentNodes($context, '', 0, 0), 'label');
 
-        self::assertCount(1, $items);
-        self::assertSame('Env\Repository', $items[0]['label'], 'The reference is written import-relative');
-        self::assertSame('App\Model\Env\Repository', $items[0]['detail'] ?? null, 'The detail is the FQCN');
-        self::assertSame('Env\Repository', $items[0]['filterText'] ?? null, 'It filters on the qualified reference');
-        self::assertSame(
-            ['range' => $range->toArray(), 'newText' => 'Env\Repository'],
-            $items[0]['textEdit'] ?? null,
-            'The textEdit inserts the qualified reference over the provided range',
-        );
+        self::assertContains('Models\\', $labels, 'A navigable child of the current namespace is a descent node');
+        self::assertContains('Pkg\\', $labels, 'A navigable import is a descent node');
+        self::assertNotContains('Plain\\', $labels, 'An import that is not a namespace is not a descent node');
     }
 
-    public function testQualifiesNamespaceNodesWithTheReferenceBase(): void
+    public function testDescentNodesFilterByPrefix(): void
     {
         $catalog = self::catalog([
-            'App\Model\Env' => new NamespaceContents(['App\Model\Env\Sub'], []),
-            'App\Model\Env\Sub' => new NamespaceContents([], self::manyClassLikes('App\Model\Env\Sub')),
+            'App' => new NamespaceContents([], []),
+            'Vendor\Mapping' => new NamespaceContents([], [new CatalogSymbol('Vendor\Mapping\Column', NameKind::ClassLike)]),
+            'Vendor\Other' => new NamespaceContents([], [new CatalogSymbol('Vendor\Other\Thing', NameKind::ClassLike)]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
-        $range = Range::onLine(0, 4, 8);
+        $candidates = new NamespaceCandidates($catalog, self::createStub(CodeResolver::class));
+        $context = new NameContext('App', ['Mapping' => 'Vendor\Mapping', 'Other' => 'Vendor\Other']);
 
-        $items = $candidates->find('App\Model\Env', '', 0, 8, ClassCandidateFilter::Any, 'Env', $range);
+        $labels = array_column($candidates->descentNodes($context, 'Map', 0, 3), 'label');
 
-        self::assertContains(
-            'Env\Sub\\',
-            array_column($items, 'label'),
-            'A child namespace node is written import-relative',
-        );
+        self::assertSame(['Mapping\\'], $labels, 'Only imports/children whose name begins with the prefix are offered');
     }
 
     public function testRanksSymbolsAboveNamespaceNodes(): void
