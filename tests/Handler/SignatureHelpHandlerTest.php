@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -51,6 +52,7 @@ class SignatureHelpHandlerTest extends TestCase
             $this->classRepository,
             $this->memberResolver,
             $typeResolver,
+            new DefaultFunctionRepository(),
         );
         $this->handler = new SignatureHelpHandler(
             $this->documents,

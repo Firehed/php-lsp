@@ -32,6 +32,7 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -81,6 +82,7 @@ class CompletionHandlerTest extends TestCase
             $this->classRepository,
             $this->memberResolver,
             $typeResolver,
+            new DefaultFunctionRepository(),
         );
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->handler = $this->makeHandler(

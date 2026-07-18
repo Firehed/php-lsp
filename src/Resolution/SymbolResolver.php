@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassRepository;
+use Firehed\PhpLsp\Repository\FunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Domain\ClassKind;
@@ -46,8 +47,6 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Stmt;
 use LogicException;
-use ReflectionException;
-use ReflectionFunction;
 use Throwable;
 
 /**
@@ -79,6 +78,7 @@ final class SymbolResolver implements CodeResolver
         private readonly ClassRepository $classRepository,
         private readonly MemberResolver $memberResolver,
         private readonly TypeResolverInterface $typeResolver,
+        private readonly FunctionRepository $functionRepository,
     ) {
         $this->textFallback = new TextFallbackHelper($memberResolver);
     }
@@ -1443,19 +1443,12 @@ final class SymbolResolver implements CodeResolver
      */
     private function resolveFunctionByName(string $functionName, array $ast): ?ResolvedFunction
     {
-        // Try user-defined function first
-        $funcNode = ScopeFinder::findFunction($functionName, $ast);
-        if ($funcNode !== null) {
-            return new ResolvedFunction(FunctionInfo::fromNode($funcNode));
-        }
-
-        // Fall back to built-in function via reflection
-        try {
-            $funcInfo = FunctionInfo::fromReflection(new ReflectionFunction($functionName));
-            return new ResolvedFunction($funcInfo);
-        } catch (ReflectionException) {
+        $funcInfo = $this->functionRepository->get($functionName, $ast);
+        if ($funcInfo === null) {
             return null;
         }
+
+        return new ResolvedFunction($funcInfo);
     }
 
     /**
