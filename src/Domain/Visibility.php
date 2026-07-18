@@ -7,11 +7,11 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Member visibility level.
  */
-enum Visibility: int implements Formattable
+enum Visibility: string implements Formattable
 {
-    case Private = 0;
-    case Protected = 1;
-    case Public = 2;
+    case Private = 'private';
+    case Protected = 'protected';
+    case Public = 'public';
 
     /**
      * Raises this visibility to the given floor, returning whichever is more
@@ -19,21 +19,17 @@ enum Visibility: int implements Formattable
      */
     public function atLeast(self $floor): self
     {
-        return self::from(max($this->value, $floor->value));
+        return $this->rank() >= $floor->rank() ? $this : $floor;
     }
 
     public function isAccessibleFrom(self $minimumRequired): bool
     {
-        return $this->value >= $minimumRequired->value;
+        return $this->rank() >= $minimumRequired->rank();
     }
 
     public function format(): string
     {
-        return match ($this) {
-            self::Private => 'private',
-            self::Protected => 'protected',
-            self::Public => 'public',
-        };
+        return $this->value;
     }
 
     public static function fromString(string $visibility): self
@@ -42,6 +38,18 @@ enum Visibility: int implements Formattable
             'private' => self::Private,
             'protected' => self::Protected,
             default => self::Public,
+        };
+    }
+
+    /**
+     * Ordinal ranking used for accessibility comparisons: more public is higher.
+     */
+    private function rank(): int
+    {
+        return match ($this) {
+            self::Private => 0,
+            self::Protected => 1,
+            self::Public => 2,
         };
     }
 }

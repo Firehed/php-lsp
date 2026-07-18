@@ -45,12 +45,24 @@ class VisibilityTest extends TestCase
     public static function atLeastProvider(): array
     {
         return [
-            'private raised to protected' => [Visibility::Private, Visibility::Protected, Visibility::Protected],
-            'protected floored at protected' => [Visibility::Protected, Visibility::Protected, Visibility::Protected],
-            'public unaffected by protected floor' => [Visibility::Public, Visibility::Protected, Visibility::Public],
-            'private raised to public' => [Visibility::Private, Visibility::Public, Visibility::Public],
-            'private unaffected by private floor' => [Visibility::Private, Visibility::Private, Visibility::Private],
-            'protected unaffected by private floor' => [Visibility::Protected, Visibility::Private, Visibility::Protected],
+            'private raised to protected' => [
+                Visibility::Private, Visibility::Protected, Visibility::Protected,
+            ],
+            'protected floored at protected' => [
+                Visibility::Protected, Visibility::Protected, Visibility::Protected,
+            ],
+            'public unaffected by protected floor' => [
+                Visibility::Public, Visibility::Protected, Visibility::Public,
+            ],
+            'private raised to public' => [
+                Visibility::Private, Visibility::Public, Visibility::Public,
+            ],
+            'private unaffected by private floor' => [
+                Visibility::Private, Visibility::Private, Visibility::Private,
+            ],
+            'protected unaffected by private floor' => [
+                Visibility::Protected, Visibility::Private, Visibility::Protected,
+            ],
         ];
     }
 
