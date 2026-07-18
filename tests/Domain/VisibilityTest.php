@@ -39,6 +39,31 @@ class VisibilityTest extends TestCase
     }
 
     /**
+     * @return array<string, array{Visibility, Visibility, Visibility}>
+     * @codeCoverageIgnore
+     */
+    public static function atLeastProvider(): array
+    {
+        return [
+            'private raised to protected' => [Visibility::Private, Visibility::Protected, Visibility::Protected],
+            'protected floored at protected' => [Visibility::Protected, Visibility::Protected, Visibility::Protected],
+            'public unaffected by protected floor' => [Visibility::Public, Visibility::Protected, Visibility::Public],
+            'private raised to public' => [Visibility::Private, Visibility::Public, Visibility::Public],
+            'private unaffected by private floor' => [Visibility::Private, Visibility::Private, Visibility::Private],
+            'protected unaffected by private floor' => [Visibility::Protected, Visibility::Private, Visibility::Protected],
+        ];
+    }
+
+    #[DataProvider('atLeastProvider')]
+    public function testAtLeast(
+        Visibility $visibility,
+        Visibility $floor,
+        Visibility $expected,
+    ): void {
+        self::assertSame($expected, $visibility->atLeast($floor));
+    }
+
+    /**
      * @return array<string, array{Visibility, string}>
      * @codeCoverageIgnore
      */
