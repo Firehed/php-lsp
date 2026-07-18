@@ -13,6 +13,15 @@ enum Visibility: int implements Formattable
     case Protected = 1;
     case Public = 2;
 
+    /**
+     * Raises this visibility to the given floor, returning whichever is more
+     * restrictive (more public).
+     */
+    public function atLeast(self $floor): self
+    {
+        return self::from(max($this->value, $floor->value));
+    }
+
     public function isAccessibleFrom(self $minimumRequired): bool
     {
         return $this->value >= $minimumRequired->value;

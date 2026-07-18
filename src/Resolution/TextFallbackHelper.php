@@ -657,7 +657,7 @@ final class TextFallbackHelper
         // A subclass cannot access its parent's private members, so never query the
         // parent below Protected visibility (while still honoring an external Public
         // access level).
-        $inheritedVisibility = Visibility::from(max($minVisibility->value, Visibility::Protected->value));
+        $inheritedVisibility = $minVisibility->atLeast(Visibility::Protected);
 
         $methods = $this->memberResolver->getMethods($parentClassName, $inheritedVisibility, $filter);
         foreach ($methods as $methodInfo) {
