@@ -32,15 +32,6 @@ enum Visibility: string implements Formattable
         return $this->value;
     }
 
-    public static function fromString(string $visibility): self
-    {
-        return match (strtolower($visibility)) {
-            'private' => self::Private,
-            'protected' => self::Protected,
-            default => self::Public,
-        };
-    }
-
     /**
      * Ordinal ranking used for accessibility comparisons: more public is higher.
      */
