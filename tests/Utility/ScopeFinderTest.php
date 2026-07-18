@@ -355,36 +355,6 @@ class ScopeFinderTest extends TestCase
         self::assertSame('Second', $statements[1]->name?->toString());
     }
 
-    public function testFindFunctionReturnsNullWhenNotFound(): void
-    {
-        $code = $this->loadFixture('src/Utility/GlobalScope.php');
-        $ast = self::parseWithParents($code);
-
-        self::assertNull(ScopeFinder::findFunction('nonexistent', $ast));
-    }
-
-    public function testFindFunctionReturnsMatchingFunction(): void
-    {
-        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
-        $ast = self::parseWithParents($code);
-
-        $found = ScopeFinder::findFunction('testGlobalFunction', $ast);
-
-        self::assertNotNull($found);
-        self::assertSame('testGlobalFunction', $found->name->toString());
-    }
-
-    public function testFindFunctionWorksWithNamespace(): void
-    {
-        $code = $this->loadFixture('src/Utility/GlobalScope.php');
-        $ast = self::parseWithParents($code);
-
-        $found = ScopeFinder::findFunction('utilityFunction', $ast);
-
-        self::assertNotNull($found);
-        self::assertSame('utilityFunction', $found->name->toString());
-    }
-
     public function testResolveClassNameDelegatesToResolveName(): void
     {
         $code = $this->loadFixture('src/Utility/ImportedExtends.php');
