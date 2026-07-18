@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
@@ -35,33 +36,17 @@ final class SignatureHelpHandler implements HandlerInterface
      */
     public function handle(Message $message): ?array
     {
-        $params = $message->params ?? [];
-
-        $textDocument = $params['textDocument'] ?? [];
-        if (!is_array($textDocument)) {
-            return null;
-        }
-        $uri = $textDocument['uri'] ?? '';
-        if (!is_string($uri)) {
+        $position = TextDocumentPositionParams::tryFromMessage($message);
+        if ($position === null) {
             return null;
         }
 
-        $position = $params['position'] ?? [];
-        if (!is_array($position)) {
-            return null;
-        }
-        $line = $position['line'] ?? 0;
-        $character = $position['character'] ?? 0;
-        if (!is_int($line) || !is_int($character)) {
-            return null;
-        }
-
-        $document = $this->documentManager->get($uri);
+        $document = $this->documentManager->get($position->uri);
         if ($document === null) {
             return null;
         }
 
-        $context = $this->codeResolver->getCallContext($document, $line, $character);
+        $context = $this->codeResolver->getCallContext($document, $position->line, $position->character);
         if ($context === null) {
             return null;
         }
