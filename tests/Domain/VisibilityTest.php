@@ -39,6 +39,43 @@ class VisibilityTest extends TestCase
     }
 
     /**
+     * @return array<string, array{Visibility, Visibility, Visibility}>
+     * @codeCoverageIgnore
+     */
+    public static function atLeastProvider(): array
+    {
+        return [
+            'private raised to protected' => [
+                Visibility::Private, Visibility::Protected, Visibility::Protected,
+            ],
+            'protected floored at protected' => [
+                Visibility::Protected, Visibility::Protected, Visibility::Protected,
+            ],
+            'public unaffected by protected floor' => [
+                Visibility::Public, Visibility::Protected, Visibility::Public,
+            ],
+            'private raised to public' => [
+                Visibility::Private, Visibility::Public, Visibility::Public,
+            ],
+            'private unaffected by private floor' => [
+                Visibility::Private, Visibility::Private, Visibility::Private,
+            ],
+            'protected unaffected by private floor' => [
+                Visibility::Protected, Visibility::Private, Visibility::Protected,
+            ],
+        ];
+    }
+
+    #[DataProvider('atLeastProvider')]
+    public function testAtLeast(
+        Visibility $visibility,
+        Visibility $floor,
+        Visibility $expected,
+    ): void {
+        self::assertSame($expected, $visibility->atLeast($floor));
+    }
+
+    /**
      * @return array<string, array{Visibility, string}>
      * @codeCoverageIgnore
      */
@@ -55,30 +92,5 @@ class VisibilityTest extends TestCase
     public function testFormat(Visibility $visibility, string $expected): void
     {
         self::assertSame($expected, $visibility->format());
-    }
-
-    /**
-     * @return array<string, array{string, Visibility}>
-     * @codeCoverageIgnore
-     */
-    public static function fromStringProvider(): array
-    {
-        return [
-            'private lowercase' => ['private', Visibility::Private],
-            'private uppercase' => ['PRIVATE', Visibility::Private],
-            'private mixed' => ['Private', Visibility::Private],
-            'protected lowercase' => ['protected', Visibility::Protected],
-            'protected uppercase' => ['PROTECTED', Visibility::Protected],
-            'public lowercase' => ['public', Visibility::Public],
-            'public uppercase' => ['PUBLIC', Visibility::Public],
-            'empty string defaults to public' => ['', Visibility::Public],
-            'unknown defaults to public' => ['unknown', Visibility::Public],
-        ];
-    }
-
-    #[DataProvider('fromStringProvider')]
-    public function testFromString(string $input, Visibility $expected): void
-    {
-        self::assertSame($expected, Visibility::fromString($input));
     }
 }

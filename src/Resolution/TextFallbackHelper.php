@@ -657,7 +657,7 @@ final class TextFallbackHelper
         // A subclass cannot access its parent's private members, so never query the
         // parent below Protected visibility (while still honoring an external Public
         // access level).
-        $inheritedVisibility = Visibility::from(max($minVisibility->value, Visibility::Protected->value));
+        $inheritedVisibility = $minVisibility->atLeast(Visibility::Protected);
 
         $methods = $this->memberResolver->getMethods($parentClassName, $inheritedVisibility, $filter);
         foreach ($methods as $methodInfo) {
@@ -695,7 +695,7 @@ final class TextFallbackHelper
         $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(/m';
         if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $match) {
-                $visibility = Visibility::fromString($match[1]);
+                $visibility = Visibility::from($match[1]);
                 if (!$visibility->isAccessibleFrom($minVisibility)) {
                     continue;
                 }
@@ -740,7 +740,7 @@ final class TextFallbackHelper
         $pattern = '/^\s*(public|protected|private)\s+(static\s+)?(readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
         if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $match) {
-                $visibility = Visibility::fromString($match[1]);
+                $visibility = Visibility::from($match[1]);
                 if (!$visibility->isAccessibleFrom($minVisibility)) {
                     continue;
                 }
@@ -782,7 +782,7 @@ final class TextFallbackHelper
         $pattern = '/^\s*(public|protected|private)?\s*const\s+(?:[\w\\\\|?]+\s+)?(\w+)\s*=/m';
         if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $match) {
-                $visibility = ($match[1] !== '') ? Visibility::fromString($match[1]) : Visibility::Public;
+                $visibility = ($match[1] !== '') ? Visibility::from($match[1]) : Visibility::Public;
                 if (!$visibility->isAccessibleFrom($minVisibility)) {
                     continue;
                 }
