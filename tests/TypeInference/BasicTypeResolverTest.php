@@ -17,6 +17,7 @@ use Throwable;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -42,7 +43,7 @@ class BasicTypeResolverTest extends TestCase
         $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
         $memberResolver = new MemberResolver($classRepository);
 
-        $this->resolver = new BasicTypeResolver($memberResolver);
+        $this->resolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
     }
 
     public function testResolveNewExpression(): void
@@ -936,6 +937,6 @@ class BasicTypeResolverTest extends TestCase
         $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
         $memberResolver = new MemberResolver($classRepository);
 
-        return new BasicTypeResolver($memberResolver);
+        return new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
     }
 }

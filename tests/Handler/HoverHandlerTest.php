@@ -47,7 +47,7 @@ class HoverHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($memberResolver);
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
         $symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,

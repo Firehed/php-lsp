@@ -70,7 +70,7 @@ final class Server
         $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
         $functionRepository = new DefaultFunctionRepository();
         $memberResolver = new MemberResolver($classRepository);
-        $typeResolver = new BasicTypeResolver($memberResolver);
+        $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
         $symbolResolver = new SymbolResolver(
             $parser,
             $classRepository,

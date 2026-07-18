@@ -76,7 +76,7 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($this->memberResolver);
+        $typeResolver = new BasicTypeResolver($this->memberResolver, new DefaultFunctionRepository());
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
