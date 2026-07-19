@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -44,12 +45,13 @@ class DefinitionHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($memberResolver);
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
         $symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
             $memberResolver,
             $typeResolver,
+            new DefaultFunctionRepository(),
         );
         $this->handler = new DefinitionHandler(
             $this->documents,

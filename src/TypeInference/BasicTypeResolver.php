@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Repository\FunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -33,6 +34,7 @@ final class BasicTypeResolver implements TypeResolverInterface
 {
     public function __construct(
         private readonly MemberResolver $memberResolver,
+        private readonly FunctionRepository $functionRepository,
     ) {
     }
     public function resolveExpressionType(
@@ -270,60 +272,30 @@ final class BasicTypeResolver implements TypeResolverInterface
     {
         $shortName = $functionName->toString();
 
-        // If NameResolver provided a FQN, use it directly
+        // Candidates follow PHP's name resolution: an explicit resolved FQN, then
+        // the enclosing namespace, then the global fallback. FunctionRepository
+        // handles both the user-defined lookup and the built-in reflection fallback.
+        $candidates = [];
+
         $resolvedName = $functionName->getAttribute('resolvedName');
         if ($resolvedName instanceof Node\Name) {
-            $func = $this->findFunctionInAst($resolvedName->toString(), $ast);
-            if ($func !== null) {
-                return TypeFactory::fromNode($func->returnType);
-            }
+            $candidates[] = $resolvedName->toString();
         }
 
-        // For unqualified names, try the enclosing namespace first (PHP's fallback behavior)
         $namespace = ScopeFinder::findEnclosingNamespace($functionName);
         if ($namespace !== null && $namespace->name !== null) {
-            $namespacedFqn = $namespace->name->toString() . '\\' . $shortName;
-            $func = $this->findFunctionInAst($namespacedFqn, $ast);
-            if ($func !== null) {
-                return TypeFactory::fromNode($func->returnType);
+            $candidates[] = $namespace->name->toString() . '\\' . $shortName;
+        }
+
+        $candidates[] = $shortName;
+
+        foreach ($candidates as $candidate) {
+            $function = $this->functionRepository->get($candidate, $ast);
+            if ($function !== null) {
+                return $function->returnType;
             }
         }
 
-        // Try global namespace
-        $func = $this->findFunctionInAst($shortName, $ast);
-        if ($func !== null) {
-            return TypeFactory::fromNode($func->returnType);
-        }
-
-        // Try reflection for built-in functions
-        try {
-            $reflection = new \ReflectionFunction($shortName);
-            return TypeFactory::fromReflection($reflection->getReturnType());
-        } catch (\ReflectionException) {
-            return null;
-        }
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function findFunctionInAst(string $functionFqn, array $ast): ?Stmt\Function_
-    {
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Function_ && $stmt->name->toString() === $functionFqn) {
-                return $stmt;
-            }
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $nsStmt) {
-                    if ($nsStmt instanceof Stmt\Function_) {
-                        $fqn = $nsStmt->namespacedName?->toString() ?? $nsStmt->name->toString();
-                        if ($fqn === $functionFqn) {
-                            return $nsStmt;
-                        }
-                    }
-                }
-            }
-        }
         return null;
     }
 

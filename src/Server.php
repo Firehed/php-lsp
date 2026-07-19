@@ -28,6 +28,7 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -67,9 +68,16 @@ final class Server
 
         $classInfoFactory = new DefaultClassInfoFactory();
         $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
+        $functionRepository = new DefaultFunctionRepository();
         $memberResolver = new MemberResolver($classRepository);
-        $typeResolver = new BasicTypeResolver($memberResolver);
-        $symbolResolver = new SymbolResolver($parser, $classRepository, $memberResolver, $typeResolver);
+        $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
+        $symbolResolver = new SymbolResolver(
+            $parser,
+            $classRepository,
+            $memberResolver,
+            $typeResolver,
+            $functionRepository,
+        );
 
         $this->lifecycleHandler = new LifecycleHandler($serverInfo);
         $this->handlers[] = $this->lifecycleHandler;

@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedClass;
@@ -68,7 +69,7 @@ final class SymbolResolverTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($memberResolver);
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
 
         $this->resolver = new SymbolResolver(
@@ -76,6 +77,7 @@ final class SymbolResolverTest extends TestCase
             classRepository: $this->classRepository,
             memberResolver: $memberResolver,
             typeResolver: $typeResolver,
+            functionRepository: new DefaultFunctionRepository(),
         );
 
         $this->syncHandler = new TextDocumentSyncHandler(
