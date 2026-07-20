@@ -42,11 +42,15 @@ throughout. That file must land first, or in the same merge; until it does, the
   up front (Section 3).
 - **Measure before caching.** Standing caches are justified by numbers, not
   assumed (Section 4 / Step 0).
-- **Behavior-changing steps are reversible.** "Always green" is a merge-time
-  property; it says nothing about production. Steps that intentionally change
-  behavior (3b, 5) land behind a config / feature flag, or are structured to revert
-  independently, so a regression found in use can be switched off without unwinding
-  the whole line.
+- **Behavior-changing steps have a named revert path — but not the same one.**
+  "Always green" is a merge-time property; it says nothing about production. A step
+  that **swaps a source** behind a stable interface (Step 5's built-in source) lands
+  behind a **config / feature flag**, so a regression can be switched off in place. A
+  step that makes a **structural change** (Step 3b deletes `getFileFunctions`' last
+  caller and removes a rule exemption) is not toggle-revertible — resurrecting deleted
+  code is not a flag; its safety comes from **staged landing + the per-surface goldens
+  (Step P) + being cleanly revertible by reverting its commits**. Each behavior-
+  changing step states which profile it uses.
 
 ## 2. What is reused, new, and rewritten
 
@@ -87,6 +91,10 @@ Notes:
   **load side-effect** of a PSR-4 / classmap file (declared alongside a class in a
   file loaded for that class) is reachable at PHP runtime but invisible to this
   model. Scoping it out is deliberate — a known limitation, not complete reach.
+- The **Builtin backend is the single deliberate exception** to lazy-first: its
+  static stub source (Step 5) has no name→file map, so it is served from a symbol
+  index **pre-derived once** from the stubs, not lazily per symbol. Even there, only
+  the derived index is held, never the raw stub ASTs.
 
 ## 4. The steps
 
@@ -156,10 +164,13 @@ before and after.
 enumeration, prefix-search, write-path symbol state), so a step that intentionally
 changes one surface (3b) rewrites only that surface's golden while the others stay
 frozen and can still assert preservation. The harness fails on any diff and runs in
-CI; a deliberate change to a migrated surface makes it red. Critically, the harness's
-**coverage of each migrated surface over the corpus is measured** — which surfaces
-and branches the fixtures actually exercise — and gaps are filled before the harness
-is trusted; a green run over a corpus that misses an edge is false confidence, and
+CI; a deliberate change to a migrated surface makes it red. Critically, **branch
+coverage of the migrated production code** (the lookup / enumeration / search / write
+surfaces) is measured *while the harness runs*: an unexecuted branch — say
+`childrenOf`'s trait-via-parent edge — is a corpus gap to fill before the harness is
+trusted. This is production-code branch coverage restricted to the surface classes
+(the one tool that answers "does the corpus exercise this edge"), not the harness's
+own coverage. A green run over a corpus that misses an edge is false confidence, and
 the fixture corpus is small and curated, not real-world PHP. May run in parallel with
 Steps 0 and 1.
 
@@ -202,7 +213,15 @@ Step 4 (Section 6).
   `lookupFunction` / `lookupConstant` real project reach; migrate `FunctionCandidates`
   to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
   document's functions, so that query disappears with its last caller); remove the
-  Step 2 rule exemption. Proven by **new fixtures**, not parity.
+  Step 2 rule exemption. This step **both changes and preserves** behavior on the
+  function surface: the added project reach is new (proven by **new fixtures**), but
+  built-in and open-document function completion is *existing* behavior that must not
+  regress. So the function-surface golden (Step P) is **captured before this step**
+  from today's path (`get_defined_functions()['internal']` + open-doc functions) and
+  frozen for the preservation half, and a **parity oracle** asserts the Builtin
+  backend's function enumeration matches `get_defined_functions()` (as
+  `TypeGraphParityTest` uses reflection for members). Revert profile: structural —
+  revertible by reverting its commits, not a flag (§1).
 - **External-file-change invalidation gets its own slice and acceptance**, not a
   hand-wave to §5.3 — it is a classic LSP correctness minefield.
   `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and
@@ -254,8 +273,23 @@ runtime (§4.7), closing the Step 3 divergence.
 it **cannot** answer for a target version or extension the server lacks (target 8.4
 on a server running 8.2; target uses `ext-gd`, server has none). The Builtin backend
 must therefore resolve against a **static, version-keyed symbol database** (e.g.
-JetBrains `phpstorm-stubs` or equivalent), not process reflection. This is a larger
-change than "parameterize a cache" and is the substance of the step.
+JetBrains `phpstorm-stubs` or equivalent), not process reflection.
+
+This is the substance of the step, and it has costs the plan owns explicitly:
+
+- **It is the one deliberate exception to lazy-first (§3).** A stub tree has no
+  name→file map — you cannot `findFile('Random\\Randomizer')` in it — so locating any
+  one built-in requires the whole stub set to have been indexed. The bounded,
+  version-stable answer is to **pre-derive a symbol index from the stubs once** (at
+  build / install time, or on first built-in query, then cached for the session) and
+  hold *that derived index*, never the raw stub ASTs.
+- **Ingestion cost.** This replaces today's instant `get_defined_functions()` /
+  reflection lookup with a one-time corpus derivation (a stub set is thousands of
+  files). That cost is paid off the interactive path — build-time or lazy-once — not
+  per request.
+- **A new bundled dependency and licensing decision** (which stub set, its license,
+  how it is vendored and updated, and whether the index is derived at install-time or
+  lazily once) — an open decision (§7).
 
 *Deriving the target.* `TargetEnvironment` combines the `composer.json` `php`
 constraint with declared `ext-*` requires — but projects routinely under-declare
@@ -268,7 +302,9 @@ as *unknown*, not absent.
 updated on `workspace/didChangeConfiguration`; a change of target invalidates /
 re-keys the cache through the Step 3 abstraction; a symbol introduced in a later
 version, and one from an undeclared extension, are each handled per the documented
-policy (fixtures).
+policy (fixtures); the source swap lands **behind a config flag** (source-swap revert
+profile, §1) so the stub-backed built-in path can fall back to the reflection path if
+it regresses.
 
 ### Step 6 — Scheduler / async tier (deferred until a push feature needs it)
 
@@ -382,7 +418,7 @@ final class DelegatingSymbolSource implements SymbolSource, SymbolSink
     public function updateDocument(TextDocument $doc): void
     {
         // Step 2: reproduce today's DOUBLE write behind ONE method.
-        // Step 3a: collapse to a single parse + single store.
+        // Step 3a: collapse to a single parse + single write path (structures may stay distinct).
         $this->registerClasses($doc);   // → classes->updateDocument(...)
         $this->indexer->index($doc);     // → index
     }
@@ -482,7 +518,9 @@ once Step P is green.
   `lookupFunction` or a `completionItem/resolve` capability (§5.4).
 - Whether the Workspace backend is lazy-only or gains bounded background indexing
   (only relevant if the workspace scope is taken up).
-- The static built-in symbol database (`phpstorm-stubs` vs. an alternative) and the
-  policy for undeclared extensions / unknown target versions (Step 5).
+- The static built-in symbol database (`phpstorm-stubs` vs. an alternative), its
+  license and how it is vendored / updated, whether its derived index is built at
+  install-time or lazily once, and the policy for undeclared extensions / unknown
+  target versions (Step 5).
 - The external-change invalidation fallback when the client does not support
   `didChangeWatchedFiles` (lazy re-read vs. no invalidation) (Step 3).
