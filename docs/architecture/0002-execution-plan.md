@@ -42,6 +42,11 @@ throughout. That file must land first, or in the same merge; until it does, the
   up front (Section 3).
 - **Measure before caching.** Standing caches are justified by numbers, not
   assumed (Section 4 / Step 0).
+- **Behavior-changing steps are reversible.** "Always green" is a merge-time
+  property; it says nothing about production. Steps that intentionally change
+  behavior (3b, 5) land behind a config / feature flag, or are structured to revert
+  independently, so a regression found in use can be switched off without unwinding
+  the whole line.
 
 ## 2. What is reused, new, and rewritten
 
@@ -77,6 +82,11 @@ Notes:
   revived only if/when the workspace scope is taken up; otherwise it is deleted.
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw
   ASTs. `ClassRepository` already does this; preserve it.
+- Reach is scoped to declarations the model can *locate*: PSR-4 / classmap classes,
+  the `autoload.files` set, and open documents. A function or constant defined as a
+  **load side-effect** of a PSR-4 / classmap file (declared alongside a class in a
+  file loaded for that class) is reachable at PHP runtime but invisible to this
+  model. Scoping it out is deliberate — a known limitation, not complete reach.
 
 ## 4. The steps
 
@@ -105,6 +115,11 @@ only: a request triggers **one parse per request** (counter test). If a standing
 cache is added: **one parse per document version**, open documents only, behind the
 Step 3 cache abstraction. No standing cache is added without measurement backing it.
 
+Because a standing cache uses the Step 3 abstraction, Step 0 as the first PR delivers
+**measurement plus, at most, request-scoped dedup** now; if the spike concludes a
+standing cache is warranted, it lands later as a **Step 3 rider** once the abstraction
+exists (Section 6). Only the request-scoped-dedup half of Step 0 is truly early.
+
 ### Step 1 — Capability negotiation + encoding edge (orthogonal)
 
 *Goal:* stand up the protocol-negotiation tier and fix position encoding at the
@@ -118,6 +133,13 @@ snippet shaped via `SessionCapabilities`; malformed frame → error response, no
 crash; pre-`initialize` / post-`shutdown` lifecycle state enforced; a rule confines
 raw `initialize` params to the negotiation component.
 
+Position handling needs its own regression net — Step P excludes the positional
+surface, so one multibyte fixture is not enough. Step 1 carries a **position
+round-trip corpus**: the existing cursor-marker fixtures re-run under the negotiated
+encoding, plus dedicated multibyte cases. And Step 1 is not fully orthogonal to Step
+4: Step 1's single internal representation has to be the one the Step 4 positional
+layer consumes, or the encoding work is silently redone — coordinate the two.
+
 ### Step P — Resolution & enumeration parity harness (gates Steps 2–4)
 
 New infrastructure that the strangler steps depend on. `TypeGraphParityTest` covers
@@ -130,9 +152,16 @@ observable outputs of the surfaces Steps 2–4 touch — class-like lookup resul
 document open/update/close — so any behavior-preserving step can be proven identical
 before and after.
 
-*Acceptance:* the harness captures those outputs across the corpus and fails on any
-diff; it runs in CI; a deliberate change to a migrated surface makes it red (proving
-it has teeth). This step can run in parallel with Steps 0 and 1.
+*Acceptance:* goldens are recorded **per surface** (class-like lookup, `childrenOf`
+enumeration, prefix-search, write-path symbol state), so a step that intentionally
+changes one surface (3b) rewrites only that surface's golden while the others stay
+frozen and can still assert preservation. The harness fails on any diff and runs in
+CI; a deliberate change to a migrated surface makes it red. Critically, the harness's
+**coverage of each migrated surface over the corpus is measured** — which surfaces
+and branches the fixtures actually exercise — and gaps are filled before the harness
+is trusted; a green run over a corpus that misses an edge is false confidence, and
+the fixture corpus is small and curated, not real-world PHP. May run in parallel with
+Steps 0 and 1.
 
 ### Step 2 — `SymbolSource` / `SymbolSink` facade (strangler, no behavior change)
 
@@ -156,19 +185,33 @@ The core payoff, and the one behavior-changing bundle. Split into sub-steps so t
 risk is not one commit, and so its `SymbolResolver` edits can be serialized against
 Step 4 (Section 6).
 
-- **3a — Backends + one write path (behavior-preserving).** Refactor the tiers into
-  named backends (OpenDocument, Workspace, Vendor, Builtin) behind a composite with
-  fixed precedence (§5.3); collapse the double write into one parse + one store on
-  `didChange`; dedupe the double `ComposerAutoloadMap`; introduce the **replaceable
-  cache abstraction (PSR-6/16 seam, §5.3)** that backend caches use. Proven by the
-  Step P harness.
+- **3a — Backends + one write path (behavior-preserving).** A cluster of small PRs,
+  not one — per the project's small-commit rule: (i) the replaceable cache
+  abstraction (PSR-6/16 seam, §5.3), which also hosts any Step 0 standing cache;
+  (ii) dedupe the double `ComposerAutoloadMap`; (iii) the named backends
+  (OpenDocument, Workspace, Vendor, Builtin) behind a composite with fixed precedence
+  (§5.3); (iv) collapse the double write so one parse feeds the write on `didChange`.
+  Note (iv) is *one parse, one write path* — **not necessarily one data structure**:
+  `SymbolIndex` (symbols) and the `ClassInfo` cache serve different consumers and may
+  stay distinct, written transactionally from the same parse. Because the Step P
+  harness compares only observable outputs, an internal divergence between the two
+  structures could pass parity, so add a consistency check that both are written from
+  the same parse and agree. Proven by the Step P harness.
 - **3b — `SymbolLocator` + function/constant reach (behavior-changing).** Generalize
   `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in `autoload.files`; give
   `lookupFunction` / `lookupConstant` real project reach; migrate `FunctionCandidates`
   to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
   document's functions, so that query disappears with its last caller); remove the
   Step 2 rule exemption. Proven by **new fixtures**, not parity.
-- Close-of-edited-file and external-change invalidation behave per §5.3.
+- **External-file-change invalidation gets its own slice and acceptance**, not a
+  hand-wave to §5.3 — it is a classic LSP correctness minefield.
+  `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and
+  close-after-edit both invalidate cached / indexed workspace state. *Its own
+  acceptance:* an external edit to an unopened file, a branch checkout, and a file
+  deletion are each reflected on the next query; closing an edited file re-reads from
+  disk rather than restoring the pre-edit cache (§5.3). When the client does not
+  support watched-file notifications, the fallback (lazy re-read vs. no invalidation)
+  is an open decision (§7).
 
 *Known temporary divergence:* the Builtin backend stood up in 3a is not yet
 environment-parameterized; §4.7 conformance arrives in Step 5. Tracked, not clean.
@@ -188,15 +231,44 @@ by `SymbolSource` (there is no second knowledge interface)**; the no-`instanceof
 concrete-`Type` and no-branch-on-resolved-kind rules pass, as does the §4.6
 "no `new` of a `Type` implementation outside the factory" rule; parity green.
 
+*Handler dependency shape.* This does not give handlers a second resolver. Point-query
+handlers (Definition / Hover / …) depend on the positional-facing `CodeResolver`
+(`resolveAtPosition` and the glue behind it); `SymbolSource` is consumed by that glue
+and by the completion sources, **not** by handlers directly. The "handlers are thin
+formatters over one resolver" invariant is preserved — the knowledge interface sits
+below the glue, not beside the handler.
+
+*The positional layer must itself be decomposed.* It would otherwise inherit most of
+`SymbolResolver`'s bulk (node-at-offset, scope, member/call detection, text fallback,
+`getImports` / `getNameContext`) and become a renamed god class. The success metric is
+**not "`SymbolResolver` is thin" alone**; the positional layer lands as cohesive,
+independently testable units (e.g. node locator, scope analyzer, member-access
+detector, call-context detector, name-context resolver, text fallback).
+
 ### Step 5 — Environment-parameterized built-ins
 
 *Goal:* make built-in knowledge depend on the project's target, not the server's
 runtime (§4.7), closing the Step 3 divergence.
 
-*Acceptance:* `TargetEnvironment` derived from `composer.json` and updated on
-`workspace/didChangeConfiguration`; the Builtin backend resolves against it, keyed
-by it through the Step 3 cache abstraction; a change of target invalidates / re-keys
-the cache; a version-gated symbol is offered or withheld per target (fixture).
+*Source of truth.* Reflection describes only what the server process has loaded, so
+it **cannot** answer for a target version or extension the server lacks (target 8.4
+on a server running 8.2; target uses `ext-gd`, server has none). The Builtin backend
+must therefore resolve against a **static, version-keyed symbol database** (e.g.
+JetBrains `phpstorm-stubs` or equivalent), not process reflection. This is a larger
+change than "parameterize a cache" and is the substance of the step.
+
+*Deriving the target.* `TargetEnvironment` combines the `composer.json` `php`
+constraint with declared `ext-*` requires — but projects routinely under-declare
+extensions, so composer alone is incomplete. It must also admit explicit
+configuration, fall back to a documented baseline, and treat an undeclared extension
+as *unknown*, not absent.
+
+*Acceptance:* the Builtin backend resolves from the static stub database keyed by
+`TargetEnvironment`; the target is derived from `composer.json` + explicit config and
+updated on `workspace/didChangeConfiguration`; a change of target invalidates /
+re-keys the cache through the Step 3 abstraction; a symbol introduced in a later
+version, and one from an undeclared extension, are each handled per the documented
+policy (fixtures).
 
 ### Step 6 — Scheduler / async tier (deferred until a push feature needs it)
 
@@ -282,11 +354,15 @@ the existing index `Symbol` already encodes (name, fqn, kind, location) — so
 and the §5.6 "carry a stable identity" hook are the same thing, not a conflict.
 
 Completion that needs richer detail (a function's signature/parameters) must **not**
-regress when `FunctionCandidates` moves to `search` in Step 3. Two acceptable ways,
-decided then: a follow-up `lookupFunction` per surviving candidate (the list is
-prefix-filtered and capped at 100, so bounded), or a lazy `completionItem/resolve`
-capability (ties to Step 1 negotiation) that fills detail on demand — the LSP-idiomatic
-answer. Either keeps `search` results lightweight while preserving today's rendering.
+regress when `FunctionCandidates` moves to `search` in Step 3b. Note the 100-item cap
+(`RESULT_LIMIT`) is applied **centrally in `CompletionHandler` after ranking across
+all sources** (`CompletionHandler.php:125-137`), not on a source's output — so a
+per-candidate follow-up `lookupFunction` would run over the *uncapped* function-search
+result, not a bounded 100. That tilts the decision toward a lazy
+`completionItem/resolve` capability (ties to Step 1 negotiation) that fills detail
+only for the items the client actually renders — the LSP-idiomatic answer — over an
+eager per-candidate lookup. Resolve the choice in Step 3b; keep `search` results
+lightweight regardless.
 
 ### 5.5. Facade and wiring
 
@@ -386,6 +462,10 @@ Step 6: last / independent (needs a consumer feature such as #266)
   migration first, then Step 4's extraction (or vice versa), but not concurrently.
   Step 4's `TypeClassifier` and interface-split slices are independent of Step 3 and
   may proceed alongside.
+- **Step 3a is itself a cluster of small PRs** (cache abstraction, `ComposerAutoloadMap`
+  dedupe, backend composite, write-path collapse), not one commit — per the project's
+  small-commit rule. A Step 0 standing cache, if the spike warrants it, rides in on
+  the cache-abstraction PR.
 
 Recommended first PR: Step 0's spike, with Step P and Step 1 in parallel; Step 2
 once Step P is green.
@@ -402,3 +482,7 @@ once Step P is green.
   `lookupFunction` or a `completionItem/resolve` capability (§5.4).
 - Whether the Workspace backend is lazy-only or gains bounded background indexing
   (only relevant if the workspace scope is taken up).
+- The static built-in symbol database (`phpstorm-stubs` vs. an alternative) and the
+  policy for undeclared extensions / unknown target versions (Step 5).
+- The external-change invalidation fallback when the client does not support
+  `didChangeWatchedFiles` (lazy re-read vs. no invalidation) (Step 3).
