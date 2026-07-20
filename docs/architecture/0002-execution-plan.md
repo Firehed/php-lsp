@@ -212,7 +212,10 @@ Step 4 (Section 6).
   the same parse and agree. Proven by the Step P harness.
 - **3b — `SymbolLocator` + function/constant reach (behavior-changing).** Generalize
   `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in `autoload.files`; give
-  `lookupFunction` / `lookupConstant` real project reach; migrate `FunctionCandidates`
+  `lookupFunction` / `lookupConstant` real project reach (constant reach covers
+  `const` declarations and literal-name `define()`; a **computed-name `define()`** is
+  a runtime call invisible to static parse and is out of scope, per §3's locate-only
+  limitation); migrate `FunctionCandidates`
   to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
   document's functions, so that query disappears with its last caller); remove the
   Step 2 rule exemption. This step **both changes and preserves** behavior on the
@@ -302,7 +305,8 @@ as *unknown*, not absent.
 *Acceptance:* the Builtin backend resolves from the static stub database keyed by
 `TargetEnvironment`; the target is derived from `composer.json` + explicit config,
 with a **`composer.json` change arriving via `workspace/didChangeWatchedFiles`**
-(reusing Step 3's watched-file slice — it is a disk file, not a client setting) and an
+(reusing Step 3's watched-file machinery, but **registering `composer.json` as a new
+watch pattern** — it is a disk file, not a client setting) and an
 **explicit config override via `workspace/didChangeConfiguration`**; either re-keys /
 invalidates the cache through the Step 3 abstraction; a symbol introduced in a later
 version, and one from an undeclared extension, are each handled per the documented
