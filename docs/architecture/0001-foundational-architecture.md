@@ -212,8 +212,9 @@ Read operations (SymbolSource) and document-lifecycle write operations
 (SymbolSink) MUST be exposed as separate interfaces. A consumer that only reads
 MUST depend only on SymbolSource. A single implementation MAY provide both.
 
-There MUST be exactly one write path for document state. A single document change
-MUST NOT update two independent stores.
+There MUST be exactly one write path for symbol state — document changes and any
+background indexing (Section 6) alike. A single document change MUST NOT update two
+independent stores.
 
 ### 4.4. Separation of Positional and Knowledge Concerns
 
@@ -271,7 +272,7 @@ a capability predicate or completion filter, not by ad hoc checks at call sites.
 
 ### 4.8. Protocol Capability Negotiation
 
-Client capabilities ([LSP], "Lifecycle Messages", `initialize` →
+Client capabilities ([LSP], "Server lifecycle", `initialize` →
 ClientCapabilities) MUST be read during the `initialize` request and resolved once
 into an immutable session-capabilities value (Section 5.4).
 
@@ -294,7 +295,7 @@ value's own default state, not a special-cased branch at the point of use.
 Minimal or older clients are therefore served by the default configuration and
 require no dedicated code path.
 
-Lifecycle state MUST be enforced per [LSP], "Lifecycle Messages": requests
+Lifecycle state MUST be enforced per [LSP], "Server lifecycle": requests
 received before `initialize` MUST be answered with `ServerNotInitialized`, and
 requests received after `shutdown` MUST be answered with `InvalidRequest`.
 
@@ -351,11 +352,13 @@ all kinds for which it is meaningful.
 
 ### 5.2. Document State: Write Contract (SymbolSink)
 
-The SymbolSink write interface MUST provide document open, update, and close
-operations keyed by document identity. It MUST be the sole means of mutating
-symbol state from document changes (Section 4.3). Open-document state MUST take
-precedence over on-disk state for the same symbol, including when the opened
-document is a vendored or otherwise normally-cached file (Section 5.3).
+The SymbolSink write interface MUST be the sole means of mutating symbol state.
+Its primary path is document lifecycle — open, update, and close operations keyed
+by document identity — and any other producer of symbol state (for example,
+background or parallel workspace indexing, Section 6) MUST write through the same
+interface rather than a second store. Open-document state MUST take precedence over
+on-disk state for the same symbol, including when the opened document is a vendored
+or otherwise normally-cached file (Section 5.3).
 
 ### 5.3. Backend Substitutability and Caching Policy
 
@@ -578,13 +581,13 @@ locations were checked against the live 3.17 specification.
     Message framing             Base Protocol → Header Part
     Errors, JSON-RPC            Base Protocol (error codes)
     Cancellation                Base Protocol → Cancellation Support (`$/cancelRequest`)
-    Lifecycle and state         Lifecycle Messages (`initialize`, `shutdown`, `exit`)
-    Client/server capabilities  Lifecycle Messages → `initialize`
+    Lifecycle and state         Server lifecycle (`initialize`, `shutdown`, `exit`)
+    Client/server capabilities  Server lifecycle → `initialize`
                                 (ClientCapabilities, ServerCapabilities)
     Position + encoding         Basic JSON Structures → `Position`;
                                 `general.positionEncodings` and ServerCapabilities
                                 `positionEncoding`
-    Document synchronization    Document Synchronization (`textDocument/didOpen`,
+    Document synchronization    Text Document Synchronization (`textDocument/didOpen`,
                                 `didChange`, `didClose`)
     Hover markup                Language Features → Hover (`textDocument/hover`);
                                 Basic JSON Structures → `MarkupContent`
