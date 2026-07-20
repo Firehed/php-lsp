@@ -58,7 +58,7 @@ throughout. That file must land first, or in the same merge; until it does, the
 |---|---|---|
 | `Type` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSource` / `SymbolSink` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
 | `NamespaceCatalog` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
-| `DefaultClassRepository` tiering (becomes backend logic) | `TargetEnvironment` + env-keyed built-in cache | `SymbolResolver` (decomposed) |
+| `DefaultClassRepository` tiering (becomes backend logic) | `TargetEnvironment` + version-aware built-in source (Step 5 — **deferred**) | `SymbolResolver` (decomposed) |
 | `ComposerAutoloadMap` (dedupe the double instance) | Replaceable cache abstraction (PSR-6/16 seam) | `TextFallbackHelper` (narrowed to FQN recovery) |
 | Completion coordinator + `*Candidates`; transport (amphp) | Enforcement rules (§8.1); `SymbolIdentity` (Step 3+) | `ClassLocator` → kind-general `SymbolLocator` |
 | Fixture tooling + `TypeGraphParityTest` | Corpus parity harness (Step P); scheduler tier (Step 6) | |
@@ -91,10 +91,11 @@ Notes:
   **load side-effect** of a PSR-4 / classmap file (declared alongside a class in a
   file loaded for that class) is reachable at PHP runtime but invisible to this
   model. Scoping it out is deliberate — a known limitation, not complete reach.
-- The **Builtin backend is the single deliberate exception** to lazy-first: its
-  static stub source (Step 5) has no name→file map, so it is served from a symbol
-  index **pre-derived once** from the stubs, not lazily per symbol. Even there, only
-  the derived index is held, never the raw stub ASTs.
+- The **Builtin backend is reflection-backed today** (zero-index, instant lookup via
+  `get_defined_functions()` / reflection), so it introduces **no** lazy-first
+  exception. An exception would arise only if a future static, version-aware source
+  is adopted (Step 5, **deferred**): such a source has no name→file map and would need
+  a pre-derived index. That trade-off is deferred with the step.
 
 ## 4. The steps
 
@@ -237,8 +238,11 @@ Step 4 (Section 6).
   support watched-file notifications, the fallback (lazy re-read vs. no invalidation)
   is an open decision (§7).
 
-*Known temporary divergence:* the Builtin backend stood up in 3a is not yet
-environment-parameterized; §4.7 conformance arrives in Step 5. Tracked, not clean.
+*Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
+environment-parameterized, so it does **not** satisfy §4.7 — it cannot answer for a
+target version or extension the server process lacks. This is **deferred** (Step 5)
+and tracked as an open §4.7 gap, not scheduled; the interim behavior (reflection +
+optimistic availability) is intentional.
 
 ### Step 4 — `SymbolResolver` decomposition
 
@@ -269,55 +273,42 @@ below the glue, not beside the handler.
 independently testable units (e.g. node locator, scope analyzer, member-access
 detector, call-context detector, name-context resolver, text fallback).
 
-### Step 5 — Environment-parameterized built-ins
+### Step 5 — Environment-parameterized built-ins (deferred; tracked §4.7 gap)
 
-*Goal:* make built-in knowledge depend on the project's target, not the server's
-runtime (§4.7), closing the Step 3 divergence.
+*Status:* **deferred.** §4.7 (built-in knowledge parameterized by the project's
+target, not the server runtime) is a real requirement, but a correct static, version-
+and extension-aware built-in source is a hard problem in its own right, and the
+obvious off-the-shelf candidate (JetBrains `phpstorm-stubs`) is **rejected** for known
+issues. Rather than block the foundation on it, ship an interim and track the gap.
 
-*Source of truth.* Reflection describes only what the server process has loaded, so
-it **cannot** answer for a target version or extension the server lacks (target 8.4
-on a server running 8.2; target uses `ext-gd`, server has none). The Builtin backend
-must therefore resolve against a **static, version-keyed symbol database** (e.g.
-JetBrains `phpstorm-stubs` or equivalent), not process reflection.
+*Interim (what actually runs — already stood up in Step 3a).* The Builtin backend
+uses **process reflection** (`get_defined_functions()` / `ReflectionClass`), and
+availability is modeled **optimistically**: every reflected built-in is treated as
+available for the target (the availability predicate is hardcoded to true). This is
+the zero-index, instant path; it adds no dependency and no ingestion cost.
 
-This is the substance of the step, and it has costs the plan owns explicitly:
+*Known limitation (the tracked gap).* Reflection describes only what the *server
+process* has loaded, so the interim is wrong precisely where §4.7 cares: a target on a
+different PHP version, or using an extension the server lacks, sees the server's
+built-ins, not the target's. §4.7 is therefore an **open, tracked gap** — file an
+issue when this step is scheduled — consistent with the plan's rule that an unmet
+invariant is a tracked gap, not a passed step.
 
-- **It is the one deliberate exception to lazy-first (§3).** A stub tree has no
-  name→file map — you cannot `findFile('Random\\Randomizer')` in it — so locating any
-  one built-in requires the whole stub set to have been indexed. The bounded,
-  version-stable answer is to **pre-derive a symbol index from the stubs once** (at
-  build / install time, or on first built-in query, then cached for the session) and
-  hold *that derived index*, never the raw stub ASTs.
-- **Ingestion cost.** This replaces today's instant `get_defined_functions()` /
-  reflection lookup with a one-time corpus derivation (a stub set is thousands of
-  files). That cost is paid off the interactive path — build-time or lazy-once — not
-  per request.
-- **A new bundled dependency and licensing decision** (which stub set, its license,
-  how it is vendored and updated, and whether the index is derived at install-time or
-  lazily once) — an open decision (§7).
+*Future (when scheduled).* Replace reflection with a static, version-aware source —
+**TBD and explicitly not `phpstorm-stubs`** — behind the same Builtin backend
+interface. Because that interface is stable, this is a **source swap behind a config
+flag** (source-swap revert profile, §1): fall back to reflection if the new source
+regresses. Only then do the deferred concerns become live — the lazy-first exception
+(a static source has no name→file map, so it needs a pre-derived index), the ingestion
+cost, the `TargetEnvironment` derivation (`composer.json` `php` + `ext-*`, admitting
+explicit config, treating undeclared extensions as unknown), its invalidation
+(`composer.json` via `workspace/didChangeWatchedFiles`; config override via
+`workspace/didChangeConfiguration`), and retiring / re-pointing the 3b reflection
+oracle (which stays valid only while the backend is reflection-backed).
 
-*Deriving the target.* `TargetEnvironment` combines the `composer.json` `php`
-constraint with declared `ext-*` requires — but projects routinely under-declare
-extensions, so composer alone is incomplete. It must also admit explicit
-configuration, fall back to a documented baseline, and treat an undeclared extension
-as *unknown*, not absent.
-
-*Acceptance:* the Builtin backend resolves from the static stub database keyed by
-`TargetEnvironment`; the target is derived from `composer.json` + explicit config,
-with a **`composer.json` change arriving via `workspace/didChangeWatchedFiles`**
-(reusing Step 3's watched-file machinery, but **registering `composer.json` as a new
-watch pattern** — it is a disk file, not a client setting) and an
-**explicit config override via `workspace/didChangeConfiguration`**; either re-keys /
-invalidates the cache through the Step 3 abstraction; a symbol introduced in a later
-version, and one from an undeclared extension, are each handled per the documented
-policy (fixtures). The 3b reflection oracle (Builtin enumeration ==
-`get_defined_functions()`) is **retired / re-pointed at the stub database** here — by
-design the stub source does not match the server runtime when target ≠ server, so that
-oracle is intentionally obsolete at this step. The source swap lands **behind a config
-flag** (source-swap revert profile, §1) so the stub-backed path can fall back to
-reflection if it regresses — noting that flag-off re-introduces the §4.7
-nonconformance the stub source exists to fix, trading conformance for stability, not a
-neutral revert.
+*Acceptance (interim):* the Builtin backend resolves via reflection with an optimistic
+availability predicate; the §4.7 gap is recorded as a tracked issue; **no
+`phpstorm-stubs` or other stub dependency is introduced.**
 
 ### Step 6 — Scheduler / async tier (deferred until a push feature needs it)
 
@@ -498,9 +489,9 @@ Step 0 ─┐
 Step 1 ─┼─ (independent of each other and of P/2)
 Step P ─┘   parity harness — gates 2–4
 
-Step 2 ──► Step 3a ──► Step 3b ──► Step 5
+Step 2 ──► Step 3a ──► Step 3b
                   └────► Step 4    (see caveat)
-Step 6: last / independent (needs a consumer feature such as #266)
+Step 5 (deferred — tracked §4.7 gap) and Step 6 (deferred — needs #266): later, independent
 ```
 
 - **Step P gates Steps 2–4** — the behavior-preserving claims are unprovable without
@@ -531,9 +522,9 @@ once Step P is green.
   `lookupFunction` or a `completionItem/resolve` capability (§5.4).
 - Whether the Workspace backend is lazy-only or gains bounded background indexing
   (only relevant if the workspace scope is taken up).
-- The static built-in symbol database (`phpstorm-stubs` vs. an alternative), its
-  license and how it is vendored / updated, whether its derived index is built at
-  install-time or lazily once, and the policy for undeclared extensions / unknown
-  target versions (Step 5).
+- The future version-aware built-in source for Step 5 — **TBD, explicitly not
+  `phpstorm-stubs`** (known issues) — and, when chosen, its ingestion / derivation
+  model and the `TargetEnvironment` / undeclared-extension policy. Until then the
+  interim is reflection + optimistic availability, and §4.7 is a tracked gap.
 - The external-change invalidation fallback when the client does not support
   `didChangeWatchedFiles` (lazy re-read vs. no invalidation) (Step 3).
