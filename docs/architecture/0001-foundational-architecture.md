@@ -380,17 +380,21 @@ normally-cached file (Section 5.3).
 ### 5.3. Backend Substitutability and Caching Policy
 
 Backends MUST be substitutable: each MUST satisfy the same contract, and a
-backend that cannot answer a query MUST signal absence — an empty collection for
-enumerations, a null object for lookups — and MUST NOT return a nullable result,
-consistent with the project's prohibition on nullable types. A backend MUST NOT
-raise an error to signal "not found," and MUST NOT return a partial or approximate
-answer presented as complete.
+backend that cannot answer a query MUST signal absence — an empty collection for an
+enumeration, and `null` for a lookup. The project discourages but does not forbid
+nullable types; here a nullable lookup result is the honest signal and a null
+object would be worse, so a bare `null` is preferred. A backend MUST NOT raise an
+error to signal "not found," and MUST NOT return a partial or approximate answer
+presented as complete.
 
 Backend *precedence* is fixed: for any symbol, an open-document answer MUST
 override the workspace, vendored, and built-in backends. Opening a normally-cached
 file — a vendored dependency, or any on-disk file — MUST route that file's symbols
 through the open-document backend for as long as it is open, so that a user's
 unsaved edits to a vendored file are honored and the cached answer is superseded.
+On close — and on any external on-disk change to a cached file — the backend MUST
+invalidate that file's cached entry and re-read from disk on the next query, so
+that a saved edit is reflected and the pre-edit cached value is NOT restored.
 
 Caching is a *policy per backend*, and MUST be expressed behind a replaceable
 cache abstraction (for example, a PSR-6 / PSR-16 seam) rather than hard-coded
@@ -402,11 +406,17 @@ without restructuring consumers. The default policy follows source stability:
 - Workspace-on-disk MAY be resolved lazily on demand and MAY be indexed in the
   background; any background work MUST be bounded (Section 6) and MUST report what
   it bounded or skipped rather than silently truncating.
-- Vendored dependencies and language built-ins are fixed for a given target
-  environment (Section 4.7) and SHOULD be cached, keyed by that environment; a
-  change of target environment MUST invalidate or re-key the cache. Caching is a
-  default policy, not a guarantee of an unbounded cache; a backend MAY apply
-  eviction or size bounds through the cache abstraction.
+- Language built-ins are fixed for a given target environment (Section 4.7) and
+  SHOULD be cached, keyed by that environment; a change of target environment MUST
+  invalidate or re-key the cache.
+- Vendored dependencies are stable only while their files are unchanged on disk.
+  They SHOULD be cached, but any on-disk change to a vendored file — an edit
+  (including closing a file that was edited in the editor), a `composer` update, or
+  a branch checkout — MUST invalidate that file's cached entry so the next read
+  reflects disk.
+
+Caching in every case is a default policy, not a guarantee of an unbounded cache; a
+backend MAY apply eviction or size bounds through the cache abstraction.
 
 Where a bound is applied to coverage (a cap, a skipped directory, a non-retried
 failure), the server MUST make that omission observable rather than presenting
@@ -451,6 +461,11 @@ The requirements distinguish the interactive hot path from background work:
   its existing abstraction (e.g. the parser or type factory) so consumers are
   unchanged; and — because stock PHP shares no memory across processes — the cost
   of marshalling results across the boundary MUST be accounted for.
+- An implementation MUST NOT assume optional runtime components are present. Fibers
+  and FFI exist across all supported PHP versions and MAY be relied on;
+  process-based parallelism (`pcntl`, `ext-parallel`) is not enabled by default and
+  MUST be feature-detected at runtime, with a synchronous fallback when it is
+  absent.
 - Any long-running background task MUST NOT starve interactive requests, and MUST
   be cancelable.
 
