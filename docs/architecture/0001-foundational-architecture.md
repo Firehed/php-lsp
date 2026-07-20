@@ -57,6 +57,7 @@ a bumped date.
     6. Concurrency Model
     7. Extensibility Procedure
     8. Conformance
+       8.1. Enforcement
     9. Robustness Considerations
     10. Rationale (Non-Normative)
     Appendix A. Axes of Variation Catalog
@@ -167,6 +168,11 @@ consumers of an axis. The catalog is in Appendix A. The axes are:
 - **Position/intent** — where in the source a completion or resolution is
   requested.
 
+Client-supplied configuration (initialization options, `workspace/configuration`)
+is deliberately not a separate axis: version- and platform-like settings fold into
+the target environment (Section 4.7), and behavior toggles into negotiated session
+values (Sections 4.8, 5.4). There is no free-form settings store.
+
 ### 3.2. Layering
 
 Three concerns are kept distinct:
@@ -270,6 +276,11 @@ Symbol availability metadata (for example, the version in which a symbol was
 introduced or deprecated) MUST be modeled as symbol metadata and surfaced through
 a capability predicate or completion filter, not by ad hoc checks at call sites.
 
+The target environment MAY change during a session (for example, via
+`workspace/didChangeConfiguration`). A component MUST NOT assume it is fixed after
+initialization. When it changes, every environment-dependent cache (Section 5.3)
+MUST be invalidated or re-keyed by the new environment.
+
 ### 4.8. Protocol Capability Negotiation
 
 Client capabilities ([LSP], "Server lifecycle", `initialize` →
@@ -356,18 +367,24 @@ The SymbolSink write interface MUST be the sole means of mutating symbol state.
 Its primary path is document lifecycle — open, update, and close operations keyed
 by document identity — and any other producer of symbol state (for example,
 background or parallel workspace indexing, Section 6) MUST write through the same
-interface rather than a second store. Open-document state MUST take precedence over
-on-disk state for the same symbol, including when the opened document is a vendored
-or otherwise normally-cached file (Section 5.3).
+interface rather than a second store. On-disk changes to files that are not open in
+the editor — an external edit, a branch checkout, or `workspace/didChangeWatchedFiles`
+notifications where the client supports them (Section 4.8) — are a third such
+producer: they MUST invalidate any cached or background-indexed workspace state for
+the affected files through the same write path. A workspace backend that resolves
+purely lazily from disk satisfies this by re-reading and needs no explicit
+invalidation. Open-document state MUST take precedence over on-disk state for the
+same symbol, including when the opened document is a vendored or otherwise
+normally-cached file (Section 5.3).
 
 ### 5.3. Backend Substitutability and Caching Policy
 
 Backends MUST be substitutable: each MUST satisfy the same contract, and a
-backend that cannot answer a query MUST signal absence (an empty collection for
-enumerations; a null object or explicit optional for lookups) rather than a bare
-`null` where the project's type rules discourage it. A backend MUST NOT raise an
-error to signal "not found," and MUST NOT return a partial or approximate answer
-presented as complete.
+backend that cannot answer a query MUST signal absence — an empty collection for
+enumerations, a null object for lookups — and MUST NOT return a nullable result,
+consistent with the project's prohibition on nullable types. A backend MUST NOT
+raise an error to signal "not found," and MUST NOT return a partial or approximate
+answer presented as complete.
 
 Backend *precedence* is fixed: for any symbol, an open-document answer MUST
 override the workspace, vendored, and built-in backends. Opening a normally-cached
@@ -385,10 +402,11 @@ without restructuring consumers. The default policy follows source stability:
 - Workspace-on-disk MAY be resolved lazily on demand and MAY be indexed in the
   background; any background work MUST be bounded (Section 6) and MUST report what
   it bounded or skipped rather than silently truncating.
-- Vendored dependencies and language built-ins are fixed for the life of a session
-  and SHOULD be cached for it. "Cached for the session" is a default policy, not a
-  guarantee of an unbounded cache; a backend MAY apply eviction or size bounds
-  through the cache abstraction.
+- Vendored dependencies and language built-ins are fixed for a given target
+  environment (Section 4.7) and SHOULD be cached, keyed by that environment; a
+  change of target environment MUST invalidate or re-key the cache. Caching is a
+  default policy, not a guarantee of an unbounded cache; a backend MAY apply
+  eviction or size bounds through the cache abstraction.
 
 Where a bound is applied to coverage (a cap, a skipped directory, a non-retried
 failure), the server MUST make that omission observable rather than presenting
@@ -486,10 +504,48 @@ exhaustive over the normative sections; each item names the section it checks.
 11. Correctness holds under synchronous execution (Section 6).
 12. Malformed input yields an error response, not process termination (Section 9).
 
-Automated enforcement SHOULD be added where feasible (for example, a parity test
-that the members reported for a type equal those the language exposes at runtime,
-retained from the existing traversal invariant; and static checks that consumers
-do not depend on concrete kinds or indices).
+### 8.1. Enforcement
+
+Each invariant MUST have a designated enforcement mechanism, and MUST NOT rely on
+human review where a static rule or an automated test is feasible. This is stronger
+than "enforce where convenient": the handler x node-type axis stayed closed because
+it was held by *mechanism* — a single interface plus a parity test — not by a
+documented rule, and every invariant here is expected to be held the same way. An
+invariant added by amendment MUST specify its mechanism.
+
+    Invariant                         Mechanism
+    --------------------------------  ------------------------------------------------
+    4.1 Handler responsibility        Architecture test: handler code MUST NOT depend
+                                      on parser, repository, or reflection.
+    4.2 SymbolSource authority        Static rule: no ReflectionClass, concrete index,
+                                      or autoload-map use outside a backend.
+    4.3 Read/write segregation        Static rule: consumers depend on SymbolSource or
+                                      SymbolSink, not a concrete impl; single write
+                                      path checked by architecture test.
+    4.4 Positional/knowledge split    Interface shape: knowledge signatures accept no
+                                      position or syntax tree (checked by the type
+                                      checker on the interface).
+    4.5 Predicates over kind/type     Static rule: no `instanceof` against a concrete
+                                      Type impl, and no `match`/`switch` on the kind
+                                      enum, outside the factory and classifier.
+    4.6 Type factory + traversal      Static rule: no `new` of a Type impl outside the
+                                      factory; TypeGraphParityTest for the walk.
+    4.7 Env-parameterized built-ins   Test: built-ins resolve against a supplied
+                                      environment, and re-key on its change; review.
+    4.8 Capability negotiation        Static rule: raw `initialize` params reachable
+                                      only within the negotiation component.
+    4.9 Position encoding             Test: multibyte round-trip at the boundary;
+                                      review of interior offset use.
+    4.10 Client conformance defects   Review only; defect list in Appendix B.
+    5.2 / 5.3 Write path, precedence, Architecture test + review: one write path,
+        cache seam, bounded coverage  caching behind the abstraction, bounds observable.
+    6 Synchronous correctness         By construction: the suite runs the interior
+                                      synchronously.
+    9 Robustness                      Test: malformed frames yield error responses,
+                                      not process termination.
+
+Where a listed mechanism does not yet exist, its absence is a known gap to be
+closed, not a licence to enforce by review; the gap SHOULD be tracked as an issue.
 
 ## 9. Robustness Considerations
 
@@ -544,6 +600,9 @@ work.
     Target environment   environment parameter + backend      4.7
     Protocol capability  session capabilities + handler       4.8, 5.4
     Position/intent      completion source + intent mapping   7
+
+Configuration/settings is intentionally not a separate axis (Section 3.1); it folds
+into target environment (4.7) and session capabilities (4.8, 5.4).
 
 ## Appendix B. Relationship to Existing Invariants and Issues
 
