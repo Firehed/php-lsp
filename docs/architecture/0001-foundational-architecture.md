@@ -48,9 +48,10 @@ a bumped date.
        4.7. Environment-Parameterized Built-ins
        4.8. Protocol Capability Negotiation
        4.9. Position Encoding
+       4.10. Client Conformance Defects
     5. Component Requirements
-       5.1. SymbolSource: Read Contract
-       5.2. SymbolSource: Write Contract
+       5.1. Symbol Knowledge: Read Contract (SymbolSource)
+       5.2. Document State: Write Contract (SymbolSink)
        5.3. Backend Substitutability and Caching Policy
        5.4. Session Capabilities
     6. Concurrency Model
@@ -112,8 +113,11 @@ and only when, they appear in all capitals, as shown here.
                https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/
 
 All references to [LSP] are to version 3.17 unless stated otherwise. [LSP] is
-organized by named sections rather than numbers; citations name the section
-(e.g. [LSP], "Text Documents → Position").
+organized by named sections rather than numbers; to stay robust against
+subsection-title drift, citations name the containing part and, where applicable,
+the request method (e.g. [LSP], "Base Protocol", `$/cancelRequest`). Exact
+subsection titles are collected in Appendix C and were checked against the live
+3.17 specification.
 
 ## 2. Terminology
 
@@ -124,12 +128,15 @@ organized by named sections rather than numbers; citations name the section
 - **Symbol kind**: The coarse category of a symbol used for discovery. Discovery
   distinguishes only the categories that name resolution distinguishes; it does
   not distinguish flavours of class-like.
-- **SymbolSource**: The single abstraction through which symbol existence,
+- **SymbolSource**: The single *read* abstraction through which symbol existence,
   metadata, definition location, and namespace enumeration are answered
-  (Section 4.2).
-- **Backend**: A concrete provider of symbol knowledge to the SymbolSource
-  (e.g. open documents, workspace-on-disk, vendored dependencies, language
-  built-ins).
+  (Section 4.2). It is read-only by definition; the write side is the SymbolSink.
+- **SymbolSink**: The sibling *write* abstraction through which document-lifecycle
+  changes mutate symbol state (Section 5.2). A single object MAY implement both
+  SymbolSource and SymbolSink, but each consumer depends only on the one it needs.
+- **Backend**: A concrete provider of symbol knowledge behind the SymbolSource /
+  SymbolSink (e.g. open documents, workspace-on-disk, vendored dependencies,
+  language built-ins).
 - **Lookup**: A query keyed by name — "resolve this symbol."
 - **Enumeration**: A query keyed by namespace or prefix — "what exists here."
 - **Positional analysis**: Determining what a cursor position denotes
@@ -201,9 +208,9 @@ same backends so that coverage is identical across them.
 
 ### 4.3. Read/Write Segregation
 
-SymbolSource read operations and document-lifecycle write operations MUST be
-exposed as separate interfaces. A consumer that only reads MUST depend only on
-the read interface. A single implementation MAY provide both.
+Read operations (SymbolSource) and document-lifecycle write operations
+(SymbolSink) MUST be exposed as separate interfaces. A consumer that only reads
+MUST depend only on SymbolSource. A single implementation MAY provide both.
 
 There MUST be exactly one write path for document state. A single document change
 MUST NOT update two independent stores.
@@ -227,6 +234,18 @@ Consequently, introducing a new symbol kind or a new type form MUST NOT require
 edits to consumers that operate through predicates and interfaces. A new
 class-like kind that participates in member resolution MUST be reachable through
 the same predicates and the same traversal as existing class-likes.
+
+This invariant forbids branching on a *resolved* symbol's kind to decide its
+suitability or behavior. It does NOT forbid routing a lookup by the kind implied
+by *syntactic position*: the grammar usually fixes the expected kind (a name after
+`new` or before `::` is a class-like; a name in call position is a function; a
+bare name in constant position is a constant). Deriving that expected kind is the
+positional layer's responsibility (Section 3.2), and the resolution glue MAY
+dispatch to the matching per-kind lookup (Section 5.1) on that basis. Where a
+position is genuinely kind-ambiguous, the kind-agnostic location query
+(Section 5.1) MUST be used rather than an ad hoc scan that branches on each
+candidate kind's result. This is the resolution of the apparent tension between
+this section and the per-kind return types required by Section 5.1.
 
 ### 4.6. Type Construction and Graph Traversal
 
@@ -252,19 +271,23 @@ a capability predicate or completion filter, not by ad hoc checks at call sites.
 
 ### 4.8. Protocol Capability Negotiation
 
-Client capabilities ([LSP], "Client Capabilities") MUST be read during the
-`initialize` request ([LSP], "Lifecycle Messages → Initialize Request") and
-resolved once into an immutable session-capabilities value (Section 5.4).
+Client capabilities ([LSP], "Lifecycle Messages", `initialize` →
+ClientCapabilities) MUST be read during the `initialize` request and resolved once
+into an immutable session-capabilities value (Section 5.4).
 
-Advertised server capabilities MUST be derived from the intersection of features
-the server implements and capabilities the client declares. The server MUST NOT
-advertise a capability it cannot honor, nor one the client cannot consume.
+The server MUST NOT advertise a capability it does not implement. It MAY advertise
+an implemented capability regardless of whether the client declared support, as
+[LSP] permits: a client that did not ask for a feature simply will not invoke it,
+and "the client cannot consume it" is not reliably derivable from a missing
+capability (dynamic registration and defaults intervene). The binding rule is the
+next paragraph — shape each *response* by declared client support, not the set of
+advertised providers.
 
 Any decision that shapes an outgoing message by client support (for example,
-markup kind for hover contents per [LSP] "Hover Request"; snippet support per
-[LSP] "Completion Request"; resolve support; diagnostic tags) MUST query the
-session-capabilities value. A component MUST NOT re-inspect the raw `initialize`
-parameters.
+markup kind for hover contents per [LSP] "Language Features → Hover"; snippet
+support per [LSP] "Language Features → Completion"; resolve support; diagnostic
+tags) MUST query the session-capabilities value. A component MUST NOT re-inspect
+the raw `initialize` parameters.
 
 The absence of a client capability MUST resolve to a safe default that is the
 value's own default state, not a special-cased branch at the point of use.
@@ -277,18 +300,39 @@ requests received after `shutdown` MUST be answered with `InvalidRequest`.
 
 ### 4.9. Position Encoding
 
-Position offsets MUST be treated per [LSP], "Text Documents → Position", under
-which `character` is measured in UTF-16 code units by default, with `utf-8` and
-`utf-32` available only when negotiated via `positionEncoding` ([LSP],
-"Capabilities", 3.17).
+Position offsets MUST be treated per [LSP], "Basic JSON Structures" (`Position`),
+under which `character` is measured in UTF-16 code units by default. A client
+advertises the encodings it supports via the `general.positionEncodings` array;
+the server selects one and returns it as the single `positionEncoding` server
+capability (3.17). If the client offers none, the server MUST assume UTF-16.
 
 Encoding conversion MUST occur at the transport/document boundary, into a single
-internal representation. Interior components MUST be encoding-agnostic. The server
-MUST NOT assume that a `character` offset is a byte offset.
+negotiated internal representation. Interior components MUST operate only on that
+representation and MUST NOT re-derive offsets against the wire encoding or assume a
+`character` offset is a byte offset. (The internal representation is itself an
+encoding; the requirement is that exactly one is used throughout the interior, not
+that the interior is encoding-free.)
+
+### 4.10. Client Conformance Defects
+
+Capability negotiation (Section 4.8) covers what a client *declares*. It does not
+cover a client that advertises a capability but mishandles it — a client defect,
+not a missing capability. Such defects MUST NOT be assumed away by negotiation.
+
+Where a client is known to mishandle a feature it advertises (for example, an
+editor that ignores a completion item's `textEdit` range and inserts the raw
+`newText`), the server SHOULD prefer the output form with the widest correct
+support and SHOULD degrade defensively rather than rely on the advertised
+capability. Any narrowly-scoped, per-client accommodation MAY be applied only as a
+last resort, MUST be documented and isolated from feature logic, and MUST NOT leak
+`if (client == X)` conditionals into resolution or knowledge code.
+
+A running list of observed client defects and their accommodations SHOULD be
+maintained (Appendix B).
 
 ## 5. Component Requirements
 
-### 5.1. SymbolSource: Read Contract
+### 5.1. Symbol Knowledge: Read Contract (SymbolSource)
 
 The read interface MUST provide, at minimum:
 
@@ -305,33 +349,47 @@ distinct identifier types for class, function, and constant names). Coverage MUS
 be uniform across kinds: a query answerable for one kind MUST be answerable for
 all kinds for which it is meaningful.
 
-### 5.2. SymbolSource: Write Contract
+### 5.2. Document State: Write Contract (SymbolSink)
 
-The write interface MUST provide document open, update, and close operations
-keyed by document identity. It MUST be the sole means of mutating symbol state
-from document changes (Section 4.3). Open-document state MUST take precedence
-over on-disk state for the same symbol.
+The SymbolSink write interface MUST provide document open, update, and close
+operations keyed by document identity. It MUST be the sole means of mutating
+symbol state from document changes (Section 4.3). Open-document state MUST take
+precedence over on-disk state for the same symbol, including when the opened
+document is a vendored or otherwise normally-cached file (Section 5.3).
 
 ### 5.3. Backend Substitutability and Caching Policy
 
 Backends MUST be substitutable: each MUST satisfy the same contract, and a
-backend that cannot answer a query MUST return an empty or null result. A backend
-MUST NOT raise an error to signal "not found," and MUST NOT return a partial or
-approximate answer presented as complete.
+backend that cannot answer a query MUST signal absence (an empty collection for
+enumerations; a null object or explicit optional for lookups) rather than a bare
+`null` where the project's type rules discourage it. A backend MUST NOT raise an
+error to signal "not found," and MUST NOT return a partial or approximate answer
+presented as complete.
 
-Caching policy is per backend and MUST follow the stability of the source:
+Backend *precedence* is fixed: for any symbol, an open-document answer MUST
+override the workspace, vendored, and built-in backends. Opening a normally-cached
+file — a vendored dependency, or any on-disk file — MUST route that file's symbols
+through the open-document backend for as long as it is open, so that a user's
+unsaved edits to a vendored file are honored and the cached answer is superseded.
+
+Caching is a *policy per backend*, and MUST be expressed behind a replaceable
+cache abstraction (for example, a PSR-6 / PSR-16 seam) rather than hard-coded
+memoization, so that eviction, size bounds, or TTLs can be introduced later
+without restructuring consumers. The default policy follows source stability:
 
 - Open documents change on every keystroke and MUST NOT be cached; a stale answer
   here is a renamed symbol still being offered.
 - Workspace-on-disk MAY be resolved lazily on demand and MAY be indexed in the
-  background; any background indexing MUST be bounded (Section 6) and MUST report
-  what it bounded or skipped rather than silently truncating.
-- Vendored dependencies and language built-ins are fixed for the life of a
-  session and SHOULD be cached for the session.
+  background; any background work MUST be bounded (Section 6) and MUST report what
+  it bounded or skipped rather than silently truncating.
+- Vendored dependencies and language built-ins are fixed for the life of a session
+  and SHOULD be cached for it. "Cached for the session" is a default policy, not a
+  guarantee of an unbounded cache; a backend MAY apply eviction or size bounds
+  through the cache abstraction.
 
-Where a bound is applied to coverage (a cap, a skipped directory, a
-non-retried failure), the server MUST make that omission observable rather than
-presenting truncated results as complete.
+Where a bound is applied to coverage (a cap, a skipped directory, a non-retried
+failure), the server MUST make that omission observable rather than presenting
+truncated results as complete.
 
 ### 5.4. Session Capabilities
 
@@ -343,25 +401,37 @@ declare.
 
 ## 6. Concurrency Model
 
-The architecture neither requires nor precludes an event-loop or Fiber-based
-runtime. PHP Fibers provide cooperative concurrency on a single thread, not
-parallelism; they do not accelerate CPU-bound work such as parsing or
-resolution.
+Two distinct mechanisms must not be conflated. PHP *Fibers* provide cooperative
+concurrency on a single thread and therefore no parallelism: they do not
+accelerate CPU-bound work such as parsing or resolution. The language *does* offer
+true parallelism by other means — multiple processes (`pcntl_fork`, worker pools),
+threads via extensions (ext-parallel), and libraries built on them
+(amphp/parallel) — and can offload a hot path to native code (FFI, or a PHP
+extension). The architecture neither requires nor precludes any of these.
 
-Therefore:
+The requirements distinguish the interactive hot path from background work:
 
 - CPU-bound resolution and knowledge queries MUST remain correct under purely
-  synchronous execution. Correctness MUST NOT depend on an event loop.
-- Throughput improvements to the hot path MUST come from caching and memoization,
-  not from concurrency. Introducing a concurrency runtime MUST NOT be treated as
-  a substitute for those.
-- If adopted, asynchronous execution MUST be confined to the transport, dispatch,
-  and scheduling tier — for request cancellation ([LSP], "Base Protocol →
-  Cancellation Support"), non-blocking dispatch, debounced server-initiated
-  notifications, and cooperatively-yielding background indexing. It MUST NOT
-  require the resolution interior to become asynchronous.
-- Any long-running background task MUST yield cooperatively so that interactive
-  requests are not starved, and MUST be cancelable.
+  synchronous execution. Correctness MUST NOT depend on an event loop, a worker
+  pool, or a native accelerator being present.
+- For the single-request interactive hot path, throughput improvements SHOULD come
+  first from caching and memoization; a concurrency runtime is not a substitute for
+  the caches this codebase needs, and adopting one MUST NOT be a reason to defer
+  them.
+- Cooperative asynchrony (e.g. Fibers) MUST, if adopted, be confined to the
+  transport, dispatch, and scheduling tier — for request cancellation ([LSP],
+  "Base Protocol", `$/cancelRequest`), non-blocking dispatch, debounced
+  server-initiated notifications, and cooperatively-yielding background work. It
+  MUST NOT require the resolution interior to become asynchronous.
+- True parallelism (separate processes/threads) and native acceleration (FFI or an
+  extension) MAY be used for background work such as workspace indexing or a
+  parsing hot path. When used: results MUST re-enter shared state through the
+  SymbolSink write contract (Section 5.2); an accelerated component MUST sit behind
+  its existing abstraction (e.g. the parser or type factory) so consumers are
+  unchanged; and — because stock PHP shares no memory across processes — the cost
+  of marshalling results across the boundary MUST be accounted for.
+- Any long-running background task MUST NOT starve interactive requests, and MUST
+  be cancelable.
 
 ## 7. Extensibility Procedure
 
@@ -387,18 +457,31 @@ amendment to this document before implementation.
 
 ## 8. Conformance
 
-A change conforms to this document if all of the following hold:
+A change conforms to this document if all of the following hold. The list is
+exhaustive over the normative sections; each item names the section it checks.
 
 1. No handler performs resolution or knowledge lookup (Section 4.1).
 2. No symbol existence, location, metadata, or enumeration query bypasses
    SymbolSource (Section 4.2).
-3. No consumer branches on a concrete symbol kind or type implementation to
-   decide suitability (Section 4.5).
-4. Types are constructed only via the factory and consumed only via the interface
-   (Section 4.6); traversal occurs in one place.
-5. No output-shaping decision reads raw `initialize` parameters (Section 4.8);
-   position handling assumes no particular encoding in the interior (Section 4.9).
-6. Correctness holds under synchronous execution (Section 6).
+3. Reads depend on SymbolSource and writes on SymbolSink; document state has a
+   single write path (Section 4.3).
+4. No knowledge query takes a cursor position or a caller-supplied syntax tree
+   (Section 4.4).
+5. No consumer branches on a *resolved* symbol's kind, or on a concrete type
+   implementation, to decide suitability; syntactic-position routing is exempt
+   (Section 4.5).
+6. Types are constructed only via the factory and consumed only via the interface;
+   traversal occurs in one place (Section 4.6).
+7. Built-in knowledge is parameterized by target environment, not the server's
+   runtime (Section 4.7).
+8. No output-shaping decision reads raw `initialize` parameters, and no per-client
+   quirk conditional leaks into resolution or knowledge code (Sections 4.8, 4.10).
+9. Position handling uses one negotiated internal representation and assumes no
+   byte offsets in the interior (Section 4.9).
+10. Backend precedence holds, caching goes through the replaceable cache seam, and
+    bounded coverage is observable (Section 5.3).
+11. Correctness holds under synchronous execution (Section 6).
+12. Malformed input yields an error response, not process termination (Section 9).
 
 Automated enforcement SHOULD be added where feasible (for example, a parity test
 that the members reported for a type equal those the language exposes at runtime,
@@ -439,11 +522,14 @@ clients" from scattered conditionals into the identity case, and confines
 encoding — the highest-blast-radius correctness concern, since a wrong offset
 edits the user's file incorrectly — to one boundary.
 
-The concurrency position (Section 6) follows from a fact rather than a
-preference: Fibers buy responsiveness and enable server-initiated work, but no
-raw throughput, because the language offers no parallelism. The performance wins
-this codebase needs are in caching, and those are independent of, and MUST NOT be
-deferred for, any concurrency work.
+The concurrency position (Section 6) follows from a distinction rather than a
+preference: *Fibers* buy responsiveness and enable server-initiated work but no
+raw throughput, because they add no parallelism. The language does offer real
+parallelism (separate processes/threads) and native acceleration (FFI or an
+extension), which are legitimate for background work such as indexing or a parsing
+hot path. What the interactive hot path needs first, though, is caching — and that
+is independent of, and MUST NOT be deferred for, any concurrency or parallelism
+work.
 
 ## Appendix A. Axes of Variation Catalog
 
@@ -467,23 +553,47 @@ deferred for, any concurrency work.
   batch traversal is a distinct entry that reuses per-node resolution; diagnostics
   are server-initiated output subject to Sections 4.8 and 6. This document defines
   the invariants those tiers MUST satisfy; it does not schedule them.
+- **Current divergences (informative).** This RFC is the target state, not a
+  description of the code as it stands. Known gaps at adoption time include:
+  function resolution requires a caller-supplied syntax tree, uses bare-string
+  names, and returns nullable results (violates Sections 4.4 and 5.1); global
+  constants do not resolve at all; client capabilities are not read; and position
+  offsets are handled as bytes (violates Section 4.9). These are to be migrated
+  toward this document, not grandfathered; each SHOULD be tracked as an issue
+  citing the section it violates.
+- **Observed client defects (informative).** Per Section 4.10, accommodations for
+  clients that advertise a capability but mishandle it are recorded here as they
+  are found. Known: some clients ignore a completion item's `textEdit` range and
+  insert the raw `newText` (the ale plugin for Vim, ale#4274).
 
 ## Appendix C. LSP Feature and Version Reference
 
-This document targets [LSP] 3.17. Sections most relevant to the invariants:
+This document targets [LSP] 3.17. The parts and method names below are stable
+across minor revisions; exact subsection titles are not, so citations elsewhere in
+this document reference the part and method rather than a subsection heading. These
+locations were checked against the live 3.17 specification.
 
-    Invariant / concern         [LSP] 3.17 section
-    --------------------------  ----------------------------------------------
-    Message framing, errors     Base Protocol
-    Cancellation                Base Protocol → Cancellation Support
-    Lifecycle and state         Lifecycle Messages → Initialize / Shutdown / Exit
-    Client/server capabilities  Client Capabilities; Server Capabilities
-    Position encoding           Text Documents → Position; Capabilities (3.17)
-    Document synchronization    Text Document Synchronization
-    Hover markup                Hover Request
-    Completion, snippets        Completion Request
-    Signature help              Signature Help Request
-    Diagnostics (push)          Publish Diagnostics Notification
+    Invariant / concern         [LSP] 3.17 location
+    --------------------------  --------------------------------------------------
+    Message framing             Base Protocol → Header Part
+    Errors, JSON-RPC            Base Protocol (error codes)
+    Cancellation                Base Protocol → Cancellation Support (`$/cancelRequest`)
+    Lifecycle and state         Lifecycle Messages (`initialize`, `shutdown`, `exit`)
+    Client/server capabilities  Lifecycle Messages → `initialize`
+                                (ClientCapabilities, ServerCapabilities)
+    Position + encoding         Basic JSON Structures → `Position`;
+                                `general.positionEncodings` and ServerCapabilities
+                                `positionEncoding`
+    Document synchronization    Document Synchronization (`textDocument/didOpen`,
+                                `didChange`, `didClose`)
+    Hover markup                Language Features → Hover (`textDocument/hover`);
+                                Basic JSON Structures → `MarkupContent`
+    Completion, snippets        Language Features → Completion
+                                (`textDocument/completion`, `insertTextFormat`)
+    Signature help              Language Features → Signature Help
+                                (`textDocument/signatureHelp`)
+    Diagnostics (push)          Language Features → Publish Diagnostics
+                                (`textDocument/publishDiagnostics`)
 
 When the targeted [LSP] version is raised, this appendix and Section 1.4 MUST be
 updated, and any newly available negotiation MUST be reconciled with Section 4.8.
