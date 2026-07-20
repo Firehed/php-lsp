@@ -27,15 +27,26 @@ happens outside the tool.
 - The **manifest** (`build-manifest.md`) is a *static* slice registry: id, step,
   title, dependencies, deterministic branch name, and which existing issues a slice
   closes. It is append-only as later phases are reached; it never records progress.
-- A slice's **status is computed**:
-  - `done` — the PR for its branch is merged.
-  - `in-flight` — its branch exists / its PR is open, not merged.
+- A slice's **status is computed**, checked in this order:
+  - `done` — a **merged PR** exists whose head ref is `slice/<id>`
+    (`gh pr list --state merged --head slice/<id>`).
+  - `in-flight` — an **open PR** exists for `slice/<id>`.
   - `todo` — neither.
 - The **next slice** = the first `todo` in the manifest whose dependencies are all
   `done`.
 
 Because status is computed from merge reality, a cold session cannot be misled by a
 stale field, and nothing needs updating by hand.
+
+**Squash-merge safety.** Status is derived from GitHub's **PR merge state**, which is
+set identically for squash, rebase, and merge-commit — not from git commit ancestry.
+This matters because the project lands everything via *Squash and Merge*, which
+rewrites a branch into one new commit on `main`: an ancestry check ("are the branch's
+commits in `main`?") would report every squashed slice as `todo` forever, whereas the
+merged-PR check is correct. Branch auto-deletion on merge is also fine — the merged PR
+record keeps its `headRefName` after the branch is gone, so it is still found by
+`slice/<id>`. Checking `done` (merged PR) *before* `in-flight` ensures a
+squash-deleted branch is never misread as unstarted.
 
 ## Conventions
 
