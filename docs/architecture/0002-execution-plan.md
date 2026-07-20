@@ -83,9 +83,10 @@ Notes:
 ### Step 0 — Parse cost: measure, then dedup
 
 Reframed from "build an AST cache" to **spike-first**. Static inspection found
-eight `parser->parse()` call sites reachable from a single completion request
-(`SymbolResolver` alone), so a request appears to reparse the same content several
-times; the spike measures the *actual* cost before anything is built.
+seven `parser->parse()` call sites in `SymbolResolver`, spread across completion,
+hover, and definition paths, so a request may reparse the same content several
+times; the spike measures the *actual* cost — and which paths actually hit it —
+before anything is built.
 
 Spike: instrument `ParserService` with a parse counter + timer; time
 parse-plus-both-visitor-passes on small / medium (~700-line) / pathological
@@ -160,13 +161,13 @@ Step 4 (Section 6).
   fixed precedence (§5.3); collapse the double write into one parse + one store on
   `didChange`; dedupe the double `ComposerAutoloadMap`; introduce the **replaceable
   cache abstraction (PSR-6/16 seam, §5.3)** that backend caches use. Proven by the
-  Step P harness. `getFileFunctions` is subsumed here: the open-document backend
-  knows a document's functions, so the query disappears rather than moving.
+  Step P harness.
 - **3b — `SymbolLocator` + function/constant reach (behavior-changing).** Generalize
   `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in `autoload.files`; give
   `lookupFunction` / `lookupConstant` real project reach; migrate `FunctionCandidates`
-  to `search`; remove the Step 2 rule exemption. Proven by **new fixtures**, not
-  parity.
+  to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
+  document's functions, so that query disappears with its last caller); remove the
+  Step 2 rule exemption. Proven by **new fixtures**, not parity.
 - Close-of-edited-file and external-change invalidation behave per §5.3.
 
 *Known temporary divergence:* the Builtin backend stood up in 3a is not yet
@@ -260,7 +261,9 @@ To stop the two typing models fighting before they are built:
 - `ClassLikeName`, `FunctionName`, `ConstantName`, `NamespaceName` extend / wrap it
   and **carry their kind intrinsically** (each exposes `kind(): NameKind`). These are
   the primary currency; the per-kind `lookup*` methods take the matching one, so the
-  kind is implicit and `NameKind` is not passed.
+  kind is implicit and `NameKind` is not passed. `ClassLikeName` is today's
+  `ClassName` (which per CLAUDE.md also serves as the class `Type`); whether it is
+  reused as-is, renamed, or wrapped is an open decision (§7). The other three are new.
 - `locate(QualifiedName, NameKind)` is the kind-agnostic entry, used when the caller
   has an FQN whose kind is known only from syntactic position and has not minted a
   typed subtype. `NameKind` is **not** redundant here precisely because the input is
@@ -390,6 +393,8 @@ once Step P is green.
 ## 7. Open decisions (resolve at implementation time)
 
 - The perceptibility threshold and cache decision from the Step 0 spike.
+- Whether `ClassLikeName` is the existing `ClassName` reused as-is, renamed, or a
+  wrapper — it must coexist with `ClassName`'s dual role as the class `Type` (§5.3).
 - Whether `FunctionName` / `ConstantName` / `NamespaceName` land in Step 2 as prep
   or in Step 3 with their lookups (lean: Step 3, to avoid an unused-type commit;
   `NamespaceName` is needed by `childrenOf` in Step 2, so it lands then).
