@@ -171,8 +171,10 @@ surfaces) is measured *while the harness runs*: an unexecuted branch — say
 trusted. This is production-code branch coverage restricted to the surface classes
 (the one tool that answers "does the corpus exercise this edge"), not the harness's
 own coverage. A green run over a corpus that misses an edge is false confidence, and
-the fixture corpus is small and curated, not real-world PHP. May run in parallel with
-Steps 0 and 1.
+the fixture corpus is small and curated, not real-world PHP. Goldens are
+**spot-audited when first captured**, not merely diffed thereafter: branch coverage
+proves a branch executed, not that the captured expectation is correct — a wrong
+golden is green forever. May run in parallel with Steps 0 and 1.
 
 ### Step 2 — `SymbolSource` / `SymbolSink` facade (strangler, no behavior change)
 
@@ -298,13 +300,20 @@ configuration, fall back to a documented baseline, and treat an undeclared exten
 as *unknown*, not absent.
 
 *Acceptance:* the Builtin backend resolves from the static stub database keyed by
-`TargetEnvironment`; the target is derived from `composer.json` + explicit config and
-updated on `workspace/didChangeConfiguration`; a change of target invalidates /
-re-keys the cache through the Step 3 abstraction; a symbol introduced in a later
+`TargetEnvironment`; the target is derived from `composer.json` + explicit config,
+with a **`composer.json` change arriving via `workspace/didChangeWatchedFiles`**
+(reusing Step 3's watched-file slice — it is a disk file, not a client setting) and an
+**explicit config override via `workspace/didChangeConfiguration`**; either re-keys /
+invalidates the cache through the Step 3 abstraction; a symbol introduced in a later
 version, and one from an undeclared extension, are each handled per the documented
-policy (fixtures); the source swap lands **behind a config flag** (source-swap revert
-profile, §1) so the stub-backed built-in path can fall back to the reflection path if
-it regresses.
+policy (fixtures). The 3b reflection oracle (Builtin enumeration ==
+`get_defined_functions()`) is **retired / re-pointed at the stub database** here — by
+design the stub source does not match the server runtime when target ≠ server, so that
+oracle is intentionally obsolete at this step. The source swap lands **behind a config
+flag** (source-swap revert profile, §1) so the stub-backed path can fall back to
+reflection if it regresses — noting that flag-off re-introduces the §4.7
+nonconformance the stub source exists to fix, trading conformance for stability, not a
+neutral revert.
 
 ### Step 6 — Scheduler / async tier (deferred until a push feature needs it)
 
