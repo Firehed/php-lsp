@@ -51,7 +51,7 @@ a bumped date.
        4.10. Client Conformance Defects
     5. Component Requirements
        5.1. Symbol Knowledge: Read Contract (SymbolSource)
-       5.2. Document State: Write Contract (SymbolSink)
+       5.2. Symbol State: Write Contract (SymbolSink)
        5.3. Backend Substitutability and Caching Policy
        5.4. Session Capabilities
     6. Concurrency Model
@@ -350,7 +350,7 @@ distinct identifier types for class, function, and constant names). Coverage MUS
 be uniform across kinds: a query answerable for one kind MUST be answerable for
 all kinds for which it is meaningful.
 
-### 5.2. Document State: Write Contract (SymbolSink)
+### 5.2. Symbol State: Write Contract (SymbolSink)
 
 The SymbolSink write interface MUST be the sole means of mutating symbol state.
 Its primary path is document lifecycle — open, update, and close operations keyed
