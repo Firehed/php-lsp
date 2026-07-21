@@ -615,11 +615,19 @@ once Step P is green.
 
 Measured on the slice `S0.1` instrumentation (`ParseMetrics`, which meters every
 `ParserService::parse()` — parse plus both visitor passes). Conditions: PHP 8.5.4
-CLI, macOS/arm64, no xdebug, `pcov.enabled=0`, opcache CLI off — i.e. the same
-interpreter configuration `bin/php-lsp` runs under. Timings varied ~10-15% run to
-run; **parse counts were exactly reproducible**, and the counts are what the
-decision turns on. With pcov enabled the timings roughly double; they are reported
-with it off because the server does not run under coverage.
+CLI, macOS/arm64, no xdebug, opcache CLI off, and **`pcov.enabled=0`**. Timings
+varied ~10-15% run to run; **parse counts were exactly reproducible**, and the
+counts are what the decision turns on.
+
+`pcov.enabled=0` is a deliberate choice of baseline, not a description of how the
+server runs. `bin/php-lsp` is `#!/usr/bin/env php`, so it inherits whatever the
+development machine's CLI ini says — and on the machine these numbers were taken
+from, `conf.d/pcov.ini` sets `pcov.enabled=1`, which roughly doubles every timing
+below. The clean baseline is the right one to derive an architectural decision
+from, but it means §8.4's thresholds are *ceilings on file size under ideal
+conditions*: with pcov left on, the same budgets are exceeded at roughly half the
+line counts. That does not change the decision — it only widens the margin by
+which the cost is already perceptible.
 
 ### 8.1 Cost of one parse
 
