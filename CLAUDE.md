@@ -18,7 +18,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
-- `src/Parser/` — `ParserService` (the only place an AST is produced) and `ParseMetrics` (parse count/time, which every parse is metered through)
+- `src/Parser/` — `ParserService` (the only place an AST is produced; memoizes by content for the duration of one handled LSP message, discarded by `Server`'s message loop) and `ParseMetrics` (parse count/time, which every parse is metered through)
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, TypeFactory, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `docs/features/` — Feature status documentation

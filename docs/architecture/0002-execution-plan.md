@@ -761,3 +761,70 @@ Note that the dedup boundary must cover the **notification** path as well as the
 request path: two of the seven parses are `didChange`'s, which `SymbolResolver`
 never sees. "Request-scoped" therefore means scoped to one handled LSP message,
 notifications included.
+
+### 8.6 Post-dedup measurement (slice S0.2) — decision 1 confirmed
+
+Measured after the dedup landed, under §8's conditions (PHP 8.5.4 CLI, macOS/arm64,
+no xdebug, `pcov.enabled=0`) on the same files and the same keystroke as §8.3 —
+`didChange` followed by `textDocument/completion` at a bare prefix typed on a line
+appended to the file. Ranges are min-max over ten iterations after the class
+repository has warmed; the harness was throwaway, as in S0.1.
+
+| Tier | Lines | `didChange` | completion | Full keystroke | §8.3 before |
+|---|---|---|---|---|---|
+| small | 321 | 1 parse, 2-4 ms | 1 parse, 2-3 ms | 5-7 ms | 13-14 ms |
+| medium | 713 | 1 parse, 7-9 ms | 1 parse, 7-11 ms | 14-21 ms | 45-90 ms |
+| large | 1,703 | 1 parse, 16-22 ms | 1 parse, 17-24 ms | 33-45 ms | 120-127 ms |
+| pathological | 2,948 | 1 parse, 29-35 ms | 1 parse, 32-38 ms | 61-73 ms | 187-193 ms |
+
+The parse counts are the reproducible part, and they are 1 per message at every
+tier: the sync path's two collapse to one, and completion's five collapse to one.
+The keystroke is 2 parses rather than 7, as decision 1 said it would be.
+
+Both §8.4 budgets now hold at every tier measured: no request exceeds 50 ms and no
+keystroke exceeds 100 ms, including the pathological file that was at 187-193 ms
+before. The measured keystroke beats the projection (~50 ms projected at the large
+tier, 33-45 ms measured; ~75 ms projected at the pathological tier, 61-73 ms
+measured), because the projection multiplied the parse cost by the count and
+ignored that the removed parses also removed their share of the surrounding work.
+
+Decision 2 therefore stands on a measurement rather than a projection: the standing
+cache is not needed, and the condition in decision 3 that would reopen it — a
+post-dedup keystroke above the §8.4 thresholds — did not occur on any tier
+re-measured here. Fitting the slow end of each range across the two largest tiers
+moves §8.4's break-even points out from 1,100 to roughly 4,000 lines per request,
+and from 1,300 to roughly 4,200 lines per keystroke.
+
+Two caveats bound those break-even points, and the first is not small.
+
+They are fitted in **lines**, over four tiers of ordinary hand-written code. §8.1's
+fifth tier is the counterexample already on record:
+`vendor/nikic/php-parser/lib/PhpParser/Parser/Php8.php` is 2,918 lines — *inside*
+the ~4,200-line keystroke break-even — but 193,747 bytes, 66 bytes per line against
+the 23-37 of the other four, and §8.1 measured one parse of it at 120.6 ms, a rate
+of ~1.6 MB/s where the others parse at ~4.0-4.6 MB/s. It was not re-measured here,
+but the parse count is the reproducible part and it is 2 per keystroke, so its
+post-dedup keystroke is ~240 ms — still well above the 100 ms budget. Dense
+generated code is slower per byte *and* denser per line, so neither figure alone
+predicts it: read the break-evens as describing ordinary code, never as a size
+limit. Decision 3's reopen condition is met by that file, and by files like it; what
+decision 2 rests on is that they are not what a developer types into.
+
+Second, these remain ideal-conditions ceilings: with `pcov.enabled=1`, as §8 warns,
+the same budgets are reached at roughly half those line counts.
+
+One cost the dedup adds rather than removes: for the duration of a message the memo
+retains every AST it produced, including those of the *other* documents
+`DefaultClassRepository` parses off disk to resolve supertypes, which previously
+became garbage as soon as the repository had built its `ClassInfo`. At §8.1's ~50×
+ratio, peak retention within a message is proportional to the number of distinct
+files that message touches rather than to the open document alone. This does not
+reopen decision 2 — its ~50× objection was to retention *across* messages, for the
+session's lifetime, and the discard frees all of this at the message boundary — but
+it was not budgeted for in §8.5, so it is recorded here.
+
+The scope is one handled LSP message, discarded by the message loop in `Server`
+once the handler returns; the memo is keyed by document *content*, because the AST
+is a function of content alone. That keying is what makes staleness structurally
+impossible rather than merely unlikely — content that differs at all is a different
+key — so a missed discard would cost memory, never a wrong answer.
