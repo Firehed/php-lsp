@@ -21,7 +21,9 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 - `src/Parser/` — `ParserService` (the only place an AST is produced; memoizes by content for the duration of one handled LSP message, discarded by `Server`'s message loop) and `ParseMetrics` (parse count/time, which every parse is metered through)
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, TypeFactory, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
+- `src/Capability/` — Protocol capability negotiation (see Capability Negotiation below)
 - `docs/features/` — Feature status documentation
+- `tests/Architecture/` — PHPStan rules enforcing RFC 1 §8.1 invariants, and their `RuleTestCase` tests
 - `tests/Fixtures/` — Test fixture files (see Testing section)
 
 ## Architecture
@@ -128,6 +130,27 @@ Key methods:
 
 **Never store types as strings.** Use `TypeFactory::fromNode()` or `TypeFactory::fromReflection()` to create Type objects at parse time. Use `Type::format()` only for display.
 
+### Capability Negotiation
+
+`src/Capability/` is the protocol-negotiation tier (RFC 1 §4.8, §5.4). It is the
+**only** place the raw `initialize` parameters are read.
+
+- **`CapabilityNegotiator`** owns the `initialize` exchange: it resolves the client's
+  declared capabilities into a `SessionCapabilities` value, and returns the
+  `InitializeResult` carrying the advertised `ServerCapabilities`. `LifecycleHandler`
+  delegates to it and shapes nothing itself.
+- **`SessionCapabilities`** is immutable and resolved once. Every capability the client
+  did not declare resolves to the value's own default state — safe defaults live in the
+  constructor, never in a branch at the point of use, so a minimal client needs no
+  dedicated code path.
+- **Advertised capabilities are a hand-maintained list** in `CapabilityNegotiator`.
+  Add to it when a handler starts implementing a new LSP method; never advertise a
+  capability the server does not implement.
+
+Anything that shapes an outgoing message by client support (hover markup kind, snippet
+support, …) queries `SessionCapabilities`. `RawInitializeCapabilitiesRule`
+(`tests/Architecture/`) fails PHPStan if any other package reads a `capabilities` key.
+
 ### Guidelines for New Code
 
 - **Keep code DRY.** Be on the lookout for existing tools that will solve your problem; NEVER copy-and-paste. Extract repeated logic aggressively.
@@ -178,6 +201,12 @@ per-member-kind walk. Adding an edge to the graph is a change to `supertypes()`.
 members PHP exposes at runtime (reflection is the oracle), across every shape —
 extends, implements, interface-extends-interface, trait-using-trait, and interfaces
 reached via a parent. A traversal that misses an edge fails it.
+
+**All client-capability reads go through `SessionCapabilities`.**
+
+The raw `initialize` parameters are read once, in `src/Capability/`. No other package
+may re-inspect them; output shaped by client support queries `SessionCapabilities`
+instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, §8.1).
 
 **Adding support for a new AST node type:**
 1. Add handling in `SymbolResolver` (ONE place)
