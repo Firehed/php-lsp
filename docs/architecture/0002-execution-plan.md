@@ -295,7 +295,7 @@ issue when this step is scheduled — consistent with the plan's rule that an un
 invariant is a tracked gap, not a passed step.
 
 *Future (when scheduled).* Replace reflection with a static, version-aware source —
-**TBD and explicitly not `phpstorm-stubs`** — behind the same Builtin backend
+**TBD** — behind the same Builtin backend
 interface. Because that interface is stable, this is a **source swap behind a config
 flag** (source-swap revert profile, §1): fall back to reflection if the new source
 regresses. Only then do the deferred concerns become live — the lazy-first exception
@@ -307,8 +307,8 @@ explicit config, treating undeclared extensions as unknown), its invalidation
 oracle (which stays valid only while the backend is reflection-backed).
 
 *Acceptance (interim):* the Builtin backend resolves via reflection with an optimistic
-availability predicate; the §4.7 gap is recorded as a tracked issue; **no
-`phpstorm-stubs` or other stub dependency is introduced.**
+availability predicate; the §4.7 gap is recorded as a tracked issue; **no stub
+dependency is introduced.**
 
 ### Step 6 — Scheduler / async tier (deferred until a push feature needs it)
 
