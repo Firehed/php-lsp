@@ -639,7 +639,9 @@ about **50× its source size** — the figure any standing cache must budget aga
 
 ### 8.2 Reparse count per request
 
-Counted after `didOpen`, on the existing fixture corpus:
+Counted after `didOpen`, on the existing fixture corpus. These are **steady-state**
+counts, with the class repository's `ClassInfo` memo warm; see the note below on
+first-touch cost.
 
 | Request | Parses |
 |---|---|
@@ -648,20 +650,39 @@ Counted after `didOpen`, on the existing fixture corpus:
 | completion — variable (`$x`) | 3 |
 | completion — bare identifier prefix | 5 |
 | completion — after `new` | 5 |
-| hover on a method | 1 |
-| definition through a trait | 1 |
-| signatureHelp | 1 |
+| hover on a method of a reflection-backed class | 1 |
+| hover on a method of a workspace class, class not open | 2 |
+| signatureHelp on a workspace class' method or constructor | 2 |
+| definition through a trait, whole type graph open | 3 |
+| definition through a trait, trait not open | 4 |
 
 The seven `parser->parse()` sites in `SymbolResolver` do **not** compound on the
-point-query paths: hover, definition, and signatureHelp take one code path and
-parse once. They compound on **completion**, which fans out to several sources —
-each calling a different `CodeResolver` method (`getMemberAccessContext`,
-`getVariablesInScope`, `getImports`, `getNameContext`, `getFileFunctions`), each of
-which re-parses the same unchanged document. The sync notification adds two more:
-`TextDocumentSyncHandler::indexDocument()` parses, then hands the document to
-`DocumentIndexer`, which parses it again.
+point-query paths: hover, definition, and signatureHelp take one code path through
+`SymbolResolver` and parse the *open document* once. What varies on those paths is
+a second, distinct cost: `DefaultClassRepository::locateAndParse()` parses one file
+per supertype it must resolve from disk, so the count scales with how much of the
+type graph is neither open nor already in the repository's `ClassInfo` memo. The
+trait rows above are the repository's, not `SymbolResolver`'s — `User implements
+Entity, Person` accounts for two of them.
 
-So one keystroke in a completion context is **7 parses of identical content**.
+This distinction decides what dedup can do. Those repository parses are of
+**different documents**, so request-scoped dedup does not remove them — and it does
+not need to: they are memoized by FQN across requests, so each is a one-off
+first-touch cost per class, not a per-request one. That is also the caveat on the
+table: every row is the steady-state count. The first request that reaches a given
+class pays one extra parse for it, so a cold repository costs more than these rows
+on any path that resolves classes — the class-position completion rows most of all,
+since they resolve every candidate.
+
+The seven `SymbolResolver` sites compound on **completion**, which fans out to
+several sources — each calling a different `CodeResolver` method
+(`getMemberAccessContext`, `getVariablesInScope`, `getImports`, `getNameContext`,
+`getFileFunctions`), each of which re-parses the same unchanged document. The sync
+notification adds two more: `TextDocumentSyncHandler::indexDocument()` parses, then
+hands the document to `DocumentIndexer`, which parses it again.
+
+So one keystroke in a completion context is **7 parses of identical content** — and
+that redundancy, unlike the repository's, is pure waste that never warms.
 
 ### 8.3 Cost in the round: one keystroke
 
