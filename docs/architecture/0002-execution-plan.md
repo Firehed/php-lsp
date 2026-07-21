@@ -395,18 +395,20 @@ the interface drop the `document` / `$ast` parameters.
 ```php
 interface SymbolSource
 {
-    // PHP has exactly three symbol namespaces: class-likes, functions, constants.
-    // These three are therefore a CLOSED set — new "kinds" (structs, payload
-    // enums) live inside the class-like namespace and add a ClassKind case, not a
-    // method.
-    public function lookupClassLike(ClassLikeName $name): ?ClassInfo;   // class/interface/trait/enum/future struct
-    public function lookupFunction(FunctionName $name): ?FunctionInfo;   // Step 3
-    public function lookupConstant(ConstantName $name): ?ConstantInfo;   // Step 3
-
-    public function locate(QualifiedName $name, NameKind $kind): ?SymbolDefinition; // kind-neutral name → def site
-    public function childrenOf(NamespaceName $namespace): NamespaceContents;         // enumeration
+    // --- Step 2: the surface today's migrated features actually need ---
+    public function lookupClassLike(ClassLikeName $name): ?ClassInfo;          // exact name -> full info (hover, def, members)
     /** @return list<SymbolDefinition> */
-    public function search(string $prefix, NameKind $kind): array;                  // prefix is a fragment, see 5.3
+    public function searchClassLikes(string $prefix): array;                   // prefix fragment -> candidates (class completion)
+    public function childrenOf(NamespaceName $namespace): NamespaceContents;    // enumeration (namespace completion)
+
+    // --- Added JIT, when the step that needs them lands (NOT built in Step 2) ---
+    // Step 3b (functions/constants gain project reach; a second searchable kind exists):
+    //   lookupFunction(FunctionName): ?FunctionInfo
+    //   lookupConstant(ConstantName): ?ConstantInfo
+    //   searchClassLikes generalizes to search(string $prefix, NameKind $kind)
+    // Future (workspace scope, #264):
+    //   locate(QualifiedName, NameKind): ?SymbolDefinition   // kind-neutral def-site, only if a feature needs it
+    //   project-wide / cross-file search (workspace/symbol)
 }
 
 interface SymbolSink
@@ -416,6 +418,24 @@ interface SymbolSink
     public function closeDocument(string $uri): void;
 }
 ```
+
+**JIT the interface (should this be front-loaded? — no).** The interface grows with
+the features, like everything else in the plan. Step 2 carries only what the migrated
+features need — exact class-like lookup, class-like prefix search, namespace
+enumeration — plus the `SymbolSink` writes. `lookupFunction` / `lookupConstant` arrive
+in Step 3b; a kind-parameterized `search` arrives with them (a `NameKind` argument is
+meaningless while only class-likes are searchable); `locate` and a cross-file `search`
+arrive with the workspace scope. A method with no current caller is not carried.
+
+The three verbs, and why two defer: **`lookup*`** = exact name → full typed info
+(`ClassInfo`); **`search*`** = prefix *fragment* → lightweight candidates; **`locate`**
+= exact name → just a definition site, kind-neutral. `lookup` and `search` are clearly
+distinct (exact vs. prefix; full info vs. candidates) and both serve current
+completion / hover / def. `locate` overlaps `lookup` — go-to-definition can already use
+`lookupClassLike($name)?->getDefinitionLocation()` — so it earns a slot only if a later
+feature needs a def-site *without* building full info, or a kind-neutral workspace
+entry. Deferring it removes the naming ambiguity and lets it be named when a concrete
+need defines it.
 
 ### 5.3. The name-type model
 
@@ -435,12 +455,18 @@ To stop the two typing models fighting before they are built:
   the kind-neutral base type.
 - `search`'s `prefix` is a **partial fragment** the user is typing ("`Log`"), not a
   complete identifier, so a bare `string` is correct — §5.1's typed-identifier rule
-  is about identifiers, not search fragments. `kind` selects which namespace to
-  search.
+  is about identifiers, not search fragments. `kind` (once the parameter exists in
+  Step 3b) selects which namespace to search.
+- **JIT:** Step 2 uses only `ClassLikeName` (today's `ClassName`) and `NamespaceName`.
+  `QualifiedName`, `NameKind`, `FunctionName`, and `ConstantName` land with the methods
+  that first use them (Step 3b, and `locate` in the workspace scope) — an unused type
+  is not carried ahead of its method. This whole model is the *target*; it is
+  introduced piecewise.
 
 ### 5.4. `SymbolDefinition` is lightweight; detail comes from a lookup
 
-`locate` / `search` return a `SymbolDefinition` = **identity + kind + location**,
+`searchClassLikes` — and the later `search` / `locate` — return a `SymbolDefinition`
+= **identity + kind + location**,
 not full metadata. Initially `SymbolIdentity` is just the `(FQN, kind)` pair, which
 the existing index `Symbol` already encodes (name, fqn, kind, location) — so
 `SymbolDefinition` can reuse `Symbol` in Step 2, and open-decision "reuse `Symbol`"
@@ -465,7 +491,7 @@ final class DelegatingSymbolSource implements SymbolSource, SymbolSink
 {
     public function __construct(
         private ClassRepository $classes,        // lookupClassLike → get()
-        private SymbolIndex $index,              // search → findByPrefix(); locate → findByFqn()
+        private SymbolIndex $index,              // searchClassLikes → findByPrefix()
         private NamespaceCatalog $catalog,       // childrenOf → childrenOf()
         private DocumentIndexer $indexer,        // write path A (existing)
         private ClassInfoFactory $classFactory,  // write path B: registerDocumentClasses (existing)
@@ -486,7 +512,7 @@ Consumer migration (construction moves to `Server.php`):
 
 | Consumer | Today | Step 2 | Behavior |
 |---|---|---|---|
-| `ClassCandidates` | `SymbolIndex` | `SymbolSource::search` | identical (same backing) |
+| `ClassCandidates` | `SymbolIndex` | `SymbolSource::searchClassLikes` | identical (same backing) |
 | `NamespaceCandidates` | `NamespaceCatalog` | `SymbolSource::childrenOf` | identical |
 | `SymbolResolver` (class lookups) | `ClassRepository` | `SymbolSource::lookupClassLike` | identical |
 | `TextDocumentSyncHandler` | `DocumentIndexer` + `ClassInfoFactory` + `ClassRepository` | `SymbolSink` | identical (double-write hidden, not removed) |
