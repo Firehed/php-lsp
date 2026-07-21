@@ -100,7 +100,10 @@ class SessionCapabilitiesTest extends TestCase
         yield 'plaintext preferred' => [self::hover(['plaintext', 'markdown']), MarkupKind::PlainText];
         yield 'unsupported kind skipped' => [self::hover(['$reserved', 'markdown']), MarkupKind::Markdown];
         yield 'non-string entry skipped' => [self::hover([42, 'markdown']), MarkupKind::Markdown];
-        yield 'contentFormat not a list' => [['textDocument' => ['hover' => ['contentFormat' => 'markdown']]], MarkupKind::PlainText];
+        yield 'contentFormat not a list' => [
+            ['textDocument' => ['hover' => ['contentFormat' => 'markdown']]],
+            MarkupKind::PlainText,
+        ];
         yield 'textDocument not a map' => [['textDocument' => 'nonsense'], MarkupKind::PlainText];
     }
 
