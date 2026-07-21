@@ -139,7 +139,6 @@ agnostic to the parsing strategy. Detection stays text/token-based (`ContextDete
 ## Testing
 
 ```bash
-composer test                    # Run all tests
-composer test -- --filter Completion  # Run completion tests only
-composer check                   # PHPStan + tests
+composer test                    # PHPStan + tests + PHPCS
+composer unit -- --filter Completion  # Run completion tests only
 ```
