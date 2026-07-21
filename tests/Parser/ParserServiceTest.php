@@ -64,6 +64,27 @@ class ParserServiceTest extends TestCase
         self::assertIsArray($result);
     }
 
+    public function testParseIsMetered(): void
+    {
+        $parser = new ParserService();
+        $doc = new TextDocument(
+            'file:///test.php',
+            'php',
+            1,
+            '<?php class MyClass {}',
+        );
+
+        $parser->parse($doc);
+        $parser->parse($doc);
+
+        self::assertSame(2, $parser->getMetrics()->getParseCount(), 'every parse call is counted');
+        self::assertGreaterThan(
+            0,
+            $parser->getMetrics()->getTotalParseTimeNs(),
+            'parsing takes a measurable amount of time',
+        );
+    }
+
     public function testParseEmptyFile(): void
     {
         $parser = new ParserService();

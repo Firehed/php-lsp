@@ -15,17 +15,24 @@ use PhpParser\ParserFactory;
 
 final class ParserService
 {
+    private ParseMetrics $metrics;
     private Parser $parser;
     private NodeTraverser $traverser;
 
     public function __construct()
     {
+        $this->metrics = new ParseMetrics();
         $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
         $this->traverser = new NodeTraverser();
         // ParentConnectingVisitor adds 'parent' attribute to all nodes
         $this->traverser->addVisitor(new ParentConnectingVisitor());
         // NameResolver adds 'resolvedName' attribute to Name nodes
         $this->traverser->addVisitor(new NameResolver());
+    }
+
+    public function getMetrics(): ParseMetrics
+    {
+        return $this->metrics;
     }
 
     /**
@@ -35,6 +42,7 @@ final class ParserService
     {
         // Use error-collecting handler for partial/incomplete code
         $errorHandler = new ErrorHandler\Collecting();
+        $startNs = hrtime(true);
 
         try {
             $ast = $this->parser->parse($document->getContent(), $errorHandler);
@@ -46,6 +54,8 @@ final class ParserService
             return $this->traverser->traverse($ast);
         } catch (\PhpParser\Error) {
             return null;
+        } finally {
+            $this->metrics->record(hrtime(true) - $startNs);
         }
     }
 }
