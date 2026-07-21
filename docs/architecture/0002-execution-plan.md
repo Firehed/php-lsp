@@ -730,14 +730,29 @@ Step 0 does not apply.
    falls from ~125 ms to ~50 ms per keystroke and the pathological tier from
    ~190 ms to ~75 ms, i.e. under the threshold at every tier measured. S0.2 should
    confirm this rather than assume it.
-2. **Do not add a standing cache now.** Once dedup lands, the remaining cost is one
-   parse per document version, which is the floor any cache could reach; a standing
-   cache would only remove re-parses *across* requests at the same version. At ~50×
-   source size in retained AST, and with invalidation to get right, that is not
-   justified by these numbers.
+2. **Do not add a standing cache now — this overrides the decision rule's cache
+   branch, on a projection.** Be explicit about that. §8.4 establishes the
+   antecedent of the rule's second branch ("add a standing cache only if large
+   files cross a perceptibility threshold"): they do. The rule's literal reading
+   would add one. It is not being added because the *first* branch's remedy is
+   projected to clear the threshold on its own, which makes the cache's remaining
+   value smaller than its cost.
+
+   That remaining value is real but narrow. Dedup leaves one parse per handled
+   message; a version-keyed standing cache would leave one per document *version*,
+   so it would additionally remove re-parses across messages at an unchanged
+   version — the `didOpen` → hover → completion sequence costs three parses under
+   dedup and one under a standing cache. Against that: ~50× source size in retained
+   AST for every open document, plus invalidation to get right. At the post-dedup
+   per-request costs these numbers imply — ~15 ms at the large tier, well inside the
+   50 ms budget — that trade is not justified.
 3. **Revisit only on evidence.** If a standing cache is later warranted, it lands as
    the Step 3 rider described in Section 6 — open documents only, keyed by document
    version, behind the §5.3 cache abstraction — never as hard-coded memoization.
+   What reopens it, specifically: S0.2's measured post-dedup keystroke costs, if
+   they do not land under the §8.4 thresholds the way decision 1 projects. Decision
+   2 rests on that projection, so S0.2 is the checkpoint that confirms or overturns
+   it.
 
 Note that the dedup boundary must cover the **notification** path as well as the
 request path: two of the seven parses are `didChange`'s, which `SymbolResolver`
