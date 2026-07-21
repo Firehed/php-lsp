@@ -125,17 +125,24 @@ final class Server
 
             $handler = $this->findHandler($message->method);
 
-            if ($handler !== null) {
-                $result = $handler->handle($message);
-            } elseif ($message instanceof RequestMessage) {
-                $error = ResponseError::methodNotFound($message->method);
+            try {
+                if ($handler !== null) {
+                    $result = $handler->handle($message);
+                } elseif ($message instanceof RequestMessage) {
+                    $error = ResponseError::methodNotFound($message->method);
+                }
+            } finally {
+                // The parse memo is scoped to one handled message — this loop is
+                // the only boundary that knows where that ends. Discarding it
+                // here is what keeps it from becoming the standing cache the
+                // Step 0 spike declined (0002-execution-plan.md, Section 8.5).
+                //
+                // In a finally so the scope closes on every exit from the
+                // dispatch, not just the ones that return normally: a handler
+                // that throws is fatal today, but S1.4 makes it survivable, and
+                // a memo that outlived a message would then be standing.
+                $this->parser->discardScopedParses();
             }
-
-            // The parse memo is scoped to one handled message — this loop is the
-            // only boundary that knows where that ends. Discarding it here is
-            // what keeps it from becoming the standing cache the Step 0 spike
-            // declined (docs/architecture/0002-execution-plan.md, Section 8.5).
-            $this->parser->discardScopedParses();
 
             // Send response for requests (not notifications)
             if ($message instanceof RequestMessage) {
