@@ -206,7 +206,7 @@ Note: `MemberAccessResolver` was removed in #262 — instance/static member acce
   - Before starting on a feature, verify that it hasn't already been impemented
   - Resolve any ambiguity or conflict BEFORE starting to write a line of code
 - Update `docs/features/*.md` when merging features
-- Run `composer check` before commits
+- Run `composer test` before commits
 - `composer.lock` is gitignored — do not attempt to stage or commit it
 - Debugging: use the testing framework to debug code paths. DO NOT write arbitrary PHP scripts.
 

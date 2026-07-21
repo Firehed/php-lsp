@@ -63,7 +63,7 @@ squash-deleted branch is never misread as unstarted.
 ## Mode A — "do the next step"
 
 1. **Preconditions (halt if unmet).** Working tree clean; on `main`; `main` synced
-   with origin; `composer check` green on `main`. If any fails, report and stop.
+   with origin; `composer test` green on `main`. If any fails, report and stop.
 2. **Compute X.** Parse the manifest; compute each slice's status from merged-PR
    state; `X` = first `todo` whose dependencies are all `done`.
 3. **Safeguards (halt and ask, do not guess) if:**
@@ -75,7 +75,7 @@ squash-deleted branch is never misread as unstarted.
 4. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
-   `composer check`; open a PR citing X.
+   `composer test`; open a PR citing X.
 5. Stop. Report the PR and the *next* computed slice, so the human knows what a
    follow-up "do the next step" would pick up.
 

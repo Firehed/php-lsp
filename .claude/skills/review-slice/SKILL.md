@@ -41,7 +41,7 @@ change.
 ## 3. Verify and fix
 
 - Keep only findings you can **confirm against the code**; discard speculation.
-- If any survive: fix them on the branch in small commits; run `composer check` to
+- If any survive: fix them on the branch in small commits; run `composer test` to
   green. Report: **"Pass found N issues, fixed and committed: [...]. Run /clear then
   /review-slice again to verify."** STOP — do not land. A fix needs a fresh pass.
 
