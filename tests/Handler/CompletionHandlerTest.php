@@ -1109,10 +1109,16 @@ class CompletionHandlerTest extends TestCase
      * Step 0 acceptance: one parse per handled message. Completion is the fan-out
      * that made this matter — its sources each call a different CodeResolver
      * method, and every one of them re-parsed the same unchanged document.
+     *
+     * These fixtures are chosen to resolve nothing from disk, so the total parse
+     * count *is* the open document's count. Parses of other documents are a
+     * separate cost that dedup does not remove and is not meant to: they are
+     * memoized per class by the repository (0002-execution-plan.md, Section 8.2).
      */
-    public function testCompletionParsesTheDocumentOnce(): void
+    #[DataProvider('singleParseCompletions')]
+    public function testCompletionParsesTheDocumentOnce(string $fixture, string $marker): void
     {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'param_prefix');
+        $cursor = $this->openFixtureAtCursor($fixture, $marker);
         // didOpen is a message of its own; the server discards its parses before
         // the completion request is handled.
         $this->parser->discardScopedParses();
@@ -1121,7 +1127,21 @@ class CompletionHandlerTest extends TestCase
         $this->handler->handle($this->completionRequestAt($cursor));
 
         $parsesForRequest = $this->parser->getMetrics()->getParseCount() - $before;
-        self::assertSame(1, $parsesForRequest, 'the whole request costs one parse of the open document');
+        self::assertSame(1, $parsesForRequest, 'the whole request costs one parse');
+    }
+
+    /**
+     * Distinct completion kinds, so more than one source fan-out is pinned.
+     *
+     * @return iterable<string, array{string, string}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function singleParseCompletions(): iterable
+    {
+        yield 'variable prefix' => ['src/Completion/Variables.php', 'param_prefix'];
+        yield 'member access' => ['src/Completion/MethodAccess.php', 'this_empty'];
+        yield 'static access' => ['src/Completion/StaticAccess.php', 'self_empty'];
     }
 
     public function testExpressionCompletionIncludesAllIndexedTypes(): void
