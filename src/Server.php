@@ -49,6 +49,7 @@ final class Server
         private TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
+        private readonly ParserService $parser = new ParserService(),
     ) {
         if ($projectRoot === null) {
             $cwd = getcwd();
@@ -61,18 +62,17 @@ final class Server
         }
 
         $this->documentManager = new DocumentManager();
-        $parser = new ParserService();
         $symbolIndex = new SymbolIndex();
-        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
+        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $symbolIndex);
         $classLocator = new ComposerClassLocator($projectRoot);
 
         $classInfoFactory = new DefaultClassInfoFactory();
-        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
+        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $this->parser);
         $functionRepository = new DefaultFunctionRepository();
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
         $symbolResolver = new SymbolResolver(
-            $parser,
+            $this->parser,
             $classRepository,
             $memberResolver,
             $typeResolver,
@@ -83,7 +83,7 @@ final class Server
         $this->handlers[] = $this->lifecycleHandler;
         $this->handlers[] = new TextDocumentSyncHandler(
             $this->documentManager,
-            $parser,
+            $this->parser,
             $classRepository,
             $classInfoFactory,
             $indexer,
@@ -130,6 +130,12 @@ final class Server
             } elseif ($message instanceof RequestMessage) {
                 $error = ResponseError::methodNotFound($message->method);
             }
+
+            // The parse memo is scoped to one handled message — this loop is the
+            // only boundary that knows where that ends. Discarding it here is
+            // what keeps it from becoming the standing cache the Step 0 spike
+            // declined (docs/architecture/0002-execution-plan.md, Section 8.5).
+            $this->parser->discardScopedParses();
 
             // Send response for requests (not notifications)
             if ($message instanceof RequestMessage) {

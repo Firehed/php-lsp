@@ -84,7 +84,7 @@ class ServerTest extends TestCase
         $uri = 'file:///fixtures/src/Domain/User.php';
         $text = $this->loadFixture('src/Domain/User.php');
 
-        $didOpenJson = (string) json_encode([
+        $didOpenJson = json_encode([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didOpen',
             'params' => [
@@ -93,7 +93,7 @@ class ServerTest extends TestCase
         ], JSON_THROW_ON_ERROR);
         // Re-sending identical text is what separates a message-scoped memo from
         // a standing one: the memo must have been discarded, so this parses again.
-        $didChangeJson = (string) json_encode([
+        $didChangeJson = json_encode([
             'jsonrpc' => '2.0',
             'method' => 'textDocument/didChange',
             'params' => [
