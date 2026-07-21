@@ -327,6 +327,59 @@ feature-detected with a synchronous fallback (Fibers / FFI may be relied on).
   running defect list lives in RFC 1 Appendix B (currently: ale `textEdit` range,
   ale#4274). No step owns it; it is maintained on review.
 
+### Teardown ledger
+
+The strangler introduces scaffolding that later steps remove; because that teardown
+is distributed across steps, it is enumerated here so nothing is left behind. Each
+row is checked by the `review-slice` pass when its *remover* slice lands, and every
+row must be discharged at the Definition of Done (Step Z).
+
+    Scaffolding introduced                                    Removed / merged in
+    --------------------------------------------------------  --------------------
+    Step 2 facade hides today's double write (§5.5)           Step 3a(iv)
+    Two ComposerAutoloadMap instances (pre-existing dup)      Step 3a(ii)
+    Step 2 §4.2 rule exemption for FunctionRepository         Step 3b
+    getFileFunctions (transitional; last caller migrates)     Step 3b
+    DefaultFunctionRepository AST-in signature                Step 3b
+    SymbolResolver god class                                  Step 4
+    TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
+    CodeResolver knowledge-facing methods                     Step 4
+    A Step 0 standing cache, if built (no orphan)             Step 3a(i)
+    WorkspaceIndexer (dead today)                             §3 note (delete unless workspace scope taken)
+
+A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
+state.
+
+### Step Z — Definition of Done (final verification gate)
+
+The steps above end the *work*; this gate declares the foundation *complete*. It is a
+checklist PR, not a feature step: it produces no new behavior, only the assertion —
+verified repo-wide — that the invariants hold and no transitional cruft remains.
+
+*Acceptance (all must hold):*
+
+- **Enforcement is complete.** Every §8.1 enforcement rule is active **repo-wide with
+  zero remaining exemptions or allowlists** (the Step 2 §4.2 exemption, and any other,
+  are gone). A rule still carrying a scope is an open step, not done.
+- **Conformance is repo-wide.** RFC §8's 12-item checklist passes across the whole
+  codebase, not merely per change.
+- **Parity is trustworthy.** The Step P harness is green **and** its branch coverage of
+  the migrated surfaces is adequate — no unexercised surface branch (Step P) — and
+  goldens were spot-audited, not just diffed.
+- **Teardown is discharged.** Every row of the Teardown ledger is removed; a scan
+  confirms no facade-only delegations, no double writes, and no dead transitional
+  classes (`DefaultFunctionRepository`, etc.) survive.
+- **Divergences are reconciled.** Each entry in RFC 1 Appendix B "current divergences"
+  (byte offsets, functions-need-AST, constants-unresolved, capabilities-unread) is
+  either **fixed** or **converted to an explicitly-tracked deferred gap with an open
+  issue** — none silently persists.
+- **Remaining gaps are named.** The only surviving non-conformances are the
+  explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5), the
+  workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266), and
+  computed-name `define()` (§3). A gap not on this list is a bug, not a deferral.
+
+Only when all six hold is the foundation deemed complete.
+
 ## 5. Step 2 in depth
 
 ### 5.1. The design decision that shapes the interface
@@ -506,6 +559,8 @@ Step 5 (deferred — tracked §4.7 gap) and Step 6 (deferred — needs #266): la
   dedupe, backend composite, write-path collapse), not one commit — per the project's
   small-commit rule. A Step 0 standing cache, if the spike warrants it, rides in on
   the cache-abstraction PR.
+- **Step Z (Definition of Done)** is terminal: it runs after every other step, with
+  the Teardown ledger fully discharged, and declares the foundation complete.
 
 Recommended first PR: Step 0's spike, with Step P and Step 1 in parallel; Step 2
 once Step P is green.
