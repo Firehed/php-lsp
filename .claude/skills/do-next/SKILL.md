@@ -15,7 +15,7 @@ slice from durable state, not from memory.
   (e.g. `notes.txt`, coverage output) are fine. If tracked files are modified, stop.
 - Switch to `main` and sync: `git fetch origin`; if `main` is behind, fast-forward;
   if diverged, stop and report.
-- Verify the base is green: run `composer check`. If red, **stop** — do not build on
+- Verify the base is green: run `composer test`. If red, **stop** — do not build on
   a red base.
 
 ## 2. Compute the next slice X
@@ -51,7 +51,7 @@ project's **Squash and Merge**: a squash rewrites the branch into one new commit
   - Behavior-preserving slice → add/extend the Step P parity fixtures **first**.
   - Seam-introducing slice → add its §8.1 enforcement rule in this slice.
   - Write failing tests, then implement to green.
-- Keep commits small and logical (project rule). Run `composer check` to green.
+- Keep commits small and logical (project rule). Run `composer test` to green.
 - If you hit a fundamental design question the plan does not answer, **STOP and ask**
   — do not invent an interpretation.
 
