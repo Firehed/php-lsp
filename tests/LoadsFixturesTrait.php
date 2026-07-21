@@ -26,4 +26,30 @@ trait LoadsFixturesTrait
         assert($content !== false, "Fixture not found: $fixturePath");
         return $content;
     }
+
+    /**
+     * Resolves a fixture cursor marker to the position immediately before it.
+     *
+     * Markers use the pattern SLASH*|marker_name*SLASH (where SLASH is /).
+     * This is the position math alone, with no document opened, so tests that
+     * drive the server over the wire can address a marker too.
+     *
+     * @param string $cursorName The marker name (without delimiters)
+     * @return array{line: int, character: int}
+     */
+    private function locateCursor(string $content, string $cursorName): array
+    {
+        $marker = "/*|{$cursorName}*/";
+        $pos = strpos($content, $marker);
+        assert($pos !== false, "Cursor marker not found: $cursorName");
+
+        $beforeMarker = substr($content, 0, $pos);
+        $lines = explode("\n", $beforeMarker);
+        $line = count($lines) - 1;
+
+        return [
+            'line' => $line,
+            'character' => strlen($lines[$line]),
+        ];
+    }
 }

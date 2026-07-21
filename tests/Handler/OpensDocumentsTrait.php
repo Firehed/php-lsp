@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 
 /**
  * Provides document and fixture helpers for handler tests.
@@ -21,6 +22,9 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
  */
 trait OpensDocumentsTrait
 {
+    use LoadsFixturesTrait;
+
+
     /**
      * Opens inline code as a document.
      *
@@ -94,20 +98,7 @@ trait OpensDocumentsTrait
     {
         [$uri, $content] = $this->loadAndOpenFixture($fixturePath);
 
-        $marker = "/*|{$cursorName}*/";
-        $pos = strpos($content, $marker);
-        assert($pos !== false, "Cursor marker not found: $cursorName in $fixturePath");
-
-        $beforeMarker = substr($content, 0, $pos);
-        $lines = explode("\n", $beforeMarker);
-        $line = count($lines) - 1;
-        $character = strlen($lines[$line]);
-
-        return [
-            'uri' => $uri,
-            'line' => $line,
-            'character' => $character,
-        ];
+        return ['uri' => $uri, ...$this->locateCursor($content, $cursorName)];
     }
 
     /**
