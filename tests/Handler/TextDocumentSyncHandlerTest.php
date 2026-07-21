@@ -15,12 +15,15 @@ use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private DocumentManager $manager;
     private ParserService $parser;
     private DefaultClassInfoFactory $classInfoFactory;
@@ -72,6 +75,35 @@ class TextDocumentSyncHandlerTest extends TestCase
         $doc = $this->manager->get('file:///test.php');
         self::assertNotNull($doc);
         self::assertSame('<?php echo "hello";', $doc->getContent());
+    }
+
+    /**
+     * Step 0 acceptance: one parse per handled message. The sync path parsed
+     * twice — once here to register the document's classes, then again inside
+     * DocumentIndexer — for every keystroke the client sent.
+     */
+    public function testSyncParsesTheDocumentOnce(): void
+    {
+        $notification = NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didOpen',
+            'params' => [
+                'textDocument' => [
+                    'uri' => 'file:///fixtures/src/Domain/User.php',
+                    'languageId' => 'php',
+                    'version' => 1,
+                    'text' => $this->loadFixture('src/Domain/User.php'),
+                ],
+            ],
+        ]);
+
+        $this->handler->handle($notification);
+
+        self::assertSame(
+            1,
+            $this->parser->getMetrics()->getParseCount(),
+            'registering classes and indexing symbols share one parse',
+        );
     }
 
     public function testDidChange(): void

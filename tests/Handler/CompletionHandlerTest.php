@@ -1105,6 +1105,25 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('AbstractBase', $labels);
     }
 
+    /**
+     * Step 0 acceptance: one parse per handled message. Completion is the fan-out
+     * that made this matter — its sources each call a different CodeResolver
+     * method, and every one of them re-parsed the same unchanged document.
+     */
+    public function testCompletionParsesTheDocumentOnce(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'param_prefix');
+        // didOpen is a message of its own; the server discards its parses before
+        // the completion request is handled.
+        $this->parser->discardScopedParses();
+        $before = $this->parser->getMetrics()->getParseCount();
+
+        $this->handler->handle($this->completionRequestAt($cursor));
+
+        $parsesForRequest = $this->parser->getMetrics()->getParseCount() - $before;
+        self::assertSame(1, $parsesForRequest, 'the whole request costs one parse of the open document');
+    }
+
     public function testExpressionCompletionIncludesAllIndexedTypes(): void
     {
         // Add various symbol types to the index

@@ -89,6 +89,9 @@ class ParserServiceTest extends TestCase
     /**
      * Every exit from parse() must be metered — otherwise the reparse counts the
      * caching decision rests on undercount whatever path the failure took.
+     *
+     * The scope is discarded between the two parses because within one scope the
+     * second call is a memo hit and never reaches the meter.
      */
     #[DataProvider('exitPaths')]
     public function testEveryParseExitIsMetered(string $content): void
@@ -97,9 +100,71 @@ class ParserServiceTest extends TestCase
         $doc = new TextDocument('file:///test.php', 'php', 1, $content);
 
         $parser->parse($doc);
+        $parser->discardScopedParses();
         $parser->parse($doc);
 
         self::assertSame(2, $parser->getMetrics()->getParseCount(), 'both parses are counted on this path');
+    }
+
+    /**
+     * Every exit from parse() must also be memoized, including the ones that
+     * produce no usable AST: a failure that reparses on every call is the cost
+     * the dedup exists to remove.
+     */
+    #[DataProvider('exitPaths')]
+    public function testEveryParseExitIsMemoized(string $content): void
+    {
+        $parser = new ParserService();
+        $doc = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $first = $parser->parse($doc);
+        $second = $parser->parse($doc);
+
+        self::assertSame(1, $parser->getMetrics()->getParseCount(), 'the second call is answered from the memo');
+        self::assertSame($first, $second, 'the memo returns what the parse returned, on every exit path');
+    }
+
+    public function testDifferingContentIsParsedSeparately(): void
+    {
+        $parser = new ParserService();
+
+        $parser->parse(new TextDocument('file:///test.php', 'php', 1, '<?php class A {}'));
+        $parser->parse(new TextDocument('file:///test.php', 'php', 2, '<?php class B {}'));
+
+        self::assertSame(2, $parser->getMetrics()->getParseCount(), 'an edit invalidates nothing — it is a new key');
+    }
+
+    /**
+     * The AST is a function of content alone: parse() reads nothing else off the
+     * document. Two documents holding the same content therefore share one parse.
+     */
+    public function testIdenticalContentSharesOneParseAcrossDocuments(): void
+    {
+        $parser = new ParserService();
+        $content = '<?php class Shared {}';
+
+        $first = $parser->parse(new TextDocument('file:///a.php', 'php', 1, $content));
+        $second = $parser->parse(new TextDocument('file:///b.php', 'php', 7, $content));
+
+        self::assertSame(1, $parser->getMetrics()->getParseCount(), 'identical content is parsed once');
+        self::assertSame($first, $second, 'both documents get the same AST');
+    }
+
+    /**
+     * The memo is scoped to one handled LSP message, not standing: discarding it
+     * is what keeps it from becoming the version-keyed cache the Step 0 spike
+     * declined to add.
+     */
+    public function testDiscardingScopedParsesForcesAReparse(): void
+    {
+        $parser = new ParserService();
+        $doc = new TextDocument('file:///test.php', 'php', 1, '<?php class MyClass {}');
+
+        $parser->parse($doc);
+        $parser->discardScopedParses();
+        $parser->parse($doc);
+
+        self::assertSame(2, $parser->getMetrics()->getParseCount(), 'the discarded parse is not retained');
     }
 
     /**
