@@ -593,7 +593,8 @@ once Step P is green.
 
 ## 7. Open decisions (resolve at implementation time)
 
-- The perceptibility threshold and cache decision from the Step 0 spike.
+- ~~The perceptibility threshold and cache decision from the Step 0 spike.~~
+  **Resolved — see Section 8.**
 - Whether `ClassLikeName` is the existing `ClassName` reused as-is, renamed, or a
   wrapper — it must coexist with `ClassName`'s dual role as the class `Type` (§5.3).
 - Whether `FunctionName` / `ConstantName` / `NamespaceName` land in Step 2 as prep
@@ -609,3 +610,154 @@ once Step P is green.
   interim is reflection + optimistic availability, and §4.7 is a tracked gap.
 - The external-change invalidation fallback when the client does not support
   `didChangeWatchedFiles` (lazy re-read vs. no invalidation) (Step 3).
+
+## 8. Step 0 spike record (measured)
+
+Measured on the slice `S0.1` instrumentation (`ParseMetrics`, which meters every
+`ParserService::parse()` — parse plus both visitor passes). Conditions: PHP 8.5.4
+CLI, macOS/arm64, no xdebug, opcache CLI off, and **`pcov.enabled=0`**. Timings
+varied ~10-15% run to run; **parse counts were exactly reproducible**, and the
+counts are what the decision turns on.
+
+`pcov.enabled=0` is a deliberate choice of baseline, not a description of how the
+server runs. `bin/php-lsp` is `#!/usr/bin/env php`, so it inherits whatever the
+development machine's CLI ini says — and on the machine these numbers were taken
+from, `conf.d/pcov.ini` sets `pcov.enabled=1`, which roughly doubles every timing
+below. The clean baseline is the right one to derive an architectural decision
+from, but it means §8.4's thresholds are *ceilings on file size under ideal
+conditions*: with pcov left on, the same budgets are exceeded at roughly half the
+line counts. That does not change the decision — it only widens the margin by
+which the cost is already perceptible.
+
+### 8.1 Cost of one parse
+
+Real files, 25 iterations each, mean. Line counts are `wc -l` plus one, so they
+count the final line rather than the newlines; §8.3 adds one more for the line the
+completion prefix is typed on.
+
+| Tier | Source | Lines | Bytes | Mean ms | Retained AST bytes | AST : source |
+|---|---|---|---|---|---|---|
+| small | `tests/Fixtures/src/Domain/User.php` | 320 | 7,373 | 1.8 | 382,576 | 52× |
+| medium | `src/Repository/DefaultClassInfoFactory.php` | 712 | 24,225 | 5.7 | 1,300,432 | 54× |
+| large | `src/Resolution/SymbolResolver.php` | 1,702 | 58,870 | 14.6 | 2,989,808 | 51× |
+| pathological | `vendor/squizlabs/php_codesniffer/src/Files/File.php` | 2,947 | 107,557 | 23.2 | 5,038,912 | 47× |
+| generated | `vendor/nikic/php-parser/lib/PhpParser/Parser/Php8.php` | 2,918 | 193,747 | 120.6 | 24,960,120 | 129× |
+
+Parse time tracks bytes, not lines, at roughly **4 MB/s**. A retained AST costs
+about **50× its source size** — the figure any standing cache must budget against
+(the generated-parser row is an outlier: dense table literals, not typical code).
+
+### 8.2 Reparse count per request
+
+Counted after `didOpen`, on the existing fixture corpus. Two columns, because the
+count depends on whether the class repository's `ClassInfo` memo is warm for the
+types the request touches: **first touch** is the same request issued against a
+cold repository, **steady state** is the immediately repeated identical request.
+
+| Request | First touch | Steady state |
+|---|---|---|
+| `didOpen` / `didChange` notification | 2 | 2 |
+| completion — member access (`$this->`) | 1 | 1 |
+| completion — variable (`$x`) | 3 | 3 |
+| completion — bare identifier prefix | 5 | 5 |
+| completion — after `new` | 5 | 5 |
+| hover on a method of a workspace class | 2 | 1 |
+| signatureHelp on a workspace class' method | 2 | 1 |
+| definition through a trait | 4 | 1 |
+
+Two distinct costs are visible here, and they behave differently.
+
+The **steady-state** column is the `SymbolResolver` fan-out. Its seven
+`parser->parse()` sites do not compound on the point-query paths: hover,
+definition, and signatureHelp each take one code path and parse the open document
+once. They compound on **completion**, which fans out to several sources — each
+calling a different `CodeResolver` method (`getMemberAccessContext`,
+`getVariablesInScope`, `getImports`, `getNameContext`, `getFileFunctions`), each of
+which re-parses the same unchanged document. The sync notification adds two more:
+`TextDocumentSyncHandler::indexDocument()` parses, then hands the document to
+`DocumentIndexer`, which parses it again. So one keystroke in a completion context
+is **7 parses of identical content**, every time.
+
+The **gap between the columns** is a second cost entirely:
+`DefaultClassRepository::locateAndParse()` parses one file per supertype it must
+resolve from disk. Definition through a trait costs 4 rather than 1 because `User
+implements Entity, Person` and uses `HasTimestamps`. These are parses of
+*different* documents, so request-scoped dedup does not remove them — and does not
+need to: they are memoized by FQN across requests, so each is a one-off per class.
+
+The decision below turns on the steady-state column, because that is the cost that
+never warms. The first-touch column is recorded so that a later reader does not
+mistake a cold-start measurement for a regression.
+
+One caveat on the completion rows: they do not vary between the columns today only
+because `SymbolIndex` holds open documents alone — `WorkspaceIndexer` is not wired
+into `Server.php`. Class-position completion resolves every candidate through the
+repository, so if a workspace index later feeds it, its first-touch column grows
+with the index while its steady state does not.
+
+### 8.3 Cost in the round: one keystroke
+
+A bare-prefix completion typed at the end of a real file — `didChange` followed by
+`textDocument/completion`, as a client actually sends it:
+
+| Tier | Lines | Completion alone (5 parses) | Full keystroke (7 parses) |
+|---|---|---|---|
+| small | 321 | 9-14 ms | 13-14 ms |
+| medium | 713 | 29-32 ms | 45-90 ms |
+| large | 1,703 | 76-81 ms | 120-127 ms |
+| pathological | 2,948 | 130-132 ms | 187-193 ms |
+
+### 8.4 Perceptibility threshold
+
+**Threshold: 50 ms per request, 100 ms per keystroke.** Below ~100 ms an
+interaction reads as instantaneous; a completion popup that lands later than that
+is visibly chasing the typist, and at typing speed the work also queues. 50 ms per
+request is the working half of that budget, leaving room for the non-parse work.
+
+Measured against it, and solving the fitted cost (5 or 7 parses plus the ~5 ms and
+~23 ms of non-parse work observed at the large tier) for the budget: the
+per-request budget is exceeded from roughly **1,100 lines** of open document, and
+the per-keystroke budget from roughly **1,300 lines**. Both are ordinary file sizes
+— this repository's own `SymbolResolver.php` (1,702 lines) is past both, and its
+measured keystroke cost, 120-127 ms, is above the threshold outright. The cost is
+therefore **not** imperceptible, and the "if imperceptible, do nothing" branch of
+Step 0 does not apply.
+
+### 8.5 Decision
+
+1. **Ship request-scoped dedup (S0.2).** It cuts the keystroke from 7 parses to 2
+   (one per message) with no invalidation risk whatsoever: within one message the
+   document content cannot change, so a memo held for that message's duration and
+   then discarded cannot go stale. Projecting the measured parse costs onto that
+   count — not itself measured, since dedup is S0.2's to build — the large tier
+   falls from ~125 ms to ~50 ms per keystroke and the pathological tier from
+   ~190 ms to ~75 ms, i.e. under the threshold at every tier measured. S0.2 should
+   confirm this rather than assume it.
+2. **Do not add a standing cache now — this overrides the decision rule's cache
+   branch, on a projection.** Be explicit about that. §8.4 establishes the
+   antecedent of the rule's second branch ("add a standing cache only if large
+   files cross a perceptibility threshold"): they do. The rule's literal reading
+   would add one. It is not being added because the *first* branch's remedy is
+   projected to clear the threshold on its own, which makes the cache's remaining
+   value smaller than its cost.
+
+   That remaining value is real but narrow. Dedup leaves one parse per handled
+   message; a version-keyed standing cache would leave one per document *version*,
+   so it would additionally remove re-parses across messages at an unchanged
+   version — the `didOpen` → hover → completion sequence costs three parses under
+   dedup and one under a standing cache. Against that: ~50× source size in retained
+   AST for every open document, plus invalidation to get right. At the post-dedup
+   per-request costs these numbers imply — ~15 ms at the large tier, well inside the
+   50 ms budget — that trade is not justified.
+3. **Revisit only on evidence.** If a standing cache is later warranted, it lands as
+   the Step 3 rider described in Section 6 — open documents only, keyed by document
+   version, behind the §5.3 cache abstraction — never as hard-coded memoization.
+   What reopens it, specifically: S0.2's measured post-dedup keystroke costs, if
+   they do not land under the §8.4 thresholds the way decision 1 projects. Decision
+   2 rests on that projection, so S0.2 is the checkpoint that confirms or overturns
+   it.
+
+Note that the dedup boundary must cover the **notification** path as well as the
+request path: two of the seven parses are `didChange`'s, which `SymbolResolver`
+never sees. "Request-scoped" therefore means scoped to one handled LSP message,
+notifications included.
