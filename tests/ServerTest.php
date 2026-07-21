@@ -119,6 +119,56 @@ class ServerTest extends TestCase
         );
     }
 
+    /**
+     * The same boundary, exercised by a *request* rather than a notification.
+     *
+     * The sibling test above drives notifications only, so it cannot tell
+     * whether the discard runs for requests: guarding the discard on
+     * `!$message instanceof RequestMessage` leaves it green. Two identical
+     * completion requests separate the cases — the second re-parses only if the
+     * first message's memo was discarded.
+     */
+    public function testParsesAreScopedToOneMessageOnTheRequestPath(): void
+    {
+        $fixture = 'src/Completion/Variables.php';
+        $uri = 'file:///fixtures/' . $fixture;
+        $text = $this->loadFixture($fixture);
+        $cursor = $this->locateCursor($text, 'param_prefix');
+
+        $didOpenJson = json_encode([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didOpen',
+            'params' => [
+                'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $completionJson = json_encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => $uri],
+                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
+
+        $input = $this->buildMessages($didOpenJson, $completionJson, $completionJson, $exitJson);
+        $outputBuffer = new WritableBuffer();
+
+        $parser = new ParserService();
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
+
+        $server->run();
+
+        self::assertSame(
+            3,
+            $parser->getMetrics()->getParseCount(),
+            'one didOpen and two completion requests, one parse each',
+        );
+    }
+
     public function testExitWithoutShutdownReturnsOne(): void
     {
         $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
