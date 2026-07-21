@@ -31,12 +31,53 @@ diverse panel in parallel:
   forbidden reflection/index access, no `instanceof` on a concrete `Type`, no branch
   on a resolved kind, no raw `initialize` params outside the negotiation component,
   as applicable).
-- **Coverage** — does the parity harness / enforcement rule actually **exercise** the
-  change? Green is not enough; an unexercised branch is a gap (Step P). Spot-check
-  that captured goldens assert the right values, not just that they diffed clean.
+- **Test strength** — would the tests actually **catch** the defect they imply? Name a
+  mutation of the implementation (move a statement out of a `finally`, shorten a timed
+  span, return a constant) and check whether anything fails. Spot-check that captured
+  goldens assert the right values, not just that they diffed clean.
 
 Each returns structured findings; then have them adversarially try to break the
 change.
+
+### Do not re-do CI's job
+
+CI already runs the suite, PHPStan, PHPCS, and coverage on every push. A finding whose
+evidence is "the suite passes", "coverage is N%", or "this line is uncovered" is out of
+scope — drop it. Reviewers must not run a coverage driver or report per-file
+percentages.
+
+What CI *cannot* judge is what the panel is for: whether a recorded claim is true,
+whether an assertion would survive a mutation, whether an acceptance criterion is
+genuinely met. An unexercised branch is still worth raising — but as "nothing would
+catch X", with the mutation named, not as a coverage number.
+
+### Constrain the subagents' commands
+
+State in every subagent prompt that it may run **only** the project's composer scripts:
+
+```
+composer test                                        # full check
+composer unit -- --filter X                          # one test
+composer phpstan -- --error-format=raw --no-progress
+composer phpcs -- -q --report=emacs
+```
+
+Raw equivalents (`vendor/bin/phpunit`, `php -d … vendor/bin/phpunit`) bypass the
+approved-command list and fire a permission prompt per call.
+
+Reviewers already receive `CLAUDE.md` automatically and default to these scripts on
+their own. They defect in two specific situations, so head both off:
+
+- **Throwaway measurement harnesses.** Put them in `tests/`, run them with
+  `composer unit -- --filter <name>`, and delete them before reporting. Do not write
+  them to the scratchpad, which forces a positional path and a raw invocation.
+- **Interpreter-level flags** (`php -d pcov.enabled=0 …`). `composer unit` runs PHP
+  through Composer's own process, so an `-d` override cannot reach the child. There is
+  no approved route to this — if a finding needs one, **report that and stop** rather
+  than invoking the binary. Keeping coverage out of scope removes most of the motive.
+
+Scale the panel to the diff. A docs-and-one-class slice does not need agents that each
+burn 75k+ tokens re-deriving the whole measurement.
 
 ## 3. Verify and fix
 
