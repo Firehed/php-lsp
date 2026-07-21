@@ -631,7 +631,9 @@ which the cost is already perceptible.
 
 ### 8.1 Cost of one parse
 
-Real files, 25 iterations each, mean:
+Real files, 25 iterations each, mean. Line counts are `wc -l` plus one, so they
+count the final line rather than the newlines; §8.3 adds one more for the line the
+completion prefix is typed on.
 
 | Tier | Source | Lines | Bytes | Mean ms | Retained AST bytes | AST : source |
 |---|---|---|---|---|---|---|
@@ -715,7 +717,7 @@ Measured against it, and solving the fitted cost (5 or 7 parses plus the ~5 ms a
 ~23 ms of non-parse work observed at the large tier) for the budget: the
 per-request budget is exceeded from roughly **1,100 lines** of open document, and
 the per-keystroke budget from roughly **1,300 lines**. Both are ordinary file sizes
-— this repository's own `SymbolResolver.php` (1,701 lines) is past both, and its
+— this repository's own `SymbolResolver.php` (1,702 lines) is past both, and its
 measured keystroke cost, 120-127 ms, is above the threshold outright. The cost is
 therefore **not** imperceptible, and the "if imperceptible, do nothing" branch of
 Step 0 does not apply.
