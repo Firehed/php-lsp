@@ -790,11 +790,38 @@ ignored that the removed parses also removed their share of the surrounding work
 
 Decision 2 therefore stands on a measurement rather than a projection: the standing
 cache is not needed, and the condition in decision 3 that would reopen it — a
-post-dedup keystroke above the §8.4 thresholds — did not occur. Fitting the slow end
-of each range across the two largest tiers moves §8.4's break-even points out from
-1,100 to roughly 4,000 lines per request, and from 1,300 to roughly 4,200 lines per
-keystroke. Note that these remain ideal-conditions ceilings: with `pcov.enabled=1`,
-as §8 warns, the same budgets are reached at roughly half those line counts.
+post-dedup keystroke above the §8.4 thresholds — did not occur on any tier
+re-measured here. Fitting the slow end of each range across the two largest tiers
+moves §8.4's break-even points out from 1,100 to roughly 4,000 lines per request,
+and from 1,300 to roughly 4,200 lines per keystroke.
+
+Two caveats bound those break-even points, and the first is not small.
+
+They are fitted in **lines**, over four tiers of ordinary hand-written code. §8.1's
+fifth tier is the counterexample already on record:
+`vendor/nikic/php-parser/lib/PhpParser/Parser/Php8.php` is 2,918 lines — *inside*
+the ~4,200-line keystroke break-even — but 193,747 bytes, 66 bytes per line against
+the 23-37 of the other four, and §8.1 measured one parse of it at 120.6 ms, a rate
+of ~1.6 MB/s where the others parse at ~4.0-4.6 MB/s. It was not re-measured here,
+but the parse count is the reproducible part and it is 2 per keystroke, so its
+post-dedup keystroke is ~240 ms — still well above the 100 ms budget. Dense
+generated code is slower per byte *and* denser per line, so neither figure alone
+predicts it: read the break-evens as describing ordinary code, never as a size
+limit. Decision 3's reopen condition is met by that file, and by files like it; what
+decision 2 rests on is that they are not what a developer types into.
+
+Second, these remain ideal-conditions ceilings: with `pcov.enabled=1`, as §8 warns,
+the same budgets are reached at roughly half those line counts.
+
+One cost the dedup adds rather than removes: for the duration of a message the memo
+retains every AST it produced, including those of the *other* documents
+`DefaultClassRepository` parses off disk to resolve supertypes, which previously
+became garbage as soon as the repository had built its `ClassInfo`. At §8.1's ~50×
+ratio, peak retention within a message is proportional to the number of distinct
+files that message touches rather than to the open document alone. This does not
+reopen decision 2 — its ~50× objection was to retention *across* messages, for the
+session's lifetime, and the discard frees all of this at the message boundary — but
+it was not budgeted for in §8.5, so it is recorded here.
 
 The scope is one handled LSP message, discarded by the message loop in `Server`
 once the handler returns; the memo is keyed by document *content*, because the AST
