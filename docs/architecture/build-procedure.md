@@ -88,9 +88,15 @@ squash-deleted branch is never misread as unstarted.
    implementer's reasoning or this conversation. It adversarially verifies:
    - every acceptance criterion is actually met (not just plausibly);
    - §8.1 conformance for the invariants the slice touches;
-   - the parity harness / enforcement rule **actually covers** the change (green is
-     not enough — an unexercised branch is a gap, per Step P);
+   - the parity harness / enforcement rule would **actually catch a regression in**
+     the change — name a mutation of the implementation and check that something
+     fails (per Step P);
    - it then tries to break the change.
+
+   The reviewer does **not** re-check what CI already enforces: a green suite,
+   PHPStan, PHPCS, coverage percentages. Those run on every push. Review effort goes
+   where CI is blind — unverified claims, assertions that survive mutation,
+   acceptance criteria met only in appearance.
 3. **Fix.** Apply fixes on the branch; re-run the cleanroom pass until clean.
 4. **Land.** Mark ready / merge. For each existing issue the manifest says this slice
    closes, **read the issue body, confirm its criteria are met, then** wire
