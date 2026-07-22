@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
+use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
@@ -79,7 +80,7 @@ final class Server
             $functionRepository,
         );
 
-        $this->lifecycleHandler = new LifecycleHandler($serverInfo);
+        $this->lifecycleHandler = new LifecycleHandler(new CapabilityNegotiator($serverInfo));
         $this->handlers[] = $this->lifecycleHandler;
         $this->handlers[] = new TextDocumentSyncHandler(
             $this->documentManager,

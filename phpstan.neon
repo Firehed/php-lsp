@@ -8,3 +8,12 @@ parameters:
         - tests
     excludePaths:
         - tests/Fixtures
+        # Deliberate rule violations, analysed only by RuleTestCase.
+        - tests/Architecture/data
+
+services:
+    # RFC 1 §8.1 enforcement mechanisms.
+    -
+        class: Firehed\PhpLsp\Tests\Architecture\RawInitializeCapabilitiesRule
+        tags:
+            - phpstan.rules.rule

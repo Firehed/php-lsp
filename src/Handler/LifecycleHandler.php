@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\ServerInfo;
 
 final class LifecycleHandler implements HandlerInterface
 {
@@ -20,7 +20,7 @@ final class LifecycleHandler implements HandlerInterface
     private ?int $exitCode = null;
 
     public function __construct(
-        private readonly ServerInfo $serverInfo,
+        private readonly CapabilityNegotiator $negotiator,
     ) {
     }
 
@@ -32,7 +32,7 @@ final class LifecycleHandler implements HandlerInterface
     public function handle(Message $message): mixed
     {
         return match ($message->method) {
-            'initialize' => $this->handleInitialize(),
+            'initialize' => $this->negotiator->negotiate($message),
             'initialized' => null,
             'shutdown' => $this->handleShutdown(),
             'exit' => $this->handleExit(),
@@ -48,32 +48,6 @@ final class LifecycleHandler implements HandlerInterface
     public function getExitCode(): ?int
     {
         return $this->exitCode;
-    }
-
-    /**
-     * @return array{capabilities: array<string, mixed>, serverInfo: array{name: string, version: string}}
-     */
-    private function handleInitialize(): array
-    {
-        return [
-            'capabilities' => [
-                'textDocumentSync' => [
-                    'openClose' => true,
-                    'change' => 1, // TextDocumentSyncKind.Full
-                    'save' => false,
-                ],
-                'definitionProvider' => true,
-                'hoverProvider' => true,
-                'signatureHelpProvider' => [
-                    'triggerCharacters' => ['(', ','],
-                ],
-                'completionProvider' => [
-                    // Note: ':' omitted - fires prematurely on first ':' of '::'
-                    'triggerCharacters' => ['>', '$', '\\'],
-                ],
-            ],
-            'serverInfo' => $this->serverInfo->toArray(),
-        ];
     }
 
     private function handleShutdown(): null
