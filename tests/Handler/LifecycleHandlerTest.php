@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
+use Firehed\PhpLsp\Protocol\InitializeResult;
+use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\ServerInfo;
@@ -36,15 +38,33 @@ class LifecycleHandlerTest extends TestCase
             'jsonrpc' => '2.0',
             'id' => 1,
             'method' => 'initialize',
-            'params' => ['processId' => 1234, 'capabilities' => []],
+            'params' => [
+                'processId' => 1234,
+                'capabilities' => [
+                    'textDocument' => ['hover' => ['contentFormat' => ['markdown']]],
+                ],
+            ],
         ]);
 
         $result = $handler->handle($request);
 
-        self::assertEquals(
-            $negotiator->negotiate($request),
+        // Observing the injected negotiator's resolved value, rather than
+        // comparing against a second negotiate() call, is what makes this fail
+        // if the handler shapes its own result or builds its own negotiator.
+        self::assertSame(
+            MarkupKind::Markdown,
+            $negotiator->getSessionCapabilities()->hoverMarkupKind,
+            'the handler must route initialize through the injected negotiator so the client params are resolved',
+        );
+        self::assertInstanceOf(
+            InitializeResult::class,
             $result,
-            'the handler must return the negotiator result rather than shape one itself',
+            'initialize must be answered with the negotiated result',
+        );
+        self::assertSame(
+            'php-lsp',
+            $result->serverInfo->name,
+            'the result must carry the server info the negotiator was constructed with',
         );
     }
 
