@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Capability;
 
 use Firehed\PhpLsp\Protocol\MarkupKind;
+use Firehed\PhpLsp\Protocol\PositionEncoding;
 
 /**
  * The client's declared capabilities, resolved once during `initialize` into an
@@ -23,6 +24,7 @@ final readonly class SessionCapabilities
     public function __construct(
         public MarkupKind $hoverMarkupKind = MarkupKind::PlainText,
         public bool $snippetSupport = false,
+        public PositionEncoding $positionEncoding = PositionEncoding::Utf16,
     ) {
     }
 }
