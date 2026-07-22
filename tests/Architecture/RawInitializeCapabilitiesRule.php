@@ -16,16 +16,18 @@ use PHPStan\Type\MixedType;
  * The RFC 1 §8.1 mechanism for §4.8: the raw `initialize` parameters are
  * reachable only within the negotiation component.
  *
- * `capabilities` is the [LSP] `InitializeParams` field that carries them
- * ("Server lifecycle" → `initialize`), so reading that key anywhere else is a
- * component re-inspecting the raw parameters instead of querying the
- * `SessionCapabilities` value resolved once during negotiation.
+ * `capabilities` (client capabilities, §4.8) and `general` (which carries
+ * `positionEncodings`, §4.9) are the [LSP] `InitializeParams` fields the
+ * negotiation reads ("Server lifecycle" → `initialize`), so reading either key
+ * anywhere else is a component re-inspecting the raw parameters instead of
+ * querying the `SessionCapabilities` value resolved once during negotiation.
  *
  * @implements Rule<ArrayDimFetch>
  */
 final class RawInitializeCapabilitiesRule implements Rule
 {
-    private const string CAPABILITIES_FIELD = 'capabilities';
+    /** @var list<string> */
+    private const array CONFINED_FIELDS = ['capabilities', 'general'];
     private const string NEGOTIATION_NAMESPACE = 'Firehed\PhpLsp\Capability';
 
     public function getNodeType(): string
@@ -36,7 +38,7 @@ final class RawInitializeCapabilitiesRule implements Rule
     public function processNode(Node $node, Scope $scope): array
     {
         $dim = $node->dim;
-        if (!$dim instanceof String_ || $dim->value !== self::CAPABILITIES_FIELD) {
+        if (!$dim instanceof String_ || !in_array($dim->value, self::CONFINED_FIELDS, true)) {
             return [];
         }
 
@@ -55,7 +57,7 @@ final class RawInitializeCapabilitiesRule implements Rule
 
         $message = sprintf(
             'Raw initialize %s must not be read outside %s; query SessionCapabilities instead (RFC 1 §4.8).',
-            self::CAPABILITIES_FIELD,
+            $dim->value,
             self::NEGOTIATION_NAMESPACE,
         );
 

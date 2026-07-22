@@ -19,4 +19,12 @@ final class NegotiatesRawCapabilities
 
         return $capabilities !== [];
     }
+
+    public function offersAnEncoding(Message $message): bool
+    {
+        $params = $message->params ?? [];
+        $general = $params['general'] ?? [];
+
+        return $general !== [];
+    }
 }
