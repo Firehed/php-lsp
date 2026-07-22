@@ -11,6 +11,7 @@ use JsonSerializable;
  * The `initialize` response, per [LSP] "Server lifecycle" (`InitializeResult`).
  *
  * @phpstan-type ServerCapabilities array{
+ *   positionEncoding: string,
  *   textDocumentSync: array{
  *     openClose: bool,
  *     change: int,

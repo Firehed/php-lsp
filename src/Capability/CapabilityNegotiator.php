@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Capability;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
+use Firehed\PhpLsp\Protocol\PositionEncoding;
 use Firehed\PhpLsp\ServerInfo;
 
 /**
@@ -18,6 +19,15 @@ use Firehed\PhpLsp\ServerInfo;
  */
 final class CapabilityNegotiator
 {
+    /**
+     * The encodings the server can convert at the document boundary, in the
+     * server's own order of preference. UTF-16 is the [LSP] mandatory encoding;
+     * adding another is a new entry here plus a `PositionEncoding` case.
+     *
+     * @var list<PositionEncoding>
+     */
+    private const array SUPPORTED_ENCODINGS = [PositionEncoding::Utf16];
+
     private SessionCapabilities $sessionCapabilities;
 
     public function __construct(
@@ -43,14 +53,38 @@ final class CapabilityNegotiator
 
     private function resolveSessionCapabilities(Message $message): SessionCapabilities
     {
-        $capabilities = self::readMap($message->params ?? [], 'capabilities');
+        $params = $message->params ?? [];
+        $capabilities = self::readMap($params, 'capabilities');
         $textDocument = self::readMap($capabilities, 'textDocument');
         $completionItem = self::readMap(self::readMap($textDocument, 'completion'), 'completionItem');
 
         return new SessionCapabilities(
             hoverMarkupKind: self::negotiateHoverMarkupKind(self::readMap($textDocument, 'hover')),
             snippetSupport: ($completionItem['snippetSupport'] ?? false) === true,
+            positionEncoding: self::negotiatePositionEncoding(self::readMap($params, 'general')),
         );
+    }
+
+    /**
+     * Per [LSP] `InitializeParams`, `general.positionEncodings` lists the
+     * encodings the client supports; the server returns the first of its own
+     * supported encodings the client offered. UTF-16 is always assumable, so a
+     * client that offers nothing the server supports still resolves to it
+     * (RFC 1 §4.9).
+     *
+     * @param array<array-key, mixed> $general
+     */
+    private static function negotiatePositionEncoding(array $general): PositionEncoding
+    {
+        $offered = self::readMap($general, 'positionEncodings');
+
+        foreach (self::SUPPORTED_ENCODINGS as $encoding) {
+            if (in_array($encoding->value, $offered, true)) {
+                return $encoding;
+            }
+        }
+
+        return PositionEncoding::Utf16;
     }
 
     /**
@@ -95,6 +129,7 @@ final class CapabilityNegotiator
     private function advertisedCapabilities(): array
     {
         return [
+            'positionEncoding' => $this->sessionCapabilities->positionEncoding->value,
             'textDocumentSync' => [
                 'openClose' => true,
                 'change' => 1, // TextDocumentSyncKind.Full

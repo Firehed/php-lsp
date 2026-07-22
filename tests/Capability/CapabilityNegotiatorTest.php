@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Capability;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Protocol\MarkupKind;
+use Firehed\PhpLsp\Protocol\PositionEncoding;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\ServerInfo;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -80,6 +81,7 @@ class CapabilityNegotiatorTest extends TestCase
 
         self::assertSame(
             [
+                'positionEncoding',
                 'textDocumentSync',
                 'definitionProvider',
                 'hoverProvider',
@@ -96,6 +98,34 @@ class CapabilityNegotiatorTest extends TestCase
             ['(', ','],
             $capabilities['signatureHelpProvider']['triggerCharacters'],
             'signature help re-fires as arguments are typed',
+        );
+    }
+
+    public function testAdvertisesTheNegotiatedPositionEncoding(): void
+    {
+        $negotiator = new CapabilityNegotiator(new ServerInfo('test', '1.0'));
+
+        $capabilities = $negotiator->negotiate(self::initializeWith([]))->capabilities;
+
+        self::assertSame(
+            'utf-16',
+            $capabilities['positionEncoding'],
+            'the server returns the single negotiated encoding as [LSP] ServerCapabilities.positionEncoding',
+        );
+    }
+
+    /**
+     * @param array<array-key, mixed> $general
+     */
+    #[DataProvider('positionEncodingCases')]
+    public function testPositionEncodingIsNegotiated(array $general, PositionEncoding $expected): void
+    {
+        $message = new RequestMessage(id: 1, method: 'initialize', params: ['general' => $general]);
+
+        self::assertSame(
+            $expected,
+            self::resolve($message)->positionEncoding,
+            'the server selects a supported encoding the client offered, else the [LSP] mandatory UTF-16',
         );
     }
 
@@ -184,6 +214,26 @@ class CapabilityNegotiatorTest extends TestCase
             MarkupKind::PlainText,
         ];
         yield 'textDocument not a map' => [['textDocument' => 'nonsense'], MarkupKind::PlainText];
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @return iterable<string, array{array<array-key, mixed>, PositionEncoding}>
+     */
+    public static function positionEncodingCases(): iterable
+    {
+        yield 'no general capability' => [[], PositionEncoding::Utf16];
+        yield 'utf-16 offered' => [['positionEncodings' => ['utf-16']], PositionEncoding::Utf16];
+        yield 'only unsupported offered falls back to mandatory utf-16' => [
+            ['positionEncodings' => ['utf-8']],
+            PositionEncoding::Utf16,
+        ];
+        yield 'server prefers its own support order over the client list' => [
+            ['positionEncodings' => ['utf-8', 'utf-16']],
+            PositionEncoding::Utf16,
+        ];
+        yield 'positionEncodings not a list' => [['positionEncodings' => 'nonsense'], PositionEncoding::Utf16];
     }
 
     /**
