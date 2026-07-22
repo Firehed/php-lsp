@@ -142,7 +142,9 @@ Key methods:
 - **`SessionCapabilities`** is immutable and resolved once. Every capability the client
   did not declare resolves to the value's own default state — safe defaults live in the
   constructor, never in a branch at the point of use, so a minimal client needs no
-  dedicated code path.
+  dedicated code path. It carries only already-resolved values and offers no way to
+  build itself from a `Message`, so the raw parameters cannot be re-read through it —
+  the confinement holds by construction, not merely by rule.
 - **Advertised capabilities are a hand-maintained list** in `CapabilityNegotiator`.
   Add to it when a handler starts implementing a new LSP method; never advertise a
   capability the server does not implement.
