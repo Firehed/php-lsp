@@ -6,12 +6,13 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 
 use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
-use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
+ * No `#[CoversClass]`: the rule under test is dev tooling under `tests/`, not a
+ * coverage target, and naming it as one is a PHPUnit error.
+ *
  * @extends RuleTestCase<RawInitializeCapabilitiesRule>
  */
-#[CoversClass(RawInitializeCapabilitiesRule::class)]
 class RawInitializeCapabilitiesRuleTest extends RuleTestCase
 {
     private const string EXPECTED_MESSAGE = 'Raw initialize capabilities must not be read outside '
