@@ -11,6 +11,7 @@
     ],
     "require": {
         "php": "^8.3",
+        "ext-mbstring": "*",
         "amphp/amp": "^3.0",
         "amphp/byte-stream": "^2.0",
         "nikic/php-parser": "^5.7"
