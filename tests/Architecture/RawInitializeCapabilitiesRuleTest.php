@@ -31,6 +31,11 @@ class RawInitializeCapabilitiesRuleTest extends RuleTestCase
         $this->analyse([__DIR__ . '/data/negotiates-raw-capabilities.php'], []);
     }
 
+    public function testReadingTheServersOwnAdvertisedCapabilitiesIsAllowed(): void
+    {
+        $this->analyse([__DIR__ . '/data/reads-own-result-capabilities.php'], []);
+    }
+
     protected function getRule(): Rule
     {
         return new RawInitializeCapabilitiesRule();

@@ -10,6 +10,7 @@ use PhpParser\Node\Scalar\String_;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
+use PHPStan\Type\MixedType;
 
 /**
  * The RFC 1 §8.1 mechanism for §4.8: the raw `initialize` parameters are
@@ -40,6 +41,15 @@ final class RawInitializeCapabilitiesRule implements Rule
         }
 
         if ($scope->getNamespace() === self::NEGOTIATION_NAMESPACE) {
+            return [];
+        }
+
+        // The raw params are `array<array-key, mixed>`, so a genuine read of
+        // them yields `mixed`. A read that resolves to a concrete type is
+        // indexing one of the server's own typed structures — the `capabilities`
+        // of an outgoing InitializeResult, say — which is not an initialize
+        // parameter at all and which §4.8 says nothing about.
+        if (!$scope->getType($node) instanceof MixedType) {
             return [];
         }
 
