@@ -77,6 +77,18 @@ class CapabilityNegotiatorTest extends TestCase
 
         $capabilities = $negotiator->negotiate(self::initializeWith([]))->capabilities;
 
+        self::assertSame(
+            [
+                'textDocumentSync',
+                'definitionProvider',
+                'hoverProvider',
+                'signatureHelpProvider',
+                'completionProvider',
+            ],
+            array_keys($capabilities),
+            'RFC 1 §4.8 forbids advertising a capability the server does not implement; '
+                . 'extend this list only together with the handler that answers the method',
+        );
         self::assertTrue($capabilities['definitionProvider'], 'DefinitionHandler implements textDocument/definition');
         self::assertTrue($capabilities['hoverProvider'], 'HoverHandler implements textDocument/hover');
         self::assertSame(
