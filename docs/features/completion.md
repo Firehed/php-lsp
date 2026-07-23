@@ -27,6 +27,14 @@ All of the above work identically in class methods, free functions, and
 file-level (procedural) code — variable and member resolution use the enclosing
 lexical scope, which includes global scope.
 
+Completing a **callable** (method or function) inserts `name($0)` — the
+parentheses typed for you with the cursor between them — as an LSP snippet, but
+only when the client declared `completionItem.snippetSupport` during
+`initialize`. A client without snippet support gets the bare name inserted, since
+it would show the `$0` tab stop literally. The decision is shaped by
+`SessionCapabilities` (RFC 1 §4.8), read through `SessionCapabilitiesProvider`;
+non-callable members (properties, constants, enum cases) never gain parentheses.
+
 Member completions cover the full type graph: members declared on the type itself,
 plus those inherited through the parent chain, used traits (including traits that
 use other traits), and implemented or extended interfaces at any depth. This holds
@@ -105,7 +113,7 @@ text is aligned to that word boundary rather than spanning the whole qualified n
 |---------|---------|-------|
 | Array keys | `$config['` | No key suggestions from array shapes |
 | Docblock tags | `@par` → `@param` | No PHPDoc completion |
-| Snippets | Method inserting `()` | No snippet support in completion items |
+| Parameter placeholders | `setName(${1:$name})` | Snippets insert `()` with the cursor between the parens; per-parameter tab stops are not yet emitted (#22) |
 | Auto-import | Suggesting FQCN with use statement insertion | No additional text edits |
 
 ## Architecture
