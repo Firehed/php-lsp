@@ -20,6 +20,7 @@ use Firehed\PhpLsp\Transport\MessageReader;
 use Firehed\PhpLsp\Transport\MessageWriter;
 use Firehed\PhpLsp\Transport\TransportInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(Server::class)]
@@ -129,6 +130,106 @@ class ServerTest extends TestCase
             $this->errorCode($this->responseWithId($responses, 5)),
             'a request after shutdown gets InvalidRequest (RFC 1 §4.8)',
         );
+    }
+
+    /**
+     * A gated message must be answered with the lifecycle error *and* never
+     * reach a handler (RFC 1 §4.8; LSP "Server lifecycle" requires pre-
+     * `initialize` notifications be dropped). Asserting the response code alone
+     * cannot tell enforcement from theatre: a server that dispatches the
+     * message and then overwrites the result with the gate error emits byte-
+     * identical output, while having mutated DocumentManager and SymbolIndex.
+     *
+     * @param list<string> $preamble
+     */
+    #[DataProvider('gatedMessages')]
+    public function testGatedMessageIsNeverDispatched(
+        array $preamble,
+        string $gated,
+        ?int $expectedErrorCode,
+    ): void {
+        $spy = new class implements HandlerInterface {
+            /** @var list<string> */
+            public array $dispatched = [];
+
+            public function supports(string $method): bool
+            {
+                return $method === 'test/spy';
+            }
+
+            public function handle(Message $message): mixed
+            {
+                $this->dispatched[] = $message->method;
+                return null;
+            }
+        };
+
+        $input = $this->buildMessages(...[...$preamble, $gated, $this->notificationJson('exit')]);
+        $outputBuffer = new WritableBuffer();
+
+        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, $lifecycle, [$spy], new ParserService());
+
+        $server->run();
+
+        self::assertSame([], $spy->dispatched, 'a gated message must never reach a handler');
+
+        $responses = $this->decodeResponses($outputBuffer->buffer());
+        $answers = array_values(array_filter(
+            $responses,
+            fn (array $response): bool => ($response['id'] ?? null) === 99,
+        ));
+
+        if ($expectedErrorCode === null) {
+            self::assertSame([], $answers, 'a gated notification is dropped, not answered');
+            self::assertCount(
+                $this->countRequests($preamble),
+                $responses,
+                'a gated notification produces no response frame of any id',
+            );
+            return;
+        }
+
+        self::assertCount(1, $answers, 'a gated request is answered exactly once');
+        self::assertSame(
+            $expectedErrorCode,
+            $this->errorCode($answers[0]),
+            'the gated request carries the lifecycle error for the current state',
+        );
+    }
+
+    /**
+     * The preamble carries the requests that produce a response frame, so the
+     * notification cases can assert on the total frame count.
+     *
+     * @return iterable<string, array{list<string>, string, ?int}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function gatedMessages(): iterable
+    {
+        $request = json_encode(
+            ['jsonrpc' => '2.0', 'id' => 99, 'method' => 'test/spy'],
+            JSON_THROW_ON_ERROR,
+        );
+        $notification = json_encode(
+            ['jsonrpc' => '2.0', 'method' => 'test/spy'],
+            JSON_THROW_ON_ERROR,
+        );
+        $initialize = json_encode(
+            ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'initialize', 'params' => ['capabilities' => []]],
+            JSON_THROW_ON_ERROR,
+        );
+        $initialized = json_encode(['jsonrpc' => '2.0', 'method' => 'initialized'], JSON_THROW_ON_ERROR);
+        $shutdown = json_encode(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'shutdown'], JSON_THROW_ON_ERROR);
+
+        // Only the id-bearing preamble messages produce response frames, so the
+        // expected frame count for the notification cases is the request count.
+        yield 'request before initialize' => [[], $request, -32002];
+        yield 'notification before initialize' => [[], $notification, null];
+        yield 'request after shutdown' => [[$initialize, $initialized, $shutdown], $request, -32600];
+        yield 'notification after shutdown' => [[$initialize, $initialized, $shutdown], $notification, null];
     }
 
     /**
@@ -340,6 +441,25 @@ class ServerTest extends TestCase
         $exitCode = $server->run();
 
         self::assertSame(1, $exitCode);
+    }
+
+    /**
+     * Only id-bearing messages are answered, so this is how many response
+     * frames a preamble accounts for.
+     *
+     * @param list<string> $jsonMessages
+     */
+    private function countRequests(array $jsonMessages): int
+    {
+        $count = 0;
+        foreach ($jsonMessages as $json) {
+            $decoded = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+            if (is_array($decoded) && array_key_exists('id', $decoded)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     private function initializeJson(int $id = 1): string
