@@ -42,19 +42,25 @@ use Firehed\PhpLsp\Transport\TransportInterface;
 
 final class Server
 {
+    /** @var list<HandlerInterface> */
+    private readonly array $handlers;
+
     /**
-     * @param list<HandlerInterface> $handlers Consulted in order; the first that
-     *        supports a method answers it.
-     * @param LifecycleHandler $lifecycleHandler Also expected to appear in
-     *        $handlers. It is named separately because the loop asks it for the
-     *        lifecycle gate and the exit code, which are not dispatch.
+     * @param LifecycleHandler $lifecycleHandler Named separately because the
+     *        loop asks it for the lifecycle gate and the exit code, which are
+     *        not dispatch. It is prepended to the dispatch list here rather
+     *        than passed in twice, so the instance the gate consults and the
+     *        instance that handles `initialize`/`shutdown` cannot diverge.
+     * @param list<HandlerInterface> $handlers Consulted after it, in order;
+     *        the first that supports a method answers it.
      */
     public function __construct(
-        private TransportInterface $transport,
-        private array $handlers,
-        private LifecycleHandler $lifecycleHandler,
+        private readonly TransportInterface $transport,
+        private readonly LifecycleHandler $lifecycleHandler,
+        array $handlers,
         private readonly ParserService $parser,
     ) {
+        $this->handlers = [$lifecycleHandler, ...$handlers];
     }
 
     /**
@@ -102,7 +108,6 @@ final class Server
         $lifecycleHandler = new LifecycleHandler($negotiator);
 
         $handlers = [
-            $lifecycleHandler,
             new TextDocumentSyncHandler(
                 $documentManager,
                 $parser,
@@ -140,7 +145,7 @@ final class Server
             ),
         ];
 
-        return new self($transport, $handlers, $lifecycleHandler, $parser);
+        return new self($transport, $lifecycleHandler, $handlers, $parser);
     }
 
     public function run(): int

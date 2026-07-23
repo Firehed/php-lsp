@@ -254,7 +254,7 @@ class ServerTest extends TestCase
 
         $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, [$lifecycle, $throwing], $lifecycle, new ParserService());
+        $server = new Server($transport, $lifecycle, [$throwing], new ParserService());
 
         $exitCode = $server->run();
 
