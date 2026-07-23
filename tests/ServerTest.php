@@ -23,13 +23,12 @@ class ServerTest extends TestCase
 
     public function testFullLifecycle(): void
     {
-        $initializeJson = '{"jsonrpc":"2.0","id":1,"method":"initialize",'
-            . '"params":{"processId":1234,"capabilities":{}}}';
-        $initializedJson = '{"jsonrpc":"2.0","method":"initialized"}';
-        $shutdownJson = '{"jsonrpc":"2.0","id":2,"method":"shutdown"}';
-        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
-
-        $input = $this->buildMessages($initializeJson, $initializedJson, $shutdownJson, $exitJson);
+        $input = $this->buildMessages(
+            $this->initializeJson(1),
+            $this->initializedJson(),
+            $this->requestJson(2, 'shutdown'),
+            $this->notificationJson('exit'),
+        );
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
@@ -39,30 +38,27 @@ class ServerTest extends TestCase
 
         self::assertSame(0, $exitCode);
 
-        $output = $outputBuffer->buffer();
+        $responses = $this->decodeResponses($outputBuffer->buffer());
 
-        // Verify initialize response
-        self::assertStringContainsString('"jsonrpc":"2.0"', $output);
-        self::assertStringContainsString('"id":1', $output);
-        self::assertStringContainsString('"capabilities"', $output);
-        self::assertStringContainsString('"serverInfo"', $output);
+        $initialize = $this->responseWithId($responses, 1);
+        $result = $initialize['result'];
+        assert(is_array($result));
+        self::assertArrayHasKey('capabilities', $result, 'initialize advertises capabilities');
+        self::assertArrayHasKey('serverInfo', $result, 'initialize reports server info');
 
-        // Verify shutdown response
-        self::assertStringContainsString('"id":2', $output);
+        $shutdown = $this->responseWithId($responses, 2);
+        self::assertArrayHasKey('result', $shutdown, 'shutdown is answered with a success result');
+        self::assertNull($shutdown['result'], 'shutdown result is null');
     }
 
     public function testUnknownMethodReturnsError(): void
     {
-        $unknownJson = '{"jsonrpc":"2.0","id":1,"method":"unknown/method"}';
-        $shutdownJson = '{"jsonrpc":"2.0","id":2,"method":"shutdown"}';
-        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
-
         $input = $this->buildMessages(
             $this->initializeJson(100),
             $this->initializedJson(),
-            $unknownJson,
-            $shutdownJson,
-            $exitJson,
+            $this->requestJson(1, 'unknown/method'),
+            $this->requestJson(2, 'shutdown'),
+            $this->notificationJson('exit'),
         );
         $outputBuffer = new WritableBuffer();
 
@@ -71,19 +67,21 @@ class ServerTest extends TestCase
 
         $server->run();
 
-        $output = $outputBuffer->buffer();
+        $responses = $this->decodeResponses($outputBuffer->buffer());
 
-        // Should contain method not found error
-        self::assertStringContainsString('"error"', $output);
-        self::assertStringContainsString((string) ResponseError::methodNotFound()->code, $output);
+        self::assertSame(
+            ResponseError::methodNotFound()->code,
+            $this->errorCode($this->responseWithId($responses, 1)),
+            'an unknown method gets MethodNotFound',
+        );
     }
 
     public function testRequestBeforeInitializeIsRejected(): void
     {
-        $hoverJson = '{"jsonrpc":"2.0","id":5,"method":"textDocument/hover","params":{}}';
-        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
-
-        $input = $this->buildMessages($hoverJson, $exitJson);
+        $input = $this->buildMessages(
+            $this->requestJson(5, 'textDocument/hover'),
+            $this->notificationJson('exit'),
+        );
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
@@ -91,28 +89,23 @@ class ServerTest extends TestCase
 
         $server->run();
 
-        $output = $outputBuffer->buffer();
+        $responses = $this->decodeResponses($outputBuffer->buffer());
 
-        self::assertStringContainsString('"id":5', $output, 'the rejected request must still be answered');
-        self::assertStringContainsString(
-            (string) ResponseError::serverNotInitialized()->code,
-            $output,
+        self::assertSame(
+            ResponseError::serverNotInitialized()->code,
+            $this->errorCode($this->responseWithId($responses, 5)),
             'a request before initialize gets ServerNotInitialized (RFC 1 §4.8)',
         );
     }
 
     public function testRequestAfterShutdownIsRejected(): void
     {
-        $shutdownJson = '{"jsonrpc":"2.0","id":2,"method":"shutdown"}';
-        $hoverJson = '{"jsonrpc":"2.0","id":5,"method":"textDocument/hover","params":{}}';
-        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
-
         $input = $this->buildMessages(
             $this->initializeJson(100),
             $this->initializedJson(),
-            $shutdownJson,
-            $hoverJson,
-            $exitJson,
+            $this->requestJson(2, 'shutdown'),
+            $this->requestJson(5, 'textDocument/hover'),
+            $this->notificationJson('exit'),
         );
         $outputBuffer = new WritableBuffer();
 
@@ -121,13 +114,13 @@ class ServerTest extends TestCase
 
         $exitCode = $server->run();
 
-        $output = $outputBuffer->buffer();
-
         self::assertSame(0, $exitCode, 'a clean shutdown then exit still exits with 0');
-        self::assertStringContainsString('"id":5', $output, 'the rejected request must still be answered');
-        self::assertStringContainsString(
-            (string) ResponseError::invalidRequest()->code,
-            $output,
+
+        $responses = $this->decodeResponses($outputBuffer->buffer());
+
+        self::assertSame(
+            ResponseError::invalidRequest()->code,
+            $this->errorCode($this->responseWithId($responses, 5)),
             'a request after shutdown gets InvalidRequest (RFC 1 §4.8)',
         );
     }
@@ -144,32 +137,23 @@ class ServerTest extends TestCase
         $uri = 'file:///fixtures/src/Domain/User.php';
         $text = $this->loadFixture('src/Domain/User.php');
 
-        $didOpenJson = json_encode([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didOpen',
-            'params' => [
-                'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
-            ],
-        ], JSON_THROW_ON_ERROR);
+        $didOpen = $this->notificationJson('textDocument/didOpen', [
+            'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
+        ]);
         // Re-sending identical text is what separates a message-scoped memo from
         // a standing one: the memo must have been discarded, so this parses again.
-        $didChangeJson = json_encode([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didChange',
-            'params' => [
-                'textDocument' => ['uri' => $uri, 'version' => 2],
-                'contentChanges' => [['text' => $text]],
-            ],
-        ], JSON_THROW_ON_ERROR);
-        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
+        $didChange = $this->notificationJson('textDocument/didChange', [
+            'textDocument' => ['uri' => $uri, 'version' => 2],
+            'contentChanges' => [['text' => $text]],
+        ]);
 
         $input = $this->buildMessages(
             $this->initializeJson(),
             $this->initializedJson(),
-            $didOpenJson,
-            $didChangeJson,
-            $didChangeJson,
-            $exitJson,
+            $didOpen,
+            $didChange,
+            $didChange,
+            $this->notificationJson('exit'),
         );
         $outputBuffer = new WritableBuffer();
 
@@ -202,31 +186,21 @@ class ServerTest extends TestCase
         $text = $this->loadFixture($fixture);
         $cursor = $this->locateCursor($text, 'param_prefix');
 
-        $didOpenJson = json_encode([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didOpen',
-            'params' => [
-                'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
-            ],
-        ], JSON_THROW_ON_ERROR);
-        $completionJson = json_encode([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => $uri],
-                'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
-            ],
-        ], JSON_THROW_ON_ERROR);
-        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
+        $didOpen = $this->notificationJson('textDocument/didOpen', [
+            'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
+        ]);
+        $completion = $this->requestJson(1, 'textDocument/completion', [
+            'textDocument' => ['uri' => $uri],
+            'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
+        ]);
 
         $input = $this->buildMessages(
             $this->initializeJson(),
             $this->initializedJson(),
-            $didOpenJson,
-            $completionJson,
-            $completionJson,
-            $exitJson,
+            $didOpen,
+            $completion,
+            $completion,
+            $this->notificationJson('exit'),
         );
         $outputBuffer = new WritableBuffer();
 
@@ -245,9 +219,7 @@ class ServerTest extends TestCase
 
     public function testExitWithoutShutdownReturnsOne(): void
     {
-        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
-
-        $input = $this->buildMessages($exitJson);
+        $input = $this->buildMessages($this->notificationJson('exit'));
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
@@ -260,20 +232,36 @@ class ServerTest extends TestCase
 
     private function initializeJson(int $id = 1): string
     {
-        return json_encode([
-            'jsonrpc' => '2.0',
-            'id' => $id,
-            'method' => 'initialize',
-            'params' => ['processId' => 1234, 'capabilities' => []],
-        ], JSON_THROW_ON_ERROR);
+        return $this->requestJson($id, 'initialize', ['processId' => 1234, 'capabilities' => []]);
     }
 
     private function initializedJson(): string
     {
-        return json_encode([
-            'jsonrpc' => '2.0',
-            'method' => 'initialized',
-        ], JSON_THROW_ON_ERROR);
+        return $this->notificationJson('initialized');
+    }
+
+    /**
+     * @param array<string, mixed>|null $params
+     */
+    private function requestJson(int $id, string $method, ?array $params = null): string
+    {
+        $message = ['jsonrpc' => '2.0', 'id' => $id, 'method' => $method];
+        if ($params !== null) {
+            $message['params'] = $params;
+        }
+        return json_encode($message, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param array<string, mixed>|null $params
+     */
+    private function notificationJson(string $method, ?array $params = null): string
+    {
+        $message = ['jsonrpc' => '2.0', 'method' => $method];
+        if ($params !== null) {
+            $message['params'] = $params;
+        }
+        return json_encode($message, JSON_THROW_ON_ERROR);
     }
 
     private function buildMessages(string ...$jsonMessages): string
@@ -283,6 +271,62 @@ class ServerTest extends TestCase
             $result .= "Content-Length: " . strlen($json) . "\r\n\r\n" . $json;
         }
         return $result;
+    }
+
+    /**
+     * Read the framed JSON-RPC responses the server wrote back, the way a client
+     * would, so assertions inspect decoded structure rather than raw substrings.
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    private function decodeResponses(string $output): array
+    {
+        $prefix = 'Content-Length: ';
+        $responses = [];
+        $offset = 0;
+
+        while (($headerEnd = strpos($output, "\r\n\r\n", $offset)) !== false) {
+            $header = substr($output, $offset, $headerEnd - $offset);
+            self::assertStringStartsWith($prefix, $header, 'each frame is Content-Length framed');
+            $length = (int) substr($header, strlen($prefix));
+
+            $bodyStart = $headerEnd + 4;
+            $decoded = json_decode(substr($output, $bodyStart, $length), true, flags: JSON_THROW_ON_ERROR);
+            self::assertIsArray($decoded, 'each frame body is a JSON object');
+            $responses[] = $decoded;
+
+            $offset = $bodyStart + $length;
+        }
+
+        return $responses;
+    }
+
+    /**
+     * @param list<array<array-key, mixed>> $responses
+     * @return array<array-key, mixed>
+     */
+    private function responseWithId(array $responses, int $id): array
+    {
+        foreach ($responses as $response) {
+            if (($response['id'] ?? null) === $id) {
+                return $response;
+            }
+        }
+
+        self::fail("no response found with id $id");
+    }
+
+    /**
+     * @param array<array-key, mixed> $response
+     */
+    private function errorCode(array $response): int
+    {
+        $error = $response['error'] ?? null;
+        self::assertIsArray($error, 'the response carries an error object');
+        $code = $error['code'] ?? null;
+        self::assertIsInt($code, 'the error carries an integer code');
+
+        return $code;
     }
 
     private function createTransport(string $input, WritableBuffer $outputBuffer): TransportInterface
