@@ -124,27 +124,33 @@ final class Server
     {
         while (($message = $this->transport->read()) !== null) {
             $result = null;
-            $error = null;
 
-            $handler = $this->findHandler($message->method);
+            // Lifecycle gate (RFC 1 §4.8): a message not permitted in the current
+            // state is answered with the lifecycle error and never dispatched. A
+            // gated notification has no id, so its error is simply dropped.
+            $error = $this->lifecycleHandler->lifecycleErrorFor($message);
 
-            try {
-                if ($handler !== null) {
-                    $result = $handler->handle($message);
-                } elseif ($message instanceof RequestMessage) {
-                    $error = ResponseError::methodNotFound($message->method);
+            if ($error === null) {
+                $handler = $this->findHandler($message->method);
+
+                try {
+                    if ($handler !== null) {
+                        $result = $handler->handle($message);
+                    } elseif ($message instanceof RequestMessage) {
+                        $error = ResponseError::methodNotFound($message->method);
+                    }
+                } finally {
+                    // The parse memo is scoped to one handled message — this loop
+                    // is the only boundary that knows where that ends. Discarding
+                    // it here is what keeps it from becoming the standing cache the
+                    // Step 0 spike declined (0002-execution-plan.md, Section 8.5).
+                    //
+                    // In a finally so the scope closes on every exit from the
+                    // dispatch, not just the ones that return normally: a handler
+                    // that throws is fatal today, but S1.4 makes it survivable, and
+                    // a memo that outlived a message would then be standing.
+                    $this->parser->discardScopedParses();
                 }
-            } finally {
-                // The parse memo is scoped to one handled message — this loop is
-                // the only boundary that knows where that ends. Discarding it
-                // here is what keeps it from becoming the standing cache the
-                // Step 0 spike declined (0002-execution-plan.md, Section 8.5).
-                //
-                // In a finally so the scope closes on every exit from the
-                // dispatch, not just the ones that return normally: a handler
-                // that throws is fatal today, but S1.4 makes it survivable, and
-                // a memo that outlived a message would then be standing.
-                $this->parser->discardScopedParses();
             }
 
             // Send response for requests (not notifications)
