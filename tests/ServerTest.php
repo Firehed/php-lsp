@@ -273,6 +273,45 @@ class ServerTest extends TestCase
         );
     }
 
+    /**
+     * The §8.1 mechanism for RFC 1 §9: a malformed frame is answered with an
+     * error response and the read loop keeps going. The id-less ParseError is
+     * JSON-RPC's answer when the id cannot be recovered from the bad frame.
+     */
+    public function testMalformedFrameIsAnsweredAndDoesNotStopTheLoop(): void
+    {
+        $garbage = 'this is not json';
+        $input = $this->buildMessages($this->initializeJson(100), $this->initializedJson())
+            . 'Content-Length: ' . strlen($garbage) . "\r\n\r\n" . $garbage
+            . $this->buildMessages(
+                $this->requestJson(8, 'shutdown'),
+                $this->notificationJson('exit'),
+            );
+        $outputBuffer = new WritableBuffer();
+
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, new ServerInfo('test', '1.0'));
+
+        $exitCode = $server->run();
+
+        self::assertSame(0, $exitCode, 'a malformed frame does not terminate the process');
+
+        $responses = $this->decodeResponses($outputBuffer->buffer());
+
+        $parseErrors = array_filter(
+            $responses,
+            fn (array $response): bool => ($response['id'] ?? null) === null
+                && $this->errorCode($response) === ResponseError::parseError()->code,
+        );
+        self::assertCount(1, $parseErrors, 'the malformed frame is answered with a null-id ParseError');
+
+        self::assertArrayHasKey(
+            'result',
+            $this->responseWithId($responses, 8),
+            'the loop survives the malformed frame and still answers later requests',
+        );
+    }
+
     public function testExitWithoutShutdownReturnsOne(): void
     {
         $input = $this->buildMessages($this->notificationJson('exit'));
