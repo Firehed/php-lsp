@@ -11,6 +11,6 @@ use Firehed\PhpLsp\Transport\StdioTransport;
 
 $serverInfo = new ServerInfo('php-lsp', '0.1.0');
 $transport = new StdioTransport();
-$server = new Server($transport, $serverInfo);
+$server = Server::forProject($transport, $serverInfo);
 
 exit($server->run());

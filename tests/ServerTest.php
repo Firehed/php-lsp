@@ -6,7 +6,9 @@ namespace Firehed\PhpLsp\Tests;
 
 use Amp\ByteStream\ReadableBuffer;
 use Amp\ByteStream\WritableBuffer;
+use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Handler\HandlerInterface;
+use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -36,7 +38,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         $exitCode = $server->run();
 
@@ -67,7 +69,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         $server->run();
 
@@ -89,7 +91,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         $server->run();
 
@@ -114,7 +116,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         $exitCode = $server->run();
 
@@ -163,7 +165,7 @@ class ServerTest extends TestCase
 
         $parser = new ParserService();
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
 
         $server->run();
 
@@ -210,7 +212,7 @@ class ServerTest extends TestCase
 
         $parser = new ParserService();
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
 
         $server->run();
 
@@ -250,12 +252,9 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
+        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server(
-            $transport,
-            new ServerInfo('test', '1.0'),
-            additionalHandlers: [$throwing],
-        );
+        $server = new Server($transport, [$lifecycle, $throwing], $lifecycle, new ParserService());
 
         $exitCode = $server->run();
 
@@ -292,7 +291,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         $exitCode = $server->run();
 
@@ -325,7 +324,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         self::assertSame(1, $server->run(), 'a disconnect without exit is not a clean shutdown');
     }
@@ -336,7 +335,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         $exitCode = $server->run();
 

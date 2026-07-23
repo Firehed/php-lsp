@@ -42,23 +42,34 @@ use Firehed\PhpLsp\Transport\TransportInterface;
 
 final class Server
 {
-    private LifecycleHandler $lifecycleHandler;
-    private DocumentManager $documentManager;
-
-    /** @var list<HandlerInterface> */
-    private array $handlers = [];
-
     /**
-     * @param list<HandlerInterface> $additionalHandlers Registered after the
-     *        built-in handlers, so they answer only methods none of those claim.
+     * @param list<HandlerInterface> $handlers Consulted in order; the first that
+     *        supports a method answers it.
+     * @param LifecycleHandler $lifecycleHandler Also expected to appear in
+     *        $handlers. It is named separately because the loop asks it for the
+     *        lifecycle gate and the exit code, which are not dispatch.
      */
     public function __construct(
         private TransportInterface $transport,
+        private array $handlers,
+        private LifecycleHandler $lifecycleHandler,
+        private readonly ParserService $parser,
+    ) {
+    }
+
+    /**
+     * Wires the server against a project on disk.
+     *
+     * Construction lives here rather than in the constructor so the constructor
+     * stays injectable: the dispatch loop can then be exercised against a
+     * handler set a test chooses, without standing up the whole project.
+     */
+    public static function forProject(
+        TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
-        private readonly ParserService $parser = new ParserService(),
-        array $additionalHandlers = [],
-    ) {
+        ParserService $parser = new ParserService(),
+    ): self {
         if ($projectRoot === null) {
             $cwd = getcwd();
             if ($cwd === false) {
@@ -69,18 +80,18 @@ final class Server
             $projectRoot = $cwd;
         }
 
-        $this->documentManager = new DocumentManager();
+        $documentManager = new DocumentManager();
         $symbolIndex = new SymbolIndex();
-        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $symbolIndex);
+        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
         $classLocator = new ComposerClassLocator($projectRoot);
 
         $classInfoFactory = new DefaultClassInfoFactory();
-        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $this->parser);
+        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
         $functionRepository = new DefaultFunctionRepository();
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
         $symbolResolver = new SymbolResolver(
-            $this->parser,
+            $parser,
             $classRepository,
             $memberResolver,
             $typeResolver,
@@ -88,47 +99,48 @@ final class Server
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);
-        $this->lifecycleHandler = new LifecycleHandler($negotiator);
-        $this->handlers[] = $this->lifecycleHandler;
-        $this->handlers[] = new TextDocumentSyncHandler(
-            $this->documentManager,
-            $this->parser,
-            $classRepository,
-            $classInfoFactory,
-            $indexer,
-        );
-        $this->handlers[] = new DefinitionHandler(
-            $this->documentManager,
-            $symbolResolver,
-        );
-        $this->handlers[] = new HoverHandler(
-            $this->documentManager,
-            $symbolResolver,
-            $negotiator,
-        );
-        $this->handlers[] = new SignatureHelpHandler(
-            $this->documentManager,
-            $symbolResolver,
-        );
-        $this->handlers[] = new CompletionHandler(
-            $this->documentManager,
-            $symbolResolver,
-            new ClassCandidates($symbolIndex, $symbolResolver),
-            new NamespaceCandidates(
-                NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
+        $lifecycleHandler = new LifecycleHandler($negotiator);
+
+        $handlers = [
+            $lifecycleHandler,
+            new TextDocumentSyncHandler(
+                $documentManager,
+                $parser,
+                $classRepository,
+                $classInfoFactory,
+                $indexer,
+            ),
+            new DefinitionHandler(
+                $documentManager,
                 $symbolResolver,
             ),
-            new FunctionCandidates($symbolResolver, $negotiator),
-            new KeywordCandidates(),
-            new VariableCandidates($symbolResolver),
-            new MemberCandidates($symbolResolver, $negotiator),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
-        );
+            new HoverHandler(
+                $documentManager,
+                $symbolResolver,
+                $negotiator,
+            ),
+            new SignatureHelpHandler(
+                $documentManager,
+                $symbolResolver,
+            ),
+            new CompletionHandler(
+                $documentManager,
+                $symbolResolver,
+                new ClassCandidates($symbolIndex, $symbolResolver),
+                new NamespaceCandidates(
+                    NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
+                    $symbolResolver,
+                ),
+                new FunctionCandidates($symbolResolver, $negotiator),
+                new KeywordCandidates(),
+                new VariableCandidates($symbolResolver),
+                new MemberCandidates($symbolResolver, $negotiator),
+                new NamedArgumentCandidates(),
+                new BuiltinTypeCandidates(),
+            ),
+        ];
 
-        foreach ($additionalHandlers as $handler) {
-            $this->handlers[] = $handler;
-        }
+        return new self($transport, $handlers, $lifecycleHandler, $parser);
     }
 
     public function run(): int
