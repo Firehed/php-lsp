@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
@@ -25,6 +26,7 @@ final class MemberCandidates
 {
     public function __construct(
         private readonly CodeResolver $codeResolver,
+        private readonly SessionCapabilitiesProvider $capabilities,
     ) {
     }
 
@@ -59,13 +61,15 @@ final class MemberCandidates
             $filter,
         );
 
+        $snippetSupport = $this->capabilities->getSessionCapabilities()->snippetSupport;
+
         $items = [];
         foreach ($members as $member) {
             if ($context->kind === MemberAccessKind::Parent && !$member instanceof ResolvedMethod) {
                 continue;
             }
             if (PrefixMatcher::matches($member->getName()->name, $context->prefix)) {
-                $items[] = CompletionItemFactory::forResolvedMember($member);
+                $items[] = CompletionItemFactory::forResolvedMember($member, $snippetSupport);
             }
         }
 

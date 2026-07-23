@@ -111,10 +111,10 @@ final class Server
                 NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
                 $symbolResolver,
             ),
-            new FunctionCandidates($symbolResolver),
+            new FunctionCandidates($symbolResolver, $negotiator),
             new KeywordCandidates(),
             new VariableCandidates($symbolResolver),
-            new MemberCandidates($symbolResolver),
+            new MemberCandidates($symbolResolver, $negotiator),
             new NamedArgumentCandidates(),
             new BuiltinTypeCandidates(),
         );
