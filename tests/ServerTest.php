@@ -329,10 +329,27 @@ class ServerTest extends TestCase
      * down the read loop (RFC 1 §9): an editor session that dies on one failed
      * request loses all unsaved server state. The later shutdown proves the loop
      * survived, not merely that one response was written.
+     *
+     * The shape of the failure is what the cases vary, because each narrowing
+     * of the catch passes a RuntimeException-on-a-request test: catching
+     * \Exception still lets through the \Error a null member access raises deep
+     * in resolution, and rethrowing for notifications lets a failing
+     * textDocument/didChange — the highest-traffic message in a live session —
+     * take the loop down.
+     *
+     * @param class-string<\Throwable> $throwable
      */
-    public function testHandlerFailureYieldsInternalErrorAndKeepsRunning(): void
+    #[DataProvider('handlerFailures')]
+    public function testHandlerFailureDoesNotStopTheLoop(string $throwable, bool $asNotification): void
     {
-        $throwing = new class implements HandlerInterface {
+        $throwing = new class ($throwable) implements HandlerInterface {
+            /**
+             * @param class-string<\Throwable> $throwable
+             */
+            public function __construct(private string $throwable)
+            {
+            }
+
             public function supports(string $method): bool
             {
                 return $method === 'test/throw';
@@ -340,14 +357,19 @@ class ServerTest extends TestCase
 
             public function handle(Message $message): mixed
             {
-                throw new \RuntimeException('boom');
+                $class = $this->throwable;
+                throw new $class('boom');
             }
         };
+
+        $failing = $asNotification
+            ? $this->notificationJson('test/throw')
+            : $this->requestJson(7, 'test/throw');
 
         $input = $this->buildMessages(
             $this->initializeJson(100),
             $this->initializedJson(),
-            $this->requestJson(7, 'test/throw'),
+            $failing,
             $this->requestJson(8, 'shutdown'),
             $this->notificationJson('exit'),
         );
@@ -363,16 +385,39 @@ class ServerTest extends TestCase
 
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
-        self::assertSame(
-            ResponseError::internalError()->code,
-            $this->errorCode($this->responseWithId($responses, 7)),
-            'a throwing handler yields InternalError (RFC 1 §9)',
-        );
         self::assertArrayHasKey(
             'result',
             $this->responseWithId($responses, 8),
             'the loop survives the failure and still answers later requests',
         );
+
+        if ($asNotification) {
+            self::assertCount(
+                2,
+                $responses,
+                'a failing notification has no id to answer, so its failure is dropped',
+            );
+            return;
+        }
+
+        self::assertSame(
+            ResponseError::internalError()->code,
+            $this->errorCode($this->responseWithId($responses, 7)),
+            'a throwing handler yields InternalError (RFC 1 §9)',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{class-string<\Throwable>, bool}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function handlerFailures(): iterable
+    {
+        yield 'exception on a request' => [\RuntimeException::class, false];
+        yield 'error on a request' => [\TypeError::class, false];
+        yield 'exception on a notification' => [\RuntimeException::class, true];
+        yield 'error on a notification' => [\TypeError::class, true];
     }
 
     /**
