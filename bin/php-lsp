@@ -5,12 +5,17 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\WritableResourceStream;
 use Firehed\PhpLsp\Server;
 use Firehed\PhpLsp\ServerInfo;
-use Firehed\PhpLsp\Transport\StdioTransport;
+use Firehed\PhpLsp\Transport\StreamTransport;
 
 $serverInfo = new ServerInfo('php-lsp', '0.1.0');
-$transport = new StdioTransport();
+$transport = new StreamTransport(
+    new ReadableResourceStream(STDIN),
+    new WritableResourceStream(STDOUT),
+);
 $server = Server::forProject($transport, $serverInfo);
 
 exit($server->run());

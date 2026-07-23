@@ -9,17 +9,17 @@ use Amp\ByteStream\WritableBuffer;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Transport\EndOfStream;
-use Firehed\PhpLsp\Transport\StdioTransport;
+use Firehed\PhpLsp\Transport\StreamTransport;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(StdioTransport::class)]
-class StdioTransportTest extends TestCase
+#[CoversClass(StreamTransport::class)]
+class StreamTransportTest extends TestCase
 {
     public function testReadsAFramedMessageFromTheInputStream(): void
     {
         $json = '{"jsonrpc":"2.0","id":1,"method":"initialize"}';
-        $transport = new StdioTransport(
+        $transport = new StreamTransport(
             new ReadableBuffer('Content-Length: ' . strlen($json) . "\r\n\r\n" . $json),
             new WritableBuffer(),
         );
@@ -32,7 +32,7 @@ class StdioTransportTest extends TestCase
 
     public function testReportsEndOfStreamOnAClosedInput(): void
     {
-        $transport = new StdioTransport(new ReadableBuffer(''), new WritableBuffer());
+        $transport = new StreamTransport(new ReadableBuffer(''), new WritableBuffer());
 
         self::assertInstanceOf(
             EndOfStream::class,
@@ -44,7 +44,7 @@ class StdioTransportTest extends TestCase
     public function testWritesAFramedResponseToTheOutputStream(): void
     {
         $output = new WritableBuffer();
-        $transport = new StdioTransport(new ReadableBuffer(''), $output);
+        $transport = new StreamTransport(new ReadableBuffer(''), $output);
 
         $transport->write(ResponseMessage::success(1, null));
         $output->close();
@@ -60,7 +60,7 @@ class StdioTransportTest extends TestCase
     {
         $input = new ReadableBuffer('');
         $output = new WritableBuffer();
-        $transport = new StdioTransport($input, $output);
+        $transport = new StreamTransport($input, $output);
 
         $transport->close();
 

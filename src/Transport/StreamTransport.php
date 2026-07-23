@@ -4,29 +4,26 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Transport;
 
-use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\ReadableStream;
-use Amp\ByteStream\WritableResourceStream;
 use Amp\ByteStream\WritableStream;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 
-use const STDIN;
-use const STDOUT;
-
-final class StdioTransport implements TransportInterface
+/**
+ * Frames LSP messages over a stream pair, per [LSP] "Base Protocol".
+ *
+ * The streams are supplied by the caller: acquiring the process's real stdio
+ * handles cannot be exercised from a test, so it belongs in the entry point that
+ * composes the server (`bin/php-lsp`), not in here.
+ */
+final class StreamTransport implements TransportInterface
 {
     private MessageReader $reader;
     private MessageWriter $writer;
 
-    /**
-     * Defaults to the process's standard streams, which is how the server runs;
-     * both are injectable so the framing round-trip can be exercised without
-     * taking over the test runner's stdio.
-     */
     public function __construct(
-        private readonly ReadableStream $input = new ReadableResourceStream(STDIN),
-        private readonly WritableStream $output = new WritableResourceStream(STDOUT),
+        private readonly ReadableStream $input,
+        private readonly WritableStream $output,
     ) {
         $this->reader = new MessageReader($this->input);
         $this->writer = new MessageWriter($this->output);
