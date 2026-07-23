@@ -25,6 +25,11 @@ final readonly class ResponseError implements JsonSerializable
         return new self(-32600, 'Invalid Request', $data);
     }
 
+    public static function serverNotInitialized(?string $data = null): self
+    {
+        return new self(-32002, 'Server not initialized', $data);
+    }
+
     public static function methodNotFound(?string $method = null): self
     {
         $message = $method !== null
