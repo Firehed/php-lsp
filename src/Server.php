@@ -178,8 +178,8 @@ final class Server
                     //
                     // In a finally so the scope closes on every exit from the
                     // dispatch, not just the ones that return normally: a handler
-                    // that throws is fatal today, but S1.4 makes it survivable, and
-                    // a memo that outlived a message would then be standing.
+                    // that throws is caught just above and the loop keeps serving,
+                    // so a memo outliving its message would become standing.
                     $this->parser->discardScopedParses();
                 }
             }
