@@ -270,7 +270,10 @@ class ServerTest extends TestCase
 
     private function initializedJson(): string
     {
-        return '{"jsonrpc":"2.0","method":"initialized"}';
+        return json_encode([
+            'jsonrpc' => '2.0',
+            'method' => 'initialized',
+        ], JSON_THROW_ON_ERROR);
     }
 
     private function buildMessages(string ...$jsonMessages): string
