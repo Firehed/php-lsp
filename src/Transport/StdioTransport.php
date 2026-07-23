@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Transport;
 
 use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\ReadableStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\ByteStream\WritableStream;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 
@@ -16,15 +18,18 @@ final class StdioTransport implements TransportInterface
 {
     private MessageReader $reader;
     private MessageWriter $writer;
-    private ReadableResourceStream $stdin;
-    private WritableResourceStream $stdout;
 
-    public function __construct()
-    {
-        $this->stdin = new ReadableResourceStream(STDIN);
-        $this->stdout = new WritableResourceStream(STDOUT);
-        $this->reader = new MessageReader($this->stdin);
-        $this->writer = new MessageWriter($this->stdout);
+    /**
+     * Defaults to the process's standard streams, which is how the server runs;
+     * both are injectable so the framing round-trip can be exercised without
+     * taking over the test runner's stdio.
+     */
+    public function __construct(
+        private readonly ReadableStream $input = new ReadableResourceStream(STDIN),
+        private readonly WritableStream $output = new WritableResourceStream(STDOUT),
+    ) {
+        $this->reader = new MessageReader($this->input);
+        $this->writer = new MessageWriter($this->output);
     }
 
     public function read(): Message|MalformedFrame|EndOfStream
@@ -39,7 +44,7 @@ final class StdioTransport implements TransportInterface
 
     public function close(): void
     {
-        $this->stdin->close();
-        $this->stdout->close();
+        $this->input->close();
+        $this->output->close();
     }
 }
