@@ -314,6 +314,22 @@ class ServerTest extends TestCase
         );
     }
 
+    /**
+     * A client that disconnects without sending `exit` ends the stream. That is
+     * end of stream rather than a malformed frame, so the server closes down
+     * quietly and reports the same non-clean exit as an exit without shutdown.
+     */
+    public function testStreamEndingWithoutExitReturnsOne(): void
+    {
+        $input = $this->buildMessages($this->initializeJson(1), $this->initializedJson());
+        $outputBuffer = new WritableBuffer();
+
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, new ServerInfo('test', '1.0'));
+
+        self::assertSame(1, $server->run(), 'a disconnect without exit is not a clean shutdown');
+    }
+
     public function testExitWithoutShutdownReturnsOne(): void
     {
         $input = $this->buildMessages($this->notificationJson('exit'));

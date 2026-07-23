@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Transport;
 
 use Amp\ByteStream\ReadableBuffer;
+use Amp\ByteStream\ReadableIterableStream;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -16,8 +17,33 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(MessageReader::class)]
+#[CoversClass(EndOfStream::class)]
+#[CoversClass(MalformedFrame::class)]
 class MessageReaderTest extends TestCase
 {
+    /**
+     * A frame does not necessarily arrive in one read: the transport hands over
+     * whatever bytes are available, so a body can span several chunks and must
+     * be accumulated until Content-Length is satisfied.
+     */
+    public function testReadsABodyDeliveredAcrossSeveralChunks(): void
+    {
+        $json = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":1234}}';
+        $chunks = [
+            'Content-Length: ' . strlen($json) . "\r\n\r\n" . substr($json, 0, 10),
+            substr($json, 10, 30),
+            substr($json, 40),
+        ];
+
+        $reader = new MessageReader(new ReadableIterableStream($chunks));
+
+        $request = $reader->read();
+
+        self::assertInstanceOf(RequestMessage::class, $request, 'a split body still yields one message');
+        self::assertSame('initialize', $request->method);
+        self::assertSame(1, $request->id);
+    }
+
     public function testReadRequest(): void
     {
         $json = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":1234}}';
