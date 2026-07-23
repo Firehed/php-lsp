@@ -153,6 +153,27 @@ Anything that shapes an outgoing message by client support (hover markup kind, s
 support, …) queries `SessionCapabilities`. `RawInitializeCapabilitiesRule`
 (`tests/Architecture/`) fails PHPStan if any other package reads a `capabilities` key.
 
+### Transport and Lifecycle
+
+`TransportInterface::read()` reports one of three outcomes, never a nullable message:
+a `Message`, a `MalformedFrame` (carrying the `ResponseError` to answer with), or
+`EndOfStream`. RFC 1 §9 requires a frame lacking a required header to be
+distinguishable from a closed stream — one means answer and keep serving, the other
+means stop. Do not collapse these back into `?Message`.
+
+**Malformed input never terminates the process** (RFC 1 §9). `MessageReader`
+classifies an unparseable body as `ParseError` and a structurally invalid message as
+`InvalidRequest` — it does *not* rely on the `assert()`s in the message factories,
+which are disabled in production. `Server` answers a throwing handler with
+`InternalError`. A malformed frame is answered with the JSON-RPC null id, since no id
+can be recovered from it.
+
+`LifecycleHandler` owns lifecycle state and gates every inbound message through
+`lifecycleErrorFor()` (RFC 1 §4.8): requests before `initialize` get
+`ServerNotInitialized`, requests after `shutdown` get `InvalidRequest`, and `exit` is
+always honored so the server can terminate. A gated message is never dispatched; a
+gated notification has no id, so its error is dropped rather than sent.
+
 ### Guidelines for New Code
 
 - **Keep code DRY.** Be on the lookout for existing tools that will solve your problem; NEVER copy-and-paste. Extract repeated logic aggressively.
