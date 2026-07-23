@@ -27,7 +27,7 @@ final class StdioTransport implements TransportInterface
         $this->writer = new MessageWriter($this->stdout);
     }
 
-    public function read(): ?Message
+    public function read(): Message|MalformedFrame|EndOfStream
     {
         return $this->reader->read();
     }

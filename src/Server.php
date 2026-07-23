@@ -36,6 +36,8 @@ use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
+use Firehed\PhpLsp\Transport\EndOfStream;
+use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\TransportInterface;
 
 final class Server
@@ -131,7 +133,21 @@ final class Server
 
     public function run(): int
     {
-        while (($message = $this->transport->read()) !== null) {
+        while (true) {
+            $message = $this->transport->read();
+
+            if ($message instanceof EndOfStream) {
+                break;
+            }
+
+            if ($message instanceof MalformedFrame) {
+                // The id cannot be recovered from a frame that would not decode,
+                // so it is answered with the JSON-RPC null id (RFC 1 §9). The
+                // loop continues: one bad frame must not end the session.
+                $this->transport->write(ResponseMessage::error(null, $message->error));
+                continue;
+            }
+
             $result = null;
 
             // Lifecycle gate (RFC 1 §4.8): a message not permitted in the current

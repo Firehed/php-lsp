@@ -12,6 +12,8 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Server;
 use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Transport\EndOfStream;
+use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\MessageReader;
 use Firehed\PhpLsp\Transport\MessageWriter;
 use Firehed\PhpLsp\Transport\TransportInterface;
@@ -438,7 +440,7 @@ class ServerTest extends TestCase
             ) {
             }
 
-            public function read(): ?\Firehed\PhpLsp\Protocol\Message
+            public function read(): Message|MalformedFrame|EndOfStream
             {
                 return $this->reader->read();
             }
