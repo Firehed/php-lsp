@@ -6,7 +6,9 @@ namespace Firehed\PhpLsp\Tests;
 
 use Amp\ByteStream\ReadableBuffer;
 use Amp\ByteStream\WritableBuffer;
+use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Server;
 use Firehed\PhpLsp\ServerInfo;
@@ -214,6 +216,60 @@ class ServerTest extends TestCase
             3,
             $parser->getMetrics()->getParseCount(),
             'one didOpen and two completion requests, one parse each',
+        );
+    }
+
+    /**
+     * A handler failure must be answered with InternalError rather than taking
+     * down the read loop (RFC 1 §9): an editor session that dies on one failed
+     * request loses all unsaved server state. The later shutdown proves the loop
+     * survived, not merely that one response was written.
+     */
+    public function testHandlerFailureYieldsInternalErrorAndKeepsRunning(): void
+    {
+        $throwing = new class implements HandlerInterface {
+            public function supports(string $method): bool
+            {
+                return $method === 'test/throw';
+            }
+
+            public function handle(Message $message): mixed
+            {
+                throw new \RuntimeException('boom');
+            }
+        };
+
+        $input = $this->buildMessages(
+            $this->initializeJson(100),
+            $this->initializedJson(),
+            $this->requestJson(7, 'test/throw'),
+            $this->requestJson(8, 'shutdown'),
+            $this->notificationJson('exit'),
+        );
+        $outputBuffer = new WritableBuffer();
+
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server(
+            $transport,
+            new ServerInfo('test', '1.0'),
+            additionalHandlers: [$throwing],
+        );
+
+        $exitCode = $server->run();
+
+        self::assertSame(0, $exitCode, 'a handler failure does not terminate the read loop');
+
+        $responses = $this->decodeResponses($outputBuffer->buffer());
+
+        self::assertSame(
+            ResponseError::internalError()->code,
+            $this->errorCode($this->responseWithId($responses, 7)),
+            'a throwing handler yields InternalError (RFC 1 §9)',
+        );
+        self::assertArrayHasKey(
+            'result',
+            $this->responseWithId($responses, 8),
+            'the loop survives the failure and still answers later requests',
         );
     }
 
