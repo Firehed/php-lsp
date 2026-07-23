@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Document;
 
+use Firehed\PhpLsp\Protocol\PositionEncoding;
+
 final class TextDocument
 {
     /** @var list<int> Byte offsets of line starts */
@@ -14,6 +16,7 @@ final class TextDocument
         public readonly string $languageId,
         public readonly int $version,
         private readonly string $content,
+        private readonly PositionEncoding $encoding = PositionEncoding::Utf16,
     ) {
         $this->lineOffsets = $this->computeLineOffsets();
     }
@@ -25,7 +28,7 @@ final class TextDocument
 
     public function withContent(string $content, int $version): self
     {
-        return new self($this->uri, $this->languageId, $version, $content);
+        return new self($this->uri, $this->languageId, $version, $content, $this->encoding);
     }
 
     public function getLine(int $line): string
@@ -48,12 +51,11 @@ final class TextDocument
             return 0;
         }
 
-        $lineStart = $this->lineOffsets[$line];
-        $lineEnd = $line + 1 < count($this->lineOffsets)
-            ? $this->lineOffsets[$line + 1]
-            : strlen($this->content);
-
-        return min($lineStart + $character, $lineEnd);
+        // The negotiated encoding measures `character`; the interior is bytes.
+        // Converting against the line content also clamps an over-long column
+        // to the line's byte length, so no separate line-end clamp is needed.
+        return $this->lineOffsets[$line]
+            + $this->encoding->characterToByteOffset($this->getLine($line), $character);
     }
 
     /**
@@ -73,7 +75,10 @@ final class TextDocument
 
         return [
             'line' => $line,
-            'character' => $offset - $this->lineOffsets[$line],
+            'character' => $this->encoding->byteToCharacterOffset(
+                $this->getLine($line),
+                $offset - $this->lineOffsets[$line],
+            ),
         ];
     }
 

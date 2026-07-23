@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Document;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(TextDocument::class)]
@@ -82,5 +83,44 @@ class TextDocumentTest extends TestCase
         self::assertSame(['line' => 1, 'character' => 0], $doc->positionAt(6));
         // Offset 10 = line 1, char 4
         self::assertSame(['line' => 1, 'character' => 4], $doc->positionAt(10));
+    }
+
+    /**
+     * "é" is one UTF-16 code unit but two UTF-8 bytes; "😀" is two UTF-16 units
+     * (a surrogate pair) but four bytes. The interior works in byte offsets, so
+     * a UTF-16 character column must be converted, not read as a byte column
+     * (RFC 1 §4.9, issue #192). Line 1 is `$s = 'é😀';`.
+     *
+     * @param int<0, max> $character
+     * @param int<0, max> $byteOffset
+     */
+    #[DataProvider('multibyteRoundTripCases')]
+    public function testOffsetAndPositionConvertUtf16CharactersToBytes(int $character, int $byteOffset): void
+    {
+        $doc = new TextDocument('file:///test.php', 'php', 1, "<?php\n\$s = 'é😀';");
+
+        self::assertSame(
+            $byteOffset,
+            $doc->offsetAt(line: 1, character: $character),
+            'a UTF-16 column must resolve to the byte offset the AST uses, past any multibyte characters',
+        );
+        self::assertSame(
+            ['line' => 1, 'character' => $character],
+            $doc->positionAt($byteOffset),
+            'a byte offset must resolve back to the UTF-16 column the client sent',
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @return iterable<string, array{int<0, max>, int<0, max>}>
+     */
+    public static function multibyteRoundTripCases(): iterable
+    {
+        // Line 1 begins at byte 6 (after "<?php\n").
+        yield 'before the multibyte content' => [6, 12];  // the é
+        yield 'after a two-byte BMP char' => [7, 14];      // the 😀, past é
+        yield 'after a four-byte astral char' => [9, 18];  // the closing quote, past 😀
     }
 }

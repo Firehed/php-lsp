@@ -16,6 +16,7 @@ class InitializeResultTest extends TestCase
     {
         $result = new InitializeResult(
             capabilities: [
+                'positionEncoding' => 'utf-16',
                 'textDocumentSync' => [
                     'openClose' => true,
                     'change' => 1,
@@ -38,6 +39,7 @@ class InitializeResultTest extends TestCase
 
         self::assertSame([
             'capabilities' => [
+                'positionEncoding' => 'utf-16',
                 'textDocumentSync' => [
                     'openClose' => true,
                     'change' => 1,

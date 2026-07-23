@@ -149,6 +149,23 @@ encoding, plus dedicated multibyte cases. And Step 1 is not fully orthogonal to 
 4: Step 1's single internal representation has to be the one the Step 4 positional
 layer consumes, or the encoding work is silently redone — coordinate the two.
 
+**Interior consumers deferred from S1.2 to S1.5.** S1.2 fixed the conversion
+boundary (`TextDocument::offsetAt` / `positionAt`) and the negotiation, but left the
+interior sites that still slice line text by the raw wire `character` — a §4.9
+violation ("interior components MUST operate only on that representation") the corpus
+must drive out. S1.5 MUST correct these, and cover each with multibyte fixtures:
+
+- **Inbound reads** that do `substr($lineText, 0, $character)`, treating the wire
+  column as a byte length: `CompletionHandler` (text-before-cursor),
+  `SymbolResolver::resolveVariableAccessWithAst`, and
+  `TextFallbackHelper::getMemberAccessContext`. Each holds the `TextDocument`, so the
+  fix is a byte column from `offsetAt` (no encoding threading), and the repeated
+  pattern wants a shared `TextDocument` helper.
+- **Outbound completion `Range` columns** that compute `$character - strlen($prefix)`,
+  mixing a wire column with a byte length: `ClassCandidates` and `NamespaceCandidates`.
+  These need the negotiated `PositionEncoding` reachable at the completion sources, so
+  S1.5 threads it there — S1.2 deliberately kept it confined to the document boundary.
+
 ### Step P — Resolution & enumeration parity harness (gates Steps 2–4)
 
 New infrastructure that the strangler steps depend on. `TypeGraphParityTest` covers

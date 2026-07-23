@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Capability;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Protocol\MarkupKind;
+use Firehed\PhpLsp\Protocol\PositionEncoding;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -29,6 +30,11 @@ class SessionCapabilitiesTest extends TestCase
         self::assertFalse(
             $capabilities->snippetSupport,
             'snippet syntax is inserted literally by a client that cannot expand it',
+        );
+        self::assertSame(
+            PositionEncoding::Utf16,
+            $capabilities->positionEncoding,
+            'UTF-16 is the [LSP] mandatory default a client that offers no encoding must get',
         );
     }
 }
