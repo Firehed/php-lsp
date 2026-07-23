@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
+use Firehed\PhpLsp\Capability\SessionCapabilities;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -11,6 +13,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
@@ -32,6 +35,7 @@ class HoverHandlerTest extends TestCase
     private ParserService $parser;
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
+    private SymbolResolver $symbolResolver;
     private HoverHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -48,17 +52,17 @@ class HoverHandlerTest extends TestCase
         );
         $memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
-        $symbolResolver = new SymbolResolver(
+        $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $this->classRepository,
             $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
         );
-        $this->handler = new HoverHandler(
-            $this->documents,
-            $symbolResolver,
-        );
+        // The default markup kind is plaintext (the pre-initialize default a
+        // minimal client is served); the fenced-markdown path is exercised
+        // explicitly below.
+        $this->handler = $this->handlerFor(MarkupKind::PlainText);
         $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
@@ -75,6 +79,57 @@ class HoverHandlerTest extends TestCase
         self::assertFalse($this->handler->supports('textDocument/definition'));
     }
 
+    public function testHoverContentsAdvertiseTheNegotiatedMarkupKind(): void
+    {
+        $handler = $this->handlerFor(MarkupKind::Markdown);
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
+
+        $result = $handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame(
+            'markdown',
+            $result['contents']['kind'],
+            'the MarkupContent kind must reflect the client-negotiated hover format',
+        );
+    }
+
+    public function testMarkdownHoverFencesTheSignatureAsPhp(): void
+    {
+        $handler = $this->handlerFor(MarkupKind::Markdown);
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
+
+        $result = $handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertStringContainsString(
+            '```php',
+            $result['contents']['value'],
+            'a markdown client renders the signature inside a fenced PHP block',
+        );
+    }
+
+    public function testPlainTextHoverOmitsTheMarkdownFences(): void
+    {
+        $handler = $this->handlerFor(MarkupKind::PlainText);
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
+
+        $result = $handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertSame('plaintext', $result['contents']['kind'], 'the kind must degrade with the client');
+        self::assertStringNotContainsString(
+            '```',
+            $result['contents']['value'],
+            'a plaintext client would show markdown fences literally, so they must not be emitted',
+        );
+        self::assertStringContainsString(
+            'setName',
+            $result['contents']['value'],
+            'the signature itself is still present, just unfenced',
+        );
+    }
+
     public function testHoverOnClassWithDocblock(): void
     {
         $this->openFixture('src/Domain/User.php');
@@ -83,8 +138,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('User', $result['contents']);
-        self::assertStringContainsString('Represents a system user', $result['contents']);
+        self::assertStringContainsString('User', $result['contents']['value']);
+        self::assertStringContainsString('Represents a system user', $result['contents']['value']);
     }
 
     public function testHoverReturnsNullForUnknownPosition(): void
@@ -114,9 +169,9 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('signatureHelpAdd', $result['contents']);
-        self::assertStringContainsString('int', $result['contents']);
-        self::assertStringContainsString('Adds two numbers together', $result['contents']);
+        self::assertStringContainsString('signatureHelpAdd', $result['contents']['value']);
+        self::assertStringContainsString('int', $result['contents']['value']);
+        self::assertStringContainsString('Adds two numbers together', $result['contents']['value']);
     }
 
     public function testHoverOnMethod(): void
@@ -126,8 +181,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('setName', $result['contents']);
-        self::assertStringContainsString('Updates the user', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']['value']);
+        self::assertStringContainsString('Updates the user', $result['contents']['value']);
     }
 
     public function testHoverOnMethodCallInGlobalScope(): void
@@ -138,7 +193,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('getName', $result['contents']);
+        self::assertStringContainsString('getName', $result['contents']['value']);
     }
 
     public function testHoverOnProperty(): void
@@ -148,8 +203,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$manager', $result['contents']);
-        self::assertStringContainsString('User', $result['contents']);
+        self::assertStringContainsString('$manager', $result['contents']['value']);
+        self::assertStringContainsString('User', $result['contents']['value']);
     }
 
     public function testHoverOnBuiltinFunction(): void
@@ -159,7 +214,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('sort', $result['contents']);
+        self::assertStringContainsString('sort', $result['contents']['value']);
     }
 
     public function testHoverOnStaticMethod(): void
@@ -169,7 +224,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('create', $result['contents']);
+        self::assertStringContainsString('create', $result['contents']['value']);
     }
 
     public function testHoverOnTypedVariableMethodCall(): void
@@ -180,8 +235,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('setName', $result['contents']);
-        self::assertStringContainsString('Updates the user', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']['value']);
+        self::assertStringContainsString('Updates the user', $result['contents']['value']);
     }
 
     public function testHoverOnAssignedVariableMethodCall(): void
@@ -192,8 +247,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('setName', $result['contents']);
-        self::assertStringContainsString('Updates the user', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']['value']);
+        self::assertStringContainsString('Updates the user', $result['contents']['value']);
     }
 
     public function testHoverOnInheritedMethod(): void
@@ -205,8 +260,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('parentMethod', $result['contents']);
-        self::assertStringContainsString('Parent method documentation', $result['contents']);
+        self::assertStringContainsString('parentMethod', $result['contents']['value']);
+        self::assertStringContainsString('Parent method documentation', $result['contents']['value']);
     }
 
     public function testHoverOnInheritedProperty(): void
@@ -218,8 +273,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$parentProperty', $result['contents']);
-        self::assertStringContainsString('Parent property', $result['contents']);
+        self::assertStringContainsString('$parentProperty', $result['contents']['value']);
+        self::assertStringContainsString('Parent property', $result['contents']['value']);
     }
 
     public function testHoverOnMultiLevelInheritedMethod(): void
@@ -231,8 +286,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('grandparentMethod', $result['contents']);
-        self::assertStringContainsString('Grandparent method documentation', $result['contents']);
+        self::assertStringContainsString('grandparentMethod', $result['contents']['value']);
+        self::assertStringContainsString('Grandparent method documentation', $result['contents']['value']);
     }
 
     public function testHoverOnMultiLevelInheritedProperty(): void
@@ -244,8 +299,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$grandparentProperty', $result['contents']);
-        self::assertStringContainsString('Grandparent property', $result['contents']);
+        self::assertStringContainsString('$grandparentProperty', $result['contents']['value']);
+        self::assertStringContainsString('Grandparent property', $result['contents']['value']);
     }
 
     public function testHoverOnTraitMethod(): void
@@ -256,7 +311,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('markCreated', $result['contents']);
+        self::assertStringContainsString('markCreated', $result['contents']['value']);
     }
 
     public function testHoverOnTraitProperty(): void
@@ -266,8 +321,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$displayName', $result['contents']);
-        self::assertStringContainsString('Display name for the entity', $result['contents']);
+        self::assertStringContainsString('$displayName', $result['contents']['value']);
+        self::assertStringContainsString('Display name for the entity', $result['contents']['value']);
     }
 
     public function testHoverOnInterfaceMethod(): void
@@ -277,8 +332,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('getName', $result['contents']);
-        self::assertStringContainsString("Gets the person's name", $result['contents']);
+        self::assertStringContainsString('getName', $result['contents']['value']);
+        self::assertStringContainsString("Gets the person's name", $result['contents']['value']);
     }
 
     public function testHoverOnInheritedMethodAcrossNamespaces(): void
@@ -291,8 +346,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('baseMethod', $result['contents']);
-        self::assertStringContainsString('Method from Base namespace', $result['contents']);
+        self::assertStringContainsString('baseMethod', $result['contents']['value']);
+        self::assertStringContainsString('Method from Base namespace', $result['contents']['value']);
     }
 
     public function testHoverOnPrivateInheritedMethodReturnsNull(): void
@@ -326,9 +381,9 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('overriddenMethod', $result['contents']);
-        self::assertStringContainsString('Child implementation', $result['contents']);
-        self::assertStringNotContainsString('Parent implementation', $result['contents']);
+        self::assertStringContainsString('overriddenMethod', $result['contents']['value']);
+        self::assertStringContainsString('Child implementation', $result['contents']['value']);
+        self::assertStringNotContainsString('Parent implementation', $result['contents']['value']);
     }
 
     public function testHoverOnOverriddenPropertyShowsChildVersion(): void
@@ -340,9 +395,9 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$sharedProperty', $result['contents']);
-        self::assertStringContainsString('Child override', $result['contents']);
-        self::assertStringNotContainsString('Shared property from parent', $result['contents']);
+        self::assertStringContainsString('$sharedProperty', $result['contents']['value']);
+        self::assertStringContainsString('Child override', $result['contents']['value']);
+        self::assertStringNotContainsString('Shared property from parent', $result['contents']['value']);
     }
 
     public function testHoverOnStaticProperty(): void
@@ -353,9 +408,9 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$staticProperty', $result['contents']);
-        self::assertStringContainsString('static', $result['contents']);
-        self::assertStringContainsString('Static property documentation', $result['contents']);
+        self::assertStringContainsString('$staticProperty', $result['contents']['value']);
+        self::assertStringContainsString('static', $result['contents']['value']);
+        self::assertStringContainsString('Static property documentation', $result['contents']['value']);
     }
 
     public function testHoverOnBuiltinClassMethod(): void
@@ -365,7 +420,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('getArrayCopy', $result['contents']);
+        self::assertStringContainsString('getArrayCopy', $result['contents']['value']);
     }
 
     public function testHoverOnBuiltinClassProperty(): void
@@ -375,7 +430,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$message', $result['contents']);
+        self::assertStringContainsString('$message', $result['contents']['value']);
     }
 
     public function testHoverOnMethodWithVariadicParameter(): void
@@ -385,7 +440,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('...$items', $result['contents']);
+        self::assertStringContainsString('...$items', $result['contents']['value']);
     }
 
     public function testHoverOnMethodWithOptionalParameter(): void
@@ -395,8 +450,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$count = 0', $result['contents']);
-        self::assertStringNotContainsString('$name = ...', $result['contents']);
+        self::assertStringContainsString('$count = 0', $result['contents']['value']);
+        self::assertStringNotContainsString('$name = ...', $result['contents']['value']);
     }
 
     public function testHoverOnNullsafeMethodCall(): void
@@ -406,8 +461,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('setName', $result['contents']);
-        self::assertStringContainsString('Updates the user', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']['value']);
+        self::assertStringContainsString('Updates the user', $result['contents']['value']);
     }
 
     public function testHoverOnNullsafePropertyFetch(): void
@@ -417,8 +472,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$manager', $result['contents']);
-        self::assertStringContainsString('User', $result['contents']);
+        self::assertStringContainsString('$manager', $result['contents']['value']);
+        self::assertStringContainsString('User', $result['contents']['value']);
     }
 
     public function testHoverOnNullsafeTypedVariableMethodCall(): void
@@ -429,8 +484,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('setName', $result['contents']);
-        self::assertStringContainsString('Updates the user', $result['contents']);
+        self::assertStringContainsString('setName', $result['contents']['value']);
+        self::assertStringContainsString('Updates the user', $result['contents']['value']);
     }
 
     public function testHoverOnMultilineChainMethod(): void
@@ -441,8 +496,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('withName', $result['contents']);
-        self::assertStringContainsString('Sets the name fluently', $result['contents']);
+        self::assertStringContainsString('withName', $result['contents']['value']);
+        self::assertStringContainsString('Sets the name fluently', $result['contents']['value']);
     }
 
     public function testHoverOnMultilineChainProperty(): void
@@ -453,8 +508,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$team', $result['contents']);
-        self::assertStringContainsString('Team', $result['contents']);
+        self::assertStringContainsString('$team', $result['contents']['value']);
+        self::assertStringContainsString('Team', $result['contents']['value']);
     }
 
     public function testHoverOnMultilineChainCrossType(): void
@@ -465,8 +520,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('getLeader', $result['contents']);
-        self::assertStringContainsString('Gets the team leader', $result['contents']);
+        self::assertStringContainsString('getLeader', $result['contents']['value']);
+        self::assertStringContainsString('Gets the team leader', $result['contents']['value']);
     }
 
     public function testHoverOnMultilineChainBackToUser(): void
@@ -477,8 +532,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$manager', $result['contents']);
-        self::assertStringContainsString('User', $result['contents']);
+        self::assertStringContainsString('$manager', $result['contents']['value']);
+        self::assertStringContainsString('User', $result['contents']['value']);
     }
 
     public function testHoverOnMultilineChainNullsafe(): void
@@ -489,8 +544,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('withAge', $result['contents']);
-        self::assertStringContainsString('Sets the age fluently', $result['contents']);
+        self::assertStringContainsString('withAge', $result['contents']['value']);
+        self::assertStringContainsString('Sets the age fluently', $result['contents']['value']);
     }
 
     public function testHoverOnSelfStaticMethod(): void
@@ -502,8 +557,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('staticMethod', $result['contents']);
-        self::assertStringContainsString('Static method documentation', $result['contents']);
+        self::assertStringContainsString('staticMethod', $result['contents']['value']);
+        self::assertStringContainsString('Static method documentation', $result['contents']['value']);
     }
 
     public function testHoverOnStaticStaticMethod(): void
@@ -515,8 +570,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('staticMethod', $result['contents']);
-        self::assertStringContainsString('Static method documentation', $result['contents']);
+        self::assertStringContainsString('staticMethod', $result['contents']['value']);
+        self::assertStringContainsString('Static method documentation', $result['contents']['value']);
     }
 
     public function testHoverOnParentMethod(): void
@@ -528,8 +583,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('parentMethod', $result['contents']);
-        self::assertStringContainsString('Parent method documentation', $result['contents']);
+        self::assertStringContainsString('parentMethod', $result['contents']['value']);
+        self::assertStringContainsString('Parent method documentation', $result['contents']['value']);
     }
 
     public function testHoverOnSelfStaticProperty(): void
@@ -541,8 +596,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$staticProperty', $result['contents']);
-        self::assertStringContainsString('Static property documentation', $result['contents']);
+        self::assertStringContainsString('$staticProperty', $result['contents']['value']);
+        self::assertStringContainsString('Static property documentation', $result['contents']['value']);
     }
 
     public function testHoverOnStaticStaticProperty(): void
@@ -554,8 +609,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$staticProperty', $result['contents']);
-        self::assertStringContainsString('Static property documentation', $result['contents']);
+        self::assertStringContainsString('$staticProperty', $result['contents']['value']);
+        self::assertStringContainsString('Static property documentation', $result['contents']['value']);
     }
 
     public function testHoverOnParentStaticProperty(): void
@@ -567,8 +622,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$staticProperty', $result['contents']);
-        self::assertStringContainsString('Static property documentation', $result['contents']);
+        self::assertStringContainsString('$staticProperty', $result['contents']['value']);
+        self::assertStringContainsString('Static property documentation', $result['contents']['value']);
     }
 
     public function testHoverOnSelfMethodOutsideClassReturnsNull(): void
@@ -617,7 +672,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('PARENT_CONST', $result['contents']);
+        self::assertStringContainsString('PARENT_CONST', $result['contents']['value']);
     }
 
     /**
@@ -630,8 +685,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$typed', $result['contents']);
-        self::assertStringContainsString('User', $result['contents']);
+        self::assertStringContainsString('$typed', $result['contents']['value']);
+        self::assertStringContainsString('User', $result['contents']['value']);
     }
 
     /**
@@ -644,9 +699,9 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$id', $result['contents']);
-        self::assertStringContainsString('string', $result['contents']);
-        self::assertStringContainsString('readonly', $result['contents']);
+        self::assertStringContainsString('$id', $result['contents']['value']);
+        self::assertStringContainsString('string', $result['contents']['value']);
+        self::assertStringContainsString('readonly', $result['contents']['value']);
     }
 
     /**
@@ -660,8 +715,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result);
-        self::assertStringContainsString('$createdAt', $result['contents']);
-        self::assertStringContainsString('DateTimeImmutable', $result['contents']);
+        self::assertStringContainsString('$createdAt', $result['contents']['value']);
+        self::assertStringContainsString('DateTimeImmutable', $result['contents']['value']);
     }
 
     // =========================================================================
@@ -678,8 +733,8 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result, 'Hover should work on property in if condition');
-        self::assertStringContainsString('$name', $result['contents']);
-        self::assertStringContainsString('string', $result['contents']);
+        self::assertStringContainsString('$name', $result['contents']['value']);
+        self::assertStringContainsString('string', $result['contents']['value']);
     }
 
     public function testHoverOnMethodInWhileCondition(): void
@@ -692,7 +747,7 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result, 'Hover should work on method in while condition');
-        self::assertStringContainsString('getName', $result['contents']);
+        self::assertStringContainsString('getName', $result['contents']['value']);
     }
 
     public function testHoverOnAttributeClass(): void
@@ -703,7 +758,16 @@ class HoverHandlerTest extends TestCase
         $result = $this->handler->handle($this->hoverRequestAt($cursor));
 
         self::assertIsArray($result, 'Hover should resolve the class in a #[Attribute] usage');
-        self::assertStringContainsString('Route', $result['contents']);
-        self::assertStringContainsString('Defines a route', $result['contents']);
+        self::assertStringContainsString('Route', $result['contents']['value']);
+        self::assertStringContainsString('Defines a route', $result['contents']['value']);
+    }
+
+    private function handlerFor(MarkupKind $hoverMarkupKind): HoverHandler
+    {
+        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities->method('getSessionCapabilities')
+            ->willReturn(new SessionCapabilities(hoverMarkupKind: $hoverMarkupKind));
+
+        return new HoverHandler($this->documents, $this->symbolResolver, $capabilities);
     }
 }

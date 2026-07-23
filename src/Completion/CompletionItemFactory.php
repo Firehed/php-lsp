@@ -28,6 +28,8 @@ use Firehed\PhpLsp\Utility\NamespacePath;
  *   documentation?: string,
  *   filterText?: string,
  *   sortText?: string,
+ *   insertText?: string,
+ *   insertTextFormat?: int,
  *   textEdit?: array{range: LspRange, newText: string},
  * }
  */
@@ -36,7 +38,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forResolvedMember(ResolvedMember $member): array
+    public static function forResolvedMember(ResolvedMember $member, bool $snippetSupport = false): array
     {
         $kind = match (true) {
             $member instanceof ResolvedMethod => CompletionItemKind::Method,
@@ -59,30 +61,36 @@ final class CompletionItemFactory
             $item['documentation'] = $doc;
         }
 
+        if ($member instanceof ResolvedMethod) {
+            $item = self::withCallableSnippet($item, $snippetSupport);
+        }
+
         return $item;
     }
 
     /**
      * @return CompletionItem
      */
-    public static function forFunction(FunctionInfo $function): array
+    public static function forFunction(FunctionInfo $function, bool $snippetSupport = false): array
     {
-        return self::withDocumentation([
+        $item = self::withDocumentation([
             'label' => $function->name,
             'kind' => CompletionItemKind::Function->value,
             'detail' => $function->format(),
         ], $function->docblock);
+
+        return self::withCallableSnippet($item, $snippetSupport);
     }
 
     /**
      * @return CompletionItem
      */
-    public static function forBuiltinFunction(string $name): array
+    public static function forBuiltinFunction(string $name, bool $snippetSupport = false): array
     {
-        return [
+        return self::withCallableSnippet([
             'label' => $name,
             'kind' => CompletionItemKind::Function->value,
-        ];
+        ], $snippetSupport);
     }
 
     /**
@@ -200,6 +208,28 @@ final class CompletionItemFactory
             'kind' => CompletionItemKind::Constant->value,
             'detail' => 'string (fully qualified class name)',
         ];
+    }
+
+    /**
+     * Insert `name($0)` for a callable so the parentheses are typed for the user
+     * and the cursor lands between them. Emitted only when the client declared
+     * snippet support (RFC 1 §4.8); otherwise the item inserts its bare label, as
+     * a plaintext client would show `$0` literally. The label is an identifier, so
+     * it needs no snippet escaping.
+     *
+     * @param CompletionItem $item
+     * @return CompletionItem
+     */
+    private static function withCallableSnippet(array $item, bool $snippetSupport): array
+    {
+        if (!$snippetSupport) {
+            return $item;
+        }
+
+        $item['insertText'] = $item['label'] . '($0)';
+        $item['insertTextFormat'] = InsertTextFormat::Snippet->value;
+
+        return $item;
     }
 
     /**

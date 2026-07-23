@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
@@ -18,6 +19,7 @@ final class FunctionCandidates
 {
     public function __construct(
         private readonly CodeResolver $codeResolver,
+        private readonly SessionCapabilitiesProvider $capabilities,
     ) {
     }
 
@@ -26,17 +28,19 @@ final class FunctionCandidates
      */
     public function find(string $prefix, TextDocument $document): array
     {
+        $snippetSupport = $this->capabilities->getSessionCapabilities()->snippetSupport;
+
         $items = [];
 
         foreach ($this->codeResolver->getFileFunctions($document) as $function) {
             if (PrefixMatcher::matches($function->name, $prefix)) {
-                $items[] = CompletionItemFactory::forFunction($function);
+                $items[] = CompletionItemFactory::forFunction($function, $snippetSupport);
             }
         }
 
         foreach (get_defined_functions()['internal'] as $name) {
             if (PrefixMatcher::matches($name, $prefix)) {
-                $items[] = CompletionItemFactory::forBuiltinFunction($name);
+                $items[] = CompletionItemFactory::forBuiltinFunction($name, $snippetSupport);
             }
         }
 

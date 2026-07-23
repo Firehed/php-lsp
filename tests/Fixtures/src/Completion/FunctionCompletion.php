@@ -29,4 +29,9 @@ class FunctionCompletionTriggers
         $config = getConfig();
         $config->/*|function_return_chain*/
     }
+
+    public function triggerUserFunction(): void
+    {
+        $y = calc/*|user_function*/
+    }
 }
