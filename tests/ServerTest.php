@@ -57,7 +57,13 @@ class ServerTest extends TestCase
         $shutdownJson = '{"jsonrpc":"2.0","id":2,"method":"shutdown"}';
         $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
 
-        $input = $this->buildMessages($unknownJson, $shutdownJson, $exitJson);
+        $input = $this->buildMessages(
+            $this->initializeJson(100),
+            $this->initializedJson(),
+            $unknownJson,
+            $shutdownJson,
+            $exitJson,
+        );
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
@@ -70,6 +76,60 @@ class ServerTest extends TestCase
         // Should contain method not found error
         self::assertStringContainsString('"error"', $output);
         self::assertStringContainsString((string) ResponseError::methodNotFound()->code, $output);
+    }
+
+    public function testRequestBeforeInitializeIsRejected(): void
+    {
+        $hoverJson = '{"jsonrpc":"2.0","id":5,"method":"textDocument/hover","params":{}}';
+        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
+
+        $input = $this->buildMessages($hoverJson, $exitJson);
+        $outputBuffer = new WritableBuffer();
+
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, new ServerInfo('test', '1.0'));
+
+        $server->run();
+
+        $output = $outputBuffer->buffer();
+
+        self::assertStringContainsString('"id":5', $output, 'the rejected request must still be answered');
+        self::assertStringContainsString(
+            (string) ResponseError::serverNotInitialized()->code,
+            $output,
+            'a request before initialize gets ServerNotInitialized (RFC 1 §4.8)',
+        );
+    }
+
+    public function testRequestAfterShutdownIsRejected(): void
+    {
+        $shutdownJson = '{"jsonrpc":"2.0","id":2,"method":"shutdown"}';
+        $hoverJson = '{"jsonrpc":"2.0","id":5,"method":"textDocument/hover","params":{}}';
+        $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
+
+        $input = $this->buildMessages(
+            $this->initializeJson(100),
+            $this->initializedJson(),
+            $shutdownJson,
+            $hoverJson,
+            $exitJson,
+        );
+        $outputBuffer = new WritableBuffer();
+
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, new ServerInfo('test', '1.0'));
+
+        $exitCode = $server->run();
+
+        $output = $outputBuffer->buffer();
+
+        self::assertSame(0, $exitCode, 'a clean shutdown then exit still exits with 0');
+        self::assertStringContainsString('"id":5', $output, 'the rejected request must still be answered');
+        self::assertStringContainsString(
+            (string) ResponseError::invalidRequest()->code,
+            $output,
+            'a request after shutdown gets InvalidRequest (RFC 1 §4.8)',
+        );
     }
 
     /**
@@ -103,7 +163,14 @@ class ServerTest extends TestCase
         ], JSON_THROW_ON_ERROR);
         $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
 
-        $input = $this->buildMessages($didOpenJson, $didChangeJson, $didChangeJson, $exitJson);
+        $input = $this->buildMessages(
+            $this->initializeJson(),
+            $this->initializedJson(),
+            $didOpenJson,
+            $didChangeJson,
+            $didChangeJson,
+            $exitJson,
+        );
         $outputBuffer = new WritableBuffer();
 
         $parser = new ParserService();
@@ -153,7 +220,14 @@ class ServerTest extends TestCase
         ], JSON_THROW_ON_ERROR);
         $exitJson = '{"jsonrpc":"2.0","method":"exit"}';
 
-        $input = $this->buildMessages($didOpenJson, $completionJson, $completionJson, $exitJson);
+        $input = $this->buildMessages(
+            $this->initializeJson(),
+            $this->initializedJson(),
+            $didOpenJson,
+            $completionJson,
+            $completionJson,
+            $exitJson,
+        );
         $outputBuffer = new WritableBuffer();
 
         $parser = new ParserService();
@@ -182,6 +256,21 @@ class ServerTest extends TestCase
         $exitCode = $server->run();
 
         self::assertSame(1, $exitCode);
+    }
+
+    private function initializeJson(int $id = 1): string
+    {
+        return json_encode([
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'method' => 'initialize',
+            'params' => ['processId' => 1234, 'capabilities' => []],
+        ], JSON_THROW_ON_ERROR);
+    }
+
+    private function initializedJson(): string
+    {
+        return '{"jsonrpc":"2.0","method":"initialized"}';
     }
 
     private function buildMessages(string ...$jsonMessages): string
