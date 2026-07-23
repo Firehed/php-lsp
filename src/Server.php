@@ -46,11 +46,16 @@ final class Server
     /** @var list<HandlerInterface> */
     private array $handlers = [];
 
+    /**
+     * @param list<HandlerInterface> $additionalHandlers Registered after the
+     *        built-in handlers, so they answer only methods none of those claim.
+     */
     public function __construct(
         private TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
         private readonly ParserService $parser = new ParserService(),
+        array $additionalHandlers = [],
     ) {
         if ($projectRoot === null) {
             $cwd = getcwd();
@@ -118,6 +123,10 @@ final class Server
             new NamedArgumentCandidates(),
             new BuiltinTypeCandidates(),
         );
+
+        foreach ($additionalHandlers as $handler) {
+            $this->handlers[] = $handler;
+        }
     }
 
     public function run(): int
@@ -139,6 +148,12 @@ final class Server
                     } elseif ($message instanceof RequestMessage) {
                         $error = ResponseError::methodNotFound($message->method);
                     }
+                } catch (\Throwable $e) {
+                    // A failing handler must not take the read loop down with it
+                    // (RFC 1 §9): an editor session that dies on one bad request
+                    // loses all unsaved server state. Notifications have no id to
+                    // answer, so their failure is contained and dropped.
+                    $error = ResponseError::internalError($e->getMessage());
                 } finally {
                     // The parse memo is scoped to one handled message — this loop
                     // is the only boundary that knows where that ends. Discarding
