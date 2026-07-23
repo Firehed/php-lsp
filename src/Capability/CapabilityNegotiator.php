@@ -17,7 +17,7 @@ use Firehed\PhpLsp\ServerInfo;
  *
  * @phpstan-import-type ServerCapabilities from InitializeResult
  */
-final class CapabilityNegotiator
+final class CapabilityNegotiator implements SessionCapabilitiesProvider
 {
     /**
      * The encodings the server can convert at the document boundary, in the
