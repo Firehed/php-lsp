@@ -73,11 +73,13 @@ final class CompletionItemFactory
      */
     public static function forFunction(FunctionInfo $function, bool $snippetSupport = false): array
     {
-        return self::withCallableSnippet(self::withDocumentation([
+        $item = self::withDocumentation([
             'label' => $function->name,
             'kind' => CompletionItemKind::Function->value,
             'detail' => $function->format(),
-        ], $function->docblock), $snippetSupport);
+        ], $function->docblock);
+
+        return self::withCallableSnippet($item, $snippetSupport);
     }
 
     /**
