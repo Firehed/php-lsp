@@ -80,7 +80,8 @@ final class Server
             $functionRepository,
         );
 
-        $this->lifecycleHandler = new LifecycleHandler(new CapabilityNegotiator($serverInfo));
+        $negotiator = new CapabilityNegotiator($serverInfo);
+        $this->lifecycleHandler = new LifecycleHandler($negotiator);
         $this->handlers[] = $this->lifecycleHandler;
         $this->handlers[] = new TextDocumentSyncHandler(
             $this->documentManager,
@@ -96,6 +97,7 @@ final class Server
         $this->handlers[] = new HoverHandler(
             $this->documentManager,
             $symbolResolver,
+            $negotiator,
         );
         $this->handlers[] = new SignatureHelpHandler(
             $this->documentManager,
