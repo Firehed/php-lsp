@@ -74,10 +74,18 @@ final class LifecycleHandler implements HandlerInterface
         return $this->exitCode;
     }
 
+    /**
+     * The gate opens only once negotiation has produced a result. A negotiation
+     * that failed would be answered with InternalError, so the client never
+     * receives an InitializeResult and by LSP "Server lifecycle" is still
+     * pre-initialize; the flag must not claim otherwise.
+     */
     private function handleInitialize(Message $message): InitializeResult
     {
+        $result = $this->negotiator->negotiate($message);
         $this->initialized = true;
-        return $this->negotiator->negotiate($message);
+
+        return $result;
     }
 
     private function handleShutdown(): null
