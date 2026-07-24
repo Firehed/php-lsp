@@ -1,0 +1,212 @@
+{
+    "Fixtures": {
+        "childNamespaces": [
+            "Fixtures\\Attributes",
+            "Fixtures\\Catalog",
+            "Fixtures\\Completion",
+            "Fixtures\\Definition",
+            "Fixtures\\Domain",
+            "Fixtures\\Encoding",
+            "Fixtures\\Enum",
+            "Fixtures\\Exception",
+            "Fixtures\\Hierarchy",
+            "Fixtures\\Hover",
+            "Fixtures\\IncompleteCode",
+            "Fixtures\\Inheritance",
+            "Fixtures\\Legacy",
+            "Fixtures\\Mixed",
+            "Fixtures\\Model",
+            "Fixtures\\Repository",
+            "Fixtures\\Service",
+            "Fixtures\\Services",
+            "Fixtures\\Traits",
+            "Fixtures\\TypeInference",
+            "Fixtures\\Utility",
+            "Fixtures\\tests"
+        ],
+        "symbols": []
+    },
+    "Fixtures\\Domain": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Domain\\Describable",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Domain\\Entity",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Domain\\Person",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Domain\\Team",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Domain\\User",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\Enum": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Enum\\Color",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Enum\\Priority",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Enum\\SerializableStatus",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Enum\\Status",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\Model": {
+        "childNamespaces": [
+            "Fixtures\\Model\\Env"
+        ],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Model\\Env",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\Model\\Env": {
+        "childNamespaces": [
+            "Fixtures\\Model\\Env\\Sub"
+        ],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Model\\Env\\Handler",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Model\\Env\\Repository",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\TypeInference": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\TypeInference\\AnonymousClass",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\BuiltinTypes",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\FunctionTypes",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\IntersectionReturn",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\MultiNamespaceBracketed",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\MultiNamespaceFunction",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\NewKeywords",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\ParentInTrait",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\ParentWithoutExtends",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\StaticCallOutsideClass",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\TraitStaticReturn",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\TypeInference\\UseFunctionImport",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Psr": {
+        "childNamespaces": [
+            "Psr\\Http"
+        ],
+        "symbols": []
+    },
+    "Psr\\Http": {
+        "childNamespaces": [
+            "Psr\\Http\\Message"
+        ],
+        "symbols": []
+    },
+    "Psr\\Http\\Message": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Psr\\Http\\Message\\MessageInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\RequestInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\ResponseInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\ServerRequestInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\StreamInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\UploadedFileInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\UriInterface",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Psr0": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Psr0\\Psr0Fixture",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\ThisNamespaceIsEmpty": {
+        "childNamespaces": [],
+        "symbols": []
+    }
+}
