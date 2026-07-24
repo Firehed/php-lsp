@@ -499,6 +499,7 @@ class MessageReaderTest extends TestCase
         yield 'integer id' => ['{"jsonrpc":"2.0","id":7,"method":"x","params":"nope"}', 7];
         yield 'string id' => ['{"jsonrpc":"2.0","id":"abc","method":"x","params":"nope"}', 'abc'];
         yield 'id present, method unusable' => ['{"jsonrpc":"2.0","id":9,"method":42}', 9];
+        yield 'id present, wrong version' => ['{"jsonrpc":"1.0","id":4,"method":"x"}', 4];
         yield 'id undetectable' => ['{"jsonrpc":"2.0","id":true,"method":"x"}', null];
         yield 'no id at all' => ['{"jsonrpc":"2.0","method":42}', null];
         yield 'unparseable body' => ['not json', null];
