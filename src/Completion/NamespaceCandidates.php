@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
@@ -36,6 +37,7 @@ final class NamespaceCandidates
     public function __construct(
         private readonly NamespaceCatalog $catalog,
         private readonly CodeResolver $codeResolver,
+        private readonly SessionCapabilitiesProvider $capabilities,
     ) {
     }
 
@@ -119,7 +121,7 @@ final class NamespaceCandidates
     ): array {
         $contents = $this->catalog->childrenOf($namespace);
         // The partial segment the user is typing; a selection replaces just it.
-        $replaceRange = Range::onLine($line, $character - strlen($prefix), $character);
+        $replaceRange = $this->replaceRange($line, $character, $prefix);
 
         $items = [];
         foreach ($contents->childNamespaces as $child) {
@@ -162,7 +164,7 @@ final class NamespaceCandidates
         int $character,
         ClassCandidateFilter $filter,
     ): array {
-        $range = Range::onLine($line, $character - strlen($prefix), $character);
+        $range = $this->replaceRange($line, $character, $prefix);
 
         $targets = [];
         foreach ($this->catalog->childrenOf($context->namespace)->childNamespaces as $child) {
@@ -203,6 +205,21 @@ final class NamespaceCandidates
             $line,
             $character,
             $filter,
+        );
+    }
+
+    /**
+     * The span a selected candidate replaces: the partial segment the user has
+     * typed, measured in the negotiated encoding so a multibyte segment is not
+     * mis-sized against the wire column (RFC 1 §4.9).
+     */
+    private function replaceRange(int $line, int $character, string $prefix): Range
+    {
+        return Range::forPrefix(
+            $line,
+            $character,
+            $prefix,
+            $this->capabilities->getSessionCapabilities()->positionEncoding,
         );
     }
 

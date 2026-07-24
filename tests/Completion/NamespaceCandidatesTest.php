@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
+use Firehed\PhpLsp\Capability\SessionCapabilities;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
@@ -70,11 +72,23 @@ class NamespaceCandidatesTest extends TestCase
         return $resolver;
     }
 
+    /**
+     * A capabilities provider resolved to the default UTF-16 encoding, so the
+     * replace-range columns these tests assert are wire columns.
+     */
+    private static function utf16Capabilities(): SessionCapabilitiesProvider
+    {
+        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
+        return $capabilities;
+    }
+
     public function testOffersChildNamespacesAsModuleNodes(): void
     {
         $candidates = new NamespaceCandidates(
             self::catalog(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
             self::createStub(CodeResolver::class),
+            self::utf16Capabilities(),
         );
 
         $items = $candidates->find('Psr', '', 0, 0, ClassCandidateFilter::Any);
@@ -100,6 +114,7 @@ class NamespaceCandidatesTest extends TestCase
         $candidates = new NamespaceCandidates(
             self::catalog(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
             self::createStub(CodeResolver::class),
+            self::utf16Capabilities(),
         );
 
         $items = $candidates->find('Psr', 'Ht', 0, 2, ClassCandidateFilter::Any);
@@ -119,6 +134,7 @@ class NamespaceCandidatesTest extends TestCase
         $candidates = new NamespaceCandidates(
             self::catalog(['Psr' => new NamespaceContents(['Psr\Http'], [])]),
             self::createStub(CodeResolver::class),
+            self::utf16Capabilities(),
         );
 
         $items = $candidates->find('Psr', 'Ht', 0, 2, ClassCandidateFilter::Any);
@@ -134,6 +150,25 @@ class NamespaceCandidatesTest extends TestCase
         );
     }
 
+    public function testReplaceRangeMeasuresAMultibyteSegmentInCodeUnits(): void
+    {
+        $catalog = self::catalog(['App' => new NamespaceContents([], [
+            new CatalogSymbol('App\Café', NameKind::ClassLike),
+        ])]);
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+
+        // "Café" is four codepoints — four UTF-16 units — but five UTF-8 bytes; the
+        // cursor sits at wire column 4 after typing it at the start of the line.
+        $items = $candidates->find('App', 'Café', 0, 4, ClassCandidateFilter::Any);
+
+        self::assertCount(1, $items);
+        self::assertSame(
+            ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 4]],
+            $items[0]['textEdit']['range'] ?? null,
+            'The replace range sizes the typed segment in code units, not bytes (RFC 1 §4.9)',
+        );
+    }
+
     public function testOffersClassLikesButNotOtherKinds(): void
     {
         $catalog = self::catalog(['App' => new NamespaceContents([], [
@@ -141,7 +176,7 @@ class NamespaceCandidatesTest extends TestCase
             new CatalogSymbol('App\helper', NameKind::Function_),
         ])]);
         // Any accepts every class-like, so only the kind gate is exercised here.
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -155,7 +190,7 @@ class NamespaceCandidatesTest extends TestCase
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\Gadget', NameKind::ClassLike),
         ])]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', 'Wi', 0, 2, ClassCandidateFilter::Any), 'label');
 
@@ -170,7 +205,7 @@ class NamespaceCandidatesTest extends TestCase
         // isClassLike is true (a real class-like) but isInstantiable is false,
         // standing in for an interface after `new`: the position filter rejects
         // it, via the same predicate the index and imports use.
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         self::assertSame(
             [],
@@ -189,7 +224,7 @@ class NamespaceCandidatesTest extends TestCase
         ])]);
         $resolver = self::createStub(CodeResolver::class);
         $resolver->method('isClassLike')->willReturn(false);
-        $candidates = new NamespaceCandidates($catalog, $resolver);
+        $candidates = new NamespaceCandidates($catalog, $resolver, self::utf16Capabilities());
 
         self::assertSame(
             [],
@@ -207,7 +242,7 @@ class NamespaceCandidatesTest extends TestCase
             'App' => new NamespaceContents(['App\Env'], [new CatalogSymbol('App\Env', NameKind::ClassLike)]),
             'App\Env' => new NamespaceContents([], [new CatalogSymbol('App\Env\Repository', NameKind::ClassLike)]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -225,7 +260,7 @@ class NamespaceCandidatesTest extends TestCase
             'App' => new NamespaceContents(['App\Env'], []),
             'App\Env' => new NamespaceContents([], [new CatalogSymbol('App\Env\Repository', NameKind::ClassLike)]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $byLabel = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'filterText', 'label');
 
@@ -251,7 +286,7 @@ class NamespaceCandidatesTest extends TestCase
         $resolver->method('isClassLike')->willReturnCallback(
             static fn(ClassName $name): bool => str_ends_with($name->fqn, 'Repository'),
         );
-        $candidates = new NamespaceCandidates($catalog, $resolver);
+        $candidates = new NamespaceCandidates($catalog, $resolver, self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -270,7 +305,7 @@ class NamespaceCandidatesTest extends TestCase
             'App' => new NamespaceContents(['App\Five'], []),
             'App\Five' => new NamespaceContents([], $five),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -286,7 +321,7 @@ class NamespaceCandidatesTest extends TestCase
             'App' => new NamespaceContents(['App\Small'], []),
             'App\Small' => new NamespaceContents(['App\Small\Deep'], []),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -304,7 +339,7 @@ class NamespaceCandidatesTest extends TestCase
             'Vendor\Big' => new NamespaceContents([], self::manyClassLikes('Vendor\Big')),
             'Vendor\Plain' => new NamespaceContents([], []),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Big' => 'Vendor\Big', 'Plain' => 'Vendor\Plain']);
 
         $labels = array_column($candidates->descend($context, '', 0, 0, ClassCandidateFilter::Any), 'label');
@@ -325,7 +360,7 @@ class NamespaceCandidatesTest extends TestCase
             'Vendor\Mapping' => new NamespaceContents([], self::manyClassLikes('Vendor\Mapping')),
             'Vendor\Other' => new NamespaceContents([], self::manyClassLikes('Vendor\Other')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Mapping' => 'Vendor\Mapping', 'Other' => 'Vendor\Other']);
 
         $labels = array_column($candidates->descend($context, 'Map', 0, 3, ClassCandidateFilter::Any), 'label');
@@ -340,7 +375,7 @@ class NamespaceCandidatesTest extends TestCase
                 new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->navigate('\Psr\Http\M', new NameContext(''), 0, 12, ClassCandidateFilter::Any);
 
@@ -357,7 +392,7 @@ class NamespaceCandidatesTest extends TestCase
             'App' => new NamespaceContents([], []),
             'Vendor\Pkg' => new NamespaceContents([], self::manyClassLikes('Vendor\Pkg')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg']);
 
         $items = $candidates->navigate('Pk', $context, 0, 2, ClassCandidateFilter::Any);
@@ -372,7 +407,7 @@ class NamespaceCandidatesTest extends TestCase
                 new CatalogSymbol('Vendor\Pkg\Thing', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg']);
 
         $items = $candidates->navigate('Pkg\T', $context, 0, 5, ClassCandidateFilter::Any);
@@ -387,7 +422,7 @@ class NamespaceCandidatesTest extends TestCase
                 new CatalogSymbol('App\Sub\Thing', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->navigate('Sub\T', new NameContext('App'), 0, 5, ClassCandidateFilter::Any);
 
@@ -405,7 +440,7 @@ class NamespaceCandidatesTest extends TestCase
                 new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->useStatement('Psr\Http\M', 0, 10, ClassCandidateFilter::Any);
 
@@ -423,7 +458,7 @@ class NamespaceCandidatesTest extends TestCase
                 new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->useStatement('\Psr\Http\M', 0, 11, ClassCandidateFilter::Any);
 
@@ -442,7 +477,7 @@ class NamespaceCandidatesTest extends TestCase
             '' => new NamespaceContents(['Psr'], []),
             'Psr' => new NamespaceContents([], self::manyClassLikes('Psr')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->useStatement('Ps', 0, 2, ClassCandidateFilter::Any), 'label');
 
@@ -459,7 +494,7 @@ class NamespaceCandidatesTest extends TestCase
             'App' => new NamespaceContents(['App\Big'], [new CatalogSymbol('App\Widget', NameKind::ClassLike)]),
             'App\Big' => new NamespaceContents([], self::manyClassLikes('App\Big')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $byLabel = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'sortText', 'label');
 
@@ -483,7 +518,7 @@ class NamespaceCandidatesTest extends TestCase
             ),
             'App\Entities\Env' => new NamespaceContents([], self::manyClassLikes('App\Entities\Env')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver());
+        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App\Entities', '', 0, 0, ClassCandidateFilter::Any), 'label');
 

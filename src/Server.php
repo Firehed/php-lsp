@@ -135,6 +135,7 @@ final class Server
                 new NamespaceCandidates(
                     NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
                     $symbolResolver,
+                    $negotiator,
                 ),
                 new FunctionCandidates($symbolResolver, $negotiator),
                 new KeywordCandidates(),
