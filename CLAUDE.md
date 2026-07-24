@@ -164,15 +164,36 @@ means stop. Do not collapse these back into `?Message`.
 **Malformed input never terminates the process** (RFC 1 §9). `MessageReader`
 classifies an unparseable body as `ParseError` and a structurally invalid message as
 `InvalidRequest` — it does *not* rely on the `assert()`s in the message factories,
-which are disabled in production. `Server` answers a throwing handler with
-`InternalError`. A malformed frame is answered with the JSON-RPC null id, since no id
-can be recovered from it.
+which are disabled in production.
+
+A rejected frame is answered at whatever id the reader could recover from it, and at
+the JSON-RPC null id only when it could recover none (JSON-RPC 2.0 §5) — answering a
+recoverable id at null leaves the client's request pending forever. A frame that is
+recognisably a *Notification* (a JSON object naming a method, with no `id`) is
+consumed and dropped instead: §4.1 forbids replying to one, so `read()` skips it and
+reports the next frame.
+
+`Content-Length` must be a run of decimal digits. A bare `(int)` cast accepts `-5`,
+which makes `substr()` consume from the wrong end and destroys the frames behind it,
+so an unusable value is rejected without touching the buffer. Every failure path
+consumes its own bytes, so one bad frame costs one error and never turns a body into
+framing.
+
+`Server` answers a throwing handler with `InternalError` — including a failure in
+`supports()` during handler lookup, and a result the encoder cannot represent, which
+fails in the writer rather than in `handle()`.
 
 `LifecycleHandler` owns lifecycle state and gates every inbound message through
 `lifecycleErrorFor()` (RFC 1 §4.8): requests before `initialize` get
 `ServerNotInitialized`, requests after `shutdown` get `InvalidRequest`, and `exit` is
 always honored so the server can terminate. A gated message is never dispatched; a
-gated notification has no id, so its error is dropped rather than sent.
+gated notification has no id, so its error is dropped rather than sent — which is
+what LSP "Server lifecycle" means by notifications being *dropped*. The gate opens
+only once `initialize` has produced a result.
+
+`Server` takes the `LifecycleHandler` separately from the other handlers and
+prepends it to the dispatch list itself, so the instance the gate consults cannot
+diverge from the one that handles `initialize`/`shutdown`.
 
 ### Guidelines for New Code
 
