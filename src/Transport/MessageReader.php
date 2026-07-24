@@ -63,10 +63,12 @@ final class MessageReader
                 $headerSection = substr($this->buffer, 0, $headerEnd);
                 $this->buffer = substr($this->buffer, $headerEnd + 4);
 
-                return self::parseContentLength($headerSection)
-                    ?? new MalformedFrame(
-                        ResponseError::parseError('missing or unusable Content-Length header'),
-                    );
+                // Without a usable length the frame's extent is unknown, so the
+                // rest of the buffer is offered to the decoder instead. The
+                // content part is JSON, which the decoder can judge on its own:
+                // a client that merely mis-declared the length is served, and
+                // anything else costs one error (see parseContentLength).
+                return self::parseContentLength($headerSection) ?? strlen($this->buffer);
             }
 
             $chunk = $this->stream->read();
@@ -87,14 +89,19 @@ final class MessageReader
     }
 
     /**
-     * Null when no usable Content-Length is present, which per [LSP] "Base
-     * Protocol" is a byte count and so a run of decimal digits.
+     * Null when no usable Content-Length is present. Per [LSP] "Base Protocol"
+     * it is a byte count whose header field structure "conforms to the HTTP
+     * semantic" ([RFC 7230] §3.2), and so is §3.3.2's `Content-Length = 1*DIGIT`.
      *
      * A bare (int) cast accepted whatever the sender sent: "abc" framed a
      * zero-length body and "-5" a negative one, which makes substr() consume
-     * from the wrong end and corrupts every frame that follows. Rejecting the
-     * frame instead leaves the buffer untouched, so a sender that merely
-     * mis-declared one length does not lose the messages behind it.
+     * from the wrong end and corrupts every frame that follows.
+     *
+     * Rejecting the *value* is not the same as rejecting the message. [RFC 7230]
+     * §3.3.3 treats an invalid Content-Length as unrecoverable framing, and it
+     * is — for opaque bytes. An LSP content part is JSON, so the decoder can
+     * still tell a whole message from rubbish, and the caller falls back to it
+     * rather than bouncing a client that got only the header wrong.
      */
     private static function parseContentLength(string $headerSection): ?int
     {
