@@ -164,7 +164,8 @@ means stop. Do not collapse these back into `?Message`.
 **Malformed input never terminates the process** (RFC 1 §9). `MessageReader`
 classifies an unparseable body as `ParseError` and a structurally invalid message as
 `InvalidRequest` — it does *not* rely on the `assert()`s in the message factories,
-which are disabled in production.
+which are disabled in production. A message must carry `"jsonrpc":"2.0"` (JSON-RPC 2.0
+§4); a frame missing it or naming another version is `InvalidRequest`.
 
 A rejected frame is answered at whatever id the reader could recover from it, and at
 the JSON-RPC null id only when it could recover none (JSON-RPC 2.0 §5) — answering a
@@ -173,11 +174,16 @@ recognisably a *Notification* (a JSON object naming a method, with no `id`) is
 consumed and dropped instead: §4.1 forbids replying to one, so `read()` skips it and
 reports the next frame.
 
-`Content-Length` must be a run of decimal digits. A bare `(int)` cast accepts `-5`,
-which makes `substr()` consume from the wrong end and destroys the frames behind it,
-so an unusable value is rejected without touching the buffer. Every failure path
-consumes its own bytes, so one bad frame costs one error and never turns a body into
-framing.
+`Content-Length` must be a run of decimal digits (RFC 7230 §3.3.2, which LSP binds
+via §3.2), and repeated headers must agree (§3.3.3). A bare `(int)` cast accepted `-5`,
+which makes `substr()` consume from the wrong end. When the value is unusable the
+frame's extent is unknown, so `read()` hands the rest of the buffer to the decoder
+rather than rescanning it as the next header block: a content part is JSON, so a client
+that merely mis-declared the length is served and anything else costs one `ParseError`.
+Either way the buffer is emptied, so no failure path leaves bytes to be re-read as
+framing. A conformant `Content-Length` still frames exactly, which is what tells a
+truncated body from a complete one and separates two coalesced frames — the fallback is
+the error path only.
 
 `Server` answers a throwing handler with `InternalError` — including a failure in
 `supports()` during handler lookup, and a result the encoder cannot represent, which
