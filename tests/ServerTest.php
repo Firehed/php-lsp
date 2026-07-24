@@ -566,6 +566,34 @@ class ServerTest extends TestCase
     }
 
     /**
+     * When the reader could correlate the bad frame to an id, the server must
+     * answer at that id, not at the null id (JSON-RPC 2.0 §5): a client whose
+     * request is answered at null never correlates the error and waits forever.
+     * `{"id":6,"method":42}` is a request whose method is unusable — rejected,
+     * but with the id recovered.
+     */
+    public function testMalformedFrameIsAnsweredAtItsRecoveredId(): void
+    {
+        $badFrame = '{"jsonrpc":"2.0","id":6,"method":42}';
+        $input = 'Content-Length: ' . strlen($badFrame) . "\r\n\r\n" . $badFrame
+            . $this->buildMessages($this->notificationJson('exit'));
+        $outputBuffer = new WritableBuffer();
+
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+
+        $server->run();
+
+        $responses = $this->decodeResponses($outputBuffer->buffer());
+
+        self::assertSame(
+            ResponseError::invalidRequest()->code,
+            $this->errorCode($this->responseWithId($responses, 6)),
+            'the malformed frame is answered at the id the reader recovered from it',
+        );
+    }
+
+    /**
      * A client that disconnects without sending `exit` ends the stream. That is
      * end of stream rather than a malformed frame, so the server closes down
      * quietly and reports the same non-clean exit as an exit without shutdown.
