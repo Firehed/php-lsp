@@ -131,10 +131,11 @@ final class Server
             new CompletionHandler(
                 $documentManager,
                 $symbolResolver,
-                new ClassCandidates($symbolIndex, $symbolResolver),
+                new ClassCandidates($symbolIndex, $symbolResolver, $negotiator),
                 new NamespaceCandidates(
                     NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
                     $symbolResolver,
+                    $negotiator,
                 ),
                 new FunctionCandidates($symbolResolver, $negotiator),
                 new KeywordCandidates(),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -31,6 +32,7 @@ final class ClassCandidates
     public function __construct(
         private readonly SymbolIndex $symbolIndex,
         private readonly CodeResolver $codeResolver,
+        private readonly SessionCapabilitiesProvider $capabilities,
     ) {
     }
 
@@ -45,8 +47,15 @@ final class ClassCandidates
         ClassCandidateFilter $filter,
     ): array {
         $context = $this->codeResolver->getNameContext($document, $line);
-        // What a selected item replaces: the token the cursor sits at the end of.
-        $replaceRange = Range::onLine($line, $character - strlen($prefix), $character);
+        // What a selected item replaces: the token the cursor sits at the end of,
+        // sized in the negotiated encoding so a multibyte prefix is not mis-measured
+        // against the wire column (RFC 1 §4.9).
+        $replaceRange = Range::forPrefix(
+            $line,
+            $character,
+            $prefix,
+            $this->capabilities->getSessionCapabilities()->positionEncoding,
+        );
 
         $items = $this->fromImports($prefix, $document, $filter, $replaceRange);
         return array_merge($items, $this->fromIndex($prefix, $filter, $context, $replaceRange));

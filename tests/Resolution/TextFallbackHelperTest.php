@@ -17,12 +17,15 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(TextFallbackHelper::class)]
 class TextFallbackHelperTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private TextFallbackHelper $helper;
     private TextFallbackHelper $helperWithReflection;
     private ParserService $parser;
@@ -248,6 +251,25 @@ class TextFallbackHelperTest extends TestCase
         self::assertNotNull($result, 'Should resolve class in global namespace');
         // No namespace, no use - class name stays as-is
         self::assertSame('SomeClass', $result->type->format());
+    }
+
+    public function testGetMemberAccessContextSlicesPrefixAtByteColumnPastMultibyte(): void
+    {
+        $content = $this->loadFixture('TopLevel/multibyte_static.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+        // The line carries a "🎉" (one astral codepoint: 2 UTF-16 units, 4 bytes)
+        // before "User::fromArray", so the wire column trails the byte column.
+        ['line' => $line, 'character' => $character] = $this->locateCursorUtf16($content, 'multibyte_static');
+
+        $result = $this->helperWithReflection->getMemberAccessContext($document, $line, $character, []);
+
+        self::assertNotNull($result, 'a static access past a multibyte char must still resolve');
+        self::assertSame('Fixtures\\Domain\\User', $result->type->format());
+        self::assertSame(
+            'fromArray',
+            $result->prefix,
+            'slicing the raw wire column would truncate the member prefix (RFC 1 §4.9)',
+        );
     }
 
     public function testFindParameterTypeWithMultilineSignature(): void
