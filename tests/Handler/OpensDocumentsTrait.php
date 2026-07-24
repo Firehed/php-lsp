@@ -102,6 +102,25 @@ trait OpensDocumentsTrait
     }
 
     /**
+     * Opens a fixture and returns the cursor position for the named marker with
+     * `character` as the UTF-16 wire column a conformant client sends, rather than
+     * the byte column {@see openFixtureAtCursor()} returns. Use for fixtures with
+     * multibyte content before the cursor, where the two columns diverge and the
+     * interior must convert the wire column at the boundary (RFC 1 §4.9).
+     *
+     * @param string $fixturePath Path relative to tests/Fixtures/
+     * @param string $cursorName The marker name (without delimiters)
+     * @return CursorPosition
+     * @phpstan-ignore missingType.iterableValue
+     */
+    private function openFixtureAtUtf16Cursor(string $fixturePath, string $cursorName): array
+    {
+        [$uri, $content] = $this->loadAndOpenFixture($fixturePath);
+
+        return ['uri' => $uri, ...$this->locateCursorUtf16($content, $cursorName)];
+    }
+
+    /**
      * Builds a textDocument/completion request for the given cursor position.
      *
      * Typically used with the return value of openFixtureAtCursor():

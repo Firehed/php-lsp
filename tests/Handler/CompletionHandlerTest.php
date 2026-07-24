@@ -112,8 +112,8 @@ class CompletionHandlerTest extends TestCase
         return new CompletionHandler(
             $this->documents,
             $this->symbolResolver,
-            new ClassCandidates($this->symbolIndex, $this->symbolResolver),
-            new NamespaceCandidates($catalog, $this->symbolResolver),
+            new ClassCandidates($this->symbolIndex, $this->symbolResolver, $capabilities),
+            new NamespaceCandidates($catalog, $this->symbolResolver, $capabilities),
             new FunctionCandidates($this->symbolResolver, $capabilities),
             new KeywordCandidates(),
             new VariableCandidates($this->symbolResolver),
@@ -1909,6 +1909,26 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('$logger', $labels);
+    }
+
+    public function testCompletionSlicesPrefixAtByteColumnPastMultibyte(): void
+    {
+        $cursor = $this->openFixtureAtUtf16Cursor('src/Completion/MultibyteCompletion.php', 'var_after_emoji');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            '$taxRate',
+            $labels,
+            'the typed prefix "tax" on a line with a multibyte char must still match $taxRate',
+        );
+        self::assertNotContains(
+            '$total',
+            $labels,
+            'slicing the raw wire column truncates "tax" to "t" and over-matches $total (RFC 1 §4.9)',
+        );
     }
 
     public function testVariableCompletionWorksInGlobalScope(): void

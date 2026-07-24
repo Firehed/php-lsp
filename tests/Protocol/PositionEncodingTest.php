@@ -41,6 +41,31 @@ class PositionEncodingTest extends TestCase
         );
     }
 
+    #[DataProvider('codeUnitLengthCases')]
+    public function testCodeUnitLength(string $text, int $expected): void
+    {
+        self::assertSame(
+            $expected,
+            PositionEncoding::Utf16->codeUnitLength($text),
+            'a completion Range start column is a wire column, so a byte prefix must be measured in code units',
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @return iterable<string, array{string, int}>
+     */
+    public static function codeUnitLengthCases(): iterable
+    {
+        yield 'empty string is zero' => ['', 0];
+        yield 'ascii length is byte length' => ['Log', 3];
+        yield 'two-byte bmp char counts one unit' => ['café', 4];
+        yield 'three-byte bmp char counts one unit' => ['€', 1];
+        yield 'astral char counts two units' => ['😀', 2];
+        yield 'mixed ascii and astral' => ['a😀b', 4];
+    }
+
     /**
      * @codeCoverageIgnore
      *
@@ -51,10 +76,12 @@ class PositionEncodingTest extends TestCase
         yield 'ascii is identity' => ['abc', 2, 2];
         yield 'ascii start' => ['abc', 0, 0];
         yield 'column past end clamps to byte length' => ['abc', 5, 3];
-        yield 'bmp multibyte counts one unit, two bytes' => ['é', 1, 2];
+        yield 'two-byte bmp char is one unit, two bytes' => ['é', 1, 2];
         yield 'column before a multibyte char' => ['aéb', 1, 1];
         yield 'column after a multibyte char' => ['aéb', 2, 3];
         yield 'column at end after multibyte' => ['aéb', 3, 4];
+        yield 'three-byte bmp char is one unit, three bytes' => ['€', 1, 3];
+        yield 'column after a three-byte char' => ['a€b', 2, 4];
         yield 'astral char is two units, four bytes' => ['😀', 2, 4];
         yield 'column inside a surrogate pair rounds up' => ['😀', 1, 4];
         yield 'column after an astral char' => ['a😀b', 3, 5];
@@ -71,9 +98,10 @@ class PositionEncodingTest extends TestCase
         yield 'ascii is identity' => ['abc', 2, 2];
         yield 'ascii start' => ['abc', 0, 0];
         yield 'byte before a multibyte char' => ['aéb', 1, 1];
-        yield 'byte after a multibyte char' => ['aéb', 3, 2];
+        yield 'byte after a two-byte char' => ['aéb', 3, 2];
         yield 'byte inside a multibyte char rounds up' => ['aéb', 2, 2];
         yield 'byte at end after multibyte' => ['aéb', 4, 3];
+        yield 'byte after a three-byte char' => ['a€b', 4, 2];
         yield 'astral char is two units' => ['😀', 4, 2];
         yield 'byte after an astral char' => ['a😀b', 5, 3];
         yield 'byte at end after astral' => ['a😀b', 6, 4];

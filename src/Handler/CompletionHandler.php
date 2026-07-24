@@ -87,8 +87,7 @@ final class CompletionHandler implements HandlerInterface
         }
 
         // Get text before cursor to determine completion context
-        $lineText = $document->getLine($line);
-        $textBeforeCursor = substr($lineText, 0, $character);
+        $textBeforeCursor = $document->textBeforeCursor($line, $character);
 
         $items = $this->getCompletionItems($textBeforeCursor, $document, $line, $character);
 

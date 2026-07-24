@@ -406,8 +406,7 @@ final class SymbolResolver implements CodeResolver
         int $character,
         array $ast,
     ): ?MemberAccessContext {
-        $lineText = $document->getLine($line);
-        $textBeforeCursor = substr($lineText, 0, $character);
+        $textBeforeCursor = $document->textBeforeCursor($line, $character);
 
         // Match $var-> but not $this->
         if (preg_match('/\$(\w+)\??->([\w]*)$/', $textBeforeCursor, $m) !== 1) {

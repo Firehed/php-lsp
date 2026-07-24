@@ -46,8 +46,7 @@ final class TextFallbackHelper
         int $character,
         array $ast,
     ): ?MemberAccessContext {
-        $lineText = $document->getLine($line);
-        $textBeforeCursor = substr($lineText, 0, $character);
+        $textBeforeCursor = $document->textBeforeCursor($line, $character);
 
         // Chained instance access: $this->member->prefix or $this?->member->prefix
         if (preg_match('/(\$this(?:\??->[\w]+(?:\([^)]*\))?)+)\??->([\w]*)$/', $textBeforeCursor, $m) === 1) {
