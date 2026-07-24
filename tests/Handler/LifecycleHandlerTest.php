@@ -211,6 +211,28 @@ class LifecycleHandlerTest extends TestCase
         );
     }
 
+    /**
+     * [LSP] "Server lifecycle" → initialize: "The `initialize` request may only
+     * be sent once." A client that sends a second one has violated the
+     * lifecycle; re-running negotiation would silently replace the resolved
+     * session capabilities, so the gate rejects it. The spec names no code, and
+     * InvalidRequest matches the other lifecycle-violation answer.
+     */
+    public function testSecondInitializeIsRejectedAsInvalid(): void
+    {
+        $handler = self::handler();
+        $handler->handle(self::request('initialize'));
+
+        $error = $handler->lifecycleErrorFor(self::request('initialize'));
+
+        self::assertInstanceOf(ResponseError::class, $error, 'a second initialize must be rejected');
+        self::assertSame(
+            ResponseError::invalidRequest()->code,
+            $error->code,
+            'a duplicate initialize gets InvalidRequest',
+        );
+    }
+
     private static function request(string $method): Message
     {
         return RequestMessage::fromArray([
