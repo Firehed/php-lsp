@@ -47,6 +47,17 @@ enum PositionEncoding: string
     }
 
     /**
+     * The length of `$text` in this encoding's code units — the wire column span
+     * a byte string occupies. Used to size an outbound completion `Range` from a
+     * byte-measured prefix, since the client reads the range in the negotiated
+     * encoding, not in bytes (RFC 1 §4.9).
+     */
+    public function codeUnitLength(string $text): int
+    {
+        return $this->byteToCharacterOffset($text, strlen($text));
+    }
+
+    /**
      * A UTF-8 codepoint occupies two UTF-16 code units (a surrogate pair) iff
      * its UTF-8 encoding is four bytes long; every shorter codepoint is a single
      * BMP code unit.

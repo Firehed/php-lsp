@@ -41,6 +41,30 @@ class PositionEncodingTest extends TestCase
         );
     }
 
+    #[DataProvider('codeUnitLengthCases')]
+    public function testCodeUnitLength(string $text, int $expected): void
+    {
+        self::assertSame(
+            $expected,
+            PositionEncoding::Utf16->codeUnitLength($text),
+            'a completion Range start column is a wire column, so a byte prefix must be measured in code units',
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @return iterable<string, array{string, int}>
+     */
+    public static function codeUnitLengthCases(): iterable
+    {
+        yield 'empty string is zero' => ['', 0];
+        yield 'ascii length is byte length' => ['Log', 3];
+        yield 'bmp multibyte counts one unit per char' => ['café', 4];
+        yield 'astral char counts two units' => ['😀', 2];
+        yield 'mixed ascii and astral' => ['a😀b', 4];
+    }
+
     /**
      * @codeCoverageIgnore
      *
