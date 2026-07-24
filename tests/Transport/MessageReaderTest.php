@@ -399,13 +399,15 @@ class MessageReaderTest extends TestCase
             $reader->read(),
             'a body that swallowed the next frame does not decode',
         );
-
-        $outcomes = [$reader->read(), $reader->read()];
-
-        self::assertContainsOnlyInstancesOf(
+        self::assertInstanceOf(
+            MalformedFrame::class,
+            $reader->read(),
+            'what that body left behind is not a frame either',
+        );
+        self::assertInstanceOf(
             EndOfStream::class,
-            array_slice($outcomes, -1),
-            'the reader reaches end of stream rather than cascading',
+            $reader->read(),
+            'the reader winds down rather than cascading',
         );
     }
 

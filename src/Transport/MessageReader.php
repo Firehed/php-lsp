@@ -173,6 +173,15 @@ final class MessageReader
 
         $id = self::recoverId($data);
 
+        // JSON-RPC 2.0 §4: "jsonrpc ... MUST be exactly '2.0'", so a frame
+        // without it is not a Request object and draws §5.1's InvalidRequest.
+        // [LSP] "Abstract Message" adds only that the protocol "always uses
+        // '2.0'" and defers the content part to JSON-RPC, so nothing here is
+        // relaxed for LSP. Answered even with no id, for the reason below.
+        if (($data['jsonrpc'] ?? null) !== '2.0') {
+            return new MalformedFrame(ResponseError::invalidRequest('jsonrpc must be exactly "2.0"'), $id);
+        }
+
         // A non-string method is not a usable Notification even without an id,
         // so it is still answered — JSON-RPC 2.0's own worked example replies
         // to `{"jsonrpc":"2.0","method":1,"params":"bar"}` with a null id.
