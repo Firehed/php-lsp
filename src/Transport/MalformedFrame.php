@@ -15,8 +15,15 @@ use Firehed\PhpLsp\Protocol\ResponseError;
  */
 final readonly class MalformedFrame
 {
+    /**
+     * @param int|string|null $id The id to answer at. Null only when none could
+     *        be recovered from the frame, per JSON-RPC 2.0 §5: an id that *was*
+     *        detected must be echoed, or the client's pending request is never
+     *        correlated to this error and never resolves.
+     */
     public function __construct(
         public ResponseError $error,
+        public int|string|null $id = null,
     ) {
     }
 }

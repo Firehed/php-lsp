@@ -270,8 +270,69 @@ class MessageReaderTest extends TestCase
         yield 'not an object' => ['"just a string"'];
         yield 'no method' => ['{"jsonrpc":"2.0","id":1}'];
         yield 'non-string method' => ['{"jsonrpc":"2.0","method":42}'];
-        yield 'non-array params' => ['{"jsonrpc":"2.0","method":"x","params":"nope"}'];
+        yield 'non-array params' => ['{"jsonrpc":"2.0","id":3,"method":"x","params":"nope"}'];
         yield 'non-scalar id' => ['{"jsonrpc":"2.0","id":true,"method":"x"}'];
+    }
+
+    /**
+     * JSON-RPC 2.0 §5: the response id "MUST be the same as the value of the id
+     * member in the Request Object. If there was an error in detecting the id
+     * ... it MUST be Null." An id that was detected must therefore be echoed —
+     * answering at null instead leaves the client's pending request unresolved
+     * forever, because nothing correlates the error back to it.
+     *
+     * @param int|string|null $expectedId
+     */
+    #[DataProvider('rejectedFrameIds')]
+    public function testRejectedFrameIsAnsweredAtTheRecoverableId(string $body, int|string|null $expectedId): void
+    {
+        $reader = new MessageReader(new ReadableBuffer($this->frame($body)));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(MalformedFrame::class, $result, "should reject: $body");
+        self::assertSame(
+            $expectedId,
+            $result->id,
+            "the rejected frame is answered at the id it could be correlated to: $body",
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, int|string|null}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function rejectedFrameIds(): iterable
+    {
+        yield 'integer id' => ['{"jsonrpc":"2.0","id":7,"method":"x","params":"nope"}', 7];
+        yield 'string id' => ['{"jsonrpc":"2.0","id":"abc","method":"x","params":"nope"}', 'abc'];
+        yield 'id present, method unusable' => ['{"jsonrpc":"2.0","id":9,"method":42}', 9];
+        yield 'id undetectable' => ['{"jsonrpc":"2.0","id":true,"method":"x"}', null];
+        yield 'no id at all' => ['{"jsonrpc":"2.0","method":42}', null];
+        yield 'unparseable body' => ['not json', null];
+    }
+
+    /**
+     * JSON-RPC 2.0 §4.1: "The Server MUST NOT reply to a Notification." A frame
+     * that is recognisably one — a JSON object naming a method, carrying no id
+     * — has no sender to answer, so it is consumed and dropped rather than
+     * reported. The frame behind it still reads.
+     */
+    public function testUnusableNotificationIsDroppedRatherThanAnswered(): void
+    {
+        $input = $this->frame('{"jsonrpc":"2.0","method":"$/setTrace","params":"verbose"}')
+            . $this->frame('{"jsonrpc":"2.0","method":"initialized"}');
+        $reader = new MessageReader(new ReadableBuffer($input));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(
+            NotificationMessage::class,
+            $result,
+            'an unusable notification draws no error outcome, so the next frame surfaces instead',
+        );
+        self::assertSame('initialized', $result->method);
     }
 
     /**

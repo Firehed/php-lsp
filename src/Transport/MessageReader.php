@@ -28,19 +28,31 @@ final class MessageReader
      */
     public function read(): Message|MalformedFrame|EndOfStream
     {
-        $contentLength = $this->readContentLength();
-        if (!is_int($contentLength)) {
-            return $contentLength;
-        }
+        while (true) {
+            $contentLength = $this->readContentLength();
+            if (!is_int($contentLength)) {
+                return $contentLength;
+            }
 
-        $body = $this->readBody($contentLength);
-        if ($body === null) {
-            return new MalformedFrame(
-                ResponseError::parseError('stream ended before the declared Content-Length'),
-            );
-        }
+            $body = $this->readBody($contentLength);
+            if ($body === null) {
+                return new MalformedFrame(
+                    ResponseError::parseError('stream ended before the declared Content-Length'),
+                );
+            }
 
-        return $this->decode($body);
+            $outcome = $this->decode($body);
+
+            // A frame that is recognisably a Notification is never answered
+            // (JSON-RPC 2.0 §4.1), so an unusable one leaves nothing to report
+            // and nothing to dispatch. Its bytes are already consumed; read on
+            // to the next frame rather than inventing an outcome for it.
+            if ($outcome === null) {
+                continue;
+            }
+
+            return $outcome;
+        }
     }
 
     private function readContentLength(): int|MalformedFrame|EndOfStream
@@ -125,8 +137,12 @@ final class MessageReader
      * The frame's bytes have already been consumed by the time this runs, so a
      * rejected message costs the sender an error response but does not
      * desynchronize the stream.
+     *
+     * Null means the frame is unusable *and* owes no answer: it is recognisably
+     * a Notification, which JSON-RPC 2.0 §4.1 forbids replying to. Every other
+     * rejection is answered, at the id it could be correlated to.
      */
-    private function decode(string $body): Message|MalformedFrame
+    private function decode(string $body): Message|MalformedFrame|null
     {
         try {
             $data = json_decode($body, associative: true, flags: JSON_THROW_ON_ERROR);
@@ -138,24 +154,46 @@ final class MessageReader
             return new MalformedFrame(ResponseError::invalidRequest('message must be a JSON object'));
         }
 
+        $id = self::recoverId($data);
+
+        // A non-string method is not a usable Notification even without an id,
+        // so it is still answered — JSON-RPC 2.0's own worked example replies
+        // to `{"jsonrpc":"2.0","method":1,"params":"bar"}` with a null id.
         $method = $data['method'] ?? null;
         if (!is_string($method)) {
-            return new MalformedFrame(ResponseError::invalidRequest('message has no string method'));
+            return new MalformedFrame(ResponseError::invalidRequest('message has no string method'), $id);
         }
 
         $params = $data['params'] ?? null;
         if ($params !== null && !is_array($params)) {
-            return new MalformedFrame(ResponseError::invalidRequest('params must be structured'));
+            if (!array_key_exists('id', $data)) {
+                return null;
+            }
+
+            return new MalformedFrame(ResponseError::invalidRequest('params must be structured'), $id);
         }
 
         if (!array_key_exists('id', $data)) {
             return NotificationMessage::fromArray($data);
         }
 
-        if (!is_int($data['id']) && !is_string($data['id'])) {
+        if ($id === null) {
             return new MalformedFrame(ResponseError::invalidRequest('id must be an integer or string'));
         }
 
         return RequestMessage::fromArray($data);
+    }
+
+    /**
+     * The id a rejected frame is answered at, or null when the frame carries
+     * none that could be detected (JSON-RPC 2.0 §5).
+     *
+     * @param array<array-key, mixed> $data
+     */
+    private static function recoverId(array $data): int|string|null
+    {
+        $id = $data['id'] ?? null;
+
+        return is_int($id) || is_string($id) ? $id : null;
     }
 }

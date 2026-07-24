@@ -158,10 +158,11 @@ final class Server
             }
 
             if ($message instanceof MalformedFrame) {
-                // The id cannot be recovered from a frame that would not decode,
-                // so it is answered with the JSON-RPC null id (RFC 1 §9). The
-                // loop continues: one bad frame must not end the session.
-                $this->transport->write(ResponseMessage::error(null, $message->error));
+                // Answered at whatever id the reader could correlate the frame
+                // to, and at the JSON-RPC null id when it could recover none
+                // (RFC 1 §9). The loop continues: one bad frame must not end
+                // the session.
+                $this->transport->write(ResponseMessage::error($message->id, $message->error));
                 continue;
             }
 
