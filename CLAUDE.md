@@ -192,10 +192,12 @@ fails in the writer rather than in `handle()`.
 `LifecycleHandler` owns lifecycle state and gates every inbound message through
 `lifecycleErrorFor()` (RFC 1 §4.8): requests before `initialize` get
 `ServerNotInitialized`, requests after `shutdown` get `InvalidRequest`, and `exit` is
-always honored so the server can terminate. A gated message is never dispatched; a
-gated notification has no id, so its error is dropped rather than sent — which is
-what LSP "Server lifecycle" means by notifications being *dropped*. The gate opens
-only once `initialize` has produced a result.
+always honored so the server can terminate. `initialize` "may only be sent once"
+(LSP), so a second one is gated with `InvalidRequest` rather than re-negotiating over
+the already-resolved session. A gated message is never dispatched; a gated
+notification has no id, so its error is dropped rather than sent — which is what LSP
+"Server lifecycle" means by notifications being *dropped*. The gate opens only once
+`initialize` has produced a result.
 
 `Server` takes the `LifecycleHandler` separately from the other handlers and
 prepends it to the dispatch list itself, so the instance the gate consults cannot
