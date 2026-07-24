@@ -44,6 +44,28 @@ class MessageReaderTest extends TestCase
         self::assertSame(1, $request->id);
     }
 
+    /**
+     * The header block is subject to the same chunking as the body: a pipe can
+     * hand over a partial header, so the reader must accumulate until the
+     * "\r\n\r\n" terminator arrives rather than judging one chunk.
+     */
+    public function testReadsAHeaderDeliveredAcrossSeveralChunks(): void
+    {
+        $json = '{"jsonrpc":"2.0","id":1,"method":"initialize"}';
+        $chunks = [
+            'Content-Len',
+            'gth: ' . strlen($json) . "\r\n",
+            "\r\n" . $json,
+        ];
+
+        $reader = new MessageReader(new ReadableIterableStream($chunks));
+
+        $request = $reader->read();
+
+        self::assertInstanceOf(RequestMessage::class, $request, 'a split header still yields one message');
+        self::assertSame('initialize', $request->method);
+    }
+
     public function testReadRequest(): void
     {
         $json = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":1234}}';
@@ -180,36 +202,61 @@ class MessageReaderTest extends TestCase
     }
 
     /**
-     * Per [LSP] "Base Protocol" the Content-Length value is a byte count. A
-     * bare (int) cast accepted anything: "abc" became 0, and "-5" became a
-     * negative length, which makes substr() consume from the wrong end of the
-     * buffer and destroys every frame that follows. Rejecting the header
-     * instead leaves the buffer alone, so the next frame still reads.
+     * Per [LSP] "Base Protocol" the Content-Length value is a byte count, and
+     * "the structure of header fields conforms to the HTTP semantic"
+     * ([RFC 7230] §3.2) — so §3.3.2's `Content-Length = 1*DIGIT`. A bare (int)
+     * cast accepted anything: "abc" became 0, and "-5" became a negative
+     * length, which makes substr() consume from the wrong end of the buffer.
+     *
+     * A client that mis-declares the length is recovered rather than bounced.
+     * The content part is JSON, which the decoder can judge on its own, so the
+     * remaining bytes are handed to it and a body that parses is served
+     * normally.
      */
     #[DataProvider('unusableContentLengths')]
-    public function testUnusableContentLengthDoesNotConsumeTheNextFrame(string $value): void
+    public function testUnusableContentLengthFallsBackToTheBody(string $value): void
     {
-        $input = "Content-Length: $value\r\n\r\n"
+        $input = "Content-Length: $value\r\n\r\n" . '{"jsonrpc":"2.0","method":"initialized"}';
+        $reader = new MessageReader(new ReadableBuffer($input));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(
+            NotificationMessage::class,
+            $result,
+            "a mis-declared Content-Length still delivers a body that parses: $value",
+        );
+        self::assertSame('initialized', $result->method);
+    }
+
+    /**
+     * When the remainder is not a JSON message there is nothing to recover, so
+     * the frame costs exactly one error and its bytes are consumed. Left in the
+     * buffer they would be re-read as the next frame's header block, letting
+     * bytes the sender chose inside a body declare the Content-Length of the
+     * frame behind them — the framing desync [RFC 7230] §3.3.3 treats as
+     * unrecoverable, and a frame-injection primitive besides.
+     */
+    public function testUnusableContentLengthWithUnrecoverableBodyCostsOneError(): void
+    {
+        $input = "Content-Length: abc\r\n\r\n"
+            . 'not json'
             . $this->frame('{"jsonrpc":"2.0","method":"initialized"}');
         $reader = new MessageReader(new ReadableBuffer($input));
 
         $result = $reader->read();
 
-        self::assertInstanceOf(MalformedFrame::class, $result, "should reject Content-Length: $value");
+        self::assertInstanceOf(MalformedFrame::class, $result, 'an unrecoverable body is a malformed frame');
         self::assertSame(
             ResponseError::parseError()->code,
             $result->error->code,
-            "an unusable Content-Length yields ParseError: $value",
+            'a body that does not parse yields ParseError',
         );
-
-        $recovered = $reader->read();
-
         self::assertInstanceOf(
-            NotificationMessage::class,
-            $recovered,
-            'the frame after an unusable Content-Length is still delivered',
+            EndOfStream::class,
+            $reader->read(),
+            'the frame consumed its own bytes, so no body is re-read as framing',
         );
-        self::assertSame('initialized', $recovered->method);
     }
 
     /**
