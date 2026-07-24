@@ -46,9 +46,10 @@ final class LifecycleHandler implements HandlerInterface
     /**
      * The lifecycle error an inbound message must be answered with given the
      * current state, or null if it is permitted (LSP "Server lifecycle",
-     * RFC 1 §4.8). `exit` is always honored so the server can terminate; the
-     * `initialize` request is the only other message allowed before the server
-     * is initialized.
+     * RFC 1 §4.8). `exit` is always honored so the server can terminate. Before
+     * the server is initialized, `initialize` is the only message allowed; it
+     * "may only be sent once" (LSP), so a second one is rejected rather than
+     * re-running negotiation over the already-resolved session.
      */
     public function lifecycleErrorFor(Message $message): ?ResponseError
     {
@@ -58,7 +59,10 @@ final class LifecycleHandler implements HandlerInterface
         if ($this->shutdownRequested) {
             return ResponseError::invalidRequest();
         }
-        if (!$this->initialized && $message->method !== 'initialize') {
+        if ($message->method === 'initialize') {
+            return $this->initialized ? ResponseError::invalidRequest() : null;
+        }
+        if (!$this->initialized) {
             return ResponseError::serverNotInitialized();
         }
         return null;
