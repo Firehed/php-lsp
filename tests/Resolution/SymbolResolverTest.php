@@ -896,6 +896,28 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('get', $context->prefix);
     }
 
+    /**
+     * Variable member access resolves correctly on a line carrying a multibyte
+     * character before the cursor, where the wire column trails the byte column
+     * (RFC 1 §4.9). A regression net over the variable-access surface the wire
+     * column feeds.
+     */
+    public function testGetMemberAccessContextForVariablePastMultibyte(): void
+    {
+        $cursor = $this->openFixtureAtUtf16Cursor(
+            'src/IncompleteCode/MultibyteVarAccess.php',
+            'var_member_multibyte',
+        );
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MemberAccessContext::class, $context);
+        self::assertSame('Fixtures\\IncompleteCode\\MultibyteVarAccess', $context->type->format());
+        self::assertSame('', $context->prefix);
+    }
+
     public function testGetMemberAccessContextForNullsafeAccess(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_this_empty');
