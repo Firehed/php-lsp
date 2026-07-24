@@ -208,7 +208,7 @@ final class Server
                 } else {
                     $response = ResponseMessage::success($message->id, $result);
                 }
-                $this->transport->write($response);
+                $this->writeResponse($message->id, $response);
             }
 
             // Check for exit
@@ -221,6 +221,29 @@ final class Server
 
         $this->transport->close();
         return 1;
+    }
+
+    /**
+     * A result a handler produced but the encoder cannot represent fails here
+     * rather than in `handle()`, so the dispatch catch never sees it. It is
+     * still a handler failure and must not take the read loop down with it
+     * (RFC 1 §9); text lifted from a file that is not valid UTF-8 reaches the
+     * writer exactly this way.
+     *
+     * The replacement carries only the exception message and the decoded id,
+     * both of which are known-encodable, so answering cannot fail the same way.
+     * The frame is encoded before any bytes are written, so the failed response
+     * leaves nothing half-written on the wire.
+     */
+    private function writeResponse(int|string $id, ResponseMessage $response): void
+    {
+        try {
+            $this->transport->write($response);
+        } catch (\JsonException $e) {
+            $this->transport->write(
+                ResponseMessage::error($id, ResponseError::internalError($e->getMessage())),
+            );
+        }
     }
 
     private function findHandler(string $method): ?HandlerInterface

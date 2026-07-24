@@ -408,6 +408,59 @@ class ServerTest extends TestCase
     }
 
     /**
+     * A result the handler produced but the encoder cannot represent is a
+     * handler failure too, and it surfaces in the writer rather than in
+     * `handle()` — outside the dispatch try/catch. Any hover or completion
+     * carrying text lifted from a file that is not valid UTF-8 (a Latin-1
+     * docblock, say) reaches the writer this way, so the read loop must
+     * survive it (RFC 1 §9).
+     */
+    public function testUnencodableResultYieldsInternalErrorAndKeepsRunning(): void
+    {
+        $unencodable = new class implements HandlerInterface {
+            public function supports(string $method): bool
+            {
+                return $method === 'test/unencodable';
+            }
+
+            public function handle(Message $message): mixed
+            {
+                return "not valid utf-8: \xB1\x31";
+            }
+        };
+
+        $input = $this->buildMessages(
+            $this->initializeJson(100),
+            $this->initializedJson(),
+            $this->requestJson(7, 'test/unencodable'),
+            $this->requestJson(8, 'shutdown'),
+            $this->notificationJson('exit'),
+        );
+        $outputBuffer = new WritableBuffer();
+
+        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, $lifecycle, [$unencodable], new ParserService());
+
+        $exitCode = $server->run();
+
+        self::assertSame(0, $exitCode, 'an unencodable result does not terminate the read loop');
+
+        $responses = $this->decodeResponses($outputBuffer->buffer());
+
+        self::assertSame(
+            ResponseError::internalError()->code,
+            $this->errorCode($this->responseWithId($responses, 7)),
+            'a result that cannot be encoded yields InternalError (RFC 1 §9)',
+        );
+        self::assertArrayHasKey(
+            'result',
+            $this->responseWithId($responses, 8),
+            'the loop survives the failure and still answers later requests',
+        );
+    }
+
+    /**
      * @return iterable<string, array{class-string<\Throwable>, bool}>
      *
      * @codeCoverageIgnore
