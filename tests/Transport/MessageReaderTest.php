@@ -315,6 +315,12 @@ class MessageReaderTest extends TestCase
     public static function structurallyInvalidBodies(): iterable
     {
         yield 'not an object' => ['"just a string"'];
+        // JSON-RPC 2.0 §4: "jsonrpc ... MUST be exactly '2.0'". [LSP] "Abstract
+        // Message" adds only that the protocol "always uses '2.0'", and defers
+        // the content part to JSON-RPC, so §5.1's InvalidRequest governs.
+        yield 'missing version' => ['{"id":1,"method":"shutdown"}'];
+        yield 'wrong version' => ['{"jsonrpc":"1.0","id":1,"method":"shutdown"}'];
+        yield 'non-string version' => ['{"jsonrpc":2.0,"id":1,"method":"shutdown"}'];
         yield 'no method' => ['{"jsonrpc":"2.0","id":1}'];
         yield 'non-string method' => ['{"jsonrpc":"2.0","method":42}'];
         yield 'non-array params' => ['{"jsonrpc":"2.0","id":3,"method":"x","params":"nope"}'];
