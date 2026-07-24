@@ -17,6 +17,16 @@ namespace Firehed\PhpLsp\Protocol;
  * UTF-16 is the only encoding the server currently negotiates; it is also the
  * [LSP] mandatory default. A further encoding is a new case plus the match arm
  * PHPStan then requires, not a rewrite of the boundary.
+ *
+ * Do NOT "simplify" the conversions below with the native `mb_` functions. A
+ * `character` is a UTF-16 *code unit* count, but `mb_strlen` / `mb_substr` count
+ * *codepoints*: an astral codepoint (e.g. "😀", U+1F389, four UTF-8 bytes) is one
+ * `mb_` character but *two* UTF-16 code units (a surrogate pair). So `mb_strlen`
+ * over-shortens a length and `mb_substr` mis-slices whenever an astral codepoint
+ * is in play — the exact §4.9 defect this class exists to prevent. The surrogate
+ * accounting in {@see utf16Units()} is precisely what `mb_` does not give you;
+ * `mb_str_split` (splitting into codepoints) is the only `mb_` primitive that
+ * fits, and it is already used. (`grapheme_*` is grapheme-based, also wrong.)
  */
 enum PositionEncoding: string
 {
