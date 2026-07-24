@@ -271,6 +271,142 @@ class MessageReaderTest extends TestCase
         yield 'empty' => [''];
         yield 'fractional' => ['1.5'];
         yield 'scientific notation' => ['1e3'];
+        yield 'leading plus' => ['+5'];
+        yield 'hexadecimal' => ['0x10'];
+        yield 'digits with trailing junk' => ['40bytes'];
+        yield 'whitespace separated' => ['4 0'];
+    }
+
+    /**
+     * [RFC 7230] §3.3.2 is `1*DIGIT`, which permits leading zeros, and §3.2.4
+     * allows optional whitespace around a field value. Neither makes the length
+     * unusable, so both frame normally.
+     */
+    #[DataProvider('usableContentLengthSpellings')]
+    public function testContentLengthSpellingsThatStillFrame(string $template): void
+    {
+        $json = '{"jsonrpc":"2.0","method":"initialized"}';
+        $value = sprintf($template, strlen($json));
+        $reader = new MessageReader(new ReadableBuffer("Content-Length:$value\r\n\r\n" . $json));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(NotificationMessage::class, $result, "should frame Content-Length:$value");
+        self::assertSame('initialized', $result->method);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function usableContentLengthSpellings(): iterable
+    {
+        yield 'conventional' => [' %d'];
+        yield 'no space' => ['%d'];
+        yield 'leading zeros' => [' 00%d'];
+        yield 'padded' => ['  %d  '];
+    }
+
+    /**
+     * ctype_digit accepts any run of digits, and the (int) cast saturates at
+     * PHP_INT_MAX rather than overflowing, so a sender can declare a length no
+     * stream will ever satisfy. That must wind down as one error with its bytes
+     * consumed — not spin re-reporting the same buffer, and not accumulate
+     * without bound while claiming to be mid-frame.
+     */
+    public function testContentLengthNoStreamCanSatisfyCostsOneError(): void
+    {
+        $reader = new MessageReader(new ReadableBuffer(
+            "Content-Length: 99999999999999999999\r\n\r\n" . '{"jsonrpc":"2.0","method":"initialized"}',
+        ));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(MalformedFrame::class, $result, 'a length no stream can satisfy is malformed');
+        self::assertSame(
+            ResponseError::parseError()->code,
+            $result->error->code,
+            'a body that never reaches its declared length yields ParseError',
+        );
+        self::assertInstanceOf(
+            EndOfStream::class,
+            $reader->read(),
+            'the unsatisfiable frame consumed its bytes rather than being re-reported',
+        );
+    }
+
+    /**
+     * [RFC 7230] §3.3.3 treats conflicting Content-Length values as an
+     * unrecoverable framing error, and taking the first silently is the worst
+     * of the options — it is what lets two readers of the same bytes disagree
+     * about where a frame ends. Neither value is trusted; the decoder judges
+     * the content part instead.
+     */
+    public function testConflictingContentLengthHeadersAreNotTrusted(): void
+    {
+        $json = '{"jsonrpc":"2.0","method":"initialized"}';
+        $reader = new MessageReader(new ReadableBuffer(
+            "Content-Length: 5\r\nContent-Length: 9999\r\n\r\n" . $json,
+        ));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(
+            NotificationMessage::class,
+            $result,
+            'neither conflicting length is used to frame the message',
+        );
+        self::assertSame('initialized', $result->method);
+    }
+
+    /**
+     * A length shorter than the body it describes is the sender's own lie, and
+     * the protocol answer is to believe the header: what follows the declared
+     * byte count is by definition the next frame. The remainder must therefore
+     * be consumed as framing rather than silently re-decoded, and the session
+     * must wind down cleanly instead of cascading.
+     */
+    public function testUnderstatedContentLengthWindsDownCleanly(): void
+    {
+        $json = '{"jsonrpc":"2.0","method":"initialized"}';
+        $reader = new MessageReader(new ReadableBuffer("Content-Length: 10\r\n\r\n" . $json));
+
+        self::assertInstanceOf(MalformedFrame::class, $reader->read(), 'a truncated body cannot decode');
+        self::assertInstanceOf(MalformedFrame::class, $reader->read(), 'the remainder is not a frame either');
+        self::assertInstanceOf(
+            EndOfStream::class,
+            $reader->read(),
+            'an understated length costs a bounded number of errors, not an endless cascade',
+        );
+    }
+
+    /**
+     * A length longer than the body reaches into the frames behind it. Nothing
+     * can prevent that — the sender declared it — but it must cost one error
+     * and leave the reader able to keep serving.
+     */
+    public function testOverstatedContentLengthDoesNotCascade(): void
+    {
+        $json = '{"jsonrpc":"2.0","method":"first"}';
+        $reader = new MessageReader(new ReadableBuffer(
+            'Content-Length: ' . (strlen($json) + 20) . "\r\n\r\n" . $json
+            . $this->frame('{"jsonrpc":"2.0","method":"second"}'),
+        ));
+
+        self::assertInstanceOf(
+            MalformedFrame::class,
+            $reader->read(),
+            'a body that swallowed the next frame does not decode',
+        );
+
+        $outcomes = [$reader->read(), $reader->read()];
+
+        self::assertContainsOnlyInstancesOf(
+            EndOfStream::class,
+            array_slice($outcomes, -1),
+            'the reader reaches end of stream rather than cascading',
+        );
     }
 
     public function testUnparseableBodyYieldsParseError(): void
