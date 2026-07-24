@@ -174,9 +174,13 @@ final class Server
             $error = $this->lifecycleHandler->lifecycleErrorFor($message);
 
             if ($error === null) {
-                $handler = $this->findHandler($message->method);
-
                 try {
+                    // Inside the try because `supports()` is part of the
+                    // handler contract: a failure selecting a handler is a
+                    // handler failure, and must be answered rather than
+                    // crashing the read loop (RFC 1 §9).
+                    $handler = $this->findHandler($message->method);
+
                     if ($handler !== null) {
                         $result = $handler->handle($message);
                     } elseif ($message instanceof RequestMessage) {

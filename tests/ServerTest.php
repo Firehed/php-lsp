@@ -408,6 +408,59 @@ class ServerTest extends TestCase
     }
 
     /**
+     * `supports()` is part of the handler contract, so a failure there is a
+     * handler failure too (RFC 1 §9). It runs during handler lookup, which sat
+     * outside the dispatch try/catch.
+     */
+    public function testFailureSelectingAHandlerYieldsInternalError(): void
+    {
+        $throwing = new class implements HandlerInterface {
+            public function supports(string $method): bool
+            {
+                throw new \RuntimeException('boom');
+            }
+
+            public function handle(Message $message): mixed
+            {
+                return null;
+            }
+        };
+
+        $input = $this->buildMessages(
+            $this->initializeJson(100),
+            $this->initializedJson(),
+            $this->requestJson(7, 'test/lookup'),
+            $this->requestJson(8, 'shutdown'),
+            $this->notificationJson('exit'),
+        );
+        $outputBuffer = new WritableBuffer();
+
+        // The lifecycle handler claims initialize/initialized/shutdown/exit
+        // before the lookup reaches this double, so only the id 7 request trips
+        // it and the session can still be driven to a clean exit.
+        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, $lifecycle, [$throwing], new ParserService());
+
+        $exitCode = $server->run();
+
+        self::assertSame(0, $exitCode, 'a failure during handler lookup does not terminate the read loop');
+
+        $responses = $this->decodeResponses($outputBuffer->buffer());
+
+        self::assertSame(
+            ResponseError::internalError()->code,
+            $this->errorCode($this->responseWithId($responses, 7)),
+            'a throwing supports() yields InternalError (RFC 1 §9)',
+        );
+        self::assertArrayHasKey(
+            'result',
+            $this->responseWithId($responses, 8),
+            'the loop survives the failure and still answers later requests',
+        );
+    }
+
+    /**
      * A result the handler produced but the encoder cannot represent is a
      * handler failure too, and it surfaces in the writer rather than in
      * `handle()` — outside the dispatch try/catch. Any hover or completion
