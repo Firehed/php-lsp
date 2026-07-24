@@ -9,6 +9,7 @@ use Amp\ByteStream\WritableBuffer;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Transport\EndOfStream;
+use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\StreamTransport;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -38,6 +39,26 @@ class StreamTransportTest extends TestCase
             EndOfStream::class,
             $transport->read(),
             'the read outcome is passed through from the reader',
+        );
+    }
+
+    /**
+     * The transport that `bin/php-lsp` actually constructs must pass a
+     * malformed frame through as its own outcome, not collapse it into
+     * EndOfStream — RFC 1 §9 requires the two be distinguishable, and a
+     * collapse would silently end the session on one bad frame.
+     */
+    public function testPassesAMalformedFrameThroughDistinctFromEndOfStream(): void
+    {
+        $transport = new StreamTransport(
+            new ReadableBuffer("Content-Length: 5\r\n\r\n" . 'not json enough'),
+            new WritableBuffer(),
+        );
+
+        self::assertInstanceOf(
+            MalformedFrame::class,
+            $transport->read(),
+            'a malformed frame reaches the caller as a malformed frame',
         );
     }
 
