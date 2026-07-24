@@ -153,6 +153,30 @@ class MessageReaderTest extends TestCase
             $reader->read(),
             'a body shorter than its declared Content-Length is a malformed frame',
         );
+        self::assertInstanceOf(
+            EndOfStream::class,
+            $reader->read(),
+            'the partial body is consumed, so one truncated frame is one error',
+        );
+    }
+
+    /**
+     * A partial body left in the buffer would be re-read as the next frame's
+     * header block, so bytes the sender chose inside a body could name the
+     * Content-Length of the frame after it. One truncated frame must cost one
+     * error response, not turn the body into framing.
+     */
+    public function testTruncatedBodyIsNotReparsedAsHeaders(): void
+    {
+        $body = "{\"a\":1}\r\n\r\nContent-Length: 9999\r\n\r\n";
+        $reader = new MessageReader(new ReadableBuffer("Content-Length: 500\r\n\r\n" . $body));
+
+        self::assertInstanceOf(MalformedFrame::class, $reader->read());
+        self::assertInstanceOf(
+            EndOfStream::class,
+            $reader->read(),
+            'header-looking bytes inside a truncated body are not treated as a frame',
+        );
     }
 
     public function testUnparseableBodyYieldsParseError(): void

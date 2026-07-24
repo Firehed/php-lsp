@@ -88,6 +88,14 @@ final class MessageReader
         while (strlen($this->buffer) < $length) {
             $chunk = $this->stream->read();
             if ($chunk === null) {
+                // Same reasoning as the header path: a body that never reaches
+                // its declared length is a truncated frame, so its bytes are
+                // consumed. Left in place they would be re-read as the next
+                // frame's header block, which both costs a second error
+                // response for one bad frame and lets bytes the sender chose
+                // inside a body declare the Content-Length that follows them.
+                $this->buffer = '';
+
                 return null;
             }
             $this->buffer .= $chunk;
