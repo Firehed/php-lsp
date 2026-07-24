@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Protocol\ResponseMessage;
 
 interface TransportInterface
 {
-    public function read(): ?Message;
+    public function read(): Message|MalformedFrame|EndOfStream;
 
     public function write(ResponseMessage $response): void;
 

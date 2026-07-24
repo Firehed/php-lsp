@@ -8,8 +8,10 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\MarkupKind;
+use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\ServerInfo;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -134,6 +136,119 @@ class LifecycleHandlerTest extends TestCase
         $result = $handler->handle($notification);
 
         self::assertSame(1, $handler->getExitCode());
+    }
+
+    public function testRequestBeforeInitializeIsRejectedAsNotInitialized(): void
+    {
+        $handler = self::handler();
+
+        $error = $handler->lifecycleErrorFor(self::request('textDocument/hover'));
+
+        self::assertInstanceOf(ResponseError::class, $error, 'a request before initialize must be rejected');
+        self::assertSame(
+            ResponseError::serverNotInitialized()->code,
+            $error->code,
+            'requests before initialize get ServerNotInitialized (RFC 1 §4.8)',
+        );
+    }
+
+    public function testInitializeIsAllowedBeforeInitialize(): void
+    {
+        $handler = self::handler();
+
+        self::assertNull(
+            $handler->lifecycleErrorFor(self::request('initialize')),
+            'the initialize request itself must pass the pre-initialize gate',
+        );
+    }
+
+    public function testExitIsAllowedBeforeInitialize(): void
+    {
+        $handler = self::handler();
+
+        self::assertNull(
+            $handler->lifecycleErrorFor(self::notification('exit')),
+            'exit must be honored without an initialize (LSP "Server lifecycle")',
+        );
+    }
+
+    public function testRequestsAreAllowedAfterInitialize(): void
+    {
+        $handler = self::handler();
+        $handler->handle(self::request('initialize'));
+
+        self::assertNull(
+            $handler->lifecycleErrorFor(self::request('textDocument/hover')),
+            'a normal request must pass once the server is initialized',
+        );
+    }
+
+    public function testRequestAfterShutdownIsRejectedAsInvalid(): void
+    {
+        $handler = self::handler();
+        $handler->handle(self::request('initialize'));
+        $handler->handle(self::request('shutdown'));
+
+        $error = $handler->lifecycleErrorFor(self::request('textDocument/hover'));
+
+        self::assertInstanceOf(ResponseError::class, $error, 'a request after shutdown must be rejected');
+        self::assertSame(
+            ResponseError::invalidRequest()->code,
+            $error->code,
+            'requests after shutdown get InvalidRequest (RFC 1 §4.8)',
+        );
+    }
+
+    public function testExitIsAllowedAfterShutdown(): void
+    {
+        $handler = self::handler();
+        $handler->handle(self::request('initialize'));
+        $handler->handle(self::request('shutdown'));
+
+        self::assertNull(
+            $handler->lifecycleErrorFor(self::notification('exit')),
+            'exit is the expected message after shutdown and must pass',
+        );
+    }
+
+    /**
+     * [LSP] "Server lifecycle" → initialize: "The `initialize` request may only
+     * be sent once." A client that sends a second one has violated the
+     * lifecycle; re-running negotiation would silently replace the resolved
+     * session capabilities, so the gate rejects it. The spec names no code, and
+     * InvalidRequest matches the other lifecycle-violation answer.
+     */
+    public function testSecondInitializeIsRejectedAsInvalid(): void
+    {
+        $handler = self::handler();
+        $handler->handle(self::request('initialize'));
+
+        $error = $handler->lifecycleErrorFor(self::request('initialize'));
+
+        self::assertInstanceOf(ResponseError::class, $error, 'a second initialize must be rejected');
+        self::assertSame(
+            ResponseError::invalidRequest()->code,
+            $error->code,
+            'a duplicate initialize gets InvalidRequest',
+        );
+    }
+
+    private static function request(string $method): Message
+    {
+        return RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => $method,
+            'params' => ['capabilities' => []],
+        ]);
+    }
+
+    private static function notification(string $method): Message
+    {
+        return NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => $method,
+        ]);
     }
 
     private static function handler(): LifecycleHandler

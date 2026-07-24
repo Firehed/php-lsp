@@ -153,6 +153,56 @@ Anything that shapes an outgoing message by client support (hover markup kind, s
 support, …) queries `SessionCapabilities`. `RawInitializeCapabilitiesRule`
 (`tests/Architecture/`) fails PHPStan if any other package reads a `capabilities` key.
 
+### Transport and Lifecycle
+
+`TransportInterface::read()` reports one of three outcomes, never a nullable message:
+a `Message`, a `MalformedFrame` (carrying the `ResponseError` to answer with), or
+`EndOfStream`. RFC 1 §9 requires a frame lacking a required header to be
+distinguishable from a closed stream — one means answer and keep serving, the other
+means stop. Do not collapse these back into `?Message`.
+
+**Malformed input never terminates the process** (RFC 1 §9). `MessageReader`
+classifies an unparseable body as `ParseError` and a structurally invalid message as
+`InvalidRequest` — it does *not* rely on the `assert()`s in the message factories,
+which are disabled in production. A message must carry `"jsonrpc":"2.0"` (JSON-RPC 2.0
+§4); a frame missing it or naming another version is `InvalidRequest`.
+
+A rejected frame is answered at whatever id the reader could recover from it, and at
+the JSON-RPC null id only when it could recover none (JSON-RPC 2.0 §5) — answering a
+recoverable id at null leaves the client's request pending forever. A frame that is
+recognisably a *Notification* (a JSON object naming a method, with no `id`) is
+consumed and dropped instead: §4.1 forbids replying to one, so `read()` skips it and
+reports the next frame.
+
+`Content-Length` must be a run of decimal digits (RFC 7230 §3.3.2, which LSP binds
+via §3.2), and repeated headers must agree (§3.3.3). A bare `(int)` cast accepted `-5`,
+which makes `substr()` consume from the wrong end. When the value is unusable the
+frame's extent is unknown, so `read()` hands the rest of the buffer to the decoder
+rather than rescanning it as the next header block: a content part is JSON, so a client
+that merely mis-declared the length is served and anything else costs one `ParseError`.
+Either way the buffer is emptied, so no failure path leaves bytes to be re-read as
+framing. A conformant `Content-Length` still frames exactly, which is what tells a
+truncated body from a complete one and separates two coalesced frames — the fallback is
+the error path only.
+
+`Server` answers a throwing handler with `InternalError` — including a failure in
+`supports()` during handler lookup, and a result the encoder cannot represent, which
+fails in the writer rather than in `handle()`.
+
+`LifecycleHandler` owns lifecycle state and gates every inbound message through
+`lifecycleErrorFor()` (RFC 1 §4.8): requests before `initialize` get
+`ServerNotInitialized`, requests after `shutdown` get `InvalidRequest`, and `exit` is
+always honored so the server can terminate. `initialize` "may only be sent once"
+(LSP), so a second one is gated with `InvalidRequest` rather than re-negotiating over
+the already-resolved session. A gated message is never dispatched; a gated
+notification has no id, so its error is dropped rather than sent — which is what LSP
+"Server lifecycle" means by notifications being *dropped*. The gate opens only once
+`initialize` has produced a result.
+
+`Server` takes the `LifecycleHandler` separately from the other handlers and
+prepends it to the dispatch list itself, so the instance the gate consults cannot
+diverge from the one that handles `initialize`/`shutdown`.
+
 ### Guidelines for New Code
 
 - **Keep code DRY.** Be on the lookout for existing tools that will solve your problem; NEVER copy-and-paste. Extract repeated logic aggressively.

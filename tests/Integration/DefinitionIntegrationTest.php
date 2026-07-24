@@ -10,6 +10,8 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Server;
 use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Transport\EndOfStream;
+use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\MessageReader;
 use Firehed\PhpLsp\Transport\MessageWriter;
 use Firehed\PhpLsp\Transport\TransportInterface;
@@ -70,7 +72,7 @@ class DefinitionIntegrationTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
 
         $exitCode = $server->run();
 
@@ -140,7 +142,7 @@ class DefinitionIntegrationTest extends TestCase
             ) {
             }
 
-            public function read(): ?Message
+            public function read(): Message|MalformedFrame|EndOfStream
             {
                 return $this->reader->read();
             }

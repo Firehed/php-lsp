@@ -36,22 +36,46 @@ use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
+use Firehed\PhpLsp\Transport\EndOfStream;
+use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\TransportInterface;
 
 final class Server
 {
-    private LifecycleHandler $lifecycleHandler;
-    private DocumentManager $documentManager;
-
     /** @var list<HandlerInterface> */
-    private array $handlers = [];
+    private readonly array $handlers;
 
+    /**
+     * @param LifecycleHandler $lifecycleHandler Named separately because the
+     *        loop asks it for the lifecycle gate and the exit code, which are
+     *        not dispatch. It is prepended to the dispatch list here rather
+     *        than passed in twice, so the instance the gate consults and the
+     *        instance that handles `initialize`/`shutdown` cannot diverge.
+     * @param list<HandlerInterface> $handlers Consulted after it, in order;
+     *        the first that supports a method answers it.
+     */
     public function __construct(
-        private TransportInterface $transport,
+        private readonly TransportInterface $transport,
+        private readonly LifecycleHandler $lifecycleHandler,
+        array $handlers,
+        private readonly ParserService $parser,
+    ) {
+        $this->handlers = [$lifecycleHandler, ...$handlers];
+    }
+
+    /**
+     * Wires the server against a project on disk.
+     *
+     * Construction lives here rather than in the constructor so the constructor
+     * stays injectable: the dispatch loop can then be exercised against a
+     * handler set a test chooses, without standing up the whole project.
+     */
+    public static function forProject(
+        TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
-        private readonly ParserService $parser = new ParserService(),
-    ) {
+        ParserService $parser = new ParserService(),
+    ): self {
         if ($projectRoot === null) {
             $cwd = getcwd();
             if ($cwd === false) {
@@ -62,18 +86,18 @@ final class Server
             $projectRoot = $cwd;
         }
 
-        $this->documentManager = new DocumentManager();
+        $documentManager = new DocumentManager();
         $symbolIndex = new SymbolIndex();
-        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $symbolIndex);
+        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
         $classLocator = new ComposerClassLocator($projectRoot);
 
         $classInfoFactory = new DefaultClassInfoFactory();
-        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $this->parser);
+        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
         $functionRepository = new DefaultFunctionRepository();
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
         $symbolResolver = new SymbolResolver(
-            $this->parser,
+            $parser,
             $classRepository,
             $memberResolver,
             $typeResolver,
@@ -81,70 +105,113 @@ final class Server
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);
-        $this->lifecycleHandler = new LifecycleHandler($negotiator);
-        $this->handlers[] = $this->lifecycleHandler;
-        $this->handlers[] = new TextDocumentSyncHandler(
-            $this->documentManager,
-            $this->parser,
-            $classRepository,
-            $classInfoFactory,
-            $indexer,
-        );
-        $this->handlers[] = new DefinitionHandler(
-            $this->documentManager,
-            $symbolResolver,
-        );
-        $this->handlers[] = new HoverHandler(
-            $this->documentManager,
-            $symbolResolver,
-            $negotiator,
-        );
-        $this->handlers[] = new SignatureHelpHandler(
-            $this->documentManager,
-            $symbolResolver,
-        );
-        $this->handlers[] = new CompletionHandler(
-            $this->documentManager,
-            $symbolResolver,
-            new ClassCandidates($symbolIndex, $symbolResolver),
-            new NamespaceCandidates(
-                NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
+        $lifecycleHandler = new LifecycleHandler($negotiator);
+
+        $handlers = [
+            new TextDocumentSyncHandler(
+                $documentManager,
+                $parser,
+                $classRepository,
+                $classInfoFactory,
+                $indexer,
+            ),
+            new DefinitionHandler(
+                $documentManager,
                 $symbolResolver,
             ),
-            new FunctionCandidates($symbolResolver, $negotiator),
-            new KeywordCandidates(),
-            new VariableCandidates($symbolResolver),
-            new MemberCandidates($symbolResolver, $negotiator),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
-        );
+            new HoverHandler(
+                $documentManager,
+                $symbolResolver,
+                $negotiator,
+            ),
+            new SignatureHelpHandler(
+                $documentManager,
+                $symbolResolver,
+            ),
+            new CompletionHandler(
+                $documentManager,
+                $symbolResolver,
+                new ClassCandidates($symbolIndex, $symbolResolver),
+                new NamespaceCandidates(
+                    NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
+                    $symbolResolver,
+                ),
+                new FunctionCandidates($symbolResolver, $negotiator),
+                new KeywordCandidates(),
+                new VariableCandidates($symbolResolver),
+                new MemberCandidates($symbolResolver, $negotiator),
+                new NamedArgumentCandidates(),
+                new BuiltinTypeCandidates(),
+            ),
+        ];
+
+        return new self($transport, $lifecycleHandler, $handlers, $parser);
     }
 
     public function run(): int
     {
-        while (($message = $this->transport->read()) !== null) {
+        while (true) {
+            $message = $this->transport->read();
+
+            if ($message instanceof EndOfStream) {
+                break;
+            }
+
+            if ($message instanceof MalformedFrame) {
+                // Answered at whatever id the reader could correlate the frame
+                // to, and at the JSON-RPC null id when it could recover none
+                // (RFC 1 §9). The loop continues: one bad frame must not end
+                // the session.
+                $this->transport->write(ResponseMessage::error($message->id, $message->error));
+                continue;
+            }
+
             $result = null;
-            $error = null;
 
-            $handler = $this->findHandler($message->method);
+            // Lifecycle gate (RFC 1 §4.8): a message not permitted in the current
+            // state is answered with the lifecycle error and never dispatched. A
+            // gated notification has no id, so its error is simply dropped.
+            $error = $this->lifecycleHandler->lifecycleErrorFor($message);
 
-            try {
-                if ($handler !== null) {
-                    $result = $handler->handle($message);
-                } elseif ($message instanceof RequestMessage) {
-                    $error = ResponseError::methodNotFound($message->method);
+            if ($error === null) {
+                try {
+                    // Inside the try because `supports()` is part of the
+                    // handler contract: a failure selecting a handler is a
+                    // handler failure, and must be answered rather than
+                    // crashing the read loop (RFC 1 §9).
+                    $handler = $this->findHandler($message->method);
+
+                    if ($handler !== null) {
+                        $result = $handler->handle($message);
+                    } elseif ($message instanceof RequestMessage) {
+                        $error = ResponseError::methodNotFound($message->method);
+                    }
+                } catch (\Throwable $e) {
+                    // A failing handler must not take the read loop down with it
+                    // (RFC 1 §9): an editor session that dies on one bad request
+                    // loses all unsaved server state. Notifications have no id to
+                    // answer, so their failure is contained and dropped.
+                    //
+                    // Forwarding the raw message crosses no trust boundary: the
+                    // client is the editor that spawned this process over its own
+                    // stdio pipe, and it already has the server's whole filesystem
+                    // view. Paths it may carry are the user's own, bound for the
+                    // user's own LSP log, which is what makes an unreproducible
+                    // crash diagnosable. `message` stays generic; per [LSP] "Base
+                    // Protocol", ResponseError.data is where detail belongs.
+                    $error = ResponseError::internalError($e->getMessage());
+                } finally {
+                    // The parse memo is scoped to one handled message — this loop
+                    // is the only boundary that knows where that ends. Discarding
+                    // it here is what keeps it from becoming the standing cache the
+                    // Step 0 spike declined (0002-execution-plan.md, Section 8.5).
+                    //
+                    // In a finally so the scope closes on every exit from the
+                    // dispatch, not just the ones that return normally: a handler
+                    // that throws is caught just above and the loop keeps serving,
+                    // so a memo outliving its message would become standing.
+                    $this->parser->discardScopedParses();
                 }
-            } finally {
-                // The parse memo is scoped to one handled message — this loop is
-                // the only boundary that knows where that ends. Discarding it
-                // here is what keeps it from becoming the standing cache the
-                // Step 0 spike declined (0002-execution-plan.md, Section 8.5).
-                //
-                // In a finally so the scope closes on every exit from the
-                // dispatch, not just the ones that return normally: a handler
-                // that throws is fatal today, but S1.4 makes it survivable, and
-                // a memo that outlived a message would then be standing.
-                $this->parser->discardScopedParses();
             }
 
             // Send response for requests (not notifications)
@@ -154,7 +221,7 @@ final class Server
                 } else {
                     $response = ResponseMessage::success($message->id, $result);
                 }
-                $this->transport->write($response);
+                $this->writeResponse($message->id, $response);
             }
 
             // Check for exit
@@ -167,6 +234,33 @@ final class Server
 
         $this->transport->close();
         return 1;
+    }
+
+    /**
+     * A result a handler produced but the encoder cannot represent fails here
+     * rather than in `handle()`, so the dispatch catch never sees it. It is
+     * still a handler failure and must not take the read loop down with it
+     * (RFC 1 §9); text lifted from a file that is not valid UTF-8 reaches the
+     * writer exactly this way.
+     *
+     * The replacement carries only the exception message and the decoded id,
+     * both of which are known-encodable, so answering cannot fail the same way.
+     * The frame is encoded before any bytes are written, so the failed response
+     * leaves nothing half-written on the wire.
+     *
+     * The forwarded message discloses nothing: json_encode's failures come from
+     * PHP's fixed json_last_error_msg table ("Malformed UTF-8 characters…",
+     * "Recursion detected", …), which interpolate none of the value that failed.
+     */
+    private function writeResponse(int|string $id, ResponseMessage $response): void
+    {
+        try {
+            $this->transport->write($response);
+        } catch (\JsonException $e) {
+            $this->transport->write(
+                ResponseMessage::error($id, ResponseError::internalError($e->getMessage())),
+            );
+        }
     }
 
     private function findHandler(string $method): ?HandlerInterface
