@@ -1,0 +1,832 @@
+{
+    "Fixtures\\Domain\\Describable": {
+        "kind": "Interface_",
+        "signature": "interface Describable",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "describe": "public function describe(): string"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Interface whose short name starts with `D`, mirroring the original #298 report\n * where `implements D` wrongly offered `date_*` functions instead of interfaces.\n */",
+        "file": "tests/Fixtures/src/Domain/Describable.php",
+        "line": 11
+    },
+    "Fixtures\\Domain\\Entity": {
+        "kind": "Interface_",
+        "signature": "interface Entity",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "getId": "public function getId(): string"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Base interface for all domain entities.\n */",
+        "file": "tests/Fixtures/src/Domain/Entity.php",
+        "line": 10
+    },
+    "Fixtures\\Domain\\Person": {
+        "kind": "Interface_",
+        "signature": "interface Person",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "getAge": "public function getAge(): int",
+            "getName": "public function getName(): string"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Represents a person with a name.\n */",
+        "file": "tests/Fixtures/src/Domain/Person.php",
+        "line": 10
+    },
+    "Fixtures\\Domain\\Team": {
+        "kind": "Class_",
+        "signature": "class Team",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "__construct": "public function __construct(string $name, Fixtures\\Domain\\User $leader)",
+            "getLeader": "public function getLeader(): Fixtures\\Domain\\User",
+            "getName": "public function getName(): string",
+            "withLeader": "public function withLeader(Fixtures\\Domain\\User $leader): self"
+        },
+        "properties": {
+            "leader": "private Fixtures\\Domain\\User $leader",
+            "name": "private readonly string $name"
+        },
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Represents a team of users.\n */",
+        "file": "tests/Fixtures/src/Domain/Team.php",
+        "line": 10
+    },
+    "Fixtures\\Domain\\User": {
+        "kind": "Class_",
+        "signature": "class User implements Entity, Person",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Fixtures\\Domain\\Entity",
+            "Fixtures\\Domain\\Person"
+        ],
+        "traits": [
+            "Fixtures\\Traits\\HasTimestamps"
+        ],
+        "methods": {
+            "__construct": "public function __construct(string $id, string $name, string $email, int $age, Fixtures\\Enum\\Status $status, ?Fixtures\\Domain\\User $manager, ?Fixtures\\Domain\\Team $team)",
+            "activate": "public function activate(): void",
+            "create": "public static function create(string $id, string $name, string $email): self",
+            "deactivate": "public function deactivate(): void",
+            "getAge": "public function getAge(): int",
+            "getEmail": "public function getEmail(): string",
+            "getId": "public function getId(): string",
+            "getInstanceCount": "public static function getInstanceCount(): int",
+            "getName": "public function getName(): string",
+            "getStatus": "public function getStatus(): Fixtures\\Enum\\Status",
+            "getTeam": "public function getTeam(): ?Fixtures\\Domain\\Team",
+            "isActive": "public function isActive(): bool",
+            "setName": "public function setName(string $name): void",
+            "triggerComputedClassStatic": "public function triggerComputedClassStatic(): void",
+            "triggerDefNullsafeViaAssignment": "public static function triggerDefNullsafeViaAssignment(): void",
+            "triggerDefViaAssignment": "public static function triggerDefViaAssignment(): void",
+            "triggerDynamicConstant": "public function triggerDynamicConstant(): void",
+            "triggerDynamicFuncCall": "public function triggerDynamicFuncCall(): void",
+            "triggerDynamicMethodCall": "public function triggerDynamicMethodCall(): void",
+            "triggerDynamicNew": "public function triggerDynamicNew(): self",
+            "triggerDynamicProperty": "public function triggerDynamicProperty(): void",
+            "triggerDynamicStaticCall": "public function triggerDynamicStaticCall(): void",
+            "triggerHoverMethod": "public function triggerHoverMethod(): void",
+            "triggerHoverMultilineChain": "public function triggerHoverMultilineChain(): void",
+            "triggerHoverNullsafeMethod": "public function triggerHoverNullsafeMethod(): void",
+            "triggerHoverNullsafeProperty": "public function triggerHoverNullsafeProperty(): void",
+            "triggerHoverProperty": "public function triggerHoverProperty(): void",
+            "triggerHoverStaticMethod": "public function triggerHoverStaticMethod(): self",
+            "triggerHoverTraitMethod": "public function triggerHoverTraitMethod(): void",
+            "triggerHoverVariable": "public function triggerHoverVariable(): void",
+            "triggerLiteralHover": "public function triggerLiteralHover(): int",
+            "triggerNestedVariables": "public function triggerNestedVariables(): void",
+            "triggerNonexistentMethodCall": "public function triggerNonexistentMethodCall(): void",
+            "triggerNonexistentStaticMethod": "public function triggerNonexistentStaticMethod(): void",
+            "triggerSigBuiltinFunc": "public function triggerSigBuiltinFunc(): int",
+            "triggerSigNew": "public function triggerSigNew(): self",
+            "triggerSigNullsafe": "public function triggerSigNullsafe(): void",
+            "triggerSigSelf": "public function triggerSigSelf(): self",
+            "triggerSigThis": "public function triggerSigThis(): void",
+            "triggerTraitPropertyFromConsumer": "public function triggerTraitPropertyFromConsumer(): void",
+            "triggerUnknownClass": "public function triggerUnknownClass(): void",
+            "triggerUnknownConstant": "public function triggerUnknownConstant(): void",
+            "triggerUnknownProperty": "public function triggerUnknownProperty(): void",
+            "triggerUntypedMethodCall": "public function triggerUntypedMethodCall(): void",
+            "triggerUntypedProperty": "public function triggerUntypedProperty(): void",
+            "triggerVariableVariable": "public function triggerVariableVariable(): void",
+            "withAge": "public function withAge(int $age): self",
+            "withName": "public function withName(string $name): self",
+            "withStatus": "public function withStatus(Fixtures\\Enum\\Status $status): self"
+        },
+        "properties": {
+            "age": "private int $age",
+            "email": "private string $email",
+            "id": "private readonly string $id",
+            "instanceCount": "private static int $instanceCount",
+            "manager": "public ?Fixtures\\Domain\\User $manager",
+            "name": "private string $name",
+            "status": "private Fixtures\\Enum\\Status $status",
+            "team": "public ?Fixtures\\Domain\\Team $team"
+        },
+        "constants": {
+            "DEFAULT_ROLE": "public const DEFAULT_ROLE"
+        },
+        "enumCases": [],
+        "docblock": "/**\n * Represents a system user.\n *\n * Users can authenticate and perform actions within the application.\n */",
+        "file": "tests/Fixtures/src/Domain/User.php",
+        "line": 15
+    },
+    "Fixtures\\Enum\\Color": {
+        "kind": "Enum_",
+        "signature": "enum Color",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "cases": "public static function cases(): array",
+            "from": "public static function from(string $value): Fixtures\\Enum\\Color",
+            "tryFrom": "public static function tryFrom(string $value): ?Fixtures\\Enum\\Color"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": {
+            "Blue": "case Blue = 'blue'",
+            "Green": "case Green = 'green'",
+            "Red": "case Red = 'red'"
+        },
+        "docblock": null,
+        "file": "tests/Fixtures/src/Enum/Color.php",
+        "line": 7
+    },
+    "Fixtures\\Enum\\Priority": {
+        "kind": "Enum_",
+        "signature": "enum Priority",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "cases": "public static function cases(): array",
+            "from": "public static function from(int $value): Fixtures\\Enum\\Priority",
+            "fromScore": "public static function fromScore(int $score): self",
+            "getLabel": "public function getLabel(): string",
+            "tryFrom": "public static function tryFrom(int $value): ?Fixtures\\Enum\\Priority"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": {
+            "Critical": "case Critical = 100",
+            "High": "case High = 10",
+            "Low": "case Low = 1",
+            "Medium": "case Medium = 5"
+        },
+        "docblock": "/**\n * Task priority levels.\n */",
+        "file": "tests/Fixtures/src/Enum/Priority.php",
+        "line": 10
+    },
+    "Fixtures\\Enum\\SerializableStatus": {
+        "kind": "Enum_",
+        "signature": "enum SerializableStatus implements JsonSerializable",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "JsonSerializable"
+        ],
+        "traits": [],
+        "methods": {
+            "cases": "public static function cases(): array",
+            "from": "public static function from(string $value): Fixtures\\Enum\\SerializableStatus",
+            "jsonSerialize": "public function jsonSerialize(): string",
+            "tryFrom": "public static function tryFrom(string $value): ?Fixtures\\Enum\\SerializableStatus"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": {
+            "Active": "case Active = 'active'",
+            "Inactive": "case Inactive = 'inactive'"
+        },
+        "docblock": null,
+        "file": "tests/Fixtures/src/Enum/SerializableStatus.php",
+        "line": 7
+    },
+    "Fixtures\\Enum\\Status": {
+        "kind": "Enum_",
+        "signature": "enum Status",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "cases": "public static function cases(): array",
+            "isTerminal": "public function isTerminal(): bool",
+            "label": "public function label(): string",
+            "triggerDefEnumMethod": "public function triggerDefEnumMethod(): string",
+            "triggerEnumCase": "public function triggerEnumCase(): Fixtures\\Enum\\Status"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": {
+            "Active": "case Active",
+            "Inactive": "case Inactive",
+            "Pending": "case Pending",
+            "Suspended": "case Suspended"
+        },
+        "docblock": "/**\n * User account status.\n */",
+        "file": "tests/Fixtures/src/Enum/Status.php",
+        "line": 10
+    },
+    "Fixtures\\Exception\\AppException": {
+        "kind": "Class_",
+        "signature": "class AppException extends RuntimeException implements ExceptionInterface",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": "RuntimeException",
+        "interfaces": [
+            "Fixtures\\Exception\\ExceptionInterface"
+        ],
+        "traits": [],
+        "methods": [],
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Reaches Throwable transitively: AppException -> RuntimeException -> Exception -> Throwable.\n */",
+        "file": "tests/Fixtures/src/Exception/AppException.php",
+        "line": 12
+    },
+    "Fixtures\\Exception\\ExceptionInterface": {
+        "kind": "Interface_",
+        "signature": "interface ExceptionInterface extends Throwable",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Throwable"
+        ],
+        "traits": [],
+        "methods": [],
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Exception/ExceptionInterface.php",
+        "line": 9
+    },
+    "Fixtures\\Hierarchy\\AbstractImplementor": {
+        "kind": "Class_",
+        "signature": "abstract class AbstractImplementor implements MiddleInterface",
+        "isAbstract": true,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Fixtures\\Hierarchy\\MiddleInterface"
+        ],
+        "traits": [
+            "Fixtures\\Hierarchy\\OuterTrait"
+        ],
+        "methods": {
+            "abstractClassMethod": "public function abstractClassMethod(): string"
+        },
+        "properties": {
+            "abstractProperty": "public string $abstractProperty"
+        },
+        "constants": {
+            "ABSTRACT_CONST": "public const ABSTRACT_CONST"
+        },
+        "enumCases": [],
+        "docblock": "/**\n * Implements an interface without redeclaring its members, and pulls in a\n * trait that itself uses another trait.\n */",
+        "file": "tests/Fixtures/src/Hierarchy/AbstractImplementor.php",
+        "line": 11
+    },
+    "Fixtures\\Hierarchy\\BaseInterface": {
+        "kind": "Interface_",
+        "signature": "interface BaseInterface",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "baseMethod": "public function baseMethod(): string"
+        },
+        "properties": [],
+        "constants": {
+            "BASE_CONST": "public const BASE_CONST"
+        },
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Hierarchy/BaseInterface.php",
+        "line": 7
+    },
+    "Fixtures\\Hierarchy\\ConcreteDescendant": {
+        "kind": "Class_",
+        "signature": "class ConcreteDescendant extends AbstractImplementor",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": "Fixtures\\Hierarchy\\AbstractImplementor",
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "baseMethod": "public function baseMethod(): string",
+            "middleMethod": "public function middleMethod(): string"
+        },
+        "properties": {
+            "concreteProperty": "public string $concreteProperty"
+        },
+        "constants": {
+            "CONCRETE_CONST": "public const CONCRETE_CONST"
+        },
+        "enumCases": [],
+        "docblock": "/**\n * Reaches an interface only through its parent class, and satisfies that\n * interface's members here.\n */",
+        "file": "tests/Fixtures/src/Hierarchy/ConcreteDescendant.php",
+        "line": 11
+    },
+    "Fixtures\\Hierarchy\\GrandchildDescendant": {
+        "kind": "Class_",
+        "signature": "class GrandchildDescendant extends ConcreteDescendant",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": "Fixtures\\Hierarchy\\ConcreteDescendant",
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "grandchildMethod": "public function grandchildMethod(): string"
+        },
+        "properties": {
+            "grandchildProperty": "public string $grandchildProperty"
+        },
+        "constants": {
+            "GRANDCHILD_CONST": "public const GRANDCHILD_CONST"
+        },
+        "enumCases": [],
+        "docblock": "/**\n * Third level of the class chain: inherits interface, trait and parent members\n * without redeclaring any of them.\n */",
+        "file": "tests/Fixtures/src/Hierarchy/GrandchildDescendant.php",
+        "line": 11
+    },
+    "Fixtures\\Hierarchy\\InnerTrait": {
+        "kind": "Trait_",
+        "signature": "trait InnerTrait",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "innerMethod": "public function innerMethod(): string"
+        },
+        "properties": {
+            "innerProperty": "public string $innerProperty"
+        },
+        "constants": {
+            "INNER_CONST": "public const INNER_CONST"
+        },
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Hierarchy/InnerTrait.php",
+        "line": 7
+    },
+    "Fixtures\\Hierarchy\\LeafInterface": {
+        "kind": "Interface_",
+        "signature": "interface LeafInterface extends MiddleInterface, Countable",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Countable",
+            "Fixtures\\Hierarchy\\MiddleInterface"
+        ],
+        "traits": [],
+        "methods": {
+            "leafMethod": "public function leafMethod(): string"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Extends multiple interfaces, one of them a built-in resolved via reflection.\n */",
+        "file": "tests/Fixtures/src/Hierarchy/LeafInterface.php",
+        "line": 12
+    },
+    "Fixtures\\Hierarchy\\MiddleInterface": {
+        "kind": "Interface_",
+        "signature": "interface MiddleInterface extends BaseInterface",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Fixtures\\Hierarchy\\BaseInterface"
+        ],
+        "traits": [],
+        "methods": {
+            "middleMethod": "public function middleMethod(): string"
+        },
+        "properties": [],
+        "constants": {
+            "MIDDLE_CONST": "public const MIDDLE_CONST"
+        },
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Hierarchy/MiddleInterface.php",
+        "line": 7
+    },
+    "Fixtures\\Hierarchy\\OuterTrait": {
+        "kind": "Trait_",
+        "signature": "trait OuterTrait",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [
+            "Fixtures\\Hierarchy\\InnerTrait"
+        ],
+        "methods": {
+            "outerMethod": "public function outerMethod(): string"
+        },
+        "properties": {
+            "outerProperty": "public string $outerProperty"
+        },
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * A trait that uses another trait.\n */",
+        "file": "tests/Fixtures/src/Hierarchy/OuterTrait.php",
+        "line": 10
+    },
+    "Fixtures\\Inheritance\\ChildClass": {
+        "kind": "Class_",
+        "signature": "class ChildClass extends ParentClass",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": "Fixtures\\Inheritance\\ParentClass",
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "childMethod": "public function childMethod(): void",
+            "overriddenMethod": "public function overriddenMethod(): void",
+            "triggerDirectParentStatic": "public function triggerDirectParentStatic(): void",
+            "triggerGrandparentAccess": "public function triggerGrandparentAccess(): void",
+            "triggerHoverGrandparentMethod": "public function triggerHoverGrandparentMethod(): void",
+            "triggerHoverGrandparentProperty": "public function triggerHoverGrandparentProperty(): void",
+            "triggerHoverInheritedMethod": "public function triggerHoverInheritedMethod(): void",
+            "triggerHoverInheritedProperty": "public function triggerHoverInheritedProperty(): void",
+            "triggerHoverOverriddenMethod": "public function triggerHoverOverriddenMethod(): void",
+            "triggerHoverParentMethod": "public function triggerHoverParentMethod(): void",
+            "triggerHoverParentProperty": "public function triggerHoverParentProperty(): void",
+            "triggerHoverPrivateMethod": "public function triggerHoverPrivateMethod(): void",
+            "triggerHoverPrivateProperty": "public function triggerHoverPrivateProperty(): void",
+            "triggerHoverSelfMethod": "public function triggerHoverSelfMethod(): void",
+            "triggerHoverSelfProperty": "public function triggerHoverSelfProperty(): void",
+            "triggerHoverSharedProperty": "public function triggerHoverSharedProperty(): void",
+            "triggerHoverStaticMethod": "public function triggerHoverStaticMethod(): void",
+            "triggerHoverStaticProperty": "public function triggerHoverStaticProperty(): void",
+            "triggerSignatureHelpParent": "public function triggerSignatureHelpParent(): void",
+            "triggerSignatureHelpSelf": "public function triggerSignatureHelpSelf(): void",
+            "triggerSignatureHelpStatic": "public function triggerSignatureHelpStatic(): void",
+            "withParentParam": "public function withParentParam(Fixtures\\Inheritance\\ParentClass $obj): void"
+        },
+        "properties": {
+            "childProperty": "public string $childProperty",
+            "sharedProperty": "protected string $sharedProperty"
+        },
+        "constants": {
+            "CHILD_CONST": "public const CHILD_CONST"
+        },
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Inheritance/ChildClass.php",
+        "line": 7
+    },
+    "Fixtures\\Inheritance\\FinalDescendant": {
+        "kind": "Class_",
+        "signature": "final class FinalDescendant extends ParentClass",
+        "isAbstract": false,
+        "isFinal": true,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": "Fixtures\\Inheritance\\ParentClass",
+        "interfaces": [],
+        "traits": [],
+        "methods": [],
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Inheritance/FinalDescendant.php",
+        "line": 7
+    },
+    "Fixtures\\Inheritance\\Grandparent": {
+        "kind": "Class_",
+        "signature": "class Grandparent",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "grandparentMethod": "public function grandparentMethod(): void",
+            "grandparentStaticProtected": "protected static function grandparentStaticProtected(): void",
+            "grandparentStaticPublic": "public static function grandparentStaticPublic(): void",
+            "protectedGrandparentMethod": "protected function protectedGrandparentMethod(): void"
+        },
+        "properties": {
+            "grandparentProperty": "public string $grandparentProperty"
+        },
+        "constants": {
+            "GRANDPARENT_CONST": "public const GRANDPARENT_CONST"
+        },
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Inheritance/Grandparent.php",
+        "line": 7
+    },
+    "Fixtures\\Inheritance\\ParentClass": {
+        "kind": "Class_",
+        "signature": "class ParentClass extends Grandparent",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": "Fixtures\\Inheritance\\Grandparent",
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "__construct": "public function __construct(string $name)",
+            "overriddenMethod": "public function overriddenMethod(): void",
+            "parentMethod": "public function parentMethod(): void",
+            "privateMethod": "private function privateMethod(): void",
+            "privateStaticMethod": "private static function privateStaticMethod(): void",
+            "protectedMethod": "protected function protectedMethod(): void",
+            "protectedStaticMethod": "protected static function protectedStaticMethod(): void",
+            "staticMethod": "public static function staticMethod(): void",
+            "triggerDefPrivateMethod": "public function triggerDefPrivateMethod(): void",
+            "triggerDefProtectedMethod": "public function triggerDefProtectedMethod(): void",
+            "triggerHoverClassConstant": "public function triggerHoverClassConstant(): string",
+            "triggerHoverStaticProperty": "public function triggerHoverStaticProperty(): void"
+        },
+        "properties": {
+            "parentProperty": "public string $parentProperty",
+            "privateProperty": "private bool $privateProperty",
+            "protectedProperty": "protected int $protectedProperty",
+            "sharedProperty": "protected string $sharedProperty",
+            "staticProperty": "public static string $staticProperty"
+        },
+        "constants": {
+            "PARENT_CONST": "public const PARENT_CONST",
+            "PROTECTED_CONST": "protected const PROTECTED_CONST"
+        },
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Inheritance/ParentClass.php",
+        "line": 7
+    },
+    "Fixtures\\Repository\\Repository": {
+        "kind": "Interface_",
+        "signature": "interface Repository extends Countable",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Countable"
+        ],
+        "traits": [],
+        "methods": [],
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Base interface for all repositories.\n */",
+        "file": "tests/Fixtures/src/Repository/Repository.php",
+        "line": 12
+    },
+    "Fixtures\\Repository\\UserRepository": {
+        "kind": "Interface_",
+        "signature": "interface UserRepository",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "delete": "public function delete(Fixtures\\Domain\\User $user): void",
+            "find": "public function find(string $id): ?Fixtures\\Domain\\User",
+            "findAll": "public function findAll(): array",
+            "findByEmail": "public function findByEmail(string $email): ?Fixtures\\Domain\\User",
+            "save": "public function save(Fixtures\\Domain\\User $user): void"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Repository for user persistence.\n */",
+        "file": "tests/Fixtures/src/Repository/UserRepository.php",
+        "line": 12
+    },
+    "Fixtures\\Traits\\ConcreteService": {
+        "kind": "Class_",
+        "signature": "class ConcreteService",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [
+            "Fixtures\\Traits\\SingletonTrait"
+        ],
+        "methods": {
+            "getServiceName": "public function getServiceName(): string"
+        },
+        "properties": {
+            "serviceName": "public string $serviceName"
+        },
+        "constants": [],
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Traits/ConcreteService.php",
+        "line": 7
+    },
+    "Fixtures\\Traits\\HasTimestamps": {
+        "kind": "Trait_",
+        "signature": "trait HasTimestamps",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "getCreatedAt": "public function getCreatedAt(): ?DateTimeImmutable",
+            "getUpdatedAt": "public function getUpdatedAt(): ?DateTimeImmutable",
+            "markCreated": "public function markCreated(): void",
+            "markUpdated": "public function markUpdated(): void",
+            "triggerTraitPropertyHover": "public function triggerTraitPropertyHover(): void"
+        },
+        "properties": {
+            "createdAt": "private ?DateTimeImmutable $createdAt",
+            "displayName": "protected string $displayName",
+            "updatedAt": "private ?DateTimeImmutable $updatedAt"
+        },
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Provides created/updated timestamp tracking.\n */",
+        "file": "tests/Fixtures/src/Traits/HasTimestamps.php",
+        "line": 12
+    },
+    "Fixtures\\Traits\\SingletonTrait": {
+        "kind": "Trait_",
+        "signature": "trait SingletonTrait",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "getInstance": "public static function getInstance(): self",
+            "instance": "public static function instance(): static",
+            "tryInstance": "public static function tryInstance(): ?static"
+        },
+        "properties": {
+            "instance": "private static ?Fixtures\\Traits\\SingletonTrait $instance"
+        },
+        "constants": [],
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Traits/SingletonTrait.php",
+        "line": 7
+    },
+    "Psr\\Http\\Message\\RequestInterface": {
+        "kind": "Interface_",
+        "signature": "interface RequestInterface extends MessageInterface",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Psr\\Http\\Message\\MessageInterface"
+        ],
+        "traits": [],
+        "methods": {
+            "getMethod": "public function getMethod(): string",
+            "getRequestTarget": "public function getRequestTarget(): string",
+            "getUri": "public function getUri(): Psr\\Http\\Message\\UriInterface",
+            "withMethod": "public function withMethod(string $method): Psr\\Http\\Message\\RequestInterface",
+            "withRequestTarget": "public function withRequestTarget(string $requestTarget): Psr\\Http\\Message\\RequestInterface",
+            "withUri": "public function withUri(Psr\\Http\\Message\\UriInterface $uri, bool $preserveHost): Psr\\Http\\Message\\RequestInterface"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Representation of an outgoing, client-side request.\n *\n * Per the HTTP specification, this interface includes properties for\n * each of the following:\n *\n * - Protocol version\n * - HTTP method\n * - URI\n * - Headers\n * - Message body\n *\n * During construction, implementations MUST attempt to set the Host header from\n * a provided URI if no Host header is provided.\n *\n * Requests are considered immutable; all methods that might change state MUST\n * be implemented such that they retain the internal state of the current\n * message and return an instance that contains the changed state.\n */",
+        "file": "tests/Fixtures/vendor/psr/http-message/src/RequestInterface.php",
+        "line": 24
+    },
+    "Psr\\Http\\Message\\ServerRequestInterface": {
+        "kind": "Interface_",
+        "signature": "interface ServerRequestInterface extends RequestInterface",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [
+            "Psr\\Http\\Message\\RequestInterface"
+        ],
+        "traits": [],
+        "methods": {
+            "getAttribute": "public function getAttribute(string $name, $default)",
+            "getAttributes": "public function getAttributes(): array",
+            "getCookieParams": "public function getCookieParams(): array",
+            "getParsedBody": "public function getParsedBody()",
+            "getQueryParams": "public function getQueryParams(): array",
+            "getServerParams": "public function getServerParams(): array",
+            "getUploadedFiles": "public function getUploadedFiles(): array",
+            "withAttribute": "public function withAttribute(string $name, $value): Psr\\Http\\Message\\ServerRequestInterface",
+            "withCookieParams": "public function withCookieParams(array $cookies): Psr\\Http\\Message\\ServerRequestInterface",
+            "withParsedBody": "public function withParsedBody($data): Psr\\Http\\Message\\ServerRequestInterface",
+            "withQueryParams": "public function withQueryParams(array $query): Psr\\Http\\Message\\ServerRequestInterface",
+            "withUploadedFiles": "public function withUploadedFiles(array $uploadedFiles): Psr\\Http\\Message\\ServerRequestInterface",
+            "withoutAttribute": "public function withoutAttribute(string $name): Psr\\Http\\Message\\ServerRequestInterface"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * Representation of an incoming, server-side HTTP request.\n *\n * Per the HTTP specification, this interface includes properties for\n * each of the following:\n *\n * - Protocol version\n * - HTTP method\n * - URI\n * - Headers\n * - Message body\n *\n * Additionally, it encapsulates all data as it has arrived to the\n * application from the CGI and/or PHP environment, including:\n *\n * - The values represented in $_SERVER.\n * - Any cookies provided (generally via $_COOKIE)\n * - Query string arguments (generally via $_GET, or as parsed via parse_str())\n * - Upload files, if any (as represented by $_FILES)\n * - Deserialized body parameters (generally from $_POST)\n *\n * $_SERVER values MUST be treated as immutable, as they represent application\n * state at the time of request; as such, no methods are provided to allow\n * modification of those values. The other values provide such methods, as they\n * can be restored from $_SERVER or the request body, and may need treatment\n * during the application (e.g., body parameters may be deserialized based on\n * content type).\n *\n * Additionally, this interface recognizes the utility of introspecting a\n * request to derive and match additional parameters (e.g., via URI path\n * matching, decrypting cookie values, deserializing non-form-encoded body\n * content, matching authorization headers to users, etc). These parameters\n * are stored in an \"attributes\" property.\n *\n * Requests are considered immutable; all methods that might change state MUST\n * be implemented such that they retain the internal state of the current\n * message and return an instance that contains the changed state.\n */",
+        "file": "tests/Fixtures/vendor/psr/http-message/src/ServerRequestInterface.php",
+        "line": 43
+    },
+    "Fixtures\\ThisClassDoesNotExist": null
+}
