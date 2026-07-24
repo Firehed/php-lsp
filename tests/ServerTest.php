@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests;
 use Amp\ByteStream\ReadableBuffer;
 use Amp\ByteStream\WritableBuffer;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -321,6 +322,62 @@ class ServerTest extends TestCase
             3,
             $parser->getMetrics()->getParseCount(),
             'one didOpen and two completion requests, one parse each',
+        );
+    }
+
+    /**
+     * The parse memo is discarded in a `finally`, so a handler that parses and
+     * then throws still closes its scope. Both parse-scope tests above use
+     * non-throwing handlers, so moving the discard out of the `finally` to the
+     * tail of the `try` leaves them green while the memo silently outlives a
+     * throwing message and becomes standing. Two identical requests whose
+     * handler parses fixed content and throws separate the cases: the second
+     * re-parses only if the first message's memo was discarded despite the throw.
+     */
+    public function testParseMemoIsDiscardedWhenTheHandlerThrows(): void
+    {
+        $parser = new ParserService();
+        $document = new TextDocument('file:///probe.php', 'php', 1, '<?php class ScopedProbe {}');
+
+        $handler = new class ($parser, $document) implements HandlerInterface {
+            public function __construct(
+                private ParserService $parser,
+                private TextDocument $document,
+            ) {
+            }
+
+            public function supports(string $method): bool
+            {
+                return $method === 'test/parseThenThrow';
+            }
+
+            public function handle(Message $message): mixed
+            {
+                $this->parser->parse($this->document);
+                throw new \RuntimeException('after parsing');
+            }
+        };
+
+        $call = $this->requestJson(1, 'test/parseThenThrow');
+        $input = $this->buildMessages(
+            $this->initializeJson(),
+            $this->initializedJson(),
+            $call,
+            $call,
+            $this->notificationJson('exit'),
+        );
+        $outputBuffer = new WritableBuffer();
+
+        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
+        $transport = $this->createTransport($input, $outputBuffer);
+        $server = new Server($transport, $lifecycle, [$handler], $parser);
+
+        $server->run();
+
+        self::assertSame(
+            2,
+            $parser->getMetrics()->getParseCount(),
+            'the memo is discarded on the throwing message, so the second call parses again',
         );
     }
 
