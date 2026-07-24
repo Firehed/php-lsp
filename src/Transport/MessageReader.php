@@ -105,15 +105,25 @@ final class MessageReader
      */
     private static function parseContentLength(string $headerSection): ?int
     {
+        $lengths = [];
+
         foreach (explode("\r\n", $headerSection) as $header) {
             if (str_starts_with(strtolower($header), self::CONTENT_LENGTH)) {
                 $value = trim(substr($header, strlen(self::CONTENT_LENGTH)));
 
-                return ctype_digit($value) ? (int) $value : null;
+                if (!ctype_digit($value)) {
+                    return null;
+                }
+
+                $lengths[] = (int) $value;
             }
         }
 
-        return null;
+        // Conflicting values are unrecoverable framing ([RFC 7230] §3.3.3), and
+        // taking the first silently is the worst option: it is what lets two
+        // readers of the same bytes disagree about where a frame ends. Repeats
+        // of one value say nothing contradictory, so they still frame.
+        return count(array_unique($lengths)) === 1 ? $lengths[0] : null;
     }
 
     private function readBody(int $length): ?string
