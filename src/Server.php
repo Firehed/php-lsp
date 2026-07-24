@@ -186,6 +186,14 @@ final class Server
                     // (RFC 1 §9): an editor session that dies on one bad request
                     // loses all unsaved server state. Notifications have no id to
                     // answer, so their failure is contained and dropped.
+                    //
+                    // Forwarding the raw message crosses no trust boundary: the
+                    // client is the editor that spawned this process over its own
+                    // stdio pipe, and it already has the server's whole filesystem
+                    // view. Paths it may carry are the user's own, bound for the
+                    // user's own LSP log, which is what makes an unreproducible
+                    // crash diagnosable. `message` stays generic; per [LSP] "Base
+                    // Protocol", ResponseError.data is where detail belongs.
                     $error = ResponseError::internalError($e->getMessage());
                 } finally {
                     // The parse memo is scoped to one handled message — this loop
@@ -234,6 +242,10 @@ final class Server
      * both of which are known-encodable, so answering cannot fail the same way.
      * The frame is encoded before any bytes are written, so the failed response
      * leaves nothing half-written on the wire.
+     *
+     * The forwarded message discloses nothing: json_encode's failures come from
+     * PHP's fixed json_last_error_msg table ("Malformed UTF-8 characters…",
+     * "Recursion detected", …), which interpolate none of the value that failed.
      */
     private function writeResponse(int|string $id, ResponseMessage $response): void
     {
