@@ -52,7 +52,9 @@ final class MessageReader
                 $this->buffer = substr($this->buffer, $headerEnd + 4);
 
                 return self::parseContentLength($headerSection)
-                    ?? new MalformedFrame(ResponseError::parseError('missing Content-Length header'));
+                    ?? new MalformedFrame(
+                        ResponseError::parseError('missing or unusable Content-Length header'),
+                    );
             }
 
             $chunk = $this->stream->read();
@@ -72,11 +74,23 @@ final class MessageReader
         }
     }
 
+    /**
+     * Null when no usable Content-Length is present, which per [LSP] "Base
+     * Protocol" is a byte count and so a run of decimal digits.
+     *
+     * A bare (int) cast accepted whatever the sender sent: "abc" framed a
+     * zero-length body and "-5" a negative one, which makes substr() consume
+     * from the wrong end and corrupts every frame that follows. Rejecting the
+     * frame instead leaves the buffer untouched, so a sender that merely
+     * mis-declared one length does not lose the messages behind it.
+     */
     private static function parseContentLength(string $headerSection): ?int
     {
         foreach (explode("\r\n", $headerSection) as $header) {
             if (str_starts_with(strtolower($header), self::CONTENT_LENGTH)) {
-                return (int) trim(substr($header, strlen(self::CONTENT_LENGTH)));
+                $value = trim(substr($header, strlen(self::CONTENT_LENGTH)));
+
+                return ctype_digit($value) ? (int) $value : null;
             }
         }
 

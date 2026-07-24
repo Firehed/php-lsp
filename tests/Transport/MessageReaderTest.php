@@ -179,6 +179,53 @@ class MessageReaderTest extends TestCase
         );
     }
 
+    /**
+     * Per [LSP] "Base Protocol" the Content-Length value is a byte count. A
+     * bare (int) cast accepted anything: "abc" became 0, and "-5" became a
+     * negative length, which makes substr() consume from the wrong end of the
+     * buffer and destroys every frame that follows. Rejecting the header
+     * instead leaves the buffer alone, so the next frame still reads.
+     */
+    #[DataProvider('unusableContentLengths')]
+    public function testUnusableContentLengthDoesNotConsumeTheNextFrame(string $value): void
+    {
+        $input = "Content-Length: $value\r\n\r\n"
+            . $this->frame('{"jsonrpc":"2.0","method":"initialized"}');
+        $reader = new MessageReader(new ReadableBuffer($input));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(MalformedFrame::class, $result, "should reject Content-Length: $value");
+        self::assertSame(
+            ResponseError::parseError()->code,
+            $result->error->code,
+            "an unusable Content-Length yields ParseError: $value",
+        );
+
+        $recovered = $reader->read();
+
+        self::assertInstanceOf(
+            NotificationMessage::class,
+            $recovered,
+            'the frame after an unusable Content-Length is still delivered',
+        );
+        self::assertSame('initialized', $recovered->method);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function unusableContentLengths(): iterable
+    {
+        yield 'non-numeric' => ['abc'];
+        yield 'negative' => ['-5'];
+        yield 'empty' => [''];
+        yield 'fractional' => ['1.5'];
+        yield 'scientific notation' => ['1e3'];
+    }
+
     public function testUnparseableBodyYieldsParseError(): void
     {
         $reader = new MessageReader(new ReadableBuffer($this->frame('this is not json')));
