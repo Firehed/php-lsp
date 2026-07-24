@@ -132,6 +132,16 @@ class MessageReaderTest extends TestCase
             $reader->read(),
             'bytes that never terminate the header block are malformed, not EOF',
         );
+
+        // The reader must consume the stranded bytes, not just report on them.
+        // Server::run answers a malformed frame and continues, so a reader that
+        // kept re-reporting the same buffer would spin emitting ParseError
+        // frames without end rather than winding the session down.
+        self::assertInstanceOf(
+            EndOfStream::class,
+            $reader->read(),
+            'the stranded bytes are consumed, so the next read reports end of stream',
+        );
     }
 
     public function testBodyTruncatedByEndOfStreamIsMalformed(): void
