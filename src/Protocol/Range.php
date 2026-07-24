@@ -35,6 +35,17 @@ final readonly class Range
     }
 
     /**
+     * The span a completion selection replaces: the typed $prefix ending at the
+     * cursor's $character column. Both columns are in the negotiated encoding, so
+     * the prefix is measured in that encoding's code units — never in bytes, which
+     * would misplace the start past any multibyte character (RFC 1 §4.9).
+     */
+    public static function forPrefix(int $line, int $character, string $prefix, PositionEncoding $encoding): self
+    {
+        return self::onLine($line, $character - $encoding->codeUnitLength($prefix), $character);
+    }
+
+    /**
      * @return LspRange
      */
     public function toArray(): array
