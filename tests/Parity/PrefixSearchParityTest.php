@@ -69,6 +69,11 @@ final class PrefixSearchParityTest extends TestCase
             'User|Class' => ['User', [SymbolKind::Class_]],
             'get|Function' => ['get', [SymbolKind::Function_]],
             'Zzz|none' => ['Zzz', null],
+            // A multi-kind filter: matches must be admitted if their kind is any
+            // of the listed kinds, not merely the first. With Class_ and
+            // Interface_ both requested, the result spans both kinds — a filter
+            // that collapsed to a single kind would drop the interfaces.
+            'all|Class+Interface' => ['', [SymbolKind::Class_, SymbolKind::Interface_]],
         ];
 
         $captured = [];

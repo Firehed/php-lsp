@@ -115,5 +115,28 @@
         }
     ],
     "get|Function": [],
-    "Zzz|none": []
+    "Zzz|none": [],
+    "all|Class+Interface": [
+        {
+            "fqn": "Fixtures\\Domain\\Entity",
+            "name": "Entity",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/Entity.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User",
+            "name": "User",
+            "kind": "Class_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Repository\\UserRepository",
+            "name": "UserRepository",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Repository/UserRepository.php"
+        }
+    ]
 }
