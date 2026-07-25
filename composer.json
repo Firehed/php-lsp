@@ -36,7 +36,7 @@
     "scripts": {
         "phpcs": "phpcs",
         "unit": "phpunit",
-        "parity-coverage": "phpunit -c phpunit.parity.xml.dist --coverage-text",
+        "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
         "test": [
             "@phpstan",

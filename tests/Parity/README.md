@@ -34,14 +34,12 @@ recaptures **only** that surface's golden while the others stay frozen.
   relevant golden — that is expected; recapture and review. Avoid growing the parity
   corpus for unrelated tests: it is deliberately small and stable so unrelated
   fixture churn does not ripple here.
-- **When a later step moves a surface class, re-point the coverage config.**
-  `phpunit.parity.xml.dist`'s `<source>` names the surface files by path. A refactor
-  that renames or relocates one (e.g. the `SymbolResolver` decomposition in Step 4,
-  or the `SymbolSource` facade in Step 2) **must** update that list, or
-  `composer parity-coverage` silently stops measuring it. The **goldens need no
-  change** for such a refactor — they assert output, so they ride it unchanged; if a
+- **A refactor that moves a surface class needs no harness change.** The goldens
+  assert *output*, so they ride a rename or relocation (e.g. the `SymbolSource`
+  facade in Step 2, the `SymbolResolver` decomposition in Step 4) unchanged; if a
   golden *does* diff during a "behavior-preserving" step, the refactor changed
-  behavior.
+  behavior. There is no separate config or surface-file list to keep in sync — the
+  surfaces are the classes in the table above.
 - **What it does not guard.** These are the *knowledge* surfaces (declared symbols,
   enumeration). Positional / type-inference behavior — flow narrowing, hover of an
   inferred variable, generics *in expressions* — is a different layer and does not
@@ -68,14 +66,15 @@ to the repo root so a golden does not embed the machine it was captured on.
 ## Surface coverage (the corpus-gap check)
 
 ```bash
-composer parity-coverage
+composer parity-coverage   # phpunit tests/Parity --coverage-text
 ```
 
-runs only the four surface tests with coverage restricted to the migrated surface
-classes, so an unexecuted line is a **corpus gap** — a behavioral edge the corpus
-does not exercise — surfaced before the harness is trusted. The corpus drives
-every surface class to 100% except a handful of defensive guards that no realistic
-project input can reach:
+runs the parity tests under coverage (a path selector on the normal config, no
+separate config file). Read the rows for the surface classes in the table above: an
+unexecuted line there is a **corpus gap** — a behavioral edge the corpus does not
+exercise — to surface before the harness is trusted. The corpus drives every surface
+class to 100% except a handful of defensive guards that no realistic project input
+can reach:
 
 - parser `ast === null` guards (`DocumentIndexer`, `DefaultClassRepository`): the
   parser uses an error-*collecting* handler, so broken code yields a partial AST,
