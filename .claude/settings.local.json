@@ -1,19 +1,22 @@
 {
   "permissions": {
     "allow": [
+      "Bash(~/.claude/skills/link-issues/scripts/link-issues *)",
       "Bash(composer install:*)",
       "Bash(composer phpcs:*)",
       "Bash(composer phpstan:*)",
-      "Bash(composer unit:*)",
       "Bash(composer test:*)",
+      "Bash(composer unit:*)",
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",
       "Bash(gh pr diff:*)",
+      "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
       "Bash(gh project:*)",
-      "WebSearch",
-      "Bash(~/.claude/skills/link-issues/scripts/link-issues *)",
-      "Bash(php ~/.claude/skills/coverage-gaps/scripts/parse-coverage.php *)"
+      "Bash(grep *)",
+      "Bash(php -d pcov.enabled=0 vendor/bin/phpunit --filter *)",
+      "Bash(php ~/.claude/skills/coverage-gaps/scripts/parse-coverage.php *)",
+      "WebSearch"
     ]
   }
 }
