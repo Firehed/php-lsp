@@ -18,7 +18,8 @@
     },
     "Fixtures\\Model": {
         "childNamespaces": [
-            "Fixtures\\Model\\Env"
+            "Fixtures\\Model\\Env",
+            "Fixtures\\Model\\OpenOnly"
         ],
         "symbols": [
             {
@@ -38,6 +39,15 @@
             },
             {
                 "fqn": "Fixtures\\Model\\Env\\Repository",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\Model\\OpenOnly": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Model\\OpenOnly\\Unsaved",
                 "kind": "ClassLike"
             }
         ]

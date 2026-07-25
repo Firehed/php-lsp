@@ -58,6 +58,7 @@ final class ChildrenOfParityTest extends TestCase
         'Fixtures\Catalog',
         'Fixtures\Model',
         'Fixtures\Model\Env',
+        'Fixtures\Model\OpenOnly',
         'Psr',
         'Psr\Http',
         'Psr\Http\Message',
@@ -81,6 +82,24 @@ final class ChildrenOfParityTest extends TestCase
             self::assertNotFalse($content, "fixture document should be readable: {$relative}");
             $indexer->index(new TextDocument('file://' . $path, 'php', 0, $content));
         }
+
+        // A class that lives only in an open, unsaved document: its namespace has no
+        // on-disk PSR-4 backing, so ComposerNamespaceSource cannot see it and the
+        // workspace source is its sole provider. Every *other* workspace symbol and
+        // derived child namespace in this corpus is also produced by the composer
+        // source (the indexed files exist on disk under a PSR-4 prefix), so without
+        // this the workspace enumeration path is fully shadowed and a regression in
+        // it would leave the golden green. This pins both the workspace source's
+        // symbol enumeration (`Unsaved` under `Fixtures\Model\OpenOnly`) and its
+        // child-namespace derivation (`Fixtures\Model\OpenOnly` under
+        // `Fixtures\Model`). RFC 1 §4.2 (enumeration is served by the workspace
+        // backend too), §5.2 (open-document state must surface).
+        $indexer->index(new TextDocument(
+            'file:///virtual/OpenOnly/Unsaved.php',
+            'php',
+            1,
+            "<?php\nnamespace Fixtures\\Model\\OpenOnly;\nclass Unsaved {}\n",
+        ));
 
         $this->catalog = NamespaceCatalogFactory::forProject($index, $this->fixturesRoot);
     }
