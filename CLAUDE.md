@@ -463,6 +463,10 @@ self::assertSame($defUri, $result['uri']);
 Fixtures in `src/Domain/`, `src/Inheritance/`, etc. are shared across tests. Rules:
 - **Additive changes OK:** Adding methods, properties, classes
 - **Breaking changes require coordination:** Don't rename, remove, or change signatures
+- **Some fixtures back the Step P parity goldens** (`tests/Parity/`). Changing one —
+  *even additively* — changes its golden. Recapture with `UPDATE_GOLDENS=1` and review
+  the diff; see `tests/Parity/README.md`. The parity corpus is deliberately small, so
+  prefer other fixtures when adding cases for unrelated tests.
 
 ## LSP Protocol
 
