@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
-use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -25,41 +24,45 @@ use PHPUnit\Framework\TestCase;
  *
  * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.2, §5.1.
  */
-#[CoversClass(NamespaceCatalogFactory::class)]
 final class ChildrenOfParityTest extends TestCase
 {
     use AssertsGolden;
 
     /**
      * A fixed set of workspace documents indexed before enumeration, so the
-     * workspace source contributes deterministically.
+     * workspace source contributes deterministically. The `Fixtures\Model`
+     * subtree is a small, dedicated namespacing example, chosen so unrelated
+     * fixtures added elsewhere cannot churn this golden.
      *
      * @var list<string>
      */
     private const array INDEXED_DOCUMENTS = [
-        'src/Domain/Entity.php',
-        'src/Domain/User.php',
-        'src/Enum/Status.php',
+        'src/Catalog/functions.php',
+        'src/Model/Env.php',
+        'src/Model/Env/Handler.php',
         'src/Model/Env/Sub/Thing.php',
     ];
 
     /**
-     * Namespaces to enumerate. Each is free of internal symbols, so the
-     * reflection source contributes nothing and the merged output is stable.
+     * Namespaces to enumerate. Each is deliberately *stable*: the locked
+     * `psr/http-message` dependency, the single PSR-0 and classmap fixtures, and
+     * the `Fixtures\Model` subtree — none grows when features add fixtures
+     * elsewhere. Each is also free of internal symbols, so the reflection source
+     * contributes nothing and the merged output stays deterministic across the
+     * PHP matrix. Between them they exercise every composer branch: a PSR-4 leaf
+     * with symbols, a namespace above a PSR-4 prefix, PSR-0, and the classmap.
      *
      * @var list<string>
      */
     private const array NAMESPACES = [
-        'Fixtures',
-        'Fixtures\Domain',
-        'Fixtures\Enum',
+        'Fixtures\Catalog',
         'Fixtures\Model',
         'Fixtures\Model\Env',
-        'Fixtures\TypeInference',
         'Psr',
         'Psr\Http',
         'Psr\Http\Message',
         'Psr0',
+        'Firehed\PhpLsp\Tests\Fixtures\Autoload',
         'Fixtures\ThisNamespaceIsEmpty',
     ];
 
