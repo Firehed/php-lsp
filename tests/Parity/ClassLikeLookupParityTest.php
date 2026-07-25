@@ -196,6 +196,22 @@ final class ClassLikeLookupParityTest extends TestCase
                 "the reflection fallback must extract ArrayObject::{$method}",
             );
         }
+
+        // Name presence alone would pass even if the reflection path mis-extracted a
+        // member's visibility or parameters — those lines execute, but their output
+        // is not frozen into the golden (built-in signatures are version-fragile).
+        // Pin the formatted shape of one member to close that gap. The prefix below
+        // is stable across the 8.3/8.4/8.5 matrix — it deliberately stops before the
+        // parameter *names* (which internal reflection can vary) — yet still pins the
+        // visibility, the method name, and the first typed parameter, so a reflection
+        // path that dropped the visibility or the parameter list goes red rather than
+        // passing behind the name check. (Return types are omitted: ArrayObject's are
+        // tentative, so reflection reports none.)
+        self::assertStringStartsWith(
+            'public function offsetSet(mixed $',
+            $info->methods['offsetSet']->format(),
+            'the reflection fallback must format visibility and typed parameters, not just the name',
+        );
     }
 
     /**
