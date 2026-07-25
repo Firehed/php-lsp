@@ -16,6 +16,37 @@ spot-audited, committed, and diffed on every run. A behavior-preserving step mus
 reproduce its goldens byte for byte; a step that intends to change one surface
 recaptures **only** that surface's golden while the others stay frozen.
 
+## Maintenance contract (read this before touching a fixture or a surface class)
+
+- **Permanent, not scaffolding.** This harness is never deleted. Plan 0002's
+  Teardown ledger does not list it, and Step Z requires it green. Treat it like
+  `TypeGraphParityTest` — a standing regression net, not a migration crutch.
+- **No scheduled cleanup.** A golden changes *only* when a surface's observable
+  output legitimately changes. There is nothing to prune or refresh periodically.
+- **A red golden is a question, not a chore.** Ask: *did I mean to change this
+  surface's output?*
+  - **No** → you have a regression. Fix the code, not the golden.
+  - **Yes** (a Step 3b feature, or a deliberate fixture change) → recapture only the
+    affected surface (below) and read every changed line before committing.
+- **Editing a fixture the harness uses changes its golden.** Each surface test names
+  its corpus (`CORPUS` / `INDEXED_DOCUMENTS` / the query lists). Adding a method to
+  `User`, or a file under `Fixtures\Model` or `Fixtures\Catalog`, will shift the
+  relevant golden — that is expected; recapture and review. Avoid growing the parity
+  corpus for unrelated tests: it is deliberately small and stable so unrelated
+  fixture churn does not ripple here.
+- **When a later step moves a surface class, re-point the coverage config.**
+  `phpunit.parity.xml.dist`'s `<source>` names the surface files by path. A refactor
+  that renames or relocates one (e.g. the `SymbolResolver` decomposition in Step 4,
+  or the `SymbolSource` facade in Step 2) **must** update that list, or
+  `composer parity-coverage` silently stops measuring it. The **goldens need no
+  change** for such a refactor — they assert output, so they ride it unchanged; if a
+  golden *does* diff during a "behavior-preserving" step, the refactor changed
+  behavior.
+- **What it does not guard.** These are the *knowledge* surfaces (declared symbols,
+  enumeration). Positional / type-inference behavior — flow narrowing, hover of an
+  inferred variable, generics *in expressions* — is a different layer and does not
+  touch these goldens; it is guarded by its own tests.
+
 ## Updating a golden
 
 ```bash
