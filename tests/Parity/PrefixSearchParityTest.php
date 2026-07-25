@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
-use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -23,7 +22,6 @@ use PHPUnit\Framework\TestCase;
  *
  * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.2, §5.1.
  */
-#[CoversClass(SymbolIndex::class)]
 final class PrefixSearchParityTest extends TestCase
 {
     use AssertsGolden;
@@ -86,14 +84,35 @@ final class PrefixSearchParityTest extends TestCase
         $this->assertGoldenMatches('prefix-search', $captured);
     }
 
+    public function testExactLookupsByFqnAndName(): void
+    {
+        // The index's exact-match queries back go-to-definition and reference
+        // resolution; the prefix surface owns the index, so its parity covers them.
+        $byFqn = $this->index->findByFqn('Fixtures\Domain\User');
+        self::assertNotNull($byFqn, 'an indexed symbol must be found by its FQN');
+        self::assertSame('User', $byFqn->name, 'findByFqn must return the matching symbol');
+        self::assertNull(
+            $this->index->findByFqn('Fixtures\Domain\Absent'),
+            'an unindexed FQN must return null',
+        );
+
+        $byName = array_map(
+            static fn(Symbol $symbol): string => $symbol->fullyQualifiedName,
+            $this->index->findByName('User'),
+        );
+        self::assertSame(
+            ['Fixtures\Domain\User'],
+            $byName,
+            'findByName must return every symbol with that short name',
+        );
+    }
+
     /**
-     * @return array{
-     *   fqn: string,
-     *   name: string,
-     *   kind: string,
-     *   containerName: ?string,
-     *   location: array{uri: string, startLine: int, startCharacter: int, endLine: int, endCharacter: int},
-     * }
+     * The `uri` is captured (which file a match lives in), but not the line/column
+     * offsets: those shift on any edit above the symbol, which is churn unrelated
+     * to what the prefix-search surface returns.
+     *
+     * @return array{fqn: string, name: string, kind: string, containerName: ?string, uri: string}
      */
     private function serialize(Symbol $symbol): array
     {
@@ -102,13 +121,7 @@ final class PrefixSearchParityTest extends TestCase
             'name' => $symbol->name,
             'kind' => $symbol->kind->name,
             'containerName' => $symbol->containerName,
-            'location' => [
-                'uri' => GoldenCodec::relativizePath($symbol->location->uri, $this->projectRoot),
-                'startLine' => $symbol->location->startLine,
-                'startCharacter' => $symbol->location->startCharacter,
-                'endLine' => $symbol->location->endLine,
-                'endCharacter' => $symbol->location->endCharacter,
-            ],
+            'uri' => GoldenCodec::relativizePath($symbol->location->uri, $this->projectRoot),
         ];
     }
 }
