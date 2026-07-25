@@ -767,6 +767,26 @@
         "file": "tests/Fixtures/src/Traits/SingletonTrait.php",
         "line": 7
     },
+    "Fixtures\\TypeInference\\AnonymousClass": {
+        "kind": "Class_",
+        "signature": "class AnonymousClass",
+        "isAbstract": false,
+        "isFinal": false,
+        "isReadonly": false,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "getAnonymous": "public function getAnonymous(): object"
+        },
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/TypeInference/AnonymousClass.php",
+        "line": 7
+    },
     "Psr\\Http\\Message\\RequestInterface": {
         "kind": "Interface_",
         "signature": "interface RequestInterface extends MessageInterface",

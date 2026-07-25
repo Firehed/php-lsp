@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
-use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,7 +23,6 @@ use PHPUnit\Framework\TestCase;
  *
  * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.2, §5.1.
  */
-#[CoversClass(DefaultClassRepository::class)]
 final class ClassLikeLookupParityTest extends TestCase
 {
     use AssertsGolden;
@@ -65,6 +63,7 @@ final class ClassLikeLookupParityTest extends TestCase
         'Fixtures\Traits\ConcreteService',
         'Fixtures\Traits\HasTimestamps',
         'Fixtures\Traits\SingletonTrait',
+        'Fixtures\TypeInference\AnonymousClass',
         'Psr\Http\Message\RequestInterface',
         'Psr\Http\Message\ServerRequestInterface',
         'Fixtures\ThisClassDoesNotExist',
@@ -72,13 +71,6 @@ final class ClassLikeLookupParityTest extends TestCase
 
     private string $projectRoot;
     private DefaultClassRepository $repository;
-
-    public static function setUpBeforeClass(): void
-    {
-        // The vendored PSR classes must be loadable so the repository resolves
-        // them from the locked source, keeping the golden deterministic.
-        require_once dirname(__DIR__) . '/Fixtures/vendor/autoload.php';
-    }
 
     protected function setUp(): void
     {
@@ -119,6 +111,66 @@ final class ClassLikeLookupParityTest extends TestCase
         $resolved = $this->repository->get(self::className('Virtual\Widget'));
         self::assertNotNull($resolved, 'an open-document class must resolve through get()');
         self::assertSame('Virtual\Widget', $resolved->name->fqn, 'open-document lookup must win over disk');
+    }
+
+    public function testUnresolvableLookupsReturnNull(): void
+    {
+        // A file the locator finds but that declares no class of that name
+        // (a multi-class file), and a file that does not parse, both resolve to
+        // null — the not-found contract for the located-but-unusable cases.
+        self::assertNull(
+            $this->repository->get(self::className('Fixtures\Utility\ClassModifiers')),
+            'a located file that declares no matching class must resolve to null',
+        );
+        self::assertNull(
+            $this->repository->get(self::className('Fixtures\IncompleteCode\VeryBroken')),
+            'a located file that does not parse must resolve to null',
+        );
+    }
+
+    public function testRemoveDocumentDropsRegisteredClass(): void
+    {
+        $uri = 'file:///virtual/Ephemeral.php';
+        $content = "<?php\nnamespace Virtual;\nclass Ephemeral {}\n";
+        $parser = new ParserService();
+        $ast = $parser->parse(new TextDocument($uri, 'php', 1, $content));
+        self::assertNotNull($ast, 'the virtual document should parse');
+
+        $info = (new DefaultClassInfoFactory())->fromAstNode(self::firstClassLike($ast), $uri);
+        $this->repository->updateDocument($uri, [$info]);
+        self::assertNotNull(
+            $this->repository->get(self::className('Virtual\Ephemeral')),
+            'a registered class resolves while its document is open',
+        );
+
+        $this->repository->removeDocument($uri);
+        self::assertNull(
+            $this->repository->get(self::className('Virtual\Ephemeral')),
+            'closing the document must drop its registered class',
+        );
+    }
+
+    public function testIsSubclassOfTraversesTheGraph(): void
+    {
+        $cases = [
+            ['Fixtures\Inheritance\FinalDescendant', 'Fixtures\Inheritance\ParentClass', true, 'direct parent'],
+            ['Fixtures\Inheritance\FinalDescendant', 'Fixtures\Inheritance\Grandparent', true, 'grandparent via chain'],
+            ['Fixtures\Inheritance\ChildClass', 'Fixtures\Inheritance\Grandparent', true, 'via cached chain'],
+            ['Fixtures\Domain\User', 'Fixtures\Domain\Entity', true, 'directly implemented interface'],
+            ['Fixtures\Hierarchy\ConcreteDescendant', 'Fixtures\Hierarchy\MiddleInterface', true, 'iface via parent'],
+            ['Fixtures\Hierarchy\ConcreteDescendant', 'Fixtures\Hierarchy\BaseInterface', true, 'iface via iface'],
+            ['Fixtures\Domain\User', 'Fixtures\Inheritance\Grandparent', false, 'unrelated class'],
+            ['Fixtures\Inheritance\Grandparent', 'Fixtures\Domain\Entity', false, 'no parent, no interfaces'],
+            ['Fixtures\Absent\Missing', 'Fixtures\Domain\Entity', false, 'an unresolvable subject is not a subclass'],
+        ];
+
+        foreach ($cases as [$class, $parent, $expected, $why]) {
+            self::assertSame(
+                $expected,
+                $this->repository->isSubclassOf(self::className($class), self::className($parent)),
+                "isSubclassOf should follow the type graph: {$why}",
+            );
+        }
     }
 
     public function testBuiltinResolvesThroughReflectionFallback(): void
