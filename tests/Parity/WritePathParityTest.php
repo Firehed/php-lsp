@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
-use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -22,8 +21,6 @@ use PHPUnit\Framework\TestCase;
  *
  * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.3, §5.2.
  */
-#[CoversClass(DocumentIndexer::class)]
-#[CoversClass(SymbolExtractor::class)]
 final class WritePathParityTest extends TestCase
 {
     use AssertsGolden;
@@ -89,6 +86,24 @@ final class WritePathParityTest extends TestCase
             [],
             $this->fqnsFor($uri),
             'closing a document must clear its symbols from the index',
+        );
+    }
+
+    public function testUnparseableDocumentIndexesNoSymbols(): void
+    {
+        // The write path must survive a document that does not parse: it indexes
+        // nothing rather than crashing, so a mid-edit broken file leaves the index
+        // consistent (RFC 1 §9).
+        $uri = 'file:///virtual/Broken.php';
+        $broken = file_get_contents($this->projectRoot . '/tests/Fixtures/src/IncompleteCode/VeryBroken.php');
+        self::assertNotFalse($broken, 'the broken fixture should be readable');
+
+        $this->indexer->index(new TextDocument($uri, 'php', 1, $broken));
+
+        self::assertSame(
+            [],
+            $this->fqnsFor($uri),
+            'a document that does not parse must contribute no symbols',
         );
     }
 
