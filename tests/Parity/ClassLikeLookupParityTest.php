@@ -226,10 +226,12 @@ final class ClassLikeLookupParityTest extends TestCase
             'constants' => self::formatted($info->constants),
             'enumCases' => self::formatted($info->enumCases),
             'docblock' => $info->docblock,
+            // The resolved file is captured (it proves *which* source answered),
+            // but not the line: a line number shifts on any edit above the symbol,
+            // which is churn unrelated to what this surface returns.
             'file' => $info->file === null
                 ? null
                 : GoldenCodec::relativizePath($info->file, $this->projectRoot),
-            'line' => $info->line,
         ];
     }
 

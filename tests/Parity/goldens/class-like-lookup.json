@@ -16,8 +16,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Interface whose short name starts with `D`, mirroring the original #298 report\n * where `implements D` wrongly offered `date_*` functions instead of interfaces.\n */",
-        "file": "tests/Fixtures/src/Domain/Describable.php",
-        "line": 11
+        "file": "tests/Fixtures/src/Domain/Describable.php"
     },
     "Fixtures\\Domain\\Entity": {
         "kind": "Interface_",
@@ -36,8 +35,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Base interface for all domain entities.\n */",
-        "file": "tests/Fixtures/src/Domain/Entity.php",
-        "line": 10
+        "file": "tests/Fixtures/src/Domain/Entity.php"
     },
     "Fixtures\\Domain\\Person": {
         "kind": "Interface_",
@@ -57,8 +55,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Represents a person with a name.\n */",
-        "file": "tests/Fixtures/src/Domain/Person.php",
-        "line": 10
+        "file": "tests/Fixtures/src/Domain/Person.php"
     },
     "Fixtures\\Domain\\Team": {
         "kind": "Class_",
@@ -83,8 +80,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Represents a team of users.\n */",
-        "file": "tests/Fixtures/src/Domain/Team.php",
-        "line": 10
+        "file": "tests/Fixtures/src/Domain/Team.php"
     },
     "Fixtures\\Domain\\User": {
         "kind": "Class_",
@@ -167,8 +163,7 @@
         },
         "enumCases": [],
         "docblock": "/**\n * Represents a system user.\n *\n * Users can authenticate and perform actions within the application.\n */",
-        "file": "tests/Fixtures/src/Domain/User.php",
-        "line": 15
+        "file": "tests/Fixtures/src/Domain/User.php"
     },
     "Fixtures\\Enum\\Color": {
         "kind": "Enum_",
@@ -193,8 +188,7 @@
             "Red": "case Red = 'red'"
         },
         "docblock": null,
-        "file": "tests/Fixtures/src/Enum/Color.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Enum/Color.php"
     },
     "Fixtures\\Enum\\Priority": {
         "kind": "Enum_",
@@ -222,8 +216,7 @@
             "Medium": "case Medium = 5"
         },
         "docblock": "/**\n * Task priority levels.\n */",
-        "file": "tests/Fixtures/src/Enum/Priority.php",
-        "line": 10
+        "file": "tests/Fixtures/src/Enum/Priority.php"
     },
     "Fixtures\\Enum\\SerializableStatus": {
         "kind": "Enum_",
@@ -250,8 +243,7 @@
             "Inactive": "case Inactive = 'inactive'"
         },
         "docblock": null,
-        "file": "tests/Fixtures/src/Enum/SerializableStatus.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Enum/SerializableStatus.php"
     },
     "Fixtures\\Enum\\Status": {
         "kind": "Enum_",
@@ -279,8 +271,7 @@
             "Suspended": "case Suspended"
         },
         "docblock": "/**\n * User account status.\n */",
-        "file": "tests/Fixtures/src/Enum/Status.php",
-        "line": 10
+        "file": "tests/Fixtures/src/Enum/Status.php"
     },
     "Fixtures\\Exception\\AppException": {
         "kind": "Class_",
@@ -299,8 +290,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Reaches Throwable transitively: AppException -> RuntimeException -> Exception -> Throwable.\n */",
-        "file": "tests/Fixtures/src/Exception/AppException.php",
-        "line": 12
+        "file": "tests/Fixtures/src/Exception/AppException.php"
     },
     "Fixtures\\Exception\\ExceptionInterface": {
         "kind": "Interface_",
@@ -319,8 +309,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Exception/ExceptionInterface.php",
-        "line": 9
+        "file": "tests/Fixtures/src/Exception/ExceptionInterface.php"
     },
     "Fixtures\\Hierarchy\\AbstractImplementor": {
         "kind": "Class_",
@@ -347,8 +336,7 @@
         },
         "enumCases": [],
         "docblock": "/**\n * Implements an interface without redeclaring its members, and pulls in a\n * trait that itself uses another trait.\n */",
-        "file": "tests/Fixtures/src/Hierarchy/AbstractImplementor.php",
-        "line": 11
+        "file": "tests/Fixtures/src/Hierarchy/AbstractImplementor.php"
     },
     "Fixtures\\Hierarchy\\BaseInterface": {
         "kind": "Interface_",
@@ -369,8 +357,7 @@
         },
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Hierarchy/BaseInterface.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Hierarchy/BaseInterface.php"
     },
     "Fixtures\\Hierarchy\\ConcreteDescendant": {
         "kind": "Class_",
@@ -394,8 +381,7 @@
         },
         "enumCases": [],
         "docblock": "/**\n * Reaches an interface only through its parent class, and satisfies that\n * interface's members here.\n */",
-        "file": "tests/Fixtures/src/Hierarchy/ConcreteDescendant.php",
-        "line": 11
+        "file": "tests/Fixtures/src/Hierarchy/ConcreteDescendant.php"
     },
     "Fixtures\\Hierarchy\\GrandchildDescendant": {
         "kind": "Class_",
@@ -418,8 +404,7 @@
         },
         "enumCases": [],
         "docblock": "/**\n * Third level of the class chain: inherits interface, trait and parent members\n * without redeclaring any of them.\n */",
-        "file": "tests/Fixtures/src/Hierarchy/GrandchildDescendant.php",
-        "line": 11
+        "file": "tests/Fixtures/src/Hierarchy/GrandchildDescendant.php"
     },
     "Fixtures\\Hierarchy\\InnerTrait": {
         "kind": "Trait_",
@@ -442,8 +427,7 @@
         },
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Hierarchy/InnerTrait.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Hierarchy/InnerTrait.php"
     },
     "Fixtures\\Hierarchy\\LeafInterface": {
         "kind": "Interface_",
@@ -465,8 +449,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Extends multiple interfaces, one of them a built-in resolved via reflection.\n */",
-        "file": "tests/Fixtures/src/Hierarchy/LeafInterface.php",
-        "line": 12
+        "file": "tests/Fixtures/src/Hierarchy/LeafInterface.php"
     },
     "Fixtures\\Hierarchy\\MiddleInterface": {
         "kind": "Interface_",
@@ -489,8 +472,7 @@
         },
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Hierarchy/MiddleInterface.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Hierarchy/MiddleInterface.php"
     },
     "Fixtures\\Hierarchy\\OuterTrait": {
         "kind": "Trait_",
@@ -513,8 +495,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * A trait that uses another trait.\n */",
-        "file": "tests/Fixtures/src/Hierarchy/OuterTrait.php",
-        "line": 10
+        "file": "tests/Fixtures/src/Hierarchy/OuterTrait.php"
     },
     "Fixtures\\Inheritance\\ChildClass": {
         "kind": "Class_",
@@ -559,8 +540,7 @@
         },
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Inheritance/ChildClass.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Inheritance/ChildClass.php"
     },
     "Fixtures\\Inheritance\\FinalDescendant": {
         "kind": "Class_",
@@ -577,8 +557,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Inheritance/FinalDescendant.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Inheritance/FinalDescendant.php"
     },
     "Fixtures\\Inheritance\\Grandparent": {
         "kind": "Class_",
@@ -604,8 +583,7 @@
         },
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Inheritance/Grandparent.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Inheritance/Grandparent.php"
     },
     "Fixtures\\Inheritance\\ParentClass": {
         "kind": "Class_",
@@ -644,8 +622,7 @@
         },
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Inheritance/ParentClass.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Inheritance/ParentClass.php"
     },
     "Fixtures\\Repository\\Repository": {
         "kind": "Interface_",
@@ -664,8 +641,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Base interface for all repositories.\n */",
-        "file": "tests/Fixtures/src/Repository/Repository.php",
-        "line": 12
+        "file": "tests/Fixtures/src/Repository/Repository.php"
     },
     "Fixtures\\Repository\\UserRepository": {
         "kind": "Interface_",
@@ -688,8 +664,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Repository for user persistence.\n */",
-        "file": "tests/Fixtures/src/Repository/UserRepository.php",
-        "line": 12
+        "file": "tests/Fixtures/src/Repository/UserRepository.php"
     },
     "Fixtures\\Traits\\ConcreteService": {
         "kind": "Class_",
@@ -712,8 +687,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Traits/ConcreteService.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Traits/ConcreteService.php"
     },
     "Fixtures\\Traits\\HasTimestamps": {
         "kind": "Trait_",
@@ -740,8 +714,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Provides created/updated timestamp tracking.\n */",
-        "file": "tests/Fixtures/src/Traits/HasTimestamps.php",
-        "line": 12
+        "file": "tests/Fixtures/src/Traits/HasTimestamps.php"
     },
     "Fixtures\\Traits\\SingletonTrait": {
         "kind": "Trait_",
@@ -764,8 +737,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/Traits/SingletonTrait.php",
-        "line": 7
+        "file": "tests/Fixtures/src/Traits/SingletonTrait.php"
     },
     "Fixtures\\TypeInference\\AnonymousClass": {
         "kind": "Class_",
@@ -784,8 +756,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": null,
-        "file": "tests/Fixtures/src/TypeInference/AnonymousClass.php",
-        "line": 7
+        "file": "tests/Fixtures/src/TypeInference/AnonymousClass.php"
     },
     "Psr\\Http\\Message\\RequestInterface": {
         "kind": "Interface_",
@@ -811,8 +782,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Representation of an outgoing, client-side request.\n *\n * Per the HTTP specification, this interface includes properties for\n * each of the following:\n *\n * - Protocol version\n * - HTTP method\n * - URI\n * - Headers\n * - Message body\n *\n * During construction, implementations MUST attempt to set the Host header from\n * a provided URI if no Host header is provided.\n *\n * Requests are considered immutable; all methods that might change state MUST\n * be implemented such that they retain the internal state of the current\n * message and return an instance that contains the changed state.\n */",
-        "file": "tests/Fixtures/vendor/psr/http-message/src/RequestInterface.php",
-        "line": 24
+        "file": "tests/Fixtures/vendor/psr/http-message/src/RequestInterface.php"
     },
     "Psr\\Http\\Message\\ServerRequestInterface": {
         "kind": "Interface_",
@@ -845,8 +815,7 @@
         "constants": [],
         "enumCases": [],
         "docblock": "/**\n * Representation of an incoming, server-side HTTP request.\n *\n * Per the HTTP specification, this interface includes properties for\n * each of the following:\n *\n * - Protocol version\n * - HTTP method\n * - URI\n * - Headers\n * - Message body\n *\n * Additionally, it encapsulates all data as it has arrived to the\n * application from the CGI and/or PHP environment, including:\n *\n * - The values represented in $_SERVER.\n * - Any cookies provided (generally via $_COOKIE)\n * - Query string arguments (generally via $_GET, or as parsed via parse_str())\n * - Upload files, if any (as represented by $_FILES)\n * - Deserialized body parameters (generally from $_POST)\n *\n * $_SERVER values MUST be treated as immutable, as they represent application\n * state at the time of request; as such, no methods are provided to allow\n * modification of those values. The other values provide such methods, as they\n * can be restored from $_SERVER or the request body, and may need treatment\n * during the application (e.g., body parameters may be deserialized based on\n * content type).\n *\n * Additionally, this interface recognizes the utility of introspecting a\n * request to derive and match additional parameters (e.g., via URI path\n * matching, decrypting cookie values, deserializing non-form-encoded body\n * content, matching authorization headers to users, etc). These parameters\n * are stored in an \"attributes\" property.\n *\n * Requests are considered immutable; all methods that might change state MUST\n * be implemented such that they retain the internal state of the current\n * message and return an instance that contains the changed state.\n */",
-        "file": "tests/Fixtures/vendor/psr/http-message/src/ServerRequestInterface.php",
-        "line": 43
+        "file": "tests/Fixtures/vendor/psr/http-message/src/ServerRequestInterface.php"
     },
     "Fixtures\\ThisClassDoesNotExist": null
 }
