@@ -176,12 +176,24 @@ final class ClassLikeLookupParityTest extends TestCase
     public function testBuiltinResolvesThroughReflectionFallback(): void
     {
         // Covers the reflection fallback for a class the locator cannot find on
-        // disk. The full member set is PHP-version-specific, so only stable
-        // identity is asserted — not frozen into a golden.
+        // disk. The full member set is PHP-version-specific, so it is not frozen
+        // into a golden; instead a subset of ArrayObject's long-standing methods
+        // is asserted, so a regression that stops extracting reflected members —
+        // whose lines still execute, but whose output the golden never sees —
+        // goes red rather than passing silently.
         $info = $this->repository->get(new ClassName(\ArrayObject::class));
 
         self::assertNotNull($info, 'a built-in class must resolve via the reflection fallback');
         self::assertSame('ArrayObject', $info->name->shortName(), 'reflection fallback must report the built-in');
+
+        $methodNames = array_keys($info->methods);
+        foreach (['append', 'count', 'getArrayCopy', 'getIterator', 'offsetGet', 'offsetSet'] as $method) {
+            self::assertContains(
+                $method,
+                $methodNames,
+                "the reflection fallback must extract ArrayObject::{$method}",
+            );
+        }
     }
 
     /**
