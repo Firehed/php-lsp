@@ -1,4 +1,21 @@
 {
+    "Fixtures\\Attributes\\NoConstructorAttribute": {
+        "kind": "Class_",
+        "signature": "final class NoConstructorAttribute",
+        "isAbstract": false,
+        "isFinal": true,
+        "isReadonly": false,
+        "isAttribute": true,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": [],
+        "properties": [],
+        "constants": [],
+        "enumCases": [],
+        "docblock": null,
+        "file": "tests/Fixtures/src/Attributes/NoConstructorAttribute.php"
+    },
     "Fixtures\\Domain\\Describable": {
         "kind": "Interface_",
         "signature": "interface Describable",

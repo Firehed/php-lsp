@@ -35,6 +35,7 @@ final class ClassLikeLookupParityTest extends TestCase
      * @var list<string>
      */
     private const array CORPUS = [
+        'Fixtures\Attributes\NoConstructorAttribute',
         'Fixtures\Domain\Describable',
         'Fixtures\Domain\Entity',
         'Fixtures\Domain\Person',
