@@ -38,6 +38,7 @@ final class ClassLikeLookupParityTest extends TestCase
         'Fixtures\Attributes\NoConstructorAttribute',
         'Fixtures\Domain\Describable',
         'Fixtures\Domain\Entity',
+        'Fixtures\Domain\Money',
         'Fixtures\Domain\Person',
         'Fixtures\Domain\Team',
         'Fixtures\Domain\User',

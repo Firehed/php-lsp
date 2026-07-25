@@ -54,6 +54,28 @@
         "docblock": "/**\n * Base interface for all domain entities.\n */",
         "file": "tests/Fixtures/src/Domain/Entity.php"
     },
+    "Fixtures\\Domain\\Money": {
+        "kind": "Class_",
+        "signature": "final readonly class Money",
+        "isAbstract": false,
+        "isFinal": true,
+        "isReadonly": true,
+        "isAttribute": false,
+        "parent": null,
+        "interfaces": [],
+        "traits": [],
+        "methods": {
+            "__construct": "public function __construct(int $amount, string $currency)"
+        },
+        "properties": {
+            "amount": "public int $amount",
+            "currency": "public string $currency"
+        },
+        "constants": [],
+        "enumCases": [],
+        "docblock": "/**\n * A readonly value object, exercising the class-level `readonly` modifier that the\n * class-like lookup parity corpus otherwise never captures as true.\n */",
+        "file": "tests/Fixtures/src/Domain/Money.php"
+    },
     "Fixtures\\Domain\\Person": {
         "kind": "Interface_",
         "signature": "interface Person",
