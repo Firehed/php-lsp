@@ -98,8 +98,11 @@ final class ChildrenOfParityTest extends TestCase
     public function testReflectionSourceEnumeratesBuiltinNamespace(): void
     {
         // Covers the reflection source's match path with a built-in namespace
-        // stable since PHP 8.2. The full list is version-fragile, so only a
-        // known member is asserted, not frozen into the golden.
+        // stable since PHP 8.2. The full list is version-fragile, so it is not
+        // frozen; instead several symbols filed under the namespace and a child
+        // namespace derived from a nested built-in are asserted, so a regression
+        // in per-namespace filing or child-namespace derivation goes red rather
+        // than surviving behind a single canary symbol.
         $contents = $this->catalog->childrenOf('Random');
 
         $fqns = array_map(
@@ -110,6 +113,16 @@ final class ChildrenOfParityTest extends TestCase
             'Random\Randomizer',
             $fqns,
             'the reflection source must enumerate built-in symbols of a namespace',
+        );
+        self::assertContains(
+            'Random\CryptoSafeEngine',
+            $fqns,
+            'the reflection source must file every built-in of a namespace, not just one',
+        );
+        self::assertContains(
+            'Random\Engine',
+            $contents->childNamespaces,
+            'the reflection source must derive a child namespace from a nested built-in',
         );
     }
 
