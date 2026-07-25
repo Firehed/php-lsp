@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parity;
 
-use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(GoldenCodec::class)]
 final class GoldenCodecTest extends TestCase
 {
     public function testEncodeProducesPrettyJsonWithTrailingNewline(): void
