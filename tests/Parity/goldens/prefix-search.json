@@ -116,6 +116,22 @@
     ],
     "get|Function": [],
     "Zzz|none": [],
+    "user|lowercase": [
+        {
+            "fqn": "Fixtures\\Domain\\User",
+            "name": "User",
+            "kind": "Class_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Repository\\UserRepository",
+            "name": "UserRepository",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Repository/UserRepository.php"
+        }
+    ],
     "all|Class+Interface": [
         {
             "fqn": "Fixtures\\Domain\\Entity",

@@ -69,6 +69,11 @@ final class PrefixSearchParityTest extends TestCase
             'User|Class' => ['User', [SymbolKind::Class_]],
             'get|Function' => ['get', [SymbolKind::Function_]],
             'Zzz|none' => ['Zzz', null],
+            // A lowercase prefix that matches differently-cased symbol names:
+            // prefix matching is case-insensitive, so 'user' must still find
+            // `User` and `UserRepository`. A case-sensitive regression would
+            // return nothing here.
+            'user|lowercase' => ['user', null],
             // A multi-kind filter: matches must be admitted if their kind is any
             // of the listed kinds, not merely the first. With Class_ and
             // Interface_ both requested, the result spans both kinds — a filter
