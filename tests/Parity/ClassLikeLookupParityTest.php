@@ -212,6 +212,24 @@ final class ClassLikeLookupParityTest extends TestCase
             $info->methods['offsetSet']->format(),
             'the reflection fallback must format visibility and typed parameters, not just the name',
         );
+
+        // Method presence alone would also pass if the reflection path stopped
+        // extracting interfaces entirely: those lines execute, but their output is
+        // not frozen into the golden. ArrayObject's interface set is long-standing
+        // and stable across the 8.3/8.4/8.5 matrix, so pin a subset — a regression
+        // that returned no interfaces goes red rather than surviving behind the
+        // method check.
+        $interfaceFqns = array_map(
+            static fn(ClassName $name): string => $name->fqn,
+            $info->interfaces,
+        );
+        foreach (['ArrayAccess', 'Countable', 'IteratorAggregate'] as $interface) {
+            self::assertContains(
+                $interface,
+                $interfaceFqns,
+                "the reflection fallback must extract ArrayObject's {$interface} interface",
+            );
+        }
     }
 
     /**
