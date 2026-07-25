@@ -73,12 +73,15 @@ runs the parity tests under coverage (a path selector on the normal config, no
 separate config file). Read the rows for the surface classes in the table above: an
 unexecuted line there is a **corpus gap** — a behavioral edge the corpus does not
 exercise — to surface before the harness is trusted. The corpus drives every surface
-class to 100% except a handful of defensive guards that no realistic project input
-can reach:
+class to 100% except a handful of defensive lines — most unreachable for any realistic
+project input, one a known corpus gap:
 
-- parser `ast === null` guards (`DocumentIndexer`, `DefaultClassRepository`): the
-  parser uses an error-*collecting* handler, so broken code yields a partial AST,
-  never null;
+- parser `ast === null` guards (`DocumentIndexer`, `DefaultClassRepository`): a known
+  **corpus gap**, not dead code. `ParserService::parseContent` returns null only from
+  its `catch (\PhpParser\Error)` arm — a parse that *throws* despite the
+  error-collecting handler; the corpus's broken fixture instead yields a partial AST,
+  so these early returns are reachable but left un-exercised here (a bare early return,
+  low risk);
 - `file_get_contents` failing after `is_readable` succeeds (`DefaultClassRepository`);
 - an anonymous class reached while scanning a located file for a *different* named
   class (`DefaultClassRepository`): the first matching declaration stops the walk;
