@@ -1216,6 +1216,52 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains('AbstractBase', $labels);
     }
 
+    public function testTypeHintCompletionExcludesIndexedTraits(): void
+    {
+        // Both symbols are indexed but their declaration file is never opened, so
+        // the class repository cannot reach them. isValidTypeHint is optimistic for
+        // an unreachable name (it returns true), so the ClassCandidateFilter
+        // predicate does not exclude the trait here — only the class-like kind gate
+        // does. A resolvable trait would be rejected by the predicate regardless,
+        // leaving the gate's TypeHint arm untested; this pins it on the seam path.
+        $this->symbolIndex->add(new Symbol(
+            'MyClass',
+            'MyClass',
+            SymbolKind::Class_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+        $this->symbolIndex->add(new Symbol(
+            'MyTrait',
+            'MyTrait',
+            SymbolKind::Trait_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+
+        $code = '<?php function foo(): My';
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 24],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('MyClass', $labels, 'A class is a valid type hint');
+        self::assertNotContains(
+            'MyTrait',
+            $labels,
+            'A trait is not a valid type hint; only the class-like kind gate excludes an unresolvable indexed trait',
+        );
+    }
+
     /**
      * Step 0 acceptance: one parse per handled message. Completion is the fan-out
      * that made this matter — its sources each call a different CodeResolver
