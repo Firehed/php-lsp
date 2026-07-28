@@ -124,7 +124,7 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $this->symbolResolver,
             new ClassCandidates($symbolSource, $this->symbolResolver, $capabilities),
-            new NamespaceCandidates($catalog, $this->symbolResolver, $capabilities),
+            new NamespaceCandidates($symbolSource, $this->symbolResolver, $capabilities),
             new FunctionCandidates($this->symbolResolver, $capabilities),
             new KeywordCandidates(),
             new VariableCandidates($this->symbolResolver),

@@ -7,7 +7,8 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Knowledge\NamespaceName;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
@@ -15,9 +16,9 @@ use Firehed\PhpLsp\Resolution\NameKind;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
- * Produces namespace-navigation items from the {@see NamespaceCatalog}: the child
- * namespaces of a namespace, as `Module` nodes the user steps into one segment at
- * a time, plus the class-likes declared directly in it.
+ * Produces namespace-navigation items through the {@see SymbolSource} knowledge seam
+ * (RFC 1 §4.2): the child namespaces of a namespace, as `Module` nodes the user steps
+ * into one segment at a time, plus the class-likes declared directly in it.
  *
  * This is the discovery half of #308 made navigable — vendor and built-in symbols
  * become reachable by walking the tree (`\Ps` → `Psr\` → `Psr\Log\`) rather than
@@ -35,7 +36,7 @@ final class NamespaceCandidates
     private const INLINE_THRESHOLD = 5;
 
     public function __construct(
-        private readonly NamespaceCatalog $catalog,
+        private readonly SymbolSource $symbolSource,
         private readonly CodeResolver $codeResolver,
         private readonly SessionCapabilitiesProvider $capabilities,
     ) {
@@ -119,7 +120,7 @@ final class NamespaceCandidates
         int $character,
         ClassCandidateFilter $filter,
     ): array {
-        $contents = $this->catalog->childrenOf($namespace);
+        $contents = $this->symbolSource->childrenOf(new NamespaceName($namespace));
         // The partial segment the user is typing; a selection replaces just it.
         $replaceRange = $this->replaceRange($line, $character, $prefix);
 
@@ -167,7 +168,7 @@ final class NamespaceCandidates
         $range = $this->replaceRange($line, $character, $prefix);
 
         $targets = [];
-        foreach ($this->catalog->childrenOf($context->namespace)->childNamespaces as $child) {
+        foreach ($this->symbolSource->childrenOf(new NamespaceName($context->namespace))->childNamespaces as $child) {
             $targets[NamespacePath::shortNameOf($child)] = $child;
         }
         foreach ($context->classImports as $alias => $fqcn) {
@@ -225,7 +226,7 @@ final class NamespaceCandidates
 
     private function isNavigable(string $namespace): bool
     {
-        $contents = $this->catalog->childrenOf($namespace);
+        $contents = $this->symbolSource->childrenOf(new NamespaceName($namespace));
 
         return count($contents->childNamespaces) > 0 || count($contents->symbols) > 0;
     }
@@ -269,7 +270,7 @@ final class NamespaceCandidates
         // not how many children are inspected. The cost is a directory listing per
         // child, memoised by CachedNamespaceCatalog for the stable (vendor/built-in)
         // sources, so a namespace is inspected at most once per session.
-        $contents = $this->catalog->childrenOf($child);
+        $contents = $this->symbolSource->childrenOf(new NamespaceName($child));
         $elementCount = count($contents->childNamespaces) + count($contents->symbols);
         if ($elementCount === 0 || $elementCount > self::INLINE_THRESHOLD) {
             return [CompletionItemFactory::forNamespace($segment, $child, $range)];

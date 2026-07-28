@@ -148,7 +148,7 @@ final class Server
                 $symbolResolver,
                 new ClassCandidates($symbolSource, $symbolResolver, $negotiator),
                 new NamespaceCandidates(
-                    $catalog,
+                    $symbolSource,
                     $symbolResolver,
                     $negotiator,
                 ),
