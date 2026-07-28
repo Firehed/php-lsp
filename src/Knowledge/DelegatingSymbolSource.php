@@ -66,6 +66,11 @@ final class DelegatingSymbolSource implements SymbolSource, SymbolSink
         $this->classes->removeDocument($uri);
     }
 
+    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool
+    {
+        return $this->classes->isSubclassOf($class, $potentialParent);
+    }
+
     public function lookupClassLike(ClassName $name): ?ClassInfo
     {
         return $this->classes->get($name);
