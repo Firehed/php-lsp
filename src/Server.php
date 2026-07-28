@@ -126,10 +126,7 @@ final class Server
         $handlers = [
             new TextDocumentSyncHandler(
                 $documentManager,
-                $parser,
-                $classRepository,
-                $classInfoFactory,
-                $indexer,
+                $symbolSource,
             ),
             new DefinitionHandler(
                 $documentManager,

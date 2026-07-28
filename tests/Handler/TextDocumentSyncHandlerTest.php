@@ -7,14 +7,12 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\SymbolExtractor;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -22,6 +20,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
 {
+    use BuildsSymbolSourceTrait;
     use LoadsFixturesTrait;
 
     private DocumentManager $manager;
@@ -37,13 +36,9 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
         $this->classRepository = new DefaultClassRepository($this->classInfoFactory, $locator, $this->parser);
-        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->handler = new TextDocumentSyncHandler(
             $this->manager,
-            $this->parser,
-            $this->classRepository,
-            $this->classInfoFactory,
-            $indexer,
+            $this->symbolSourceFor($this->classRepository, $this->parser),
         );
     }
 

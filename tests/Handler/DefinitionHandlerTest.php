@@ -7,9 +7,6 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\SymbolExtractor;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
@@ -48,9 +45,10 @@ class DefinitionHandlerTest extends TestCase
         );
         $memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
+        $symbolSource = $this->symbolSourceFor($this->classRepository, $this->parser);
         $symbolResolver = new SymbolResolver(
             $this->parser,
-            $this->symbolSourceFor($this->classRepository, $this->parser),
+            $symbolSource,
             $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
@@ -59,13 +57,9 @@ class DefinitionHandlerTest extends TestCase
             $this->documents,
             $symbolResolver,
         );
-        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $classInfoFactory,
-            $indexer,
+            $symbolSource,
         );
     }
 
