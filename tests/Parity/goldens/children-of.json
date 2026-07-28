@@ -1,0 +1,122 @@
+{
+    "Fixtures\\Catalog": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Catalog\\Fixture",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Catalog\\functions",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Catalog\\noop",
+                "kind": "Function_"
+            }
+        ]
+    },
+    "Fixtures\\Model": {
+        "childNamespaces": [
+            "Fixtures\\Model\\Env",
+            "Fixtures\\Model\\OpenOnly"
+        ],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Model\\Env",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\Model\\Env": {
+        "childNamespaces": [
+            "Fixtures\\Model\\Env\\Sub"
+        ],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Model\\Env\\Handler",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Model\\Env\\Repository",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\Model\\OpenOnly": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Model\\OpenOnly\\Unsaved",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Psr": {
+        "childNamespaces": [
+            "Psr\\Http"
+        ],
+        "symbols": []
+    },
+    "Psr\\Http": {
+        "childNamespaces": [
+            "Psr\\Http\\Message"
+        ],
+        "symbols": []
+    },
+    "Psr\\Http\\Message": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Psr\\Http\\Message\\MessageInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\RequestInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\ResponseInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\ServerRequestInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\StreamInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\UploadedFileInterface",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Psr\\Http\\Message\\UriInterface",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Psr0": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Psr0\\Psr0Fixture",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Firehed\\PhpLsp\\Tests\\Fixtures\\Autoload": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Firehed\\PhpLsp\\Tests\\Fixtures\\Autoload\\ClassmapFixture",
+                "kind": "ClassLike"
+            }
+        ]
+    },
+    "Fixtures\\ThisNamespaceIsEmpty": {
+        "childNamespaces": [],
+        "symbols": []
+    }
+}

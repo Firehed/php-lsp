@@ -1,0 +1,410 @@
+{
+    "tests/Fixtures/src/Catalog/functions.php": [
+        {
+            "fqn": "Fixtures\\Catalog\\noop",
+            "name": "noop",
+            "kind": "Function_",
+            "containerName": null
+        }
+    ],
+    "tests/Fixtures/src/Domain/Entity.php": [
+        {
+            "fqn": "Fixtures\\Domain\\Entity",
+            "name": "Entity",
+            "kind": "Interface_",
+            "containerName": null
+        },
+        {
+            "fqn": "Fixtures\\Domain\\Entity::getId",
+            "name": "getId",
+            "kind": "Method",
+            "containerName": "Entity"
+        }
+    ],
+    "tests/Fixtures/src/Domain/User.php": [
+        {
+            "fqn": "Fixtures\\Domain\\User",
+            "name": "User",
+            "kind": "Class_",
+            "containerName": null
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::__construct",
+            "name": "__construct",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::activate",
+            "name": "activate",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::create",
+            "name": "create",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::deactivate",
+            "name": "deactivate",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getAge",
+            "name": "getAge",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getEmail",
+            "name": "getEmail",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getId",
+            "name": "getId",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getInstanceCount",
+            "name": "getInstanceCount",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getName",
+            "name": "getName",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getStatus",
+            "name": "getStatus",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getTeam",
+            "name": "getTeam",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::isActive",
+            "name": "isActive",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::setName",
+            "name": "setName",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerComputedClassStatic",
+            "name": "triggerComputedClassStatic",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDefNullsafeViaAssignment",
+            "name": "triggerDefNullsafeViaAssignment",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDefViaAssignment",
+            "name": "triggerDefViaAssignment",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDynamicConstant",
+            "name": "triggerDynamicConstant",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDynamicFuncCall",
+            "name": "triggerDynamicFuncCall",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDynamicMethodCall",
+            "name": "triggerDynamicMethodCall",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDynamicNew",
+            "name": "triggerDynamicNew",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDynamicProperty",
+            "name": "triggerDynamicProperty",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerDynamicStaticCall",
+            "name": "triggerDynamicStaticCall",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverMethod",
+            "name": "triggerHoverMethod",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverMultilineChain",
+            "name": "triggerHoverMultilineChain",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverNullsafeMethod",
+            "name": "triggerHoverNullsafeMethod",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverNullsafeProperty",
+            "name": "triggerHoverNullsafeProperty",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverProperty",
+            "name": "triggerHoverProperty",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverStaticMethod",
+            "name": "triggerHoverStaticMethod",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverTraitMethod",
+            "name": "triggerHoverTraitMethod",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverVariable",
+            "name": "triggerHoverVariable",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerLiteralHover",
+            "name": "triggerLiteralHover",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerNestedVariables",
+            "name": "triggerNestedVariables",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerNonexistentMethodCall",
+            "name": "triggerNonexistentMethodCall",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerNonexistentStaticMethod",
+            "name": "triggerNonexistentStaticMethod",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerSigBuiltinFunc",
+            "name": "triggerSigBuiltinFunc",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerSigNew",
+            "name": "triggerSigNew",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerSigNullsafe",
+            "name": "triggerSigNullsafe",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerSigSelf",
+            "name": "triggerSigSelf",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerSigThis",
+            "name": "triggerSigThis",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerTraitPropertyFromConsumer",
+            "name": "triggerTraitPropertyFromConsumer",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerUnknownClass",
+            "name": "triggerUnknownClass",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerUnknownConstant",
+            "name": "triggerUnknownConstant",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerUnknownProperty",
+            "name": "triggerUnknownProperty",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerUntypedMethodCall",
+            "name": "triggerUntypedMethodCall",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerUntypedProperty",
+            "name": "triggerUntypedProperty",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerVariableVariable",
+            "name": "triggerVariableVariable",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::withAge",
+            "name": "withAge",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::withName",
+            "name": "withName",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::withStatus",
+            "name": "withStatus",
+            "kind": "Method",
+            "containerName": "User"
+        }
+    ],
+    "tests/Fixtures/src/Enum/Status.php": [
+        {
+            "fqn": "Fixtures\\Enum\\Status",
+            "name": "Status",
+            "kind": "Enum_",
+            "containerName": null
+        },
+        {
+            "fqn": "Fixtures\\Enum\\Status::isTerminal",
+            "name": "isTerminal",
+            "kind": "Method",
+            "containerName": "Status"
+        },
+        {
+            "fqn": "Fixtures\\Enum\\Status::label",
+            "name": "label",
+            "kind": "Method",
+            "containerName": "Status"
+        },
+        {
+            "fqn": "Fixtures\\Enum\\Status::triggerDefEnumMethod",
+            "name": "triggerDefEnumMethod",
+            "kind": "Method",
+            "containerName": "Status"
+        },
+        {
+            "fqn": "Fixtures\\Enum\\Status::triggerEnumCase",
+            "name": "triggerEnumCase",
+            "kind": "Method",
+            "containerName": "Status"
+        }
+    ],
+    "tests/Fixtures/src/Traits/HasTimestamps.php": [
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps",
+            "name": "HasTimestamps",
+            "kind": "Trait_",
+            "containerName": null
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps::getCreatedAt",
+            "name": "getCreatedAt",
+            "kind": "Method",
+            "containerName": "HasTimestamps"
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps::getUpdatedAt",
+            "name": "getUpdatedAt",
+            "kind": "Method",
+            "containerName": "HasTimestamps"
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps::markCreated",
+            "name": "markCreated",
+            "kind": "Method",
+            "containerName": "HasTimestamps"
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps::markUpdated",
+            "name": "markUpdated",
+            "kind": "Method",
+            "containerName": "HasTimestamps"
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps::triggerTraitPropertyHover",
+            "name": "triggerTraitPropertyHover",
+            "kind": "Method",
+            "containerName": "HasTimestamps"
+        }
+    ],
+    "tests/Fixtures/src/TypeInference/AnonymousClass.php": [
+        {
+            "fqn": "Fixtures\\TypeInference\\AnonymousClass",
+            "name": "AnonymousClass",
+            "kind": "Class_",
+            "containerName": null
+        },
+        {
+            "fqn": "Fixtures\\TypeInference\\AnonymousClass::getAnonymous",
+            "name": "getAnonymous",
+            "kind": "Method",
+            "containerName": "AnonymousClass"
+        }
+    ]
+}

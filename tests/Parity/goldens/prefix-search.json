@@ -1,0 +1,158 @@
+{
+    "User": [
+        {
+            "fqn": "Fixtures\\Domain\\User",
+            "name": "User",
+            "kind": "Class_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Repository\\UserRepository",
+            "name": "UserRepository",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Repository/UserRepository.php"
+        }
+    ],
+    "get": [
+        {
+            "fqn": "Fixtures\\Domain\\Entity::getId",
+            "name": "getId",
+            "kind": "Method",
+            "containerName": "Entity",
+            "uri": "tests/Fixtures/src/Domain/Entity.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getAge",
+            "name": "getAge",
+            "kind": "Method",
+            "containerName": "User",
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getEmail",
+            "name": "getEmail",
+            "kind": "Method",
+            "containerName": "User",
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getId",
+            "name": "getId",
+            "kind": "Method",
+            "containerName": "User",
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getInstanceCount",
+            "name": "getInstanceCount",
+            "kind": "Method",
+            "containerName": "User",
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getName",
+            "name": "getName",
+            "kind": "Method",
+            "containerName": "User",
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getStatus",
+            "name": "getStatus",
+            "kind": "Method",
+            "containerName": "User",
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::getTeam",
+            "name": "getTeam",
+            "kind": "Method",
+            "containerName": "User",
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps::getCreatedAt",
+            "name": "getCreatedAt",
+            "kind": "Method",
+            "containerName": "HasTimestamps",
+            "uri": "tests/Fixtures/src/Traits/HasTimestamps.php"
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps::getUpdatedAt",
+            "name": "getUpdatedAt",
+            "kind": "Method",
+            "containerName": "HasTimestamps",
+            "uri": "tests/Fixtures/src/Traits/HasTimestamps.php"
+        }
+    ],
+    "Status": [
+        {
+            "fqn": "Fixtures\\Enum\\Status",
+            "name": "Status",
+            "kind": "Enum_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Enum/Status.php"
+        }
+    ],
+    "noop": [
+        {
+            "fqn": "Fixtures\\Catalog\\noop",
+            "name": "noop",
+            "kind": "Function_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Catalog/functions.php"
+        }
+    ],
+    "User|Class": [
+        {
+            "fqn": "Fixtures\\Domain\\User",
+            "name": "User",
+            "kind": "Class_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        }
+    ],
+    "get|Function": [],
+    "Zzz|none": [],
+    "user|lowercase": [
+        {
+            "fqn": "Fixtures\\Domain\\User",
+            "name": "User",
+            "kind": "Class_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Repository\\UserRepository",
+            "name": "UserRepository",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Repository/UserRepository.php"
+        }
+    ],
+    "all|Class+Interface": [
+        {
+            "fqn": "Fixtures\\Domain\\Entity",
+            "name": "Entity",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/Entity.php"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User",
+            "name": "User",
+            "kind": "Class_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Repository\\UserRepository",
+            "name": "UserRepository",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Repository/UserRepository.php"
+        }
+    ]
+}

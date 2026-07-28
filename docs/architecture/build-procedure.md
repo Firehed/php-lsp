@@ -90,7 +90,9 @@ squash-deleted branch is never misread as unstarted.
    - §8.1 conformance for the invariants the slice touches;
    - the parity harness / enforcement rule would **actually catch a regression in**
      the change — name a mutation of the implementation and check that something
-     fails (per Step P);
+     fails (per Step P); for a slice touching a parity surface, run
+     `composer parity-coverage` and treat any unexecuted surface line as a corpus
+     gap to explain or fill;
    - it then tries to break the change.
 
    The reviewer does **not** re-check what CI already enforces: a green suite,

@@ -194,6 +194,17 @@ the fixture corpus is small and curated, not real-world PHP. Goldens are
 proves a branch executed, not that the captured expectation is correct — a wrong
 golden is green forever. May run in parallel with Steps 0 and 1.
 
+*Maintenance.* This harness is a **permanent** regression net, not migration
+scaffolding — it is absent from the Teardown ledger below, and Step Z requires it
+green. As delivered (slice SP.1) the coverage requirement is realized as pcov *line*
+coverage measured by `composer parity-coverage` — a path selector on the normal test
+config, not a separate one (branch-level rigor is the `/review-slice` pass's job,
+§Mode B); genuinely-unreachable defensive guards are documented rather than gated.
+The full operational contract — recapturing a golden, what legitimately churns one,
+and that the goldens ride a surface-class refactor unchanged (they assert output, so
+a diff during a behavior-preserving step means the refactor changed behavior) —
+lives in `tests/Parity/README.md`, the single source of truth. Keep it there.
+
 ### Step 2 — `SymbolSource` / `SymbolSink` facade (strangler, no behavior change)
 
 *Goal:* introduce the read/write knowledge seam over today's collaborators, with no
@@ -365,7 +376,8 @@ row must be discharged at the Definition of Done (Step Z).
     WorkspaceIndexer (dead today)                             §3 note (delete unless workspace scope taken)
 
 A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
-state.
+state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
+it is a permanent regression net kept past Step Z, not scaffolding to remove.
 
 ### Step Z — Definition of Done (final verification gate)
 
