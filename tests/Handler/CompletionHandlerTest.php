@@ -29,6 +29,7 @@ use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
+use Firehed\PhpLsp\Knowledge\DelegatingSymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -62,6 +63,7 @@ class CompletionHandlerTest extends TestCase
     private DocumentManager $documents;
     private ParserService $parser;
     private SymbolIndex $symbolIndex;
+    private DocumentIndexer $indexer;
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
@@ -91,7 +93,7 @@ class CompletionHandlerTest extends TestCase
             $typeResolver,
             new DefaultFunctionRepository(),
         );
-        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
+        $this->indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->catalog = NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures');
         $this->handler = $this->makeHandler($this->catalog);
         $this->syncHandler = new TextDocumentSyncHandler(
@@ -99,7 +101,7 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
             $this->classRepository,
             $this->classInfoFactory,
-            $indexer,
+            $this->indexer,
         );
     }
 
@@ -109,10 +111,19 @@ class CompletionHandlerTest extends TestCase
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
 
+        $symbolSource = new DelegatingSymbolSource(
+            $this->classRepository,
+            $this->symbolIndex,
+            $catalog,
+            $this->indexer,
+            $this->classInfoFactory,
+            $this->parser,
+        );
+
         return new CompletionHandler(
             $this->documents,
             $this->symbolResolver,
-            new ClassCandidates($this->symbolIndex, $this->symbolResolver, $capabilities),
+            new ClassCandidates($symbolSource, $this->symbolResolver, $capabilities),
             new NamespaceCandidates($catalog, $this->symbolResolver, $capabilities),
             new FunctionCandidates($this->symbolResolver, $capabilities),
             new KeywordCandidates(),

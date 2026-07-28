@@ -26,6 +26,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Knowledge\DelegatingSymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
@@ -104,6 +105,20 @@ final class Server
             $functionRepository,
         );
 
+        $catalog = NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot);
+
+        // The read/write knowledge seam (RFC 1 §4.2, §4.3). Consumers migrate onto
+        // this one facade instance across Step 2's slices (Plan 0002 §5.5); today
+        // ClassCandidates reads class-like prefix search through it.
+        $symbolSource = new DelegatingSymbolSource(
+            $classRepository,
+            $symbolIndex,
+            $catalog,
+            $indexer,
+            $classInfoFactory,
+            $parser,
+        );
+
         $negotiator = new CapabilityNegotiator($serverInfo);
         $lifecycleHandler = new LifecycleHandler($negotiator);
 
@@ -131,9 +146,9 @@ final class Server
             new CompletionHandler(
                 $documentManager,
                 $symbolResolver,
-                new ClassCandidates($symbolIndex, $symbolResolver, $negotiator),
+                new ClassCandidates($symbolSource, $symbolResolver, $negotiator),
                 new NamespaceCandidates(
-                    NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot),
+                    $catalog,
                     $symbolResolver,
                     $negotiator,
                 ),

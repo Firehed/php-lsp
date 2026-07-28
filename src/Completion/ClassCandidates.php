@@ -7,8 +7,8 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
@@ -17,9 +17,9 @@ use Firehed\PhpLsp\Resolution\ReferenceResolver;
 
 /**
  * Produces class-name completion items from two sources: classes imported via
- * `use` statements in the current file, and classes in the workspace symbol
- * index. Filtering for each source is driven centrally by
- * {@see ClassCandidateFilter}.
+ * `use` statements in the current file, and class-likes reached through the
+ * {@see SymbolSource} knowledge seam (RFC 1 §4.2). Filtering for each source is
+ * driven centrally by {@see ClassCandidateFilter}.
  *
  * Imports are read through {@see CodeResolver} rather than the raw AST, so this
  * source is agnostic to the parsing strategy (and to whether imports were
@@ -30,7 +30,7 @@ use Firehed\PhpLsp\Resolution\ReferenceResolver;
 final class ClassCandidates
 {
     public function __construct(
-        private readonly SymbolIndex $symbolIndex,
+        private readonly SymbolSource $symbolSource,
         private readonly CodeResolver $codeResolver,
         private readonly SessionCapabilitiesProvider $capabilities,
     ) {
@@ -94,10 +94,20 @@ final class ClassCandidates
         NameContext $context,
         Range $replaceRange,
     ): array {
-        $symbols = $this->symbolIndex->findByPrefix($prefix, $this->indexKinds($filter));
+        // The seam searches the whole class-like namespace (RFC 1 §4.2); which of
+        // those kinds this position admits stays the consumer's decision, applied
+        // here against each result's own kind. That keeps the coarse narrowing the
+        // index query used to do — and does not defer it to `accepts`, whose
+        // repository lookup cannot vouch for a symbol whose declaration it cannot
+        // reach (Plan 0002 §5.5: identical behavior).
+        $kinds = $this->indexKinds($filter);
+        $symbols = $this->symbolSource->searchClassLikes($prefix);
         $items = [];
 
         foreach ($symbols as $symbol) {
+            if (!in_array($symbol->kind, $kinds, true)) {
+                continue;
+            }
             /** @var class-string $fqcn */
             $fqcn = $symbol->fullyQualifiedName;
             if (!$filter->accepts(new ClassName($fqcn), $this->codeResolver)) {
@@ -118,6 +128,10 @@ final class ClassCandidates
     }
 
     /**
+     * The class-like kinds this position admits, applied to the seam's results.
+     * The per-candidate {@see ClassCandidateFilter::accepts()} predicate narrows
+     * further (abstractness, throwability, …); this is the coarse kind gate.
+     *
      * @return list<SymbolKind>
      */
     private function indexKinds(ClassCandidateFilter $filter): array
