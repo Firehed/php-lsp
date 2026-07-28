@@ -8,8 +8,8 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NodeAtPosition;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\FunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
@@ -75,7 +75,7 @@ final class SymbolResolver implements CodeResolver
 
     public function __construct(
         private readonly ParserService $parser,
-        private readonly ClassRepository $classRepository,
+        private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TypeResolverInterface $typeResolver,
         private readonly FunctionRepository $functionRepository,
@@ -194,7 +194,7 @@ final class SymbolResolver implements CodeResolver
      */
     public function isClassLike(ClassName $className): bool
     {
-        return $this->classRepository->get($className) !== null;
+        return $this->symbolSource->lookupClassLike($className) !== null;
     }
 
     /**
@@ -203,7 +203,7 @@ final class SymbolResolver implements CodeResolver
      */
     public function isInstantiable(ClassName $className): bool
     {
-        $classInfo = $this->classRepository->get($className);
+        $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
             return true;
         }
@@ -217,7 +217,7 @@ final class SymbolResolver implements CodeResolver
      */
     public function isValidTypeHint(ClassName $className): bool
     {
-        $classInfo = $this->classRepository->get($className);
+        $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
             return true;
         }
@@ -231,7 +231,7 @@ final class SymbolResolver implements CodeResolver
      */
     public function isInterface(ClassName $className): bool
     {
-        $classInfo = $this->classRepository->get($className);
+        $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
             return false;
         }
@@ -246,7 +246,7 @@ final class SymbolResolver implements CodeResolver
      */
     public function isExtendableClass(ClassName $className): bool
     {
-        $classInfo = $this->classRepository->get($className);
+        $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
             return false;
         }
@@ -261,7 +261,7 @@ final class SymbolResolver implements CodeResolver
      */
     public function isThrowable(ClassName $className): bool
     {
-        $classInfo = $this->classRepository->get($className);
+        $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
             return false;
         }
@@ -270,7 +270,7 @@ final class SymbolResolver implements CodeResolver
         if ($classInfo->name->equals($throwable)) {
             return true;
         }
-        return $this->classRepository->isSubclassOf($className, $throwable);
+        return $this->symbolSource->isSubclassOf($className, $throwable);
     }
 
     /**
@@ -280,7 +280,7 @@ final class SymbolResolver implements CodeResolver
      */
     public function isAttribute(ClassName $className): bool
     {
-        $classInfo = $this->classRepository->get($className);
+        $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
             return false;
         }
@@ -522,7 +522,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         if (
-            $this->classRepository->isSubclassOf(
+            $this->symbolSource->isSubclassOf(
                 new ClassName($enclosingClassName),
                 new ClassName($targetClassName),
             )
@@ -1421,7 +1421,7 @@ final class SymbolResolver implements CodeResolver
         // Class reference (new, instanceof, static call, type hint, etc.)
         $classNameStr = ScopeFinder::resolveClassName($node);
 
-        $classInfo = $this->classRepository->get(new ClassName($classNameStr));
+        $classInfo = $this->symbolSource->lookupClassLike(new ClassName($classNameStr));
         if ($classInfo === null) {
             return null;
         }
@@ -1499,7 +1499,7 @@ final class SymbolResolver implements CodeResolver
                 throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
-            $classInfo = $this->classRepository->get(new ClassName($selfContext));
+            $classInfo = $this->symbolSource->lookupClassLike(new ClassName($selfContext));
             $parentContext = $classInfo?->parent?->fqn;
         }
 
