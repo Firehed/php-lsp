@@ -80,9 +80,14 @@ final class DelegatingSymbolSourceTest extends TestCase
     public function testSearchClassLikesReturnsOnlyClassLikeKinds(): void
     {
         // The index also holds methods and functions; searchClassLikes searches the
-        // class-like namespace only (function/constant search is Step 3b).
-        $this->indexFixture('src/Domain/User.php');
-        $this->indexFixture('src/Catalog/functions.php');
+        // class-like namespace only (function/constant search is Step 3b). Index one
+        // fixture of every class-like kind so a kind dropped from the search set is
+        // caught by its missing FQN, not only by the allowlist below.
+        $this->indexFixture('src/Domain/User.php'); // class
+        $this->indexFixture('src/Enum/Status.php'); // enum
+        $this->indexFixture('src/Hierarchy/BaseInterface.php'); // interface
+        $this->indexFixture('src/Traits/HasTimestamps.php'); // trait
+        $this->indexFixture('src/Catalog/functions.php'); // function (must be excluded)
         $source = $this->facade($this->unusedCatalog());
 
         $results = $source->searchClassLikes('');
@@ -98,11 +103,21 @@ final class DelegatingSymbolSourceTest extends TestCase
                 'searchClassLikes must return class-likes only, never methods or functions',
             );
         }
-        self::assertContains(
-            'Fixtures\Domain\User',
-            self::fqns($results),
-            'the indexed class must be found',
-        );
+        $fqns = self::fqns($results);
+        foreach (
+            [
+                'Fixtures\Domain\User',
+                'Fixtures\Enum\Status',
+                'Fixtures\Hierarchy\BaseInterface',
+                'Fixtures\Traits\HasTimestamps',
+            ] as $expected
+        ) {
+            self::assertContains(
+                $expected,
+                $fqns,
+                "every class-like kind must be searchable; {$expected} was dropped",
+            );
+        }
     }
 
     public function testSearchClassLikesFiltersByPrefix(): void
