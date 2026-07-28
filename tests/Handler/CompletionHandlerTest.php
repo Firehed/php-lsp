@@ -29,6 +29,7 @@ use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
+use Firehed\PhpLsp\Knowledge\DelegatingSymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -62,6 +63,7 @@ class CompletionHandlerTest extends TestCase
     private DocumentManager $documents;
     private ParserService $parser;
     private SymbolIndex $symbolIndex;
+    private DocumentIndexer $indexer;
     private DefaultClassRepository $classRepository;
     private DefaultClassInfoFactory $classInfoFactory;
     private MemberResolver $memberResolver;
@@ -91,7 +93,7 @@ class CompletionHandlerTest extends TestCase
             $typeResolver,
             new DefaultFunctionRepository(),
         );
-        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
+        $this->indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
         $this->catalog = NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures');
         $this->handler = $this->makeHandler($this->catalog);
         $this->syncHandler = new TextDocumentSyncHandler(
@@ -99,7 +101,7 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
             $this->classRepository,
             $this->classInfoFactory,
-            $indexer,
+            $this->indexer,
         );
     }
 
@@ -109,10 +111,19 @@ class CompletionHandlerTest extends TestCase
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
 
+        $symbolSource = new DelegatingSymbolSource(
+            $this->classRepository,
+            $this->symbolIndex,
+            $catalog,
+            $this->indexer,
+            $this->classInfoFactory,
+            $this->parser,
+        );
+
         return new CompletionHandler(
             $this->documents,
             $this->symbolResolver,
-            new ClassCandidates($this->symbolIndex, $this->symbolResolver, $capabilities),
+            new ClassCandidates($symbolSource, $this->symbolResolver, $capabilities),
             new NamespaceCandidates($catalog, $this->symbolResolver, $capabilities),
             new FunctionCandidates($this->symbolResolver, $capabilities),
             new KeywordCandidates(),
@@ -1203,6 +1214,52 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('SealedClass', $labels);
         // Should NOT include abstract class
         self::assertNotContains('AbstractBase', $labels);
+    }
+
+    public function testTypeHintCompletionExcludesIndexedTraits(): void
+    {
+        // Both symbols are indexed but their declaration file is never opened, so
+        // the class repository cannot reach them. isValidTypeHint is optimistic for
+        // an unreachable name (it returns true), so the ClassCandidateFilter
+        // predicate does not exclude the trait here — only the class-like kind gate
+        // does. A resolvable trait would be rejected by the predicate regardless,
+        // leaving the gate's TypeHint arm untested; this pins it on the seam path.
+        $this->symbolIndex->add(new Symbol(
+            'MyClass',
+            'MyClass',
+            SymbolKind::Class_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+        $this->symbolIndex->add(new Symbol(
+            'MyTrait',
+            'MyTrait',
+            SymbolKind::Trait_,
+            new Location('file:///other.php', 0, 0, 0, 0),
+        ));
+
+        $code = '<?php function foo(): My';
+        $this->openDocument('file:///test.php', $code);
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///test.php'],
+                'position' => ['line' => 0, 'character' => 24],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('MyClass', $labels, 'A class is a valid type hint');
+        self::assertNotContains(
+            'MyTrait',
+            $labels,
+            'A trait is not a valid type hint; only the class-like kind gate excludes an unresolvable indexed trait',
+        );
     }
 
     /**

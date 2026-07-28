@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -27,7 +27,12 @@ class ClassCandidatesTest extends TestCase
         // An imported class whose short name carries a multibyte character.
         $resolver->method('getImports')->willReturn(['Café' => 'App\\Café']);
 
-        $candidates = new ClassCandidates(new SymbolIndex(), $resolver, self::utf16Capabilities());
+        // This case exercises the imports path only; the seam reaches no
+        // class-likes, so its prefix search is empty.
+        $symbolSource = self::createStub(SymbolSource::class);
+        $symbolSource->method('searchClassLikes')->willReturn([]);
+
+        $candidates = new ClassCandidates($symbolSource, $resolver, self::utf16Capabilities());
         $document = new TextDocument('file:///test.php', 'php', 1, '<?php Café');
 
         // "Café" is four codepoints — four UTF-16 units — but five UTF-8 bytes; the
