@@ -222,9 +222,10 @@ final class DelegatingSymbolSourceTest extends TestCase
 
     public function testWriteSurvivesAMalformedDocument(): void
     {
-        // A mid-edit broken file the parser cannot recover to an AST must leave both
-        // stores untouched rather than crash (RFC 1 §9): the null-AST guard skips class
-        // registration, so no bogus class reaches the repository, and the indexer no-ops.
+        // A mid-edit broken file the parser reduces to an empty statement list ([],
+        // not null) must not crash and must contribute no symbols (RFC 1 §9): class
+        // registration and indexing both run over the empty AST and find nothing to
+        // add, so no symbol reaches the index.
         $source = $this->facade($this->unusedCatalog());
         $uri = 'file:///virtual/Broken.php';
         $broken = file_get_contents($this->projectRoot . '/tests/Fixtures/src/IncompleteCode/VeryBroken.php');
