@@ -12,8 +12,9 @@ use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Knowledge\NamespaceName;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\NameKind;
@@ -25,25 +26,21 @@ use PHPUnit\Framework\TestCase;
 class NamespaceCandidatesTest extends TestCase
 {
     /**
-     * A namespace-aware catalog: each namespace maps to its contents, and any
-     * namespace not in the map is empty. Navigation peeks one level into a child
+     * A namespace-aware {@see SymbolSource}: each namespace maps to its contents, and
+     * any namespace not in the map is empty. Navigation peeks one level into a child
      * namespace to decide node-vs-inline, so children must resolve independently.
      *
      * @param array<string, NamespaceContents> $byNamespace
      */
-    private static function catalog(array $byNamespace): NamespaceCatalog
+    private static function source(array $byNamespace): SymbolSource
     {
-        return new class ($byNamespace) implements NamespaceCatalog {
-            /** @param array<string, NamespaceContents> $byNamespace */
-            public function __construct(private readonly array $byNamespace)
-            {
-            }
+        $source = self::createStub(SymbolSource::class);
+        $source->method('childrenOf')->willReturnCallback(
+            static fn(NamespaceName $namespace): NamespaceContents
+                => $byNamespace[$namespace->path] ?? new NamespaceContents([], []),
+        );
 
-            public function childrenOf(string $namespace): NamespaceContents
-            {
-                return $this->byNamespace[$namespace] ?? new NamespaceContents([], []);
-            }
-        };
+        return $source;
     }
 
     /**
@@ -86,7 +83,7 @@ class NamespaceCandidatesTest extends TestCase
     public function testOffersChildNamespacesAsModuleNodes(): void
     {
         $candidates = new NamespaceCandidates(
-            self::catalog(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
+            self::source(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
             self::createStub(CodeResolver::class),
             self::utf16Capabilities(),
         );
@@ -112,7 +109,7 @@ class NamespaceCandidatesTest extends TestCase
     public function testFiltersChildrenByTheSegmentPrefix(): void
     {
         $candidates = new NamespaceCandidates(
-            self::catalog(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
+            self::source(['Psr' => new NamespaceContents(['Psr\Http', 'Psr\Log'], [])]),
             self::createStub(CodeResolver::class),
             self::utf16Capabilities(),
         );
@@ -132,7 +129,7 @@ class NamespaceCandidatesTest extends TestCase
         // display the text they insert (Vim/ale shows textEdit.newText, not label),
         // so a bare segment would render indistinguishably from a same-named class.
         $candidates = new NamespaceCandidates(
-            self::catalog(['Psr' => new NamespaceContents(['Psr\Http'], [])]),
+            self::source(['Psr' => new NamespaceContents(['Psr\Http'], [])]),
             self::createStub(CodeResolver::class),
             self::utf16Capabilities(),
         );
@@ -152,10 +149,10 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testReplaceRangeMeasuresAMultibyteSegmentInCodeUnits(): void
     {
-        $catalog = self::catalog(['App' => new NamespaceContents([], [
+        $source = self::source(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\Café', NameKind::ClassLike),
         ])]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         // "Café" is four codepoints — four UTF-16 units — but five UTF-8 bytes; the
         // cursor sits at wire column 4 after typing it at the start of the line.
@@ -171,12 +168,12 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testOffersClassLikesButNotOtherKinds(): void
     {
-        $catalog = self::catalog(['App' => new NamespaceContents([], [
+        $source = self::source(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\helper', NameKind::Function_),
         ])]);
         // Any accepts every class-like, so only the kind gate is exercised here.
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -186,11 +183,11 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testFiltersSymbolsByTheSegmentPrefix(): void
     {
-        $catalog = self::catalog(['App' => new NamespaceContents([], [
+        $source = self::source(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\Gadget', NameKind::ClassLike),
         ])]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', 'Wi', 0, 2, ClassCandidateFilter::Any), 'label');
 
@@ -199,13 +196,13 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testExcludesClassLikesTheFilterRejects(): void
     {
-        $catalog = self::catalog(['App' => new NamespaceContents([], [
+        $source = self::source(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\Contract', NameKind::ClassLike),
         ])]);
         // isClassLike is true (a real class-like) but isInstantiable is false,
         // standing in for an interface after `new`: the position filter rejects
         // it, via the same predicate the index and imports use.
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         self::assertSame(
             [],
@@ -219,12 +216,12 @@ class NamespaceCandidatesTest extends TestCase
         // The catalog reports every .php file as a coarse class-like without
         // parsing it, so a functions.php arrives as a phantom name. The existence
         // gate drops it even where the position (Any) accepts anything.
-        $catalog = self::catalog(['App' => new NamespaceContents([], [
+        $source = self::source(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\functions', NameKind::ClassLike),
         ])]);
         $resolver = self::createStub(CodeResolver::class);
         $resolver->method('isClassLike')->willReturn(false);
-        $candidates = new NamespaceCandidates($catalog, $resolver, self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, $resolver, self::utf16Capabilities());
 
         self::assertSame(
             [],
@@ -238,11 +235,11 @@ class NamespaceCandidatesTest extends TestCase
         // App\Env is both a class and a small namespace. The class and the
         // namespace's contents are offered directly; the Env\ node is omitted,
         // since stepping through a handful of entries is needless.
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents(['App\Env'], [new CatalogSymbol('App\Env', NameKind::ClassLike)]),
             'App\Env' => new NamespaceContents([], [new CatalogSymbol('App\Env\Repository', NameKind::ClassLike)]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -256,11 +253,11 @@ class NamespaceCandidatesTest extends TestCase
         // The user reaches an inlined entry by typing the parent segment (E ->
         // Env), so the entry must filter on the qualified reference, not its leaf,
         // or a client filtering locally would hide it.
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents(['App\Env'], []),
             'App\Env' => new NamespaceContents([], [new CatalogSymbol('App\Env\Repository', NameKind::ClassLike)]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $byLabel = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'filterText', 'label');
 
@@ -275,7 +272,7 @@ class NamespaceCandidatesTest extends TestCase
     {
         // A small namespace is inlined, but one of its entries is a phantom (a
         // functions.php). The inline path drops it, offering only the real class.
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents(['App\Env'], []),
             'App\Env' => new NamespaceContents([], [
                 new CatalogSymbol('App\Env\Repository', NameKind::ClassLike),
@@ -286,7 +283,7 @@ class NamespaceCandidatesTest extends TestCase
         $resolver->method('isClassLike')->willReturnCallback(
             static fn(ClassName $name): bool => str_ends_with($name->fqn, 'Repository'),
         );
-        $candidates = new NamespaceCandidates($catalog, $resolver, self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, $resolver, self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -301,11 +298,11 @@ class NamespaceCandidatesTest extends TestCase
             static fn(int $i): CatalogSymbol => new CatalogSymbol("App\\Five\\C{$i}", NameKind::ClassLike),
             range(1, 5),
         );
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents(['App\Five'], []),
             'App\Five' => new NamespaceContents([], $five),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -317,11 +314,11 @@ class NamespaceCandidatesTest extends TestCase
     {
         // Inlining is one level: a small namespace exposes a grandchild namespace
         // as a qualified node to step into, not by recursing into it.
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents(['App\Small'], []),
             'App\Small' => new NamespaceContents(['App\Small\Deep'], []),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
@@ -333,13 +330,13 @@ class NamespaceCandidatesTest extends TestCase
     {
         // A bare name reaches its candidates through the same offerChildNamespace as
         // absolute navigation, so a small one inlines and a large one is a node.
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents(['App\Small'], []),
             'App\Small' => new NamespaceContents([], [new CatalogSymbol('App\Small\Thing', NameKind::ClassLike)]),
             'Vendor\Big' => new NamespaceContents([], self::manyClassLikes('Vendor\Big')),
             'Vendor\Plain' => new NamespaceContents([], []),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Big' => 'Vendor\Big', 'Plain' => 'Vendor\Plain']);
 
         $labels = array_column($candidates->descend($context, '', 0, 0, ClassCandidateFilter::Any), 'label');
@@ -355,12 +352,12 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testDescendFiltersByPrefix(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents([], []),
             'Vendor\Mapping' => new NamespaceContents([], self::manyClassLikes('Vendor\Mapping')),
             'Vendor\Other' => new NamespaceContents([], self::manyClassLikes('Vendor\Other')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Mapping' => 'Vendor\Mapping', 'Other' => 'Vendor\Other']);
 
         $labels = array_column($candidates->descend($context, 'Map', 0, 3, ClassCandidateFilter::Any), 'label');
@@ -370,12 +367,12 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testNavigateWalksAbsoluteNames(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'Psr\Http' => new NamespaceContents([], [
                 new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->navigate('\Psr\Http\M', new NameContext(''), 0, 12, ClassCandidateFilter::Any);
 
@@ -388,11 +385,11 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testNavigateDescendsForBareNames(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents([], []),
             'Vendor\Pkg' => new NamespaceContents([], self::manyClassLikes('Vendor\Pkg')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg']);
 
         $items = $candidates->navigate('Pk', $context, 0, 2, ClassCandidateFilter::Any);
@@ -402,12 +399,12 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testNavigateResolvesQualifiedNamesThroughImports(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'Vendor\Pkg' => new NamespaceContents([], [
                 new CatalogSymbol('Vendor\Pkg\Thing', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
         $context = new NameContext('App', ['Pkg' => 'Vendor\Pkg']);
 
         $items = $candidates->navigate('Pkg\T', $context, 0, 5, ClassCandidateFilter::Any);
@@ -417,12 +414,12 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testNavigateResolvesQualifiedNamesRelativeToTheCurrentNamespace(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'App\Sub' => new NamespaceContents([], [
                 new CatalogSymbol('App\Sub\Thing', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->navigate('Sub\T', new NameContext('App'), 0, 5, ClassCandidateFilter::Any);
 
@@ -435,12 +432,12 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testUseStatementWalksQualifiedNameFromGlobal(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'Psr\Http' => new NamespaceContents([], [
                 new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->useStatement('Psr\Http\M', 0, 10, ClassCandidateFilter::Any);
 
@@ -453,12 +450,12 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testUseStatementIgnoresOptionalLeadingBackslash(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'Psr\Http' => new NamespaceContents([], [
                 new CatalogSymbol('Psr\Http\Message', NameKind::ClassLike),
             ]),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $items = $candidates->useStatement('\Psr\Http\M', 0, 11, ClassCandidateFilter::Any);
 
@@ -473,11 +470,11 @@ class NamespaceCandidatesTest extends TestCase
     {
         // A single typed segment (no separator) walks the global namespace's
         // children, so a root namespace is offered as a node to step into.
-        $catalog = self::catalog([
+        $source = self::source([
             '' => new NamespaceContents(['Psr'], []),
             'Psr' => new NamespaceContents([], self::manyClassLikes('Psr')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->useStatement('Ps', 0, 2, ClassCandidateFilter::Any), 'label');
 
@@ -490,11 +487,11 @@ class NamespaceCandidatesTest extends TestCase
 
     public function testRanksSymbolsAboveNamespaceNodes(): void
     {
-        $catalog = self::catalog([
+        $source = self::source([
             'App' => new NamespaceContents(['App\Big'], [new CatalogSymbol('App\Widget', NameKind::ClassLike)]),
             'App\Big' => new NamespaceContents([], self::manyClassLikes('App\Big')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $byLabel = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'sortText', 'label');
 
@@ -511,14 +508,14 @@ class NamespaceCandidatesTest extends TestCase
     {
         // A namespace with more than five members is offered as a node to step
         // through; its same-named class is still offered alongside.
-        $catalog = self::catalog([
+        $source = self::source([
             'App\Entities' => new NamespaceContents(
                 ['App\Entities\Env'],
                 [new CatalogSymbol('App\Entities\Env', NameKind::ClassLike)],
             ),
             'App\Entities\Env' => new NamespaceContents([], self::manyClassLikes('App\Entities\Env')),
         ]);
-        $candidates = new NamespaceCandidates($catalog, self::classLikeResolver(), self::utf16Capabilities());
+        $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App\Entities', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
