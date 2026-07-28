@@ -9,9 +9,6 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\SymbolExtractor;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
@@ -54,9 +51,10 @@ class HoverHandlerTest extends TestCase
         );
         $memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
+        $symbolSource = $this->symbolSourceFor($this->classRepository, $this->parser);
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
-            $this->symbolSourceFor($this->classRepository, $this->parser),
+            $symbolSource,
             $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
@@ -65,13 +63,9 @@ class HoverHandlerTest extends TestCase
         // minimal client is served); the fenced-markdown path is exercised
         // explicitly below.
         $this->handler = $this->handlerFor(MarkupKind::PlainText);
-        $indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), new SymbolIndex());
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $this->classInfoFactory,
-            $indexer,
+            $symbolSource,
         );
     }
 

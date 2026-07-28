@@ -100,10 +100,14 @@ class CompletionHandlerTest extends TestCase
         $this->handler = $this->makeHandler($this->catalog);
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,
-            $this->parser,
-            $this->classRepository,
-            $this->classInfoFactory,
-            $this->indexer,
+            new DelegatingSymbolSource(
+                $this->classRepository,
+                $this->symbolIndex,
+                $this->catalog,
+                $this->indexer,
+                $this->classInfoFactory,
+                $this->parser,
+            ),
         );
     }
 

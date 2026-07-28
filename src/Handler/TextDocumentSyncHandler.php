@@ -5,13 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Knowledge\SymbolSink;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
-use Firehed\PhpLsp\Repository\ClassRepository;
-use Firehed\PhpLsp\Utility\ScopeFinder;
-use PhpParser\Node\Stmt;
 
 final class TextDocumentSyncHandler implements HandlerInterface
 {
@@ -23,10 +19,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
 
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly ParserService $parser,
-        private readonly ClassRepository $classRepository,
-        private readonly ClassInfoFactory $classInfoFactory,
-        private readonly DocumentIndexer $indexer,
+        private readonly SymbolSink $symbols,
     ) {
     }
 
@@ -66,7 +59,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         assert(is_string($text));
 
         $this->documentManager->open($uri, $languageId, $version, $text);
-        $this->indexDocument($uri);
+        $this->symbols->openDocument($this->documentFor($uri));
 
         return null;
     }
@@ -93,7 +86,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         if (is_array($lastChange) && isset($lastChange['text'])) {
             assert(is_string($lastChange['text']));
             $this->documentManager->update($uri, $lastChange['text'], $version);
-            $this->indexDocument($uri);
+            $this->symbols->updateDocument($this->documentFor($uri));
         }
 
         return null;
@@ -110,37 +103,17 @@ final class TextDocumentSyncHandler implements HandlerInterface
         $uri = $textDocument['uri'] ?? '';
         assert(is_string($uri));
 
-        $this->indexer->remove($uri);
-        $this->classRepository->removeDocument($uri);
+        $this->symbols->closeDocument($uri);
         $this->documentManager->close($uri);
 
         return null;
     }
 
-    private function indexDocument(string $uri): void
+    private function documentFor(string $uri): TextDocument
     {
         $document = $this->documentManager->get($uri);
         assert($document !== null);
 
-        $ast = $this->parser->parse($document);
-        if ($ast !== null) {
-            $this->registerDocumentClasses($uri, $ast);
-        }
-
-        $this->indexer->index($document);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function registerDocumentClasses(string $uri, array $ast): void
-    {
-        $classes = [];
-        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
-                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
-            }
-        }
-        $this->classRepository->updateDocument($uri, $classes);
+        return $document;
     }
 }
