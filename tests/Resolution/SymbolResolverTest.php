@@ -36,6 +36,7 @@ use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -49,6 +50,7 @@ use TypeError;
 #[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {
+    use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
     private SymbolResolver $resolver;
@@ -74,7 +76,7 @@ final class SymbolResolverTest extends TestCase
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
-            classRepository: $this->classRepository,
+            symbolSource: $this->symbolSourceFor($this->classRepository, $this->parser),
             memberResolver: $memberResolver,
             typeResolver: $typeResolver,
             functionRepository: new DefaultFunctionRepository(),

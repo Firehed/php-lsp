@@ -97,19 +97,12 @@ final class Server
         $functionRepository = new DefaultFunctionRepository();
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
-        $symbolResolver = new SymbolResolver(
-            $parser,
-            $classRepository,
-            $memberResolver,
-            $typeResolver,
-            $functionRepository,
-        );
 
         $catalog = NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot);
 
         // The read/write knowledge seam (RFC 1 §4.2, §4.3). Consumers migrate onto
         // this one facade instance across Step 2's slices (Plan 0002 §5.5); today
-        // ClassCandidates reads class-like prefix search through it.
+        // ClassCandidates, NamespaceCandidates, and SymbolResolver read through it.
         $symbolSource = new DelegatingSymbolSource(
             $classRepository,
             $symbolIndex,
@@ -117,6 +110,14 @@ final class Server
             $indexer,
             $classInfoFactory,
             $parser,
+        );
+
+        $symbolResolver = new SymbolResolver(
+            $parser,
+            $symbolSource,
+            $memberResolver,
+            $typeResolver,
+            $functionRepository,
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);

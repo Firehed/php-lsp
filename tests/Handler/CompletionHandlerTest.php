@@ -39,6 +39,7 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -58,6 +59,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(VariableCandidates::class)]
 class CompletionHandlerTest extends TestCase
 {
+    use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
@@ -88,7 +90,7 @@ class CompletionHandlerTest extends TestCase
         $typeResolver = new BasicTypeResolver($this->memberResolver, new DefaultFunctionRepository());
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
-            $this->classRepository,
+            $this->symbolSourceFor($this->classRepository, $this->parser),
             $this->memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),

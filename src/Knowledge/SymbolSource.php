@@ -32,6 +32,17 @@ interface SymbolSource
     public function childrenOf(NamespaceName $namespace): NamespaceContents;
 
     /**
+     * Whether $class is a subtype of $potentialParent somewhere along the type graph
+     * (extends, implements, and interface-extends-interface alike). Not reflexive: a
+     * class is not a subclass of itself, mirroring PHP's `is_subclass_of` — a caller
+     * that also wants the identity case tests it separately. A subtype relationship
+     * the caller cannot answer from a single lookup — it needs the whole graph — so it
+     * is a knowledge query in its own right (Plan 0002 §5.2: the surface a migrated
+     * feature actually needs).
+     */
+    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool;
+
+    /**
      * Full metadata for a class-like by its exact name, or null when nothing the
      * source can reach declares it (RFC 1 §5.3: absence is a bare null).
      */

@@ -136,6 +136,26 @@ final class DelegatingSymbolSourceTest extends TestCase
         );
     }
 
+    public function testIsSubclassOfForwardsToTheRepository(): void
+    {
+        // Pure forwarding, both branches: a real subclass relationship and an
+        // unrelated pair. The two directions also prove the arguments reach the
+        // repository in order rather than swapped (the transitive graph walk itself
+        // is frozen by ClassLikeLookupParityTest, not re-proven here).
+        $source = $this->facade($this->unusedCatalog());
+        $descendant = self::className('Fixtures\Inheritance\FinalDescendant');
+        $ancestor = self::className('Fixtures\Inheritance\ParentClass');
+
+        self::assertTrue(
+            $source->isSubclassOf($descendant, $ancestor),
+            'isSubclassOf must return the repository result for a real subclass',
+        );
+        self::assertFalse(
+            $source->isSubclassOf($ancestor, $descendant),
+            'isSubclassOf must forward its arguments in order, not swapped',
+        );
+    }
+
     public function testChildrenOfForwardsTheNamespacePath(): void
     {
         $expected = new NamespaceContents(['Fixtures\Domain\Sub'], []);
