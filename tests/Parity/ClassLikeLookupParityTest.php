@@ -10,8 +10,8 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -27,6 +27,7 @@ use PHPUnit\Framework\TestCase;
 final class ClassLikeLookupParityTest extends TestCase
 {
     use AssertsGolden;
+    use BuildsClassRepositoryTrait;
 
     /**
      * Corpus of class-like names whose full `ClassInfo` is deterministic and
@@ -78,11 +79,10 @@ final class ClassLikeLookupParityTest extends TestCase
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
-        $this->repository = new DefaultClassRepository(
+        $this->repository = $this->buildClassRepository(
             new DefaultClassInfoFactory(),
             new ComposerClassLocator($this->projectRoot . '/tests/Fixtures'),
             new ParserService(),
-            CacheFactory::inMemory(),
         );
     }
 

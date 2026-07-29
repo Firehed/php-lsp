@@ -19,8 +19,7 @@ use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -33,6 +32,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class DelegatingSymbolSourceTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
+
     private DefaultClassInfoFactory $factory;
     private SymbolIndex $index;
     private DocumentIndexer $indexer;
@@ -47,11 +48,10 @@ final class DelegatingSymbolSourceTest extends TestCase
         $this->factory = new DefaultClassInfoFactory();
         $this->index = new SymbolIndex();
         $this->indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->index);
-        $this->repository = new DefaultClassRepository(
+        $this->repository = $this->buildClassRepository(
             $this->factory,
             new ComposerClassLocator($this->projectRoot . '/tests/Fixtures'),
             $this->parser,
-            CacheFactory::inMemory(),
         );
     }
 

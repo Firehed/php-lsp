@@ -10,11 +10,11 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -23,6 +23,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SignatureHelpHandler::class)]
 class SignatureHelpHandlerTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
     use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
@@ -40,11 +41,10 @@ class SignatureHelpHandlerTest extends TestCase
         $this->parser = new ParserService();
         $this->classInfoFactory = new DefaultClassInfoFactory();
         $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
-        $this->classRepository = new DefaultClassRepository(
+        $this->classRepository = $this->buildClassRepository(
             $this->classInfoFactory,
             $locator,
             $this->parser,
-            CacheFactory::inMemory(),
         );
         $this->memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($this->memberResolver, new DefaultFunctionRepository());

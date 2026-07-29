@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -34,6 +33,7 @@ use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -48,6 +48,7 @@ use TypeError;
 #[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
     use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
@@ -63,11 +64,10 @@ final class SymbolResolverTest extends TestCase
         $this->documents = new DocumentManager();
         $classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = new DefaultClassRepository(
+        $this->classRepository = $this->buildClassRepository(
             $classInfoFactory,
             $locator,
             $this->parser,
-            CacheFactory::inMemory(),
         );
         $memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());

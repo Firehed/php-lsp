@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Repository;
 
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -12,12 +11,15 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(DefaultClassRepository::class)]
 final class DefaultClassRepositoryTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
+
     public function testGetReturnsNullForUnknownClass(): void
     {
         $factory = self::createStub(ClassInfoFactory::class);
@@ -25,7 +27,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator->method('locate')->willReturn(null);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         self::assertNull($repo->get(new ClassName($this->nonExistentClass())));
     }
@@ -38,7 +40,7 @@ final class DefaultClassRepositoryTest extends TestCase
 
         $classInfo = $this->createClassInfo(DocumentClass::class);
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
         $repo->updateDocument('file:///test.php', [$classInfo]);
 
         $result = $repo->get(new ClassName(DocumentClass::class));
@@ -61,7 +63,7 @@ final class DefaultClassRepositoryTest extends TestCase
 
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         $result = $repo->get(new ClassName(TestFixture::class));
 
@@ -82,7 +84,7 @@ final class DefaultClassRepositoryTest extends TestCase
 
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         $result = $repo->get(new ClassName(\stdClass::class));
 
@@ -103,7 +105,7 @@ final class DefaultClassRepositoryTest extends TestCase
 
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         $repo->get(new ClassName(\stdClass::class));
         $result = $repo->get(new ClassName(\stdClass::class));
@@ -123,7 +125,7 @@ final class DefaultClassRepositoryTest extends TestCase
 
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         $repo->get(new ClassName(TestFixture::class));
         $parsesAfterFirst = $parser->getMetrics()->getParseCount();
@@ -152,7 +154,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator = self::createStub(ClassLocator::class);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
         $repo->updateDocument('file:///test.php', [$oldInfo]);
 
         $repo->get(new ClassName(DocumentClass::class));
@@ -190,7 +192,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator->method('locate')->willReturn(null);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
         $repo->updateDocument('file:///test.php', [$classInfo]);
 
         $repo->removeDocument('file:///test.php');
@@ -206,7 +208,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator = self::createStub(ClassLocator::class);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
         $repo->updateDocument('file:///test.php', [$classInfo]);
 
         /** @var class-string $withBackslash */
@@ -222,7 +224,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator = self::createStub(ClassLocator::class);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         $repo->removeDocument('file:///nonexistent.php');
 
@@ -243,7 +245,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator->method('locate')->willReturn(null);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         $repo->get(new ClassName(\stdClass::class));
 
@@ -343,7 +345,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator->method('locate')->willReturn(null);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
 
         self::assertFalse($repo->isSubclassOf(
             new ClassName('App\\Unknown'), // @phpstan-ignore argument.type
@@ -360,7 +362,7 @@ final class DefaultClassRepositoryTest extends TestCase
         $locator = self::createStub(ClassLocator::class);
         $parser = new ParserService();
 
-        $repo = new DefaultClassRepository($factory, $locator, $parser, CacheFactory::inMemory());
+        $repo = $this->buildClassRepository($factory, $locator, $parser);
         $repo->updateDocument('file:///test.php', $classes);
 
         return $repo;

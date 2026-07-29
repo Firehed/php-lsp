@@ -11,8 +11,8 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -21,6 +21,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
     use BuildsSymbolSourceTrait;
     use LoadsFixturesTrait;
 
@@ -36,11 +37,10 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->parser = new ParserService();
         $this->classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = new DefaultClassRepository(
+        $this->classRepository = $this->buildClassRepository(
             $this->classInfoFactory,
             $locator,
             $this->parser,
-            CacheFactory::inMemory(),
         );
         $this->handler = new TextDocumentSyncHandler(
             $this->manager,

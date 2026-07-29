@@ -15,11 +15,11 @@ use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -28,6 +28,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(HoverHandler::class)]
 class HoverHandlerTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
     use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
@@ -45,11 +46,10 @@ class HoverHandlerTest extends TestCase
         $this->parser = new ParserService();
         $this->classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = new DefaultClassRepository(
+        $this->classRepository = $this->buildClassRepository(
             $this->classInfoFactory,
             $locator,
             $this->parser,
-            CacheFactory::inMemory(),
         );
         $memberResolver = new MemberResolver($this->classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());

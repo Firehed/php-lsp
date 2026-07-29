@@ -9,8 +9,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -29,6 +28,8 @@ use ReflectionProperty;
 #[CoversClass(MemberResolver::class)]
 final class TypeGraphParityTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
+
     private MemberResolver $resolver;
 
     public static function setUpBeforeClass(): void
@@ -63,11 +64,10 @@ final class TypeGraphParityTest extends TestCase
     protected function setUp(): void
     {
         $parser = new ParserService();
-        $repository = new DefaultClassRepository(
+        $repository = $this->buildClassRepository(
             new DefaultClassInfoFactory(),
             new ComposerClassLocator(dirname(__DIR__) . '/Fixtures'),
             $parser,
-            CacheFactory::inMemory(),
         );
         $this->resolver = new MemberResolver($repository);
     }

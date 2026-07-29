@@ -13,8 +13,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\MemberFilter;
 use Firehed\PhpLsp\Repository\ClassRepository;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
@@ -25,6 +24,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextFallbackHelper::class)]
 class TextFallbackHelperTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
     use LoadsFixturesTrait;
 
     private TextFallbackHelper $helper;
@@ -42,7 +42,7 @@ class TextFallbackHelperTest extends TestCase
         $factory = new DefaultClassInfoFactory();
         $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
         $this->parser = new ParserService();
-        $fixtureRepo = new DefaultClassRepository($factory, $locator, $this->parser, CacheFactory::inMemory());
+        $fixtureRepo = $this->buildClassRepository($factory, $locator, $this->parser);
         $this->helperWithReflection = new TextFallbackHelper(new MemberResolver($fixtureRepo));
     }
 
