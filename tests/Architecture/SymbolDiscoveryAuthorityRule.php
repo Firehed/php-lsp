@@ -4,11 +4,19 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture;
 
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Repository\ClassRepository;
+use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
+use Firehed\PhpLsp\Repository\FunctionRepository;
 use PhpParser\Node;
 use PhpParser\Node\Stmt\Use_;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
+use ReflectionClass;
 
 /**
  * The RFC 1 §8.1 mechanism for §4.2 (Symbol Discovery Authority): symbol existence,
@@ -30,17 +38,17 @@ final class SymbolDiscoveryAuthorityRule implements Rule
      * repository, autoload map, and reflection (`ReflectionClass` is a global class, so
      * it has no namespace prefix).
      *
-     * @var list<string>
+     * @var list<class-string>
      */
     private const array CONFINED_COLLABORATORS = [
-        'Firehed\PhpLsp\Index\ComposerAutoloadMap',
-        'Firehed\PhpLsp\Index\NamespaceCatalog',
-        'Firehed\PhpLsp\Index\SymbolIndex',
-        'Firehed\PhpLsp\Repository\ClassRepository',
-        'Firehed\PhpLsp\Repository\DefaultClassRepository',
-        'Firehed\PhpLsp\Repository\DefaultFunctionRepository',
-        'Firehed\PhpLsp\Repository\FunctionRepository',
-        'ReflectionClass',
+        ComposerAutoloadMap::class,
+        NamespaceCatalog::class,
+        SymbolIndex::class,
+        ClassRepository::class,
+        DefaultClassRepository::class,
+        DefaultFunctionRepository::class,
+        FunctionRepository::class,
+        ReflectionClass::class,
     ];
 
     /**
@@ -50,11 +58,11 @@ final class SymbolDiscoveryAuthorityRule implements Rule
      * carve-out — so the two names sit in the confined set above and are exempted here
      * rather than simply omitted.
      *
-     * @var list<string>
+     * @var list<class-string>
      */
     private const array FUNCTION_PATH_EXEMPTION = [
-        'Firehed\PhpLsp\Repository\DefaultFunctionRepository',
-        'Firehed\PhpLsp\Repository\FunctionRepository',
+        DefaultFunctionRepository::class,
+        FunctionRepository::class,
     ];
 
     /**
