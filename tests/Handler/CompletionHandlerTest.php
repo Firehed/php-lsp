@@ -39,6 +39,7 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -59,6 +60,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(VariableCandidates::class)]
 class CompletionHandlerTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
     use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
@@ -81,7 +83,7 @@ class CompletionHandlerTest extends TestCase
         $this->symbolIndex = new SymbolIndex();
         $this->classInfoFactory = new DefaultClassInfoFactory();
         $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
-        $this->classRepository = new DefaultClassRepository(
+        $this->classRepository = $this->buildClassRepository(
             $this->classInfoFactory,
             $locator,
             $this->parser,

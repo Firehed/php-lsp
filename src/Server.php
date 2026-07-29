@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
+use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
@@ -93,7 +94,12 @@ final class Server
         $classLocator = new ComposerClassLocator($projectRoot);
 
         $classInfoFactory = new DefaultClassInfoFactory();
-        $classRepository = new DefaultClassRepository($classInfoFactory, $classLocator, $parser);
+        $classRepository = new DefaultClassRepository(
+            $classInfoFactory,
+            $classLocator,
+            $parser,
+            CacheFactory::inMemory(),
+        );
         $functionRepository = new DefaultFunctionRepository();
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);

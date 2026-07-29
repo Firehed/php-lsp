@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Repository;
 
+use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -12,14 +13,12 @@ use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
+use Psr\SimpleCache\CacheInterface;
 use ReflectionClass;
 use ReflectionException;
 
 final class DefaultClassRepository implements ClassRepository
 {
-    /** @var array<string, ClassInfo> Lowercase FQN -> ClassInfo cache */
-    private array $cache = [];
-
     /** @var array<string, list<ClassInfo>> URI -> Classes in document */
     private array $documentClasses = [];
 
@@ -30,16 +29,20 @@ final class DefaultClassRepository implements ClassRepository
         private readonly ClassInfoFactory $factory,
         private readonly ClassLocator $locator,
         private readonly ParserService $parser,
+        private readonly CacheInterface $cache,
     ) {
     }
 
     public function get(ClassName $name): ?ClassInfo
     {
         $key = $this->normalizeKey($name->fqn);
+        $cacheKey = CacheKey::from($key);
 
         // Check cache first for previously resolved classes
-        if (array_key_exists($key, $this->cache)) {
-            return $this->cache[$key];
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            assert($cached instanceof ClassInfo);
+            return $cached;
         }
 
         // Open documents take priority - updateDocument() clears cache entries
@@ -56,14 +59,14 @@ final class DefaultClassRepository implements ClassRepository
         // Try to locate and parse from filesystem
         $classInfo = $this->locateAndParse($name);
         if ($classInfo !== null) {
-            $this->cache[$key] = $classInfo;
+            $this->cache->set($cacheKey, $classInfo);
             return $classInfo;
         }
 
         // Fall back to reflection for built-in/autoloaded classes
         $classInfo = $this->fromReflection($name);
         if ($classInfo !== null) {
-            $this->cache[$key] = $classInfo;
+            $this->cache->set($cacheKey, $classInfo);
             return $classInfo;
         }
 
@@ -84,7 +87,7 @@ final class DefaultClassRepository implements ClassRepository
             $this->documentIndex[$key] = $uri;
 
             // Invalidate cache so open document version takes precedence
-            unset($this->cache[$key]);
+            $this->cache->delete(CacheKey::from($key));
         }
     }
 

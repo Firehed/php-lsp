@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -23,6 +24,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(DefinitionHandler::class)]
 class DefinitionHandlerTest extends TestCase
 {
+    use BuildsClassRepositoryTrait;
     use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
@@ -38,7 +40,7 @@ class DefinitionHandlerTest extends TestCase
         $this->parser = new ParserService();
         $classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = new DefaultClassRepository(
+        $this->classRepository = $this->buildClassRepository(
             $classInfoFactory,
             $locator,
             $this->parser,
