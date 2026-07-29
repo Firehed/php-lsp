@@ -17,3 +17,7 @@ services:
         class: Firehed\PhpLsp\Tests\Architecture\RawInitializeCapabilitiesRule
         tags:
             - phpstan.rules.rule
+    -
+        class: Firehed\PhpLsp\Tests\Architecture\SymbolDiscoveryAuthorityExtension
+        tags:
+            - phpstan.restrictedClassNameUsageExtension
