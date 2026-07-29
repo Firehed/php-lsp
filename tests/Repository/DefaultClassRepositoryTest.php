@@ -110,6 +110,38 @@ final class DefaultClassRepositoryTest extends TestCase
         self::assertSame($classInfo, $result);
     }
 
+    public function testCacheHitIsServedWithoutReparsingTheFile(): void
+    {
+        $classInfo = $this->createClassInfo(TestFixture::class);
+
+        $factory = self::createStub(ClassInfoFactory::class);
+        $factory->method('fromAstNode')->willReturn($classInfo);
+
+        $locator = self::createStub(ClassLocator::class);
+        $locator->method('locate')->willReturn(__DIR__ . '/TestFixture.php');
+
+        $parser = new ParserService();
+
+        $repo = new DefaultClassRepository($factory, $locator, $parser);
+
+        $repo->get(new ClassName(TestFixture::class));
+        $parsesAfterFirst = $parser->getMetrics()->getParseCount();
+
+        $repo->get(new ClassName(TestFixture::class));
+        $parsesAfterSecond = $parser->getMetrics()->getParseCount();
+
+        self::assertGreaterThan(
+            0,
+            $parsesAfterFirst,
+            'Resolving a class off disk must parse its file at least once',
+        );
+        self::assertSame(
+            $parsesAfterFirst,
+            $parsesAfterSecond,
+            'A cached class must be returned without re-parsing its file',
+        );
+    }
+
     public function testUpdateDocumentInvalidatesCache(): void
     {
         $oldInfo = $this->createClassInfo(DocumentClass::class);
