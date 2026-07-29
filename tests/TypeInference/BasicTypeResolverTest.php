@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Throwable;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -40,7 +41,7 @@ class BasicTypeResolverTest extends TestCase
         $classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
         $parser = new ParserService();
-        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
+        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser, CacheFactory::inMemory());
         $memberResolver = new MemberResolver($classRepository);
 
         $this->resolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
@@ -934,7 +935,7 @@ class BasicTypeResolverTest extends TestCase
         $classInfoFactory = new DefaultClassInfoFactory();
         $locator = new \Firehed\PhpLsp\Index\ComposerClassLocator(__DIR__ . '/../Fixtures');
         $parser = new ParserService();
-        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser);
+        $classRepository = new DefaultClassRepository($classInfoFactory, $locator, $parser, CacheFactory::inMemory());
         $memberResolver = new MemberResolver($classRepository);
 
         return new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());

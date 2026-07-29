@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use PHPUnit\Framework\TestCase;
 
@@ -81,6 +82,7 @@ final class ClassLikeLookupParityTest extends TestCase
             new DefaultClassInfoFactory(),
             new ComposerClassLocator($this->projectRoot . '/tests/Fixtures'),
             new ParserService(),
+            CacheFactory::inMemory(),
         );
     }
 

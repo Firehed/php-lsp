@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -35,7 +36,12 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->parser = new ParserService();
         $this->classInfoFactory = new DefaultClassInfoFactory();
         $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = new DefaultClassRepository($this->classInfoFactory, $locator, $this->parser);
+        $this->classRepository = new DefaultClassRepository(
+            $this->classInfoFactory,
+            $locator,
+            $this->parser,
+            CacheFactory::inMemory(),
+        );
         $this->handler = new TextDocumentSyncHandler(
             $this->manager,
             $this->symbolSourceFor($this->classRepository, $this->parser),

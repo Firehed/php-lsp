@@ -16,8 +16,6 @@ use PhpParser\NodeVisitorAbstract;
 use Psr\SimpleCache\CacheInterface;
 use ReflectionClass;
 use ReflectionException;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Cache\Psr16Cache;
 
 final class DefaultClassRepository implements ClassRepository
 {
@@ -31,10 +29,7 @@ final class DefaultClassRepository implements ClassRepository
         private readonly ClassInfoFactory $factory,
         private readonly ClassLocator $locator,
         private readonly ParserService $parser,
-        // ArrayAdapter's second argument disables its copy-on-read (named
-        // `storeSerialized` in symfony/cache 7, `deepClone` in 8), so a hit
-        // returns the cached instance rather than a clone.
-        private readonly CacheInterface $cache = new Psr16Cache(new ArrayAdapter(0, false)),
+        private readonly CacheInterface $cache,
     ) {
     }
 
