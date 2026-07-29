@@ -18,6 +18,7 @@ final class CacheKey
 {
     public static function from(string $normalizedIdentifier): string
     {
+        // xxh128 (xxHash): a fast non-cryptographic hash; hex output is PSR-16-safe and within the 64-char key bound.
         return hash('xxh128', $normalizedIdentifier);
     }
 }
