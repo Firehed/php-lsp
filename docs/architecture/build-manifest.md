@@ -1,6 +1,6 @@
 # Build Manifest (slice registry)
 
-    Status:   Draft — seeded through Wave 1 (Steps 0, 1, P, 2)
+    Status:   Draft — seeded through Wave 2 (Steps 3, 4, Z; Steps 5, 6 deferred)
     Driver:   build-procedure.md
     Plan:     0002-execution-plan.md
 
@@ -42,7 +42,79 @@ Notes:
   that slice or as its immediate predecessor.
 - Steps 0, 1, and P are mutually independent and may run in any order; Step 2 is
   gated on the parity harness (SP.1).
-- Wave 2 (Step 3a/3b sub-slices, Step 4 positional-layer units, Step 5, Step 6) is
-  appended when S2.* is `done`. Existing issues expected there: #239, #181, #317
-  (Step 3b); #268, #301, #303, #73, #74 (enabled, own feature PRs); #266/#264/#265
-  (later-step epics). #295 (Visibility enum) rides a cleanup slice.
+- Wave 2 (Steps 3, 4, Z) is decomposed below, appended now that S2.* is `done`. Steps
+  5 and 6 remain deferred (see the Deferred note under Wave 2).
+
+## Wave 2 — Steps 3, 4, Z
+
+Step 3 is one plan step with two halves: **3a** is behavior-preserving (proven by the
+Step P harness — parity fixtures first), **3b** both preserves and extends the function
+surface (existing behavior frozen to a golden; new project reach proven by new
+fixtures). The `Step` column carries the half, since 3a and 3b own distinct acceptance
+criteria in 0002. Step 4 decomposes `SymbolResolver`; Step Z is the terminal
+Definition-of-Done gate.
+
+    ID     Step  Title                                              Depends on        Closes
+    -----  ----  -------------------------------------------------  ----------------  -------
+    S3.1   3a    Existing caches -> replaceable §5.3 seam (verify)  S2.6              —
+    S3.2   3a    Dedupe the duplicate ComposerAutoloadMap           S2.6              —
+    S3.3   3a    Named backends + fixed-precedence composite        S3.1,S3.2         —
+    S3.4   3a    One parse / one write path + consistency check     S3.3              —
+    S3.5   3a    External-file-change invalidation                  S3.3,S3.4         —
+    S3.6   3b    Function-surface golden + Builtin enum oracle      S3.3              —
+    S3.7   3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3              —
+    S3.8   3b    lookupFunction/lookupConstant project reach        S3.6,S3.7         —
+    S3.9   3b    Migrate FunctionCandidates -> search               S3.8              —
+    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.9              —
+    S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
+    S4.2   4     Extract node locator + scope analyzer              S3.8,S4.1         —
+    S4.3   4     Extract member-access + call-context detectors     S4.2              —
+    S4.4   4     Extract name-context resolver                      S4.2              —
+    S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
+    S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
+    SZ.1   Z     Definition of Done gate                            S3.10,S4.6        —
+
+Notes:
+
+- **S3.1 is verify-then-seam.** The Step 0 spike (0002 §8.5 decision 2) declined a
+  standing parse cache; it is *not* built here. S3.1 moves the two existing hand-rolled
+  memoizations — `DefaultClassRepository::$cache` (ClassInfo by FQN) and
+  `CachedNamespaceCatalog::$cache` (stable-source `childrenOf`) — behind the §5.3
+  replaceable seam, and each cache kept must demonstrably drop a parse / source call on
+  a hit (asserted via `ParseMetrics`); one that cannot is removed, not wrapped.
+- **Name-type model is JIT (§5.3).** `QualifiedName`, `NameKind`, `FunctionName`, and
+  `ConstantName` land with S3.8 (their first callers), not ahead of them; Step 2 already
+  carries `ClassLikeName` / `NamespaceName`.
+- **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
+  gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
+  order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
+  rules) is independent of Step 3 and may proceed alongside.
+- **Teardown discharge.** S3.2 removes the duplicate `ComposerAutoloadMap`; S3.4 the
+  Step 2 double-write facade and (if built) the Step 0 cache rider; S3.10 the §4.2
+  function-path exemption, `getFileFunctions`, and the `DefaultFunctionRepository`
+  AST-in signature; S4.5/S4.6 the `SymbolResolver` god class, `TextFallbackHelper`
+  breadth, and the `CodeResolver` knowledge-facing methods. SZ.1 verifies the ledger is
+  fully discharged.
+- **The Builtin backend stood up in S3.3 is reflection-backed and does not satisfy
+  §4.7** (0002 §5 known gap) — file the tracked §4.7 issue when S3.3 lands; its fix is
+  the deferred Step 5.
+- **`Closes` is assigned at slice-issue creation, after a reviewer reads the issue —
+  never inferred.** Candidates from Wave 1's note: #239 / #181 / #317 land somewhere in
+  S3.7–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
+
+### Deferred (not scheduled; excluded from `/do-next` until reached)
+
+Kept out of the table above on purpose: a `todo` row with satisfiable dependencies is
+pickable, and neither of these should be picked yet. They are appended as real slices
+when their phase is reached.
+
+- **Step 5 — environment-parameterized built-ins (§4.7).** Not plannable: its
+  version-aware source is an open `TBD` (0002 §7, explicitly not `phpstorm-stubs`). The
+  interim reflection Builtin backend already ships in S3.3; §4.7 stays a tracked issue.
+  Nothing in Wave 2 depends on Step 5, and SZ.1 permits it to remain a named gap.
+- **Step 6 — scheduler / async tier (#266).** Deferred until a push feature needs it.
+  Sketch, from its acceptance: `$/cancelRequest` cancellation of superseded work;
+  debounced `publishDiagnostics` on change; a background scheduler that does not starve
+  interactive requests and is cancelable, feature-detecting `pcntl` / `ext-parallel`
+  with a synchronous fallback. Appended as slices when a push feature (or #266) takes
+  it up.
