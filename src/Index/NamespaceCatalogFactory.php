@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Cache\CacheFactory;
+
 /**
  * Composes the {@see NamespaceCatalog} used for completion discovery from its
  * three sources, applying the one caching rule that matters: the workspace
@@ -16,10 +18,13 @@ final class NamespaceCatalogFactory
     {
         return new CompositeNamespaceCatalog([
             new WorkspaceNamespaceSource($index),
-            new CachedNamespaceCatalog(new CompositeNamespaceCatalog([
-                new ComposerNamespaceSource(ComposerAutoloadMap::fromProjectRoot($projectRoot)),
-                new ReflectionNamespaceSource(),
-            ])),
+            new CachedNamespaceCatalog(
+                new CompositeNamespaceCatalog([
+                    new ComposerNamespaceSource(ComposerAutoloadMap::fromProjectRoot($projectRoot)),
+                    new ReflectionNamespaceSource(),
+                ]),
+                CacheFactory::inMemory(),
+            ),
         ]);
     }
 }

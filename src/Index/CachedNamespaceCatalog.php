@@ -6,8 +6,6 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Cache\CacheKey;
 use Psr\SimpleCache\CacheInterface;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Cache\Psr16Cache;
 
 /**
  * Remembers what a namespace contains, for sources whose answers cannot change.
@@ -24,10 +22,7 @@ final class CachedNamespaceCatalog implements NamespaceCatalog
 {
     public function __construct(
         private readonly NamespaceCatalog $source,
-        // ArrayAdapter's second argument disables its copy-on-read (named
-        // `storeSerialized` in symfony/cache 7, `deepClone` in 8), so a hit
-        // returns the cached instance rather than a clone.
-        private readonly CacheInterface $cache = new Psr16Cache(new ArrayAdapter(0, false)),
+        private readonly CacheInterface $cache,
     ) {
     }
 

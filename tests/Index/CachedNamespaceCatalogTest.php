@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
+use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -17,7 +18,7 @@ class CachedNamespaceCatalogTest extends TestCase
     protected function setUp(): void
     {
         $this->source = new CountingNamespaceCatalog();
-        $this->catalog = new CachedNamespaceCatalog($this->source);
+        $this->catalog = new CachedNamespaceCatalog($this->source, CacheFactory::inMemory());
     }
 
     public function testARepeatedLookupIsServedFromTheCache(): void
