@@ -57,6 +57,35 @@ final class ComposerAutoloadMap
     }
 
     /**
+     * Split into `[workspace, vendor]` by whether each autoload target lies under
+     * $vendorDirectory: the workspace's own code versus its installed dependencies.
+     * This backs the fixed backend precedence (RFC 1 §5.3) — an open document, then
+     * the workspace, then vendored code — so the two halves resolve as separate
+     * {@see \Firehed\PhpLsp\Knowledge\FilesystemBackend}s.
+     *
+     * A PSR-4/PSR-0 prefix is split per directory, so a prefix mapping to both a
+     * project and a vendor path contributes to both halves; classmap entries are
+     * split by their file. The union of the two halves is exactly this map, so the
+     * split changes precedence, not coverage.
+     *
+     * @return array{self, self}
+     */
+    public function partitionByVendorDirectory(string $vendorDirectory): array
+    {
+        $vendorPrefix = rtrim($vendorDirectory, '/') . '/';
+        $isVendor = static fn(string $path): bool => str_starts_with($path, $vendorPrefix);
+
+        [$workspacePsr4, $vendorPsr4] = self::splitPrefixes($this->psr4Prefixes(), $isVendor);
+        [$workspacePsr0, $vendorPsr0] = self::splitPrefixes($this->psr0Prefixes(), $isVendor);
+        [$workspaceClassMap, $vendorClassMap] = self::splitClassMap($this->classMap(), $isVendor);
+
+        return [
+            new self($workspacePsr4, $workspacePsr0, $workspaceClassMap),
+            new self($vendorPsr4, $vendorPsr0, $vendorClassMap),
+        ];
+    }
+
+    /**
      * The populated loader, for name -> file lookup via `findFile()`.
      */
     public function classLoader(): ClassLoader
@@ -86,6 +115,53 @@ final class ComposerAutoloadMap
     public function classMap(): array
     {
         return $this->loader->getClassMap();
+    }
+
+    /**
+     * Split prefix directories into `[workspace, vendor]` per directory, so a prefix
+     * with directories in both halves appears in both.
+     *
+     * @param array<string, list<string>> $prefixes
+     * @param callable(string): bool $isVendor
+     * @return array{array<string, list<string>>, array<string, list<string>>}
+     */
+    private static function splitPrefixes(array $prefixes, callable $isVendor): array
+    {
+        $workspace = [];
+        $vendor = [];
+
+        foreach ($prefixes as $prefix => $directories) {
+            foreach ($directories as $directory) {
+                if ($isVendor($directory)) {
+                    $vendor[$prefix][] = $directory;
+                } else {
+                    $workspace[$prefix][] = $directory;
+                }
+            }
+        }
+
+        return [$workspace, $vendor];
+    }
+
+    /**
+     * @param array<string, string> $classMap
+     * @param callable(string): bool $isVendor
+     * @return array{array<string, string>, array<string, string>}
+     */
+    private static function splitClassMap(array $classMap, callable $isVendor): array
+    {
+        $workspace = [];
+        $vendor = [];
+
+        foreach ($classMap as $fqn => $file) {
+            if ($isVendor($file)) {
+                $vendor[$fqn] = $file;
+            } else {
+                $workspace[$fqn] = $file;
+            }
+        }
+
+        return [$workspace, $vendor];
     }
 
     /**

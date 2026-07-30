@@ -62,4 +62,71 @@ class ComposerAutoloadMapTest extends TestCase
         self::assertIsString($file, 'The map holds the same ClassLoader Composer uses for name -> file lookup');
         self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $file);
     }
+
+    public function testPartitionSplitsAutoloadTargetsByVendorDirectory(): void
+    {
+        $map = new ComposerAutoloadMap(
+            psr4: [
+                'App\\' => ['/project/src'],
+                'Dep\\' => ['/project/vendor/dep/src'],
+            ],
+            psr0: [
+                'Legacy_' => ['/project/vendor/legacy'],
+            ],
+            classMap: [
+                'App\\Thing' => '/project/src/Thing.php',
+                'Dep\\Widget' => '/project/vendor/dep/Widget.php',
+            ],
+        );
+
+        [$workspace, $vendor] = $map->partitionByVendorDirectory('/project/vendor');
+
+        self::assertSame(
+            ['App\\' => ['/project/src']],
+            $workspace->psr4Prefixes(),
+            'the workspace half keeps only the project\'s own PSR-4 directories',
+        );
+        self::assertSame([], $workspace->psr0Prefixes(), 'the workspace half has no vendored PSR-0 prefix');
+        self::assertSame(
+            ['App\\Thing' => '/project/src/Thing.php'],
+            $workspace->classMap(),
+            'the workspace half keeps only classmap entries whose file is outside vendor/',
+        );
+
+        self::assertSame(
+            ['Dep\\' => ['/project/vendor/dep/src']],
+            $vendor->psr4Prefixes(),
+            'the vendor half keeps the dependencies\' PSR-4 directories',
+        );
+        self::assertSame(
+            ['Legacy_' => ['/project/vendor/legacy']],
+            $vendor->psr0Prefixes(),
+            'the vendor half keeps the vendored PSR-0 prefix',
+        );
+        self::assertSame(
+            ['Dep\\Widget' => '/project/vendor/dep/Widget.php'],
+            $vendor->classMap(),
+            'the vendor half keeps classmap entries whose file is under vendor/',
+        );
+    }
+
+    public function testPartitionAssignsAPrefixWithMixedDirectoriesToBothHalves(): void
+    {
+        $map = new ComposerAutoloadMap(
+            psr4: ['Shared\\' => ['/project/lib', '/project/vendor/shared/src']],
+        );
+
+        [$workspace, $vendor] = $map->partitionByVendorDirectory('/project/vendor');
+
+        self::assertSame(
+            ['Shared\\' => ['/project/lib']],
+            $workspace->psr4Prefixes(),
+            'a prefix mapping to both halves keeps its non-vendor directory in the workspace half',
+        );
+        self::assertSame(
+            ['Shared\\' => ['/project/vendor/shared/src']],
+            $vendor->psr4Prefixes(),
+            'a prefix mapping to both halves keeps its vendor directory in the vendor half',
+        );
+    }
 }
