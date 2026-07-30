@@ -100,7 +100,7 @@ class CompletionHandlerTest extends TestCase
             new DefaultFunctionRepository(),
         );
         $this->indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
-        $this->catalog = NamespaceCatalogFactory::forProject($this->symbolIndex, __DIR__ . '/../Fixtures');
+        $this->catalog = NamespaceCatalogFactory::forProject($this->symbolIndex, $autoloadMap);
         $this->handler = $this->makeHandler($this->catalog);
         $this->syncHandler = new TextDocumentSyncHandler(
             $this->documents,

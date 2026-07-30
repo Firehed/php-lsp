@@ -105,7 +105,10 @@ final class Server
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
 
-        $catalog = NamespaceCatalogFactory::forProject($symbolIndex, $projectRoot);
+        $catalog = NamespaceCatalogFactory::forProject(
+            $symbolIndex,
+            ComposerAutoloadMap::fromProjectRoot($projectRoot),
+        );
 
         // The read/write knowledge seam (RFC 1 §4.2, §4.3). Consumers migrate onto
         // this one facade instance across Step 2's slices (Plan 0002 §5.5); today

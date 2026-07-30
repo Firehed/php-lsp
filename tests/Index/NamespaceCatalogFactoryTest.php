@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
 use Firehed\PhpLsp\Index\Symbol;
@@ -25,7 +26,10 @@ class NamespaceCatalogFactoryTest extends TestCase
             new Location('file:///Widget.php', 0, 0, 0, 1),
         ));
 
-        $catalog = NamespaceCatalogFactory::forProject($index, __DIR__ . '/../Fixtures');
+        $catalog = NamespaceCatalogFactory::forProject(
+            $index,
+            ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'),
+        );
         $globalChildren = $catalog->childrenOf('')->childNamespaces;
 
         self::assertContains('Workspace', $globalChildren, 'The workspace index source contributes');
@@ -36,7 +40,10 @@ class NamespaceCatalogFactoryTest extends TestCase
     public function testTheWorkspaceSourceIsNotCached(): void
     {
         $index = new SymbolIndex();
-        $catalog = NamespaceCatalogFactory::forProject($index, __DIR__ . '/../Fixtures');
+        $catalog = NamespaceCatalogFactory::forProject(
+            $index,
+            ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'),
+        );
 
         self::assertNotContains('Late', $catalog->childrenOf('')->childNamespaces, 'Not declared yet');
 
