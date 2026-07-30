@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassKind;
-use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\NamespaceContents;
@@ -14,8 +11,8 @@ use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Resolution\NameKind;
+use Firehed\PhpLsp\Tests\BuildsClassInfoTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -28,6 +25,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class CompositeSymbolSourceTest extends TestCase
 {
+    use BuildsClassInfoTrait;
+
     public function testLookupClassLikeTakesTheFirstBackendThatAnswers(): void
     {
         $open = new FakeSymbolBackend(['app\widget' => self::classInfo('App\Widget', file: 'open.php')]);
@@ -231,35 +230,6 @@ final class CompositeSymbolSourceTest extends TestCase
         ]);
     }
 
-    /**
-     * @param list<string> $interfaces
-     */
-    private static function classInfo(
-        string $fqn,
-        ?string $parent = null,
-        array $interfaces = [],
-        ?string $file = null,
-    ): ClassInfo {
-        return new ClassInfo(
-            self::className($fqn),
-            ClassKind::Class_,
-            isAbstract: false,
-            isFinal: false,
-            isReadonly: false,
-            isAttribute: false,
-            parent: $parent === null ? null : self::className($parent),
-            interfaces: array_map(self::className(...), $interfaces),
-            traits: [],
-            methods: [],
-            properties: [],
-            constants: [],
-            enumCases: [],
-            docblock: null,
-            file: $file,
-            line: null,
-        );
-    }
-
     private static function symbol(string $fqn, string $file): Symbol
     {
         $shortName = strrchr($fqn, '\\');
@@ -271,11 +241,5 @@ final class CompositeSymbolSourceTest extends TestCase
             SymbolKind::Class_,
             new Location('file://' . $file, 0, 0, 0, 0),
         );
-    }
-
-    private static function className(string $fqn): ClassName
-    {
-        /** @phpstan-ignore argument.type (virtual names are not analyzed) */
-        return new ClassName($fqn);
     }
 }
