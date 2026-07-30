@@ -20,28 +20,23 @@ use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Index\DocumentIndexer;
+use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\Location;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
-use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
-use Firehed\PhpLsp\Knowledge\DelegatingSymbolSource;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Knowledge\NamespaceName;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
-use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -61,19 +56,13 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(VariableCandidates::class)]
 class CompletionHandlerTest extends TestCase
 {
-    use BuildsClassRepositoryTrait;
-    use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
     private ParserService $parser;
     private SymbolIndex $symbolIndex;
-    private DocumentIndexer $indexer;
-    private DefaultClassRepository $classRepository;
-    private DefaultClassInfoFactory $classInfoFactory;
-    private MemberResolver $memberResolver;
+    private SymbolSource $symbolSource;
     private SymbolResolver $symbolResolver;
-    private NamespaceCatalog $catalog;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -82,53 +71,34 @@ class CompletionHandlerTest extends TestCase
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
         $this->symbolIndex = new SymbolIndex();
-        $this->classInfoFactory = new DefaultClassInfoFactory();
-        $autoloadMap = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures');
-        $locator = new ComposerClassLocator($autoloadMap);
-        $this->classRepository = $this->buildClassRepository(
-            $this->classInfoFactory,
-            $locator,
+
+        $fixturesRoot = __DIR__ . '/../Fixtures';
+        $knowledge = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
             $this->parser,
+            $this->symbolIndex,
         );
-        $this->memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($this->memberResolver, new DefaultFunctionRepository());
+        $this->symbolSource = $knowledge->source;
+
+        $memberResolver = new MemberResolver($knowledge->source);
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
-            $this->symbolSourceFor($this->classRepository, $this->parser),
-            $this->memberResolver,
+            $knowledge->source,
+            $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
         );
-        $this->indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->symbolIndex);
-        $this->catalog = NamespaceCatalogFactory::forProject($this->symbolIndex, $autoloadMap);
-        $this->handler = $this->makeHandler($this->catalog);
-        $this->syncHandler = new TextDocumentSyncHandler(
-            $this->documents,
-            new DelegatingSymbolSource(
-                $this->classRepository,
-                $this->symbolIndex,
-                $this->catalog,
-                $this->indexer,
-                $this->classInfoFactory,
-                $this->parser,
-            ),
-        );
+        $this->handler = $this->makeHandler($this->symbolSource);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }
 
-    private function makeHandler(NamespaceCatalog $catalog, bool $snippetSupport = false): CompletionHandler
+    private function makeHandler(SymbolSource $symbolSource, bool $snippetSupport = false): CompletionHandler
     {
         $capabilities = self::createStub(SessionCapabilitiesProvider::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
-
-        $symbolSource = new DelegatingSymbolSource(
-            $this->classRepository,
-            $this->symbolIndex,
-            $catalog,
-            $this->indexer,
-            $this->classInfoFactory,
-            $this->parser,
-        );
 
         return new CompletionHandler(
             $this->documents,
@@ -643,20 +613,35 @@ class CompletionHandlerTest extends TestCase
             static fn(int $i): string => sprintf('Flood\\N%03d', $i),
             range(150, 1, -1),
         );
-        $catalog = new class ($children) implements NamespaceCatalog {
+        $source = new class ($children) implements SymbolSource {
             /** @param list<string> $children */
             public function __construct(private readonly array $children)
             {
             }
 
-            public function childrenOf(string $namespace): NamespaceContents
+            public function childrenOf(NamespaceName $namespace): NamespaceContents
             {
-                return $namespace === 'Flood'
+                return $namespace->path === 'Flood'
                     ? new NamespaceContents($this->children, [])
                     : new NamespaceContents([], []);
             }
+
+            public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool
+            {
+                return false;
+            }
+
+            public function lookupClassLike(ClassName $name): ?ClassInfo
+            {
+                return null;
+            }
+
+            public function searchClassLikes(string $prefix): array
+            {
+                return [];
+            }
         };
-        $handler = $this->makeHandler($catalog);
+        $handler = $this->makeHandler($source);
         $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', 'flood_nav');
 
         $result = $handler->handle($this->completionRequestAt($cursor));
@@ -1019,7 +1004,7 @@ class CompletionHandlerTest extends TestCase
         string $marker,
         string $label,
     ): void {
-        $handler = $this->makeHandler($this->catalog, snippetSupport: true);
+        $handler = $this->makeHandler($this->symbolSource, snippetSupport: true);
         $cursor = $this->openFixtureAtCursor($fixture, $marker);
 
         $result = $handler->handle($this->completionRequestAt($cursor));
@@ -1057,7 +1042,7 @@ class CompletionHandlerTest extends TestCase
 
     public function testNonCallableMemberNeverInsertsSnippet(): void
     {
-        $handler = $this->makeHandler($this->catalog, snippetSupport: true);
+        $handler = $this->makeHandler($this->symbolSource, snippetSupport: true);
         $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
 
         $result = $handler->handle($this->completionRequestAt($cursor));

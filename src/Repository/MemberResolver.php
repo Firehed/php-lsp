@@ -16,15 +16,20 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Resolution\MemberFilter;
 
 /**
  * Resolves class members with inheritance traversal.
+ *
+ * Class-like metadata is read through the {@see SymbolSource} seam (RFC 1 §4.2), so
+ * the member walk sees the same coverage — open documents overriding the workspace,
+ * vendored code, and built-ins — as every other consumer of symbol knowledge.
  */
 final class MemberResolver
 {
     public function __construct(
-        private readonly ClassRepository $classes,
+        private readonly SymbolSource $source,
     ) {
     }
 
@@ -33,7 +38,7 @@ final class MemberResolver
         MethodName $method,
         Visibility $minVisibility,
     ): ?MethodInfo {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
             return null;
         }
@@ -47,7 +52,7 @@ final class MemberResolver
         PropertyName $property,
         Visibility $minVisibility,
     ): ?PropertyInfo {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
             return null;
         }
@@ -61,7 +66,7 @@ final class MemberResolver
         ConstantName $constant,
         Visibility $minVisibility,
     ): ?ConstantInfo {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
             return null;
         }
@@ -72,13 +77,13 @@ final class MemberResolver
 
     public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo
     {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         return $classInfo?->enumCases[$case->name] ?? null;
     }
 
     public function isTraitClass(ClassName $class): bool
     {
-        return $this->classes->get($class)?->kind === ClassKind::Trait_;
+        return $this->source->lookupClassLike($class)?->kind === ClassKind::Trait_;
     }
 
     /**
@@ -89,7 +94,7 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
             return [];
         }
@@ -109,7 +114,7 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
             return [];
         }
@@ -126,7 +131,7 @@ final class MemberResolver
      */
     public function getConstants(ClassName $class, Visibility $minVisibility): array
     {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
             return [];
         }
@@ -143,7 +148,7 @@ final class MemberResolver
      */
     public function getEnumCases(ClassName $class): array
     {
-        $classInfo = $this->classes->get($class);
+        $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
             return [];
         }
@@ -352,7 +357,7 @@ final class MemberResolver
 
         $supertypes = [];
         foreach ($names as [$name, $isOriginClass]) {
-            $info = $this->classes->get($name);
+            $info = $this->source->lookupClassLike($name);
             if ($info !== null) {
                 $supertypes[] = [$info, $isOriginClass];
             }

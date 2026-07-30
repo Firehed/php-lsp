@@ -13,12 +13,9 @@ use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Throwable;
-use Firehed\PhpLsp\Repository\ClassLocator;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -33,18 +30,20 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(BasicTypeResolver::class)]
 class BasicTypeResolverTest extends TestCase
 {
-    use BuildsClassRepositoryTrait;
     use LoadsFixturesTrait;
 
     private BasicTypeResolver $resolver;
 
     protected function setUp(): void
     {
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
-        $parser = new ParserService();
-        $classRepository = $this->buildClassRepository($classInfoFactory, $locator, $parser);
-        $memberResolver = new MemberResolver($classRepository);
+        // No autoload map: referenced-but-unopened classes resolve through the
+        // built-in reflection backend, as they did under the prior stub locator.
+        $knowledge = KnowledgeStack::forProject(
+            new ComposerAutoloadMap(),
+            __DIR__ . '/../Fixtures/vendor',
+            new ParserService(),
+        );
+        $memberResolver = new MemberResolver($knowledge->source);
 
         $this->resolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
     }
@@ -934,11 +933,13 @@ class BasicTypeResolverTest extends TestCase
 
     private function createResolverWithFixtures(): BasicTypeResolver
     {
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $locator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'));
-        $parser = new ParserService();
-        $classRepository = $this->buildClassRepository($classInfoFactory, $locator, $parser);
-        $memberResolver = new MemberResolver($classRepository);
+        $fixturesRoot = __DIR__ . '/../Fixtures';
+        $knowledge = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
+            new ParserService(),
+        );
+        $memberResolver = new MemberResolver($knowledge->source);
 
         return new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
     }

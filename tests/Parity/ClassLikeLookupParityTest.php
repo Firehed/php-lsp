@@ -8,11 +8,8 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
-use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -28,7 +25,6 @@ use PHPUnit\Framework\TestCase;
 final class ClassLikeLookupParityTest extends TestCase
 {
     use AssertsGolden;
-    use BuildsClassRepositoryTrait;
 
     /**
      * Corpus of class-like names whose full `ClassInfo` is deterministic and
@@ -75,14 +71,15 @@ final class ClassLikeLookupParityTest extends TestCase
     ];
 
     private string $projectRoot;
-    private DefaultClassRepository $repository;
+    private KnowledgeStack $knowledge;
 
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
-        $this->repository = $this->buildClassRepository(
-            new DefaultClassInfoFactory(),
-            new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot($this->projectRoot . '/tests/Fixtures')),
+        $fixturesRoot = $this->projectRoot . '/tests/Fixtures';
+        $this->knowledge = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
             new ParserService(),
         );
     }
@@ -91,30 +88,23 @@ final class ClassLikeLookupParityTest extends TestCase
     {
         $captured = [];
         foreach (self::CORPUS as $fqn) {
-            $info = $this->repository->get(self::className($fqn));
+            $info = $this->knowledge->source->lookupClassLike(self::className($fqn));
             $captured[$fqn] = $info === null ? null : $this->serialize($info);
         }
 
         $this->assertGoldenMatches('class-like-lookup', $captured);
     }
 
-    public function testOpenDocumentClassIsResolvedThroughGet(): void
+    public function testOpenDocumentClassIsResolvedThroughLookup(): void
     {
-        // Covers the open-document precedence branch of get(): a registered
-        // document class is returned without touching the filesystem locator.
+        // Covers the open-document precedence of the composite: a class opened
+        // through the sink is returned without touching the filesystem backends.
         $uri = 'file:///virtual/Widget.php';
         $content = "<?php\nnamespace Virtual;\nfinal class Widget { public function tick(): void {} }\n";
-        $parser = new ParserService();
-        $document = new TextDocument($uri, 'php', 1, $content);
-        $ast = $parser->parse($document);
-        self::assertNotNull($ast, 'the virtual document should parse');
+        $this->knowledge->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
 
-        $factory = new DefaultClassInfoFactory();
-        $info = $factory->fromAstNode(self::firstClassLike($ast), $uri);
-        $this->repository->updateDocument($uri, [$info]);
-
-        $resolved = $this->repository->get(self::className('Virtual\Widget'));
-        self::assertNotNull($resolved, 'an open-document class must resolve through get()');
+        $resolved = $this->knowledge->source->lookupClassLike(self::className('Virtual\Widget'));
+        self::assertNotNull($resolved, 'an open-document class must resolve through lookupClassLike()');
         self::assertSame('Virtual\Widget', $resolved->name->fqn, 'open-document lookup must win over disk');
     }
 
@@ -124,33 +114,28 @@ final class ClassLikeLookupParityTest extends TestCase
         // (a multi-class file), and a file that does not parse, both resolve to
         // null — the not-found contract for the located-but-unusable cases.
         self::assertNull(
-            $this->repository->get(self::className('Fixtures\Utility\ClassModifiers')),
+            $this->knowledge->source->lookupClassLike(self::className('Fixtures\Utility\ClassModifiers')),
             'a located file that declares no matching class must resolve to null',
         );
         self::assertNull(
-            $this->repository->get(self::className('Fixtures\IncompleteCode\VeryBroken')),
+            $this->knowledge->source->lookupClassLike(self::className('Fixtures\IncompleteCode\VeryBroken')),
             'a located file that does not parse must resolve to null',
         );
     }
 
-    public function testRemoveDocumentDropsRegisteredClass(): void
+    public function testClosingADocumentDropsItsRegisteredClass(): void
     {
         $uri = 'file:///virtual/Ephemeral.php';
         $content = "<?php\nnamespace Virtual;\nclass Ephemeral {}\n";
-        $parser = new ParserService();
-        $ast = $parser->parse(new TextDocument($uri, 'php', 1, $content));
-        self::assertNotNull($ast, 'the virtual document should parse');
-
-        $info = (new DefaultClassInfoFactory())->fromAstNode(self::firstClassLike($ast), $uri);
-        $this->repository->updateDocument($uri, [$info]);
+        $this->knowledge->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
         self::assertNotNull(
-            $this->repository->get(self::className('Virtual\Ephemeral')),
+            $this->knowledge->source->lookupClassLike(self::className('Virtual\Ephemeral')),
             'a registered class resolves while its document is open',
         );
 
-        $this->repository->removeDocument($uri);
+        $this->knowledge->sink->closeDocument($uri);
         self::assertNull(
-            $this->repository->get(self::className('Virtual\Ephemeral')),
+            $this->knowledge->source->lookupClassLike(self::className('Virtual\Ephemeral')),
             'closing the document must drop its registered class',
         );
     }
@@ -172,7 +157,7 @@ final class ClassLikeLookupParityTest extends TestCase
         foreach ($cases as [$class, $parent, $expected, $why]) {
             self::assertSame(
                 $expected,
-                $this->repository->isSubclassOf(self::className($class), self::className($parent)),
+                $this->knowledge->source->isSubclassOf(self::className($class), self::className($parent)),
                 "isSubclassOf should follow the type graph: {$why}",
             );
         }
@@ -186,7 +171,7 @@ final class ClassLikeLookupParityTest extends TestCase
         // is asserted, so a regression that stops extracting reflected members —
         // whose lines still execute, but whose output the golden never sees —
         // goes red rather than passing silently.
-        $info = $this->repository->get(new ClassName(\ArrayObject::class));
+        $info = $this->knowledge->source->lookupClassLike(new ClassName(\ArrayObject::class));
 
         self::assertNotNull($info, 'a built-in class must resolve via the reflection fallback');
         self::assertSame('ArrayObject', $info->name->shortName(), 'reflection fallback must report the built-in');
@@ -244,17 +229,6 @@ final class ClassLikeLookupParityTest extends TestCase
     {
         /** @phpstan-ignore argument.type (corpus names are not analyzed) */
         return new ClassName($fqn);
-    }
-
-    /**
-     * @param array<\PhpParser\Node\Stmt> $ast
-     */
-    private static function firstClassLike(array $ast): \PhpParser\Node\Stmt\ClassLike
-    {
-        $node = (new \PhpParser\NodeFinder())->findFirstInstanceOf($ast, \PhpParser\Node\Stmt\ClassLike::class);
-        self::assertInstanceOf(\PhpParser\Node\Stmt\ClassLike::class, $node, 'the fixture must declare a class-like');
-
-        return $node;
     }
 
     /**

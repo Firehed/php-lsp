@@ -9,12 +9,10 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\MemberFilter;
-use Firehed\PhpLsp\Repository\ClassRepository;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
@@ -25,7 +23,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextFallbackHelper::class)]
 class TextFallbackHelperTest extends TestCase
 {
-    use BuildsClassRepositoryTrait;
     use LoadsFixturesTrait;
 
     private TextFallbackHelper $helper;
@@ -34,17 +31,20 @@ class TextFallbackHelperTest extends TestCase
 
     protected function setUp(): void
     {
-        // Create a minimal MemberResolver with a stub ClassRepository
-        $classRepository = self::createStub(ClassRepository::class);
-        $classRepository->method('get')->willReturn(null);
-        $this->helper = new TextFallbackHelper(new MemberResolver($classRepository));
+        // A minimal MemberResolver whose source resolves nothing.
+        $source = self::createStub(SymbolSource::class);
+        $source->method('lookupClassLike')->willReturn(null);
+        $this->helper = new TextFallbackHelper(new MemberResolver($source));
 
-        // Create helper with fixture-based class resolution for chain tests
-        $factory = new DefaultClassInfoFactory();
-        $locator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'));
+        // A helper with fixture-based class resolution for inheritance-chain tests.
         $this->parser = new ParserService();
-        $fixtureRepo = $this->buildClassRepository($factory, $locator, $this->parser);
-        $this->helperWithReflection = new TextFallbackHelper(new MemberResolver($fixtureRepo));
+        $fixturesRoot = __DIR__ . '/../Fixtures';
+        $knowledge = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
+            $this->parser,
+        );
+        $this->helperWithReflection = new TextFallbackHelper(new MemberResolver($knowledge->source));
     }
 
     public function testFindEnclosingClassFromContentReturnsNullForCodeOutsideClass(): void

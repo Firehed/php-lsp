@@ -8,11 +8,12 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
-use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Knowledge\NamespaceName;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use PHPUnit\Framework\TestCase;
 
@@ -69,14 +70,15 @@ final class ChildrenOfParityTest extends TestCase
     ];
 
     private string $fixturesRoot;
-    private NamespaceCatalog $catalog;
+    private SymbolSource $source;
 
     protected function setUp(): void
     {
         $this->fixturesRoot = dirname(__DIR__) . '/Fixtures';
 
+        $parser = new ParserService();
         $index = new SymbolIndex();
-        $indexer = new DocumentIndexer(new ParserService(), new SymbolExtractor(), $index);
+        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $index);
         foreach (self::INDEXED_DOCUMENTS as $relative) {
             $path = $this->fixturesRoot . '/' . $relative;
             $content = file_get_contents($path);
@@ -102,17 +104,19 @@ final class ChildrenOfParityTest extends TestCase
             "<?php\nnamespace Fixtures\\Model\\OpenOnly;\nclass Unsaved {}\n",
         ));
 
-        $this->catalog = NamespaceCatalogFactory::forProject(
-            $index,
+        $this->source = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-        );
+            $this->fixturesRoot . '/vendor',
+            $parser,
+            $index,
+        )->source;
     }
 
     public function testChildrenOfMatchesGolden(): void
     {
         $captured = [];
         foreach (self::NAMESPACES as $namespace) {
-            $captured[$namespace] = self::serialize($this->catalog->childrenOf($namespace));
+            $captured[$namespace] = self::serialize($this->source->childrenOf(new NamespaceName($namespace)));
         }
 
         $this->assertGoldenMatches('children-of', $captured);
@@ -126,7 +130,7 @@ final class ChildrenOfParityTest extends TestCase
         // namespace derived from a nested built-in are asserted, so a regression
         // in per-namespace filing or child-namespace derivation goes red rather
         // than surviving behind a single canary symbol.
-        $contents = $this->catalog->childrenOf('Random');
+        $contents = $this->source->childrenOf(new NamespaceName('Random'));
 
         $fqns = array_map(
             static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,

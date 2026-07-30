@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\ClassRepository;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\MemberFilter;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -27,8 +27,8 @@ final class MemberResolverTest extends TestCase
 {
     public function testFindMethodReturnsNullForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -43,8 +43,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindPropertyReturnsNullForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -59,8 +59,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantReturnsNullForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -75,8 +75,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindEnumCaseReturnsNullForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -90,8 +90,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetMethodsReturnsEmptyForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -102,8 +102,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetPropertiesReturnsEmptyForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -114,8 +114,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsReturnsEmptyForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -126,8 +126,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetEnumCasesReturnsEmptyForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
@@ -142,8 +142,8 @@ final class MemberResolverTest extends TestCase
         $methodInfo = $this->createMethodInfo('doSomething', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, methods: ['doSomething' => $methodInfo]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnMap([
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnMap([
             [$className, $classInfo],
         ]);
 
@@ -163,8 +163,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, methods: ['parentMethod' => $methodInfo]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -192,8 +192,8 @@ final class MemberResolverTest extends TestCase
         );
         $classInfo = $this->createClassInfo($className, traits: [$traitName]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
@@ -214,8 +214,8 @@ final class MemberResolverTest extends TestCase
         $privateMethod = $this->createMethodInfo('privateMethod', Visibility::Private, $className);
         $classInfo = $this->createClassInfo($className, methods: ['privateMethod' => $privateMethod]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -233,8 +233,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, methods: ['privateMethod' => $privateMethod]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -262,8 +262,8 @@ final class MemberResolverTest extends TestCase
         );
         $classInfo = $this->createClassInfo($className, traits: [$traitName]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
@@ -284,8 +284,8 @@ final class MemberResolverTest extends TestCase
         $propInfo = $this->createPropertyInfo('myProp', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, properties: ['myProp' => $propInfo]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -303,8 +303,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, properties: ['parentProp' => $propInfo]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -332,8 +332,8 @@ final class MemberResolverTest extends TestCase
         );
         $classInfo = $this->createClassInfo($className, traits: [$traitName]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
@@ -353,8 +353,8 @@ final class MemberResolverTest extends TestCase
         $className = new ClassName(self::fakeClass());
         $classInfo = $this->createClassInfo($className);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -369,8 +369,8 @@ final class MemberResolverTest extends TestCase
         $constInfo = $this->createConstantInfo('MY_CONST', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, constants: ['MY_CONST' => $constInfo]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -388,8 +388,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, constants: ['PARENT_CONST' => $constInfo]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -417,8 +417,8 @@ final class MemberResolverTest extends TestCase
         );
         $classInfo = $this->createClassInfo($className, traits: [$traitName]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
@@ -438,8 +438,8 @@ final class MemberResolverTest extends TestCase
         $className = new ClassName(self::fakeClass());
         $classInfo = $this->createClassInfo($className);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -468,8 +468,8 @@ final class MemberResolverTest extends TestCase
             'childMethod' => $childMethod,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -499,8 +499,8 @@ final class MemberResolverTest extends TestCase
             'static' => $staticMethod,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -522,8 +522,8 @@ final class MemberResolverTest extends TestCase
             'prop2' => $prop2,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -552,8 +552,8 @@ final class MemberResolverTest extends TestCase
             'childProp' => $childProp,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -583,8 +583,8 @@ final class MemberResolverTest extends TestCase
             'static' => $staticProp,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -612,8 +612,8 @@ final class MemberResolverTest extends TestCase
             'classProp' => $classProp,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
@@ -637,8 +637,8 @@ final class MemberResolverTest extends TestCase
 
         $classInfo = $this->createClassInfo($className, constants: ['CONST1' => $const1]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -660,8 +660,8 @@ final class MemberResolverTest extends TestCase
             'CHILD_CONST' => $childConst,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -695,8 +695,8 @@ final class MemberResolverTest extends TestCase
             'CLASS_CONST' => $classConst,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
@@ -724,8 +724,8 @@ final class MemberResolverTest extends TestCase
             'Case2' => $case2,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($enumInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($enumInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -747,8 +747,8 @@ final class MemberResolverTest extends TestCase
             'Case2' => $case2,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($enumInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($enumInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -762,8 +762,8 @@ final class MemberResolverTest extends TestCase
         $enumName = new ClassName(self::fakeClass());
         $enumInfo = $this->createClassInfo($enumName, kind: ClassKind::Enum_);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($enumInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($enumInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -789,8 +789,8 @@ final class MemberResolverTest extends TestCase
         $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
         $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
@@ -821,8 +821,8 @@ final class MemberResolverTest extends TestCase
         $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
         $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
@@ -851,8 +851,8 @@ final class MemberResolverTest extends TestCase
         $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
         $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
@@ -881,8 +881,8 @@ final class MemberResolverTest extends TestCase
         $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
         $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
@@ -910,8 +910,8 @@ final class MemberResolverTest extends TestCase
             'method2' => $method2,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -931,8 +931,8 @@ final class MemberResolverTest extends TestCase
             'PRIVATE' => $privateConst,
         ]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -952,8 +952,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, methods: ['method' => $parentMethod]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName, methods: ['method' => $childMethod]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -980,8 +980,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, properties: ['prop' => $parentProp]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName, properties: ['prop' => $childProp]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -1008,8 +1008,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, constants: ['CONST' => $parentConst]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName, constants: ['CONST' => $childConst]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -1041,8 +1041,8 @@ final class MemberResolverTest extends TestCase
         $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
         $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
@@ -1075,8 +1075,8 @@ final class MemberResolverTest extends TestCase
         $trait2Info = $this->createClassInfo($trait2, kind: ClassKind::Trait_, traits: [$baseTrait]);
         $childInfo = $this->createClassInfo($childName, traits: [$trait1, $trait2]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
@@ -1104,8 +1104,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, methods: ['method' => $parentMethod]);
         $childInfo = $this->createClassInfo($childName, parent: $parentName, methods: ['method' => $childMethod]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -1135,8 +1135,8 @@ final class MemberResolverTest extends TestCase
         $parentInfo = $this->createClassInfo($parentName, parent: $grandparentName);
         $childInfo = $this->createClassInfo($childName, parent: $parentName);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $grandparentName->fqn => $grandparentInfo,
                 $parentName->fqn => $parentInfo,
@@ -1166,8 +1166,8 @@ final class MemberResolverTest extends TestCase
         );
         $classInfo = $this->createClassInfo($className, interfaces: [$interfaceName]);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $interfaceName->fqn => $interfaceInfo,
                 $className->fqn => $classInfo,
@@ -1201,8 +1201,8 @@ final class MemberResolverTest extends TestCase
             interfaces: [$interfaceName],
         );
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturnCallback(
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
             fn (ClassName $name) => match ($name->fqn) {
                 $interfaceName->fqn => $interfaceInfo,
                 $className->fqn => $classInfo,
@@ -1224,8 +1224,8 @@ final class MemberResolverTest extends TestCase
         $traitName = new ClassName(self::fakeClass());
         $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($traitInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($traitInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -1237,8 +1237,8 @@ final class MemberResolverTest extends TestCase
         $className = new ClassName(self::fakeClass());
         $classInfo = $this->createClassInfo($className, ClassKind::Class_);
 
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn($classInfo);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
 
         $resolver = new MemberResolver($repo);
 
@@ -1247,8 +1247,8 @@ final class MemberResolverTest extends TestCase
 
     public function testIsTraitClassReturnsFalseForUnknownClass(): void
     {
-        $repo = self::createStub(ClassRepository::class);
-        $repo->method('get')->willReturn(null);
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 

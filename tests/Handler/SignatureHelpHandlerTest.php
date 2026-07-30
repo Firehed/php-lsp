@@ -8,15 +8,11 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
-use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -24,15 +20,10 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SignatureHelpHandler::class)]
 class SignatureHelpHandlerTest extends TestCase
 {
-    use BuildsClassRepositoryTrait;
-    use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
     private ParserService $parser;
-    private DefaultClassRepository $classRepository;
-    private DefaultClassInfoFactory $classInfoFactory;
-    private MemberResolver $memberResolver;
     private SignatureHelpHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -40,20 +31,19 @@ class SignatureHelpHandlerTest extends TestCase
     {
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
-        $this->classInfoFactory = new DefaultClassInfoFactory();
-        $locator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'));
-        $this->classRepository = $this->buildClassRepository(
-            $this->classInfoFactory,
-            $locator,
+
+        $fixturesRoot = __DIR__ . '/../Fixtures';
+        $knowledge = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
             $this->parser,
         );
-        $this->memberResolver = new MemberResolver($this->classRepository);
-        $typeResolver = new BasicTypeResolver($this->memberResolver, new DefaultFunctionRepository());
-        $symbolSource = $this->symbolSourceFor($this->classRepository, $this->parser);
+        $memberResolver = new MemberResolver($knowledge->source);
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
         $symbolResolver = new SymbolResolver(
             $this->parser,
-            $symbolSource,
-            $this->memberResolver,
+            $knowledge->source,
+            $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
         );
@@ -61,10 +51,7 @@ class SignatureHelpHandlerTest extends TestCase
             $this->documents,
             $symbolResolver,
         );
-        $this->syncHandler = new TextDocumentSyncHandler(
-            $this->documents,
-            $symbolSource,
-        );
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }
 
     public function testSupports(): void

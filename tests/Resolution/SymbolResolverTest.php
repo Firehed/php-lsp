@@ -6,10 +6,9 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\ClassLocator;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
@@ -48,43 +47,37 @@ use TypeError;
 #[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {
-    use BuildsClassRepositoryTrait;
-    use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
     private SymbolResolver $resolver;
     private ParserService $parser;
     private DocumentManager $documents;
-    private DefaultClassRepository $classRepository;
     private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
         $this->parser = new ParserService();
         $this->documents = new DocumentManager();
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = $this->buildClassRepository(
-            $classInfoFactory,
-            $locator,
+
+        // No autoload map: classes referenced but not opened resolve through the
+        // built-in reflection backend, as they did under the prior stub locator.
+        $knowledge = KnowledgeStack::forProject(
+            new ComposerAutoloadMap(),
+            dirname(__DIR__) . '/Fixtures/vendor',
             $this->parser,
         );
-        $memberResolver = new MemberResolver($this->classRepository);
+        $memberResolver = new MemberResolver($knowledge->source);
         $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
-        $symbolSource = $this->symbolSourceFor($this->classRepository, $this->parser);
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
-            symbolSource: $symbolSource,
+            symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
             typeResolver: $typeResolver,
             functionRepository: new DefaultFunctionRepository(),
         );
 
-        $this->syncHandler = new TextDocumentSyncHandler(
-            $this->documents,
-            $symbolSource,
-        );
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }
 
     public function testResolveAtPositionReturnsNullWhenNoNodeFound(): void
