@@ -22,6 +22,7 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
@@ -91,7 +92,7 @@ final class Server
         $documentManager = new DocumentManager();
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
-        $classLocator = new ComposerClassLocator($projectRoot);
+        $classLocator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot($projectRoot));
 
         $classInfoFactory = new DefaultClassInfoFactory();
         $classRepository = new DefaultClassRepository(

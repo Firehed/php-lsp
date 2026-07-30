@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
@@ -50,7 +51,7 @@ final class DelegatingSymbolSourceTest extends TestCase
         $this->indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->index);
         $this->repository = $this->buildClassRepository(
             $this->factory,
-            new ComposerClassLocator($this->projectRoot . '/tests/Fixtures'),
+            new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot($this->projectRoot . '/tests/Fixtures')),
             $this->parser,
         );
     }

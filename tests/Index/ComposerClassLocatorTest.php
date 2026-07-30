@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -18,7 +19,7 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testLocateClassFromClassmap(): void
     {
-        $locator = new ComposerClassLocator(self::FIXTURES_ROOT);
+        $locator = self::locatorForRoot(self::FIXTURES_ROOT);
 
         // @phpstan-ignore class.notFound
         $path = $locator->locateClass(ClassmapFixture::class);
@@ -29,7 +30,7 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testLocateResolvesAClassName(): void
     {
-        $locator = new ComposerClassLocator(self::FIXTURES_ROOT);
+        $locator = self::locatorForRoot(self::FIXTURES_ROOT);
 
         // @phpstan-ignore class.notFound
         $path = $locator->locate(new ClassName(ClassmapFixture::class));
@@ -40,7 +41,7 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testLocateClassReturnsNullForNonexistentClass(): void
     {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+        $locator = self::locatorForRoot(self::PROJECT_ROOT);
 
         $path = $locator->locateClass('NonExistent\\Class');
 
@@ -49,7 +50,7 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testLocateClassFromPsr4(): void
     {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+        $locator = self::locatorForRoot(self::PROJECT_ROOT);
 
         $path = $locator->locateClass(ComposerClassLocator::class);
 
@@ -59,7 +60,7 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testLocateClassFromVendorClassmap(): void
     {
-        $locator = new ComposerClassLocator(self::PROJECT_ROOT);
+        $locator = self::locatorForRoot(self::PROJECT_ROOT);
 
         $path = $locator->locateClass(TestCase::class);
 
@@ -69,7 +70,7 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testLocateClassFromPsr0(): void
     {
-        $locator = new ComposerClassLocator(self::FIXTURES_ROOT);
+        $locator = self::locatorForRoot(self::FIXTURES_ROOT);
 
         // @phpstan-ignore class.notFound
         $path = $locator->locateClass(\Psr0\Psr0Fixture::class);
@@ -82,7 +83,7 @@ final class ComposerClassLocatorTest extends TestCase
     {
         $autoloadersBefore = spl_autoload_functions();
 
-        new ComposerClassLocator(self::PROJECT_ROOT);
+        self::locatorForRoot(self::PROJECT_ROOT);
 
         $autoloadersAfter = spl_autoload_functions();
 
@@ -95,10 +96,15 @@ final class ComposerClassLocatorTest extends TestCase
 
     public function testMissingComposerDirectoryReturnsNull(): void
     {
-        $locator = new ComposerClassLocator('/nonexistent/path');
+        $locator = self::locatorForRoot('/nonexistent/path');
 
         $path = $locator->locateClass(TestCase::class);
 
         self::assertNull($path);
+    }
+
+    private static function locatorForRoot(string $projectRoot): ComposerClassLocator
+    {
+        return new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot($projectRoot));
     }
 }

@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
@@ -66,7 +67,7 @@ final class TypeGraphParityTest extends TestCase
         $parser = new ParserService();
         $repository = $this->buildClassRepository(
             new DefaultClassInfoFactory(),
-            new ComposerClassLocator(dirname(__DIR__) . '/Fixtures'),
+            new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot(dirname(__DIR__) . '/Fixtures')),
             $parser,
         );
         $this->resolver = new MemberResolver($repository);

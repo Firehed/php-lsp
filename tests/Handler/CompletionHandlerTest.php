@@ -33,6 +33,7 @@ use Firehed\PhpLsp\Knowledge\DelegatingSymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassRepository;
@@ -82,7 +83,8 @@ class CompletionHandlerTest extends TestCase
         $this->parser = new ParserService();
         $this->symbolIndex = new SymbolIndex();
         $this->classInfoFactory = new DefaultClassInfoFactory();
-        $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
+        $autoloadMap = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures');
+        $locator = new ComposerClassLocator($autoloadMap);
         $this->classRepository = $this->buildClassRepository(
             $this->classInfoFactory,
             $locator,
