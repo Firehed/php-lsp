@@ -12,6 +12,8 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Throwable;
 use Firehed\PhpLsp\Repository\ClassLocator;
@@ -933,7 +935,7 @@ class BasicTypeResolverTest extends TestCase
     private function createResolverWithFixtures(): BasicTypeResolver
     {
         $classInfoFactory = new DefaultClassInfoFactory();
-        $locator = new \Firehed\PhpLsp\Index\ComposerClassLocator(__DIR__ . '/../Fixtures');
+        $locator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'));
         $parser = new ParserService();
         $classRepository = $this->buildClassRepository($classInfoFactory, $locator, $parser);
         $memberResolver = new MemberResolver($classRepository);

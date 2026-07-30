@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\CatalogSymbol;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
@@ -101,7 +102,10 @@ final class ChildrenOfParityTest extends TestCase
             "<?php\nnamespace Fixtures\\Model\\OpenOnly;\nclass Unsaved {}\n",
         ));
 
-        $this->catalog = NamespaceCatalogFactory::forProject($index, $this->fixturesRoot);
+        $this->catalog = NamespaceCatalogFactory::forProject(
+            $index,
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+        );
     }
 
     public function testChildrenOfMatchesGolden(): void

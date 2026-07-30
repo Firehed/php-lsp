@@ -14,13 +14,13 @@ use Firehed\PhpLsp\Cache\CacheFactory;
  */
 final class NamespaceCatalogFactory
 {
-    public static function forProject(SymbolIndex $index, string $projectRoot): NamespaceCatalog
+    public static function forProject(SymbolIndex $index, ComposerAutoloadMap $map): NamespaceCatalog
     {
         return new CompositeNamespaceCatalog([
             new WorkspaceNamespaceSource($index),
             new CachedNamespaceCatalog(
                 new CompositeNamespaceCatalog([
-                    new ComposerNamespaceSource(ComposerAutoloadMap::fromProjectRoot($projectRoot)),
+                    new ComposerNamespaceSource($map),
                     new ReflectionNamespaceSource(),
                 ]),
                 CacheFactory::inMemory(),

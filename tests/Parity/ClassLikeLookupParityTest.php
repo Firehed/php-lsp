@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
@@ -81,7 +82,7 @@ final class ClassLikeLookupParityTest extends TestCase
         $this->projectRoot = dirname(__DIR__, 2);
         $this->repository = $this->buildClassRepository(
             new DefaultClassInfoFactory(),
-            new ComposerClassLocator($this->projectRoot . '/tests/Fixtures'),
+            new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot($this->projectRoot . '/tests/Fixtures')),
             new ParserService(),
         );
     }

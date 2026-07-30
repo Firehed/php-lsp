@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\MemberFilter;
@@ -40,7 +41,7 @@ class TextFallbackHelperTest extends TestCase
 
         // Create helper with fixture-based class resolution for chain tests
         $factory = new DefaultClassInfoFactory();
-        $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
+        $locator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'));
         $this->parser = new ParserService();
         $fixtureRepo = $this->buildClassRepository($factory, $locator, $this->parser);
         $this->helperWithReflection = new TextFallbackHelper(new MemberResolver($fixtureRepo));

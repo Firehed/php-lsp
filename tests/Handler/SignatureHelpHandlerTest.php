@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
@@ -40,7 +41,7 @@ class SignatureHelpHandlerTest extends TestCase
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
         $this->classInfoFactory = new DefaultClassInfoFactory();
-        $locator = new ComposerClassLocator(__DIR__ . '/../Fixtures');
+        $locator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures'));
         $this->classRepository = $this->buildClassRepository(
             $this->classInfoFactory,
             $locator,
