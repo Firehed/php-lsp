@@ -92,7 +92,11 @@ final class Server
         $documentManager = new DocumentManager();
         $symbolIndex = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
-        $classLocator = new ComposerClassLocator(ComposerAutoloadMap::fromProjectRoot($projectRoot));
+        // One autoload map, shared by every consumer of Composer's maps: reading
+        // the generated autoload files and building the ClassLoader happens once,
+        // not once per consumer (Plan 0002 §3a(ii)).
+        $autoloadMap = ComposerAutoloadMap::fromProjectRoot($projectRoot);
+        $classLocator = new ComposerClassLocator($autoloadMap);
 
         $classInfoFactory = new DefaultClassInfoFactory();
         $classRepository = new DefaultClassRepository(
@@ -105,10 +109,7 @@ final class Server
         $memberResolver = new MemberResolver($classRepository);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
 
-        $catalog = NamespaceCatalogFactory::forProject(
-            $symbolIndex,
-            ComposerAutoloadMap::fromProjectRoot($projectRoot),
-        );
+        $catalog = NamespaceCatalogFactory::forProject($symbolIndex, $autoloadMap);
 
         // The read/write knowledge seam (RFC 1 §4.2, §4.3). Consumers migrate onto
         // this one facade instance across Step 2's slices (Plan 0002 §5.5); today
