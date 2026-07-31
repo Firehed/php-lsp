@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
@@ -17,6 +18,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Tests\Index\CountingNamespaceCatalog;
 use Psr\SimpleCache\CacheInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -89,6 +91,59 @@ final class FilesystemBackendTest extends TestCase
         self::assertNull(
             $backend->lookupClassLike(self::className('Fixtures\TypeInference\NotDeclaredHere')),
             'a located file that does not declare the requested class resolves to null',
+        );
+    }
+
+    public function testInvalidateEvictsTheCachedClassSoTheNextLookupReParses(): void
+    {
+        $backend = $this->backend();
+        $name = self::className('Fixtures\Domain\User');
+
+        $first = $backend->lookupClassLike($name);
+        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
+
+        $backend->invalidate('file://' . $this->fixturesRoot . '/src/Domain/User.php');
+        $second = $backend->lookupClassLike($name);
+
+        self::assertNotNull($second, 'the class must resolve again after invalidation');
+        self::assertNotSame(
+            $first,
+            $second,
+            'invalidate must evict the cached class so the changed file is re-parsed from disk (RFC 1 §5.3)',
+        );
+    }
+
+    public function testInvalidateAlsoDropsCachedNamespaceListings(): void
+    {
+        $counting = new CountingNamespaceCatalog();
+        $backend = new FilesystemBackend(
+            self::createStub(ClassLocator::class),
+            new CachedNamespaceCatalog($counting, CacheFactory::inMemory()),
+            $this->parser,
+            $this->factory,
+            CacheFactory::inMemory(),
+        );
+
+        $backend->childrenOf(new NamespaceName('Psr\Log'));
+        $backend->invalidate('file:///any/changed/File.php');
+        $backend->childrenOf(new NamespaceName('Psr\Log'));
+
+        self::assertSame(
+            2,
+            $counting->calls,
+            'invalidate must drop cached namespace listings so a create or delete is reflected (RFC 1 §5.3)',
+        );
+    }
+
+    public function testInvalidateAnUncachedFileIsHarmless(): void
+    {
+        $backend = $this->backend();
+
+        $backend->invalidate('file:///never/looked/up.php');
+
+        self::assertNotNull(
+            $backend->lookupClassLike(self::className('Fixtures\Domain\User')),
+            'invalidating a file that was never cached must not disturb later lookups',
         );
     }
 
