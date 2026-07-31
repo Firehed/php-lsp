@@ -7,8 +7,6 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Repository\ClassRepository;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\FunctionRepository;
 use PHPStan\Analyser\Scope;
@@ -41,8 +39,10 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
 {
     /**
      * The symbol-discovery collaborators §4.2 confines to a backend: a concrete index,
-     * repository, autoload map, and reflection (`ReflectionClass` is a global class, so
-     * it has no namespace prefix).
+     * autoload map, the function repository (the un-migrated function path, exempted
+     * below until Step 3b), and reflection (`ReflectionClass` is a global class, so it
+     * has no namespace prefix). Class-like lookup is now served entirely by the
+     * {@see \Firehed\PhpLsp\Knowledge\SymbolBackend}s, so `ClassRepository` is gone.
      *
      * @var list<class-string>
      */
@@ -50,8 +50,6 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
         ComposerAutoloadMap::class,
         NamespaceCatalog::class,
         SymbolIndex::class,
-        ClassRepository::class,
-        DefaultClassRepository::class,
         DefaultFunctionRepository::class,
         FunctionRepository::class,
         ReflectionClass::class,

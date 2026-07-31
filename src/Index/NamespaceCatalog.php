@@ -9,8 +9,8 @@ namespace Firehed\PhpLsp\Index;
  *
  * Completion needs to answer "what is inside `Psr\Log`?" — a question no
  * existing component can answer. Go-to-definition and hover only ever need
- * *lookup* (resolve one known name), which `ClassRepository` and reflection
- * already provide; completion needs *enumeration*, which nothing did.
+ * *lookup* (resolve one known name), which the `SymbolSource` backends already
+ * provide; completion needs *enumeration*, which nothing did.
  *
  * Implementations resolve one namespace at a time and are expected to be lazy:
  * the whole point is that navigating to `Psr\Log\` touches `Psr\Log` and

@@ -18,8 +18,8 @@ use Firehed\PhpLsp\Utility\NamespacePath;
  * That is not a loss, because it is not discovery's decision to make. Whether a
  * candidate is valid in a given position (an interface after `implements`, a
  * non-final class after `extends`) is already answered by the `CodeResolver`
- * predicates, which resolve through the caching `ClassRepository`. Discovery
- * says what exists and where; resolution says what it is.
+ * predicates, which resolve through the `SymbolSource` backends. Discovery says
+ * what exists and where; resolution says what it is.
  */
 final readonly class CatalogSymbol
 {
