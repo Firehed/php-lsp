@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Transport;
 
 use Amp\ByteStream\WritableStream;
-use Firehed\PhpLsp\Protocol\ResponseMessage;
+use Firehed\PhpLsp\Protocol\OutgoingMessage;
 
 final class MessageWriter
 {
@@ -14,9 +14,9 @@ final class MessageWriter
     ) {
     }
 
-    public function write(ResponseMessage $response): void
+    public function write(OutgoingMessage $message): void
     {
-        $json = json_encode($response, JSON_THROW_ON_ERROR);
+        $json = json_encode($message, JSON_THROW_ON_ERROR);
         $header = "Content-Length: " . strlen($json) . "\r\n\r\n";
         $this->stream->write($header . $json);
     }

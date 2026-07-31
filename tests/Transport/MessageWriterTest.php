@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Transport;
 
 use Amp\ByteStream\WritableBuffer;
+use Firehed\PhpLsp\Protocol\OutgoingRequest;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Transport\MessageWriter;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -27,6 +28,25 @@ class MessageWriterTest extends TestCase
         $expected = "Content-Length: " . strlen($json) . "\r\n\r\n" . $json;
 
         self::assertSame($expected, $output);
+    }
+
+    public function testWriteServerInitiatedRequest(): void
+    {
+        $buffer = new WritableBuffer();
+        $writer = new MessageWriter($buffer);
+
+        $writer->write(new OutgoingRequest('reg-1', 'client/registerCapability', ['registrations' => []]));
+        $buffer->close();
+
+        // json_encode escapes the slash in the method name by default.
+        $json = '{"jsonrpc":"2.0","id":"reg-1","method":"client\/registerCapability","params":{"registrations":[]}}';
+        $expected = "Content-Length: " . strlen($json) . "\r\n\r\n" . $json;
+
+        self::assertSame(
+            $expected,
+            $buffer->buffer(),
+            'a server-initiated request frames through the same write path as a response',
+        );
     }
 
     public function testWriteMultipleMessages(): void

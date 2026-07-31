@@ -816,9 +816,9 @@ class ServerTest extends TestCase
                 return $this->reader->read();
             }
 
-            public function write(\Firehed\PhpLsp\Protocol\ResponseMessage $response): void
+            public function write(\Firehed\PhpLsp\Protocol\OutgoingMessage $message): void
             {
-                $this->writer->write($response);
+                $this->writer->write($message);
             }
 
             public function close(): void
