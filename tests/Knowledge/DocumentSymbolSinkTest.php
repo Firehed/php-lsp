@@ -90,6 +90,33 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
+    public function testUpdatingAwayFromAllClassesClearsTheBackendNotJustTheIndex(): void
+    {
+        $uri = 'file:///Doc.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Widget {}\n"));
+        self::assertNotNull(
+            $this->backend->lookupClassLike(self::className('V\Widget')),
+            'the class is registered while the document declares it',
+        );
+
+        // The document is edited until it declares no class at all — the same state a
+        // parse failure yields (registerClasses falls back to an empty statement list).
+        // Both stores must drop the class in lockstep: the backend cannot keep a stale
+        // registration while the index clears (RFC 1 §4.3, the double write moving
+        // together). Skipping the write when nothing is found leaves the backend stale.
+        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\n"));
+
+        self::assertNull(
+            $this->backend->lookupClassLike(self::className('V\Widget')),
+            'a document that no longer declares the class must drop its registration',
+        );
+        self::assertSame(
+            [],
+            $this->indexedFqnsFor($uri),
+            'the index must clear too — both stores move together (RFC 1 §4.3)',
+        );
+    }
+
     public function testWriteSurvivesAMalformedDocument(): void
     {
         $uri = 'file:///Broken.php';
