@@ -69,6 +69,7 @@ final readonly class KnowledgeStack
         $sink = new DocumentSymbolSink(
             $openDocuments,
             new DocumentIndexer($parser, new SymbolExtractor(), $index),
+            $index,
             $classInfoFactory,
             $parser,
         );

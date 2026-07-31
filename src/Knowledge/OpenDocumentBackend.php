@@ -21,8 +21,8 @@ use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
  * backend reads the live symbol index and its own registered class metadata
  * directly. Class-like lookup is served from the {@see ClassInfo} registered per
  * document by the write path; namespace enumeration and prefix search are served
- * from the {@see SymbolIndex} the write path also populates. That both stores are
- * fed from one document is the double write Step 3a(iv) collapses (Plan 0002 §5.5);
+ * from the {@see SymbolIndex} the write path also populates. The write path feeds
+ * both stores from one parse ({@see DocumentSymbolSink}, Plan 0002 §5.5 Step 3a(iv));
  * here they are read as they stand.
  */
 final class OpenDocumentBackend implements SymbolBackend

@@ -13,6 +13,8 @@ use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,6 +26,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class DocumentSymbolSinkTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private SymbolIndex $index;
     private OpenDocumentBackend $backend;
     private DocumentSymbolSink $sink;
@@ -36,6 +40,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink = new DocumentSymbolSink(
             $this->backend,
             new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
+            $this->index,
             new DefaultClassInfoFactory(),
             $parser,
         );
@@ -115,6 +120,42 @@ final class DocumentSymbolSinkTest extends TestCase
             $this->indexedFqnsFor($uri),
             'the index must clear too — both stores move together (RFC 1 §4.3)',
         );
+    }
+
+    #[DataProvider('classLikeFixtures')]
+    public function testEveryRegisteredClassLikeIsAlsoIndexed(string $fixture, string $fqn): void
+    {
+        // The lookup store and the symbol index are separate structures fed from one
+        // parse; the write path keeps them consistent (RFC 1 §4.3). A name registered
+        // for lookup must also be indexed — never resolvable through one surface yet
+        // invisible to the other — across every class-like kind.
+        $uri = 'file:///' . $fixture;
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture($fixture)));
+
+        self::assertNotNull(
+            $this->backend->lookupClassLike(self::className($fqn)),
+            "{$fqn} must be registered for lookup",
+        );
+        self::assertNotNull(
+            $this->index->findByFqn($fqn),
+            "{$fqn} is registered for lookup so it must also be indexed (RFC 1 §4.3)",
+        );
+    }
+
+    /**
+     * A fixture per class-like kind, each with the FQN it declares.
+     *
+     * @codeCoverageIgnore
+     * @return array<string, array{string, string}>
+     */
+    public static function classLikeFixtures(): array
+    {
+        return [
+            'class' => ['src/Domain/User.php', 'Fixtures\Domain\User'],
+            'interface' => ['src/Domain/Entity.php', 'Fixtures\Domain\Entity'],
+            'trait' => ['src/Traits/HasTimestamps.php', 'Fixtures\Traits\HasTimestamps'],
+            'enum' => ['src/Enum/Status.php', 'Fixtures\Enum\Status'],
+        ];
     }
 
     public function testWriteSurvivesAMalformedDocument(): void
