@@ -20,6 +20,16 @@ interface SymbolSink
 {
     public function closeDocument(string $uri): void;
 
+    /**
+     * Invalidate any cached workspace state for a file that changed on disk while
+     * it was not open in the editor — an external edit, a branch checkout, or a
+     * deletion (RFC 1 §5.2). External change is the third producer of symbol-state
+     * mutation, alongside the editor lifecycle and background indexing, and so
+     * flows through this one write path rather than reaching into a backend
+     * directly.
+     */
+    public function invalidate(string $uri): void;
+
     public function openDocument(TextDocument $document): void;
 
     public function updateDocument(TextDocument $document): void;
