@@ -8,12 +8,10 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
-use Firehed\PhpLsp\Repository\ClassLocator;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
-use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
-use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -21,31 +19,24 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
 {
-    use BuildsClassRepositoryTrait;
-    use BuildsSymbolSourceTrait;
     use LoadsFixturesTrait;
 
     private DocumentManager $manager;
     private ParserService $parser;
-    private DefaultClassInfoFactory $classInfoFactory;
-    private DefaultClassRepository $classRepository;
+    private SymbolSource $source;
     private TextDocumentSyncHandler $handler;
 
     protected function setUp(): void
     {
         $this->manager = new DocumentManager();
         $this->parser = new ParserService();
-        $this->classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = $this->buildClassRepository(
-            $this->classInfoFactory,
-            $locator,
+        $knowledge = KnowledgeStack::forProject(
+            new ComposerAutoloadMap(),
+            dirname(__DIR__) . '/Fixtures/vendor',
             $this->parser,
         );
-        $this->handler = new TextDocumentSyncHandler(
-            $this->manager,
-            $this->symbolSourceFor($this->classRepository, $this->parser),
-        );
+        $this->source = $knowledge->source;
+        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink);
     }
 
     public function testSupports(): void
@@ -171,21 +162,26 @@ class TextDocumentSyncHandlerTest extends TestCase
 
         /** @var class-string $className */
         $className = 'MyTestClass'; // @phpstan-ignore varTag.nativeType
-        $classInfo = $this->classRepository->get(new ClassName($className));
+        $classInfo = $this->source->lookupClassLike(new ClassName($className));
         self::assertNotNull($classInfo);
         self::assertSame('MyTestClass', $classInfo->name->shortName());
     }
 
     public function testDidChangeUpdatesClasses(): void
     {
-        // Open with initial class
-        $this->manager->open('file:///test.php', 'php', 1, '<?php class OldClass {}');
-        $this->classRepository->updateDocument('file:///test.php', [
-            $this->classInfoFactory->fromAstNode(
-                new \PhpParser\Node\Stmt\Class_('OldClass'),
-                'file:///test.php',
-            ),
-        ]);
+        // Open with the initial class through the handler, registering it.
+        $this->handler->handle(NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didOpen',
+            'params' => [
+                'textDocument' => [
+                    'uri' => 'file:///test.php',
+                    'languageId' => 'php',
+                    'version' => 1,
+                    'text' => '<?php class OldClass {}',
+                ],
+            ],
+        ]));
 
         $notification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -207,8 +203,8 @@ class TextDocumentSyncHandlerTest extends TestCase
         $oldClassName = 'OldClass'; // @phpstan-ignore varTag.nativeType
         /** @var class-string $newClassName */
         $newClassName = 'NewClass'; // @phpstan-ignore varTag.nativeType
-        self::assertNull($this->classRepository->get(new ClassName($oldClassName)));
-        $newClass = $this->classRepository->get(new ClassName($newClassName));
+        self::assertNull($this->source->lookupClassLike(new ClassName($oldClassName)));
+        $newClass = $this->source->lookupClassLike(new ClassName($newClassName));
         self::assertNotNull($newClass);
         self::assertSame('NewClass', $newClass->name->shortName());
     }
@@ -231,7 +227,7 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
         $this->handler->handle($openNotification);
-        self::assertNotNull($this->classRepository->get(new ClassName($className)));
+        self::assertNotNull($this->source->lookupClassLike(new ClassName($className)));
 
         $closeNotification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -244,6 +240,6 @@ class TextDocumentSyncHandlerTest extends TestCase
         ]);
         $this->handler->handle($closeNotification);
 
-        self::assertNull($this->classRepository->get(new ClassName($className)));
+        self::assertNull($this->source->lookupClassLike(new ClassName($className)));
     }
 }

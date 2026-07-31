@@ -6,8 +6,8 @@ resolution; this covers the four surfaces those steps move consumers onto:
 
 | Surface | Production entry point | Golden |
 |---|---|---|
-| class-like lookup | `ClassRepository::get()` | `goldens/class-like-lookup.json` |
-| namespace enumeration | `NamespaceCatalog::childrenOf()` | `goldens/children-of.json` |
+| class-like lookup | `SymbolSource::lookupClassLike()` | `goldens/class-like-lookup.json` |
+| namespace enumeration | `SymbolSource::childrenOf()` | `goldens/children-of.json` |
 | prefix search | `SymbolIndex::findByPrefix()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
 
@@ -72,19 +72,27 @@ composer parity-coverage   # phpunit tests/Parity --coverage-text
 runs the parity tests under coverage (a path selector on the normal config, no
 separate config file). Read the rows for the surface classes in the table above: an
 unexecuted line there is a **corpus gap** — a behavioral edge the corpus does not
-exercise — to surface before the harness is trusted. The corpus drives every surface
-class to 100% except a handful of defensive lines — most unreachable for any realistic
-project input, one a known corpus gap:
+exercise — to surface before the harness is trusted.
 
-- parser `ast === null` guards (`DocumentIndexer`, `DefaultClassRepository`): a known
-  **corpus gap**, not dead code. `ParserService::parseContent` returns null only from
-  its `catch (\PhpParser\Error)` arm — a parse that *throws* despite the
-  error-collecting handler; the corpus's broken fixture instead yields a partial AST,
-  so these early returns are reachable but left un-exercised here (a bare early return,
-  low risk);
-- `file_get_contents` failing after `is_readable` succeeds (`DefaultClassRepository`);
-- an anonymous class reached while scanning a located file for a *different* named
-  class (`DefaultClassRepository`): the first matching declaration stops the walk;
+The corpus drives the *lookup* and *enumeration* surfaces through the
+`CompositeSymbolSource` and its backends. Two things it deliberately does **not**
+drive, so their lines show here as unexecuted but are fully covered elsewhere: the
+per-backend `searchClassLikes` (empty on the workspace, vendor, and built-in
+backends) and the composite's prefix-search merge — prefix-search parity runs against
+`SymbolIndex` directly, and the backends' own unit tests exercise the rest.
+
+Within the surfaces the corpus does drive, a handful of defensive lines stay
+uncovered or are marked `@codeCoverageIgnore` — all unreachable for realistic project
+input, one a known corpus gap:
+
+- parser `ast === null` guard (`DocumentIndexer`): a known **corpus gap**, not dead
+  code. `ParserService::parseContent` returns null only from its
+  `catch (\PhpParser\Error)` arm — a parse that *throws* despite the error-collecting
+  handler; the corpus's broken fixture instead yields a partial AST, so the early
+  return is reachable but left un-exercised here (a bare early return, low risk);
+- the IO-failure guards in `FilesystemBackend` — `file_get_contents` failing after
+  `is_readable` succeeds, and a parse that throws despite error recovery — are marked
+  `@codeCoverageIgnore`: unreachable for a located, well-formed file;
 - the `Constant` arm of `nameKindOf` (`WorkspaceNamespaceSource`): `SymbolExtractor`
   does not emit constant symbols, so no workspace input reaches it;
 - an autoload map pointing at a missing directory, or a non-`.php` file in a scanned

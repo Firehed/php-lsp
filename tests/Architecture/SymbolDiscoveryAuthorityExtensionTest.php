@@ -8,8 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Repository\ClassRepository;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\FunctionRepository;
 use PHPStan\Analyser\Scope;
@@ -76,10 +74,10 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
     }
 
     /**
-     * Every confined collaborator, referenced from a production consumer namespace, is
-     * restricted — including the two concrete `Default*` classes, so dropping either
-     * from the confined set is caught. A null namespace (global-namespace code) is a
-     * consumer too.
+     * Every confined-and-not-exempt collaborator, referenced from a production consumer
+     * namespace, is restricted. A null namespace (global-namespace code) is a consumer
+     * too. The function-path names are confined but exempted, so they appear among the
+     * allowed references below, not here.
      *
      * @return iterable<string, array{class-string, ?string}>
      *
@@ -90,8 +88,6 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
         yield 'autoload map from a consumer' => [ComposerAutoloadMap::class, 'Firehed\PhpLsp\Completion'];
         yield 'namespace catalog from a consumer' => [NamespaceCatalog::class, 'Firehed\PhpLsp\Completion'];
         yield 'symbol index from a consumer' => [SymbolIndex::class, 'Firehed\PhpLsp\Handler'];
-        yield 'class repository from a consumer' => [ClassRepository::class, 'Firehed\PhpLsp\Handler'];
-        yield 'default class repository from a consumer' => [DefaultClassRepository::class, 'Firehed\PhpLsp\Handler'];
         yield 'reflection from a consumer' => [ReflectionClass::class, 'Firehed\PhpLsp\Completion'];
         yield 'symbol index from the global namespace' => [SymbolIndex::class, null];
     }
@@ -109,7 +105,7 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
     {
         yield 'symbol index from the Index backend' => [SymbolIndex::class, 'Firehed\PhpLsp\Index'];
         yield 'symbol index from a nested Index backend' => [SymbolIndex::class, 'Firehed\PhpLsp\Index\Sub'];
-        yield 'class repository from the Knowledge backend' => [ClassRepository::class, 'Firehed\PhpLsp\Knowledge'];
+        yield 'symbol index from the Knowledge backend' => [SymbolIndex::class, 'Firehed\PhpLsp\Knowledge'];
         yield 'reflection from the Repository backend' => [ReflectionClass::class, 'Firehed\PhpLsp\Repository'];
         yield 'symbol index from the composition root' => [SymbolIndex::class, 'Firehed\PhpLsp'];
         yield 'reflection from the test namespace' => [ReflectionClass::class, 'Firehed\PhpLsp\Tests\Example'];

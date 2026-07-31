@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
@@ -23,15 +22,8 @@ use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
-use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\NamespaceCatalogFactory;
-use Firehed\PhpLsp\Index\SymbolExtractor;
-use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Knowledge\DelegatingSymbolSource;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -90,38 +82,23 @@ final class Server
         }
 
         $documentManager = new DocumentManager();
-        $symbolIndex = new SymbolIndex();
-        $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $symbolIndex);
-        // One autoload map, shared by every consumer of Composer's maps: reading
-        // the generated autoload files and building the ClassLoader happens once,
-        // not once per consumer (Plan 0002 §3a(ii)).
-        $autoloadMap = ComposerAutoloadMap::fromProjectRoot($projectRoot);
-        $classLocator = new ComposerClassLocator($autoloadMap);
 
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $classRepository = new DefaultClassRepository(
-            $classInfoFactory,
-            $classLocator,
+        // The symbol-knowledge tier: one read composite over the fixed backend
+        // precedence (open document › workspace › vendor › built-in) and one write
+        // path, sharing an open-document backend and index (RFC 1 §4.2, §4.3, §5.3).
+        // Every knowledge consumer — SymbolResolver, the completion sources, and
+        // MemberResolver — reads through this one composite.
+        $knowledge = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($projectRoot),
+            rtrim($projectRoot, '/') . '/vendor',
             $parser,
-            CacheFactory::inMemory(),
         );
+        $symbolSource = $knowledge->source;
+        $symbolSink = $knowledge->sink;
+
         $functionRepository = new DefaultFunctionRepository();
-        $memberResolver = new MemberResolver($classRepository);
+        $memberResolver = new MemberResolver($symbolSource);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
-
-        $catalog = NamespaceCatalogFactory::forProject($symbolIndex, $autoloadMap);
-
-        // The read/write knowledge seam (RFC 1 §4.2, §4.3). Consumers migrate onto
-        // this one facade instance across Step 2's slices (Plan 0002 §5.5); today
-        // ClassCandidates, NamespaceCandidates, and SymbolResolver read through it.
-        $symbolSource = new DelegatingSymbolSource(
-            $classRepository,
-            $symbolIndex,
-            $catalog,
-            $indexer,
-            $classInfoFactory,
-            $parser,
-        );
 
         $symbolResolver = new SymbolResolver(
             $parser,
@@ -137,7 +114,7 @@ final class Server
         $handlers = [
             new TextDocumentSyncHandler(
                 $documentManager,
-                $symbolSource,
+                $symbolSink,
             ),
             new DefinitionHandler(
                 $documentManager,

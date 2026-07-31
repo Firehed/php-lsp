@@ -13,14 +13,11 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\Repository\ClassLocator;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassRepository;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\Tests\BuildsClassRepositoryTrait;
-use Firehed\PhpLsp\Tests\BuildsSymbolSourceTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -28,14 +25,10 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(HoverHandler::class)]
 class HoverHandlerTest extends TestCase
 {
-    use BuildsClassRepositoryTrait;
-    use BuildsSymbolSourceTrait;
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
     private ParserService $parser;
-    private DefaultClassRepository $classRepository;
-    private DefaultClassInfoFactory $classInfoFactory;
     private SymbolResolver $symbolResolver;
     private HoverHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
@@ -44,19 +37,19 @@ class HoverHandlerTest extends TestCase
     {
         $this->documents = new DocumentManager();
         $this->parser = new ParserService();
-        $this->classInfoFactory = new DefaultClassInfoFactory();
-        $locator = self::createStub(ClassLocator::class);
-        $this->classRepository = $this->buildClassRepository(
-            $this->classInfoFactory,
-            $locator,
+
+        // No autoload map: classes referenced but not opened resolve through the
+        // built-in reflection backend, as they did under the prior stub locator.
+        $knowledge = KnowledgeStack::forProject(
+            new ComposerAutoloadMap(),
+            __DIR__ . '/../Fixtures/vendor',
             $this->parser,
         );
-        $memberResolver = new MemberResolver($this->classRepository);
+        $memberResolver = new MemberResolver($knowledge->source);
         $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
-        $symbolSource = $this->symbolSourceFor($this->classRepository, $this->parser);
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
-            $symbolSource,
+            $knowledge->source,
             $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
@@ -65,10 +58,7 @@ class HoverHandlerTest extends TestCase
         // minimal client is served); the fenced-markdown path is exercised
         // explicitly below.
         $this->handler = $this->handlerFor(MarkupKind::PlainText);
-        $this->syncHandler = new TextDocumentSyncHandler(
-            $this->documents,
-            $symbolSource,
-        );
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }
 
     public function testSupports(): void
