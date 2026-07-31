@@ -82,24 +82,44 @@ the symbols declared directly in it.
 - **ReflectionNamespaceSource** — the language's built-ins. Filter to `isInternal()` (the
   server's own classes are loaded in the same process), and file each symbol under the
   namespace its reflected name carries — **internal does not imply global** (`Random\Randomizer`).
-- **CompositeNamespaceCatalog** merges and deduplicates; **CachedNamespaceCatalog** wraps
-  only the stable sources.
+Each source is wrapped as a `SymbolBackend` (see Symbol Backends below): the
+`CompositeSymbolSource` merges and deduplicates their `childrenOf` results, and
+**CachedNamespaceCatalog** wraps the stable sources (workspace-on-disk, vendor,
+built-in) — the open-document `WorkspaceNamespaceSource` is never cached.
 
 Discovery reports a coarse `NameKind` (class-like / function / constant), not which
 flavour of class-like: a PSR-4 listing cannot know without parsing. Deciding whether a
 candidate is valid in a position stays with the `CodeResolver` predicates
-(`isInterface`, `isThrowable`, …), which resolve through the caching `ClassRepository`.
+(`isInterface`, `isThrowable`, …), which resolve through the `SymbolSource` backends.
 
 Pair the catalog with `ReferenceResolver` (`src/Resolution/`), which computes the
 shortest reference that resolves at the cursor. Discovery says what exists; resolution
 says how to write it.
 
-### Repository Pattern
+### Symbol Backends
 
-Class and member information flows through a repository layer:
+Class-like lookup, namespace enumeration, and class-like prefix search flow through the
+**`SymbolSource`** read seam (`src/Knowledge/`), implemented by **`CompositeSymbolSource`**
+over a fixed-precedence list of **`SymbolBackend`s** (RFC 1 §5.3):
 
-- **ClassRepository** (`DefaultClassRepository`) — Resolves `ClassInfo` by FQN. Resolution order: open documents → locate & parse from filesystem → reflection fallback for built-in classes.
-- **MemberResolver** — Finds methods/properties on a class, traversing inheritance chain. Returns domain objects (`MethodInfo`, `PropertyInfo`).
+1. **`OpenDocumentBackend`** — the editor's open documents (never cached); its answer overrides the rest.
+2. **`FilesystemBackend`** (workspace) — the project's own on-disk code, resolved via Composer's non-`vendor/` autoload prefixes: locate one file and parse it.
+3. **`FilesystemBackend`** (vendor) — installed dependencies, the `vendor/` autoload prefixes. Same class as workspace, a different autoload-map subset (`ComposerAutoloadMap::partitionByVendorDirectory`).
+4. **`BuiltinBackend`** — PHP built-ins and loaded extensions, via reflection (a tracked §4.7 gap: it describes the *server* runtime, not the target).
+
+A lookup takes the first backend that answers; enumeration and search merge every
+backend, the earlier (more authoritative) one winning a name clash. Caching is a
+per-backend PSR-16 policy (`src/Cache/`); on-disk and built-in results are cached, open
+documents never. The write path is **`SymbolSink`** (`DocumentSymbolSink`), which
+registers class metadata and indexes symbols from one document.
+**`KnowledgeStack::forProject`** assembles the read composite and the write sink,
+sharing one open-document backend and symbol index.
+
+Class-like prefix search (`searchClassLikes`) is served only by the open-document
+backend today; project-wide on-disk search is the deferred workspace-index scope
+(RFC 1 §3). Function/constant reach is Step 3b.
+
+- **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
 
 ### Domain Objects
@@ -225,7 +245,7 @@ described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't
 Handlers do NOT:
 - Parse documents, find nodes at positions, or detect node types
 - Resolve types or look up members
-- Call `MemberResolver`, `ClassRepository`, or `TypeResolverInterface` directly
+- Call `MemberResolver`, `SymbolSource`, or `TypeResolverInterface` directly
 
 Handlers DO:
 - Extract LSP message parameters
