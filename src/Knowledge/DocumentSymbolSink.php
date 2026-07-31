@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -13,14 +14,14 @@ use PhpParser\Node\Stmt;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
- * lifecycle events register class metadata with the {@see OpenDocumentBackend} and
- * index the document's symbols in one place.
+ * lifecycle events register class metadata with the {@see OpenDocumentBackend} for
+ * lookup and index the document's symbols for enumeration and search, in one place.
  *
- * It still performs today's *double* write — full {@see \Firehed\PhpLsp\Domain\ClassInfo}
- * for lookup, lightweight symbols for enumeration and search, fed from one document.
- * Collapsing the two into one parse with a consistency check is Step 3a(iv) (Plan
- * 0002 §5.5, Teardown ledger); here both are driven from the same document so a
- * parse failure clears both rather than leaving one stale.
+ * The two stores are distinct structures serving different consumers (Plan 0002
+ * §5.5, Step 3a(iv)), but a document event drives both from **one parse**: the sink
+ * parses once and feeds that AST to the class registration and to the index alike,
+ * so neither reparses. A parse failure yields no statements, clearing both stores
+ * together rather than leaving one stale (RFC 1 §5.2).
  */
 final class DocumentSymbolSink implements SymbolSink
 {
@@ -50,24 +51,28 @@ final class DocumentSymbolSink implements SymbolSink
 
     private function write(TextDocument $document): void
     {
-        $this->registerClasses($document);
-        $this->indexer->index($document);
-    }
-
-    private function registerClasses(TextDocument $document): void
-    {
-        // A parse failure yields no classes rather than skipping registration, so the
-        // backend is cleared for this document exactly as the index is (RFC 1 §5.2):
-        // both stores move together instead of one keeping a stale answer.
+        // One parse feeds both stores (RFC 1 §4.3): the class-lookup registration and
+        // the symbol index are written transactionally from this single AST. A parse
+        // failure yields no statements, so both are cleared together.
         $ast = $this->parser->parse($document) ?? [];
 
+        $this->backend->updateDocument($document->uri, $this->classesIn($ast, $document->uri));
+        $this->indexer->indexParsed($document, $ast);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return list<ClassInfo>
+     */
+    private function classesIn(array $ast, string $uri): array
+    {
         $classes = [];
         foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
             if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
-                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $document->uri);
+                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
             }
         }
 
-        $this->backend->updateDocument($document->uri, $classes);
+        return $classes;
     }
 }
