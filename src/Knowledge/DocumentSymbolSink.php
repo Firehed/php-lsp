@@ -81,9 +81,10 @@ final class DocumentSymbolSink implements SymbolSink
     {
         foreach ($classes as $classInfo) {
             if ($this->index->findByFqn($classInfo->name->fqn) === null) {
-                // @codeCoverageIgnoreStart — unreachable: both stores derive their
-                // class-likes from the one AST parsed above, so a class registered for
-                // lookup is always indexed. The guard fails loudly if that ceases to hold.
+                // Unreachable: both stores derive their class-likes from the one AST
+                // parsed above, so a class registered for lookup is always indexed. The
+                // guard fails loudly if that ever ceases to hold.
+                // @codeCoverageIgnoreStart
                 throw new \LogicException(sprintf(
                     'Write-path divergence: class-like %s is registered for lookup but absent '
                     . 'from the symbol index; the two stores are written from one parse and '
