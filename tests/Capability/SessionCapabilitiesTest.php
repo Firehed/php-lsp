@@ -36,5 +36,9 @@ class SessionCapabilitiesTest extends TestCase
             $capabilities->positionEncoding,
             'UTF-16 is the [LSP] mandatory default a client that offers no encoding must get',
         );
+        self::assertFalse(
+            $capabilities->watchedFilesDynamicRegistration,
+            'a client that does not declare watched-file support must not be registered for it',
+        );
     }
 }

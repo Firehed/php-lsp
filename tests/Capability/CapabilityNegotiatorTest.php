@@ -172,6 +172,22 @@ class CapabilityNegotiatorTest extends TestCase
         );
     }
 
+    /**
+     * @param array<array-key, mixed> $clientCapabilities
+     */
+    #[DataProvider('watchedFilesRegistrationCases')]
+    public function testWatchedFilesDynamicRegistrationIsRead(array $clientCapabilities, bool $expected): void
+    {
+        $capabilities = self::resolve(self::initializeWith($clientCapabilities));
+
+        self::assertSame(
+            $expected,
+            $capabilities->watchedFilesDynamicRegistration,
+            'dynamicRegistration under workspace.didChangeWatchedFiles gates whether the server registers'
+                . ' for file-watch events ([LSP] DidChangeWatchedFilesClientCapabilities)',
+        );
+    }
+
     public function testMissingParamsResolveToDefaults(): void
     {
         $message = new RequestMessage(id: 1, method: 'initialize', params: null);
@@ -241,6 +257,22 @@ class CapabilityNegotiatorTest extends TestCase
      *
      * @return iterable<string, array{array<array-key, mixed>, bool}>
      */
+    public static function watchedFilesRegistrationCases(): iterable
+    {
+        yield 'no capabilities declared' => [[], false];
+        yield 'no workspace capability' => [['textDocument' => []], false];
+        yield 'no didChangeWatchedFiles capability' => [['workspace' => []], false];
+        yield 'declared true' => [self::watchedFiles(['dynamicRegistration' => true]), true];
+        yield 'declared false' => [self::watchedFiles(['dynamicRegistration' => false]), false];
+        yield 'declared as a non-boolean' => [self::watchedFiles(['dynamicRegistration' => 'yes']), false];
+        yield 'workspace not a map' => [['workspace' => 'nonsense'], false];
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @return iterable<string, array{array<array-key, mixed>, bool}>
+     */
     public static function snippetSupportCases(): iterable
     {
         yield 'no capabilities declared' => [[], false];
@@ -273,6 +305,18 @@ class CapabilityNegotiatorTest extends TestCase
     private static function completionItem(array $completionItem): array
     {
         return ['textDocument' => ['completion' => ['completionItem' => $completionItem]]];
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @param array<string, mixed> $didChangeWatchedFiles
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function watchedFiles(array $didChangeWatchedFiles): array
+    {
+        return ['workspace' => ['didChangeWatchedFiles' => $didChangeWatchedFiles]];
     }
 
     /**
