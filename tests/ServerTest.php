@@ -59,6 +59,50 @@ class ServerTest extends TestCase
         self::assertNull($shutdown['result'], 'shutdown result is null');
     }
 
+    public function testRegistersForWatchedFilesAfterInitializedWhenTheClientSupportsIt(): void
+    {
+        $input = $this->buildMessages(
+            $this->requestJson(1, 'initialize', [
+                'processId' => 1234,
+                'capabilities' => ['workspace' => ['didChangeWatchedFiles' => ['dynamicRegistration' => true]]],
+            ]),
+            $this->initializedJson(),
+            $this->requestJson(2, 'shutdown'),
+            $this->notificationJson('exit'),
+        );
+        $outputBuffer = new WritableBuffer();
+
+        $server = Server::forProject($this->createTransport($input, $outputBuffer), new ServerInfo('test', '1.0'));
+        $server->run();
+
+        $methods = array_column($this->decodeResponses($outputBuffer->buffer()), 'method');
+        self::assertContains(
+            'client/registerCapability',
+            $methods,
+            'a client that supports dynamic registration must be sent a watched-files registration after initialized',
+        );
+    }
+
+    public function testDoesNotRegisterForWatchedFilesWhenTheClientLacksSupport(): void
+    {
+        $input = $this->buildMessages(
+            $this->initializeJson(1),
+            $this->initializedJson(),
+            $this->notificationJson('exit'),
+        );
+        $outputBuffer = new WritableBuffer();
+
+        $server = Server::forProject($this->createTransport($input, $outputBuffer), new ServerInfo('test', '1.0'));
+        $server->run();
+
+        $methods = array_column($this->decodeResponses($outputBuffer->buffer()), 'method');
+        self::assertNotContains(
+            'client/registerCapability',
+            $methods,
+            'a client that did not declare watched-files support must not be registered (§7 fallback applies)',
+        );
+    }
+
     public function testUnknownMethodReturnsError(): void
     {
         $input = $this->buildMessages(
