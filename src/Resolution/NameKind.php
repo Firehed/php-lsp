@@ -37,8 +37,12 @@ enum NameKind
     }
 
     /**
-     * Whether names of this kind are matched case-sensitively. Class and
-     * function names are case-insensitive in PHP; constant names are not.
+     * Whether the declared name of this kind is matched case-sensitively. Class
+     * and function names are case-insensitive in PHP; constant names are not.
+     *
+     * This describes the name a declaration introduces, not the namespace path
+     * qualifying it: namespace names are case-insensitive for every kind, so a
+     * case-sensitive kind is only sensitive in its final segment.
      */
     public function isCaseSensitive(): bool
     {

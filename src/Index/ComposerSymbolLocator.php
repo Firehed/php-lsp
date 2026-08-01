@@ -144,14 +144,23 @@ final class ComposerSymbolLocator implements SymbolLocator, Invalidatable, Warma
     }
 
     /**
-     * PHP matches function names case-insensitively and constant names case-
-     * sensitively, so the key each is stored under follows its own kind.
+     * The key a name is stored under follows its own kind's matching rules.
+     *
+     * A function name is case-insensitive throughout. A constant's *short name* is
+     * case-sensitive, but the namespace path qualifying it is not — namespace names
+     * are case-insensitive for every kind (PHP manual, Namespaces) — so
+     * `Fixtures\HELPER` and `FIXTURES\HELPER` are one constant while
+     * `Fixtures\helper` is another.
      */
     private static function nameKey(QualifiedName $name, NameKind $kind): string
     {
-        $fqn = $name->fullyQualifiedName();
+        if (!$kind->isCaseSensitive()) {
+            return strtolower($name->fullyQualifiedName());
+        }
 
-        return $kind->isCaseSensitive() ? $fqn : strtolower($fqn);
+        $caseFolded = new QualifiedName(strtolower($name->namespace), $name->shortName);
+
+        return $caseFolded->fullyQualifiedName();
     }
 
     /**

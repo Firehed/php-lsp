@@ -194,28 +194,40 @@ final class ComposerSymbolLocatorTest extends TestCase
         );
     }
 
-    public function testFunctionNamesAreMatchedCaseInsensitively(): void
+    /**
+     * Matching follows PHP's own rules, which differ per kind *and* between a name's
+     * namespace path and its final segment: namespace names are case-insensitive for
+     * every kind, function names are case-insensitive throughout, and only a
+     * constant's final segment is case-sensitive.
+     *
+     * @return iterable<string, array{string, NameKind, bool}>
+     */
+    public static function caseVariants(): iterable
     {
-        $locator = $this->locatorForRoot(self::FIXTURES_ROOT);
-
-        $path = $locator->locate(
-            QualifiedName::fromFullyQualified('FIXTUREGLOBALHELPER'),
-            NameKind::Function_,
-        );
-
-        self::assertNotNull($path, 'PHP function names are case-insensitive');
+        yield 'function, short name recased' => ['FIXTUREGLOBALHELPER', NameKind::Function_, true];
+        yield 'function, namespace recased' => ['FIXTURES\HELPERS\helperFormat', NameKind::Function_, true];
+        yield 'function, both recased' => ['fixtures\helpers\HELPERFORMAT', NameKind::Function_, true];
+        yield 'constant, short name recased' => ['fixture_global_limit', NameKind::Constant, false];
+        yield 'constant, namespace recased' => ['FIXTURES\HELPERS\HELPER_LIMIT', NameKind::Constant, true];
+        yield 'constant, namespace and short name recased' => [
+            'FIXTURES\HELPERS\helper_limit',
+            NameKind::Constant,
+            false,
+        ];
     }
 
-    public function testConstantNamesAreMatchedCaseSensitively(): void
+    #[DataProvider('caseVariants')]
+    public function testNamesAreMatchedWithPhpsOwnCaseRules(string $fqn, NameKind $kind, bool $expectFound): void
     {
         $locator = $this->locatorForRoot(self::FIXTURES_ROOT);
 
-        $path = $locator->locate(
-            QualifiedName::fromFullyQualified('fixture_global_limit'),
-            NameKind::Constant,
-        );
+        $path = $locator->locate(QualifiedName::fromFullyQualified($fqn), $kind);
 
-        self::assertNull($path, 'PHP constant names are case-sensitive');
+        if ($expectFound) {
+            self::assertNotNull($path, "{$fqn} resolves to the same symbol PHP would resolve it to");
+        } else {
+            self::assertNull($path, "{$fqn} names a different symbol than the one declared");
+        }
     }
 
     public function testAProjectWithNoAutoloadFilesLocatesNoFunctions(): void
