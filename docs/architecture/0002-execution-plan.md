@@ -88,7 +88,9 @@ Notes:
   `initialize`. Synchronous, since Step 6 is deferred; this repository's own set is 12
   files / 139 KB, ~35 ms at §8.1's 4 MB/s.
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
-  revived only if/when the workspace scope is taken up; otherwise it is deleted.
+  revived only if/when the workspace scope is taken up; otherwise it is deleted — which
+  is slice **SC.1**, since it is dead today (zero references) and the workspace scope is
+  not scheduled. Reviving it later is cheaper than carrying dead code until then.
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw
   ASTs. `ClassRepository` already does this; preserve it.
 - Reach is scoped to declarations the model can *locate*: PSR-4 / classmap classes,
@@ -378,11 +380,21 @@ row must be discharged at the Definition of Done (Step Z).
     TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
     CodeResolver knowledge-facing methods                     Step 4
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
-    WorkspaceIndexer (dead today)                             §3 note (delete unless workspace scope taken)
+    WorkspaceIndexer (dead today)                             SC.1
+    ScopeFinder::extractImports/resolveFromUseStatements       SC.2
+    Hand-rolled namespace tracking (SymbolExtractor,           SC.3
+      FilesystemBackend::findClassInAst)
 
 A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
 state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
 it is a permanent regression net kept past Step Z, not scaffolding to remove.
+
+The `SC.*` rows are **pre-existing** duplication and dead code, not scaffolding this
+plan introduced — so no step's acceptance covers them, which is how they stayed
+unowned. They are listed anyway: the series exists to remove duplication, so a
+known-removable thing without an owning slice is the same defect as an undischarged
+scaffold. A remover must be a slice id; a prose note is not an owner, because
+`/do-next` cannot select one.
 
 ### Step Z — Definition of Done (final verification gate)
 
