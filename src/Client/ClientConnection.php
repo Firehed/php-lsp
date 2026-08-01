@@ -5,18 +5,15 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Client;
 
 /**
- * The channel for server-initiated messages to the client — the outbound
- * counterpart to request handling. Today its sole use is dynamic capability
- * registration (`client/registerCapability`, [LSP] Register Capability); the
- * scheduler / notification tier (Plan 0002 Step 6) will send server-initiated
- * notifications (e.g. `textDocument/publishDiagnostics`) through the same seam.
+ * The channel for server-initiated messages to the client. Today its sole use is
+ * dynamic capability registration (`client/registerCapability`); server-initiated
+ * notifications (diagnostics) are the deferred scheduler tier (Plan 0002 Step 6).
  */
 interface ClientConnection
 {
     /**
-     * Send a server-initiated request to the client. The response is neither
-     * awaited nor correlated — the read loop drops it (RFC 1 §5.2) — because the
-     * effect is applied client-side regardless of the reply.
+     * Send a server-initiated request. The reply is not correlated — the read loop
+     * drops it (RFC 1 §5.2) — because the effect applies client-side regardless.
      *
      * @param array<array-key, mixed> $params
      */

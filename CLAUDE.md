@@ -115,20 +115,18 @@ registers class metadata and indexes symbols from one document.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
 
-**External-file-change invalidation** (RFC 1 §5.2, §5.3) is the third write-path
-producer, alongside the editor lifecycle: `SymbolSink::invalidate($uri)` drops the
-on-disk cache for a file that changed outside the editor, so the next query re-reads
-disk. It fans out to the cached on-disk backends (`InvalidatesFiles`): a
-`FilesystemBackend` evicts exactly that file's class-likes (a path→key reverse map)
-and drops cached namespace listings (`CachedNamespaceCatalog`, `Invalidatable`).
-Closing an edited file also invalidates the on-disk cache, so it re-reads from disk
-rather than restoring the pre-edit value. Two triggers reach `invalidate`: the
-`workspace/didChangeWatchedFiles` notification (`DidChangeWatchedFilesHandler`) and
-`didClose`. Watched files are registered *dynamically* after `initialized`
-(`WatchedFilesRegistrar`, via the outbound `ClientConnection` — there is no static
-server capability), gated on the client declaring `dynamicRegistration`; a client
-that does not is left unregistered and its stale on-disk cache follows the §7
-fallback (no invalidation until a file is opened and closed).
+**External-file-change invalidation** (RFC 1 §5.2, §5.3) is a third write-path
+producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable`, so
+`invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
+the next query re-reads disk. It fans out to the cached on-disk backends (also
+`Invalidatable`): `FilesystemBackend` evicts that file's class-likes (a path→key
+reverse map) and `CachedNamespaceCatalog` drops its listings. Two triggers reach it:
+the `workspace/didChangeWatchedFiles` notification (`DidChangeWatchedFilesHandler`)
+and `didClose` (so a closed-after-edit file re-reads disk). Watched files are
+registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outbound
+`ClientConnection` — no static server capability exists), gated on the client's
+`dynamicRegistration`; an unregistered client follows the §7 fallback (no invalidation
+until a file is opened and closed).
 
 Class-like prefix search (`searchClassLikes`) is served only by the open-document
 backend today; project-wide on-disk search is the deferred workspace-index scope

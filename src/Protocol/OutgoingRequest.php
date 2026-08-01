@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Protocol;
 
 /**
- * A JSON-RPC request the server sends to the client, e.g.
- * `client/registerCapability` ([LSP] Register Capability). It carries an id so the
- * client's response can be correlated; the server does not correlate responses
- * today, so the id exists only to keep the frame well-formed and the reply
- * droppable (see {@see \Firehed\PhpLsp\Transport\MessageReader}).
+ * A JSON-RPC request the server sends to the client (e.g. `client/registerCapability`).
+ * The id keeps the frame well-formed; the server does not correlate the reply, which
+ * the reader drops.
  */
 final readonly class OutgoingRequest implements OutgoingMessage
 {

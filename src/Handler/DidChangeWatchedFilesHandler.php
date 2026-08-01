@@ -8,17 +8,11 @@ use Firehed\PhpLsp\Knowledge\SymbolSink;
 use Firehed\PhpLsp\Protocol\Message;
 
 /**
- * Handles the `workspace/didChangeWatchedFiles` notification ([LSP] "Workspace
- * Features" → `workspace/didChangeWatchedFiles`): the client reports on-disk
- * changes to files it watches on the server's behalf, which the server registers
- * for dynamically (there is no static server option for it — [LSP] Register
- * Capability).
- *
- * Every reported change — created, changed, or deleted ([LSP] `FileChangeType`) —
- * invalidates the affected file's cached workspace state through the write path
- * (RFC 1 §5.2), so the next query re-reads disk: a changed file re-parses, a
- * deleted file resolves to nothing, and a created file appears in enumeration. The
- * change type is not inspected because the response to all three is the same drop.
+ * Handles `workspace/didChangeWatchedFiles`: the client reports on-disk changes to
+ * files it watches for the server. Every change — created, changed, or deleted —
+ * invalidates that file's cached workspace state through the write path (RFC 1 §5.2)
+ * so the next query re-reads disk. The change type is not inspected because the
+ * response to all three is the same drop.
  */
 final class DidChangeWatchedFilesHandler implements HandlerInterface
 {

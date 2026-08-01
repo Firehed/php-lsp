@@ -7,11 +7,9 @@ namespace Firehed\PhpLsp\Protocol;
 use JsonSerializable;
 
 /**
- * A message the server writes to the client: a {@see ResponseMessage} answering a
- * client request, or a server-initiated {@see OutgoingRequest} (e.g.
- * `client/registerCapability`). It is the counterpart to the inbound {@see Message}
- * hierarchy — outbound messages serialize rather than parse — and is what the
- * transport's write side accepts, so both paths frame through one channel.
+ * A message the server writes to the client — a {@see ResponseMessage} or a
+ * server-initiated {@see OutgoingRequest}. The transport's write side accepts any of
+ * these, so responses and requests frame through one channel.
  */
 interface OutgoingMessage extends JsonSerializable
 {
