@@ -72,7 +72,10 @@ Definition-of-Done gate.
     S4.4   4     Extract name-context resolver                      S4.2              —
     S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
     S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
-    SZ.1   Z     Definition of Done gate                            S3.10,S4.6        —
+    SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
+    SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
+    SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
+    SZ.1   Z     Definition of Done gate                            S3.10,S4.6,SC.1,SC.2,SC.3  —
 
 Notes:
 
@@ -95,6 +98,23 @@ Notes:
   AST-in signature; S4.5/S4.6 the `SymbolResolver` god class, `TextFallbackHelper`
   breadth, and the `CodeResolver` knowledge-facing methods. SZ.1 verifies the ledger is
   fully discharged.
+- **The SC.* slices carry no step, on purpose.** They are duplication and dead code that
+  predate the plan rather than scaffolding it introduced, so no step's acceptance covers
+  them — which is exactly how they went unowned until an audit found them. They are in
+  the table so `/do-next` can select them and SZ.1 can require them, not because a step
+  produced them. A removal with no owning slice is a defect; put it here.
+  - **SC.1** — `Index/WorkspaceIndexer` has zero references in `src/` or `tests/`. It was
+    previously a ledger row whose remover was a *§3 note*, which no slice could discharge.
+  - **SC.2** — `ScopeFinder::extractImports` / `resolveFromUseStatements` were superseded
+    by `NameContextFactory` and their own docblock says they go away once #331 moves the
+    callers. #331 landed (#337); three callers did not move (`SymbolResolver` ×2,
+    `TextFallbackHelper` ×1). Gated on S4.4/S4.5, which rewrite exactly those sites.
+  - **SC.3** — `SymbolExtractor` and `FilesystemBackend::findClassInAst` each hand-track
+    `Stmt\Namespace_` to build FQNs that `NameResolver` already computed into
+    `namespacedName` (which `DefaultClassInfoFactory`, `DefaultFunctionRepository`,
+    `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
+    write-path and class-like-lookup goldens prove it. `SymbolExtractor`'s `Class::method`
+    FQNs are its own and stay.
 - **The Builtin backend stood up in S3.3 is reflection-backed and does not satisfy
   §4.7** (0002 §5 known gap) — file the tracked §4.7 issue when S3.3 lands; its fix is
   the deferred Step 5.
