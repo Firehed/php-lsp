@@ -57,4 +57,18 @@ class CachedNamespaceCatalogTest extends TestCase
             'Namespaces are case-insensitive in PHP, so these are one namespace, not two',
         );
     }
+
+    public function testInvalidateDropsCachedListingsSoTheNextLookupReReads(): void
+    {
+        $this->catalog->childrenOf('Psr\Log');
+
+        $this->catalog->invalidate('file:///any/changed/File.php');
+        $this->catalog->childrenOf('Psr\Log');
+
+        self::assertSame(
+            2,
+            $this->source->calls,
+            'invalidate must drop the cached listing so a changed directory is re-read (RFC 1 §5.3)',
+        );
+    }
 }

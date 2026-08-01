@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Protocol;
 
-use JsonSerializable;
-
-final readonly class ResponseMessage implements JsonSerializable
+final readonly class ResponseMessage implements OutgoingMessage
 {
     private function __construct(
         private int|string|null $id,

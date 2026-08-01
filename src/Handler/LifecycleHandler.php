@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Capability\InitializedListener;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -22,8 +23,15 @@ final class LifecycleHandler implements HandlerInterface
     private bool $shutdownRequested = false;
     private ?int $exitCode = null;
 
+    /**
+     * @param list<InitializedListener> $initializedListeners invoked once the
+     *        client sends `initialized`, when the negotiated session capabilities
+     *        are settled and dynamic registration may proceed ([LSP] Register
+     *        Capability)
+     */
     public function __construct(
         private readonly CapabilityNegotiator $negotiator,
+        private readonly array $initializedListeners = [],
     ) {
     }
 
@@ -36,7 +44,7 @@ final class LifecycleHandler implements HandlerInterface
     {
         return match ($message->method) {
             'initialize' => $this->handleInitialize($message),
-            'initialized' => null,
+            'initialized' => $this->handleInitialized(),
             'shutdown' => $this->handleShutdown(),
             'exit' => $this->handleExit(),
             default => null,
@@ -90,6 +98,21 @@ final class LifecycleHandler implements HandlerInterface
         $this->initialized = true;
 
         return $result;
+    }
+
+    /**
+     * The client's `initialized` notification follows a successful `initialize`,
+     * so the negotiated session capabilities are settled. Post-initialize actions
+     * (dynamic capability registration) run here against those capabilities.
+     */
+    private function handleInitialized(): null
+    {
+        $capabilities = $this->negotiator->getSessionCapabilities();
+        foreach ($this->initializedListeners as $listener) {
+            $listener->onInitialized($capabilities);
+        }
+
+        return null;
     }
 
     private function handleShutdown(): null

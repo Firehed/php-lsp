@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Integration;
 use Amp\ByteStream\ReadableBuffer;
 use Amp\ByteStream\WritableBuffer;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Protocol\ResponseMessage;
+use Firehed\PhpLsp\Protocol\OutgoingMessage;
 use Firehed\PhpLsp\Server;
 use Firehed\PhpLsp\ServerInfo;
 use Firehed\PhpLsp\Transport\EndOfStream;
@@ -147,9 +147,9 @@ class DefinitionIntegrationTest extends TestCase
                 return $this->reader->read();
             }
 
-            public function write(ResponseMessage $response): void
+            public function write(OutgoingMessage $message): void
             {
-                $this->writer->write($response);
+                $this->writer->write($message);
             }
 
             public function close(): void

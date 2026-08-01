@@ -182,6 +182,20 @@ final class MessageReader
             return new MalformedFrame(ResponseError::invalidRequest('jsonrpc must be exactly "2.0"'), $id);
         }
 
+        // A frame that names no method but carries a result or error is a Response
+        // to a request the server sent — the client's reply to
+        // `client/registerCapability` (RFC 1 §5.2, dynamic registration). The server
+        // does not correlate its outbound requests today, so the reply owes no
+        // answer and is dropped like a Notification (JSON-RPC 2.0 §4.1); the frame
+        // behind it still reads. Checked before the method guard below so a Response
+        // is not mistaken for a method-less malformed frame.
+        if (
+            !array_key_exists('method', $data)
+            && (array_key_exists('result', $data) || array_key_exists('error', $data))
+        ) {
+            return null;
+        }
+
         // A non-string method is not a usable Notification even without an id,
         // so it is still answered — JSON-RPC 2.0's own worked example replies
         // to `{"jsonrpc":"2.0","method":1,"params":"bar"}` with a null id.

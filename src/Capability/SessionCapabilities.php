@@ -25,6 +25,7 @@ final readonly class SessionCapabilities
         public MarkupKind $hoverMarkupKind = MarkupKind::PlainText,
         public bool $snippetSupport = false,
         public PositionEncoding $positionEncoding = PositionEncoding::Utf16,
+        public bool $watchedFilesDynamicRegistration = false,
     ) {
     }
 }

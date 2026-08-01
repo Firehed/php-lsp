@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
+use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Index\DocumentIndexer;
@@ -26,12 +27,18 @@ use PhpParser\Node\Stmt;
  */
 final class DocumentSymbolSink implements SymbolSink
 {
+    /**
+     * @param list<Invalidatable> $onDiskBackends the cached on-disk backends
+     *        (workspace, vendor) whose entry for a file must be dropped when that
+     *        file changes on disk or is closed after being edited (RFC 1 §5.2, §5.3)
+     */
     public function __construct(
         private readonly OpenDocumentBackend $backend,
         private readonly DocumentIndexer $indexer,
         private readonly SymbolIndex $index,
         private readonly ClassInfoFactory $classInfoFactory,
         private readonly ParserService $parser,
+        private readonly array $onDiskBackends = [],
     ) {
     }
 
@@ -39,6 +46,18 @@ final class DocumentSymbolSink implements SymbolSink
     {
         $this->indexer->remove($uri);
         $this->backend->removeDocument($uri);
+
+        // Closing a file that was edited in the editor must re-read from disk on
+        // the next query rather than restore the pre-edit cached value (RFC 1 §5.3):
+        // the open-document answer is gone, so drop any stale on-disk cache too.
+        $this->invalidate($uri);
+    }
+
+    public function invalidate(string $uri): void
+    {
+        foreach ($this->onDiskBackends as $backend) {
+            $backend->invalidate($uri);
+        }
     }
 
     public function openDocument(TextDocument $document): void

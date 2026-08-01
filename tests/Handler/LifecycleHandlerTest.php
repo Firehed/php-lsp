@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Capability\InitializedListener;
+use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\MarkupKind;
@@ -83,6 +85,37 @@ class LifecycleHandlerTest extends TestCase
         $result = $handler->handle($notification);
 
         self::assertNull($result);
+    }
+
+    public function testInitializedInvokesListenersWithTheNegotiatedCapabilities(): void
+    {
+        $negotiator = new CapabilityNegotiator(new ServerInfo('test', '1.0'));
+        $captured = null;
+        $listener = $this->createMock(InitializedListener::class);
+        $listener->expects($this->once())
+            ->method('onInitialized')
+            ->willReturnCallback(function (SessionCapabilities $capabilities) use (&$captured): void {
+                $captured = $capabilities;
+            });
+        $handler = new LifecycleHandler($negotiator, [$listener]);
+
+        $handler->handle(RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'initialize',
+            'params' => [
+                'capabilities' => [
+                    'workspace' => ['didChangeWatchedFiles' => ['dynamicRegistration' => true]],
+                ],
+            ],
+        ]));
+        $handler->handle(NotificationMessage::fromArray(['jsonrpc' => '2.0', 'method' => 'initialized']));
+
+        self::assertSame(
+            $negotiator->getSessionCapabilities(),
+            $captured,
+            'initialized must invoke listeners with the resolved session capabilities so registration can gate on them',
+        );
     }
 
     public function testShutdownSetsFlag(): void

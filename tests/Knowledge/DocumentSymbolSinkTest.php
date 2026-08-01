@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -93,6 +94,30 @@ final class DocumentSymbolSinkTest extends TestCase
             $this->backend->lookupClassLike(self::className('V\Ephemeral')),
             'close must drop the registered class from lookup',
         );
+    }
+
+    public function testInvalidateFansOutToTheOnDiskBackends(): void
+    {
+        $uri = 'file:///workspace/src/Changed.php';
+        $onDisk = $this->createMock(Invalidatable::class);
+        $onDisk->expects($this->once())
+            ->method('invalidate')
+            ->with($uri);
+
+        $this->sinkWithOnDiskBackends($onDisk)->invalidate($uri);
+    }
+
+    public function testCloseDocumentInvalidatesTheOnDiskBackendsSoTheyReReadFromDisk(): void
+    {
+        $uri = 'file:///workspace/src/Widget.php';
+        $onDisk = $this->createMock(Invalidatable::class);
+        // Closing a file that was edited in the editor must drop the on-disk cache
+        // so the next query reflects disk rather than the pre-edit value (RFC 1 §5.3).
+        $onDisk->expects($this->once())
+            ->method('invalidate')
+            ->with($uri);
+
+        $this->sinkWithOnDiskBackends($onDisk)->closeDocument($uri);
     }
 
     public function testUpdatingAwayFromAllClassesClearsTheBackendNotJustTheIndex(): void
@@ -187,6 +212,20 @@ final class DocumentSymbolSinkTest extends TestCase
         sort($fqns);
 
         return $fqns;
+    }
+
+    private function sinkWithOnDiskBackends(Invalidatable ...$onDiskBackends): DocumentSymbolSink
+    {
+        $parser = new ParserService();
+
+        return new DocumentSymbolSink(
+            $this->backend,
+            new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
+            $this->index,
+            new DefaultClassInfoFactory(),
+            $parser,
+            array_values($onDiskBackends),
+        );
     }
 
     private static function className(string $fqn): ClassName

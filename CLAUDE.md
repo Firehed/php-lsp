@@ -115,6 +115,19 @@ registers class metadata and indexes symbols from one document.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
 
+**External-file-change invalidation** (RFC 1 §5.2, §5.3) is a third write-path
+producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable`, so
+`invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
+the next query re-reads disk. It fans out to the cached on-disk backends (also
+`Invalidatable`): `FilesystemBackend` evicts that file's class-likes (a path→key
+reverse map) and `CachedNamespaceCatalog` drops its listings. Two triggers reach it:
+the `workspace/didChangeWatchedFiles` notification (`DidChangeWatchedFilesHandler`)
+and `didClose` (so a closed-after-edit file re-reads disk). Watched files are
+registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outbound
+`ClientConnection` — no static server capability exists), gated on the client's
+`dynamicRegistration`; an unregistered client follows the §7 fallback (no invalidation
+until a file is opened and closed).
+
 Class-like prefix search (`searchClassLikes`) is served only by the open-document
 backend today; project-wide on-disk search is the deferred workspace-index scope
 (RFC 1 §3). Function/constant reach is Step 3b.
@@ -179,7 +192,17 @@ support, …) queries `SessionCapabilities`. `RawInitializeCapabilitiesRule`
 a `Message`, a `MalformedFrame` (carrying the `ResponseError` to answer with), or
 `EndOfStream`. RFC 1 §9 requires a frame lacking a required header to be
 distinguishable from a closed stream — one means answer and keep serving, the other
-means stop. Do not collapse these back into `?Message`.
+means stop. Do not collapse these back into `?Message`. A frame that is recognisably
+a *Response* (an id with a `result`/`error` and no method) is the client's reply to a
+server-initiated request; the server does not correlate those, so `read()` drops it
+like a Notification rather than answering it.
+
+`TransportInterface::write()` takes any `OutgoingMessage` — a `ResponseMessage` or a
+server-initiated `OutgoingRequest` — so responses and server→client requests share one
+framed channel. Server-initiated requests go through **`ClientConnection`**
+(`TransportClientConnection`); today the sole use is dynamic capability registration
+(`client/registerCapability`). Broader server-initiated output (diagnostics, cancellation)
+is the deferred scheduler tier (Plan 0002 Step 6).
 
 **Malformed input never terminates the process** (RFC 1 §9). `MessageReader`
 classifies an unparseable body as `ParseError` and a structurally invalid message as
@@ -217,7 +240,10 @@ always honored so the server can terminate. `initialize` "may only be sent once"
 the already-resolved session. A gated message is never dispatched; a gated
 notification has no id, so its error is dropped rather than sent — which is what LSP
 "Server lifecycle" means by notifications being *dropped*. The gate opens only once
-`initialize` has produced a result.
+`initialize` has produced a result. On `initialized`, it runs its `InitializedListener`s
+against the settled `SessionCapabilities` — the point where dynamic capability
+registration proceeds (e.g. `WatchedFilesRegistrar`) — rather than growing a dependency
+on each feature that needs to act post-initialize.
 
 `Server` takes the `LifecycleHandler` separately from the other handlers and
 prepends it to the dispatch list itself, so the instance the gate consults cannot

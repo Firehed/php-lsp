@@ -55,10 +55,12 @@ final readonly class KnowledgeStack
         [$workspaceMap, $vendorMap] = $autoloadMap->partitionByVendorDirectory($vendorDirectory);
 
         $openDocuments = new OpenDocumentBackend($index);
+        $workspace = self::filesystemBackend($workspaceMap, $parser, $classInfoFactory);
+        $vendor = self::filesystemBackend($vendorMap, $parser, $classInfoFactory);
         $source = new CompositeSymbolSource([
             $openDocuments,
-            self::filesystemBackend($workspaceMap, $parser, $classInfoFactory),
-            self::filesystemBackend($vendorMap, $parser, $classInfoFactory),
+            $workspace,
+            $vendor,
             new BuiltinBackend(
                 $classInfoFactory,
                 new CachedNamespaceCatalog(new ReflectionNamespaceSource(), CacheFactory::inMemory()),
@@ -72,6 +74,11 @@ final readonly class KnowledgeStack
             $index,
             $classInfoFactory,
             $parser,
+            // External-change and close-after-edit invalidation drops the on-disk
+            // cache for a file so the next query re-reads disk (RFC 1 §5.2, §5.3).
+            // The open-document backend is authoritative and never cached, so it is
+            // not invalidated; the built-in backend does not read workspace files.
+            [$workspace, $vendor],
         );
 
         return new self($source, $sink);

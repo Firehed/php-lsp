@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
@@ -17,6 +18,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Tests\Index\CountingNamespaceCatalog;
 use Psr\SimpleCache\CacheInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -89,6 +91,110 @@ final class FilesystemBackendTest extends TestCase
         self::assertNull(
             $backend->lookupClassLike(self::className('Fixtures\TypeInference\NotDeclaredHere')),
             'a located file that does not declare the requested class resolves to null',
+        );
+    }
+
+    public function testInvalidateEvictsTheCachedClassSoTheNextLookupReParses(): void
+    {
+        $backend = $this->backend();
+        $name = self::className('Fixtures\Domain\User');
+
+        $first = $backend->lookupClassLike($name);
+        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
+
+        $backend->invalidate('file://' . $this->fixturesRoot . '/src/Domain/User.php');
+        $second = $backend->lookupClassLike($name);
+
+        self::assertNotNull($second, 'the class must resolve again after invalidation');
+        self::assertNotSame(
+            $first,
+            $second,
+            'invalidate must evict the cached class so the changed file is re-parsed from disk (RFC 1 §5.3)',
+        );
+    }
+
+    public function testInvalidateAlsoDropsCachedNamespaceListings(): void
+    {
+        $counting = new CountingNamespaceCatalog();
+        $backend = new FilesystemBackend(
+            self::createStub(ClassLocator::class),
+            new CachedNamespaceCatalog($counting, CacheFactory::inMemory()),
+            $this->parser,
+            $this->factory,
+            CacheFactory::inMemory(),
+        );
+
+        $backend->childrenOf(new NamespaceName('Psr\Log'));
+        $backend->invalidate('file:///any/changed/File.php');
+        $backend->childrenOf(new NamespaceName('Psr\Log'));
+
+        self::assertSame(
+            2,
+            $counting->calls,
+            'invalidate must drop cached namespace listings so a create or delete is reflected (RFC 1 §5.3)',
+        );
+    }
+
+    public function testInvalidateDecodesAPercentEncodedUriToMatchTheCachedPath(): void
+    {
+        // A client URI percent-encodes reserved characters (a space becomes %20),
+        // but the locator path {@see $cacheKeysByPath} is keyed by does not. The
+        // URI must be decoded before matching, or a workspace path with a space —
+        // common on macOS — never evicts and the pre-change class is served stale.
+        $dir = sys_get_temp_dir() . '/php-lsp fsb ' . getmypid();
+        self::assertTrue(mkdir($dir), 'the temp directory with a space must be created');
+        $path = $dir . '/Spaced.php';
+
+        try {
+            self::assertNotFalse(
+                file_put_contents($path, "<?php\nclass Spaced {}\n"),
+                'the spaced-path fixture must be writable',
+            );
+
+            $backend = $this->backendWithLocator($this->locatorReturning($path));
+            $name = self::className('Spaced');
+
+            $first = $backend->lookupClassLike($name);
+            self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
+
+            $backend->invalidate('file://' . str_replace(' ', '%20', $path));
+            $second = $backend->lookupClassLike($name);
+
+            self::assertNotNull($second, 'the class must resolve again after invalidation');
+            self::assertNotSame(
+                $first,
+                $second,
+                'the percent-encoded URI must be decoded to match the cached path so the entry is evicted',
+            );
+        } finally {
+            unlink($path);
+            rmdir($dir);
+        }
+    }
+
+    public function testInvalidateAnUncachedFileIsHarmless(): void
+    {
+        $backend = $this->backend();
+
+        $backend->invalidate('file:///never/looked/up.php');
+
+        self::assertNotNull(
+            $backend->lookupClassLike(self::className('Fixtures\Domain\User')),
+            'invalidating a file that was never cached must not disturb later lookups',
+        );
+    }
+
+    public function testInvalidateToleratesANonFileUri(): void
+    {
+        $backend = $this->backend();
+
+        // An unsaved-buffer or other-scheme URI has no on-disk path to match; it is
+        // used verbatim, matches no cached entry, and must not disturb later lookups.
+        $backend->invalidate('untitled:Untitled-1');
+
+        self::assertNotNull(
+            $backend->lookupClassLike(self::className('Fixtures\Domain\User')),
+            'a non-file:// URI must be handled without error',
         );
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheKey;
+use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -29,17 +30,28 @@ use Psr\SimpleCache\CacheInterface;
  * Class-like lookup locates the file for a name and parses that one file — no
  * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
  * replaceable cache seam (RFC 1 §5.3): a file on disk is stable while unchanged, so
- * a resolved class is memoized. The workspace/vendor cache *policy* split — vendor
- * cached hard, workspace invalidated on change — is Step 3a's later slice; here both
- * carry the default in-process cache they had before.
+ * a resolved class is memoized. An on-disk change to a file is signalled through
+ * {@see invalidate()} ({@see Invalidatable}), which evicts that file's cached
+ * class-likes and drops cached namespace listings so the next query reflects disk
+ * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
  * ({@see NamespaceCatalog}). Prefix search is empty: a name→file map exists for
  * classes, but a bare prefix has no such map, so project-wide search over disk is
  * the deferred workspace-index scope (RFC 1 §3), not an unbounded walk here.
  */
-final class FilesystemBackend implements SymbolBackend
+final class FilesystemBackend implements SymbolBackend, Invalidatable
 {
+    /**
+     * The class-cache keys derived from each file, so an on-disk change to one
+     * file evicts exactly its entries. The class cache is keyed by an opaque hash
+     * of the FQN with no reverse mapping to a path, so the path→key relation is
+     * recorded here as classes are cached.
+     *
+     * @var array<string, list<string>>
+     */
+    private array $cacheKeysByPath = [];
+
     public function __construct(
         private readonly ClassLocator $locator,
         private readonly NamespaceCatalog $namespaces,
@@ -64,12 +76,36 @@ final class FilesystemBackend implements SymbolBackend
             return $cached;
         }
 
-        $classInfo = $this->locateAndParse($name);
+        $filePath = $this->locator->locate($name);
+        if ($filePath === null || !is_readable($filePath)) {
+            return null;
+        }
+
+        $classInfo = $this->parseClassFrom($name, $filePath);
         if ($classInfo !== null) {
             $this->cache->set($cacheKey, $classInfo);
+            $this->cacheKeysByPath[$filePath][] = $cacheKey;
         }
 
         return $classInfo;
+    }
+
+    /**
+     * Evict the file's cached class-likes by their recorded keys and drop cached
+     * namespace listings, so the next query re-reads disk and the pre-change value
+     * is not restored (RFC 1 §5.2, §5.3).
+     */
+    public function invalidate(string $uri): void
+    {
+        $path = self::pathFromUri($uri);
+        foreach ($this->cacheKeysByPath[$path] ?? [] as $cacheKey) {
+            $this->cache->delete($cacheKey);
+        }
+        unset($this->cacheKeysByPath[$path]);
+
+        if ($this->namespaces instanceof Invalidatable) {
+            $this->namespaces->invalidate($uri);
+        }
     }
 
     /**
@@ -83,13 +119,24 @@ final class FilesystemBackend implements SymbolBackend
         return [];
     }
 
-    private function locateAndParse(ClassName $name): ?ClassInfo
+    /**
+     * The filesystem path a `file://` document URI addresses, matching the paths
+     * the locator produces (which are what {@see $cacheKeysByPath} is keyed by). A
+     * URI percent-encodes reserved characters; the locator's path does not, so the
+     * scheme is stripped and the remainder decoded. A path that is not a `file://`
+     * URI is returned unchanged.
+     */
+    private static function pathFromUri(string $uri): string
     {
-        $filePath = $this->locator->locate($name);
-        if ($filePath === null || !is_readable($filePath)) {
-            return null;
+        if (!str_starts_with($uri, 'file://')) {
+            return $uri;
         }
 
+        return rawurldecode(substr($uri, strlen('file://')));
+    }
+
+    private function parseClassFrom(ClassName $name, string $filePath): ?ClassInfo
+    {
         $content = file_get_contents($filePath);
         if ($content === false) {
             // @codeCoverageIgnoreStart

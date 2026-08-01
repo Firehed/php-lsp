@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Cache\CacheKey;
+use Firehed\PhpLsp\Cache\Invalidatable;
 use Psr\SimpleCache\CacheInterface;
 
 /**
@@ -18,12 +19,22 @@ use Psr\SimpleCache\CacheInterface;
  * Only wrap sources that are stable for the life of the process — `vendor/` and
  * the language's built-ins. The workspace is not one of them.
  */
-final class CachedNamespaceCatalog implements NamespaceCatalog
+final class CachedNamespaceCatalog implements NamespaceCatalog, Invalidatable
 {
     public function __construct(
         private readonly NamespaceCatalog $source,
         private readonly CacheInterface $cache,
     ) {
+    }
+
+    /**
+     * A listing is keyed by namespace, not by the file that changed, so a single
+     * changed file cannot be mapped to the listings it affects: drop them all and
+     * let the next enumeration re-read (RFC 1 §5.3). The uri is therefore unused.
+     */
+    public function invalidate(string $uri): void
+    {
+        $this->cache->clear();
     }
 
     public function childrenOf(string $namespace): NamespaceContents

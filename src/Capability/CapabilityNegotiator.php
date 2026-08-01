@@ -57,12 +57,30 @@ final class CapabilityNegotiator implements SessionCapabilitiesProvider
         $capabilities = self::readMap($params, 'capabilities');
         $textDocument = self::readMap($capabilities, 'textDocument');
         $completionItem = self::readMap(self::readMap($textDocument, 'completion'), 'completionItem');
+        $workspace = self::readMap($capabilities, 'workspace');
 
         return new SessionCapabilities(
             hoverMarkupKind: self::negotiateHoverMarkupKind(self::readMap($textDocument, 'hover')),
             snippetSupport: ($completionItem['snippetSupport'] ?? false) === true,
             positionEncoding: self::negotiatePositionEncoding(self::readMap($params, 'general')),
+            watchedFilesDynamicRegistration: self::readsWatchedFileEvents($workspace),
         );
+    }
+
+    /**
+     * Per [LSP] `DidChangeWatchedFilesClientCapabilities`, a client that can accept
+     * a dynamic registration for file-watch events declares
+     * `workspace.didChangeWatchedFiles.dynamicRegistration`. There is no static
+     * server option for the feature ([LSP] Register Capability), so this gates
+     * whether the server registers for the events at all.
+     *
+     * @param array<array-key, mixed> $workspace
+     */
+    private static function readsWatchedFileEvents(array $workspace): bool
+    {
+        $watchedFiles = self::readMap($workspace, 'didChangeWatchedFiles');
+
+        return ($watchedFiles['dynamicRegistration'] ?? false) === true;
     }
 
     /**

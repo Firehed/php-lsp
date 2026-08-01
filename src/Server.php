@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
+use Firehed\PhpLsp\Client\TransportClientConnection;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
@@ -16,6 +18,7 @@ use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
+use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
@@ -109,13 +112,19 @@ final class Server
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);
-        $lifecycleHandler = new LifecycleHandler($negotiator);
+
+        // Watched-file events are registered dynamically after `initialized` (there
+        // is no static server capability for them), gated on the client declaring
+        // support; the events invalidate cached workspace state (RFC 1 §5.2, §5.3).
+        $watchedFilesRegistrar = new WatchedFilesRegistrar(new TransportClientConnection($transport));
+        $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar]);
 
         $handlers = [
             new TextDocumentSyncHandler(
                 $documentManager,
                 $symbolSink,
             ),
+            new DidChangeWatchedFilesHandler($symbolSink),
             new DefinitionHandler(
                 $documentManager,
                 $symbolResolver,

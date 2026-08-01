@@ -528,6 +528,45 @@ class MessageReaderTest extends TestCase
     }
 
     /**
+     * A Response (no method, carrying a result or error) is the client's reply to
+     * a request the server sent — e.g. `client/registerCapability`. JSON-RPC 2.0
+     * §4.1 forbids replying to it, and the server does not correlate its outbound
+     * requests, so it is consumed and dropped rather than answered as a
+     * method-less malformed frame; the frame behind it still reads (RFC 1 §5.2).
+     *
+     * @param array<string, mixed> $response
+     */
+    #[DataProvider('clientResponseFrames')]
+    public function testAClientResponseIsDroppedRatherThanAnswered(array $response): void
+    {
+        $input = $this->frame(json_encode($response, JSON_THROW_ON_ERROR))
+            . $this->frame(json_encode(['jsonrpc' => '2.0', 'method' => 'initialized'], JSON_THROW_ON_ERROR));
+        $reader = new MessageReader(new ReadableBuffer($input));
+
+        $result = $reader->read();
+
+        self::assertInstanceOf(
+            NotificationMessage::class,
+            $result,
+            'a client response draws no error outcome, so the next frame surfaces instead',
+        );
+        self::assertSame('initialized', $result->method);
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function clientResponseFrames(): iterable
+    {
+        yield 'success result' => [['jsonrpc' => '2.0', 'id' => 'reg-1', 'result' => null]];
+        yield 'error result' => [
+            ['jsonrpc' => '2.0', 'id' => 'reg-1', 'error' => ['code' => -32601, 'message' => 'nope']],
+        ];
+    }
+
+    /**
      * The frame is consumed even when it cannot be decoded, so one bad message
      * does not desynchronize the stream: the server answers it with an error and
      * keeps serving (RFC 1 §9).
