@@ -8,24 +8,16 @@ use Firehed\PhpLsp\Client\ClientConnection;
 
 /**
  * Registers the server for `workspace/didChangeWatchedFiles` events once the
- * session is initialized, so the client reports on-disk changes the server uses to
- * invalidate cached workspace state (RFC 1 §5.2, §5.3).
- *
- * The feature has no static server capability — [LSP] states the protocol "doesn't
- * support static configuration for file changes from the server side" — so it can
- * only be registered dynamically ([LSP] Register Capability), and only when the
- * client declared it supports that (RFC 1 §4.8). A client that did not is left
- * unregistered; its cached workspace state then follows the §7 fallback (no
- * invalidation until a file is opened and closed).
+ * session is initialized, so the client reports on-disk changes used to invalidate
+ * cached workspace state (RFC 1 §5.2, §5.3). The feature has no static server
+ * capability, so it can only be registered dynamically ([LSP] Register Capability),
+ * and only when the client declared support (RFC 1 §4.8); a client that did not is
+ * left on the §7 fallback (no invalidation until a file is opened and closed).
  */
 final class WatchedFilesRegistrar implements InitializedListener
 {
-    /**
-     * A stable id for the registration; the server never unregisters, so it need
-     * not be unique per session, only identify this capability ([LSP] Registration).
-     */
-    private const string REGISTRATION_ID = 'workspace/didChangeWatchedFiles';
-
+    // The registration id doubles as the method name: the server never unregisters,
+    // so it only has to identify the capability ([LSP] Registration).
     private const string METHOD = 'workspace/didChangeWatchedFiles';
 
     public function __construct(
@@ -42,7 +34,7 @@ final class WatchedFilesRegistrar implements InitializedListener
         $this->client->request('client/registerCapability', [
             'registrations' => [
                 [
-                    'id' => self::REGISTRATION_ID,
+                    'id' => self::METHOD,
                     'method' => self::METHOD,
                     'registerOptions' => [
                         'watchers' => [
