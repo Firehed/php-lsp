@@ -135,6 +135,43 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
+    public function testInvalidateDecodesAPercentEncodedUriToMatchTheCachedPath(): void
+    {
+        // A client URI percent-encodes reserved characters (a space becomes %20),
+        // but the locator path {@see $cacheKeysByPath} is keyed by does not. The
+        // URI must be decoded before matching, or a workspace path with a space —
+        // common on macOS — never evicts and the pre-change class is served stale.
+        $dir = sys_get_temp_dir() . '/php-lsp fsb ' . getmypid();
+        self::assertTrue(mkdir($dir), 'the temp directory with a space must be created');
+        $path = $dir . '/Spaced.php';
+
+        try {
+            self::assertNotFalse(
+                file_put_contents($path, "<?php\nclass Spaced {}\n"),
+                'the spaced-path fixture must be writable',
+            );
+
+            $backend = $this->backendWithLocator($this->locatorReturning($path));
+            $name = self::className('Spaced');
+
+            $first = $backend->lookupClassLike($name);
+            self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
+
+            $backend->invalidate('file://' . str_replace(' ', '%20', $path));
+            $second = $backend->lookupClassLike($name);
+
+            self::assertNotNull($second, 'the class must resolve again after invalidation');
+            self::assertNotSame(
+                $first,
+                $second,
+                'the percent-encoded URI must be decoded to match the cached path so the entry is evicted',
+            );
+        } finally {
+            unlink($path);
+            rmdir($dir);
+        }
+    }
+
     public function testInvalidateAnUncachedFileIsHarmless(): void
     {
         $backend = $this->backend();
