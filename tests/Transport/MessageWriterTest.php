@@ -38,14 +38,26 @@ class MessageWriterTest extends TestCase
         $writer->write(new OutgoingRequest('reg-1', 'client/registerCapability', ['registrations' => []]));
         $buffer->close();
 
-        // json_encode escapes the slash in the method name by default.
-        $json = '{"jsonrpc":"2.0","id":"reg-1","method":"client\/registerCapability","params":{"registrations":[]}}';
-        $expected = "Content-Length: " . strlen($json) . "\r\n\r\n" . $json;
+        $separator = strpos($buffer->buffer(), "\r\n\r\n");
+        self::assertNotFalse($separator, 'the frame has a header/body separator');
+        $header = substr($buffer->buffer(), 0, $separator);
+        $body = substr($buffer->buffer(), $separator + 4);
 
         self::assertSame(
-            $expected,
-            $buffer->buffer(),
+            'Content-Length: ' . strlen($body),
+            $header,
             'a server-initiated request frames through the same write path as a response',
+        );
+        // Compared as decoded structure, so key order and slash-escaping are irrelevant.
+        self::assertEquals(
+            [
+                'jsonrpc' => '2.0',
+                'id' => 'reg-1',
+                'method' => 'client/registerCapability',
+                'params' => ['registrations' => []],
+            ],
+            json_decode($body, true, flags: JSON_THROW_ON_ERROR),
+            'the request serializes to a well-formed JSON-RPC request',
         );
     }
 

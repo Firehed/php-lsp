@@ -534,12 +534,13 @@ class MessageReaderTest extends TestCase
      * requests, so it is consumed and dropped rather than answered as a
      * method-less malformed frame; the frame behind it still reads (RFC 1 §5.2).
      *
-     * @param non-empty-string $responseBody
+     * @param array<string, mixed> $response
      */
     #[DataProvider('clientResponseFrames')]
-    public function testAClientResponseIsDroppedRatherThanAnswered(string $responseBody): void
+    public function testAClientResponseIsDroppedRatherThanAnswered(array $response): void
     {
-        $input = $this->frame($responseBody) . $this->frame('{"jsonrpc":"2.0","method":"initialized"}');
+        $input = $this->frame(json_encode($response, JSON_THROW_ON_ERROR))
+            . $this->frame(json_encode(['jsonrpc' => '2.0', 'method' => 'initialized'], JSON_THROW_ON_ERROR));
         $reader = new MessageReader(new ReadableBuffer($input));
 
         $result = $reader->read();
@@ -555,12 +556,14 @@ class MessageReaderTest extends TestCase
     /**
      * @codeCoverageIgnore
      *
-     * @return iterable<string, array{non-empty-string}>
+     * @return iterable<string, array{array<string, mixed>}>
      */
     public static function clientResponseFrames(): iterable
     {
-        yield 'success result' => ['{"jsonrpc":"2.0","id":"reg-1","result":null}'];
-        yield 'error result' => ['{"jsonrpc":"2.0","id":"reg-1","error":{"code":-32601,"message":"nope"}}'];
+        yield 'success result' => [['jsonrpc' => '2.0', 'id' => 'reg-1', 'result' => null]];
+        yield 'error result' => [
+            ['jsonrpc' => '2.0', 'id' => 'reg-1', 'error' => ['code' => -32601, 'message' => 'nope']],
+        ];
     }
 
     /**
