@@ -82,6 +82,11 @@ Notes:
 - Functions and constants have **no name→file map** (unlike PSR-4 classes);
   `autoload.files` is an explicit, usually tiny list. So their project reach is a
   small, bounded index of that set — not a project walk.
+- **That index is lazy, warmed at `initialized`** (slice S3.7). Laziness keeps §1
+  intact — nothing depends on the eager pass. The warm-up only moves the cost off the
+  first request, and cannot run earlier: the project root is unknown until
+  `initialize`. Synchronous, since Step 6 is deferred; this repository's own set is 12
+  files / 139 KB, ~35 ms at §8.1's 4 MB/s.
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
   revived only if/when the workspace scope is taken up; otherwise it is deleted.
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw

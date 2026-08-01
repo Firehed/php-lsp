@@ -132,6 +132,18 @@ Class-like prefix search (`searchClassLikes`) is served only by the open-documen
 backend today; project-wide on-disk search is the deferred workspace-index scope
 (RFC 1 §3). Function/constant reach is Step 3b.
 
+**Name → file is one kind-agnostic seam.** `FilesystemBackend` locates files through
+**`SymbolLocator`** (`ComposerSymbolLocator`): `locate(QualifiedName, NameKind)` — the
+kind is a parameter, not a method per kind. Class-likes resolve through Composer's
+name→file map without reading a file; functions and constants have no such map, so
+their index is derived by parsing the `autoload.files` set (`DeclarationScanner`).
+Constant reach covers `const` and literal-name `define()`; a computed-name `define()`
+is invisible to a static parse and out of scope.
+
+That index is lazy, and `KnowledgeWarmer` also warms it on `initialized`. Warming is
+**latency only** — an unwarmed locator answers identically, which is what keeps the
+tier lazy-first. Never make it a correctness precondition (`Cache\Warmable`).
+
 - **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
 

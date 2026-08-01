@@ -82,9 +82,10 @@ Notes:
   `CachedNamespaceCatalog::$cache` (stable-source `childrenOf`) — behind the §5.3
   replaceable seam, and each cache kept must demonstrably drop a parse / source call on
   a hit (asserted via `ParseMetrics`); one that cannot is removed, not wrapped.
-- **Name-type model is JIT (§5.3).** `QualifiedName`, `NameKind`, `FunctionName`, and
-  `ConstantName` land with S3.8 (their first callers), not ahead of them; Step 2 already
-  carries `ClassLikeName` / `NamespaceName`.
+- **Name-type model is JIT (§5.3).** Types land with their first callers; Step 2 carries
+  `ClassLikeName` / `NamespaceName`. S3.7, not S3.8, was the first caller for
+  `QualifiedName` (`SymbolLocator::locate(QualifiedName, NameKind)`); `NameKind` already
+  existed in `src/Resolution/`. `FunctionName` / `ConstantName` remain S3.8's.
 - **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
   gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
   order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
