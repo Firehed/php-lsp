@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\SimpleCache\CacheInterface;
 
 #[CoversClass(ComposerSymbolLocator::class)]
 final class ComposerSymbolLocatorTest extends TestCase
@@ -322,16 +323,34 @@ final class ComposerSymbolLocatorTest extends TestCase
         $path = $locator->locate(QualifiedName::fromFullyQualified('fixtureGlobalHelper'), NameKind::Function_);
 
         self::assertNotNull($path, 'the invalidated file is re-read rather than dropped');
-        self::assertGreaterThan(
-            $afterWarm,
+        // Exactly one, not merely "more": the rebuild must re-read the file that
+        // changed and reuse the cached scan of every file that did not, which an
+        // "at least one more parse" bound cannot tell from rescanning the whole set.
+        self::assertSame(
+            $afterWarm + 1,
             $this->parser->getMetrics()->getParseCount(),
-            'an externally changed file must be reparsed on the next query (RFC 1 §5.2, §5.3)',
+            'only the externally changed file is reparsed on the next query (RFC 1 §5.2, §5.3)',
         );
     }
 
     public function testInvalidatingAnUnrelatedFileKeepsTheCachedScans(): void
     {
-        $locator = $this->locatorForRoot(self::FIXTURES_ROOT);
+        // A spy rather than a parse count: a rebuild from wholly cached scans costs
+        // no parse either, so the parse counter cannot tell the guard being present
+        // from it being absent. The cache eviction it skips is what distinguishes them.
+        $backing = CacheFactory::inMemory();
+        $cache = $this->createMock(CacheInterface::class);
+        $cache->method('get')->willReturnCallback($backing->get(...));
+        $cache->method('set')->willReturnCallback($backing->set(...));
+        $cache->expects($this->never())
+            ->method('delete');
+
+        $locator = new ComposerSymbolLocator(
+            ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT),
+            $this->parser,
+            new DeclarationScanner(),
+            $cache,
+        );
         $locator->warm();
         $afterWarm = $this->parser->getMetrics()->getParseCount();
 
