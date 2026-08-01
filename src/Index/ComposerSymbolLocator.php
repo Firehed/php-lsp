@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Index;
 use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Cache\Warmable;
+use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
@@ -74,7 +75,7 @@ final class ComposerSymbolLocator implements SymbolLocator, Invalidatable, Warma
      */
     public function invalidate(string $uri): void
     {
-        $path = self::pathFromUri($uri);
+        $path = FileUri::toPath($uri);
         if (!in_array($path, $this->map->autoloadFiles(), true)) {
             return;
         }
@@ -137,7 +138,7 @@ final class ComposerSymbolLocator implements SymbolLocator, Invalidatable, Warma
             return new FileDeclarations();
         }
 
-        $ast = $this->parser->parse(new TextDocument('file://' . $path, 'php', 0, $content));
+        $ast = $this->parser->parse(new TextDocument(FileUri::fromPath($path), 'php', 0, $content));
 
         return $this->scanner->scan($ast ?? []);
     }
@@ -159,18 +160,5 @@ final class ComposerSymbolLocator implements SymbolLocator, Invalidatable, Warma
     private static function partitionFor(NameKind $kind): string
     {
         return $kind === NameKind::Function_ ? 'function' : 'constant';
-    }
-
-    /**
-     * The filesystem path a `file://` URI addresses, matching the unencoded paths
-     * the autoload map carries. A path that is not a `file://` URI is unchanged.
-     */
-    private static function pathFromUri(string $uri): string
-    {
-        if (!str_starts_with($uri, 'file://')) {
-            return $uri;
-        }
-
-        return rawurldecode(substr($uri, strlen('file://')));
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Repository;
 
+use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -34,7 +35,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     public function fromAstNode(Stmt\ClassLike $node, string $uri): ClassInfo
     {
         $className = $this->resolveClassName($node);
-        $filePath = $this->uriToPath($uri);
+        $filePath = FileUri::toPath($uri);
 
         return new ClassInfo(
             name: $className,
@@ -699,13 +700,5 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             return Visibility::Protected;
         }
         return Visibility::Public;
-    }
-
-    private function uriToPath(string $uri): string
-    {
-        if (str_starts_with($uri, 'file://')) {
-            return substr($uri, 7);
-        }
-        return $uri;
     }
 }
