@@ -103,6 +103,75 @@ class ServerTest extends TestCase
         );
     }
 
+    /**
+     * The composed server must route an inbound `workspace/didChangeWatchedFiles`
+     * notification to the invalidation handler (RFC 1 §5.2, §5.3). The handler and
+     * its sink→backend chain are proven in isolation elsewhere; this is the only
+     * test that drives the notification through `Server::run()`, so it guards the
+     * `forProject` wiring itself. Dropping the handler from the dispatch list leaves
+     * the second completion serving the stale cached class — which this catches.
+     */
+    public function testDidChangeWatchedFilesInvalidatesWorkspaceStateThroughTheComposedServer(): void
+    {
+        $root = $this->createProject('public function original(): void {}');
+        $consumerUri = 'file://' . $root . '/src/consumer.php';
+        $consumer = "<?php\nnamespace Temp;\n\$w = new Widget();\n\$w->\n";
+
+        try {
+            $input = $this->buildMessages(
+                $this->initializeJson(1),
+                $this->initializedJson(),
+                $this->notificationJson('textDocument/didOpen', [
+                    'textDocument' => [
+                        'uri' => $consumerUri,
+                        'languageId' => 'php',
+                        'version' => 1,
+                        'text' => $consumer,
+                    ],
+                ]),
+                $this->completionAt(2, $consumerUri),
+                // The client saves a new method to the unopened workspace file and
+                // reports the change; the next completion must reflect it.
+                $this->notificationJson('workspace/didChangeWatchedFiles', [
+                    'changes' => [['uri' => 'file://' . $root . '/src/Widget.php', 'type' => 2]],
+                ]),
+                $this->completionAt(3, $consumerUri),
+                $this->requestJson(4, 'shutdown'),
+                $this->notificationJson('exit'),
+            );
+
+            $outputBuffer = new WritableBuffer();
+            // The whole message stream is buffered, so the disk edit is applied as
+            // the transport surfaces the watched-files frame — after the first
+            // completion is answered and before the second is read.
+            $transport = $this->createTransport($input, $outputBuffer, function (Message $message) use ($root): void {
+                if ($message->method === 'workspace/didChangeWatchedFiles') {
+                    $this->writeWidget(
+                        $root,
+                        "public function original(): void {}\n    public function added(): void {}",
+                    );
+                }
+            });
+            $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $root);
+
+            $server->run();
+
+            $responses = $this->decodeResponses($outputBuffer->buffer());
+            $before = $this->completionLabels($this->responseWithId($responses, 2));
+            $after = $this->completionLabels($this->responseWithId($responses, 3));
+
+            self::assertContains('original', $before, 'the first completion resolves the workspace class from disk');
+            self::assertNotContains('added', $before, 'the new method does not exist when the first completion runs');
+            self::assertContains(
+                'added',
+                $after,
+                'the watched-files notification must invalidate the cached class so the edit is reflected',
+            );
+        } finally {
+            $this->removeProject($root);
+        }
+    }
+
     public function testUnknownMethodReturnsError(): void
     {
         $input = $this->buildMessages(
@@ -742,6 +811,84 @@ class ServerTest extends TestCase
         return $count;
     }
 
+    /**
+     * A minimal on-disk project `Server::forProject` can resolve: the generated
+     * Composer PSR-4 map (`Temp\` => `src/`) plus a `Widget` class with the given
+     * method body. Returned path is the project root.
+     */
+    private function createProject(string $widgetBody): string
+    {
+        $root = tempnam(sys_get_temp_dir(), 'php-lsp-srv-');
+        self::assertNotFalse($root, 'a temp project path must be obtainable');
+        unlink($root);
+
+        foreach (['/src', '/vendor/composer'] as $dir) {
+            self::assertTrue(mkdir($root . $dir, 0777, true), "the {$dir} directory must be created");
+        }
+
+        self::assertNotFalse(
+            file_put_contents(
+                $root . '/vendor/composer/autoload_psr4.php',
+                "<?php\nreturn " . var_export(['Temp\\' => [$root . '/src']], true) . ";\n",
+            ),
+            'the generated PSR-4 map must be writable',
+        );
+        $this->writeWidget($root, $widgetBody);
+
+        return $root;
+    }
+
+    private function writeWidget(string $root, string $body): void
+    {
+        self::assertNotFalse(
+            file_put_contents($root . '/src/Widget.php', "<?php\nnamespace Temp;\nclass Widget {\n    {$body}\n}\n"),
+            'the workspace Widget class must be writable',
+        );
+    }
+
+    private function removeProject(string $root): void
+    {
+        foreach (['/src/consumer.php', '/src/Widget.php', '/vendor/composer/autoload_psr4.php'] as $file) {
+            if (file_exists($root . $file)) {
+                unlink($root . $file);
+            }
+        }
+        foreach (['/src', '/vendor/composer', '/vendor', ''] as $dir) {
+            rmdir($root . $dir);
+        }
+    }
+
+    private function completionAt(int $id, string $uri): string
+    {
+        // The consumer's `$w->` sits at line 3, immediately after the `->`.
+        return $this->requestJson($id, 'textDocument/completion', [
+            'textDocument' => ['uri' => $uri],
+            'position' => ['line' => 3, 'character' => 4],
+        ]);
+    }
+
+    /**
+     * @param array<array-key, mixed> $response
+     * @return list<string>
+     */
+    private function completionLabels(array $response): array
+    {
+        $result = $response['result'] ?? null;
+        self::assertIsArray($result, 'a completion response carries a result');
+        $items = $result['items'] ?? null;
+        self::assertIsArray($items, 'a completion result carries an items list');
+
+        $labels = [];
+        foreach ($items as $item) {
+            self::assertIsArray($item, 'each completion item is an object');
+            $label = $item['label'] ?? null;
+            self::assertIsString($label, 'each completion item carries a label');
+            $labels[] = $label;
+        }
+
+        return $labels;
+    }
+
     private function initializeJson(int $id = 1): string
     {
         return $this->requestJson($id, 'initialize', ['processId' => 1234, 'capabilities' => []]);
@@ -841,23 +988,39 @@ class ServerTest extends TestCase
         return $code;
     }
 
-    private function createTransport(string $input, WritableBuffer $outputBuffer): TransportInterface
-    {
+    /**
+     * @param (\Closure(Message): void)|null $afterRead Invoked with each read
+     *        message, so a test can apply an out-of-band side effect (e.g. a disk
+     *        edit) at a known point in the otherwise-buffered stream.
+     */
+    private function createTransport(
+        string $input,
+        WritableBuffer $outputBuffer,
+        ?\Closure $afterRead = null,
+    ): TransportInterface {
         $inputBuffer = new ReadableBuffer($input);
         $reader = new MessageReader($inputBuffer);
         $writer = new MessageWriter($outputBuffer);
 
-        return new class ($reader, $writer, $outputBuffer) implements TransportInterface {
+        return new class ($reader, $writer, $outputBuffer, $afterRead) implements TransportInterface {
+            /**
+             * @param (\Closure(Message): void)|null $afterRead
+             */
             public function __construct(
                 private MessageReader $reader,
                 private MessageWriter $writer,
                 private WritableBuffer $outputBuffer,
+                private ?\Closure $afterRead,
             ) {
             }
 
             public function read(): Message|MalformedFrame|EndOfStream
             {
-                return $this->reader->read();
+                $message = $this->reader->read();
+                if ($message instanceof Message && $this->afterRead !== null) {
+                    ($this->afterRead)($message);
+                }
+                return $message;
             }
 
             public function write(\Firehed\PhpLsp\Protocol\OutgoingMessage $message): void
