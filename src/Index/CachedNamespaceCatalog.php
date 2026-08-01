@@ -28,11 +28,11 @@ final class CachedNamespaceCatalog implements NamespaceCatalog, Invalidatable
     }
 
     /**
-     * Drop every cached listing so the next enumeration re-reads the source. Used
-     * when a workspace file changed on disk (RFC 1 §5.3): a create or delete alters
-     * a directory listing this has already memoized.
+     * A listing is keyed by namespace, not by the file that changed, so a single
+     * changed file cannot be mapped to the listings it affects: drop them all and
+     * let the next enumeration re-read (RFC 1 §5.3). The uri is therefore unused.
      */
-    public function invalidate(): void
+    public function invalidate(string $uri): void
     {
         $this->cache->clear();
     }

@@ -30,18 +30,17 @@ use Psr\SimpleCache\CacheInterface;
  * Class-like lookup locates the file for a name and parses that one file — no
  * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
  * replaceable cache seam (RFC 1 §5.3): a file on disk is stable while unchanged, so
- * a resolved class is memoized. An on-disk change to a file — an external edit, a
- * branch checkout, a deletion, or closing a file that was edited in the editor —
- * is signalled through {@see invalidate()} ({@see InvalidatesFiles}), which evicts
- * exactly that file's cached class-likes and drops cached namespace listings so the
- * next query reflects disk (RFC 1 §5.2, §5.3).
+ * a resolved class is memoized. An on-disk change to a file is signalled through
+ * {@see invalidate()} ({@see Invalidatable}), which evicts that file's cached
+ * class-likes and drops cached namespace listings so the next query reflects disk
+ * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
  * ({@see NamespaceCatalog}). Prefix search is empty: a name→file map exists for
  * classes, but a bare prefix has no such map, so project-wide search over disk is
  * the deferred workspace-index scope (RFC 1 §3), not an unbounded walk here.
  */
-final class FilesystemBackend implements SymbolBackend, InvalidatesFiles
+final class FilesystemBackend implements SymbolBackend, Invalidatable
 {
     /**
      * The class-cache keys derived from each file, so an on-disk change to one
@@ -92,12 +91,9 @@ final class FilesystemBackend implements SymbolBackend, InvalidatesFiles
     }
 
     /**
-     * Drop the cached data derived from one file so the next query re-reads disk
-     * (RFC 1 §5.2, §5.3). The parsed class-likes for the file are evicted by their
-     * recorded keys, and cached namespace listings are dropped wholesale — a
-     * create or delete changes a directory listing, and a listing is not keyed by
-     * the file that changed. The pre-change value is not restored: a name whose
-     * file was deleted re-locates to nothing on the next lookup.
+     * Evict the file's cached class-likes by their recorded keys and drop cached
+     * namespace listings, so the next query re-reads disk and the pre-change value
+     * is not restored (RFC 1 §5.2, §5.3).
      */
     public function invalidate(string $uri): void
     {
@@ -108,7 +104,7 @@ final class FilesystemBackend implements SymbolBackend, InvalidatesFiles
         unset($this->cacheKeysByPath[$path]);
 
         if ($this->namespaces instanceof Invalidatable) {
-            $this->namespaces->invalidate();
+            $this->namespaces->invalidate($uri);
         }
     }
 

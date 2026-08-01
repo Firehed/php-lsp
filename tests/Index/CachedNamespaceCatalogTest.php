@@ -62,7 +62,7 @@ class CachedNamespaceCatalogTest extends TestCase
     {
         $this->catalog->childrenOf('Psr\Log');
 
-        $this->catalog->invalidate();
+        $this->catalog->invalidate('file:///any/changed/File.php');
         $this->catalog->childrenOf('Psr\Log');
 
         self::assertSame(
