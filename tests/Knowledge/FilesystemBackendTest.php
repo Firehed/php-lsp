@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
+use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -171,6 +172,23 @@ final class FilesystemBackendTest extends TestCase
             unlink($path);
             rmdir($dir);
         }
+    }
+
+    public function testInvalidateForwardsToAnInvalidatableLocator(): void
+    {
+        // The locator derives its function/constant index by parsing the
+        // autoload.files set, so an external change to one of those files must reach
+        // it as well as the class cache. This fan-out is the only wiring between a
+        // watched-file event and that index (RFC 1 §5.2, §5.3), and no other test
+        // observes it: a locator that is not Invalidatable simply skips it.
+        $locator = $this->createMockForIntersectionOfInterfaces([SymbolLocator::class, Invalidatable::class]);
+        $locator->expects($this->once())
+            ->method('invalidate')
+            ->with('file:///changed/helpers.php');
+
+        $backend = $this->backendWithLocator($locator);
+
+        $backend->invalidate('file:///changed/helpers.php');
     }
 
     public function testInvalidateAnUncachedFileIsHarmless(): void
