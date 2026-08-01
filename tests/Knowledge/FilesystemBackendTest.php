@@ -147,6 +147,20 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
+    public function testInvalidateToleratesANonFileUri(): void
+    {
+        $backend = $this->backend();
+
+        // An unsaved-buffer or other-scheme URI has no on-disk path to match; it is
+        // used verbatim, matches no cached entry, and must not disturb later lookups.
+        $backend->invalidate('untitled:Untitled-1');
+
+        self::assertNotNull(
+            $backend->lookupClassLike(self::className('Fixtures\Domain\User')),
+            'a non-file:// URI must be handled without error',
+        );
+    }
+
     public function testSearchClassLikesIsEmpty(): void
     {
         self::assertSame(
