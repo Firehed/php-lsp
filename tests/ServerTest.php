@@ -385,7 +385,7 @@ class ServerTest extends TestCase
         $server->run();
 
         self::assertSame(
-            3,
+            $this->startupParseCount() + 3,
             $parser->getMetrics()->getParseCount(),
             'three sync messages, one parse each',
         );
@@ -432,10 +432,39 @@ class ServerTest extends TestCase
         $server->run();
 
         self::assertSame(
-            3,
+            $this->startupParseCount() + 3,
             $parser->getMetrics()->getParseCount(),
             'one didOpen and two completion requests, one parse each',
         );
+    }
+
+    /**
+     * The parses a session costs before any document work, so the budgets above stay
+     * about per-message parsing rather than about startup.
+     *
+     * `initialized` warms the knowledge tier's `autoload.files` index (Plan 0002 §3),
+     * whose size is a property of the fixture project. Measuring it rather than
+     * hard-coding it keeps a change to that project's `files` autoload from silently
+     * moving a budget it has nothing to do with.
+     */
+    private function startupParseCount(): int
+    {
+        $input = $this->buildMessages(
+            $this->initializeJson(),
+            $this->initializedJson(),
+            $this->notificationJson('exit'),
+        );
+
+        $parser = new ParserService();
+        $server = Server::forProject(
+            $this->createTransport($input, new WritableBuffer()),
+            new ServerInfo('test', '1.0'),
+            __DIR__ . '/Fixtures',
+            $parser,
+        );
+        $server->run();
+
+        return $parser->getMetrics()->getParseCount();
     }
 
     /**

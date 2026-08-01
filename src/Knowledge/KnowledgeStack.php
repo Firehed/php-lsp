@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
+use Firehed\PhpLsp\Cache\Warmable;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
@@ -27,12 +28,29 @@ use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
  * and the tests that exercise the surfaces (parity, handlers) build the same stack
  * rather than each re-assembling the backends by hand.
  */
-final readonly class KnowledgeStack
+final readonly class KnowledgeStack implements Warmable
 {
+    /**
+     * @param list<Warmable> $warmables the assembled parts that derive on-disk state
+     *        on demand and can be asked to do so up front
+     */
     public function __construct(
         public SymbolSource $source,
         public SymbolSink $sink,
+        private array $warmables = [],
     ) {
+    }
+
+    /**
+     * Derive the on-demand state ahead of the first query that needs it — today the
+     * locators' `autoload.files` index. Latency only: nothing here changes an
+     * answer, so a stack that is never warmed still resolves correctly (Plan 0002 §1).
+     */
+    public function warm(): void
+    {
+        foreach ($this->warmables as $warmable) {
+            $warmable->warm();
+        }
     }
 
     /**
@@ -56,8 +74,10 @@ final readonly class KnowledgeStack
         [$workspaceMap, $vendorMap] = $autoloadMap->partitionByVendorDirectory($vendorDirectory);
 
         $openDocuments = new OpenDocumentBackend($index);
-        $workspace = self::filesystemBackend($workspaceMap, $parser, $classInfoFactory);
-        $vendor = self::filesystemBackend($vendorMap, $parser, $classInfoFactory);
+        $workspaceLocator = self::locator($workspaceMap, $parser);
+        $vendorLocator = self::locator($vendorMap, $parser);
+        $workspace = self::filesystemBackend($workspaceMap, $workspaceLocator, $parser, $classInfoFactory);
+        $vendor = self::filesystemBackend($vendorMap, $vendorLocator, $parser, $classInfoFactory);
         $source = new CompositeSymbolSource([
             $openDocuments,
             $workspace,
@@ -82,16 +102,22 @@ final readonly class KnowledgeStack
             [$workspace, $vendor],
         );
 
-        return new self($source, $sink);
+        return new self($source, $sink, [$workspaceLocator, $vendorLocator]);
+    }
+
+    private static function locator(ComposerAutoloadMap $map, ParserService $parser): ComposerSymbolLocator
+    {
+        return new ComposerSymbolLocator($map, $parser, new DeclarationScanner(), CacheFactory::inMemory());
     }
 
     private static function filesystemBackend(
         ComposerAutoloadMap $map,
+        SymbolLocator $locator,
         ParserService $parser,
         ClassInfoFactory $classInfoFactory,
     ): FilesystemBackend {
         return new FilesystemBackend(
-            new ComposerSymbolLocator($map, $parser, new DeclarationScanner(), CacheFactory::inMemory()),
+            $locator,
             new CachedNamespaceCatalog(new ComposerNamespaceSource($map), CacheFactory::inMemory()),
             $parser,
             $classInfoFactory,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Capability\KnowledgeWarmer;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 use Firehed\PhpLsp\Client\TransportClientConnection;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
@@ -117,7 +118,13 @@ final class Server
         // is no static server capability for them), gated on the client declaring
         // support; the events invalidate cached workspace state (RFC 1 §5.2, §5.3).
         $watchedFilesRegistrar = new WatchedFilesRegistrar(new TransportClientConnection($transport));
-        $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar]);
+
+        // The autoload.files index the function/constant locator derives is built on
+        // demand; warming it once the project root is known keeps that cost off the
+        // first request that needs it (Plan 0002 §3).
+        $knowledgeWarmer = new KnowledgeWarmer($knowledge);
+
+        $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar, $knowledgeWarmer]);
 
         $handlers = [
             new TextDocumentSyncHandler(

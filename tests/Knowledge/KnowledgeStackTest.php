@@ -91,6 +91,40 @@ final class KnowledgeStackTest extends TestCase
         );
     }
 
+    public function testWarmingDerivesTheLocatorsAutoloadFilesIndex(): void
+    {
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->fixturesRoot . '/vendor',
+            $this->parser,
+        );
+        $before = $this->parser->getMetrics()->getParseCount();
+
+        $stack->warm();
+
+        self::assertGreaterThan(
+            $before,
+            $this->parser->getMetrics()->getParseCount(),
+            'warming must reach the assembled locators and parse the autoload.files set',
+        );
+    }
+
+    public function testWarmingIsNotRequiredForTheSourceToAnswer(): void
+    {
+        // Warming is latency, not correctness: an unwarmed stack derives what it
+        // needs on demand (Plan 0002 §1, lazy-first).
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->fixturesRoot . '/vendor',
+            $this->parser,
+        );
+
+        self::assertNotNull(
+            $stack->source->lookupClassLike(self::className('Fixtures\Domain\User')),
+            'a stack that was never warmed must still resolve',
+        );
+    }
+
     private static function className(string $fqn): ClassName
     {
         /** @phpstan-ignore argument.type (fixture and virtual names are not analyzed) */
