@@ -21,6 +21,7 @@ use PHPUnit\Framework\TestCase;
 final class ComposerSymbolLocatorTest extends TestCase
 {
     private const string FIXTURES_ROOT = __DIR__ . '/../Fixtures';
+    private const string PROJECT_ROOT = __DIR__ . '/../..';
 
     private ParserService $parser;
 
@@ -87,6 +88,73 @@ final class ComposerSymbolLocatorTest extends TestCase
 
         self::assertNotNull($path, 'a class-like has a name -> file map and needs no scan');
         self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
+    }
+
+    public function testClassLikesResolveThroughPsr4(): void
+    {
+        $locator = $this->locatorForRoot(self::PROJECT_ROOT);
+
+        $path = $locator->locate(
+            QualifiedName::fromFullyQualified(ComposerSymbolLocator::class),
+            NameKind::ClassLike,
+        );
+
+        self::assertNotNull($path, 'the project\'s own code is reached through its PSR-4 prefix');
+        self::assertStringEndsWith('src/Index/ComposerSymbolLocator.php', $path);
+    }
+
+    public function testClassLikesResolveThroughPsr0(): void
+    {
+        $locator = $this->locatorForRoot(self::FIXTURES_ROOT);
+
+        // @phpstan-ignore class.notFound
+        $path = $locator->locate(QualifiedName::fromFullyQualified(\Psr0\Psr0Fixture::class), NameKind::ClassLike);
+
+        self::assertNotNull($path, 'PSR-0 is still a name -> file map and must resolve like PSR-4');
+        self::assertStringEndsWith('Fixtures/Autoload/Psr0/Psr0Fixture.php', $path);
+    }
+
+    public function testClassLikesResolveThroughTheVendorClassmap(): void
+    {
+        $locator = $this->locatorForRoot(self::PROJECT_ROOT);
+
+        $path = $locator->locate(QualifiedName::fromFullyQualified(TestCase::class), NameKind::ClassLike);
+
+        self::assertNotNull($path, 'a vendored class resolves through the same map');
+        self::assertStringContainsString('phpunit/phpunit', $path);
+    }
+
+    public function testAnUndeclaredClassLikeIsNotLocatable(): void
+    {
+        $locator = $this->locatorForRoot(self::PROJECT_ROOT);
+
+        self::assertNull(
+            $locator->locate(QualifiedName::fromFullyQualified('NonExistent\Class'), NameKind::ClassLike),
+            'absence is a bare null rather than an error (RFC 1 §5.3)',
+        );
+    }
+
+    public function testAProjectWithoutComposerLocatesNothing(): void
+    {
+        $locator = $this->locatorForRoot('/nonexistent/path');
+
+        self::assertNull(
+            $locator->locate(QualifiedName::fromFullyQualified(TestCase::class), NameKind::ClassLike),
+            'a project with no vendor/ yields empty maps rather than an error',
+        );
+    }
+
+    public function testConstructionRegistersNoAutoloader(): void
+    {
+        $before = spl_autoload_functions();
+
+        $this->locatorForRoot(self::PROJECT_ROOT);
+
+        self::assertCount(
+            count($before),
+            spl_autoload_functions(),
+            'the locator reads Composer\'s maps as data and must not register an autoloader',
+        );
     }
 
     public function testClassLikeLookupDoesNotParseTheAutoloadFilesSet(): void

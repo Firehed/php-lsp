@@ -7,8 +7,9 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
+use Firehed\PhpLsp\Index\ComposerSymbolLocator;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\SymbolExtractor;
@@ -90,7 +91,7 @@ final readonly class KnowledgeStack
         ClassInfoFactory $classInfoFactory,
     ): FilesystemBackend {
         return new FilesystemBackend(
-            new ComposerClassLocator($map),
+            new ComposerSymbolLocator($map, $parser, new DeclarationScanner(), CacheFactory::inMemory()),
             new CachedNamespaceCatalog(new ComposerNamespaceSource($map), CacheFactory::inMemory()),
             $parser,
             $classInfoFactory,

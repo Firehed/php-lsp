@@ -9,11 +9,12 @@ use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
-use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Resolution\NameKind;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
@@ -53,7 +54,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     private array $cacheKeysByPath = [];
 
     public function __construct(
-        private readonly ClassLocator $locator,
+        private readonly SymbolLocator $locator,
         private readonly NamespaceCatalog $namespaces,
         private readonly ParserService $parser,
         private readonly ClassInfoFactory $factory,
@@ -76,7 +77,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
             return $cached;
         }
 
-        $filePath = $this->locator->locate($name);
+        $filePath = $this->locator->locate(QualifiedName::fromClassName($name), NameKind::ClassLike);
         if ($filePath === null || !is_readable($filePath)) {
             return null;
         }
@@ -94,6 +95,9 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
      * Evict the file's cached class-likes by their recorded keys and drop cached
      * namespace listings, so the next query re-reads disk and the pre-change value
      * is not restored (RFC 1 §5.2, §5.3).
+     *
+     * The locator is invalidated too: a changed file may be an `autoload.files`
+     * entry, whose function and constant declarations it derived by parsing.
      */
     public function invalidate(string $uri): void
     {
@@ -105,6 +109,10 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
 
         if ($this->namespaces instanceof Invalidatable) {
             $this->namespaces->invalidate($uri);
+        }
+
+        if ($this->locator instanceof Invalidatable) {
+            $this->locator->invalidate($uri);
         }
     }
 
