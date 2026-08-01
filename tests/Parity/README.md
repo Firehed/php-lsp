@@ -2,7 +2,7 @@
 
 This harness gates the behavior-preserving migrations in Steps 2–4 of
 `docs/architecture/0002-execution-plan.md`. `TypeGraphParityTest` covers member
-resolution; this covers the four surfaces those steps move consumers onto:
+resolution; this covers the surfaces those steps move consumers onto:
 
 | Surface | Production entry point | Golden |
 |---|---|---|
@@ -10,6 +10,21 @@ resolution; this covers the four surfaces those steps move consumers onto:
 | namespace enumeration | `SymbolSource::childrenOf()` | `goldens/children-of.json` |
 | prefix search | `SymbolIndex::findByPrefix()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
+| function completion | `FunctionCandidates::find()` | `goldens/function-surface.json` |
+
+The function surface is frozen ahead of the step that changes it: Step 3b moves
+function completion off its direct `get_defined_functions()` call and onto
+`SymbolSource::search`, adding project reach it does not have today. The new reach
+is proven by new fixtures in that slice; the golden is the *preservation* half of
+its acceptance — built-in and open-document function completion must survive the
+migration unchanged.
+
+Alongside it, `BuiltinFunctionParityTest` is an **oracle, not a golden**: it asserts
+the built-in backend enumerates exactly the functions `get_defined_functions()`
+reports, the way `TypeGraphParityTest` uses reflection as the oracle for members.
+That is what makes the version-fragile half of the function surface checkable at
+all — the set cannot be frozen, but it can be compared against the runtime truth
+the production path reads today.
 
 Each surface's observable output over a curated fixture corpus is captured once,
 spot-audited, committed, and diffed on every run. A behavior-preserving step must
@@ -60,8 +75,12 @@ is correct. Recapture is deliberate, not a way to make a red run pass.
 Goldens are frozen only over inputs that are identical across the CI PHP matrix
 (8.3 / 8.4 / 8.5): in-repo fixtures and the locked `psr/http-message` dependency.
 Built-in symbols (reflection) are version-fragile, so they are covered by
-stable-subset assertions instead of being frozen. Absolute paths are relativized
-to the repo root so a golden does not embed the machine it was captured on.
+stable-subset assertions instead of being frozen. Each surface picks the queries
+that keep that true: `children-of` enumerates only namespaces holding no reflected
+symbols, and `function-surface` queries only prefixes narrow enough to match a
+single long-stable core function (`arr` shifts between 8.3 and 8.5; `array_map`
+does not). Absolute paths are relativized to the repo root so a golden does not
+embed the machine it was captured on.
 
 ## Surface coverage (the corpus-gap check)
 
