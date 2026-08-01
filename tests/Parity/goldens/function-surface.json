@@ -1,0 +1,57 @@
+{
+    "document|calc": [
+        {
+            "label": "calculateSum",
+            "kind": 3,
+            "detail": "function calculateSum(int $a, int $b): int",
+            "documentation": "Adds two numbers."
+        }
+    ],
+    "document|calc+snippet": [
+        {
+            "label": "calculateSum",
+            "kind": 3,
+            "detail": "function calculateSum(int $a, int $b): int",
+            "documentation": "Adds two numbers.",
+            "insertText": "calculateSum($0)",
+            "insertTextFormat": 2
+        }
+    ],
+    "document|CALCULATE": [
+        {
+            "label": "calculateSum",
+            "kind": 3,
+            "detail": "function calculateSum(int $a, int $b): int",
+            "documentation": "Adds two numbers."
+        }
+    ],
+    "document|getConfig": [
+        {
+            "label": "getConfig",
+            "kind": 3,
+            "detail": "function getConfig(): Fixtures\\Completion\\Config"
+        }
+    ],
+    "builtin|str_contains": [
+        {
+            "label": "str_contains",
+            "kind": 3
+        }
+    ],
+    "builtin|str_contains+snippet": [
+        {
+            "label": "str_contains",
+            "kind": 3,
+            "insertText": "str_contains($0)",
+            "insertTextFormat": 2
+        }
+    ],
+    "builtin|array_map": [
+        {
+            "label": "array_map",
+            "kind": 3
+        }
+    ],
+    "other-document|calc": [],
+    "no-match|zzzz": []
+}
