@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Utility\NamespacePath;
+
 /**
  * A fully-qualified name split into namespace path and short name, carrying no
  * notion of what it names (Plan 0002 §5.3: the kind-neutral base FQN value type).
@@ -27,20 +29,11 @@ final readonly class QualifiedName
     {
         $fqn = ltrim($fullyQualifiedName, '\\');
 
-        $lastSeparator = strrpos($fqn, '\\');
-        if ($lastSeparator === false) {
-            return new self('', $fqn);
-        }
-
-        return new self(substr($fqn, 0, $lastSeparator), substr($fqn, $lastSeparator + 1));
+        return new self(NamespacePath::namespaceOf($fqn), NamespacePath::shortNameOf($fqn));
     }
 
     public function fullyQualifiedName(): string
     {
-        if ($this->namespace === '') {
-            return $this->shortName;
-        }
-
-        return $this->namespace . '\\' . $this->shortName;
+        return NamespacePath::join($this->namespace, $this->shortName);
     }
 }
