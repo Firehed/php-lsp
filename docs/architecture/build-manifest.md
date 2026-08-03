@@ -117,9 +117,15 @@ Notes:
   rewriting only the function-surface golden S3.6 froze. Note `BuiltinBackend` MUST
   answer function search in S3.9b or built-in function completion regresses — that
   golden is what catches it.
-- **Name-type model is JIT (§5.3).** `QualifiedName`, `NameKind`, `FunctionName`, and
-  `ConstantName` land with S3.8 (their first callers), not ahead of them; Step 2 already
-  carries `ClassLikeName` / `NamespaceName`.
+- **Name-type model is JIT (§5.3).** Each type lands with its first caller, not ahead
+  of it. `NameKind` already exists (it predates Wave 2, as the catalog's coarse kind);
+  Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7c**,
+  whose `SymbolLocator::locate` is its first caller; `FunctionName` in **S3.8a** and
+  `ConstantName` in **S3.8b**, with their lookups.
+  - **`ConstantName` is already taken.** `Domain\ConstantName` wraps a *class* constant
+    name; §5.3's `ConstantName` is a *global* constant FQN. Decide the naming before
+    S3.8b rather than inside it — this is the same coexistence question §7 leaves open
+    for `ClassLikeName` versus `ClassName`.
 - **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
   gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
   order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
