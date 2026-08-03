@@ -164,7 +164,7 @@ Notes:
   the deferred Step 5.
 - **`Closes` is assigned at slice-issue creation, after a reviewer reads the issue —
   never inferred.** Candidates from Wave 1's note: #239 / #181 / #317 land somewhere in
-  S3.7–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
+  S3.7a–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
 
 ### Deferred (not scheduled; excluded from `/do-next` until reached)
 
