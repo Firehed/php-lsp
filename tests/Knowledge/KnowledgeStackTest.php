@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Tests\WritesTemporaryFilesTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,6 +25,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class KnowledgeStackTest extends TestCase
 {
+    use WritesTemporaryFilesTrait;
+
     private string $fixturesRoot;
     private ParserService $parser;
 
@@ -89,6 +92,44 @@ final class KnowledgeStackTest extends TestCase
             $symbolFqns,
             'a supplied index pre-populates the open-document backend the source reads',
         );
+    }
+
+    public function testAWorkspaceClassOverridesAVendoredOneOfTheSameName(): void
+    {
+        // Each half gets its own locator, and nothing else distinguishes them: a
+        // name only one half declares resolves either way, because the composite
+        // falls through. A name *both* halves declare is what pins the fixed
+        // precedence (RFC 1 §5.3) — and, with it, that each backend was paired
+        // with the locator built from its own half of the autoload map.
+        $workspace = $this->createTemporaryDirectory('php-lsp-precedence-');
+
+        try {
+            $this->writePhpFile(
+                $workspace . '/src/Widget.php',
+                "namespace Dup;\nclass Widget { public function fromWorkspace(): void {} }",
+            );
+            $this->writePhpFile(
+                $workspace . '/vendor/pkg/Widget.php',
+                "namespace Dup;\nclass Widget { public function fromVendor(): void {} }",
+            );
+
+            $stack = KnowledgeStack::forProject(
+                new ComposerAutoloadMap(psr4: ['Dup\\' => [$workspace . '/src', $workspace . '/vendor/pkg']]),
+                $workspace . '/vendor',
+                $this->parser,
+            );
+
+            $widget = $stack->source->lookupClassLike(self::className('Dup\Widget'));
+
+            self::assertNotNull($widget, 'the duplicated name must resolve through one of the halves');
+            self::assertArrayHasKey(
+                'fromWorkspace',
+                $widget->methods,
+                'the project\'s own copy must win over the vendored one (RFC 1 §5.3)',
+            );
+        } finally {
+            $this->removeTemporaryDirectory($workspace);
+        }
     }
 
     public function testWarmingDerivesTheLocatorsAutoloadFilesIndex(): void
