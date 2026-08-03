@@ -78,7 +78,8 @@ Definition-of-Done gate.
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
     SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
     SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
-    SZ.1   Z     Definition of Done gate                            S3.10,S4.6,SC.1,SC.2,SC.3  —
+    SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
+    SZ.1   Z     Definition of Done gate                            S3.10,S4.6,SC.1,SC.2,SC.3,SC.4  —
 
 Notes:
 
@@ -129,6 +130,12 @@ Notes:
     `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
     write-path and class-like-lookup goldens prove it. `SymbolExtractor`'s `Class::method`
     FQNs are its own and stay.
+  - **SC.4** — `file://` URI and path conversion is hand-rolled in four live places
+    (`DefaultClassInfoFactory`, `FilesystemBackend` ×2, `Location`, and the dead
+    `WorkspaceIndexer`), each differing in how it handles the scheme and percent-
+    encoding. One `FileUri` replaces them. Found while splitting S3.7, whose locator
+    wanted a fifth copy; the duplication predates that slice and belongs to no step,
+    so S3.7c is gated on it rather than carrying it.
 - **The Builtin backend stood up in S3.3 is reflection-backed and does not satisfy
   §4.7** (0002 §5 known gap) — file the tracked §4.7 issue when S3.3 lands; its fix is
   the deferred Step 5.

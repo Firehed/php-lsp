@@ -379,6 +379,7 @@ row must be discharged at the Definition of Done (Step Z).
     ScopeFinder::extractImports/resolveFromUseStatements       SC.2
     Hand-rolled namespace tracking (SymbolExtractor,           SC.3
       FilesystemBackend::findClassInAst)
+    Hand-rolled file:// conversion (4 sites)                   SC.4
 
 A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
 state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
