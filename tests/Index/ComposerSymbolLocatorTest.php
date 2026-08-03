@@ -297,10 +297,12 @@ final class ComposerSymbolLocatorTest extends TestCase
 
     public function testTheIndexIsBuiltOnceAcrossLookups(): void
     {
-        $locator = $this->locatorForRoot(self::FIXTURES_ROOT);
+        $reads = 0;
+        $locator = $this->locatorForRoot(self::FIXTURES_ROOT, $this->countingCache($reads));
 
         $locator->locate(QualifiedName::fromFullyQualified('fixtureGlobalHelper'), NameKind::Function_);
         $afterFirst = $this->parser->getMetrics()->getParseCount();
+        $readsAfterFirst = $reads;
         self::assertGreaterThan(0, $afterFirst, 'the first lookup builds the index by parsing autoload.files');
 
         // The parser memoizes by content for the duration of one message; discard it
@@ -312,6 +314,11 @@ final class ComposerSymbolLocatorTest extends TestCase
             $afterFirst,
             $this->parser->getMetrics()->getParseCount(),
             'a second lookup must reuse the built index rather than reparse autoload.files',
+        );
+        self::assertSame(
+            $readsAfterFirst,
+            $reads,
+            'a second lookup must reuse the derived index rather than rebuild it from the cached scans',
         );
     }
 
@@ -336,10 +343,12 @@ final class ComposerSymbolLocatorTest extends TestCase
 
     public function testWarmingTwiceDoesNotRebuildTheIndex(): void
     {
-        $locator = $this->locatorForRoot(self::FIXTURES_ROOT);
+        $reads = 0;
+        $locator = $this->locatorForRoot(self::FIXTURES_ROOT, $this->countingCache($reads));
 
         $locator->warm();
         $afterWarm = $this->parser->getMetrics()->getParseCount();
+        $readsAfterWarm = $reads;
 
         $this->parser->discardScopedParses();
         $locator->warm();
@@ -348,6 +357,11 @@ final class ComposerSymbolLocatorTest extends TestCase
             $afterWarm,
             $this->parser->getMetrics()->getParseCount(),
             'warming is idempotent; a second call must not reparse',
+        );
+        self::assertSame(
+            $readsAfterWarm,
+            $reads,
+            'warming is idempotent; a second call must not rebuild the index either',
         );
     }
 
@@ -422,18 +436,41 @@ final class ComposerSymbolLocatorTest extends TestCase
         self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
     }
 
-    private function locatorForRoot(string $projectRoot): ComposerSymbolLocator
+    /**
+     * A cache whose reads are counted, backed by a real one.
+     *
+     * Rebuilding the derived index reads every `autoload.files` entry's cached scan,
+     * so the read count is what tells a reused index from a rebuilt one. The parse
+     * counter cannot: the scans stay cached either way, so a rebuild on every lookup
+     * costs no parse at all.
+     */
+    private function countingCache(int &$reads): CacheInterface
     {
-        return $this->locatorFor(ComposerAutoloadMap::fromProjectRoot($projectRoot));
+        $backing = CacheFactory::inMemory();
+
+        $cache = self::createStub(CacheInterface::class);
+        $cache->method('get')->willReturnCallback(function (string $key) use ($backing, &$reads): mixed {
+            $reads++;
+
+            return $backing->get($key);
+        });
+        $cache->method('set')->willReturnCallback($backing->set(...));
+
+        return $cache;
     }
 
-    private function locatorFor(ComposerAutoloadMap $map): ComposerSymbolLocator
+    private function locatorForRoot(string $projectRoot, ?CacheInterface $cache = null): ComposerSymbolLocator
+    {
+        return $this->locatorFor(ComposerAutoloadMap::fromProjectRoot($projectRoot), $cache);
+    }
+
+    private function locatorFor(ComposerAutoloadMap $map, ?CacheInterface $cache = null): ComposerSymbolLocator
     {
         return new ComposerSymbolLocator(
             $map,
             $this->parser,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            $cache ?? CacheFactory::inMemory(),
         );
     }
 }
