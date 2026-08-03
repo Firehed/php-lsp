@@ -1,0 +1,172 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp\Tests\Index;
+
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Index\DeclarationScanner;
+use Firehed\PhpLsp\Index\FileDeclarations;
+use Firehed\PhpLsp\Parser\ParserService;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+
+#[CoversClass(DeclarationScanner::class)]
+#[CoversClass(FileDeclarations::class)]
+final class DeclarationScannerTest extends TestCase
+{
+    private DeclarationScanner $scanner;
+    private ParserService $parser;
+
+    protected function setUp(): void
+    {
+        $this->scanner = new DeclarationScanner();
+        $this->parser = new ParserService();
+    }
+
+    public function testNamespacedFunctionsAreReportedByFullyQualifiedName(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/helpers.php');
+
+        self::assertSame(
+            ['Fixtures\Helpers\helperFormat', 'Fixtures\Helpers\helperNormalize'],
+            self::fqns($declarations->functions),
+            'a function declared under a namespace is reachable only by its qualified name',
+        );
+    }
+
+    public function testNamespacedConstantsAreReportedByFullyQualifiedName(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/helpers.php');
+
+        self::assertSame(
+            ['Fixtures\Helpers\HELPER_LIMIT'],
+            self::fqns($declarations->constants),
+            'a const declaration under a namespace is namespaced like a function',
+        );
+    }
+
+    public function testGlobalFunctionsAreReportedWithoutANamespace(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        self::assertSame(
+            ['fixtureGlobalHelper', 'fixtureConditionalHelper'],
+            self::fqns($declarations->functions),
+            'a function declared outside any namespace has an empty namespace path',
+        );
+    }
+
+    public function testAConditionallyDeclaredFunctionIsReported(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // A guarded polyfill declaration is nested inside an `if`, not top-level.
+        // Walking only top-level statements — a plausible simplification of the
+        // traversal — would drop the shape most real autoload.files entries take.
+        self::assertContains(
+            'fixtureConditionalHelper',
+            self::fqns($declarations->functions),
+            'a declaration nested inside a conditional is still a declaration',
+        );
+    }
+
+    public function testConstDeclarationAndLiteralDefineAreBothReported(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        self::assertSame(
+            [
+                'FIXTURE_GLOBAL_LIMIT',
+                'FIXTURE_GLOBAL_ALPHA',
+                'FIXTURE_GLOBAL_BETA',
+                'FIXTURE_DEFINED_LIMIT',
+                'FIXTURE_UPPERCASE_DEFINED_LIMIT',
+            ],
+            self::fqns($declarations->constants),
+            'constant reach covers const declarations and literal-name define() alike (Plan 0002 §3b)',
+        );
+    }
+
+    public function testEveryDeclaratorOfAConstStatementIsReported(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // `const A = 1, B = 2;` is one statement holding two declarations. Reading
+        // only the statement's first declarator loses the rest silently.
+        self::assertContains(
+            'FIXTURE_GLOBAL_BETA',
+            self::fqns($declarations->constants),
+            'the second declarator of a const statement is a declaration too',
+        );
+    }
+
+    public function testDefineIsRecognisedRegardlessOfItsSpelling(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // PHP function names are case-insensitive, so `DEFINE(...)` declares a
+        // constant; matching the callee case-sensitively would skip it.
+        self::assertContains(
+            'FIXTURE_UPPERCASE_DEFINED_LIMIT',
+            self::fqns($declarations->constants),
+            'define() is a function call, and function names are case-insensitive',
+        );
+    }
+
+    public function testComputedDefineNameIsNotReported(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // globals.php introduces six constants, the last of which is a `define()`
+        // whose name is concatenated at runtime. Asserting the absence of the
+        // computed *name* cannot fail — no static parse could ever produce it — so
+        // the count is what carries the limitation: whatever a scanner chose to
+        // record for that site would show up as an extra entry.
+        self::assertCount(
+            5,
+            $declarations->constants,
+            'a computed define() name exists only at runtime and contributes nothing (Plan 0002 §3b)',
+        );
+    }
+
+    public function testAFileDeclaringNeitherYieldsNothing(): void
+    {
+        // A class-like file is the common case in an autoload.files set that also
+        // pulls in a bootstrap; it contributes no function or constant names.
+        $declarations = $this->scanFixture('src/Domain/User.php');
+
+        self::assertSame([], $declarations->functions, 'a class declares no free functions');
+        self::assertSame([], $declarations->constants, 'a class constant is not a namespaced constant');
+    }
+
+    public function testAnUnparseableFileYieldsNothing(): void
+    {
+        $declarations = $this->scanner->scan([]);
+
+        self::assertSame([], $declarations->functions, 'no AST means nothing declared, not an error');
+        self::assertSame([], $declarations->constants, 'no AST means nothing declared, not an error');
+    }
+
+    private function scanFixture(string $relativePath): FileDeclarations
+    {
+        $path = __DIR__ . '/../Fixtures/' . $relativePath;
+        $content = file_get_contents($path);
+        self::assertNotFalse($content, "fixture should be readable: {$relativePath}");
+
+        $ast = $this->parser->parse(new TextDocument('file://' . $path, 'php', 0, $content));
+        self::assertNotNull($ast, "fixture should parse: {$relativePath}");
+
+        return $this->scanner->scan($ast);
+    }
+
+    /**
+     * @param list<QualifiedName> $names
+     * @return list<string>
+     */
+    private static function fqns(array $names): array
+    {
+        return array_map(static fn(QualifiedName $name): string => $name->fullyQualifiedName(), $names);
+    }
+}
