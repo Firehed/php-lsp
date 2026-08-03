@@ -101,6 +101,12 @@ Notes:
   **load side-effect** of a PSR-4 / classmap file (declared alongside a class in a
   file loaded for that class) is reachable at PHP runtime but invisible to this
   model. Scoping it out is deliberate — a known limitation, not complete reach.
+  The same holds *within* the `autoload.files` set: the scan reads one file's AST and
+  does not follow `require`/`include`, so an entry that only pulls in a sibling
+  contributes nothing. That is the common polyfill layout and is present in this
+  repository's own tree (`symfony/polyfill-deepclone/bootstrap.php` requires
+  `bootstrap81.php`, where every symbol actually lives). Following literal includes
+  is a possible later extension, not a gap this step closes.
 - The **Builtin backend is reflection-backed today** (zero-index, instant lookup via
   `get_defined_functions()` / reflection), so it introduces **no** lazy-first
   exception. An exception would arise only if a future static, version-aware source

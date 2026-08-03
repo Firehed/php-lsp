@@ -24,6 +24,11 @@ use PhpParser\NodeVisitorAbstract;
  * `define()` is recognised only when its name is a literal string. A computed name
  * is produced by a runtime call and cannot be known from a static parse, so it is
  * skipped — the locate-only limitation Plan 0002 §3 scopes out, not an oversight.
+ *
+ * Only the given AST is read; `require`/`include` are not followed. An entry that
+ * merely pulls in a sibling — the common polyfill layout — therefore contributes
+ * nothing. That is the same scoped-out limitation, recorded here because it is the
+ * one a reader is most likely to mistake for a bug.
  */
 final class DeclarationScanner
 {

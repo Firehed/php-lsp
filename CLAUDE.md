@@ -138,7 +138,8 @@ kind is a parameter, not a method per kind. Class-likes resolve through Composer
 name→file map without reading a file; functions and constants have no such map, so
 their index is derived by parsing the `autoload.files` set (`DeclarationScanner`).
 Constant reach covers `const` and literal-name `define()`; a computed-name `define()`
-is invisible to a static parse and out of scope.
+is invisible to a static parse and out of scope, as is anything reached only through a
+`require`/`include` the scan does not follow.
 
 That index is lazy, and `KnowledgeWarmer` also warms it on `initialized`. Warming is
 **latency only** — an unwarmed locator answers identically, which is what keeps the
