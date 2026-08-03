@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -97,7 +98,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
      */
     public function invalidate(string $uri): void
     {
-        $path = self::pathFromUri($uri);
+        $path = FileUri::toPath($uri);
         foreach ($this->cacheKeysByPath[$path] ?? [] as $cacheKey) {
             $this->cache->delete($cacheKey);
         }
@@ -119,22 +120,6 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         return [];
     }
 
-    /**
-     * The filesystem path a `file://` document URI addresses, matching the paths
-     * the locator produces (which are what {@see $cacheKeysByPath} is keyed by). A
-     * URI percent-encodes reserved characters; the locator's path does not, so the
-     * scheme is stripped and the remainder decoded. A path that is not a `file://`
-     * URI is returned unchanged.
-     */
-    private static function pathFromUri(string $uri): string
-    {
-        if (!str_starts_with($uri, 'file://')) {
-            return $uri;
-        }
-
-        return rawurldecode(substr($uri, strlen('file://')));
-    }
-
     private function parseClassFrom(ClassName $name, string $filePath): ?ClassInfo
     {
         $content = file_get_contents($filePath);
@@ -146,7 +131,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
             // @codeCoverageIgnoreEnd
         }
 
-        $uri = 'file://' . $filePath;
+        $uri = FileUri::fromPath($filePath);
         $document = new TextDocument($uri, 'php', 0, $content);
         $ast = $this->parser->parse($document);
         if ($ast === null) {
