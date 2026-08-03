@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
+use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -435,6 +436,33 @@ class ServerTest extends TestCase
             $this->startupParseCount() + 3,
             $parser->getMetrics()->getParseCount(),
             'one didOpen and two completion requests, one parse each',
+        );
+    }
+
+    /**
+     * The budgets above subtract {@see startupParseCount()}, which measures the very
+     * same code path, so a startup regression cancels on both sides and is invisible
+     * there. This is what bounds it instead, from both directions: warming must
+     * happen at all, and it must cost no more than the `autoload.files` set it
+     * derives from — a warm-up that walked `vendor/` is precisely what lazy-first
+     * forbids (RFC 1 §3, Plan 0002 §3).
+     */
+    public function testStartupWarmsTheKnowledgeTierWithinTheAutoloadFilesBudget(): void
+    {
+        $autoloadFiles = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/Fixtures')->autoloadFiles();
+        self::assertNotSame([], $autoloadFiles, 'the fixture project must declare a files autoload to bound anything');
+
+        $startup = $this->startupParseCount();
+
+        self::assertGreaterThan(
+            0,
+            $startup,
+            'initialized must warm the knowledge tier; an unwired warmer costs zero parses',
+        );
+        self::assertLessThanOrEqual(
+            count($autoloadFiles),
+            $startup,
+            'startup must parse no more than the autoload.files set, never a project or vendor walk',
         );
     }
 
