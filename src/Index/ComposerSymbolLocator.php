@@ -164,10 +164,21 @@ final class ComposerSymbolLocator implements SymbolLocator, Invalidatable, Warma
     }
 
     /**
+     * Class-likes never reach here — {@see locate()} answers them from the name -> file
+     * map before the index is consulted — so this is total over the kinds that do. A
+     * `match` rather than a default: if that early return is ever restructured away,
+     * the kind arrives here loudly instead of being filed silently under `constant`.
+     *
      * @return 'function'|'constant'
      */
     private static function partitionFor(NameKind $kind): string
     {
-        return $kind === NameKind::Function_ ? 'function' : 'constant';
+        return match ($kind) {
+            NameKind::Function_ => 'function',
+            NameKind::Constant => 'constant',
+            // @codeCoverageIgnoreStart
+            NameKind::ClassLike => throw new \LogicException('Class-likes do not use the derived index'),
+            // @codeCoverageIgnoreEnd
+        };
     }
 }
