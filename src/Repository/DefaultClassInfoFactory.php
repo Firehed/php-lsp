@@ -701,5 +701,4 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         }
         return Visibility::Public;
     }
-
 }
