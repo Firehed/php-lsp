@@ -256,6 +256,39 @@ final class ComposerSymbolLocatorTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<string, array{string, NameKind}>
+     */
+    public static function shadowedNames(): iterable
+    {
+        yield 'function' => ['fixtureGlobalHelper', NameKind::Function_];
+        yield 'constant' => ['FIXTURE_GLOBAL_LIMIT', NameKind::Constant];
+    }
+
+    #[DataProvider('shadowedNames')]
+    public function testTheFirstDeclarationOfANameWins(string $fqn, NameKind $kind): void
+    {
+        // PHP cannot load two files declaring the same name, so a name appearing in
+        // two autoload.files entries means a stale map, not an override: the entry
+        // Composer loads first is the declaration the runtime actually has. Sending a
+        // reader to the later one points it at a body that never executes.
+        $locator = $this->locatorFor(new ComposerAutoloadMap(
+            files: [
+                self::FIXTURES_ROOT . '/AutoloadFiles/globals.php',
+                self::FIXTURES_ROOT . '/AutoloadFiles/shadowed-globals.php',
+            ],
+        ));
+
+        $path = $locator->locate(QualifiedName::fromFullyQualified($fqn), $kind);
+
+        self::assertNotNull($path, "{$fqn} is declared in both entries");
+        self::assertStringEndsWith(
+            'AutoloadFiles/globals.php',
+            $path,
+            'the first declaring entry wins; a later one is a stale map',
+        );
+    }
+
     public function testTheIndexIsBuiltOnceAcrossLookups(): void
     {
         $locator = $this->locatorForRoot(self::FIXTURES_ROOT);
