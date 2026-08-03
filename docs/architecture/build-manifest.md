@@ -66,11 +66,14 @@ Definition-of-Done gate.
     S3.7b  3b    Scan a file for its function/constant declarations S3.3              —
     S3.7c  3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
     S3.7d  3b    Derived autoload.files function/constant index     S3.7a,S3.7b,S3.7c —
-    S3.8   3b    lookupFunction/lookupConstant project reach        S3.6,S3.7d        —
-    S3.9   3b    Migrate FunctionCandidates -> search               S3.8              —
-    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.9              —
+    S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
+    S3.8b  3b    lookupConstant project reach                       S3.7d             —
+    S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
+    S3.9a  3b    Generalize search to a kind parameter              S3.8a             —
+    S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
+    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
     S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
-    S4.2   4     Extract node locator + scope analyzer              S3.8,S4.1         —
+    S4.2   4     Extract node locator + scope analyzer              S3.8c,S4.1        —
     S4.3   4     Extract member-access + call-context detectors     S4.2              —
     S4.4   4     Extract name-context resolver                      S4.2              —
     S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
@@ -100,6 +103,20 @@ Notes:
   **S3.7d adds the reach**, which is new behavior proven by new fixtures. S3.7a and
   S3.7b are the two independent inputs S3.7d consumes (the autoload map's `files`
   section; the per-file declaration scan) and have no dependency on each other.
+- **S3.8 and S3.9 are cut by symbol namespace, not by layer.** A layer cut (interface,
+  then backends, then consumers) would land `SymbolBackend` methods no backend
+  implements, so each slice is instead one vertical: a kind's name type, its
+  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. S3.8c
+  then migrates the consumers (`SymbolResolver`, `BasicTypeResolver`) off
+  `FunctionRepository::get(string, array $ast)` — it is the Step 3b slice that edits
+  `SymbolResolver`, so it, not S3.8a, is what S4.2 serializes against (§6).
+  S3.9 divides on provability rather than kind: **S3.9a** widens `searchClassLikes` to
+  `search(string $prefix, NameKind $kind)` with class-likes still the only searchable
+  kind, which is behavior-preserving and leaves every Step P golden frozen; **S3.9b**
+  makes the backends answer function search and moves `FunctionCandidates` onto it,
+  rewriting only the function-surface golden S3.6 froze. Note `BuiltinBackend` MUST
+  answer function search in S3.9b or built-in function completion regresses — that
+  golden is what catches it.
 - **Name-type model is JIT (§5.3).** `QualifiedName`, `NameKind`, `FunctionName`, and
   `ConstantName` land with S3.8 (their first callers), not ahead of them; Step 2 already
   carries `ClassLikeName` / `NamespaceName`.
