@@ -411,10 +411,15 @@ final class ComposerSymbolLocatorTest extends TestCase
         // @phpstan-ignore class.notFound
         $name = QualifiedName::fromClassName(new ClassName(ClassmapFixture::class));
 
+        $path = $locator->locate($name, NameKind::ClassLike);
+
         self::assertNotNull(
-            $locator->locate($name, NameKind::ClassLike),
+            $path,
             'the class-like path accepts a ClassName converted to the kind-neutral type',
         );
+        // The resolved path, not merely "something resolved": a conversion that
+        // mangled the namespace could still land on some file in the classmap.
+        self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
     }
 
     private function locatorForRoot(string $projectRoot): ComposerSymbolLocator
