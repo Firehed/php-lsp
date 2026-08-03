@@ -28,6 +28,16 @@ DEFINE('FIXTURE_UPPERCASE_DEFINED_LIMIT', 250);
 
 define('FIXTURE_COMPUTED_' . 'LIMIT', 300);
 
+// `define` takes named arguments like any other function, and a named argument may
+// be written in any order — so position alone does not say which one is the name.
+define(constant_name: 'FIXTURE_NAMED_LIMIT', value: 400);
+// A string value in first position is the case that misleads: read positionally it
+// looks exactly like a name.
+define(value: 'FIXTURE_NOT_A_CONSTANT_NAME', constant_name: 'FIXTURE_REORDERED_LIMIT');
+
+// Not a declaration: a first-class callable makes a Closure and defines nothing.
+define(...);
+
 function fixtureGlobalHelper(int $value): int
 {
     return $value * 2;

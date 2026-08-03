@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Parser\ParserService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use ReflectionFunction;
 
 #[CoversClass(DeclarationScanner::class)]
 #[CoversClass(FileDeclarations::class)]
@@ -115,9 +116,47 @@ final class DeclarationScannerTest extends TestCase
                 'FIXTURE_GLOBAL_BETA',
                 'FIXTURE_DEFINED_LIMIT',
                 'FIXTURE_UPPERCASE_DEFINED_LIMIT',
+                'FIXTURE_NAMED_LIMIT',
+                'FIXTURE_REORDERED_LIMIT',
             ],
             self::fqns($declarations->constants),
             'constant reach covers const declarations and literal-name define() alike (Plan 0002 §3b)',
+        );
+    }
+
+    public function testDefineNamesItsConstantByNamedArgumentToo(): void
+    {
+        // Reading the first argument positionally would index the *value* of the
+        // reordered call as if it were a constant name.
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        self::assertSame(
+            'constant_name',
+            (new ReflectionFunction('define'))->getParameters()[0]->getName(),
+            'the parameter the scanner matches by name is the one PHP declares',
+        );
+        self::assertContains(
+            'FIXTURE_REORDERED_LIMIT',
+            self::fqns($declarations->constants),
+            'a named argument declares the constant it names regardless of its position',
+        );
+        self::assertNotContains(
+            'FIXTURE_NOT_A_CONSTANT_NAME',
+            self::fqns($declarations->constants),
+            'the value of a define() call is not a constant name',
+        );
+    }
+
+    public function testAFirstClassCallableDefineDeclaresNothing(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // `define(...)` parses to a placeholder rather than an argument: it makes a
+        // Closure and declares nothing.
+        self::assertNotContains(
+            '',
+            self::fqns($declarations->constants),
+            'a call carrying no arguments contributes no constant',
         );
     }
 
@@ -148,11 +187,11 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        // The fixture declares six; asserting the computed name's absence could
-        // never fail, so the count is what carries the limitation.
-        self::assertCount(
-            5,
-            $declarations->constants,
+        // Named rather than counted: this stays red for the right reason if the
+        // scanner ever learns to fold `'A' . 'B'` into a name.
+        self::assertNotContains(
+            'FIXTURE_COMPUTED_LIMIT',
+            self::fqns($declarations->constants),
             'a computed define() name exists only at runtime and contributes nothing (Plan 0002 §3b)',
         );
     }
