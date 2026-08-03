@@ -11,9 +11,11 @@ use Firehed\PhpLsp\Cache\Warmable;
  * cost lands before the user's first keystroke rather than inside the request that
  * happens to need it.
  *
- * `initialized` is the earliest point this can run: the project root — and so the
- * autoload configuration everything is derived from — is not known until the client
- * has sent `initialize`.
+ * `initialized` is chosen because it is the first point at which no client request is
+ * outstanding. It is not the earliest point possible: the project root comes from the
+ * server's own invocation rather than from the `initialize` params, so the autoload
+ * configuration is already built at construction. Warming there would simply move the
+ * cost into the handshake the client is blocked on, which is where it would be felt.
  *
  * This is latency, never correctness. Nothing downstream may assume it ran: an
  * unwarmed {@see Warmable} answers identically, deriving what it needs when asked

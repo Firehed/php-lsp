@@ -84,9 +84,12 @@ Notes:
   small, bounded index of that set — not a project walk.
 - **That index is lazy, warmed at `initialized`** (slice S3.7). Laziness keeps §1
   intact — nothing depends on the eager pass. The warm-up only moves the cost off the
-  first request, and cannot run earlier: the project root is unknown until
-  `initialize`. Synchronous, since Step 6 is deferred; this repository's own set is 12
-  files / 139 KB, ~35 ms at §8.1's 4 MB/s.
+  first request. `initialized` is not the earliest point it *could* run — the project
+  root comes from the server's own invocation, not from the `initialize` params, so
+  the autoload configuration exists at construction — but it is the first point with
+  no client request outstanding, and warming during the handshake would just relocate
+  the latency to where the client is blocked. Synchronous, since Step 6 is deferred;
+  this repository's own set is 12 files / 139 KB, ~35 ms at §8.1's 4 MB/s.
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
   revived only if/when the workspace scope is taken up; otherwise it is deleted — which
   is slice **SC.1**, since it is dead today (zero references) and the workspace scope is

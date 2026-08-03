@@ -120,8 +120,9 @@ final class Server
         $watchedFilesRegistrar = new WatchedFilesRegistrar(new TransportClientConnection($transport));
 
         // The autoload.files index the function/constant locator derives is built on
-        // demand; warming it once the project root is known keeps that cost off the
-        // first request that needs it (Plan 0002 §3).
+        // demand; warming it at `initialized` — the first point with no client request
+        // outstanding — keeps that cost off the first request that needs it, without
+        // moving it into the handshake instead (Plan 0002 §3).
         $knowledgeWarmer = new KnowledgeWarmer($knowledge);
 
         $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar, $knowledgeWarmer]);
