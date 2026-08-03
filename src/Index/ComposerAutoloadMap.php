@@ -86,8 +86,7 @@ final class ComposerAutoloadMap
         [$workspacePsr0, $vendorPsr0] = self::splitPrefixes($this->psr0Prefixes(), $isVendor);
         [$workspaceClassMap, $vendorClassMap] = self::splitClassMap($this->classMap(), $isVendor);
 
-        $vendorFiles = array_values(array_filter($this->files, $isVendor));
-        $workspaceFiles = array_values(array_filter($this->files, static fn(string $path): bool => !$isVendor($path)));
+        [$workspaceFiles, $vendorFiles] = self::splitFiles($this->files, $isVendor);
 
         return [
             new self($workspacePsr4, $workspacePsr0, $workspaceClassMap, $workspaceFiles),
@@ -183,6 +182,27 @@ final class ComposerAutoloadMap
                 $vendor[$fqn] = $file;
             } else {
                 $workspace[$fqn] = $file;
+            }
+        }
+
+        return [$workspace, $vendor];
+    }
+
+    /**
+     * @param list<string> $files
+     * @param callable(string): bool $isVendor
+     * @return array{list<string>, list<string>}
+     */
+    private static function splitFiles(array $files, callable $isVendor): array
+    {
+        $workspace = [];
+        $vendor = [];
+
+        foreach ($files as $file) {
+            if ($isVendor($file)) {
+                $vendor[] = $file;
+            } else {
+                $workspace[] = $file;
             }
         }
 

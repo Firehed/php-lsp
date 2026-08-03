@@ -49,8 +49,9 @@ class ComposerAutoloadMapTest extends TestCase
 
     public function testAProjectWithoutAutoloadFilesYieldsAnEmptyList(): void
     {
-        // A project whose composer.json declares no `files` autoload has no
-        // autoload_files.php at all, which is absence rather than an error.
+        // Composer generates no autoload_files.php when a project declares no `files`
+        // autoload, so the read reaches a missing file — the same path a root with no
+        // vendor/ at all takes. Either way it is absence, not an error.
         $map = ComposerAutoloadMap::fromProjectRoot('/nonexistent');
 
         self::assertSame([], $map->autoloadFiles(), 'A project with no files autoload is not an error');
@@ -65,20 +66,6 @@ class ComposerAutoloadMapTest extends TestCase
             $map->autoloadFiles(),
             'These files are generated, but they are still data from a project we do not control',
         );
-    }
-
-    /**
-     * @param list<string> $paths
-     */
-    private static function containsPathEndingIn(array $paths, string $suffix): bool
-    {
-        foreach ($paths as $path) {
-            if (str_ends_with($path, $suffix)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     public function testAProjectWithoutComposerYieldsEmptyMaps(): void
@@ -211,5 +198,19 @@ class ComposerAutoloadMapTest extends TestCase
             $vendor->psr4Prefixes(),
             'a prefix mapping to both halves keeps its vendor directory in the vendor half',
         );
+    }
+
+    /**
+     * @param list<string> $paths
+     */
+    private static function containsPathEndingIn(array $paths, string $suffix): bool
+    {
+        foreach ($paths as $path) {
+            if (str_ends_with($path, $suffix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
