@@ -13,6 +13,12 @@ namespace Fixtures\Helpers;
 
 const HELPER_LIMIT = 25;
 
+// `define()` is a function call, so the namespace it is written in does not reach
+// its argument: the literal is the whole name. Both spellings below declare exactly
+// what they say, one global and one qualified.
+define('FIXTURE_HELPER_DEFINED', 30);
+define('Fixtures\Helpers\HELPER_DEFINED_QUALIFIED', 35);
+
 function helperFormat(string $value): string
 {
     return trim($value);

@@ -42,9 +42,42 @@ final class DeclarationScannerTest extends TestCase
         $declarations = $this->scanFixture('AutoloadFiles/helpers.php');
 
         self::assertSame(
-            ['Fixtures\Helpers\HELPER_LIMIT'],
+            [
+                'Fixtures\Helpers\HELPER_LIMIT',
+                'FIXTURE_HELPER_DEFINED',
+                'Fixtures\Helpers\HELPER_DEFINED_QUALIFIED',
+            ],
             self::fqns($declarations->constants),
             'a const declaration under a namespace is namespaced like a function',
+        );
+    }
+
+    public function testDefineIgnoresTheNamespaceItIsWrittenIn(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/helpers.php');
+
+        // The one non-obvious rule on this path: `const` under `namespace Foo` is
+        // `Foo\X`, but `define('X')` in the same file is the global `X`.
+        self::assertContains(
+            'FIXTURE_HELPER_DEFINED',
+            self::fqns($declarations->constants),
+            'define() takes its whole name from the literal, not from the enclosing namespace',
+        );
+    }
+
+    public function testAQualifiedDefineLiteralIsSplitIntoNamespaceAndShortName(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/helpers.php');
+
+        $qualified = array_values(array_filter(
+            $declarations->constants,
+            static fn(QualifiedName $name): bool => $name->namespace !== '',
+        ));
+
+        self::assertSame(
+            ['Fixtures\Helpers', 'Fixtures\Helpers'],
+            array_map(static fn(QualifiedName $name): string => $name->namespace, $qualified),
+            'a define() literal carrying a namespace is split like any other qualified name',
         );
     }
 
