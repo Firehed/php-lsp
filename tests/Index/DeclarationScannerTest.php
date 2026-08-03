@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
+use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\DeclarationScanner;
@@ -62,9 +63,7 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        // A guarded polyfill declaration is nested inside an `if`, not top-level.
-        // Walking only top-level statements — a plausible simplification of the
-        // traversal — would drop the shape most real autoload.files entries take.
+        // Nested inside an `if`, so a top-level-only walk would drop it.
         self::assertContains(
             'fixtureConditionalHelper',
             self::fqns($declarations->functions),
@@ -93,8 +92,7 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        // `const A = 1, B = 2;` is one statement holding two declarations. Reading
-        // only the statement's first declarator loses the rest silently.
+        // `const A = 1, B = 2;` is one statement holding two declarations.
         self::assertContains(
             'FIXTURE_GLOBAL_BETA',
             self::fqns($declarations->constants),
@@ -106,8 +104,6 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        // PHP function names are case-insensitive, so `DEFINE(...)` declares a
-        // constant; matching the callee case-sensitively would skip it.
         self::assertContains(
             'FIXTURE_UPPERCASE_DEFINED_LIMIT',
             self::fqns($declarations->constants),
@@ -119,11 +115,8 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        // globals.php introduces six constants, the last of which is a `define()`
-        // whose name is concatenated at runtime. Asserting the absence of the
-        // computed *name* cannot fail — no static parse could ever produce it — so
-        // the count is what carries the limitation: whatever a scanner chose to
-        // record for that site would show up as an extra entry.
+        // The fixture declares six; asserting the computed name's absence could
+        // never fail, so the count is what carries the limitation.
         self::assertCount(
             5,
             $declarations->constants,
@@ -133,8 +126,6 @@ final class DeclarationScannerTest extends TestCase
 
     public function testAFileDeclaringNeitherYieldsNothing(): void
     {
-        // A class-like file is the common case in an autoload.files set that also
-        // pulls in a bootstrap; it contributes no function or constant names.
         $declarations = $this->scanFixture('src/Domain/User.php');
 
         self::assertSame([], $declarations->functions, 'a class declares no free functions');
@@ -155,7 +146,7 @@ final class DeclarationScannerTest extends TestCase
         $content = file_get_contents($path);
         self::assertNotFalse($content, "fixture should be readable: {$relativePath}");
 
-        $ast = $this->parser->parse(new TextDocument('file://' . $path, 'php', 0, $content));
+        $ast = $this->parser->parse(new TextDocument(FileUri::fromPath($path), 'php', 0, $content));
         self::assertNotNull($ast, "fixture should parse: {$relativePath}");
 
         return $this->scanner->scan($ast);

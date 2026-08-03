@@ -17,18 +17,9 @@ use PhpParser\NodeVisitorAbstract;
  * can be derived for the two symbol namespaces Composer cannot address by name
  * (Plan 0002 §3).
  *
- * Qualified names come from the `namespacedName` attribute {@see \PhpParser\NodeVisitor\NameResolver}
- * already sets during {@see \Firehed\PhpLsp\Parser\ParserService::parse()}, rather
- * than from tracking namespace statements by hand.
- *
- * `define()` is recognised only when its name is a literal string. A computed name
- * is produced by a runtime call and cannot be known from a static parse, so it is
- * skipped — the locate-only limitation Plan 0002 §3 scopes out, not an oversight.
- *
- * Only the given AST is read; `require`/`include` are not followed. An entry that
- * merely pulls in a sibling — the common polyfill layout — therefore contributes
- * nothing. That is the same scoped-out limitation, recorded here because it is the
- * one a reader is most likely to mistake for a bug.
+ * Two deliberate blind spots, both the locate-only limitation of Plan 0002 §3
+ * rather than oversights: a `define()` whose name is computed at runtime, and
+ * anything reached only through a `require`/`include`, which is not followed.
  */
 final class DeclarationScanner
 {
@@ -90,9 +81,8 @@ final class DeclarationScanner
             {
                 if ($name === null) {
                     // @codeCoverageIgnoreStart
-                    // NameResolver populates namespacedName for every declaration it
-                    // visits, and ParserService always runs it; a declaration without
-                    // one cannot be reached through the parser this server uses.
+                    // ParserService always runs NameResolver, which populates
+                    // namespacedName for every declaration it visits.
                     return;
                     // @codeCoverageIgnoreEnd
                 }
