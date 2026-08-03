@@ -119,8 +119,8 @@ Notes:
   golden is what catches it.
 - **Name-type model is JIT (§5.3).** Each type lands with its first caller, not ahead
   of it. `NameKind` already exists (it predates Wave 2, as the catalog's coarse kind);
-  Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7c**,
-  whose `SymbolLocator::locate` is its first caller; `FunctionName` in **S3.8a** and
+  Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7b**,
+  whose `DeclarationScanner` is its first caller; `FunctionName` in **S3.8a** and
   `ConstantName` in **S3.8b**, with their lookups.
   - **`ConstantName` is already taken.** `Domain\ConstantName` wraps a *class* constant
     name; §5.3's `ConstantName` is a *global* constant FQN. Decide the naming before
