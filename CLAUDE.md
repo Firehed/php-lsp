@@ -120,7 +120,9 @@ producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable
 `invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
 the next query re-reads disk. It fans out to the cached on-disk backends (also
 `Invalidatable`): `FilesystemBackend` evicts that file's class-likes (a path→key
-reverse map) and `CachedNamespaceCatalog` drops its listings. Two triggers reach it:
+reverse map) and forwards to its `SymbolLocator`, which drops that file's cached
+declaration scan and the index derived from it; `CachedNamespaceCatalog` drops its
+listings. Two triggers reach it:
 the `workspace/didChangeWatchedFiles` notification (`DidChangeWatchedFilesHandler`)
 and `didClose` (so a closed-after-edit file re-reads disk). Watched files are
 registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outbound
