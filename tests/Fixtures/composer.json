@@ -11,6 +11,10 @@
         "classmap": [
             "Autoload/Classmap/",
             "TypeInference/"
+        ],
+        "files": [
+            "AutoloadFiles/globals.php",
+            "AutoloadFiles/helpers.php"
         ]
     },
     "require-dev": {

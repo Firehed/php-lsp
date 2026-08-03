@@ -22,15 +22,20 @@ final class ComposerAutoloadMap
 {
     private readonly ClassLoader $loader;
 
+    /** @var list<string> */
+    private readonly array $files;
+
     /**
      * @param array<string, list<string>> $psr4 Namespace prefix -> directories
      * @param array<string, list<string>> $psr0 Namespace prefix -> directories
      * @param array<string, string> $classMap Fully qualified name -> file
+     * @param list<string> $files Files loaded wholesale, for their side effects
      */
     public function __construct(
         array $psr4 = [],
         array $psr0 = [],
         array $classMap = [],
+        array $files = [],
     ) {
         $loader = new ClassLoader();
 
@@ -43,6 +48,7 @@ final class ComposerAutoloadMap
         $loader->addClassMap($classMap);
 
         $this->loader = $loader;
+        $this->files = $files;
     }
 
     public static function fromProjectRoot(string $projectRoot): self
@@ -53,6 +59,7 @@ final class ComposerAutoloadMap
             self::loadPrefixes($composerDir . '/autoload_psr4.php'),
             self::loadPrefixes($composerDir . '/autoload_namespaces.php'),
             self::loadClassMap($composerDir . '/autoload_classmap.php'),
+            self::loadFiles($composerDir . '/autoload_files.php'),
         );
     }
 
@@ -79,10 +86,27 @@ final class ComposerAutoloadMap
         [$workspacePsr0, $vendorPsr0] = self::splitPrefixes($this->psr0Prefixes(), $isVendor);
         [$workspaceClassMap, $vendorClassMap] = self::splitClassMap($this->classMap(), $isVendor);
 
+        [$workspaceFiles, $vendorFiles] = self::splitFiles($this->files, $isVendor);
+
         return [
-            new self($workspacePsr4, $workspacePsr0, $workspaceClassMap),
-            new self($vendorPsr4, $vendorPsr0, $vendorClassMap),
+            new self($workspacePsr4, $workspacePsr0, $workspaceClassMap, $workspaceFiles),
+            new self($vendorPsr4, $vendorPsr0, $vendorClassMap, $vendorFiles),
         ];
+    }
+
+    /**
+     * The `autoload.files` set: files Composer loads wholesale rather than by name,
+     * which is where a project's functions and constants are declared.
+     *
+     * Unlike PSR-4, this is not a name -> file map — it cannot be, because functions
+     * and constants have no such map (Plan 0002 §3). It is an explicit, usually tiny
+     * list, which is what makes deriving one by parsing it affordable.
+     *
+     * @return list<string>
+     */
+    public function autoloadFiles(): array
+    {
+        return $this->files;
     }
 
     /**
@@ -165,6 +189,27 @@ final class ComposerAutoloadMap
     }
 
     /**
+     * @param list<string> $files
+     * @param callable(string): bool $isVendor
+     * @return array{list<string>, list<string>}
+     */
+    private static function splitFiles(array $files, callable $isVendor): array
+    {
+        $workspace = [];
+        $vendor = [];
+
+        foreach ($files as $file) {
+            if ($isVendor($file)) {
+                $vendor[] = $file;
+            } else {
+                $workspace[] = $file;
+            }
+        }
+
+        return [$workspace, $vendor];
+    }
+
+    /**
      * A root-namespace mapping (`"": ["src"]`) is a fallback directory in
      * Composer's loader, not a prefix, so it is absent from the prefix accessors.
      * Fold it back to the `''` prefix so enumeration sees one uniform shape.
@@ -201,6 +246,25 @@ final class ComposerAutoloadMap
         }
 
         return $prefixes;
+    }
+
+    /**
+     * Composer keys the generated file by a content hash, which identifies nothing a
+     * consumer needs; the paths are taken as a plain list.
+     *
+     * @return list<string>
+     */
+    private static function loadFiles(string $file): array
+    {
+        $files = [];
+
+        foreach (self::load($file) as $path) {
+            if (is_string($path)) {
+                $files[] = $path;
+            }
+        }
+
+        return $files;
     }
 
     /**

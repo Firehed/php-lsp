@@ -21,6 +21,53 @@ class ComposerAutoloadMapTest extends TestCase
         self::assertArrayHasKey('GlobalConfig', $map->classMap(), 'A classmapped class');
     }
 
+    public function testAutoloadFilesAreReadFromTheProject(): void
+    {
+        $map = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures');
+
+        $files = $map->autoloadFiles();
+
+        self::assertCount(2, $files, 'The fixture project declares two autoload.files entries');
+        foreach (['AutoloadFiles/globals.php', 'AutoloadFiles/helpers.php'] as $expected) {
+            self::assertTrue(
+                self::containsPathEndingIn($files, $expected),
+                "autoload.files must report {$expected}, the bounded function/constant reach (Plan 0002 §3)",
+            );
+        }
+    }
+
+    public function testAutoloadFilesAreKeyedByPositionRatherThanComposersHashes(): void
+    {
+        $map = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures');
+
+        self::assertSame(
+            [0, 1],
+            array_keys($map->autoloadFiles()),
+            'Composer keys the generated file by a content hash; consumers want a plain list',
+        );
+    }
+
+    public function testAProjectWithoutAutoloadFilesYieldsAnEmptyList(): void
+    {
+        // Composer generates no autoload_files.php when a project declares no `files`
+        // autoload, so the read reaches a missing file — the same path a root with no
+        // vendor/ at all takes. Either way it is absence, not an error.
+        $map = ComposerAutoloadMap::fromProjectRoot('/nonexistent');
+
+        self::assertSame([], $map->autoloadFiles(), 'A project with no files autoload is not an error');
+    }
+
+    public function testMalformedAutoloadFileEntriesAreDiscarded(): void
+    {
+        $map = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures/MalformedProject');
+
+        self::assertSame(
+            ['/tmp/valid-helpers.php'],
+            $map->autoloadFiles(),
+            'These files are generated, but they are still data from a project we do not control',
+        );
+    }
+
     public function testAProjectWithoutComposerYieldsEmptyMaps(): void
     {
         $map = ComposerAutoloadMap::fromProjectRoot('/nonexistent');
@@ -110,6 +157,29 @@ class ComposerAutoloadMapTest extends TestCase
         );
     }
 
+    public function testPartitionSplitsAutoloadFilesByVendorDirectory(): void
+    {
+        $map = new ComposerAutoloadMap(
+            files: [
+                '/project/src/helpers.php',
+                '/project/vendor/dep/src/functions.php',
+            ],
+        );
+
+        [$workspace, $vendor] = $map->partitionByVendorDirectory('/project/vendor');
+
+        self::assertSame(
+            ['/project/src/helpers.php'],
+            $workspace->autoloadFiles(),
+            'the workspace half keeps only files outside vendor/',
+        );
+        self::assertSame(
+            ['/project/vendor/dep/src/functions.php'],
+            $vendor->autoloadFiles(),
+            'the vendor half keeps only files under vendor/',
+        );
+    }
+
     public function testPartitionAssignsAPrefixWithMixedDirectoriesToBothHalves(): void
     {
         $map = new ComposerAutoloadMap(
@@ -128,5 +198,19 @@ class ComposerAutoloadMapTest extends TestCase
             $vendor->psr4Prefixes(),
             'a prefix mapping to both halves keeps its vendor directory in the vendor half',
         );
+    }
+
+    /**
+     * @param list<string> $paths
+     */
+    private static function containsPathEndingIn(array $paths, string $suffix): bool
+    {
+        foreach ($paths as $path) {
+            if (str_ends_with($path, $suffix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
