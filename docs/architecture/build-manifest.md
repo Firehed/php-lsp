@@ -62,12 +62,18 @@ Definition-of-Done gate.
     S3.4   3a    One parse / one write path + consistency check     S3.3              —
     S3.5   3a    External-file-change invalidation                  S3.3,S3.4         —
     S3.6   3b    Function-surface golden + Builtin enum oracle      S3.3              —
-    S3.7   3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3              —
-    S3.8   3b    lookupFunction/lookupConstant project reach        S3.6,S3.7         —
-    S3.9   3b    Migrate FunctionCandidates -> search               S3.8              —
-    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.9              —
+    S3.7a  3b    Read autoload.files into ComposerAutoloadMap       S3.3              —
+    S3.7b  3b    Scan a file for its function/constant declarations S3.3              —
+    S3.7c  3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
+    S3.7d  3b    Derived autoload.files function/constant index     S3.7a,S3.7b,S3.7c —
+    S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
+    S3.8b  3b    lookupConstant project reach                       S3.7d             —
+    S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
+    S3.9a  3b    Generalize search to a kind parameter              S3.8a             —
+    S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
+    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
     S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
-    S4.2   4     Extract node locator + scope analyzer              S3.8,S4.1         —
+    S4.2   4     Extract node locator + scope analyzer              S3.8c,S4.1        —
     S4.3   4     Extract member-access + call-context detectors     S4.2              —
     S4.4   4     Extract name-context resolver                      S4.2              —
     S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
@@ -75,7 +81,8 @@ Definition-of-Done gate.
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
     SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
     SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
-    SZ.1   Z     Definition of Done gate                            S3.10,S4.6,SC.1,SC.2,SC.3  —
+    SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
+    SZ.1   Z     Definition of Done gate                            S3.10,S4.6,SC.1,SC.2,SC.3,SC.4  —
 
 Notes:
 
@@ -85,9 +92,40 @@ Notes:
   `CachedNamespaceCatalog::$cache` (stable-source `childrenOf`) — behind the §5.3
   replaceable seam, and each cache kept must demonstrably drop a parse / source call on
   a hit (asserted via `ParseMetrics`); one that cannot is removed, not wrapped.
-- **Name-type model is JIT (§5.3).** `QualifiedName`, `NameKind`, `FunctionName`, and
-  `ConstantName` land with S3.8 (their first callers), not ahead of them; Step 2 already
-  carries `ClassLikeName` / `NamespaceName`.
+- **S3.7 is four slices, cut where Composer's own data divides.** A single slice was
+  built first (PR #388, 622 src lines over 17 files) and was too large to review as
+  one unit. The seam it missed is already in the code: a class-like lookup is
+  arithmetic on the name (`findFile`, five lines — the old `ComposerClassLocator`
+  verbatim), while a function or constant lookup has no name→file map and must derive
+  one by parsing the `autoload.files` set. So **S3.7c generalizes the shape** — the
+  kind-agnostic `SymbolLocator` interface, `QualifiedName`, and the class-like branch
+  — which is behavior-preserving and proven by the existing class-like-lookup golden;
+  **S3.7d adds the reach**, which is new behavior proven by new fixtures. S3.7a and
+  S3.7b are the two independent inputs S3.7d consumes (the autoload map's `files`
+  section; the per-file declaration scan) and have no dependency on each other.
+- **S3.8 and S3.9 are cut by symbol namespace, not by layer.** A layer cut (interface,
+  then backends, then consumers) would land `SymbolBackend` methods no backend
+  implements, so each slice is instead one vertical: a kind's name type, its
+  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. S3.8c
+  then migrates the consumers (`SymbolResolver`, `BasicTypeResolver`) off
+  `FunctionRepository::get(string, array $ast)` — it is the Step 3b slice that edits
+  `SymbolResolver`, so it, not S3.8a, is what S4.2 serializes against (§6).
+  S3.9 divides on provability rather than kind: **S3.9a** widens `searchClassLikes` to
+  `search(string $prefix, NameKind $kind)` with class-likes still the only searchable
+  kind, which is behavior-preserving and leaves every Step P golden frozen; **S3.9b**
+  makes the backends answer function search and moves `FunctionCandidates` onto it,
+  rewriting only the function-surface golden S3.6 froze. Note `BuiltinBackend` MUST
+  answer function search in S3.9b or built-in function completion regresses — that
+  golden is what catches it.
+- **Name-type model is JIT (§5.3).** Each type lands with its first caller, not ahead
+  of it. `NameKind` already exists (it predates Wave 2, as the catalog's coarse kind);
+  Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7c**,
+  whose `SymbolLocator::locate` is its first caller; `FunctionName` in **S3.8a** and
+  `ConstantName` in **S3.8b**, with their lookups.
+  - **`ConstantName` is already taken.** `Domain\ConstantName` wraps a *class* constant
+    name; §5.3's `ConstantName` is a *global* constant FQN. Decide the naming before
+    S3.8b rather than inside it — this is the same coexistence question §7 leaves open
+    for `ClassLikeName` versus `ClassName`.
 - **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
   gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
   order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
@@ -115,12 +153,18 @@ Notes:
     `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
     write-path and class-like-lookup goldens prove it. `SymbolExtractor`'s `Class::method`
     FQNs are its own and stay.
+  - **SC.4** — `file://` URI and path conversion is hand-rolled in four live places
+    (`DefaultClassInfoFactory`, `FilesystemBackend` ×2, `Location`, and the dead
+    `WorkspaceIndexer`), each differing in how it handles the scheme and percent-
+    encoding. One `FileUri` replaces them. Found while splitting S3.7, whose locator
+    wanted a fifth copy; the duplication predates that slice and belongs to no step,
+    so S3.7c is gated on it rather than carrying it.
 - **The Builtin backend stood up in S3.3 is reflection-backed and does not satisfy
   §4.7** (0002 §5 known gap) — file the tracked §4.7 issue when S3.3 lands; its fix is
   the deferred Step 5.
 - **`Closes` is assigned at slice-issue creation, after a reviewer reads the issue —
   never inferred.** Candidates from Wave 1's note: #239 / #181 / #317 land somewhere in
-  S3.7–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
+  S3.7a–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
 
 ### Deferred (not scheduled; excluded from `/do-next` until reached)
 

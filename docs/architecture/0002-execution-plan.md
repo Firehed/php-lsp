@@ -82,6 +82,20 @@ Notes:
 - Functions and constants have **no name→file map** (unlike PSR-4 classes);
   `autoload.files` is an explicit, usually tiny list. So their project reach is a
   small, bounded index of that set — not a project walk.
+- **That index is derived lazily, and an eager warm-up was measured and declined.**
+  A `Warmable` seam plus an `initialized` listener that pre-derived it was built
+  during S3.7 and is not being kept. It was never a correctness requirement — an
+  unwarmed locator answers identically, deriving on the first lookup — so the whole
+  question is which message pays a one-off cost. Sized against §8.1's measured
+  ~4 MB/s parse rate: this repository's own `autoload.files` is 12 entries totalling
+  139,006 bytes ≈ **35 ms** (≈70 ms with pcov on), of which 111,322 bytes are
+  PHPUnit's `Assert/Functions.php`; the remaining 11 files total 27,684 bytes ≈
+  **7 ms**. Moving 7–35 ms, once per session, does not justify ~105 lines, a second
+  `InitializedListener`, and a non-obvious "warm at `initialized`, not at
+  construction" rule. **Reopen condition:** a measured first function or constant
+  lookup that exceeds §8.4's 50 ms per-request budget on a real project. The seam
+  can be re-added verbatim if so — `warm()` changes no interface, which is precisely
+  why deferring it is free.
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
   revived only if/when the workspace scope is taken up; otherwise it is deleted — which
   is slice **SC.1**, since it is dead today (zero references) and the workspace scope is
@@ -379,6 +393,7 @@ row must be discharged at the Definition of Done (Step Z).
     ScopeFinder::extractImports/resolveFromUseStatements       SC.2
     Hand-rolled namespace tracking (SymbolExtractor,           SC.3
       FilesystemBackend::findClassInAst)
+    Hand-rolled file:// conversion (4 sites)                   SC.4
 
 A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
 state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
