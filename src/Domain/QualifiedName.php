@@ -15,8 +15,9 @@ namespace Firehed\PhpLsp\Domain;
  * right input to a kind-agnostic query: the caller supplies the name it read out of
  * a syntactic position, plus the kind that position implies.
  *
- * A leading `\` is spelling rather than identity, so it is dropped; the global
- * namespace is the empty path.
+ * The global namespace is the empty path. A leading `\` is spelling rather than
+ * identity, so {@see fromFullyQualified()} drops it; the constructor takes the two
+ * parts already separated and so never sees one.
  */
 final readonly class QualifiedName
 {

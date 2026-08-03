@@ -26,9 +26,11 @@ final readonly class Location
         if ($file === null || $line === null) {
             return null;
         }
-        // Callers pass either a path or an already-formed URI, so normalize through
-        // the one conversion seam rather than concatenating: this URI goes to the
-        // client, and an unencoded space or `#` in it is not a valid URI.
+        // This URI goes to the client, and an unencoded space or `#` in it is not a
+        // valid URI, so it is built through the one conversion seam rather than by
+        // concatenating. Decoding first makes the factory total over both spellings:
+        // today's callers pass a path, and one that passed a URI would otherwise get
+        // it encoded a second time.
         $uri = FileUri::fromPath(FileUri::toPath($file));
         return new self($uri, $line - 1, 0, $line - 1, 0);
     }
