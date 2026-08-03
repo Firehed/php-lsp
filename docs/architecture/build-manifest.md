@@ -62,8 +62,11 @@ Definition-of-Done gate.
     S3.4   3a    One parse / one write path + consistency check     S3.3              —
     S3.5   3a    External-file-change invalidation                  S3.3,S3.4         —
     S3.6   3b    Function-surface golden + Builtin enum oracle      S3.3              —
-    S3.7   3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3              —
-    S3.8   3b    lookupFunction/lookupConstant project reach        S3.6,S3.7         —
+    S3.7a  3b    Read autoload.files into ComposerAutoloadMap       S3.3              —
+    S3.7b  3b    Scan a file for its function/constant declarations S3.3              —
+    S3.7c  3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
+    S3.7d  3b    Derived autoload.files function/constant index     S3.7a,S3.7b,S3.7c —
+    S3.8   3b    lookupFunction/lookupConstant project reach        S3.6,S3.7d        —
     S3.9   3b    Migrate FunctionCandidates -> search               S3.8              —
     S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.9              —
     S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
@@ -85,6 +88,17 @@ Notes:
   `CachedNamespaceCatalog::$cache` (stable-source `childrenOf`) — behind the §5.3
   replaceable seam, and each cache kept must demonstrably drop a parse / source call on
   a hit (asserted via `ParseMetrics`); one that cannot is removed, not wrapped.
+- **S3.7 is four slices, cut where Composer's own data divides.** A single slice was
+  built first (PR #388, 622 src lines over 17 files) and was too large to review as
+  one unit. The seam it missed is already in the code: a class-like lookup is
+  arithmetic on the name (`findFile`, five lines — the old `ComposerClassLocator`
+  verbatim), while a function or constant lookup has no name→file map and must derive
+  one by parsing the `autoload.files` set. So **S3.7c generalizes the shape** — the
+  kind-agnostic `SymbolLocator` interface, `QualifiedName`, and the class-like branch
+  — which is behavior-preserving and proven by the existing class-like-lookup golden;
+  **S3.7d adds the reach**, which is new behavior proven by new fixtures. S3.7a and
+  S3.7b are the two independent inputs S3.7d consumes (the autoload map's `files`
+  section; the per-file declaration scan) and have no dependency on each other.
 - **Name-type model is JIT (§5.3).** `QualifiedName`, `NameKind`, `FunctionName`, and
   `ConstantName` land with S3.8 (their first callers), not ahead of them; Step 2 already
   carries `ClassLikeName` / `NamespaceName`.
