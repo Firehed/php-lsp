@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
+use Firehed\PhpLsp\Tests\WritesTemporaryFilesTrait;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 
@@ -27,6 +28,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 class ExternalFileChangeInvalidationTest extends TestCase
 {
+    use WritesTemporaryFilesTrait;
+
     private const string NAMESPACE = 'Temp\\';
 
     private string $workspace;
@@ -34,24 +37,13 @@ class ExternalFileChangeInvalidationTest extends TestCase
 
     protected function setUp(): void
     {
-        $workspace = tempnam(sys_get_temp_dir(), 'php-lsp-s35-');
-        self::assertNotFalse($workspace, 'a temp workspace path must be obtainable');
-        unlink($workspace);
-        self::assertTrue(mkdir($workspace), 'the temp workspace directory must be created');
-
-        $this->workspace = $workspace;
+        $this->workspace = $this->createTemporaryDirectory('php-lsp-s35-');
         $this->parser = new ParserService();
     }
 
     protected function tearDown(): void
     {
-        $files = glob($this->workspace . '/*');
-        if ($files !== false) {
-            foreach ($files as $file) {
-                unlink($file);
-            }
-        }
-        rmdir($this->workspace);
+        $this->removeTemporaryDirectory($this->workspace);
     }
 
     public function testAnExternalEditToAnUnopenedFileIsReflectedOnTheNextQuery(): void
@@ -162,9 +154,9 @@ class ExternalFileChangeInvalidationTest extends TestCase
 
     private function writeClass(string $shortName, string $body): void
     {
-        self::assertNotFalse(
-            file_put_contents($this->workspace . '/' . $shortName . '.php', $this->classSource($shortName, $body)),
-            "the fixture class {$shortName} must be writable",
+        $this->writePhpFile(
+            $this->workspace . '/' . $shortName . '.php',
+            "namespace Temp;\nclass {$shortName} {\n{$body}\n}",
         );
     }
 

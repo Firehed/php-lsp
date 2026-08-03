@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\NameKind;
 use Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture;
+use Firehed\PhpLsp\Tests\WritesTemporaryFilesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -22,6 +23,8 @@ use Psr\SimpleCache\CacheInterface;
 #[CoversClass(ComposerSymbolLocator::class)]
 final class ComposerSymbolLocatorTest extends TestCase
 {
+    use WritesTemporaryFilesTrait;
+
     private const string FIXTURES_ROOT = __DIR__ . '/../Fixtures';
     private const string PROJECT_ROOT = __DIR__ . '/../..';
 
@@ -269,10 +272,10 @@ final class ComposerSymbolLocatorTest extends TestCase
         // above is for, and it resolves in moments. So the miss must not be
         // memoized: the next rebuild has to read the file that has since appeared,
         // rather than answer from a cached "declares nothing" for the session.
-        $directory = $this->temporaryDirectory();
+        $directory = $this->createTemporaryDirectory('php-lsp-locator-');
         $present = $directory . '/present.php';
         $late = $directory . '/late.php';
-        $this->write($present, 'function fixtureTemporaryPresent(): void {}');
+        $this->writePhpFile($present, 'function fixtureTemporaryPresent(): void {}');
 
         try {
             $locator = $this->locatorFor(new ComposerAutoloadMap(files: [$late, $present]));
@@ -282,7 +285,7 @@ final class ComposerSymbolLocatorTest extends TestCase
                 'the entry is not on disk yet, so nothing it will declare is locatable',
             );
 
-            $this->write($late, 'function fixtureTemporaryLate(): void {}');
+            $this->writePhpFile($late, 'function fixtureTemporaryLate(): void {}');
             // An unrelated entry changing is what rebuilds the index here: the
             // appearing file gets no notification of its own from a client that
             // does not watch it.
@@ -293,7 +296,7 @@ final class ComposerSymbolLocatorTest extends TestCase
                 'an entry that was unreadable at warm time must be re-read on the next rebuild',
             );
         } finally {
-            $this->removeDirectory($directory);
+            $this->removeTemporaryDirectory($directory);
         }
     }
 
@@ -469,35 +472,6 @@ final class ComposerSymbolLocatorTest extends TestCase
         // The resolved path, not merely "something resolved": a conversion that
         // mangled the namespace could still land on some file in the classmap.
         self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $path);
-    }
-
-    private function temporaryDirectory(): string
-    {
-        $path = tempnam(sys_get_temp_dir(), 'php-lsp-locator-');
-        self::assertNotFalse($path, 'a temp directory path must be obtainable');
-        unlink($path);
-        self::assertTrue(mkdir($path), 'the temp directory must be created');
-
-        return $path;
-    }
-
-    private function removeDirectory(string $directory): void
-    {
-        $files = glob($directory . '/*');
-        if ($files !== false) {
-            foreach ($files as $file) {
-                unlink($file);
-            }
-        }
-        rmdir($directory);
-    }
-
-    private function write(string $path, string $declaration): void
-    {
-        self::assertNotFalse(
-            file_put_contents($path, "<?php\n{$declaration}\n"),
-            "the temporary autoload.files entry {$path} must be writable",
-        );
     }
 
     /**
