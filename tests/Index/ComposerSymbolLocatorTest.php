@@ -65,6 +65,16 @@ final class ComposerSymbolLocatorTest extends TestCase
             NameKind::Constant,
             'AutoloadFiles/globals.php',
         ];
+        yield 'define() spelled in another case' => [
+            'FIXTURE_UPPERCASE_DEFINED_LIMIT',
+            NameKind::Constant,
+            'AutoloadFiles/globals.php',
+        ];
+        yield 'second declarator of a const statement' => [
+            'FIXTURE_GLOBAL_BETA',
+            NameKind::Constant,
+            'AutoloadFiles/globals.php',
+        ];
     }
 
     /**

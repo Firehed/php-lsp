@@ -77,9 +77,41 @@ final class DeclarationScannerTest extends TestCase
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
         self::assertSame(
-            ['FIXTURE_GLOBAL_LIMIT', 'FIXTURE_DEFINED_LIMIT'],
+            [
+                'FIXTURE_GLOBAL_LIMIT',
+                'FIXTURE_GLOBAL_ALPHA',
+                'FIXTURE_GLOBAL_BETA',
+                'FIXTURE_DEFINED_LIMIT',
+                'FIXTURE_UPPERCASE_DEFINED_LIMIT',
+            ],
             self::fqns($declarations->constants),
             'constant reach covers const declarations and literal-name define() alike (Plan 0002 §3b)',
+        );
+    }
+
+    public function testEveryDeclaratorOfAConstStatementIsReported(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // `const A = 1, B = 2;` is one statement holding two declarations. Reading
+        // only the statement's first declarator loses the rest silently.
+        self::assertContains(
+            'FIXTURE_GLOBAL_BETA',
+            self::fqns($declarations->constants),
+            'the second declarator of a const statement is a declaration too',
+        );
+    }
+
+    public function testDefineIsRecognisedRegardlessOfItsSpelling(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // PHP function names are case-insensitive, so `DEFINE(...)` declares a
+        // constant; matching the callee case-sensitively would skip it.
+        self::assertContains(
+            'FIXTURE_UPPERCASE_DEFINED_LIMIT',
+            self::fqns($declarations->constants),
+            'define() is a function call, and function names are case-insensitive',
         );
     }
 
@@ -87,13 +119,13 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        // globals.php introduces three constants: a `const`, a literal `define()`,
-        // and a `define()` whose name is concatenated at runtime. Asserting the
-        // absence of the computed *name* cannot fail — no static parse could ever
-        // produce it — so the count is what carries the limitation: whatever a
-        // scanner chose to record for that site would show up as a third entry.
+        // globals.php introduces six constants, the last of which is a `define()`
+        // whose name is concatenated at runtime. Asserting the absence of the
+        // computed *name* cannot fail — no static parse could ever produce it — so
+        // the count is what carries the limitation: whatever a scanner chose to
+        // record for that site would show up as an extra entry.
         self::assertCount(
-            2,
+            5,
             $declarations->constants,
             'a computed define() name exists only at runtime and contributes nothing (Plan 0002 §3b)',
         );
