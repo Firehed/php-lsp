@@ -67,6 +67,27 @@ class LocationTest extends TestCase
         self::assertSame(4, $location->startLine);
     }
 
+    public function testFromFileLineEncodesReservedCharactersInThePath(): void
+    {
+        // This URI is what a definition or hover response carries to the client, so
+        // it has to be a valid URI: a workspace under a directory with a space is
+        // common on macOS, and `#` would otherwise start a fragment.
+        $location = Location::fromFileLine('/My Projects/a#b/file.php', 3);
+
+        self::assertNotNull($location);
+        self::assertSame('file:///My%20Projects/a%23b/file.php', $location->uri);
+    }
+
+    public function testFromFileLineLeavesAnEncodedUriUnchanged(): void
+    {
+        // Callers pass either form, so normalizing must be idempotent rather than
+        // double-encoding the `%` of an already-encoded URI.
+        $location = Location::fromFileLine('file:///My%20Projects/file.php', 3);
+
+        self::assertNotNull($location);
+        self::assertSame('file:///My%20Projects/file.php', $location->uri);
+    }
+
     public function testFromFileLineWithNullFile(): void
     {
         $location = Location::fromFileLine(null, 10);

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Document\FileUri;
+
 final readonly class Location
 {
     public function __construct(
@@ -24,7 +26,10 @@ final readonly class Location
         if ($file === null || $line === null) {
             return null;
         }
-        $uri = str_starts_with($file, 'file://') ? $file : 'file://' . $file;
+        // Callers pass either a path or an already-formed URI, so normalize through
+        // the one conversion seam rather than concatenating: this URI goes to the
+        // client, and an unencoded space or `#` in it is not a valid URI.
+        $uri = FileUri::fromPath(FileUri::toPath($file));
         return new self($uri, $line - 1, 0, $line - 1, 0);
     }
 
