@@ -66,12 +66,33 @@ final class DeclarationScanner
                     return;
                 }
 
-                $first = $node->args[0] ?? null;
-                if (!$first instanceof Node\Arg || !$first->value instanceof Scalar\String_) {
+                $name = $this->constantNameArgument($node);
+                if (!$name instanceof Scalar\String_) {
                     return;
                 }
 
-                $this->constants[] = QualifiedName::fromFullyQualified($first->value->value);
+                $this->constants[] = QualifiedName::fromFullyQualified($name->value);
+            }
+
+            /**
+             * A named argument may only follow the positional ones, so the first
+             * unnamed argument is the name. A named one is the name only if it says
+             * so — read positionally, `define(value: 'x', constant_name: 'Y')` would
+             * declare a constant called `x`.
+             */
+            private function constantNameArgument(Expr\FuncCall $node): ?Node\Expr
+            {
+                foreach ($node->args as $argument) {
+                    if (!$argument instanceof Node\Arg) {
+                        continue;
+                    }
+
+                    if ($argument->name === null || $argument->name->toString() === 'constant_name') {
+                        return $argument->value;
+                    }
+                }
+
+                return null;
             }
 
             /**
