@@ -122,25 +122,22 @@ final class ComposerSymbolLocator implements SymbolLocator, Invalidatable, Warma
             return $cached;
         }
 
-        $declarations = $this->scan($path);
-        $this->cache->set($cacheKey, $declarations);
-
-        return $declarations;
-    }
-
-    private function scan(string $path): FileDeclarations
-    {
         $content = @file_get_contents($path);
         if ($content === false) {
             // An autoload map naming a file that is not there is a stale map — a
             // `composer` operation part-way through, or a removed dependency. The
             // remaining files are still scanned rather than the whole set failing.
+            // The miss is deliberately not cached: the part-way-through case
+            // resolves in moments, and caching it would answer "declares nothing"
+            // for the rest of the session for a file that is now on disk.
             return new FileDeclarations();
         }
 
         $ast = $this->parser->parse(new TextDocument(FileUri::fromPath($path), 'php', 0, $content));
+        $declarations = $this->scanner->scan($ast ?? []);
+        $this->cache->set($cacheKey, $declarations);
 
-        return $this->scanner->scan($ast ?? []);
+        return $declarations;
     }
 
     /**
