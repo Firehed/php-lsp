@@ -109,6 +109,26 @@ final class KnowledgeStackTest extends TestCase
         );
     }
 
+    public function testWarmingReachesTheVendorHalfLocatorToo(): void
+    {
+        // The fixture project's autoload.files all sit outside vendor/, so the test
+        // above is satisfied by the workspace locator alone and cannot see whether
+        // the vendor one was assembled or warmed. Partitioning at AutoloadFiles/
+        // puts the only entry in the vendor half, so any parse observed here must
+        // have come from the vendor locator.
+        $map = new ComposerAutoloadMap(files: [$this->fixturesRoot . '/AutoloadFiles/globals.php']);
+        $stack = KnowledgeStack::forProject($map, $this->fixturesRoot . '/AutoloadFiles', $this->parser);
+        $before = $this->parser->getMetrics()->getParseCount();
+
+        $stack->warm();
+
+        self::assertGreaterThan(
+            $before,
+            $this->parser->getMetrics()->getParseCount(),
+            'warming must reach every assembled locator, not only the workspace half',
+        );
+    }
+
     public function testWarmingIsNotRequiredForTheSourceToAnswer(): void
     {
         // Warming is latency, not correctness: an unwarmed stack derives what it
