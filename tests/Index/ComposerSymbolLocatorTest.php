@@ -173,6 +173,12 @@ final class ComposerSymbolLocatorTest extends TestCase
         );
     }
 
+    /**
+     * The seam-level statement of the limitation. It cannot fail on its own — no
+     * static parse could produce a concatenated name — so the assertion that
+     * actually enforces it is the constant count in
+     * {@see DeclarationScannerTest::testComputedDefineNameIsNotReported()}.
+     */
     public function testAComputedDefineNameIsNotLocatable(): void
     {
         $locator = $this->locatorForRoot(self::FIXTURES_ROOT);

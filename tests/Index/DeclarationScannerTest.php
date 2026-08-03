@@ -73,10 +73,15 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        self::assertNotContains(
-            'FIXTURE_COMPUTED_LIMIT',
-            self::fqns($declarations->constants),
-            'a computed define() name exists only at runtime and is out of scope (Plan 0002 §3b)',
+        // globals.php introduces three constants: a `const`, a literal `define()`,
+        // and a `define()` whose name is concatenated at runtime. Asserting the
+        // absence of the computed *name* cannot fail — no static parse could ever
+        // produce it — so the count is what carries the limitation: whatever a
+        // scanner chose to record for that site would show up as a third entry.
+        self::assertCount(
+            2,
+            $declarations->constants,
+            'a computed define() name exists only at runtime and contributes nothing (Plan 0002 §3b)',
         );
     }
 
