@@ -52,9 +52,23 @@ final class DeclarationScannerTest extends TestCase
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
         self::assertSame(
-            ['fixtureGlobalHelper'],
+            ['fixtureGlobalHelper', 'fixtureConditionalHelper'],
             self::fqns($declarations->functions),
             'a function declared outside any namespace has an empty namespace path',
+        );
+    }
+
+    public function testAConditionallyDeclaredFunctionIsReported(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // A guarded polyfill declaration is nested inside an `if`, not top-level.
+        // Walking only top-level statements — a plausible simplification of the
+        // traversal — would drop the shape most real autoload.files entries take.
+        self::assertContains(
+            'fixtureConditionalHelper',
+            self::fqns($declarations->functions),
+            'a declaration nested inside a conditional is still a declaration',
         );
     }
 

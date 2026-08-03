@@ -23,3 +23,13 @@ function fixtureGlobalHelper(int $value): int
 {
     return $value * 2;
 }
+
+// The shape most real `autoload.files` entries take: a polyfill declares itself only
+// where the runtime lacks it. The declaration is therefore nested rather than
+// top-level, which a scanner that walked only top-level statements would miss.
+if (!function_exists('fixtureConditionalHelper')) {
+    function fixtureConditionalHelper(int $value): int
+    {
+        return $value + 1;
+    }
+}
