@@ -21,6 +21,21 @@ final class DeclarationScannerTest extends TestCase
 {
     use LoadsFixturesTrait;
 
+    /**
+     * Every constant AutoloadFiles/globals.php declares, in declaration order.
+     * A first-class-callable `define(...)` yields no name to probe for, so the test
+     * for it asserts against this whole list instead.
+     */
+    private const GLOBAL_CONSTANTS = [
+        'FIXTURE_GLOBAL_LIMIT',
+        'FIXTURE_GLOBAL_ALPHA',
+        'FIXTURE_GLOBAL_BETA',
+        'FIXTURE_DEFINED_LIMIT',
+        'FIXTURE_UPPERCASE_DEFINED_LIMIT',
+        'FIXTURE_NAMED_LIMIT',
+        'FIXTURE_REORDERED_LIMIT',
+    ];
+
     private DeclarationScanner $scanner;
     private ParserService $parser;
 
@@ -113,15 +128,7 @@ final class DeclarationScannerTest extends TestCase
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
         self::assertSame(
-            [
-                'FIXTURE_GLOBAL_LIMIT',
-                'FIXTURE_GLOBAL_ALPHA',
-                'FIXTURE_GLOBAL_BETA',
-                'FIXTURE_DEFINED_LIMIT',
-                'FIXTURE_UPPERCASE_DEFINED_LIMIT',
-                'FIXTURE_NAMED_LIMIT',
-                'FIXTURE_REORDERED_LIMIT',
-            ],
+            self::GLOBAL_CONSTANTS,
             self::fqns($declarations->constants),
             'constant reach covers const declarations and literal-name define() alike (Plan 0002 §3b)',
         );
@@ -155,11 +162,12 @@ final class DeclarationScannerTest extends TestCase
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
         // `define(...)` parses to a placeholder rather than an argument: it makes a
-        // Closure and declares nothing.
-        self::assertNotContains(
-            '',
+        // Closure and declares nothing. Asserted against the whole list, so a
+        // placeholder that contributed any name at all would show up.
+        self::assertSame(
+            self::GLOBAL_CONSTANTS,
             self::fqns($declarations->constants),
-            'a call carrying no arguments contributes no constant',
+            'a call whose arguments are a placeholder contributes no constant',
         );
     }
 
