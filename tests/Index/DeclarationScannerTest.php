@@ -204,12 +204,12 @@ final class DeclarationScannerTest extends TestCase
         self::assertSame([], $declarations->constants, 'a class constant is not a namespaced constant');
     }
 
-    public function testAnUnparseableFileYieldsNothing(): void
+    public function testAnEmptyAstYieldsNothing(): void
     {
         $declarations = $this->scanner->scan([]);
 
-        self::assertSame([], $declarations->functions, 'no AST means nothing declared, not an error');
-        self::assertSame([], $declarations->constants, 'no AST means nothing declared, not an error');
+        self::assertSame([], $declarations->functions, 'an empty AST declares nothing, and is not an error');
+        self::assertSame([], $declarations->constants, 'an empty AST declares nothing, and is not an error');
     }
 
     private function scanFixture(string $relativePath): FileDeclarations
