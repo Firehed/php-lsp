@@ -38,13 +38,13 @@ final class DeclarationScanner
             public function enterNode(Node $node): null
             {
                 if ($node instanceof Stmt\Function_) {
-                    $this->functions[] = self::qualify($node->namespacedName);
+                    $this->functions[] = self::qualify($node->namespacedName ?? $node->name);
                     return null;
                 }
 
                 if ($node instanceof Stmt\Const_) {
                     foreach ($node->consts as $const) {
-                        $this->constants[] = self::qualify($const->namespacedName);
+                        $this->constants[] = self::qualify($const->namespacedName ?? $const->name);
                     }
                     return null;
                 }
@@ -96,13 +96,12 @@ final class DeclarationScanner
             }
 
             /**
-             * ParserService always runs NameResolver, which sets namespacedName on
-             * every declaration it visits.
+             * ParserService always runs NameResolver, so `namespacedName` is set.
+             * Falling back to the declared name keeps this total for an AST parsed
+             * without it, where the two differ only under a namespace.
              */
-            private static function qualify(?Node\Name $name): QualifiedName
+            private static function qualify(Node\Name|Node\Identifier $name): QualifiedName
             {
-                assert($name !== null);
-
                 return QualifiedName::fromFullyQualified($name->toString());
             }
         };
