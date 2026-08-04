@@ -17,9 +17,9 @@ use PhpParser\NodeVisitorAbstract;
  * can be derived for the two symbol namespaces Composer cannot address by name
  * (Plan 0002 §3).
  *
- * Two deliberate blind spots, both the locate-only limitation of Plan 0002 §3
- * rather than oversights: a `define()` whose name is computed at runtime, and
- * anything reached only through a `require`/`include`, which is not followed.
+ * The blind spots are Plan 0002 §3's locate-only limitation rather than oversights:
+ * a `define()` whose name — or whose call — resolves only at runtime, and anything
+ * reached only through a `require`/`include`, which is not followed.
  */
 final class DeclarationScanner
 {
