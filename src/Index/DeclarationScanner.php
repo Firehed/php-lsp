@@ -38,13 +38,13 @@ final class DeclarationScanner
             public function enterNode(Node $node): null
             {
                 if ($node instanceof Stmt\Function_) {
-                    $this->addFrom($node->namespacedName, $this->functions);
+                    $this->functions[] = self::qualify($node->namespacedName);
                     return null;
                 }
 
                 if ($node instanceof Stmt\Const_) {
                     foreach ($node->consts as $const) {
-                        $this->addFrom($const->namespacedName, $this->constants);
+                        $this->constants[] = self::qualify($const->namespacedName);
                     }
                     return null;
                 }
@@ -96,19 +96,14 @@ final class DeclarationScanner
             }
 
             /**
-             * @param list<QualifiedName> $into
+             * ParserService always runs NameResolver, which sets namespacedName on
+             * every declaration it visits.
              */
-            private function addFrom(?Node\Name $name, array &$into): void
+            private static function qualify(?Node\Name $name): QualifiedName
             {
-                if ($name === null) {
-                    // @codeCoverageIgnoreStart
-                    // ParserService always runs NameResolver, which populates
-                    // namespacedName for every declaration it visits.
-                    return;
-                    // @codeCoverageIgnoreEnd
-                }
+                assert($name !== null);
 
-                $into[] = QualifiedName::fromFullyQualified($name->toString());
+                return QualifiedName::fromFullyQualified($name->toString());
             }
         };
 
