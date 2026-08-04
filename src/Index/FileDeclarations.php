@@ -20,8 +20,8 @@ final readonly class FileDeclarations
      * @param list<QualifiedName> $constants
      */
     public function __construct(
-        public array $functions = [],
-        public array $constants = [],
+        public array $functions,
+        public array $constants,
     ) {
     }
 }
