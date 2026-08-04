@@ -11,10 +11,9 @@ use Firehed\PhpLsp\Domain\QualifiedName;
  * file map for either symbol namespace, so one is derived by parsing the
  * `autoload.files` set (Plan 0002 §3).
  *
- * Class-likes are out because the common case already has a cheaper route: PSR-4,
- * PSR-0 and the classmap turn a class name into a path by arithmetic, with no parse.
- * A class reachable only through a `files` entry has no such route and is missed —
- * the known gap Plan 0002 §3 records, tracked by #181.
+ * Class-likes usually need no such index: PSR-4, PSR-0 and the classmap resolve them
+ * by arithmetic. The exception — a class reachable only through a `files` entry — is
+ * #181.
  */
 final readonly class FileDeclarations
 {
