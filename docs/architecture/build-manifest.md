@@ -63,9 +63,9 @@ Definition-of-Done gate.
     S3.5   3a    External-file-change invalidation                  S3.3,S3.4         —
     S3.6   3b    Function-surface golden + Builtin enum oracle      S3.3              —
     S3.7a  3b    Read autoload.files into ComposerAutoloadMap       S3.3              —
-    S3.7b  3b    Scan a file for its function/constant declarations S3.3              —
+    S3.7b  3b    Scan a file for the declarations it makes          S3.3              —
     S3.7c  3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
-    S3.7d  3b    Derived autoload.files function/constant index     S3.7a,S3.7b,S3.7c —
+    S3.7d  3b    Derived autoload.files index, built at startup     S3.7a,S3.7b,S3.7c —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
     S3.8b  3b    lookupConstant project reach                       S3.7d             —
     S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
@@ -94,10 +94,12 @@ Notes:
   a hit (asserted via `ParseMetrics`); one that cannot is removed, not wrapped.
 - **S3.7 is four slices, cut where Composer's own data divides.** A single slice was
   built first (PR #388, 622 src lines over 17 files) and was too large to review as
-  one unit. The seam it missed is already in the code: a class-like lookup is
-  arithmetic on the name (`findFile`, five lines — the old `ComposerClassLocator`
-  verbatim), while a function or constant lookup has no name→file map and must derive
-  one by parsing the `autoload.files` set. So **S3.7c generalizes the shape** — the
+  one unit. The seam it missed is already in the code: a lookup against the autoload
+  maps is arithmetic on the name (`findFile`, five lines — the old
+  `ComposerClassLocator` verbatim), while anything an `autoload.files` entry declares
+  has no name→file map of any kind and must derive one by parsing that set. The cut
+  is therefore by *route*, not by symbol kind — class-likes use both routes. So
+  **S3.7c generalizes the shape** — the
   kind-agnostic `SymbolLocator` interface, `QualifiedName`, and the class-like branch
   — which is behavior-preserving and proven by the existing class-like-lookup golden;
   **S3.7d adds the reach**, which is new behavior proven by new fixtures. S3.7a and
@@ -165,9 +167,9 @@ Notes:
 - **`Closes` is assigned at slice-issue creation, after a reviewer reads the issue —
   never inferred.** Candidates from Wave 1's note: #239 / #181 / #317 land somewhere in
   S3.7a–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
-  - **#181 is wider than S3.7's reach.** It scopes class-likes alongside functions
-    and constants, which 0002 §3 leaves an open gap. The slice claiming #181 either
-    carries class-likes in the derived index or narrows the issue first.
+  - **#181 covers all three kinds**, which is now what S3.7b–S3.7d build: the
+    `files` set has no name→file map of any kind, so it is scanned whole. A slice
+    claiming #181 must show class-like reach, not just functions and constants.
 
 ### Deferred (not scheduled; excluded from `/do-next` until reached)
 
