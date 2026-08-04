@@ -211,10 +211,16 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/helpers.php');
 
-        // An interface is a class-like too: Composer addresses none of them by name
-        // when the file is reached only through `autoload.files`.
+        // Interfaces, traits and enums are class-likes too: Composer addresses none
+        // of them by name when the file is reached only through `autoload.files`, so
+        // narrowing the scan to `class` and `interface` would lose two of the four.
         self::assertSame(
-            ['Fixtures\Helpers\HelperContract', 'Fixtures\Helpers\HelperRegistry'],
+            [
+                'Fixtures\Helpers\HelperContract',
+                'Fixtures\Helpers\HelperFallback',
+                'Fixtures\Helpers\HelperMode',
+                'Fixtures\Helpers\HelperRegistry',
+            ],
             self::fqns($declarations->classLikes),
             'every class-like flavour in a files entry is indexed, not just classes',
         );
