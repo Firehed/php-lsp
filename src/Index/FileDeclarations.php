@@ -7,21 +7,22 @@ namespace Firehed\PhpLsp\Index;
 use Firehed\PhpLsp\Domain\QualifiedName;
 
 /**
- * The function and constant names one file declares. Composer publishes no name ->
- * file map for either symbol namespace, so one is derived by parsing the
- * `autoload.files` set (Plan 0002 §3).
+ * The names one file declares, across all three of PHP's symbol namespaces.
  *
- * Class-likes usually need no such index: PSR-4, PSR-0 and the classmap resolve them
- * by arithmetic. The exception — a class reachable only through a `files` entry — is
- * #181.
+ * An `autoload.files` entry has no name -> file map of any kind, so the only way to
+ * learn what it declares is to parse it — and once parsed, every kind costs the same
+ * walk. Narrowing this to functions and constants would leave a class-like declared
+ * there reachable at runtime but invisible here, for no saving (Plan 0002 §3).
  */
 final readonly class FileDeclarations
 {
     /**
+     * @param list<QualifiedName> $classLikes
      * @param list<QualifiedName> $functions
      * @param list<QualifiedName> $constants
      */
     public function __construct(
+        public array $classLikes,
         public array $functions,
         public array $constants,
     ) {

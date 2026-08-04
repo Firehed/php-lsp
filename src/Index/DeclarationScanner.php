@@ -13,9 +13,9 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
 /**
- * Reads the functions and constants a parsed file declares, so a name -> file map
- * can be derived for the two symbol namespaces Composer cannot address by name
- * (Plan 0002 §3).
+ * Reads the class-likes, functions and constants a parsed file declares, so a
+ * name -> file map can be derived for an `autoload.files` entry, which Composer
+ * addresses by no name at all (Plan 0002 §3).
  *
  * The blind spots are Plan 0002 §3's locate-only limitation rather than oversights:
  * a `define()` whose name — or whose call — resolves only at runtime, and anything
@@ -30,6 +30,9 @@ final class DeclarationScanner
     {
         $visitor = new class () extends NodeVisitorAbstract {
             /** @var list<QualifiedName> */
+            public array $classLikes = [];
+
+            /** @var list<QualifiedName> */
             public array $functions = [];
 
             /** @var list<QualifiedName> */
@@ -37,6 +40,12 @@ final class DeclarationScanner
 
             public function enterNode(Node $node): null
             {
+                // An anonymous class has no name, so there is nothing to index.
+                if ($node instanceof Stmt\ClassLike && $node->name !== null) {
+                    $this->classLikes[] = self::qualify($node->namespacedName ?? $node->name);
+                    return null;
+                }
+
                 if ($node instanceof Stmt\Function_) {
                     $this->functions[] = self::qualify($node->namespacedName ?? $node->name);
                     return null;
@@ -110,6 +119,6 @@ final class DeclarationScanner
         $traverser->addVisitor($visitor);
         $traverser->traverse($ast);
 
-        return new FileDeclarations($visitor->functions, $visitor->constants);
+        return new FileDeclarations($visitor->classLikes, $visitor->functions, $visitor->constants);
     }
 }
