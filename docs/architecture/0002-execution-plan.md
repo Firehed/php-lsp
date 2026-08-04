@@ -103,10 +103,18 @@ Notes:
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw
   ASTs. `ClassRepository` already does this; preserve it.
 - Reach is scoped to declarations the model can *locate*: PSR-4 / classmap classes,
-  the `autoload.files` set, and open documents. A function or constant defined as a
-  **load side-effect** of a PSR-4 / classmap file (declared alongside a class in a
-  file loaded for that class) is reachable at PHP runtime but invisible to this
-  model. Scoping it out is deliberate — a known limitation, not complete reach.
+  the `autoload.files` set (its functions and constants), and open documents. A
+  function or constant defined as a **load side-effect** of a PSR-4 / classmap file
+  (declared alongside a class in a file loaded for that class) is reachable at PHP
+  runtime but invisible to this model. Scoping it out is deliberate — a known
+  limitation, not complete reach.
+  - The **mirror case is also out**: a class-like declared in an `autoload.files`
+    entry. Composer builds the classmap from `classmap` paths and, only when
+    optimizing, from PSR-0/PSR-4 paths — never from `files` — so such a class has no
+    name→file map in any dump mode, and `lookupClassLike` misses it. Convention puts
+    non-PSR-4 classes under `classmap`, where they are found, so the cost is small;
+    the fix, if one is ever wanted, is to let the derived `autoload.files` index
+    carry class-likes too.
 - The **Builtin backend is reflection-backed today** (zero-index, instant lookup via
   `get_defined_functions()` / reflection), so it introduces **no** lazy-first
   exception. An exception would arise only if a future static, version-aware source
