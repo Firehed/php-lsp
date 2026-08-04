@@ -38,6 +38,14 @@ define(value: 'FIXTURE_NOT_A_CONSTANT_NAME', constant_name: 'FIXTURE_REORDERED_L
 // Not a declaration: a first-class callable makes a Closure and defines nothing.
 define(...);
 
+class FixtureGlobalRegistry
+{
+}
+
+// An anonymous class has no name to index, so it is not a declaration.
+$fixtureAnonymous = new class () {
+};
+
 function fixtureGlobalHelper(int $value): int
 {
     return $value * 2;

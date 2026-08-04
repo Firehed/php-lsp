@@ -19,6 +19,16 @@ const HELPER_LIMIT = 25;
 define('FIXTURE_HELPER_DEFINED', 30);
 define('Fixtures\Helpers\HELPER_DEFINED_QUALIFIED', 35);
 
+// Class-likes declared in a `files` entry. Composer's autoload maps never address
+// these by name, so the derived index is the only route to them.
+interface HelperContract
+{
+}
+
+class HelperRegistry implements HelperContract
+{
+}
+
 function helperFormat(string $value): string
 {
     return trim($value);

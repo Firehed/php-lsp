@@ -207,10 +207,52 @@ final class DeclarationScannerTest extends TestCase
         );
     }
 
-    public function testAFileDeclaringNeitherYieldsNothing(): void
+    public function testNamespacedClassLikesAreReportedByFullyQualifiedName(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/helpers.php');
+
+        // An interface is a class-like too: Composer addresses none of them by name
+        // when the file is reached only through `autoload.files`.
+        self::assertSame(
+            ['Fixtures\Helpers\HelperContract', 'Fixtures\Helpers\HelperRegistry'],
+            self::fqns($declarations->classLikes),
+            'every class-like flavour in a files entry is indexed, not just classes',
+        );
+    }
+
+    public function testGlobalClassLikesAreReportedWithoutANamespace(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        self::assertSame(
+            ['FixtureGlobalRegistry'],
+            self::fqns($declarations->classLikes),
+            'a class declared outside any namespace has an empty namespace path',
+        );
+    }
+
+    public function testAnAnonymousClassIsNotADeclaration(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // Asserted through the whole list: an anonymous class has no name to probe
+        // for, and reporting one would mean indexing an unnameable symbol.
+        self::assertSame(
+            ['FixtureGlobalRegistry'],
+            self::fqns($declarations->classLikes),
+            'an anonymous class cannot be looked up by name, so it is not indexed',
+        );
+    }
+
+    public function testAClassFileDeclaresOnlyItsClassLike(): void
     {
         $declarations = $this->scanFixture('src/Domain/User.php');
 
+        self::assertSame(
+            ['Fixtures\Domain\User'],
+            self::fqns($declarations->classLikes),
+            'a PSR-4 class file declares exactly the class it is named for',
+        );
         self::assertSame([], $declarations->functions, 'a class declares no free functions');
         self::assertSame([], $declarations->constants, 'a class constant is not a namespaced constant');
     }
@@ -219,6 +261,7 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanner->scan([]);
 
+        self::assertSame([], $declarations->classLikes, 'an empty AST declares nothing, and is not an error');
         self::assertSame([], $declarations->functions, 'an empty AST declares nothing, and is not an error');
         self::assertSame([], $declarations->constants, 'an empty AST declares nothing, and is not an error');
     }
