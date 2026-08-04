@@ -11,8 +11,9 @@ use Firehed\PhpLsp\Domain\QualifiedName;
  * Composer's autoload maps cannot address by name (Plan 0002 §3).
  *
  * Class-likes are absent because PSR-4, PSR-0 and the classmap address them by name.
- * A class declared in an `autoload.files` entry escapes all three — Composer never
- * scans those into the classmap — and is the known gap Plan 0002 §3 records.
+ * A class reached only through an `autoload.files` entry escapes all three — the
+ * `files` section is never itself a classmap source — and is the known gap Plan 0002
+ * §3 records.
  */
 final readonly class FileDeclarations
 {
