@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionFunction;
@@ -18,6 +19,8 @@ use ReflectionFunction;
 #[CoversClass(FileDeclarations::class)]
 final class DeclarationScannerTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private DeclarationScanner $scanner;
     private ParserService $parser;
 
@@ -214,11 +217,10 @@ final class DeclarationScannerTest extends TestCase
 
     private function scanFixture(string $relativePath): FileDeclarations
     {
-        $path = __DIR__ . '/../Fixtures/' . $relativePath;
-        $content = file_get_contents($path);
-        self::assertNotFalse($content, "fixture should be readable: {$relativePath}");
+        $uri = FileUri::fromPath($this->fixturePath($relativePath));
+        $content = $this->loadFixture($relativePath);
 
-        $ast = $this->parser->parse(new TextDocument(FileUri::fromPath($path), 'php', 0, $content));
+        $ast = $this->parser->parse(new TextDocument($uri, 'php', 0, $content));
         self::assertNotNull($ast, "fixture should parse: {$relativePath}");
 
         return $this->scanner->scan($ast);

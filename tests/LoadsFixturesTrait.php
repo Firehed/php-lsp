@@ -17,14 +17,24 @@ use Firehed\PhpLsp\Protocol\PositionEncoding;
 trait LoadsFixturesTrait
 {
     /**
+     * The absolute path of a fixture, for tests that need to address the file
+     * itself (a URI, a locator input) rather than only its contents.
+     *
+     * @param string $fixturePath Path relative to tests/Fixtures/
+     */
+    private function fixturePath(string $fixturePath): string
+    {
+        return __DIR__ . '/Fixtures/' . $fixturePath;
+    }
+
+    /**
      * Load fixture file contents.
      *
      * @param string $fixturePath Path relative to tests/Fixtures/
      */
     private function loadFixture(string $fixturePath): string
     {
-        $fullPath = __DIR__ . '/Fixtures/' . $fixturePath;
-        $content = file_get_contents($fullPath);
+        $content = file_get_contents($this->fixturePath($fixturePath));
         assert($content !== false, "Fixture not found: $fixturePath");
         return $content;
     }
