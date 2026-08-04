@@ -108,15 +108,13 @@ Notes:
   (declared alongside a class in a file loaded for that class) is reachable at PHP
   runtime but invisible to this model. Scoping it out is deliberate — a known
   limitation, not complete reach.
-  - The **mirror case is also out**: a class-like reached *only* through an
-    `autoload.files` entry. Composer builds the classmap from `classmap` paths and,
-    only when optimizing, from PSR-0/PSR-4 paths — the `files` section is never
-    itself a classmap source — so a class whose file sits outside all of those paths
-    has no name→file map in any dump mode, and `lookupClassLike` misses it. The
-    classmap scans *paths*, not sections, so a `files` entry that also falls under a
-    scanned path is mapped as usual. Convention puts non-PSR-4 classes under
-    `classmap`, where they are found, so the cost is small; the fix, if one is ever
-    wanted, is to let the derived `autoload.files` index carry class-likes too.
+  - The **mirror case is a gap, not a boundary**: a class-like reached only through
+    an `autoload.files` entry. That section is never itself a classmap source, so
+    such a class has no name→file map and `lookupClassLike` misses it — though an
+    entry that also sits under a scanned `classmap`/PSR-4 path is mapped as usual.
+    Closing it needs no project walk, since the derived index already parses that
+    set, and it is **#181's "classes are discoverable" criterion** — so the slice
+    claiming #181 either carries class-likes or narrows the issue first.
 - The **Builtin backend is reflection-backed today** (zero-index, instant lookup via
   `get_defined_functions()` / reflection), so it introduces **no** lazy-first
   exception. An exception would arise only if a future static, version-aware source

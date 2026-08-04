@@ -165,6 +165,9 @@ Notes:
 - **`Closes` is assigned at slice-issue creation, after a reviewer reads the issue —
   never inferred.** Candidates from Wave 1's note: #239 / #181 / #317 land somewhere in
   S3.7a–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
+  - **#181 is wider than S3.7's reach.** It scopes class-likes alongside functions
+    and constants, which 0002 §3 leaves an open gap. The slice claiming #181 either
+    carries class-likes in the derived index or narrows the issue first.
 
 ### Deferred (not scheduled; excluded from `/do-next` until reached)
 
