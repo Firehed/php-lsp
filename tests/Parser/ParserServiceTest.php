@@ -124,6 +124,55 @@ class ParserServiceTest extends TestCase
         self::assertSame($first, $second, 'the memo returns what the parse returned, on every exit path');
     }
 
+    public function testParseFileReadsAndParsesAFileFromDisk(): void
+    {
+        $parser = new ParserService();
+
+        $ast = $parser->parseFile(dirname(__DIR__) . '/Fixtures/src/Domain/User.php');
+
+        self::assertNotNull($ast, 'a readable PHP file on disk must parse');
+        self::assertSame(1, $parser->getMetrics()->getParseCount(), 'reading a file is metered like any other parse');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     * @codeCoverageIgnore data provider runs before coverage begins
+     */
+    public static function unreadablePaths(): iterable
+    {
+        yield 'no such file' => [__DIR__ . '/does-not-exist.php'];
+        // A directory is readable but not a file; file_get_contents would warn.
+        yield 'a directory' => [__DIR__];
+    }
+
+    #[DataProvider('unreadablePaths')]
+    public function testParseFileReturnsNullForAPathItCannotRead(string $path): void
+    {
+        $parser = new ParserService();
+
+        self::assertNull(
+            $parser->parseFile($path),
+            'a path that cannot be read as a file degrades to null rather than warning or throwing',
+        );
+    }
+
+    /**
+     * The memo is keyed by content, so two paths holding identical content share
+     * one parse — which is what makes the workspace and vendor backends scanning
+     * an overlapping file set cost one parse rather than two.
+     */
+    public function testParseFileSharesTheContentMemo(): void
+    {
+        $parser = new ParserService();
+        $path = dirname(__DIR__) . '/Fixtures/src/Domain/User.php';
+
+        $first = $parser->parseFile($path);
+        $second = $parser->parseFile($path);
+
+        self::assertSame(1, $parser->getMetrics()->getParseCount(), 'the second read is answered from the memo');
+        self::assertSame($first, $second, 'both reads get the same AST');
+    }
+
     public function testDifferingContentIsParsedSeparately(): void
     {
         $parser = new ParserService();
