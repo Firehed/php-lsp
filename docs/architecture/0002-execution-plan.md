@@ -73,29 +73,26 @@ needed only for the deferred workspace scope.
 |---|---|---|
 | `lookupClassLike(FQN)` | No | PSR-4 `findFile` → parse that one file (today's `ClassRepository`) |
 | `childrenOf(namespace)` | No | `scandir` that one directory (today's `NamespaceCatalog`) |
-| Function / constant reach (Step 3) | Bounded, small | parse the `autoload.files` set (explicit, tiny; #181) + open docs |
+| `autoload.files` reach — all kinds (Step 3) | Bounded, small | parse the `autoload.files` set (explicit, tiny; #181) + open docs |
 | Project-wide `search(prefix)` / `workspace/symbol` | Yes | deferred workspace scope |
 | Reverse queries (find-references, implementations) | Yes (reverse index) | deferred workspace scope |
 
 Notes:
 
-- Functions and constants have **no name→file map** (unlike PSR-4 classes);
-  `autoload.files` is an explicit, usually tiny list. So their project reach is a
-  small, bounded index of that set — not a project walk.
-- **That index is derived lazily, and an eager warm-up was measured and declined.**
-  A `Warmable` seam plus an `initialized` listener that pre-derived it was built
-  during S3.7 and is not being kept. It was never a correctness requirement — an
-  unwarmed locator answers identically, deriving on the first lookup — so the whole
-  question is which message pays a one-off cost. Sized against §8.1's measured
-  ~4 MB/s parse rate: this repository's own `autoload.files` is 12 entries totalling
-  139,006 bytes ≈ **35 ms** (≈70 ms with pcov on), of which 111,322 bytes are
-  PHPUnit's `Assert/Functions.php`; the remaining 11 files total 27,684 bytes ≈
-  **7 ms**. Moving 7–35 ms, once per session, does not justify ~105 lines, a second
-  `InitializedListener`, and a non-obvious "warm at `initialized`, not at
-  construction" rule. **Reopen condition:** a measured first function or constant
-  lookup that exceeds §8.4's 50 ms per-request budget on a real project. The seam
-  can be re-added verbatim if so — `warm()` changes no interface, which is precisely
-  why deferring it is free.
+- An `autoload.files` entry has **no name→file map at all** — not for functions and
+  constants, and not for the class-likes it may also declare. PHP `require`s every
+  entry at bootstrap; nothing indexes them by name. So this set is the one place the
+  model cannot resolve a name lazily, and its reach is a small, bounded index of the
+  whole set — still not a project walk, because the list is explicit and usually tiny.
+- **Whether that index is built eagerly or on first use is S3.7d's call**, the slice
+  that builds it. Widening the set's reach to class-likes reopens the question rather
+  than settling it: a lazy build's trigger stops being a function or constant lookup
+  and becomes any name the autoload maps fail to resolve — commoner and far less
+  predictable, though still paid once, by whichever name arrives first. The cost is
+  bounded either way: sized against §8.1's ~4 MB/s parse rate, this repository's own
+  set is a dozen entries totalling ~140 KB ≈ **35 ms**, most of it one large PHPUnit
+  file; the rest total ~30 KB ≈ **7 ms**. If a real project's set ever makes that
+  perceptible (§8.4), the work moves to the deferred scheduler tier (Step 6).
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
   revived only if/when the workspace scope is taken up; otherwise it is deleted — which
   is slice **SC.1**, since it is dead today (zero references) and the workspace scope is
@@ -103,10 +100,18 @@ Notes:
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw
   ASTs. `ClassRepository` already does this; preserve it.
 - Reach is scoped to declarations the model can *locate*: PSR-4 / classmap classes,
-  the `autoload.files` set, and open documents. A function or constant defined as a
-  **load side-effect** of a PSR-4 / classmap file (declared alongside a class in a
-  file loaded for that class) is reachable at PHP runtime but invisible to this
-  model. Scoping it out is deliberate — a known limitation, not complete reach.
+  everything the `autoload.files` set declares, and open documents. A function or
+  constant defined as a **load side-effect** of a PSR-4 / classmap file (declared
+  alongside a class in a file loaded for that class) is reachable at PHP runtime but
+  invisible to this model. Scoping it out is deliberate — a known limitation, not
+  complete reach.
+  - **The `files` set is scanned whole, for all three symbol namespaces.** Composer
+    addresses those files by no name at all — the `files` section is not a classmap
+    source, and PHP loads every entry unconditionally at bootstrap — so there is no
+    key on which to resolve one name lazily. The only choice is *when* to scan, not
+    what: once an entry is parsed, every kind costs the same walk, and indexing
+    only functions and constants would leave a class-like declared there reachable
+    at runtime but invisible here, for no saving. This is #181's reach.
 - The **Builtin backend is reflection-backed today** (zero-index, instant lookup via
   `get_defined_functions()` / reflection), so it introduces **no** lazy-first
   exception. An exception would arise only if a future static, version-aware source
@@ -255,12 +260,15 @@ Step 4 (Section 6).
   harness compares only observable outputs, an internal divergence between the two
   structures could pass parity, so add a consistency check that both are written from
   the same parse and agree. Proven by the Step P harness.
-- **3b — `SymbolLocator` + function/constant reach (behavior-changing).** Generalize
+- **3b — `SymbolLocator` + `autoload.files` reach (behavior-changing).** Generalize
   `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in `autoload.files`; give
-  `lookupFunction` / `lookupConstant` real project reach (constant reach covers
-  `const` declarations and literal-name `define()`; a **computed-name `define()`** is
-  a runtime call invisible to static parse and is out of scope, per §3's locate-only
-  limitation); migrate `FunctionCandidates`
+  `lookupFunction` / `lookupConstant` real project reach, and extend
+  `lookupClassLike` to the class-likes those files declare, which the autoload maps
+  cannot address (constant reach covers `const` declarations and literal-name
+  `define()`; a **computed-name `define()`** is a runtime call invisible to static
+  parse and is out of scope, per §3's locate-only limitation, as is a name introduced
+  by **`class_alias()`** rather than by a declaration; an anonymous class has
+  no name to index); migrate `FunctionCandidates`
   to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
   document's functions, so that query disappears with its last caller); remove the
   Step 2 rule exemption. This step **both changes and preserves** behavior on the
