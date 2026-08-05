@@ -430,8 +430,16 @@ So each major section ends with an explicit audit slice, and the terminal gate r
 - a seam that landed while some callers kept the old path (the SC.2 shape);
 - a branch per kind, per handler, or per node type where one generic path should serve (#190, #253, #256).
 
-**Method.** For every seam the section introduced, enumerate its callers and confirm no bypass survives; where a §8.1 rule can enforce the seam, that rule must exist and carry no exemption.
-Then sweep the section's code for the shapes above.
+**Scope: substantial mechanics, not one-liners.** The target is work with real substance behind it — parsing, AST traversal, symbol extraction, name and FQN construction, path/URI conversion, caching.
+A duplicated one-liner is worth folding in when it turns up, but it is not what this is for, and no effort is spent hunting for it.
+
+**Method: grep and the rules already present. No new tooling.** Where a §8.1 PHPStan rule can encode a seam, that rule is worth more than any sweep, because it prevents recurrence rather than detecting it — so an audit's first question is whether the section's seams are rule-enforced, and its first *fix* is to add the rule.
+For the rest, grep for the mechanism rather than the name: `NodeVisitorAbstract` / `NodeTraverser` implementations, a `file_get_contents` paired with a parse, `Stmt\Namespace_` handling, `strtolower` applied to a symbol name, `file://` and `rawurldecode`, hand-rolled memo arrays.
+Then enumerate each seam's callers and confirm none kept the old path.
+
+Static analysis is better where it reaches and is not foolproof where it does not; grep plus the existing rules is the accepted floor.
+If neither finds something, that is a known limit of the method, not a reason to build a detector.
+
 A finding is not discharged by noting it: it is either fixed in the audit slice, or it becomes a numbered slice row with an owner.
 
 **Outcome rule, and the one difference between them.** The pre-cleanup audits (**S3.11**, **S4.7**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
@@ -459,12 +467,16 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
 - **Teardown is discharged.** Every row of the Teardown ledger is removed; a scan
   confirms no facade-only delegations, no double writes, and no dead transitional
   classes (`DefaultFunctionRepository`, etc.) survive.
-- **No capability is implemented twice.** The duplication audit (above) is run
-  repo-wide and comes back empty, with its enumeration shown. Every earlier audit
-  (S3.11, S4.7) is discharged, and so is every slice they filed. This is the goal the
-  series exists to reach — the other gates verify the *route* was followed, this one
-  verifies the *destination*. A surviving duplicate fails the gate even if every
-  other item passes, and it may not be deferred: there is no later section to own it.
+- **No duplicate implementations, and no M×N paths.** No substantial mechanism —
+  parsing, AST traversal, symbol extraction, name/FQN construction, path conversion,
+  caching — exists in more than one place, and no capability is implemented per
+  handler, per node type, or per symbol kind where one path serves. This is the
+  condition the whole series exists to produce (#190, #253, #256, #334): if it does
+  not hold, the foundation did not meet its goal, whatever else passed. The repo-wide
+  audit (above) is run and comes back empty with its enumeration shown, and every
+  earlier audit is discharged along with every slice they filed. A surviving duplicate
+  fails this gate outright and may not be deferred — there is no later section to own
+  it.
 - **Divergences are reconciled.** Each entry in RFC 1 Appendix B "current divergences"
   (byte offsets, functions-need-AST, constants-unresolved, capabilities-unread) is
   either **fixed** or **converted to an explicitly-tracked deferred gap with an open
