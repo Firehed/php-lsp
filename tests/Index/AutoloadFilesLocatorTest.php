@@ -115,9 +115,7 @@ final class AutoloadFilesLocatorTest extends TestCase
         // The one kind PHP matches exactly: a differently-cased constant is a
         // different constant, so resolving it would be a false positive.
         yield 'constant' => ['fixture_global_limit', NameKind::Constant, false];
-        // The exact match a constant requires is of its *short name* only. A
-        // namespace path is case-insensitive for every kind, so applying the
-        // constant rule to the whole name would miss a name PHP resolves.
+        // The exact match applies to the short name only; the namespace is not.
         yield 'constant under a recased namespace' => [
             'FIXTURES\HELPERS\HELPER_LIMIT',
             NameKind::Constant,
@@ -184,10 +182,7 @@ final class AutoloadFilesLocatorTest extends TestCase
 
     public function testAnEntryThatCannotBeReadIsSkippedWithoutAbandoningTheRest(): void
     {
-        // A `files` entry naming a path that is not there — a stale generated map, a
-        // package half-removed. Indexing must skip it and carry on: the entry after
-        // it still has to be indexed, so one bad entry does not cost the project
-        // every other declaration in the set.
+        // One bad entry must not cost the project the entries after it.
         $readable = self::tempFile('<?php const SURVIVES_A_BAD_ENTRY = 1;');
 
         try {
@@ -267,10 +262,7 @@ final class AutoloadFilesLocatorTest extends TestCase
         try {
             $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$path]));
 
-            // Deleting the indexed file first is what makes the assertion load
-            // bearing: from here a rebuild can only drop the name, because the file
-            // can no longer be read. Invalidating before the delete would prove
-            // nothing, since the rebuild would find the file still there.
+            // Delete first: from here a rebuild can only drop the name.
             unlink($path);
             $locator->invalidate('file:///some/other/file.php');
 

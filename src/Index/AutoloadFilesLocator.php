@@ -91,14 +91,8 @@ final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
     }
 
     /**
-     * PHP matches class-like and function names case-insensitively and constant
-     * names exactly, so the key a kind is stored and looked up under follows the
-     * rule for that kind rather than one rule for all three.
-     *
-     * The rule governs the *short name* only: a namespace path is case-insensitive
-     * for every kind ({@see NamespacePath}), so `FIXTURES\HELPERS\HELPER_LIMIT`
-     * names the same constant as `Fixtures\Helpers\HELPER_LIMIT` while
-     * `Fixtures\Helpers\helper_limit` names a different one.
+     * Only constant short names are matched exactly. A namespace path is
+     * case-insensitive for every kind, so the rule applies to the short name alone.
      */
     private static function key(QualifiedName $name, NameKind $kind): string
     {
