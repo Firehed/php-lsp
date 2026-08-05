@@ -73,7 +73,7 @@ needed only for the deferred workspace scope.
 |---|---|---|
 | `lookupClassLike(FQN)` | No | PSR-4 `findFile` → parse that one file (today's `ClassRepository`) |
 | `childrenOf(namespace)` | No | `scandir` that one directory (today's `NamespaceCatalog`) |
-| `autoload.files` reach — all kinds (Step 3) | Bounded, small | parse the `autoload.files` set eagerly at startup (explicit, tiny; #181) + open docs |
+| `autoload.files` reach — all kinds (Step 3) | Bounded, small | parse the `autoload.files` set (explicit, tiny; #181) + open docs |
 | Project-wide `search(prefix)` / `workspace/symbol` | Yes | deferred workspace scope |
 | Reverse queries (find-references, implementations) | Yes (reverse index) | deferred workspace scope |
 
@@ -84,17 +84,15 @@ Notes:
   entry at bootstrap; nothing indexes them by name. So this set is the one place the
   model cannot resolve a name lazily, and its reach is a small, bounded index of the
   whole set — still not a project walk, because the list is explicit and usually tiny.
-- **That index is built eagerly, at startup.** Deferring it to the first lookup was
-  considered and does not hold up once class-likes are in scope: a lazy build has to
-  fire on any name the autoload maps fail to resolve, so every unresolvable
-  class-like — every half-typed name mid-completion — would risk paying for the scan,
-  and the trigger point stops being predictable. Building once, up front, is both
-  simpler and closer to what PHP itself does. The cost is bounded and measurable:
-  sized against §8.1's ~4 MB/s parse rate, this repository's own set is a dozen
-  entries totalling ~140 KB ≈ **35 ms**, most of it one large PHPUnit file; the rest
-  total ~30 KB ≈ **7 ms**. **Revisit if** a real project's set is large enough that
-  startup becomes perceptible (§8.4), in which case the work moves to the deferred
-  scheduler tier (Step 6) rather than back to a lazy trigger.
+- **Whether that index is built eagerly or on first use is S3.7d's call**, the slice
+  that builds it. Widening the set's reach to class-likes reopens the question rather
+  than settling it: a lazy build's trigger stops being a function or constant lookup
+  and becomes any name the autoload maps fail to resolve — commoner and far less
+  predictable, though still paid once, by whichever name arrives first. The cost is
+  bounded either way: sized against §8.1's ~4 MB/s parse rate, this repository's own
+  set is a dozen entries totalling ~140 KB ≈ **35 ms**, most of it one large PHPUnit
+  file; the rest total ~30 KB ≈ **7 ms**. If a real project's set ever makes that
+  perceptible (§8.4), the work moves to the deferred scheduler tier (Step 6).
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
   revived only if/when the workspace scope is taken up; otherwise it is deleted — which
   is slice **SC.1**, since it is dead today (zero references) and the workspace scope is

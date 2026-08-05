@@ -65,7 +65,7 @@ Definition-of-Done gate.
     S3.7a  3b    Read autoload.files into ComposerAutoloadMap       S3.3              —
     S3.7b  3b    Scan a file for the declarations it makes          S3.3              —
     S3.7c  3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
-    S3.7d  3b    Derived autoload.files index, built at startup     S3.7a,S3.7b,S3.7c —
+    S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
     S3.8b  3b    lookupConstant project reach                       S3.7d             —
     S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
