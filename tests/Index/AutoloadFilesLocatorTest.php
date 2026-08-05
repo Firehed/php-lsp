@@ -183,17 +183,21 @@ final class AutoloadFilesLocatorTest extends TestCase
 
     public function testTheFirstDeclarationOfANameWins(): void
     {
-        // PHP requires the files in order, so the first declaration is the one that
-        // takes effect; a later guarded redeclaration never runs.
-        $first = self::tempFile('<?php const DUPE_TARGET = 1;');
-        $second = self::tempFile('<?php const DUPE_TARGET = 2;');
+        // The shape that puts one name in two files without breaking the project:
+        // competing polyfills, each declaring only if nothing else already has.
+        // Two *unconditional* declarations of one name is a project that does not
+        // run, so it is not what this rule is for. Composer requires the entries in
+        // order, so the first file's guard is the one that passes.
+        $polyfill = '<?php if (!function_exists("dupeTarget")) { function dupeTarget(): int { return %d; } }';
+        $first = self::tempFile(sprintf($polyfill, 1));
+        $second = self::tempFile(sprintf($polyfill, 2));
 
         try {
             $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$first, $second]));
 
             self::assertSame(
                 $first,
-                $locator->locate(QualifiedName::fromFullyQualified('DUPE_TARGET'), NameKind::Constant),
+                $locator->locate(QualifiedName::fromFullyQualified('dupeTarget'), NameKind::Function_),
                 'the earlier files entry declares the name that takes effect',
             );
         } finally {
