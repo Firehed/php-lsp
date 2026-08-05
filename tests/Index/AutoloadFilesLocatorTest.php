@@ -253,10 +253,12 @@ final class AutoloadFilesLocatorTest extends TestCase
         try {
             $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$path]));
 
-            // Deleting the indexed file proves the index was not rebuilt: a rebuild
-            // would drop the name, since the file can no longer be read.
-            $locator->invalidate('file:///some/other/file.php');
+            // Deleting the indexed file first is what makes the assertion load
+            // bearing: from here a rebuild can only drop the name, because the file
+            // can no longer be read. Invalidating before the delete would prove
+            // nothing, since the rebuild would find the file still there.
             unlink($path);
+            $locator->invalidate('file:///some/other/file.php');
 
             self::assertNotNull(
                 $locator->locate(QualifiedName::fromFullyQualified('UNTOUCHED'), NameKind::Constant),
