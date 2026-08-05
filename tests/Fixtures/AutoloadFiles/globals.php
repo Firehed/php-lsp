@@ -61,9 +61,9 @@ if (!function_exists('fixtureConditionalHelper')) {
     }
 }
 
-// Declarations inside a function body. Whether they happen is a runtime question —
-// an immediately-invoked bootstrap closure declares them, this never-called
-// function does not — so the scan reports them either way, on the lexical rule.
+// Declarations inside a function body: legal PHP, declaring real global symbols
+// once the body runs. Whether it runs is a runtime question, so they are scanned
+// like any other declaration.
 function fixtureBootstrap(): void
 {
     define('FIXTURE_BODY_LIMIT', 500);

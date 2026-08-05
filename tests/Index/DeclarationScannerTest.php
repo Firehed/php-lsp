@@ -116,11 +116,9 @@ final class DeclarationScannerTest extends TestCase
     {
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
-        // The rule is lexical, not executional: the scan reports what the file
-        // declares, because whether the enclosing body runs at require time is a
-        // runtime question (an immediately-invoked bootstrap closure runs; a
-        // never-called function does not) that a static parse cannot settle. So
-        // this over-reports rather than dropping a real bootstrap declaration.
+        // The rule is lexical, not executional. Nesting is legal PHP that declares
+        // a real symbol once the body runs, and whether it runs is a runtime
+        // question a static parse cannot settle — so the name resolves.
         self::assertContains(
             'fixtureNestedHelper',
             self::fqns($declarations->functions),

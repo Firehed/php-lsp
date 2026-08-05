@@ -19,9 +19,9 @@ use PhpParser\NodeVisitorAbstract;
  *
  * What counts as a declaration is decided lexically, not by what a `require` of the
  * file would execute: a conditional polyfill (`if (!function_exists(...))`) and a
- * declaration inside a function body are both reported, because whether either runs
- * is a runtime question. That over-reports a never-called function's body rather
- * than dropping the polyfill, which is the shape most `autoload.files` entries take.
+ * declaration nested in a function body are both reported. Whether either runs is a
+ * runtime question, and a name the file validly declares is a name the editor should
+ * be able to resolve.
  *
  * The blind spots are Plan 0002 §3's locate-only limitation rather than oversights:
  * a `define()` whose name — or whose call — resolves only at runtime, a name
