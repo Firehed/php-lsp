@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Domain;
 
+use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -37,6 +38,14 @@ final class QualifiedNameTest extends TestCase
         self::assertSame($expectedShortName, $name->shortName);
         // A leading separator is spelling, not identity: the round-trip drops it.
         self::assertSame(ltrim($fqn, '\\'), $name->fullyQualifiedName());
+    }
+
+    public function testFromClassNameConvertsTheClassLikeIdentifier(): void
+    {
+        $name = QualifiedName::fromClassName(new ClassName(QualifiedName::class));
+
+        self::assertSame('Firehed\PhpLsp\Domain', $name->namespace);
+        self::assertSame('QualifiedName', $name->shortName);
     }
 
     public function testGlobalNameHasAnEmptyNamespace(): void

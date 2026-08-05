@@ -23,6 +23,15 @@ final readonly class QualifiedName
     }
 
     /**
+     * The bridge from the class-like identifier, which carries its kind, to the
+     * kind-neutral base type a {@see \Firehed\PhpLsp\Knowledge\SymbolLocator} takes.
+     */
+    public static function fromClassName(ClassName $name): self
+    {
+        return self::fromFullyQualified($name->fqn);
+    }
+
+    /**
      * A leading `\` is spelling rather than identity, so it is dropped.
      */
     public static function fromFullyQualified(string $fullyQualifiedName): self

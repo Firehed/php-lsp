@@ -78,7 +78,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
             return $cached;
         }
 
-        $filePath = $this->locator->locate(QualifiedName::fromFullyQualified($name->fqn), NameKind::ClassLike);
+        $filePath = $this->locator->locate(QualifiedName::fromClassName($name), NameKind::ClassLike);
         if ($filePath === null || !is_readable($filePath)) {
             return null;
         }
