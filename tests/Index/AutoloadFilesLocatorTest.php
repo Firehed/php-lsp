@@ -185,7 +185,8 @@ final class AutoloadFilesLocatorTest extends TestCase
     {
         // PHP requires the files in order, so the first declaration is the one that
         // takes effect; a later guarded redeclaration never runs.
-        [$first, $second] = [self::tempFile('<?php const DUPE_TARGET = 1;'), self::tempFile('<?php const DUPE_TARGET = 2;')];
+        $first = self::tempFile('<?php const DUPE_TARGET = 1;');
+        $second = self::tempFile('<?php const DUPE_TARGET = 2;');
 
         try {
             $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$first, $second]));
