@@ -268,7 +268,8 @@ Step 4 (Section 6).
   `lookupClassLike` to the class-likes those files declare, which the autoload maps
   cannot address (constant reach covers `const` declarations and literal-name
   `define()`; a **computed-name `define()`** is a runtime call invisible to static
-  parse and is out of scope, per §3's locate-only limitation; an anonymous class has
+  parse and is out of scope, per §3's locate-only limitation, as is a name introduced
+  by **`class_alias()`** rather than by a declaration; an anonymous class has
   no name to index); migrate `FunctionCandidates`
   to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
   document's functions, so that query disappears with its last caller); remove the
