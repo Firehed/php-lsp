@@ -8,15 +8,15 @@ use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerClassLocator;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
+use Firehed\PhpLsp\Index\ComposerSymbolLocator;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
+use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
-use Firehed\PhpLsp\Repository\ClassLocator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\Index\CountingNamespaceCatalog;
 use Psr\SimpleCache\CacheInterface;
@@ -117,7 +117,7 @@ final class FilesystemBackendTest extends TestCase
     {
         $counting = new CountingNamespaceCatalog();
         $backend = new FilesystemBackend(
-            self::createStub(ClassLocator::class),
+            self::createStub(SymbolLocator::class),
             new CachedNamespaceCatalog($counting, CacheFactory::inMemory()),
             $this->parser,
             $this->factory,
@@ -217,7 +217,7 @@ final class FilesystemBackendTest extends TestCase
             ->willReturn($expected);
 
         $backend = new FilesystemBackend(
-            self::createStub(ClassLocator::class),
+            self::createStub(SymbolLocator::class),
             $catalog,
             $this->parser,
             $this->factory,
@@ -248,7 +248,7 @@ final class FilesystemBackendTest extends TestCase
         $map = ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot);
 
         return new FilesystemBackend(
-            new ComposerClassLocator($map),
+            new ComposerSymbolLocator($map),
             new ComposerNamespaceSource($map),
             $this->parser,
             $this->factory,
@@ -256,7 +256,7 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    private function backendWithLocator(ClassLocator $locator): FilesystemBackend
+    private function backendWithLocator(SymbolLocator $locator): FilesystemBackend
     {
         return new FilesystemBackend(
             $locator,
@@ -267,9 +267,9 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    private function locatorReturning(string $path): ClassLocator
+    private function locatorReturning(string $path): SymbolLocator
     {
-        $locator = self::createStub(ClassLocator::class);
+        $locator = self::createStub(SymbolLocator::class);
         $locator->method('locate')->willReturn($path);
 
         return $locator;

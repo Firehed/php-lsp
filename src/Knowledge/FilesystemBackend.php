@@ -10,11 +10,12 @@ use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
-use Firehed\PhpLsp\Repository\ClassLocator;
+use Firehed\PhpLsp\Resolution\NameKind;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
@@ -54,7 +55,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     private array $cacheKeysByPath = [];
 
     public function __construct(
-        private readonly ClassLocator $locator,
+        private readonly SymbolLocator $locator,
         private readonly NamespaceCatalog $namespaces,
         private readonly ParserService $parser,
         private readonly ClassInfoFactory $factory,
@@ -77,7 +78,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
             return $cached;
         }
 
-        $filePath = $this->locator->locate($name);
+        $filePath = $this->locator->locate(QualifiedName::fromClassName($name), NameKind::ClassLike);
         if ($filePath === null || !is_readable($filePath)) {
             return null;
         }
