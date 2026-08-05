@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
+use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
@@ -169,6 +173,52 @@ final class FilesystemBackendTest extends TestCase
         } finally {
             unlink($path);
             rmdir($dir);
+        }
+    }
+
+    /**
+     * Driven end to end through the locator chain the stack actually wires, rather
+     * than a mock: the autoload.files index is derived from disk, so an external
+     * change must reach it too. Evicting only the ClassInfo cache would leave the
+     * name -> file map itself stale, and a class added by the edit would stay
+     * invisible however many times it was asked for (RFC 1 §5.2, §5.3).
+     */
+    public function testInvalidateReachesALocatorHoldingDerivedState(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'php-lsp-fsb-files-');
+        self::assertNotFalse($path, 'a temp file must be creatable');
+
+        try {
+            self::assertNotFalse(
+                file_put_contents($path, '<?php class DerivedBefore {}'),
+                'the temp file must be writable',
+            );
+
+            $backend = $this->backendWithLocator(new CompositeSymbolLocator([
+                new AutoloadFilesLocator(
+                    new ComposerAutoloadMap([], [], [], [$path]),
+                    $this->parser,
+                    new DeclarationScanner(),
+                ),
+            ]));
+
+            self::assertNotNull(
+                $backend->lookupClassLike(self::className('DerivedBefore')),
+                'a class-like declared in a files entry must resolve through the derived index',
+            );
+
+            self::assertNotFalse(
+                file_put_contents($path, '<?php class DerivedAfter {}'),
+                'the rewrite must succeed',
+            );
+            $backend->invalidate(FileUri::fromPath($path));
+
+            self::assertNotNull(
+                $backend->lookupClassLike(self::className('DerivedAfter')),
+                'invalidate must re-derive the index so a class added on disk resolves',
+            );
+        } finally {
+            unlink($path);
         }
     }
 
