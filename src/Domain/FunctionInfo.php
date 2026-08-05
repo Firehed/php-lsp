@@ -26,7 +26,12 @@ final readonly class FunctionInfo implements Formattable
     ) {
     }
 
-    public static function fromNode(Stmt\Function_ $node): self
+    /**
+     * @param ?string $file the declaring file, which the node does not carry;
+     *        supplied when the function was resolved from a known file rather than
+     *        from the document already being read
+     */
+    public static function fromNode(Stmt\Function_ $node, ?string $file = null): self
     {
         $params = [];
         foreach ($node->params as $position => $param) {
@@ -41,7 +46,7 @@ final readonly class FunctionInfo implements Formattable
             parameters: $params,
             returnType: TypeFactory::fromNode($node->returnType),
             docblock: $node->getDocComment()?->getText(),
-            file: null,
+            file: $file,
             line: $node->getStartLine(),
         );
     }
