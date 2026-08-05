@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser;
 
+use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
 use PhpParser\ErrorHandler;
 use PhpParser\Node\Stmt;
@@ -82,6 +83,31 @@ final class ParserService
         }
 
         return $this->scopedParses[$content];
+    }
+
+    /**
+     * Parses a file identified by path rather than by open document, so a caller
+     * holding a path does not re-implement the read-and-wrap. Shares the
+     * content-keyed memo, so a file two callers read costs one parse.
+     *
+     * @return array<Stmt>|null Null when the path cannot be read as a file
+     */
+    public function parseFile(string $path): ?array
+    {
+        if (!is_file($path) || !is_readable($path)) {
+            return null;
+        }
+
+        $content = file_get_contents($path);
+        if ($content === false) {
+            // @codeCoverageIgnoreStart
+            // Guarded against above, so reaching this means the file changed
+            // under us between the check and the read.
+            throw new \LogicException("Readable file could not be read: $path");
+            // @codeCoverageIgnoreEnd
+        }
+
+        return $this->parse(new TextDocument(FileUri::fromPath($path), 'php', 0, $content));
     }
 
     /**

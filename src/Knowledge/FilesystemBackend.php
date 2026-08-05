@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\FileUri;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -79,7 +78,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         }
 
         $filePath = $this->locator->locate(QualifiedName::fromClassName($name), NameKind::ClassLike);
-        if ($filePath === null || !is_readable($filePath)) {
+        if ($filePath === null) {
             return null;
         }
 
@@ -123,24 +122,9 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
 
     private function parseClassFrom(ClassName $name, string $filePath): ?ClassInfo
     {
-        $content = file_get_contents($filePath);
-        if ($content === false) {
-            // @codeCoverageIgnoreStart
-            // A readable file that then fails to read is an IO race, not a code path
-            // the corpus can drive; it degrades to "not found" rather than crashing.
-            return null;
-            // @codeCoverageIgnoreEnd
-        }
-
-        $uri = FileUri::fromPath($filePath);
-        $document = new TextDocument($uri, 'php', 0, $content);
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parseFile($filePath);
         if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            // ParserService yields null only when a parse throws despite error
-            // recovery — unreachable for a located, well-formed file (RFC 1 §9).
             return null;
-            // @codeCoverageIgnoreEnd
         }
 
         $node = $this->findClassInAst($name->fqn, $ast);
@@ -148,7 +132,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
             return null;
         }
 
-        return $this->factory->fromAstNode($node, $uri);
+        return $this->factory->fromAstNode($node, FileUri::fromPath($filePath));
     }
 
     /**
