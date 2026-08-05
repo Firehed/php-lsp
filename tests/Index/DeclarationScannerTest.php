@@ -34,6 +34,7 @@ final class DeclarationScannerTest extends TestCase
         'FIXTURE_UPPERCASE_DEFINED_LIMIT',
         'FIXTURE_NAMED_LIMIT',
         'FIXTURE_REORDERED_LIMIT',
+        'FIXTURE_BODY_LIMIT',
     ];
 
     private DeclarationScanner $scanner;
@@ -105,9 +106,30 @@ final class DeclarationScannerTest extends TestCase
         $declarations = $this->scanFixture('AutoloadFiles/globals.php');
 
         self::assertSame(
-            ['fixtureGlobalHelper', 'fixtureConditionalHelper'],
+            ['fixtureGlobalHelper', 'fixtureConditionalHelper', 'fixtureBootstrap', 'fixtureNestedHelper'],
             self::fqns($declarations->functions),
             'a function declared outside any namespace has an empty namespace path',
+        );
+    }
+
+    public function testDeclarationsInsideAFunctionBodyAreReported(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // The rule is lexical, not executional: the scan reports what the file
+        // declares, because whether the enclosing body runs at require time is a
+        // runtime question (an immediately-invoked bootstrap closure runs; a
+        // never-called function does not) that a static parse cannot settle. So
+        // this over-reports rather than dropping a real bootstrap declaration.
+        self::assertContains(
+            'fixtureNestedHelper',
+            self::fqns($declarations->functions),
+            'a function declared inside a function body is still lexically declared',
+        );
+        self::assertContains(
+            'FIXTURE_BODY_LIMIT',
+            self::fqns($declarations->constants),
+            'a define() inside a function body is reported on the same lexical rule',
         );
     }
 

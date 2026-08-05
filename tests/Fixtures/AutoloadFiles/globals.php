@@ -60,3 +60,16 @@ if (!function_exists('fixtureConditionalHelper')) {
         return $value + 1;
     }
 }
+
+// Declarations inside a function body. Whether they happen is a runtime question —
+// an immediately-invoked bootstrap closure declares them, this never-called
+// function does not — so the scan reports them either way, on the lexical rule.
+function fixtureBootstrap(): void
+{
+    define('FIXTURE_BODY_LIMIT', 500);
+
+    function fixtureNestedHelper(int $value): int
+    {
+        return $value - 1;
+    }
+}

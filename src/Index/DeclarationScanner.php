@@ -17,9 +17,16 @@ use PhpParser\NodeVisitorAbstract;
  * name -> file map can be derived for an `autoload.files` entry, which Composer
  * addresses by no name at all (Plan 0002 §3).
  *
+ * What counts as a declaration is decided lexically, not by what a `require` of the
+ * file would execute: a conditional polyfill (`if (!function_exists(...))`) and a
+ * declaration inside a function body are both reported, because whether either runs
+ * is a runtime question. That over-reports a never-called function's body rather
+ * than dropping the polyfill, which is the shape most `autoload.files` entries take.
+ *
  * The blind spots are Plan 0002 §3's locate-only limitation rather than oversights:
- * a `define()` whose name — or whose call — resolves only at runtime, and anything
- * reached only through a `require`/`include`, which is not followed.
+ * a `define()` whose name — or whose call — resolves only at runtime, a name
+ * introduced by `class_alias()` rather than by a declaration, and anything reached
+ * only through a `require`/`include`, which is not followed.
  */
 final class DeclarationScanner
 {
