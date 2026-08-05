@@ -71,6 +71,7 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.7b  3b    Scan a file for the declarations it makes          S3.3              —
     S3.7c  3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
     S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
+    S3.7e  3b    Enumerate the derived index in childrenOf          S3.7d             —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
     S3.8b  3b    lookupConstant project reach                       S3.7d             —
     S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
@@ -113,6 +114,15 @@ Notes:
   **S3.7d adds the reach**, which is new behavior proven by new fixtures. S3.7a and
   S3.7b are the two independent inputs S3.7d consumes (the autoload map's `files`
   section; the per-file declaration scan) and have no dependency on each other.
+  - **S3.7e closes the surface, not just the lookup.** S3.7d makes a `files`-declared
+    name resolvable by `lookupClassLike`, but `childrenOf` still enumerates by listing
+    a PSR-4 directory, which these files sit outside — so the name resolves on hover
+    and definition while never appearing in namespace completion. That split is the
+    inconsistency this series exists to prevent (#190, #253, #256), and it is why the
+    gap is a slice rather than a documented limitation. The data is already there: the
+    derived index knows every name each entry declares, so this is wiring enumeration
+    onto it, not a second scan. Found while reviewing S3.7d, which delivered the lookup
+    half only.
 - **S3.8 and S3.9 are cut by symbol namespace, not by layer.** A layer cut (interface,
   then backends, then consumers) would land `SymbolBackend` methods no backend
   implements, so each slice is instead one vertical: a kind's name type, its
@@ -200,6 +210,13 @@ Notes:
   - **#181 covers all three kinds**, which is now what S3.7b–S3.7d build: the
     `files` set has no name→file map of any kind, so it is scanned whole. A slice
     claiming #181 must show class-like reach, not just functions and constants.
+    - **#181 is not closable before S3.9b.** Its acceptance asks for these symbols in
+      *hover and completion*, not merely resolvable: functions need S3.8a and S3.9b,
+      constants S3.8b, namespace completion S3.7e. It also asks for a startup-time
+      benchmark, which S3.7d's eager index makes a live question rather than a
+      formality — S3.7d pins the parse *count*, which is not the same measurement.
+      Read the issue body before wiring `Closes`; the reach landing is not the
+      criteria being met.
 
 ### Deferred (not scheduled; excluded from `/do-next` until reached)
 
