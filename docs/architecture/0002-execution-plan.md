@@ -414,6 +414,32 @@ known-removable thing without an owning slice is the same defect as an undischar
 scaffold. A remover must be a slice id; a prose note is not an owner, because
 `/do-next` cannot select one.
 
+### Duplication audits
+
+The ledger above tracks scaffolding *this plan knowingly introduced*.
+It cannot catch the failure mode the series exists to end: a capability that ends up implemented twice, which is how the M×N problem returns.
+Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places (SC.4), namespace tracking in two (SC.3), a superseded import extractor with three unmigrated callers (SC.2).
+Each was found by an audit, not by a step.
+
+So each major section ends with an explicit audit slice, and the terminal gate re-runs it repo-wide.
+
+**What an audit looks for.** A single capability with more than one implementation, in the shapes this codebase actually produces them:
+
+- a traversal or walk written per consumer instead of once (the #334 shape);
+- a mechanism hand-rolled per call site — path/URI conversion, name normalization and case handling, FQN construction, memoization;
+- a seam that landed while some callers kept the old path (the SC.2 shape);
+- a branch per kind, per handler, or per node type where one generic path should serve (#190, #253, #256).
+
+**Method.** For every seam the section introduced, enumerate its callers and confirm no bypass survives; where a §8.1 rule can enforce the seam, that rule must exist and carry no exemption.
+Then sweep the section's code for the shapes above.
+A finding is not discharged by noting it: it is either fixed in the audit slice, or it becomes a numbered slice row with an owner.
+
+**Outcome rule, and the one difference between them.** The pre-cleanup audits (**S3.11**, **S4.7**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
+The terminal audit in **Step Z** may not: there, an unowned *or* unfixed duplicate is a failure, because there is no later section to own it.
+
+An audit reporting no findings must show the enumeration it ran.
+"None found" without evidence is indistinguishable from not looking, which is exactly how these survived to be found by audit in the first place.
+
 ### Step Z — Definition of Done (final verification gate)
 
 The steps above end the *work*; this gate declares the foundation *complete*. It is a
@@ -433,6 +459,12 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
 - **Teardown is discharged.** Every row of the Teardown ledger is removed; a scan
   confirms no facade-only delegations, no double writes, and no dead transitional
   classes (`DefaultFunctionRepository`, etc.) survive.
+- **No capability is implemented twice.** The duplication audit (above) is run
+  repo-wide and comes back empty, with its enumeration shown. Every earlier audit
+  (S3.11, S4.7) is discharged, and so is every slice they filed. This is the goal the
+  series exists to reach — the other gates verify the *route* was followed, this one
+  verifies the *destination*. A surviving duplicate fails the gate even if every
+  other item passes, and it may not be deferred: there is no later section to own it.
 - **Divergences are reconciled.** Each entry in RFC 1 Appendix B "current divergences"
   (byte offsets, functions-need-AST, constants-unresolved, capabilities-unread) is
   either **fixed** or **converted to an explicitly-tracked deferred gap with an open
@@ -442,7 +474,7 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266), and
   computed-name `define()` (§3). A gap not on this list is a bug, not a deferral.
 
-Only when all six hold is the foundation deemed complete.
+Only when all seven hold is the foundation deemed complete.
 
 ## 5. Step 2 in depth
 
