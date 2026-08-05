@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Parser\ParserService;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -44,6 +45,60 @@ final class KnowledgeStackTest extends TestCase
         self::assertNotNull(
             $stack->source->lookupClassLike(self::className('Fixtures\Domain\User')),
             'a fixture class must resolve through the assembled filesystem backend',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     * @codeCoverageIgnore data provider runs before coverage begins
+     */
+    public static function autoloadFilesClassLikes(): iterable
+    {
+        // Composer's maps address none of these: they are declared in an
+        // `autoload.files` entry, which is keyed by no name at all. Every flavour is
+        // covered, because a scan narrowed to `class` would lose three of them
+        // silently (Plan 0002 §3, #181).
+        yield 'interface' => ['Fixtures\Helpers\HelperContract'];
+        yield 'trait' => ['Fixtures\Helpers\HelperFallback'];
+        yield 'enum' => ['Fixtures\Helpers\HelperMode'];
+        yield 'class' => ['Fixtures\Helpers\HelperRegistry'];
+        yield 'global class' => ['FixtureGlobalRegistry'];
+    }
+
+    #[DataProvider('autoloadFilesClassLikes')]
+    public function testSourceResolvesAClassLikeDeclaredInAnAutoloadFilesEntry(string $fqn): void
+    {
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->fixturesRoot . '/vendor',
+            $this->parser,
+        );
+
+        $info = $stack->source->lookupClassLike(self::className($fqn));
+
+        self::assertNotNull($info, "a class-like declared in an autoload.files entry must resolve: {$fqn}");
+        self::assertSame($fqn, $info->name->fqn, 'the located class-like must be the one asked for');
+    }
+
+    /**
+     * The index is built eagerly, so its cost is paid once at construction rather
+     * than landing mid-keystroke. Pinning the count is what keeps that a measured
+     * quantity rather than an unwatched one: it goes red if an entry is parsed more
+     * than once, or if indexing ever reaches outside the `files` set into the PSR-4
+     * tree. The fixture project lists two entries, both outside `vendor/`.
+     */
+    public function testTheAutoloadFilesIndexIsBuiltOnceAtConstruction(): void
+    {
+        KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->fixturesRoot . '/vendor',
+            $this->parser,
+        );
+
+        self::assertSame(
+            2,
+            $this->parser->getMetrics()->getParseCount(),
+            'construction parses each autoload.files entry exactly once',
         );
     }
 

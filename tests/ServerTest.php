@@ -352,6 +352,10 @@ class ServerTest extends TestCase
      * below costs exactly one parse: not the two the sync path used to spend on
      * every keystroke, and not one in total, which is the standing cache the
      * Step 0 spike declined to add.
+     *
+     * Measured across `run()` rather than the process, because construction now
+     * eagerly indexes the `autoload.files` set; that cost is gated separately by
+     * KnowledgeStackTest, not folded in here where it would blur this bound.
      */
     public function testParsesAreScopedToOneMessage(): void
     {
@@ -381,12 +385,13 @@ class ServerTest extends TestCase
         $parser = new ParserService();
         $transport = $this->createTransport($input, $outputBuffer);
         $server = Server::forProject($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
+        $atStartup = $parser->getMetrics()->getParseCount();
 
         $server->run();
 
         self::assertSame(
             3,
-            $parser->getMetrics()->getParseCount(),
+            $parser->getMetrics()->getParseCount() - $atStartup,
             'three sync messages, one parse each',
         );
     }
@@ -428,12 +433,13 @@ class ServerTest extends TestCase
         $parser = new ParserService();
         $transport = $this->createTransport($input, $outputBuffer);
         $server = Server::forProject($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
+        $atStartup = $parser->getMetrics()->getParseCount();
 
         $server->run();
 
         self::assertSame(
             3,
-            $parser->getMetrics()->getParseCount(),
+            $parser->getMetrics()->getParseCount() - $atStartup,
             'one didOpen and two completion requests, one parse each',
         );
     }

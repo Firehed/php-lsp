@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
+use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\SymbolExtractor;
@@ -54,9 +56,11 @@ final readonly class KnowledgeStack
 
         [$workspaceMap, $vendorMap] = $autoloadMap->partitionByVendorDirectory($vendorDirectory);
 
+        $scanner = new DeclarationScanner();
+
         $openDocuments = new OpenDocumentBackend($index);
-        $workspace = self::filesystemBackend($workspaceMap, $parser, $classInfoFactory);
-        $vendor = self::filesystemBackend($vendorMap, $parser, $classInfoFactory);
+        $workspace = self::filesystemBackend($workspaceMap, $parser, $classInfoFactory, $scanner);
+        $vendor = self::filesystemBackend($vendorMap, $parser, $classInfoFactory, $scanner);
         $source = new CompositeSymbolSource([
             $openDocuments,
             $workspace,
@@ -84,13 +88,22 @@ final readonly class KnowledgeStack
         return new self($source, $sink);
     }
 
+    /**
+     * The two routes to a declaration, cheapest first: Composer's autoload maps
+     * address class-likes by arithmetic on the name, and the derived index covers
+     * the `autoload.files` set, which they address by no name at all (Plan 0002 §3).
+     */
     private static function filesystemBackend(
         ComposerAutoloadMap $map,
         ParserService $parser,
         ClassInfoFactory $classInfoFactory,
+        DeclarationScanner $scanner,
     ): FilesystemBackend {
         return new FilesystemBackend(
-            new ComposerSymbolLocator($map),
+            new CompositeSymbolLocator([
+                new ComposerSymbolLocator($map),
+                new AutoloadFilesLocator($map, $parser, $scanner),
+            ]),
             new CachedNamespaceCatalog(new ComposerNamespaceSource($map), CacheFactory::inMemory()),
             $parser,
             $classInfoFactory,
