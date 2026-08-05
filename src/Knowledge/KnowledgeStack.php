@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
+use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
 use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
@@ -92,6 +93,11 @@ final readonly class KnowledgeStack
      * The two routes to a declaration, cheapest first: Composer's autoload maps
      * address class-likes by arithmetic on the name, and the derived index covers
      * the `autoload.files` set, which they address by no name at all (Plan 0002 §3).
+     *
+     * Both routes answer enumeration as well as lookup, from the one derived index
+     * — the `files` set sits outside every PSR-4 and PSR-0 prefix, so the directory
+     * listing cannot see it, and a name reachable by only one of the two surfaces is
+     * the split RFC 1 §4.2 forbids.
      */
     private static function filesystemBackend(
         ComposerAutoloadMap $map,
@@ -99,12 +105,20 @@ final readonly class KnowledgeStack
         ClassInfoFactory $classInfoFactory,
         DeclarationScanner $scanner,
     ): FilesystemBackend {
+        $autoloadFiles = new AutoloadFilesLocator($map, $parser, $scanner);
+
         return new FilesystemBackend(
             new CompositeSymbolLocator([
                 new ComposerSymbolLocator($map),
-                new AutoloadFilesLocator($map, $parser, $scanner),
+                $autoloadFiles,
             ]),
-            new CachedNamespaceCatalog(new ComposerNamespaceSource($map), CacheFactory::inMemory()),
+            new CachedNamespaceCatalog(
+                new CompositeNamespaceCatalog([
+                    new ComposerNamespaceSource($map),
+                    $autoloadFiles,
+                ]),
+                CacheFactory::inMemory(),
+            ),
             $parser,
             $classInfoFactory,
             CacheFactory::inMemory(),
