@@ -52,7 +52,8 @@ Step P harness — parity fixtures first), **3b** both preserves and extends the
 surface (existing behavior frozen to a golden; new project reach proven by new
 fixtures). The `Step` column carries the half, since 3a and 3b own distinct acceptance
 criteria in 0002. Step 4 decomposes `SymbolResolver`; Step Z is the terminal
-Definition-of-Done gate.
+Definition-of-Done gate. Steps 3 and 4 each end with a duplication audit (S3.11,
+S4.7), which Step Z re-runs repo-wide as its completion gate.
 
     ID     Step  Title                                              Depends on        Closes
     -----  ----  -------------------------------------------------  ----------------  -------
@@ -72,17 +73,20 @@ Definition-of-Done gate.
     S3.9a  3b    Generalize search to a kind parameter              S3.8a             —
     S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
     S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
+    S3.11  3     Step 3 duplication audit                          S3.10             —
     S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
     S4.2   4     Extract node locator + scope analyzer              S3.8c,S4.1        —
     S4.3   4     Extract member-access + call-context detectors     S4.2              —
     S4.4   4     Extract name-context resolver                      S4.2              —
     S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
     S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
+    S4.7   4     Step 4 duplication audit                          S4.6              —
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
     SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
     SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
-    SZ.1   Z     Definition of Done gate                            S3.10,S4.6,SC.1,SC.2,SC.3,SC.4  —
+    SC.5   —     Merge the two class-like AST traversals             SC.3              —
+    SZ.1   Z     Definition of Done gate + repo-wide dup audit      S3.11,S4.7,SC.1,SC.2,SC.3,SC.4,SC.5  —
 
 Notes:
 
@@ -161,6 +165,31 @@ Notes:
     encoding. One `FileUri` replaces them. Found while splitting S3.7, whose locator
     wanted a fifth copy; the duplication predates that slice and belongs to no step,
     so S3.7c is gated on it rather than carrying it.
+  - **SC.5** — `FilesystemBackend::findClassInAst` and `Index\DeclarationScanner` both
+    walk an AST to find the class-likes a file declares. They differ in what they
+    return (one matched *node* versus every declared *name*) and in stopping early, so
+    this is scoped as **evaluate and merge if warranted** — concluding "two genuinely
+    different queries, one walk" is an acceptable outcome, but it must be concluded and
+    recorded, not left unexamined. Gated only on SC.3, which rewrites `findClassInAst`'s
+    namespace handling; it is deliberately *not* gated on S3.11, because an audit files
+    slices and a slice already filed must not wait on the audit that would have found
+    it. Found while reviewing S3.7d, which put the two traversals side by side without
+    merging them.
+- **Each section ends with a duplication audit** (**S3.11**, **S4.7**, and the repo-wide
+  one inside **SZ.1**); their shared method and outcome rule are defined once in 0002
+  §Duplication audits, so the three rows do not restate it. The teardown ledger tracks
+  scaffolding the plan *knowingly* introduced; the audits catch what it cannot — a
+  capability that ended up implemented twice, which is the M×N failure the whole series
+  exists to end. Every such instance found so far (#334, SC.2, SC.3, SC.4, SC.5) was
+  found by an audit rather than by a step's acceptance, which is why the audits are
+  slices with owners rather than a review habit.
+  - S3.11 and S4.7 are **tracking** gates: a finding may be handed to a new slice
+    instead of fixed in place, so a removal belonging to a later section is not dragged
+    forward. SZ.1 is the **completion** gate: there, an unowned or unfixed duplicate
+    fails the step outright, since no later section can own it.
+  - SZ.1's dependencies are the two audits rather than S3.10/S4.6 directly — the audits
+    already depend on those, and gating on the audit is what makes "the section is
+    finished" mean "the section was swept", not merely "its last feature landed".
 - **The Builtin backend stood up in S3.3 is reflection-backed and does not satisfy
   §4.7** (0002 §5 known gap) — file the tracked §4.7 issue when S3.3 lands; its fix is
   the deferred Step 5.
