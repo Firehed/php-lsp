@@ -72,11 +72,13 @@ squash-deleted branch is never misread as unstarted.
      first — one slice in flight at a time);
    - the manifest references a merged branch for a slice whose dependencies are not
      merged (state drift — surface it).
-4. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
+4. **Explain X.** Describe in plain english the work to be done, then wait for
+   approval, clarification, or modification.
+5. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
    `composer test`; open a PR citing X.
-5. Stop. Report the PR and the *next* computed slice, so the human knows what a
+6. Stop. Report the PR and the *next* computed slice, so the human knows what a
    follow-up "do the next step" would pick up.
 
 ## Mode B — "review this step's branch"

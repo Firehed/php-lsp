@@ -42,11 +42,16 @@ project's **Squash and Merge**: a squash rewrites the branch into one new commit
   review it first.
 - A slice's branch is merged while a dependency is not — surface the state drift.
 
-## 4. Implement X
+## 4. Explain X
+
+Read X's plan step in `docs/architecture/0002-execution-plan.md` for its acceptance
+criteria, and the RFC sections it cites in `0001-foundational-architecture.md`. Then
+describe the work in plain english and **wait** for approval, clarification, or
+modification before writing anything.
+
+## 5. Implement X
 
 - Create `slice/<X>` off `main`.
-- Read X's plan step in `docs/architecture/0002-execution-plan.md` for its acceptance
-  criteria, and the RFC sections it cites in `0001-foundational-architecture.md`.
 - TDD:
   - Behavior-preserving slice → add/extend the Step P parity fixtures **first**.
   - Seam-introducing slice → add its §8.1 enforcement rule in this slice.
@@ -55,7 +60,7 @@ project's **Squash and Merge**: a squash rewrites the branch into one new commit
 - If you hit a fundamental design question the plan does not answer, **STOP and ask**
   — do not invent an interpretation.
 
-## 5. Open the PR and report
+## 6. Open the PR and report
 
 - PR title carries no issue number; the body cites the slice id, plan step, and RFC
   section(s), and lists the acceptance criteria as a checklist.
