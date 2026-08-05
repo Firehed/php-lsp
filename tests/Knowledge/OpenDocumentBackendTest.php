@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -89,6 +91,81 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
+    public function testLookupFunctionReturnsARegisteredFunction(): void
+    {
+        $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
+
+        $info = $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\format'));
+
+        self::assertNotNull($info, 'a registered function must resolve');
+        self::assertSame('format', $info->name, 'the registered function must be returned unchanged');
+    }
+
+    public function testLookupFunctionIsCaseInsensitive(): void
+    {
+        $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
+
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\FORMAT')),
+            'PHP matches function names case-insensitively',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullForAnUnregisteredFunction(): void
+    {
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\absent')),
+            'a name no open document declares is absent from this backend (RFC 1 §5.3)',
+        );
+    }
+
+    public function testFunctionAndClassLikeRegistrationsDoNotCollide(): void
+    {
+        $this->backend->updateDocument(
+            'file:///Dual.php',
+            [self::classInfo('V\Dual')],
+            ['V\Dual' => self::functionInfo('Dual')],
+        );
+
+        self::assertNotNull(
+            $this->backend->lookupClassLike(self::className('V\Dual')),
+            'the class-like must resolve',
+        );
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\Dual')),
+            'a function sharing the name must resolve too: the symbol namespaces are independent',
+        );
+    }
+
+    public function testUpdateDocumentReplacesThePriorFunctionsForThatUri(): void
+    {
+        $uri = 'file:///helpers.php';
+        $this->backend->updateDocument($uri, [], ['V\alpha' => self::functionInfo('alpha')]);
+        $this->backend->updateDocument($uri, [], ['V\beta' => self::functionInfo('beta')]);
+
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\alpha')),
+            'the prior function must be dropped when the document is re-registered',
+        );
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\beta')),
+            'the new function must be registered',
+        );
+    }
+
+    public function testRemoveDocumentDropsItsFunctions(): void
+    {
+        $uri = 'file:///helpers.php';
+        $this->backend->updateDocument($uri, [], ['V\ephemeral' => self::functionInfo('ephemeral')]);
+
+        $this->backend->removeDocument($uri);
+
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\ephemeral')),
+            'closing a document must drop the functions it registered',
+        );
+    }
+
     public function testSearchClassLikesFiltersByPrefixAndToClassLikeKindsOnly(): void
     {
         $this->addSymbol('User', 'App\User', SymbolKind::Class_);
@@ -126,6 +203,11 @@ final class OpenDocumentBackendTest extends TestCase
             $contents->childNamespaces,
             'a namespace with a deeper declaration must be listed as a child',
         );
+    }
+
+    private static function functionInfo(string $shortName): FunctionInfo
+    {
+        return new FunctionInfo($shortName, [], null, null, null, 1);
     }
 
     private function addSymbol(string $name, string $fqn, SymbolKind $kind): void
