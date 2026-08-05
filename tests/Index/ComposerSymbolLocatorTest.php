@@ -44,8 +44,8 @@ final class ComposerSymbolLocatorTest extends TestCase
             TestCase::class,
             'phpunit/phpunit/src/Framework/TestCase.php',
         ];
-        // A leading separator is spelling rather than identity, so QualifiedName
-        // drops it; Composer's own maps are keyed without one and would not match.
+        // QualifiedName drops the leading separator; Composer's maps are keyed
+        // without one and would not match it.
         yield 'leading separator' => [
             self::PROJECT_ROOT,
             '\\' . ComposerSymbolLocator::class,
@@ -86,11 +86,6 @@ final class ComposerSymbolLocatorTest extends TestCase
         yield 'constant' => [NameKind::Constant];
     }
 
-    /**
-     * Nothing about the name `Foo\bar` says which file declares it: Composer maps
-     * only class-likes. The declarations an `autoload.files` entry makes are reached
-     * through a derived index, which this locator does not yet build (Plan 0002 §3b).
-     */
     #[DataProvider('unmappedKinds')]
     public function testLocateHasNoReachForFunctionsOrConstants(NameKind $kind): void
     {

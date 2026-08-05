@@ -9,14 +9,10 @@ use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Resolution\NameKind;
 
 /**
- * Locates a declaration through Composer's autoload configuration.
- *
- * Only class-likes are reachable this way, and that is a property of Composer's
- * data rather than a gap here: PSR-4, PSR-0 and the classmap all map a class name
- * to a file, so a lookup is arithmetic on the name and no file is read. Nothing
- * about the name `Foo\bar` says which file declares it as a function or a constant;
- * those declarations are reachable only in the `autoload.files` set, through an
- * index derived by parsing it (Plan 0002 §3b).
+ * Locates a declaration through Composer's autoload maps, which address class-likes
+ * and nothing else: PSR-4, PSR-0 and the classmap all map a class name to a file, so
+ * a lookup is arithmetic on the name. Functions and constants are reachable only by
+ * parsing the `autoload.files` set, which S3.7d derives an index from.
  */
 final class ComposerSymbolLocator implements SymbolLocator
 {

@@ -8,20 +8,11 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Resolution\NameKind;
 
 /**
- * Resolves a qualified name to the file that declares it, for any of PHP's three
- * symbol namespaces (Plan 0002 §3b: `ClassLocator` generalized to a kind-agnostic
- * `SymbolLocator`).
+ * Resolves a qualified name to the file that declares it.
  *
- * The kind is a parameter rather than a method per kind because the cross-products
- * §5.6 keeps closed are *consumers × kinds* and *backends × kinds*: a new caller
- * resolves through the same entry, whichever namespace it is asking about. It is not
- * redundant with the name, because {@see QualifiedName} is deliberately kind-neutral
- * — `Foo\bar` names a different symbol as a function than as a constant, and only
- * the syntactic position the caller read it from can say which.
- *
- * Absence is a bare `null` rather than an exception (RFC 1 §5.3). A name this
- * locator cannot reach is not an error: it may be a built-in, declared in an open
- * document, or not exist at all — all questions for a caller above it.
+ * The kind is a parameter because {@see QualifiedName} is kind-neutral: `Foo\bar`
+ * names a different symbol as a function than as a constant, and only the syntactic
+ * position the caller read it from can say which.
  */
 interface SymbolLocator
 {
