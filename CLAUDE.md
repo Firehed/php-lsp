@@ -82,6 +82,9 @@ the symbols declared directly in it.
 - **ReflectionNamespaceSource** — the language's built-ins. Filter to `isInternal()` (the
   server's own classes are loaded in the same process), and file each symbol under the
   namespace its reflected name carries — **internal does not imply global** (`Random\Randomizer`).
+- **AutoloadFilesLocator** — the `autoload.files` set, which sits outside every PSR-4 and
+  PSR-0 prefix, so no directory listing reaches it. It enumerates the index it already
+  derived for lookup, reporting each declaration's own `NameKind` rather than a guess.
 Each source is wrapped as a `SymbolBackend` (see Symbol Backends below): the
 `CompositeSymbolSource` merges and deduplicates their `childrenOf` results, and
 **CachedNamespaceCatalog** wraps the stable sources (workspace-on-disk, vendor,
@@ -120,6 +123,11 @@ derive the map; it is built eagerly, covers all three symbol namespaces (a name-
 route cannot know which kind a file declares), and applies PHP's per-kind case rules via
 `NameKind::isCaseSensitive()`. A test pins the parse *count* at construction, which is
 not a cost measurement; the set is explicit and usually tiny.
+
+The same derived index also answers the backend's `childrenOf`, merged with the
+directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: §4.2
+requires lookup and enumeration to draw on the same backends, so a name that resolved
+on hover while being invisible to completion is the split this tier exists to prevent.
 
 The write path is **`SymbolSink`** (`DocumentSymbolSink`), which
 registers class metadata and indexes symbols from one document.
