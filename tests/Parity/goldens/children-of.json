@@ -16,6 +16,43 @@
             }
         ]
     },
+    "Fixtures\\Helpers": {
+        "childNamespaces": [],
+        "symbols": [
+            {
+                "fqn": "Fixtures\\Helpers\\HELPER_DEFINED_QUALIFIED",
+                "kind": "Constant"
+            },
+            {
+                "fqn": "Fixtures\\Helpers\\HELPER_LIMIT",
+                "kind": "Constant"
+            },
+            {
+                "fqn": "Fixtures\\Helpers\\HelperContract",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Helpers\\HelperFallback",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Helpers\\HelperMode",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Helpers\\HelperRegistry",
+                "kind": "ClassLike"
+            },
+            {
+                "fqn": "Fixtures\\Helpers\\helperFormat",
+                "kind": "Function_"
+            },
+            {
+                "fqn": "Fixtures\\Helpers\\helperNormalize",
+                "kind": "Function_"
+            }
+        ]
+    },
     "Fixtures\\Model": {
         "childNamespaces": [
             "Fixtures\\Model\\Env",

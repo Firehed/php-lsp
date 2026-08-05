@@ -7,8 +7,10 @@ namespace Firehed\PhpLsp\Tests\Index;
 use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
+use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\DeclarationScanner;
+use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\NameKind;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -21,6 +23,10 @@ use PHPUnit\Framework\TestCase;
  * map. These prove the derived index reaches all three symbol namespaces, applies
  * PHP's per-kind case rules, and does not overreach into names it never saw
  * (Plan 0002 §3, Step 3b).
+ *
+ * The index answers both reads of it: `locate` for a known name, and `childrenOf`
+ * for what a namespace contains. Enumerating it is what keeps a `files`-declared
+ * name from resolving on hover while staying invisible to completion (RFC 1 §4.2).
  */
 #[CoversClass(AutoloadFilesLocator::class)]
 final class AutoloadFilesLocatorTest extends TestCase
@@ -275,6 +281,180 @@ final class AutoloadFilesLocatorTest extends TestCase
                 unlink($path);
             }
         }
+    }
+
+    /**
+     * The exact contents of each namespace the fixture `files` entries reach. Exact
+     * rather than containment, so a name the scan must *not* reach — a computed
+     * `define()`, a `define()` value mistaken for its name, an anonymous class —
+     * fails here as loudly as a missing one.
+     *
+     * @return iterable<string, array{string, list<string>, list<array{string, string}>}>
+     * @codeCoverageIgnore data provider runs before coverage begins
+     */
+    public static function enumeratedNamespaces(): iterable
+    {
+        yield 'namespaced entry' => [
+            'Fixtures\Helpers',
+            [],
+            [
+                ['Fixtures\Helpers\HELPER_LIMIT', 'Constant'],
+                ['Fixtures\Helpers\HELPER_DEFINED_QUALIFIED', 'Constant'],
+                ['Fixtures\Helpers\HelperContract', 'ClassLike'],
+                ['Fixtures\Helpers\HelperFallback', 'ClassLike'],
+                ['Fixtures\Helpers\HelperMode', 'ClassLike'],
+                ['Fixtures\Helpers\HelperRegistry', 'ClassLike'],
+                ['Fixtures\Helpers\helperFormat', 'Function_'],
+                ['Fixtures\Helpers\helperNormalize', 'Function_'],
+            ],
+        ];
+
+        // A namespace the set declares nothing directly in is still reachable,
+        // because the namespace on the way to a declaration is a child of its parent.
+        yield 'an intermediate namespace' => ['Fixtures', ['Fixtures\Helpers'], []];
+
+        yield 'the global namespace' => [
+            '',
+            ['Fixtures'],
+            [
+                ['FIXTURE_GLOBAL_LIMIT', 'Constant'],
+                ['FIXTURE_GLOBAL_ALPHA', 'Constant'],
+                ['FIXTURE_GLOBAL_BETA', 'Constant'],
+                ['FIXTURE_DEFINED_LIMIT', 'Constant'],
+                ['FIXTURE_UPPERCASE_DEFINED_LIMIT', 'Constant'],
+                ['FIXTURE_NAMED_LIMIT', 'Constant'],
+                ['FIXTURE_REORDERED_LIMIT', 'Constant'],
+                ['FIXTURE_BODY_LIMIT', 'Constant'],
+                ['FixtureGlobalRegistry', 'ClassLike'],
+                ['fixtureGlobalHelper', 'Function_'],
+                ['fixtureConditionalHelper', 'Function_'],
+                ['fixtureBootstrap', 'Function_'],
+                ['fixtureNestedHelper', 'Function_'],
+                // `define()` takes its whole name from the literal, so this one is
+                // global despite being written under a namespace.
+                ['FIXTURE_HELPER_DEFINED', 'Constant'],
+            ],
+        ];
+
+        yield 'a namespace the set does not reach' => ['Fixtures\Domain', [], []];
+    }
+
+    /**
+     * Enumeration must cover exactly what lookup covers: a name the `files` set
+     * declares resolves by hover and definition, so it must also appear in the
+     * namespace it is declared in (RFC 1 §4.2 — lookup and enumeration draw on the
+     * same backends so their coverage is identical).
+     *
+     * @param list<string> $expectedChildNamespaces
+     * @param list<array{string, string}> $expectedSymbols
+     */
+    #[DataProvider('enumeratedNamespaces')]
+    public function testChildrenOfEnumeratesWhatTheAutoloadFilesSetDeclares(
+        string $namespace,
+        array $expectedChildNamespaces,
+        array $expectedSymbols,
+    ): void {
+        $contents = self::locatorForRoot(self::FIXTURES_ROOT)->childrenOf($namespace);
+
+        self::assertSame(
+            self::sorted($expectedChildNamespaces),
+            self::sorted($contents->childNamespaces),
+            'the namespaces on the way to a declaration must be enumerated as children',
+        );
+        self::assertSame(
+            self::sortedSymbols($expectedSymbols),
+            self::sortedSymbols(self::asPairs($contents)),
+            'every name the set declares in the namespace must be enumerated, under its own kind',
+        );
+    }
+
+    /**
+     * The names are keyed for lookup under PHP's per-kind case rules, but reported
+     * for enumeration as the declaration spells them — a completion item inserts a
+     * name, and `helperregistry` is not the name the file declares.
+     */
+    public function testChildrenOfReportsNamesAsDeclaredRatherThanNormalized(): void
+    {
+        $contents = self::locatorForRoot(self::FIXTURES_ROOT)->childrenOf('Fixtures\Helpers');
+
+        $fqns = array_map(
+            static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
+            $contents->symbols,
+        );
+        self::assertContains('Fixtures\Helpers\HelperRegistry', $fqns, 'a class-like keeps its declared casing');
+        self::assertContains('Fixtures\Helpers\helperFormat', $fqns, 'a function keeps its declared casing');
+    }
+
+    public function testChildrenOfMatchesANamespaceInAnyCase(): void
+    {
+        $locator = self::locatorForRoot(self::FIXTURES_ROOT);
+
+        self::assertEquals(
+            $locator->childrenOf('Fixtures\Helpers'),
+            $locator->childrenOf('FIXTURES\helpers'),
+            'PHP namespaces are case-insensitive, so one namespace is not two listings',
+        );
+    }
+
+    public function testInvalidateRebuildsWhatIsEnumeratedAsWellAsWhatIsLocated(): void
+    {
+        $path = self::tempFile('<?php namespace Rebuilt; class Before {}');
+
+        try {
+            $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$path]));
+            self::assertSame(
+                [['Rebuilt\Before', 'ClassLike']],
+                self::asPairs($locator->childrenOf('Rebuilt')),
+                'the eagerly built index must enumerate the file as it was read',
+            );
+
+            self::assertNotFalse(
+                file_put_contents($path, '<?php namespace Rebuilt; class After {}'),
+                'rewrite must succeed',
+            );
+            $locator->invalidate(FileUri::fromPath($path));
+
+            self::assertSame(
+                [['Rebuilt\After', 'ClassLike']],
+                self::asPairs($locator->childrenOf('Rebuilt')),
+                'enumeration must reflect the rebuilt index, not a memo of the pre-change one',
+            );
+        } finally {
+            unlink($path);
+        }
+    }
+
+    /**
+     * @return list<array{string, string}>
+     */
+    private static function asPairs(NamespaceContents $contents): array
+    {
+        return array_map(
+            static fn(CatalogSymbol $symbol): array => [$symbol->fullyQualifiedName, $symbol->kind->name],
+            $contents->symbols,
+        );
+    }
+
+    /**
+     * @param list<string> $values
+     * @return list<string>
+     */
+    private static function sorted(array $values): array
+    {
+        sort($values);
+
+        return $values;
+    }
+
+    /**
+     * @param list<array{string, string}> $symbols
+     * @return list<array{string, string}>
+     */
+    private static function sortedSymbols(array $symbols): array
+    {
+        usort($symbols, static fn(array $a, array $b): int => strcmp($a[0], $b[0]));
+
+        return $symbols;
     }
 
     private static function locatorForRoot(string $projectRoot): AutoloadFilesLocator

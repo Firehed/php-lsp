@@ -20,4 +20,9 @@ class CatalogProbe
     {
         new \Fixtures\Catalog\F/*|ondisk_phantom*/
     }
+
+    public function autoloadFiles(): void
+    {
+        new \Fixtures\Helpers\Helper/*|ondisk_autoload_files*/
+    }
 }

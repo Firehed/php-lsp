@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
@@ -14,6 +15,7 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Utility\NamespacePath;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -78,6 +80,90 @@ final class KnowledgeStackTest extends TestCase
 
         self::assertNotNull($info, "a class-like declared in an autoload.files entry must resolve: {$fqn}");
         self::assertSame($fqn, $info->name->fqn, 'the located class-like must be the one asked for');
+    }
+
+    /**
+     * RFC 1 §4.2: lookup and enumeration are distinct operations that must draw on
+     * the same backends, so their coverage is identical. A `files`-declared name
+     * that resolved on hover while being absent from namespace completion is exactly
+     * the per-surface split this series exists to prevent.
+     */
+    #[DataProvider('autoloadFilesClassLikes')]
+    public function testAClassLikeInAnAutoloadFilesEntryIsEnumeratedWhereverItResolves(string $fqn): void
+    {
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->fixturesRoot . '/vendor',
+            $this->parser,
+        );
+
+        self::assertNotNull(
+            $stack->source->lookupClassLike(self::className($fqn)),
+            "lookup must reach the name for enumeration to be held to it: {$fqn}",
+        );
+
+        $namespace = NamespacePath::namespaceOf($fqn);
+        $fqns = array_map(
+            static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
+            $stack->source->childrenOf(new NamespaceName($namespace))->symbols,
+        );
+        self::assertContains(
+            $fqn,
+            $fqns,
+            "a resolvable name must also be enumerated in its own namespace: {$fqn}",
+        );
+    }
+
+    /**
+     * `autoload.files` entries sit outside every PSR-4 and PSR-0 prefix, so the
+     * namespace they declare into cannot be reached by a directory listing. Both
+     * routes must survive the merge: the composer source keeps enumerating the
+     * PSR-4 tree, and the derived index adds what it structurally cannot see.
+     */
+    public function testAnAutoloadFilesNamespaceIsReachableAlongsideThePsr4Tree(): void
+    {
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->fixturesRoot . '/vendor',
+            $this->parser,
+        );
+
+        $children = $stack->source->childrenOf(new NamespaceName('Fixtures'))->childNamespaces;
+
+        self::assertContains(
+            'Fixtures\Helpers',
+            $children,
+            'a namespace declared only by an autoload.files entry must be navigable',
+        );
+        self::assertContains(
+            'Fixtures\Domain',
+            $children,
+            'merging the derived index must not displace the directory listing',
+        );
+    }
+
+    /**
+     * The manifest scopes this as wiring enumeration onto data already derived, not
+     * a second scan: the set is parsed once at construction and enumerating it
+     * groups what is already in memory.
+     */
+    public function testEnumeratingTheAutoloadFilesSetCostsNoFurtherParse(): void
+    {
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->fixturesRoot . '/vendor',
+            $this->parser,
+        );
+        $afterConstruction = $this->parser->getMetrics()->getParseCount();
+
+        $stack->source->childrenOf(new NamespaceName('Fixtures\Helpers'));
+        $stack->source->childrenOf(new NamespaceName('Fixtures'));
+
+        self::assertSame(
+            $afterConstruction,
+            $this->parser->getMetrics()->getParseCount(),
+            'enumeration reads the index built at construction rather than re-scanning the set',
+        );
     }
 
     /**

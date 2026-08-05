@@ -54,10 +54,16 @@ final class ChildrenOfParityTest extends TestCase
      * PHP matrix. Between them they exercise every composer branch: a PSR-4 leaf
      * with symbols, a namespace above a PSR-4 prefix, PSR-0, and the classmap.
      *
+     * `Fixtures\Helpers` is the `autoload.files` route, which no autoload map
+     * addresses by name and no directory listing reaches: it exists only in the
+     * index derived by parsing that set. Its entry is a dedicated fixture file, so
+     * it is as stable as the rest.
+     *
      * @var list<string>
      */
     private const array NAMESPACES = [
         'Fixtures\Catalog',
+        'Fixtures\Helpers',
         'Fixtures\Model',
         'Fixtures\Model\Env',
         'Fixtures\Model\OpenOnly',

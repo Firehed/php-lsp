@@ -423,6 +423,31 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testNavigationOffersClassLikesDeclaredInAnAutoloadFilesEntry(): void
+    {
+        // Fixtures\Helpers is declared by an `autoload.files` entry, so it sits
+        // outside every PSR-4 prefix and no directory listing can reach it. Its
+        // class-likes resolve on hover and definition, so completion must see them
+        // too (RFC 1 §4.2). The `new` filter still applies: of the four flavours the
+        // entry declares, only the class is instantiable.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CatalogProbe.php', 'ondisk_autoload_files');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'HelperRegistry',
+            $labels,
+            'a class declared in an autoload.files entry is offered, not just resolvable',
+        );
+        self::assertNotContains(
+            'HelperContract',
+            $labels,
+            'an interface from the same entry is filtered by the `new` predicate like any other',
+        );
+    }
+
     #[DataProvider('provideAbsoluteNavigationMarkers')]
     public function testAbsoluteNavigationFiresInEveryClassPosition(string $marker): void
     {
