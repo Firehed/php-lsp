@@ -33,7 +33,11 @@ happens outside the tool.
   - `in-flight` — an **open PR** exists for `slice/<id>`.
   - `todo` — neither.
 - The **next slice** = the first `todo` in the manifest whose dependencies are all
-  `done`.
+  `done`. A dependency is normally a slice id; the audit/DoD gates instead use a
+  collective form, resolved before the check: **`all Step N`** expands to every other
+  slice whose Step column is `N` (sub-steps included), and **`all prior`** to every
+  other slice in the table. A gate depends on its whole section, so it cannot run
+  while any slice of that section is unbuilt — which an id chain does not guarantee.
 
 Because status is computed from merge reality, a cold session cannot be misled by a
 stale field, and nothing needs updating by hand.

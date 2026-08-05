@@ -14,7 +14,11 @@ Append later phases as they are reached; do not create the whole tree up front.
 
 - **ID** — stable slice id; the branch is `slice/<ID>`.
 - **Step** — the plan step in 0002 that owns the acceptance criteria.
-- **Depends on** — slice ids that must be `done` (merged) first.
+- **Depends on** — slice ids that must be `done` (merged) first. Two collective forms
+  exist so a gate's dependencies cannot go stale as slices are added: **`all Step N`**
+  means every *other* slice whose Step column is `N` (sub-steps included, so `all Step
+  3` covers 3a and 3b), and **`all prior`** means every other slice in the table.
+  Gates use these; ordinary slices name ids.
 - **Closes** — pre-existing issues this slice closes, *after reviewer verification*.
 
 ## Wave 1 — Steps 0, 1, P, 2
@@ -52,7 +56,8 @@ Step P harness — parity fixtures first), **3b** both preserves and extends the
 surface (existing behavior frozen to a golden; new project reach proven by new
 fixtures). The `Step` column carries the half, since 3a and 3b own distinct acceptance
 criteria in 0002. Step 4 decomposes `SymbolResolver`; Step Z is the terminal
-Definition-of-Done gate.
+Definition-of-Done gate. Steps 3 and 4 each end with a duplication audit (S3.11,
+S4.7), which Step Z re-runs repo-wide as its completion gate.
 
     ID     Step  Title                                              Depends on        Closes
     -----  ----  -------------------------------------------------  ----------------  -------
@@ -72,17 +77,20 @@ Definition-of-Done gate.
     S3.9a  3b    Generalize search to a kind parameter              S3.8a             —
     S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
     S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
+    S3.11  3     Step 3 duplication audit                          all Step 3        —
     S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
     S4.2   4     Extract node locator + scope analyzer              S3.8c,S4.1        —
     S4.3   4     Extract member-access + call-context detectors     S4.2              —
     S4.4   4     Extract name-context resolver                      S4.2              —
     S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
     S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
+    S4.7   4     Step 4 duplication audit                          all Step 4        —
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
     SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
     SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
-    SZ.1   Z     Definition of Done gate                            S3.10,S4.6,SC.1,SC.2,SC.3,SC.4  —
+    SC.5   —     Merge the two class-like AST traversals             SC.3              —
+    SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
 
@@ -161,6 +169,28 @@ Notes:
     encoding. One `FileUri` replaces them. Found while splitting S3.7, whose locator
     wanted a fifth copy; the duplication predates that slice and belongs to no step,
     so S3.7c is gated on it rather than carrying it.
+  - **SC.5** — `FilesystemBackend::findClassInAst` and `Index\DeclarationScanner` both
+    walk an AST to find the class-likes a file declares. They differ in what they
+    return (one matched *node* versus every declared *name*) and in stopping early, so
+    this is scoped as **evaluate and merge if warranted** — concluding "two genuinely
+    different queries, one walk" is an acceptable outcome, but it must be concluded and
+    recorded, not left unexamined. Gated only on SC.3, which rewrites `findClassInAst`'s
+    namespace handling; it is deliberately *not* gated on S3.11, because an audit files
+    slices and a slice already filed must not wait on the audit that would have found
+    it. Found while reviewing S3.7d, which put the two traversals side by side without
+    merging them.
+- **Each section ends with a duplication audit** (**S3.11**, **S4.7**), and Step Z's
+  acceptance carries the repo-wide one. Method, scope and outcome rule are defined once
+  in 0002 §Duplication audits and the terminal condition is a Step Z acceptance item —
+  not restated here, because a manifest note is not a gate.
+  - S3.11 and S4.7 are **tracking** gates: a finding may be handed to a new slice
+    rather than fixed in place, so a removal belonging to a later section is not dragged
+    forward. Step Z is the **completion** gate, where an unowned or unfixed duplicate
+    fails outright.
+  - The three depend on their whole section (`all Step N` / `all prior`) rather than on
+    its last slice. A chain of ids is both stale-prone and wrong: S3.10's transitive
+    dependencies never reach S3.4 or S3.5, so a Step 3 audit gated on S3.10 could have
+    run with two of its slices unbuilt.
 - **The Builtin backend stood up in S3.3 is reflection-backed and does not satisfy
   §4.7** (0002 §5 known gap) — file the tracked §4.7 issue when S3.3 lands; its fix is
   the deferred Step 5.

@@ -30,6 +30,13 @@ slice from durable state, not from memory.
   - `todo` — neither.
 - `X` = the first `todo` slice whose every dependency is `done`.
 
+Dependencies are normally slice ids. The audit and Definition-of-Done gates use a
+collective form instead, which must be expanded before the check:
+
+- `all Step N` — every **other** slice whose Step column is `N`, sub-steps included
+  (`all Step 3` covers 3a and 3b).
+- `all prior` — every other slice in the table.
+
 Deriving from PR merge state (not ancestry) is what keeps this correct under the
 project's **Squash and Merge**: a squash rewrites the branch into one new commit on
 `main`, so an ancestry check would report squashed slices as `todo` forever. Check
