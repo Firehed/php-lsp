@@ -328,6 +328,7 @@ final class AutoloadFilesLocatorTest extends TestCase
                 ['FixtureGlobalRegistry', 'ClassLike'],
                 ['fixtureGlobalHelper', 'Function_'],
                 ['fixtureConditionalHelper', 'Function_'],
+                ['fixtureBootstrap', 'Function_'],
                 ['fixtureNestedHelper', 'Function_'],
                 // `define()` takes its whole name from the literal, so this one is
                 // global despite being written under a namespace.

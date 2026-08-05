@@ -26,9 +26,25 @@ use Firehed\PhpLsp\Utility\NamespacePath;
  * is parsed every kind costs the same walk, so indexing only functions and constants
  * would leave a class-like declared there reachable at runtime but invisible here,
  * for no saving. The cost is bounded because the set is explicit and usually tiny.
+ *
+ * The same index answers both reads of it — {@see locate()} for a known name and
+ * {@see childrenOf()} for a namespace's contents. Enumerating it is not optional:
+ * these files sit outside every PSR-4 and PSR-0 prefix, so a directory listing
+ * cannot see them, and a name that resolved on hover while being invisible to
+ * completion is exactly the lookup/enumeration split RFC 1 §4.2 forbids. The kind
+ * reported is the declaration's own, not the coarse guess a directory listing makes.
  */
-final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
+final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Invalidatable
 {
+    /**
+     * Every name the set declares, as the declaration spells it: the index is keyed
+     * for lookup under PHP's per-kind case rules, which loses the casing a
+     * completion item has to insert.
+     *
+     * @var list<CatalogSymbol>
+     */
+    private array $declarations;
+
     /**
      * Kind => normalized name => declaring file.
      *
@@ -36,12 +52,27 @@ final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
      */
     private array $index;
 
+    /**
+     * Built on first enumeration rather than alongside the index: a project that
+     * never navigates a namespace never pays for the grouping.
+     *
+     * @var array<string, NamespaceContents>|null Lowercase namespace -> contents
+     */
+    private ?array $namespaces = null;
+
     public function __construct(
         private readonly ComposerAutoloadMap $map,
         private readonly ParserService $parser,
         private readonly DeclarationScanner $scanner,
     ) {
-        $this->index = $this->buildIndex();
+        $this->buildIndex();
+    }
+
+    public function childrenOf(string $namespace): NamespaceContents
+    {
+        $this->namespaces ??= NamespaceContents::indexByNamespace($this->declarations);
+
+        return $this->namespaces[strtolower($namespace)] ?? new NamespaceContents();
     }
 
     /**
@@ -54,7 +85,7 @@ final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
             return;
         }
 
-        $this->index = $this->buildIndex();
+        $this->buildIndex();
     }
 
     public function locate(QualifiedName $name, NameKind $kind): ?string
@@ -65,15 +96,14 @@ final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
         return array_key_exists($key, $declarations) ? $declarations[$key] : null;
     }
 
-    /**
-     * @return array<string, array<string, string>>
-     */
-    private function buildIndex(): array
+    private function buildIndex(): void
     {
-        $index = [];
+        $this->index = [];
         foreach (NameKind::cases() as $kind) {
-            $index[$kind->name] = [];
+            $this->index[$kind->name] = [];
         }
+        $this->declarations = [];
+        $this->namespaces = null;
 
         foreach ($this->map->autoloadFiles() as $path) {
             $ast = $this->parser->parseFile($path);
@@ -82,12 +112,10 @@ final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
             }
 
             $declarations = $this->scanner->scan($ast);
-            self::record($index, NameKind::ClassLike, $declarations->classLikes, $path);
-            self::record($index, NameKind::Function_, $declarations->functions, $path);
-            self::record($index, NameKind::Constant, $declarations->constants, $path);
+            $this->record(NameKind::ClassLike, $declarations->classLikes, $path);
+            $this->record(NameKind::Function_, $declarations->functions, $path);
+            $this->record(NameKind::Constant, $declarations->constants, $path);
         }
-
-        return $index;
     }
 
     /**
@@ -102,20 +130,23 @@ final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
     }
 
     /**
-     * @param array<string, array<string, string>> $index
      * @param list<QualifiedName> $names
      */
-    private static function record(array &$index, NameKind $kind, array $names, string $path): void
+    private function record(NameKind $kind, array $names, string $path): void
     {
         foreach ($names as $name) {
             $key = self::key($name, $kind);
 
             // Composer requires the entries in order, so the first declaration of a
             // name is the one that takes effect; a later guarded redeclaration of
-            // the same name never runs.
-            if (!array_key_exists($key, $index[$kind->name])) {
-                $index[$kind->name][$key] = $path;
+            // the same name never runs. Enumeration reports the winner for the same
+            // reason, and so a name declared twice is not offered twice.
+            if (array_key_exists($key, $this->index[$kind->name])) {
+                continue;
             }
+
+            $this->index[$kind->name][$key] = $path;
+            $this->declarations[] = new CatalogSymbol($name->fullyQualifiedName(), $kind);
         }
     }
 }
