@@ -107,6 +107,12 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         if ($this->namespaces instanceof Invalidatable) {
             $this->namespaces->invalidate($uri);
         }
+
+        // The autoload.files index is derived from disk too, so a change must reach
+        // the locator or the name -> file map stays stale behind an evicted cache.
+        if ($this->locator instanceof Invalidatable) {
+            $this->locator->invalidate($uri);
+        }
     }
 
     /**
