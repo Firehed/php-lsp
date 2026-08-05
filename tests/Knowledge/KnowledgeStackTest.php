@@ -81,11 +81,10 @@ final class KnowledgeStackTest extends TestCase
     }
 
     /**
-     * The index is built eagerly, so its cost is paid once at construction rather
-     * than landing mid-keystroke. Pinning the count is what keeps that a measured
-     * quantity rather than an unwatched one: it goes red if an entry is parsed more
-     * than once, or if indexing ever reaches outside the `files` set into the PSR-4
-     * tree. The fixture project lists two entries, both outside `vendor/`.
+     * The index is built eagerly, so the set is parsed at construction rather than
+     * mid-keystroke. This pins that it happens, and that indexing never reaches
+     * outside the `files` set into the PSR-4 tree. It cannot see the same content
+     * parsed twice — the memo is keyed by content — so it bounds no cost.
      */
     public function testTheAutoloadFilesIndexIsBuiltOnceAtConstruction(): void
     {

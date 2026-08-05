@@ -118,8 +118,10 @@ on the name) and `AutoloadFilesLocator`. The latter exists because `autoload.fil
 entries are addressed by *no* name at all, so the only route is to parse the set and
 derive the map; it is built eagerly, covers all three symbol namespaces (a name-keyed
 route cannot know which kind a file declares), and applies PHP's per-kind case rules via
-`NameKind::isCaseSensitive()`. Its startup cost is pinned by a test — the set is
-explicit and usually tiny, and the bound is what keeps it from drifting. The write path is **`SymbolSink`** (`DocumentSymbolSink`), which
+`NameKind::isCaseSensitive()`. A test pins the parse *count* at construction, which is
+not a cost measurement; the set is explicit and usually tiny.
+
+The write path is **`SymbolSink`** (`DocumentSymbolSink`), which
 registers class metadata and indexes symbols from one document.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
@@ -131,7 +133,8 @@ the next query re-reads disk. It fans out to the cached on-disk backends (also
 `Invalidatable`): `FilesystemBackend` evicts that file's class-likes (a path→key
 reverse map), `CachedNamespaceCatalog` drops its listings, and the locator chain
 re-derives the `autoload.files` index if the changed file is in that set — evicting
-only the `ClassInfo` cache would leave the name→file map itself stale. Two triggers reach it:
+only the `ClassInfo` cache would leave the name→file map itself stale.
+Two triggers reach it:
 the `workspace/didChangeWatchedFiles` notification (`DidChangeWatchedFilesHandler`)
 and `didClose` (so a closed-after-edit file re-reads disk). Watched files are
 registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outbound
