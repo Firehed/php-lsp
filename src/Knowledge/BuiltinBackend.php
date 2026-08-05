@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
+use Firehed\PhpLsp\Resolution\NameKind;
 use Psr\SimpleCache\CacheInterface;
 use ReflectionClass;
 use ReflectionException;
+use ReflectionFunction;
 
 /**
  * The lowest-precedence {@see SymbolBackend}: the symbols built into PHP and its
@@ -45,7 +49,7 @@ final class BuiltinBackend implements SymbolBackend
 
     public function lookupClassLike(ClassName $name): ?ClassInfo
     {
-        $cacheKey = CacheKey::from(strtolower(ltrim($name->fqn, '\\')));
+        $cacheKey = SymbolCacheKey::for(QualifiedName::fromClassName($name), NameKind::ClassLike);
 
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
@@ -61,6 +65,37 @@ final class BuiltinBackend implements SymbolBackend
         $this->cache->set($cacheKey, $classInfo);
 
         return $classInfo;
+    }
+
+    public function lookupFunction(FunctionName $name): ?FunctionInfo
+    {
+        $cacheKey = SymbolCacheKey::for($name->qualifiedName, $name->kind());
+
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            assert($cached instanceof FunctionInfo);
+            return $cached;
+        }
+
+        try {
+            $function = new ReflectionFunction($name->fullyQualifiedName());
+        } catch (ReflectionException) {
+            return null;
+        }
+
+        // Reflection sees every function loaded in the *server's* process, which
+        // includes the ones its own dependencies declare. Those are not the
+        // project's, and this backend enumerates only internal functions
+        // (BuiltinFunctionParityTest) — a lookup that answered more broadly would
+        // resolve a name completion never offers (RFC 1 §4.2).
+        if (!$function->isInternal()) {
+            return null;
+        }
+
+        $functionInfo = FunctionInfo::fromReflection($function);
+        $this->cache->set($cacheKey, $functionInfo);
+
+        return $functionInfo;
     }
 
     /**
