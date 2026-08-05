@@ -19,7 +19,7 @@ final class ComposerSymbolLocatorTest extends TestCase
     private const string FIXTURES_ROOT = __DIR__ . '/../Fixtures';
 
     /**
-     * @return iterable<string, array{string, string, ?string}>
+     * @return iterable<string, array{string, string, ?non-empty-string}>
      * @codeCoverageIgnore data provider runs before coverage begins
      */
     public static function classLikeNames(): iterable
@@ -55,6 +55,9 @@ final class ComposerSymbolLocatorTest extends TestCase
         yield 'no composer directory' => ['/nonexistent/path', TestCase::class, null];
     }
 
+    /**
+     * @param ?non-empty-string $expectedPathSuffix
+     */
     #[DataProvider('classLikeNames')]
     public function testLocateResolvesAClassLikeThroughTheAutoloadMap(
         string $projectRoot,
