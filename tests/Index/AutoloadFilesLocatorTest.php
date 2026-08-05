@@ -182,16 +182,30 @@ final class AutoloadFilesLocatorTest extends TestCase
         self::assertNull($path, 'a project with no autoload.files map indexes nothing, and is not an error');
     }
 
-    public function testAnEntryThatCannotBeReadIsSkipped(): void
+    public function testAnEntryThatCannotBeReadIsSkippedWithoutAbandoningTheRest(): void
     {
-        // The malformed fixture's only string entry points at a path that does not
-        // exist. Indexing must skip it rather than fail, so one bad entry does not
-        // cost the project every other declaration in the set.
-        $locator = self::locatorForRoot(self::FIXTURES_ROOT . '/MalformedProject');
+        // A `files` entry naming a path that is not there — a stale generated map, a
+        // package half-removed. Indexing must skip it and carry on: the entry after
+        // it still has to be indexed, so one bad entry does not cost the project
+        // every other declaration in the set.
+        $readable = self::tempFile('<?php const SURVIVES_A_BAD_ENTRY = 1;');
 
-        $path = $locator->locate(QualifiedName::fromFullyQualified('Whatever'), NameKind::ClassLike);
+        try {
+            $locator = self::locatorForMap(
+                new ComposerAutoloadMap([], [], [], [self::FIXTURES_ROOT . '/no-such-entry.php', $readable]),
+            );
 
-        self::assertNull($path, 'an unreadable files entry contributes nothing rather than throwing');
+            self::assertNull(
+                $locator->locate(QualifiedName::fromFullyQualified('Whatever'), NameKind::ClassLike),
+                'an unreadable files entry contributes nothing rather than throwing',
+            );
+            self::assertNotNull(
+                $locator->locate(QualifiedName::fromFullyQualified('SURVIVES_A_BAD_ENTRY'), NameKind::Constant),
+                'indexing must resume at the next entry rather than stop at the first unreadable one',
+            );
+        } finally {
+            unlink($readable);
+        }
     }
 
     public function testTheFirstDeclarationOfANameWins(): void
