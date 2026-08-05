@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\NameKind;
+use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * Locates a declaration in Composer's `autoload.files` set, by deriving the
@@ -93,12 +94,17 @@ final class AutoloadFilesLocator implements SymbolLocator, Invalidatable
      * PHP matches class-like and function names case-insensitively and constant
      * names exactly, so the key a kind is stored and looked up under follows the
      * rule for that kind rather than one rule for all three.
+     *
+     * The rule governs the *short name* only: a namespace path is case-insensitive
+     * for every kind ({@see NamespacePath}), so `FIXTURES\HELPERS\HELPER_LIMIT`
+     * names the same constant as `Fixtures\Helpers\HELPER_LIMIT` while
+     * `Fixtures\Helpers\helper_limit` names a different one.
      */
     private static function key(QualifiedName $name, NameKind $kind): string
     {
-        $fqn = $name->fullyQualifiedName();
+        $shortName = $kind->isCaseSensitive() ? $name->shortName : strtolower($name->shortName);
 
-        return $kind->isCaseSensitive() ? $fqn : strtolower($fqn);
+        return NamespacePath::join(strtolower($name->namespace), $shortName);
     }
 
     /**

@@ -115,6 +115,19 @@ final class AutoloadFilesLocatorTest extends TestCase
         // The one kind PHP matches exactly: a differently-cased constant is a
         // different constant, so resolving it would be a false positive.
         yield 'constant' => ['fixture_global_limit', NameKind::Constant, false];
+        // The exact match a constant requires is of its *short name* only. A
+        // namespace path is case-insensitive for every kind, so applying the
+        // constant rule to the whole name would miss a name PHP resolves.
+        yield 'constant under a recased namespace' => [
+            'FIXTURES\HELPERS\HELPER_LIMIT',
+            NameKind::Constant,
+            true,
+        ];
+        yield 'constant with a recased short name' => [
+            'Fixtures\Helpers\helper_limit',
+            NameKind::Constant,
+            false,
+        ];
     }
 
     #[DataProvider('caseVariants')]
@@ -127,11 +140,11 @@ final class AutoloadFilesLocatorTest extends TestCase
             ->locate(QualifiedName::fromFullyQualified($fullyQualifiedName), $kind);
 
         if ($shouldResolve) {
-            self::assertNotNull($path, 'class-like and function names are matched case-insensitively');
+            self::assertNotNull($path, 'only a constant short name is matched case-sensitively');
             return;
         }
 
-        self::assertNull($path, 'constant names are matched case-sensitively');
+        self::assertNull($path, 'a constant short name in another case is another constant');
     }
 
     /**
