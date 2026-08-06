@@ -270,30 +270,38 @@ Step 4 (Section 6).
   harness compares only observable outputs, an internal divergence between the two
   structures could pass parity, so add a consistency check that both are written from
   the same parse and agree. Proven by the Step P harness.
-- **3b — `SymbolLocator` + `autoload.files` reach (behavior-changing).** Generalize
-  `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in `autoload.files`; give
-  `lookupFunction` / `lookupConstant` real project reach, and extend
-  `lookupClassLike` to the class-likes those files declare, which the autoload maps
-  cannot address (constant reach covers `const` declarations and literal-name
-  `define()`; a **computed-name `define()`** is a runtime call invisible to static
-  parse and is out of scope, per §3's locate-only limitation, as is a name introduced
-  by **`class_alias()`** rather than by a declaration; an anonymous class has
-  no name to index); migrate `FunctionCandidates`
-  to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
-  document's functions, so that query disappears with its last caller); remove the
-  Step 2 rule exemption. *Acceptance on search reach:* every backend that answers
-  `lookupFunction` MUST also answer function `search`, so a name resolvable on hover
-  is offered in completion (§4.2). For `FilesystemBackend` that means the derived
-  `autoload.files` index — its empty `searchClassLikes` is scoped to the PSR-4 tree,
-  which needs a workspace walk (§3), not to every kind. This step **both changes and
-  preserves** behavior on the function surface: the added project reach is new
-  (proven by **new fixtures**), but built-in and open-document function completion is
-  *existing* behavior that must not regress. So the function-surface golden (Step P)
-  is **captured before this step** from today's path (`get_defined_functions()['internal']` + open-doc functions) and
-  frozen for the preservation half, and a **parity oracle** asserts the Builtin
-  backend's function enumeration matches `get_defined_functions()` (as
-  `TypeGraphParityTest` uses reflection for members). Revert profile: structural —
-  revertible by reverting its commits, not a flag (§1).
+- **3b — Uniform reach across the three symbol namespaces (behavior-changing).**
+  Generalize `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in
+  `autoload.files`; give `lookupFunction` / `lookupConstant` real project reach, and
+  extend `lookupClassLike` to the class-likes those files declare, which the autoload
+  maps cannot address. Reach is bounded by §3's locate-only limitation: a
+  **computed-name `define()`**, a name introduced by **`class_alias()`**, and an
+  anonymous class have no static declaration to index. Migrate `FunctionCandidates`
+  to `search`, which subsumes `getFileFunctions` — the open-document backend knows a
+  document's functions, so that query disappears with its last caller — and remove
+  the Step 2 rule exemption.
+
+  *Acceptance:*
+  - **One walk answers "what does this file declare",** and every backend and the
+    write path consume it. A kind is not a second walk (§4.11).
+  - **A backend resolves uniformly, taking the kind as a parameter**, with the typed
+    per-kind results built at the facade from the existing factories (§5.6). Adding a
+    kind touches the facade and a factory, never every backend.
+  - **The kind-agnostic location query (§5.1) lands with that parameter**, being the
+    same call with the kind unknown rather than a second path.
+  - **The write path registers a declaration on the same terms the on-disk backends
+    resolve one**, so opening a file cannot hide a name that resolved from disk (§4.2).
+  - **Every backend answering a kind's lookup also answers that kind's `search`**, so
+    a name resolvable on hover is offered in completion (§4.2). `FilesystemBackend`'s
+    empty class-like search is scoped to the PSR-4 tree, which needs a workspace walk
+    (§3) — not to every kind.
+  - **New reach is proven by new fixtures; existing function completion is frozen.**
+    Built-in and open-document function completion is *existing* behavior held by the
+    function-surface golden (Step P) and by the parity oracle asserting the Builtin
+    backend's enumeration matches `get_defined_functions()`, as `TypeGraphParityTest`
+    uses reflection for members.
+
+  Revert profile: structural — revertible by reverting its commits, not a flag (§1).
 - **External-file-change invalidation gets its own slice and acceptance**, not a
   hand-wave to §5.3 — it is a classic LSP correctness minefield.
   `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and
