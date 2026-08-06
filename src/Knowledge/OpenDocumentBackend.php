@@ -8,11 +8,13 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
+use Firehed\PhpLsp\Resolution\NameKind;
 
 /**
  * The highest-precedence {@see SymbolBackend}: the documents the editor has open
@@ -69,12 +71,12 @@ final class OpenDocumentBackend implements SymbolBackend
 
     public function lookupClassLike(ClassName $name): ?ClassInfo
     {
-        return $this->byFqn[self::normalizeKey($name->fqn)] ?? null;
+        return $this->byFqn[self::key(NameKind::ClassLike, $name->fqn)] ?? null;
     }
 
     public function lookupFunction(FunctionName $name): ?FunctionInfo
     {
-        return $this->functionsByFqn[self::normalizeKey($name->fullyQualifiedName())] ?? null;
+        return $this->functionsByFqn[$name->kind()->normalize($name->qualifiedName)] ?? null;
     }
 
     /**
@@ -101,7 +103,7 @@ final class OpenDocumentBackend implements SymbolBackend
 
         $keys = [];
         foreach ($classes as $classInfo) {
-            $key = self::normalizeKey($classInfo->name->fqn);
+            $key = self::key(NameKind::ClassLike, $classInfo->name->fqn);
             $this->byFqn[$key] = $classInfo;
             $keys[] = $key;
         }
@@ -109,7 +111,7 @@ final class OpenDocumentBackend implements SymbolBackend
 
         $functionKeys = [];
         foreach ($functions as $fqn => $functionInfo) {
-            $key = self::normalizeKey($fqn);
+            $key = self::key(NameKind::Function_, $fqn);
             $this->functionsByFqn[$key] = $functionInfo;
             $functionKeys[] = $key;
         }
@@ -129,8 +131,14 @@ final class OpenDocumentBackend implements SymbolBackend
         unset($this->functionFqnsByUri[$uri]);
     }
 
-    private static function normalizeKey(string $fqn): string
+    /**
+     * Registration and lookup must agree on the case rule, and that rule differs by
+     * kind, so both go through {@see NameKind::normalize()} rather than a local
+     * lowercasing of the whole FQN — which is right for these two kinds and wrong
+     * for a constant.
+     */
+    private static function key(NameKind $kind, string $fqn): string
     {
-        return strtolower(ltrim($fqn, '\\'));
+        return $kind->normalize(QualifiedName::fromFullyQualified($fqn));
     }
 }
