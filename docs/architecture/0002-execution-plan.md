@@ -417,36 +417,36 @@ unbuilt while their steps passed. Every one is assigned here.
 
 The strangler introduces scaffolding that later steps remove; because that teardown
 is distributed across steps, it is enumerated here so nothing is left behind. Each
-row is checked by the `review-slice` pass when its *remover* slice lands, and every
-row must be discharged at the Definition of Done (Step Z).
+row is checked on review when its remover lands, and every row must be discharged at
+the Definition of Done (Step Z).
 
-    Scaffolding introduced                                    Removed / merged in
+    Removed                                                   Removed in
     --------------------------------------------------------  --------------------
-    Step 2 facade hides today's double write (§5.5)           Step 3a(iv)
-    Two ComposerAutoloadMap instances (pre-existing dup)      Step 3a(ii)
+    Step 2 facade hides today's double write (§5.5)           Step 3a
+    Two ComposerAutoloadMap instances (pre-existing dup)      Step 3a
+    A Step 0 standing cache, if built (no orphan)             Step 3a
     Step 2 §4.2 rule exemption for FunctionRepository         Step 3b
     getFileFunctions (transitional; last caller migrates)     Step 3b
     DefaultFunctionRepository AST-in signature                Step 3b
+    Per-kind lookup copied across the backends                Step 3b
+    Every walk answering "what does this file declare"        Step 3b
+    Hand-rolled file:// conversion                            Step 3
+    Hand-rolled namespace tracking (SymbolExtractor)          Step 3
+    WorkspaceIndexer (dead today)                             Step 3
     SymbolResolver god class                                  Step 4
     TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
     CodeResolver knowledge-facing methods                     Step 4
-    A Step 0 standing cache, if built (no orphan)             Step 3a(i)
-    WorkspaceIndexer (dead today)                             SC.1
-    ScopeFinder::extractImports/resolveFromUseStatements       SC.2
-    Hand-rolled namespace tracking (SymbolExtractor,           SC.3
-      FilesystemBackend::findClassInAst)
-    Hand-rolled file:// conversion (4 sites)                   SC.4
+    ScopeFinder::extractImports/resolveFromUseStatements      Step 4
 
-A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
-state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
-it is a permanent regression net kept past Step Z, not scaffolding to remove.
+A row with no discharged remover by Step Z is a defect, not an acceptable end state.
+Conversely, the Step P parity harness is deliberately **not** on this ledger: it is a
+permanent regression net kept past Step Z, not scaffolding to remove.
 
-The `SC.*` rows are **pre-existing** duplication and dead code, not scaffolding this
-plan introduced — so no step's acceptance covers them, which is how they stayed
-unowned. They are listed anyway: the series exists to remove duplication, so a
-known-removable thing without an owning slice is the same defect as an undischarged
-scaffold. A remover must be a slice id; a prose note is not an owner, because
-`/do-next` cannot select one.
+Rows in the lower half are **pre-existing** duplication and dead code rather than
+scaffolding this plan introduced, so no step's acceptance originally covered them —
+which is how they stayed unowned. A step now owns each: the series exists to remove
+duplication, so a known-removable thing without an owner is the same defect as an
+undischarged scaffold. An owner must be a step; a prose note is not one.
 
 ### Duplication audits
 
