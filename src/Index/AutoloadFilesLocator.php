@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\NameKind;
-use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * Locates a declaration in Composer's `autoload.files` set, by deriving the
