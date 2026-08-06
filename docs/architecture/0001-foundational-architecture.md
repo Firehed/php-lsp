@@ -352,8 +352,13 @@ single-traversal requirement from the type graph to every shared mechanism.
 
 A contribution that extends an axis (Section 3.1) MUST reach the mechanisms it
 needs through their existing implementation. Where the existing one does not fit,
-unifying it is prior work: adding a parallel implementation "for now" is the defect
-this document exists to prevent, and it is never the cheaper option.
+unifying it is prior work rather than a parallel implementation added "for now".
+
+A second implementation is permitted only as a **declared migration**: it MUST land
+with an explicitly scoped enforcement entry (Section 8.1), a teardown record naming
+what it replaces, and a named remover. An undeclared parallel implementation is the
+defect this document exists to prevent; the declaration is what makes the window
+bounded and observable rather than permanent.
 
 Two implementations that differ only in return shape are one mechanism, not two.
 
@@ -533,7 +538,8 @@ exhaustive over the normative sections; each item names the section it checks.
     bounded coverage is observable (Section 5.3).
 11. Correctness holds under synchronous execution (Section 6).
 12. Malformed input yields an error response, not process termination (Section 9).
-13. No shared mechanism has a second implementation (Section 4.11).
+13. No shared mechanism has a second implementation outside a declared migration
+    (Section 4.11).
 
 ### 8.1. Enforcement
 
@@ -570,8 +576,9 @@ invariant added by amendment MUST specify its mechanism.
     4.10 Client conformance defects   Review only; defect list in Appendix B.
     4.11 Single implementation        Static rule: constructing a shared mechanism (AST
                                       traversal, namespace/FQN construction, path and
-                                      URI conversion, memoization) is confined to that
-                                      mechanism's named owner.
+                                      URI conversion, memoization) is confined to the
+                                      owner the rule's own configuration names for it;
+                                      a declared migration is an entry in that scope.
     5.2 / 5.3 Write path, precedence, Architecture test + review: one write path,
         cache seam, bounded coverage  caching behind the abstraction, bounds observable.
     6 Synchronous correctness         By construction: the suite runs the interior
