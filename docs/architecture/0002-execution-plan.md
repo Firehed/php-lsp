@@ -24,7 +24,9 @@ throughout. That file must land first, or in the same merge; until it does, the
 
 - **Strangler-fig, always green.** Introduce a seam, migrate consumers onto it in
   small commits, then reshape behind it. No big-bang rewrite; every step merges on
-  its own and keeps the suite passing.
+  its own and keeps the suite passing. The window where old and new coexist is what
+  RFC §4.11 calls a **declared migration**, and the three things it requires are the
+  next principle's scoped rule, a Teardown ledger row, and a remover slice id.
 - **Enforcement lands with the seam — scoped, not baselined.** When a step
   introduces an invariant's seam, its §8.1 enforcement mechanism lands in the same
   step. During a partial migration a rule ships with an **explicit, code-level
@@ -416,12 +418,18 @@ A scaffold with no discharged remover by Step Z is a defect, not an acceptable e
 state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
 it is a permanent regression net kept past Step Z, not scaffolding to remove.
 
-The `SC.*` rows are **pre-existing** duplication and dead code, not scaffolding this
-plan introduced — so no step's acceptance covers them, which is how they stayed
-unowned. They are listed anyway: the series exists to remove duplication, so a
-known-removable thing without an owning slice is the same defect as an undischarged
-scaffold. A remover must be a slice id; a prose note is not an owner, because
-`/do-next` cannot select one.
+The rows carrying no step (SC.4, slices 1, 2, 18) are **pre-existing** duplication and
+dead code, not scaffolding this plan introduced — so no step's acceptance covers them,
+which is how they stayed unowned. They are listed anyway: the series exists to remove
+duplication, so a known-removable thing without an owning slice is the same defect as
+an undischarged scaffold. A remover must be a slice id; a prose note is not an owner,
+because `/do-next` cannot select one.
+
+Slices 3 and 4 carry no step for two different reasons. §4.1's seam predates this plan
+(#190/#253/#256), so it is pre-existing like the rows above. §4.3's seam is Step 2's,
+whose acceptance named only the §4.2 rule — so its mechanism was due under §1
+"Enforcement lands with the seam" and did not land. It is a late Step 2 obligation,
+not pre-existing debt.
 
 ### Duplication audits
 
@@ -468,7 +476,7 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
 - **Enforcement is complete.** Every §8.1 enforcement rule is active **repo-wide with
   zero remaining exemptions or allowlists** (the Step 2 §4.2 exemption, and any other,
   are gone). A rule still carrying a scope is an open step, not done.
-- **Conformance is repo-wide.** RFC §8's 12-item checklist passes across the whole
+- **Conformance is repo-wide.** RFC §8's checklist passes across the whole
   codebase, not merely per change.
 - **Parity is trustworthy.** The Step P harness is green **and** its branch coverage of
   the migrated surfaces is adequate — no unexercised surface branch (Step P) — and
