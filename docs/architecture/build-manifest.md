@@ -4,12 +4,12 @@
     Driver:   build-procedure.md
     Plan:     0002-execution-plan.md
 
-The ordered list of build steps, derived from the plan.
+The ordered list of build slices, derived from the plan.
 Goals, requirements and acceptance criteria live in 0002 and RFC 1; this file adds only the order.
 
-Work top to bottom: a row may start once every row above it is merged.
-Progress is not recorded here — a row's status is whether a merged PR exists for `slice/<ID>` (see `build-procedure.md`).
-**Step** names the plan step in 0002 whose acceptance criteria the row must meet.
+Work top to bottom: a slice may start once every slice above it is merged.
+Progress is not recorded here — a slice's status is whether a merged PR exists for `slice/<ID>` (see `build-procedure.md`).
+**Step** names the plan step in 0002 whose acceptance criteria the slice must meet.
 
 Append later phases as they are reached; do not create the whole tree up front.
 
@@ -93,8 +93,8 @@ Append later phases as they are reached; do not create the whole tree up front.
 
 ## Deferred (not scheduled; excluded from selection until reached)
 
-A row with satisfiable dependencies is pickable, so these are kept out of the table until their phase is reached.
-Each is appended as ordered rows at that point.
+A row in the table is pickable, so these are kept out of it until their phase is reached.
+Each is appended as ordered slices at that point.
 
 - **Step 5 — environment-parameterized built-ins (§4.7).** Blocked on an open decision: its version-aware source is TBD (0002 §7). Tracked as #401.
 - **Step 6 — scheduler / async tier.** Deferred until a push feature needs it (#266).
