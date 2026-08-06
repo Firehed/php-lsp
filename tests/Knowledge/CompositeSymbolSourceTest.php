@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\NamespaceContents;
@@ -61,6 +63,44 @@ final class CompositeSymbolSourceTest extends TestCase
 
         self::assertNull(
             $source->lookupClassLike(self::className('App\Absent')),
+            'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupFunctionTakesTheFirstBackendThatAnswers(): void
+    {
+        $open = new FakeSymbolBackend(functions: ['app\format' => self::functionInfo('format', 'open.php')]);
+        $vendor = new FakeSymbolBackend(functions: ['app\format' => self::functionInfo('format', 'vendor.php')]);
+        $source = new CompositeSymbolSource([$open, $vendor]);
+
+        $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
+
+        self::assertNotNull($info, 'the function is declared, so the lookup must resolve');
+        self::assertSame(
+            'open.php',
+            $info->file,
+            'the earlier backend must win: an unsaved edit overrides the file it shadows (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupFunctionFallsThroughToALaterBackend(): void
+    {
+        $open = new FakeSymbolBackend();
+        $vendor = new FakeSymbolBackend(functions: ['app\format' => self::functionInfo('format', 'vendor.php')]);
+        $source = new CompositeSymbolSource([$open, $vendor]);
+
+        $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
+
+        self::assertNotNull($info, 'a later backend must answer when an earlier one cannot');
+        self::assertSame('vendor.php', $info->file, 'the answer must come from the backend that declares it');
+    }
+
+    public function testLookupFunctionReturnsNullWhenNoBackendAnswers(): void
+    {
+        $source = new CompositeSymbolSource([new FakeSymbolBackend(), new FakeSymbolBackend()]);
+
+        self::assertNull(
+            $source->lookupFunction(FunctionName::fromFullyQualified('App\absent')),
             'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
         );
     }
@@ -228,6 +268,11 @@ final class CompositeSymbolSourceTest extends TestCase
             'app\ifacea' => self::classInfo('App\IfaceA', interfaces: ['App\IfaceBase']),
             'app\ifacebase' => self::classInfo('App\IfaceBase'),
         ]);
+    }
+
+    private static function functionInfo(string $shortName, string $file): FunctionInfo
+    {
+        return new FunctionInfo($shortName, [], null, null, $file, 1);
     }
 
     private static function symbol(string $fqn, string $file): Symbol

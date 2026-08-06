@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -64,6 +66,18 @@ final class CompositeSymbolSource implements SymbolSource
     {
         foreach ($this->backends as $backend) {
             $info = $backend->lookupClassLike($name);
+            if ($info !== null) {
+                return $info;
+            }
+        }
+
+        return null;
+    }
+
+    public function lookupFunction(FunctionName $name): ?FunctionInfo
+    {
+        foreach ($this->backends as $backend) {
+            $info = $backend->lookupFunction($name);
             if ($info !== null) {
                 return $info;
             }

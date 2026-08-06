@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -18,10 +20,10 @@ use Firehed\PhpLsp\Index\Symbol;
  * a cursor position or a syntax tree. Turning "`Foo` in this namespace with these
  * imports" into a candidate FQN is the positional layer's job, not this interface's.
  *
- * The method set is the Step-2 subset the migrated features need — exact class-like
- * lookup, class-like prefix search, and namespace enumeration. Per-kind function and
- * constant lookup, and a kind-parameterized search, arrive with the features that
- * first need them (Plan 0002 §5.2); a method with no caller is not carried ahead.
+ * Lookup is per-kind, because PHP's three symbol namespaces are independent: the
+ * name type says which is meant, so no separate kind argument travels with it.
+ * Constant lookup and a kind-parameterized search arrive with the slices that first
+ * need them (Plan 0002 §5.2); a method with no caller is not carried ahead.
  */
 interface SymbolSource
 {
@@ -47,6 +49,17 @@ interface SymbolSource
      * source can reach declares it (RFC 1 §5.3: absence is a bare null).
      */
     public function lookupClassLike(ClassName $name): ?ClassInfo;
+
+    /**
+     * Full metadata for a standalone function by its exact name, or null when
+     * nothing the source can reach declares it (RFC 1 §5.3).
+     *
+     * Reach is what a name can be resolved *through*: an open document, an
+     * `autoload.files` entry, or a built-in. A function in an unopened PSR-4 file
+     * has no name -> file route at all, which is Plan 0002 §3's locate-only
+     * limitation rather than an absence.
+     */
+    public function lookupFunction(FunctionName $name): ?FunctionInfo;
 
     /**
      * The class-likes whose short name begins with $prefix. The prefix is the partial
