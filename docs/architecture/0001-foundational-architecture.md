@@ -4,7 +4,7 @@
     Category:   Architecture Requirements (Best Current Practice)
     Status:     Draft
     Target:     Language Server Protocol 3.17
-    Date:       2026-08-05
+    Date:       2026-08-06
     Supersedes: none
     Relates-To: docs issues #264, #265, #266; architecture invariants in CLAUDE.md
 
@@ -350,17 +350,29 @@ conversion, a memoization — MUST have exactly one implementation, and every
 consumer MUST reach it through that one. This generalizes Section 4.6's
 single-traversal requirement from the type graph to every shared mechanism.
 
+Section 4.2 requires every query to be *answered through* the SymbolSource; this
+section requires the mechanism *behind* it to be singular. Both are needed: a
+capability reached through one interface but implemented once per backend, per
+symbol kind, or per consumer produces the same divergent coverage as one reached
+through several interfaces.
+
 A contribution that extends an axis (Section 3.1) MUST reach the mechanisms it
 needs through their existing implementation. Where the existing one does not fit,
 unifying it is prior work rather than a parallel implementation added "for now".
 
-A second implementation is permitted only as a **declared migration**: it MUST land
-with an explicitly scoped enforcement entry (Section 8.1), a teardown record naming
-what it replaces, and a named remover. An undeclared parallel implementation is the
-defect this document exists to prevent; the declaration is what makes the window
-bounded and observable rather than permanent.
+A second implementation is a non-conformance, not an exemption. Where one exists,
+it MUST be recorded in the enforcement rule's own scope (Section 8.1), and this
+invariant is unmet for that mechanism until the entry is gone. Recording a
+divergence makes it observable; it does not make it conformant, and the record is
+not a licence to add another.
 
-Two implementations that differ only in return shape are one mechanism, not two.
+Sameness is judged by the steps performed, never by the signature. A difference in
+return type, in the symbol kind handled, in the backend hosting it, or in the caller
+served does not make two mechanisms: the same steps repeated to produce a different
+shape are one mechanism implemented twice, and the duplicate MUST be removed rather
+than justified by the difference. Where a caller genuinely needs a different shape,
+the single implementation MUST yield what that caller needs; the variation belongs at
+its edge, not in a copy of the steps.
 
 ## 5. Component Requirements
 
@@ -578,7 +590,11 @@ invariant added by amendment MUST specify its mechanism.
                                       traversal, namespace/FQN construction, path and
                                       URI conversion, memoization) is confined to the
                                       owner the rule's own configuration names for it;
-                                      a declared migration is an entry in that scope.
+                                      a recorded divergence is an entry in that scope,
+                                      and the invariant is unmet while one exists.
+                                      A rule sees construction, not repeated steps, so
+                                      it is paired with a duplication audit that reads
+                                      for the same steps under a different signature.
     5.2 / 5.3 Write path, precedence, Architecture test + review: one write path,
         cache seam, bounded coverage  caching behind the abstraction, bounds observable.
     6 Synchronous correctness         By construction: the suite runs the interior
