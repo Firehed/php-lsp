@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -61,6 +62,63 @@ final class DocumentSymbolSinkTest extends TestCase
         self::assertNotNull(
             $this->index->findByFqn('V\Widget'),
             'openDocument must also index the document — the second of the double write',
+        );
+    }
+
+    public function testOpenDocumentRegistersFunctionsUnderTheirQualifiedNames(): void
+    {
+        $content = "<?php\nnamespace V;\nfunction helper(): void {}\n";
+
+        $this->sink->openDocument(new TextDocument('file:///helpers.php', 'php', 1, $content));
+
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\helper')),
+            'openDocument must register the document\'s functions for lookup',
+        );
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('helper')),
+            'a namespaced function must not be registered under its short name',
+        );
+    }
+
+    public function testOpenDocumentRegistersADeclarationBelowTheTopLevel(): void
+    {
+        // A conditionally declared polyfill is a name the file validly declares, and
+        // the on-disk backends resolve one. An open document must agree, or opening
+        // a file would make a name that already resolved disappear (RFC 1 §4.2).
+        $content = "<?php\nif (!function_exists('polyfill')) {\n    function polyfill(): void {}\n}\n";
+
+        $this->sink->openDocument(new TextDocument('file:///polyfill.php', 'php', 1, $content));
+
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('polyfill')),
+            'a conditionally declared function must be registered like any other declaration',
+        );
+    }
+
+    public function testUpdatingAwayFromAFunctionDropsItsRegistration(): void
+    {
+        $uri = 'file:///helpers.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nfunction helper(): void {}\n"));
+
+        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\n"));
+
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('helper')),
+            'a document that no longer declares the function must drop its registration',
+        );
+    }
+
+    public function testCloseDocumentDropsItsFunctions(): void
+    {
+        $uri = 'file:///helpers.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nfunction helper(): void {}\n"));
+
+        $this->sink->closeDocument($uri);
+
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('helper')),
+            'close must drop the registered functions from lookup',
         );
     }
 

@@ -7,12 +7,14 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
+use PhpParser\NodeFinder;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
@@ -78,7 +80,7 @@ final class DocumentSymbolSink implements SymbolSink
         $ast = $this->parser->parse($document) ?? [];
 
         $classes = $this->classesIn($ast, $document->uri);
-        $this->backend->updateDocument($document->uri, $classes);
+        $this->backend->updateDocument($document->uri, $classes, $this->functionsIn($ast, $document->uri));
         $this->indexer->indexParsed($document, $ast);
 
         $this->assertStoresAgree($classes);
@@ -113,6 +115,25 @@ final class DocumentSymbolSink implements SymbolSink
                 // @codeCoverageIgnoreEnd
             }
         }
+    }
+
+    /**
+     * A declaration at any depth counts, matching what the on-disk backends resolve
+     * (a polyfill guarded by `function_exists` is the common shape). Opening a file
+     * must not make a name that already resolved disappear (RFC 1 §4.2).
+     *
+     * @param array<Stmt> $ast
+     * @return array<string, FunctionInfo> Fully-qualified name -> metadata
+     */
+    private function functionsIn(array $ast, string $uri): array
+    {
+        $functions = [];
+        foreach ((new NodeFinder())->findInstanceOf($ast, Stmt\Function_::class) as $node) {
+            $fqn = ($node->namespacedName ?? $node->name)->toString();
+            $functions[$fqn] ??= FunctionInfo::fromNode($node, $uri);
+        }
+
+        return $functions;
     }
 
     /**
