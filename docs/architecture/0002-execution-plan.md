@@ -95,7 +95,7 @@ Notes:
   perceptible (§8.4), the work moves to the deferred scheduler tier (Step 6).
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
   revived only if/when the workspace scope is taken up; otherwise it is deleted — which
-  is slice **SC.1**, since it is dead today (zero references) and the workspace scope is
+  is **slice 1**, since it is dead today (zero references) and the workspace scope is
   not scheduled. Reviving it later is cheaper than carrying dead code until then.
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw
   ASTs. `ClassRepository` already does this; preserve it.
@@ -284,6 +284,10 @@ Step 4 (Section 6).
   backend's function enumeration matches `get_defined_functions()` (as
   `TypeGraphParityTest` uses reflection for members). Revert profile: structural —
   revertible by reverting its commits, not a flag (§1).
+- **Each kind vertical consumes shared mechanism (§4.11); it does not add one.** The
+  per-kind cut is *backends × kinds*, which §5.6 requires to stay closed. S3.8a broke
+  that by adding a second declaration walk rather than using the one S3.7b had just
+  built, so the walk is unified and rule-enforced before any further kind lands.
 - **External-file-change invalidation gets its own slice and acceptance**, not a
   hand-wave to §5.3 — it is a classic LSP correctness minefield.
   `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and
@@ -401,10 +405,11 @@ row must be discharged at the Definition of Done (Step Z).
     TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
     CodeResolver knowledge-facing methods                     Step 4
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
-    WorkspaceIndexer (dead today)                             SC.1
-    ScopeFinder::extractImports/resolveFromUseStatements       SC.2
-    Hand-rolled namespace tracking (SymbolExtractor,           SC.3
-      FilesystemBackend::findClassInAst)
+    FilesystemBackend per-kind declaration walks (S3.8a)      slice 5
+    §4.11 rule scope for SymbolExtractor / ScopeFinder        slices 2, 18
+    WorkspaceIndexer (dead today)                             slice 1
+    ScopeFinder::extractImports/resolveFromUseStatements       slice 18
+    Hand-rolled namespace tracking (SymbolExtractor)           slice 2
     Hand-rolled file:// conversion (4 sites)                   SC.4
 
 A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
@@ -422,16 +427,16 @@ scaffold. A remover must be a slice id; a prose note is not an owner, because
 
 The ledger above tracks scaffolding *this plan knowingly introduced*.
 It cannot catch the failure mode the series exists to end: a capability that ends up implemented twice, which is how the M×N problem returns.
-Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places (SC.4), namespace tracking in two (SC.3), a superseded import extractor with three unmigrated callers (SC.2).
+Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places (SC.4), namespace tracking in two (slice 2), a superseded import extractor with three unmigrated callers (slice 18), and a per-kind declaration walk added beside the shared one (slice 5).
 Each was found by an audit, not by a step.
 
 So each major section ends with an explicit audit slice, and the terminal gate re-runs it repo-wide.
 
-**What an audit looks for.** A single capability with more than one implementation, in the shapes this codebase actually produces them:
+**What an audit looks for.** A violation of §4.11 — a single capability with more than one implementation — in the shapes this codebase actually produces them:
 
 - a traversal or walk written per consumer instead of once (the #334 shape);
 - a mechanism hand-rolled per call site — path/URI conversion, name normalization and case handling, FQN construction, memoization;
-- a seam that landed while some callers kept the old path (the SC.2 shape);
+- a seam that landed while some callers kept the old path (the slice 18 shape);
 - a branch per kind, per handler, or per node type where one generic path should serve (#190, #253, #256).
 
 **Scope: substantial mechanics, not one-liners.** The target is work with real substance behind it — parsing, AST traversal, symbol extraction, name and FQN construction, path/URI conversion, caching.
@@ -446,7 +451,7 @@ If neither finds something, that is a known limit of the method, not a reason to
 
 A finding is not discharged by noting it: it is either fixed in the audit slice, or it becomes a numbered slice row with an owner.
 
-**Outcome rule, and the one difference between them.** The pre-cleanup audits (**S3.11**, **S4.7**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
+**Outcome rule, and the one difference between them.** The pre-cleanup audits (**slices 12 and 20**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
 The terminal audit in **Step Z** may not: there, an unowned *or* unfixed duplicate is a failure, because there is no later section to own it.
 
 An audit reporting no findings must show the enumeration it ran.
@@ -486,9 +491,10 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   either **fixed** or **converted to an explicitly-tracked deferred gap with an open
   issue** — none silently persists.
 - **Remaining gaps are named.** The only surviving non-conformances are the
-  explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5), the
-  workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266), and
-  computed-name `define()` (§3). A gap not on this list is a bug, not a deferral.
+  explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5, #401),
+  the workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266),
+  computed-name `define()` (§3), and position encodings other than UTF-16 (#192/#371).
+  A gap not on this list is a bug, not a deferral.
 
 Only when all seven hold is the foundation deemed complete.
 

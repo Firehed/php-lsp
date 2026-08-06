@@ -12,7 +12,12 @@ Append later phases as they are reached; do not create the whole tree up front.
 
 ## Columns
 
-- **ID** — stable slice id; the branch is `slice/<ID>`.
+- **ID** — stable slice id; the branch is `slice/<ID>`. Merged slices keep the
+  step-encoded ids they were built under; every new row is a plain number, assigned in
+  sequence and never reused. An id is only a branch name — order is table position and
+  sequencing is the `Depends on` column, so encoding either into the id just makes it
+  wrong later. New rows are appended below the last completed one, never interleaved
+  above it.
 - **Step** — the plan step in 0002 that owns the acceptance criteria.
 - **Depends on** — slice ids that must be `done` (merged) first. Two collective forms
   exist so a gate's dependencies cannot go stale as slices are added: **`all Step N`**
@@ -56,8 +61,8 @@ Step P harness — parity fixtures first), **3b** both preserves and extends the
 surface (existing behavior frozen to a golden; new project reach proven by new
 fixtures). The `Step` column carries the half, since 3a and 3b own distinct acceptance
 criteria in 0002. Step 4 decomposes `SymbolResolver`; Step Z is the terminal
-Definition-of-Done gate. Steps 3 and 4 each end with a duplication audit (S3.11,
-S4.7), which Step Z re-runs repo-wide as its completion gate.
+Definition-of-Done gate. Steps 3 and 4 each end with a duplication audit (slices 12 and
+20), which Step Z re-runs repo-wide as its completion gate.
 
     ID     Step  Title                                              Depends on        Closes
     -----  ----  -------------------------------------------------  ----------------  -------
@@ -73,25 +78,28 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
     S3.7e  3b    Enumerate the derived index in childrenOf          S3.7d             —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
-    S3.8b  3b    lookupConstant project reach                       S3.7d             —
-    S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
-    S3.9a  3b    Generalize search to a kind parameter              S3.8a             —
-    S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
-    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
-    S3.11  3     Step 3 duplication audit                          all Step 3        —
-    S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
-    S4.2   4     Extract node locator + scope analyzer              S3.8c,S4.1        —
-    S4.3   4     Extract member-access + call-context detectors     S4.2              —
-    S4.4   4     Extract name-context resolver                      S4.2              —
-    S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
-    S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
-    S4.7   4     Step 4 duplication audit                          all Step 4        —
-    SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
-    SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
-    SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
-    SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
-    SC.5   —     Merge the two class-like AST traversals             SC.3              —
-    SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
+    SC.4   —     Dedupe the hand-rolled file:// conversion          —                 —
+    1      —     Delete the dead WorkspaceIndexer                   —                 —
+    2      —     SymbolExtractor -> the parser's namespacedName     —                 —
+    3      —     §4.1 handler-responsibility architecture test      —                 —
+    4      —     §4.3 read/write segregation rule                   —                 —
+    5      3b    One declaration walk; backends consume it          S3.8a             —
+    6      3b    §8.1 rule: one owner per shared mechanism          5                 —
+    7      3b    Retire the AST-in function lookup from consumers   5                 —
+    8      3b    Generalize search to a kind parameter              S3.8a             —
+    9      3b    Function search + FunctionCandidates migration     6,8               —
+    10     3b    Constant vertical: lookup, search, enumeration     6,8               —
+    11     3b    Remove §4.2 fn-path exemption; retire scaffolding  7,9,10            —
+    12     3     Step 3 duplication audit                           all Step 3        —
+    13     4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
+    14     4     Extract node locator + scope analyzer              7,13              —
+    15     4     Extract member-access + call-context detectors     14                —
+    16     4     Extract name-context resolver                      14                —
+    17     4     Narrow TextFallbackHelper to FQN recovery          15,16             —
+    18     —     Retire ScopeFinder's superseded import extraction  16,17             —
+    19     4     SymbolResolver -> glue; CodeResolver positional    14,15,16,17       —
+    20     4     Step 4 duplication audit                           all Step 4        —
+    21     Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
 
@@ -123,96 +131,112 @@ Notes:
     derived index knows every name each entry declares, so this is wiring enumeration
     onto it, not a second scan. Found while reviewing S3.7d, which delivered the lookup
     half only.
-- **S3.8 and S3.9 are cut by symbol namespace, not by layer.** A layer cut (interface,
-  then backends, then consumers) would land `SymbolBackend` methods no backend
-  implements, so each slice is instead one vertical: a kind's name type, its
-  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. S3.8c
+- **The remaining kinds are cut by symbol namespace, not by layer.** A layer cut
+  (interface, then backends, then consumers) would land `SymbolBackend` methods no
+  backend implements, so each slice is instead one vertical: a kind's name type, its
+  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. Slice 7
   then migrates the consumers (`SymbolResolver`, `BasicTypeResolver`) off
   `FunctionRepository::get(string, array $ast)` — it is the Step 3b slice that edits
-  `SymbolResolver`, so it, not S3.8a, is what S4.2 serializes against (§6).
-  S3.9 divides on provability rather than kind: **S3.9a** widens `searchClassLikes` to
-  `search(string $prefix, NameKind $kind)` with class-likes still the only searchable
-  kind, which is behavior-preserving and leaves every Step P golden frozen; **S3.9b**
+  `SymbolResolver`, so it, not S3.8a, is what slice 14 serializes against (§6).
+  Search divides on provability rather than kind: **slice 8** widens `searchClassLikes`
+  to `search(string $prefix, NameKind $kind)` with class-likes still the only searchable
+  kind, which is behavior-preserving and leaves every Step P golden frozen; **slice 9**
   makes the backends answer function search and moves `FunctionCandidates` onto it,
   rewriting only the function-surface golden S3.6 froze. Note `BuiltinBackend` MUST
-  answer function search in S3.9b or built-in function completion regresses — that
+  answer function search in slice 9 or built-in function completion regresses — that
   golden is what catches it.
+- **A kind vertical consumes shared mechanism; it MUST NOT add one** (RFC §4.11). That
+  cut is *backends × kinds*, which 0002 §5.6 requires to stay closed, and S3.8a broke
+  it: it added `parseFunctionFrom` beside `FilesystemBackend::findClassInAst` instead of
+  using `DeclarationScanner`, the whole-file walk S3.7b had built one slice earlier.
+  - **Slice 5** gives the remaining verticals something to consume: one walk yielding
+    each declaration *with its node*, since needing the node for `ClassInfoFactory` /
+    `FunctionInfo::fromNode` is a return-shape difference, not a second query. It deletes
+    both bespoke finders. Behavior-preserving, so the class-like-lookup and S3.6
+    function-surface goldens stay frozen.
+  - **Slice 6** adds the rule, per 0002 §Duplication audits ("an audit's first *fix* is
+    to add the rule"): one named owner per shared mechanism. It ships scoped if slice 2
+    or 18 has not landed — each is a §4.11 violation it will flag — and those two
+    discharge its allowlist. The positional walkers (`NodeAtPosition`, `Scope`,
+    `ScopeFinder`) are separate owners, not exemptions.
+  - **Slice 10** lands constants whole rather than lookup-first: splitting a kind across
+    a lookup slice and a later search slice is what produced S3.7e, and RFC §4.2 requires
+    identical coverage across the two. Enumeration is likely already satisfied by S3.7e's
+    per-declaration `NameKind`, making it a fixture to prove rather than code to write;
+    offering constants at expression start (#317) is a feature on this reach and stays
+    out of scope.
 - **Name-type model is JIT (§5.3).** Each type lands with its first caller, not ahead
   of it. `NameKind` already exists (it predates Wave 2, as the catalog's coarse kind);
   Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7b**,
   whose `DeclarationScanner` is its first caller; `FunctionName` in **S3.8a** and
-  `ConstantName` in **S3.8b**, with their lookups.
+  `ConstantName` in **slice 10**, with their lookups.
   - **`ConstantName` is already taken.** `Domain\ConstantName` wraps a *class* constant
     name; §5.3's `ConstantName` is a *global* constant FQN. Decide the naming before
-    S3.8b rather than inside it — this is the same coexistence question §7 leaves open
+    slice 10 rather than inside it — this is the same coexistence question §7 leaves open
     for `ClassLikeName` versus `ClassName`.
-- **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
-  gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
-  order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
-  rules) is independent of Step 3 and may proceed alongside.
+- **Steps 3 and 4 both edit `SymbolResolver` (§6).** Slice 14 (positional extraction) is
+  gated on slice 7 (the 3b lookup migration) so the two never run concurrently; manifest
+  order keeps Step 3 ahead of Step 4 regardless. Slice 13 (`TypeClassifier` + the
+  §4.5/§4.6 rules) is independent of Step 3 and may proceed alongside.
 - **Teardown discharge.** S3.2 removes the duplicate `ComposerAutoloadMap`; S3.4 the
-  Step 2 double-write facade and (if built) the Step 0 cache rider; S3.10 the §4.2
-  function-path exemption, `getFileFunctions`, and the `DefaultFunctionRepository`
-  AST-in signature; S4.5/S4.6 the `SymbolResolver` god class, `TextFallbackHelper`
-  breadth, and the `CodeResolver` knowledge-facing methods. SZ.1 verifies the ledger is
-  fully discharged.
-- **The SC.* slices carry no step, on purpose.** They are duplication and dead code that
-  predate the plan rather than scaffolding it introduced, so no step's acceptance covers
-  them — which is exactly how they went unowned until an audit found them. They are in
-  the table so `/do-next` can select them and SZ.1 can require them, not because a step
-  produced them. A removal with no owning slice is a defect; put it here.
-  - **SC.1** — `Index/WorkspaceIndexer` has zero references in `src/` or `tests/`. It was
-    previously a ledger row whose remover was a *§3 note*, which no slice could discharge.
-  - **SC.2** — `ScopeFinder::extractImports` / `resolveFromUseStatements` were superseded
-    by `NameContextFactory` and their own docblock says they go away once #331 moves the
-    callers. #331 landed (#337); three callers did not move (`SymbolResolver` ×2,
-    `TextFallbackHelper` ×1). Gated on S4.4/S4.5, which rewrite exactly those sites.
-  - **SC.3** — `SymbolExtractor` and `FilesystemBackend::findClassInAst` each hand-track
-    `Stmt\Namespace_` to build FQNs that `NameResolver` already computed into
-    `namespacedName` (which `DefaultClassInfoFactory`, `DefaultFunctionRepository`,
-    `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
-    write-path and class-like-lookup goldens prove it. `SymbolExtractor`'s `Class::method`
-    FQNs are its own and stay.
-  - **SC.4** — `file://` URI and path conversion is hand-rolled in four live places
-    (`DefaultClassInfoFactory`, `FilesystemBackend` ×2, `Location`, and the dead
-    `WorkspaceIndexer`), each differing in how it handles the scheme and percent-
-    encoding. One `FileUri` replaces them. Found while splitting S3.7, whose locator
-    wanted a fifth copy; the duplication predates that slice and belongs to no step,
-    so S3.7c is gated on it rather than carrying it.
-  - **SC.5** — `FilesystemBackend::findClassInAst` and `Index\DeclarationScanner` both
-    walk an AST to find the class-likes a file declares. They differ in what they
-    return (one matched *node* versus every declared *name*) and in stopping early, so
-    this is scoped as **evaluate and merge if warranted** — concluding "two genuinely
-    different queries, one walk" is an acceptable outcome, but it must be concluded and
-    recorded, not left unexamined. Gated only on SC.3, which rewrites `findClassInAst`'s
-    namespace handling; it is deliberately *not* gated on S3.11, because an audit files
-    slices and a slice already filed must not wait on the audit that would have found
-    it. Found while reviewing S3.7d, which put the two traversals side by side without
-    merging them.
-- **Each section ends with a duplication audit** (**S3.11**, **S4.7**), and Step Z's
+  Step 2 double-write facade and (if built) the Step 0 cache rider; slice 5 the per-kind
+  declaration walks; slice 11 the §4.2 function-path exemption, `getFileFunctions`, and
+  the `DefaultFunctionRepository` AST-in signature; slices 17 and 19 the `SymbolResolver`
+  god class, `TextFallbackHelper` breadth, and the `CodeResolver` knowledge-facing
+  methods. Slice 21 verifies the ledger is fully discharged.
+- **Stepless rows carry no step, on purpose.** They are duplication, dead code, and
+  missing enforcement that no step's acceptance covers — which is exactly how they went
+  unowned until an audit found them. They are in the table so `/do-next` can select them
+  and slice 21 can require them. A removal with no owning slice is a defect; put it here.
+  **Unblocked removals go first**, ahead of the step slices: dead and duplicated code
+  costs every audit and review that passes over it, and row order is what makes
+  `/do-next` reach it.
+  - **Slice 1** — `Index/WorkspaceIndexer` has zero references in `src/` or `tests/`.
+  - **Slice 2** — `SymbolExtractor` hand-tracks `Stmt\Namespace_` to build FQNs that
+    `NameResolver` already computed into `namespacedName` (which `DefaultClassInfoFactory`,
+    `DefaultFunctionRepository`, `ScopeFinder`, and `DeclarationScanner` all read).
+    Behavior-preserving, so the Step P write-path golden proves it. `SymbolExtractor`'s
+    `Class::method` FQNs are its own and stay. The other site this once covered,
+    `FilesystemBackend::findClassInAst`, is removed by slice 5 independently.
+  - **Slices 3 and 4** — §8.1 names an enforcement mechanism per invariant and slice 21
+    requires every one active repo-wide, so a mechanism with no owning slice is a gate
+    that cannot pass. `phpstan.neon` registers two rules today (§4.2, §4.8); §4.1
+    (handlers depend on no parser, repository, or reflection) and §4.3 (consumers depend
+    on `SymbolSource` / `SymbolSink`, never a concrete implementation) have none. Both are
+    green against today's code — only `Server.php`, the composition root, names a concrete
+    implementation — so each is a rule plus its `RuleTestCase`, not a migration. §4.1 is
+    the axis closed by #190/#253/#256 and held by documentation ever since, which §8.1
+    forbids.
+  - **Slice 18** — `ScopeFinder::extractImports` / `resolveFromUseStatements` were
+    superseded by `NameContextFactory` and their own docblock says they go away once #331
+    moves the callers. #331 landed (#337); three callers did not move (`SymbolResolver`
+    ×2, `TextFallbackHelper` ×1). Gated on slices 16 and 17, which rewrite those sites.
+  - **SC.4** — `file://` URI and path conversion was hand-rolled in four live places, each
+    differing in how it handled the scheme and percent-encoding. One `FileUri` replaced
+    them. Found while splitting S3.7, whose locator wanted a fifth copy.
+- **Each section ends with a duplication audit** (**slices 12 and 20**), and Step Z's
   acceptance carries the repo-wide one. Method, scope and outcome rule are defined once
   in 0002 §Duplication audits and the terminal condition is a Step Z acceptance item —
   not restated here, because a manifest note is not a gate.
-  - S3.11 and S4.7 are **tracking** gates: a finding may be handed to a new slice
+  - Slices 12 and 20 are **tracking** gates: a finding may be handed to a new slice
     rather than fixed in place, so a removal belonging to a later section is not dragged
-    forward. Step Z is the **completion** gate, where an unowned or unfixed duplicate
+    forward. Slice 21 is the **completion** gate, where an unowned or unfixed duplicate
     fails outright.
   - The three depend on their whole section (`all Step N` / `all prior`) rather than on
-    its last slice. A chain of ids is both stale-prone and wrong: S3.10's transitive
-    dependencies never reach S3.4 or S3.5, so a Step 3 audit gated on S3.10 could have
+    its last slice. A chain of ids is both stale-prone and wrong: slice 11's transitive
+    dependencies never reach S3.4 or S3.5, so a Step 3 audit gated on slice 11 could have
     run with two of its slices unbuilt.
 - **The Builtin backend stood up in S3.3 is reflection-backed and does not satisfy
-  §4.7** (0002 §5 known gap) — file the tracked §4.7 issue when S3.3 lands; its fix is
-  the deferred Step 5.
+  §4.7** (0002 §5 known gap), tracked as #401; its fix is the deferred Step 5.
 - **`Closes` is assigned at slice-issue creation, after a reviewer reads the issue —
   never inferred.** Candidates from Wave 1's note: #239 / #181 / #317 land somewhere in
-  S3.7a–S3.10; #295 (Visibility enum) wants a small cleanup slice not yet placed.
+  S3.7a–slice 11; #295 (Visibility enum) wants a small cleanup slice not yet placed.
   - **#181 covers all three kinds**, which is now what S3.7b–S3.7d build: the
     `files` set has no name→file map of any kind, so it is scanned whole. A slice
     claiming #181 must show class-like reach, not just functions and constants.
-    - **#181 is not closable before S3.9b.** Its acceptance asks for these symbols in
-      *hover and completion*, not merely resolvable: functions need S3.8a and S3.9b,
-      constants S3.8b, namespace completion S3.7e. It also asks for a startup-time
+    - **#181 is not closable before slice 9.** Its acceptance asks for these symbols in
+      *hover and completion*, not merely resolvable: functions need S3.8a and slice 9,
+      constants slice 10, namespace completion S3.7e. It also asks for a startup-time
       benchmark, which S3.7d's eager index makes a live question rather than a
       formality — S3.7d pins the parse *count*, which is not the same measurement.
       Read the issue body before wiring `Closes`; the reach landing is not the
@@ -226,8 +250,14 @@ when their phase is reached.
 
 - **Step 5 — environment-parameterized built-ins (§4.7).** Not plannable: its
   version-aware source is an open `TBD` (0002 §7, explicitly not `phpstorm-stubs`). The
-  interim reflection Builtin backend already ships in S3.3; §4.7 stays a tracked issue.
-  Nothing in Wave 2 depends on Step 5, and SZ.1 permits it to remain a named gap.
+  interim reflection Builtin backend already ships in S3.3; §4.7 is tracked as **#401**.
+  Nothing depends on Step 5, and slice 21 permits it to remain a named gap.
+- **Position encodings other than UTF-16 (#192, #371).** The boundary conversion and the
+  interior byte columns are done (S1.2, S1.5), but the negotiated encoding does not reach
+  `TextDocument`, so only the UTF-16 default is served. A client-compatibility feature
+  rather than foundation work: [LSP] requires UTF-16 support and the encoding is
+  negotiated, so a client offering nothing else is served correctly today. Slice 21
+  permits it as a named gap.
 - **Step 6 — scheduler / async tier (#266).** Deferred until a push feature needs it.
   Sketch, from its acceptance: `$/cancelRequest` cancellation of superseded work;
   debounced `publishDiagnostics` on change; a background scheduler that does not starve
