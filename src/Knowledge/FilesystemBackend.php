@@ -143,8 +143,9 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * Empty by contract: project-wide prefix search over on-disk files needs an
-     * index this backend does not build (RFC 1 §3, §5.3).
+     * Empty by contract: a prefix search over the PSR-4 tree needs a workspace walk
+     * this backend does not do (RFC 1 §3, §5.3). Scoped to the tree, not to every
+     * kind — the derived `autoload.files` index is a filter, not a walk.
      *
      * @return list<never>
      */
