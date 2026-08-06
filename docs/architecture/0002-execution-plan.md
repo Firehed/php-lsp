@@ -410,9 +410,10 @@ row must be discharged at the Definition of Done (Step Z).
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
     FilesystemBackend per-kind declaration walks (S3.8a)      slice 5
     DocumentSymbolSink's two declaration walks (pre-existing) slice 5
-    §4.11 rule scope for SymbolExtractor / ScopeFinder        slices 2, 18
+    Per-kind backend lookup methods (S3.8a)                   slice 6
+    §4.11 rule scope for SymbolExtractor / ScopeFinder        slices 2, 19
     WorkspaceIndexer (dead today)                             slice 1
-    ScopeFinder::extractImports/resolveFromUseStatements       slice 18
+    ScopeFinder::extractImports/resolveFromUseStatements       slice 19
     Hand-rolled namespace tracking (SymbolExtractor)           slice 2
     Hand-rolled file:// conversion (4 sites)                   SC.4
 
@@ -420,7 +421,7 @@ A scaffold with no discharged remover by Step Z is a defect, not an acceptable e
 state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
 it is a permanent regression net kept past Step Z, not scaffolding to remove.
 
-The rows carrying no step (SC.4, slices 1, 2, 18) are **pre-existing** duplication and
+The rows carrying no step (SC.4, slices 1, 2, 19) are **pre-existing** duplication and
 dead code, not scaffolding this plan introduced — so no step's acceptance covers them,
 which is how they stayed unowned. They are listed anyway: the series exists to remove
 duplication, so a known-removable thing without an owning slice is the same defect as
@@ -437,7 +438,7 @@ not pre-existing debt.
 
 The ledger above tracks scaffolding *this plan knowingly introduced*.
 It cannot catch the failure mode the series exists to end: a capability that ends up implemented twice, which is how the M×N problem returns.
-Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places (SC.4), namespace tracking in two (slice 2), a superseded import extractor with three unmigrated callers (slice 18), and a per-kind declaration walk added beside the shared one (slice 5).
+Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places (SC.4), namespace tracking in two (slice 2), a superseded import extractor with three unmigrated callers (slice 19), a per-kind declaration walk added beside the shared one (slice 5), and a lookup routine copied into every backend (slice 6).
 Each was found by an audit, not by a step.
 
 So each major section ends with an explicit audit slice, and the terminal gate re-runs it repo-wide.
@@ -446,7 +447,7 @@ So each major section ends with an explicit audit slice, and the terminal gate r
 
 - a traversal or walk written per consumer instead of once (the #334 shape);
 - a mechanism hand-rolled per call site — path/URI conversion, name normalization and case handling, FQN construction, memoization;
-- a seam that landed while some callers kept the old path (the slice 18 shape);
+- a seam that landed while some callers kept the old path (the slice 19 shape);
 - a branch per kind, per handler, or per node type where one generic path should serve (#190, #253, #256).
 
 **Scope: substantial mechanics, not one-liners.** The target is work with real substance behind it — parsing, AST traversal, symbol extraction, name and FQN construction, path/URI conversion, caching.
@@ -461,7 +462,7 @@ If neither finds something, that is a known limit of the method, not a reason to
 
 A finding is not discharged by noting it: it is either fixed in the audit slice, or it becomes a numbered slice row with an owner.
 
-**Outcome rule, and the one difference between them.** The pre-cleanup audits (**slices 12 and 20**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
+**Outcome rule, and the one difference between them.** The pre-cleanup audits (**slices 13 and 21**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
 The terminal audit in **Step Z** may not: there, an unowned *or* unfixed duplicate is a failure, because there is no later section to own it.
 
 An audit reporting no findings must show the enumeration it ran.
