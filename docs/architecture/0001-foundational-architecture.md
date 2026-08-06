@@ -4,7 +4,7 @@
     Category:   Architecture Requirements (Best Current Practice)
     Status:     Draft
     Target:     Language Server Protocol 3.17
-    Date:       2026-07-19
+    Date:       2026-08-05
     Supersedes: none
     Relates-To: docs issues #264, #265, #266; architecture invariants in CLAUDE.md
 
@@ -49,6 +49,7 @@ a bumped date.
        4.8. Protocol Capability Negotiation
        4.9. Position Encoding
        4.10. Client Conformance Defects
+       4.11. Single Implementation per Mechanism
     5. Component Requirements
        5.1. Symbol Knowledge: Read Contract (SymbolSource)
        5.2. Symbol State: Write Contract (SymbolSink)
@@ -342,6 +343,20 @@ last resort, MUST be documented and isolated from feature logic, and MUST NOT le
 A running list of observed client defects and their accommodations SHOULD be
 maintained (Appendix B).
 
+### 4.11. Single Implementation per Mechanism
+
+A mechanism — a traversal or walk, a name or FQN construction, a path or URI
+conversion, a memoization — MUST have exactly one implementation, and every
+consumer MUST reach it through that one. This generalizes Section 4.6's
+single-traversal requirement from the type graph to every shared mechanism.
+
+A contribution that extends an axis (Section 3.1) MUST reach the mechanisms it
+needs through their existing implementation. Where the existing one does not fit,
+unifying it is prior work: adding a parallel implementation "for now" is the defect
+this document exists to prevent, and it is never the cheaper option.
+
+Two implementations that differ only in return shape are one mechanism, not two.
+
 ## 5. Component Requirements
 
 ### 5.1. Symbol Knowledge: Read Contract (SymbolSource)
@@ -518,6 +533,7 @@ exhaustive over the normative sections; each item names the section it checks.
     bounded coverage is observable (Section 5.3).
 11. Correctness holds under synchronous execution (Section 6).
 12. Malformed input yields an error response, not process termination (Section 9).
+13. No shared mechanism has a second implementation (Section 4.11).
 
 ### 8.1. Enforcement
 
@@ -552,6 +568,10 @@ invariant added by amendment MUST specify its mechanism.
     4.9 Position encoding             Test: multibyte round-trip at the boundary;
                                       review of interior offset use.
     4.10 Client conformance defects   Review only; defect list in Appendix B.
+    4.11 Single implementation        Static rule: constructing a shared mechanism (AST
+                                      traversal, namespace/FQN construction, path and
+                                      URI conversion, memoization) is confined to that
+                                      mechanism's named owner.
     5.2 / 5.3 Write path, precedence, Architecture test + review: one write path,
         cache seam, bounded coverage  caching behind the abstraction, bounds observable.
     6 Synchronous correctness         By construction: the suite runs the interior
