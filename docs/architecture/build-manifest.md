@@ -16,8 +16,12 @@ Append later phases as they are reached; do not create the whole tree up front.
   step-encoded ids they were built under; every new row is a plain number, assigned in
   sequence and never reused. An id is only a branch name — order is table position and
   sequencing is the `Depends on` column, so encoding either into the id just makes it
-  wrong later. New rows are appended below the last completed one, never interleaved
-  above it.
+  wrong later.
+- **Row order.** New rows go below the last `done` row, never above it — a completed
+  row's position is history. Within that pending block they may be placed anywhere, and
+  unblocked removals go at its top: `/do-next` takes the first unblocked `todo` in table
+  order, so position is the only thing that gets dead and duplicated code removed before
+  the work that has to read past it.
 - **Step** — the plan step in 0002 that owns the acceptance criteria.
 - **Depends on** — slice ids that must be `done` (merged) first. Two collective forms
   exist so a gate's dependencies cannot go stale as slices are added: **`all Step N`**
@@ -151,14 +155,32 @@ Notes:
   using `DeclarationScanner`, the whole-file walk S3.7b had built one slice earlier.
   - **Slice 5** gives the remaining verticals something to consume: one walk yielding
     each declaration *with its node*, since needing the node for `ClassInfoFactory` /
-    `FunctionInfo::fromNode` is a return-shape difference, not a second query. It deletes
-    both bespoke finders. Behavior-preserving, so the class-like-lookup and S3.6
-    function-surface goldens stay frozen.
+    `FunctionInfo::fromNode` is a return-shape difference, not a second query.
+    Every walk answering "what does this file declare" is deleted:
+    `FilesystemBackend`'s `parseFunctionFrom` and `findClassInAst`, and
+    `DocumentSymbolSink`'s `functionsIn` and `classesIn`. The write path is not
+    optional here — it is the open-document backend's, so leaving it out would land a
+    slice titled "backends consume it" where one backend does not. It is also where the
+    split already shows: `functionsIn` reports a declaration at any depth while
+    `classesIn` reads top-level statements only, which is the §4.2 coverage split
+    inside one class. Behavior-preserving for lookup, so the class-like-lookup and S3.6
+    function-surface goldens stay frozen; the class-like depth change is new behavior on
+    the write path, proven by a fixture and a rewritten Step P write-path golden.
   - **Slice 6** adds the rule, per 0002 §Duplication audits ("an audit's first *fix* is
-    to add the rule"): one named owner per shared mechanism. It ships scoped if slice 2
-    or 18 has not landed — each is a §4.11 violation it will flag — and those two
-    discharge its allowlist. The positional walkers (`NodeAtPosition`, `Scope`,
-    `ScopeFinder`) are separate owners, not exemptions.
+    to add the rule"): one named owner per shared mechanism, the owners named in the
+    rule's own configuration (RFC §8.1). Every AST traversal in `src/` must be
+    classified by it, so the disposition of all of them is fixed here rather than
+    discovered mid-slice:
+    - **Owners.** `DeclarationScanner` (declaration walk, after slice 5);
+      `NodeAtPosition`, `Scope`, `ScopeFinder` (positional walks — a different
+      mechanism, not exemptions); `ParserService` (the `NameResolver` pass every parse
+      runs through); `BasicTypeResolver` (assignment-flow walk, its own mechanism).
+    - **Declared migrations**, each already carrying a remover: `SymbolExtractor`
+      (slice 2), `ScopeFinder`'s import extraction (slice 18), `DefaultFunctionRepository`
+      (slice 11, which deletes the AST-in signature), `SymbolResolver`'s two walks
+      (slice 19, which reduces it to glue).
+    - No allowlist entry may be added without a remover slice, since slice 21 requires
+      zero remaining scope.
   - **Slice 10** lands constants whole rather than lookup-first: splitting a kind across
     a lookup slice and a later search slice is what produced S3.7e, and RFC §4.2 requires
     identical coverage across the two. Enumeration is likely already satisfied by S3.7e's
@@ -179,7 +201,7 @@ Notes:
   order keeps Step 3 ahead of Step 4 regardless. Slice 13 (`TypeClassifier` + the
   §4.5/§4.6 rules) is independent of Step 3 and may proceed alongside.
 - **Teardown discharge.** S3.2 removes the duplicate `ComposerAutoloadMap`; S3.4 the
-  Step 2 double-write facade and (if built) the Step 0 cache rider; slice 5 the per-kind
+  Step 2 double-write facade and (if built) the Step 0 cache rider; slice 5 the bespoke
   declaration walks; slice 11 the §4.2 function-path exemption, `getFileFunctions`, and
   the `DefaultFunctionRepository` AST-in signature; slices 17 and 19 the `SymbolResolver`
   god class, `TextFallbackHelper` breadth, and the `CodeResolver` knowledge-facing
@@ -187,10 +209,8 @@ Notes:
 - **Stepless rows carry no step, on purpose.** They are duplication, dead code, and
   missing enforcement that no step's acceptance covers — which is exactly how they went
   unowned until an audit found them. They are in the table so `/do-next` can select them
-  and slice 21 can require them. A removal with no owning slice is a defect; put it here.
-  **Unblocked removals go first**, ahead of the step slices: dead and duplicated code
-  costs every audit and review that passes over it, and row order is what makes
-  `/do-next` reach it.
+  and slice 21 can require them. A removal with no owning slice is a defect; put it here,
+  at the top of the pending block (see Row order).
   - **Slice 1** — `Index/WorkspaceIndexer` has zero references in `src/` or `tests/`.
   - **Slice 2** — `SymbolExtractor` hand-tracks `Stmt\Namespace_` to build FQNs that
     `NameResolver` already computed into `namespacedName` (which `DefaultClassInfoFactory`,
@@ -202,11 +222,16 @@ Notes:
     requires every one active repo-wide, so a mechanism with no owning slice is a gate
     that cannot pass. `phpstan.neon` registers two rules today (§4.2, §4.8); §4.1
     (handlers depend on no parser, repository, or reflection) and §4.3 (consumers depend
-    on `SymbolSource` / `SymbolSink`, never a concrete implementation) have none. Both are
-    green against today's code — only `Server.php`, the composition root, names a concrete
-    implementation — so each is a rule plus its `RuleTestCase`, not a migration. §4.1 is
+    on `SymbolSource` / `SymbolSink`, never a concrete implementation) have none. §4.1 is
     the axis closed by #190/#253/#256 and held by documentation ever since, which §8.1
-    forbids.
+    forbids; §4.3's seam is Step 2's, whose acceptance named only the §4.2 rule, so it is
+    a late Step 2 obligation rather than pre-existing debt (0002 §Teardown ledger).
+    Each is a rule plus its `RuleTestCase`, not a migration: §4.1 is green in `src/`, and
+    §4.3 is green once the rule scopes "consumer" to code outside the knowledge and index
+    tiers — `Server.php` and `KnowledgeStack` are composition roots, and
+    `WorkspaceNamespaceSource`, `OpenDocumentBackend` and `DocumentIndexer` are inside
+    the tier that owns the concrete stores. Fix that scope in the slice; a wider reading
+    turns slice 4 into a migration it is not planned as.
   - **Slice 18** — `ScopeFinder::extractImports` / `resolveFromUseStatements` were
     superseded by `NameContextFactory` and their own docblock says they go away once #331
     moves the callers. #331 landed (#337); three callers did not move (`SymbolResolver`

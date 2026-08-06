@@ -408,6 +408,7 @@ row must be discharged at the Definition of Done (Step Z).
     CodeResolver knowledge-facing methods                     Step 4
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
     FilesystemBackend per-kind declaration walks (S3.8a)      slice 5
+    DocumentSymbolSink's two declaration walks (pre-existing) slice 5
     §4.11 rule scope for SymbolExtractor / ScopeFinder        slices 2, 18
     WorkspaceIndexer (dead today)                             slice 1
     ScopeFinder::extractImports/resolveFromUseStatements       slice 18
