@@ -94,19 +94,18 @@ Notes:
   entry at bootstrap; nothing indexes them by name. So this set is the one place the
   model cannot resolve a name lazily, and its reach is a small, bounded index of the
   whole set — still not a project walk, because the list is explicit and usually tiny.
-- **Whether that index is built eagerly or on first use is S3.7d's call**, the slice
-  that builds it. Widening the set's reach to class-likes reopens the question rather
-  than settling it: a lazy build's trigger stops being a function or constant lookup
-  and becomes any name the autoload maps fail to resolve — commoner and far less
-  predictable, though still paid once, by whichever name arrives first. The cost is
+- **That index is built eagerly, not on first use.** A lazy build's trigger would stop
+  being a function or constant lookup and become any name the autoload maps fail to
+  resolve — commoner and far less predictable, though still paid once, by whichever
+  name arrives first. The cost is
   bounded either way: sized against §8.1's ~4 MB/s parse rate, this repository's own
   set is a dozen entries totalling ~140 KB ≈ **35 ms**, most of it one large PHPUnit
   file; the rest total ~30 KB ≈ **7 ms**. If a real project's set ever makes that
   perceptible (§8.4), the work moves to the deferred scheduler tier (Step 6).
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
-  revived only if/when the workspace scope is taken up; otherwise it is deleted — which
-  is slice **SC.1**, since it is dead today (zero references) and the workspace scope is
-  not scheduled. Reviving it later is cheaper than carrying dead code until then.
+  revived only if/when the workspace scope is taken up; otherwise it is deleted, since
+  it is dead today (zero references) and the workspace scope is not scheduled. Reviving
+  it later is cheaper than carrying dead code until then.
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw
   ASTs. `ClassRepository` already does this; preserve it.
 - Reach is scoped to declarations the model can *locate*: PSR-4 / classmap classes,
@@ -180,11 +179,12 @@ encoding, plus dedicated multibyte cases. And Step 1 is not fully orthogonal to 
 4: Step 1's single internal representation has to be the one the Step 4 positional
 layer consumes, or the encoding work is silently redone — coordinate the two.
 
-**Interior consumers deferred from S1.2 to S1.5.** S1.2 fixed the conversion
-boundary (`TextDocument::offsetAt` / `positionAt`) and the negotiation, but left the
-interior sites that still slice line text by the raw wire `character` — a §4.9
-violation ("interior components MUST operate only on that representation") the corpus
-must drive out. S1.5 MUST correct these, and cover each with multibyte fixtures:
+**The interior consumers come after the boundary.** Fixing the conversion boundary
+(`TextDocument::offsetAt` / `positionAt`) and the negotiation leaves the interior
+sites that still slice line text by the raw wire `character` — a §4.9 violation
+("interior components MUST operate only on that representation") the corpus must
+drive out. The round-trip corpus MUST correct these, and cover each with multibyte
+fixtures:
 
 - **Inbound reads** that do `substr($lineText, 0, $character)`, treating the wire
   column as a byte length: `CompletionHandler` (text-before-cursor),
@@ -195,7 +195,8 @@ must drive out. S1.5 MUST correct these, and cover each with multibyte fixtures:
 - **Outbound completion `Range` columns** that compute `$character - strlen($prefix)`,
   mixing a wire column with a byte length: `ClassCandidates` and `NamespaceCandidates`.
   These need the negotiated `PositionEncoding` reachable at the completion sources, so
-  S1.5 threads it there — S1.2 deliberately kept it confined to the document boundary.
+  the corpus threads it there; the boundary fix deliberately kept it confined to the
+  document.
 
 ### Step P — Resolution & enumeration parity harness (gates Steps 2–4)
 
@@ -227,10 +228,10 @@ golden is green forever. May run in parallel with Steps 0 and 1.
 
 *Maintenance.* This harness is a **permanent** regression net, not migration
 scaffolding — it is absent from the Teardown ledger below, and Step Z requires it
-green. As delivered (slice SP.1) the coverage requirement is realized as pcov *line*
-coverage measured by `composer parity-coverage` — a path selector on the normal test
-config, not a separate one (branch-level rigor is the `/review-slice` pass's job,
-§Mode B); genuinely-unreachable defensive guards are documented rather than gated.
+green. As delivered, the coverage requirement is realized as pcov *line* coverage
+measured by `composer parity-coverage` — a path selector on the normal test config,
+not a separate one (branch-level rigor is the review pass's job);
+genuinely-unreachable defensive guards are documented rather than gated.
 The full operational contract — recapturing a golden, what legitimately churns one,
 and that the goldens ride a surface-class refactor unchanged (they assert output, so
 a diff during a behavior-preserving step means the refactor changed behavior) —
@@ -302,7 +303,7 @@ Step 4 (Section 6).
     uses reflection for members.
 
   Revert profile: structural — revertible by reverting its commits, not a flag (§1).
-- **External-file-change invalidation gets its own slice and acceptance**, not a
+- **External-file-change invalidation gets its own step and acceptance**, not a
   hand-wave to §5.3 — it is a classic LSP correctness minefield.
   `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and
   close-after-edit both invalidate cached / indexed workspace state. *Its own
@@ -718,10 +719,10 @@ Step 5 (deferred — tracked §4.7 gap) and Step 6 (deferred — needs #266): la
   it, so it lands first (it can be built in parallel with Steps 0/1).
 - **Steps 3 and 4 both edit `SymbolResolver`** — Step 3b rewrites its function/
   constant lookups; Step 4 extracts its positional layer. These are not freely
-  parallel. Serialize the `SymbolResolver`-editing slices: do Step 3b's lookup
+  parallel. Serialize the `SymbolResolver`-editing work: do Step 3b's lookup
   migration first, then Step 4's extraction (or vice versa), but not concurrently.
-  Step 4's `TypeClassifier` and interface-split slices are independent of Step 3 and
-  may proceed alongside.
+  Step 4's `TypeClassifier` and interface split are independent of Step 3 and may
+  proceed alongside.
 - **Step 3a is itself a cluster of small PRs** (cache abstraction, `ComposerAutoloadMap`
   dedupe, backend composite, write-path collapse), not one commit — per the project's
   small-commit rule. A Step 0 standing cache, if the spike warrants it, rides in on
@@ -754,8 +755,8 @@ once Step P is green.
 
 ## 8. Step 0 spike record (measured)
 
-Measured on the slice `S0.1` instrumentation (`ParseMetrics`, which meters every
-`ParserService::parse()` — parse plus both visitor passes). Conditions: PHP 8.5.4
+Measured on the `ParseMetrics` instrumentation, which meters every
+`ParserService::parse()` — parse plus both visitor passes. Conditions: PHP 8.5.4
 CLI, macOS/arm64, no xdebug, opcache CLI off, and **`pcov.enabled=0`**. Timings
 varied ~10-15% run to run; **parse counts were exactly reproducible**, and the
 counts are what the decision turns on.
@@ -866,14 +867,14 @@ Step 0 does not apply.
 
 ### 8.5 Decision
 
-1. **Ship request-scoped dedup (S0.2).** It cuts the keystroke from 7 parses to 2
+1. **Ship request-scoped dedup.** It cuts the keystroke from 7 parses to 2
    (one per message) with no invalidation risk whatsoever: within one message the
    document content cannot change, so a memo held for that message's duration and
    then discarded cannot go stale. Projecting the measured parse costs onto that
-   count — not itself measured, since dedup is S0.2's to build — the large tier
+   count — not itself measured, the dedup being unbuilt at the time — the large tier
    falls from ~125 ms to ~50 ms per keystroke and the pathological tier from
-   ~190 ms to ~75 ms, i.e. under the threshold at every tier measured. S0.2 should
-   confirm this rather than assume it.
+   ~190 ms to ~75 ms, i.e. under the threshold at every tier measured. The dedup
+   must confirm this rather than assume it.
 2. **Do not add a standing cache now — this overrides the decision rule's cache
    branch, on a projection.** Be explicit about that. §8.4 establishes the
    antecedent of the rule's second branch ("add a standing cache only if large
@@ -893,23 +894,23 @@ Step 0 does not apply.
 3. **Revisit only on evidence.** If a standing cache is later warranted, it lands as
    the Step 3 rider described in Section 6 — open documents only, keyed by document
    version, behind the §5.3 cache abstraction — never as hard-coded memoization.
-   What reopens it, specifically: S0.2's measured post-dedup keystroke costs, if
-   they do not land under the §8.4 thresholds the way decision 1 projects. Decision
-   2 rests on that projection, so S0.2 is the checkpoint that confirms or overturns
-   it.
+   What reopens it, specifically: the measured post-dedup keystroke costs, if they
+   do not land under the §8.4 thresholds the way decision 1 projects. Decision 2
+   rests on that projection, so that measurement is the checkpoint that confirms or
+   overturns it.
 
 Note that the dedup boundary must cover the **notification** path as well as the
 request path: two of the seven parses are `didChange`'s, which `SymbolResolver`
 never sees. "Request-scoped" therefore means scoped to one handled LSP message,
 notifications included.
 
-### 8.6 Post-dedup measurement (slice S0.2) — decision 1 confirmed
+### 8.6 Post-dedup measurement — decision 1 confirmed
 
 Measured after the dedup landed, under §8's conditions (PHP 8.5.4 CLI, macOS/arm64,
 no xdebug, `pcov.enabled=0`) on the same files and the same keystroke as §8.3 —
 `didChange` followed by `textDocument/completion` at a bare prefix typed on a line
 appended to the file. Ranges are min-max over ten iterations after the class
-repository has warmed; the harness was throwaway, as in S0.1.
+repository has warmed; the harness was throwaway, as before.
 
 | Tier | Lines | `didChange` | completion | Full keystroke | §8.3 before |
 |---|---|---|---|---|---|
