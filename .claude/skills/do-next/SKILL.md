@@ -40,7 +40,7 @@ project's **Squash and Merge**: a squash rewrites the branch into one new commit
 - No slice is unblocked — report done / blocked / in-flight counts and stop.
 - Any slice is `in-flight` and not `done` — one slice in flight at a time; finish or
   review it first.
-- A slice's branch is merged while a dependency is not — surface the state drift.
+- A slice is merged while one above it in the table is not — surface the state drift.
 
 ## 4. Explain X
 
