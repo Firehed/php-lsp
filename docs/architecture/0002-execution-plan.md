@@ -386,34 +386,23 @@ scheduler tier (§6).
 requests and is cancelable; optional components (`pcntl`, `ext-parallel`) are
 feature-detected with a synchronous fallback (Fibers / FFI may be relied on).
 
-### §8.1 mechanism inventory
+### §8.1 mechanisms and the step that owns each
 
-§8.1 requires every invariant to have a designated mechanism, so a mechanism with no
-owner is a gap this plan must either schedule or name as deferred. Only two static
-mechanisms are built today (§4.2's discovery-authority extension, §4.8's raw-params
-rule), which is why this inventory is exhaustive rather than a list of exceptions.
+§8.1 requires every invariant to have a designated mechanism, so a mechanism no
+step's acceptance covers is unowned by construction — which is why several went
+unbuilt while their steps passed. Every one is assigned here.
 
-    Invariant   Mechanism status
-    ----------  --------------------------------------------------------------
-    4.1         Architecture test: unbuilt. Scheduled.
-    4.2         Built, scoped to exempt the function path; exemption dies in 3b.
-    4.3         Static rule + single-write-path test: unbuilt. Scheduled.
-    4.4         Interface shape, holding for SymbolSource; the AST-in function
-                signature is the open violation, removed in 3b.
-    4.5         Static rule: unbuilt. Scheduled in Step 4.
-    4.6         Traversal held by TypeGraphParityTest; the no-`new`-outside-the-
-                factory rule is unbuilt, scheduled in Step 4.
-    4.7         Deferred with Step 5; tracked as an issue.
-    4.8         Built.
-    4.9         Round-trip corpus built in Step 1; interior offset use is review.
-    4.10        Review only by design — no seam exists to hold it. The defect list
-                lives in RFC 1 Appendix B (ale `textEdit` range, ale#4274).
-    4.11        Static rule: unbuilt. Scheduled, after the mechanisms it names are
-                unified, so it ships with no scope entries.
-    5.2 / 5.3   Architecture test: unbuilt. Scheduled. The write-path agreement
-                check built in 3a is a runtime assertion inside the sink, not this.
-    6           By construction: the suite runs the interior synchronously.
-    9           Built in Step 1.
+- §4.1 (handler responsibility), §4.3 (read/write segregation and the single write
+  path), and §5.2/§5.3 (precedence, cache seam, bounded coverage) are architecture
+  tests over ground Steps 2 and 3a already settled, so **Step 3's acceptance carries
+  them**. The write-path agreement check 3a built is a runtime assertion inside the
+  sink; it is not one of these.
+- §4.11's rule belongs to **Step 3** as well, and lands after the mechanisms it names
+  are unified, so it ships with no scope entries (§1).
+- §4.5, and §4.6's "no `new` of a `Type` impl outside the factory", land in **Step 4**.
+- §4.7 is **deferred with Step 5** and tracked as an issue.
+- §4.10 is review-only by design; no seam exists to hold it. The defect list lives in
+  RFC 1 Appendix B (ale `textEdit` range, ale#4274).
 
 ### Teardown ledger
 
