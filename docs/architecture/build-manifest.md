@@ -177,7 +177,7 @@ Notes:
       runs through); `BasicTypeResolver` (assignment-flow walk, its own mechanism).
     - **Declared migrations**, each already carrying a remover: `SymbolExtractor`
       (slice 2), `ScopeFinder`'s import extraction (slice 18), `DefaultFunctionRepository`
-      (slice 11, which deletes the AST-in signature), `SymbolResolver`'s two walks
+      (slice 11, which deletes the AST-in signature), `SymbolResolver`'s own walks
       (slice 19, which reduces it to glue).
     - No allowlist entry may be added without a remover slice, since slice 21 requires
       zero remaining scope.
