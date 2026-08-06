@@ -284,11 +284,6 @@ Step 4 (Section 6).
   backend's function enumeration matches `get_defined_functions()` (as
   `TypeGraphParityTest` uses reflection for members). Revert profile: structural —
   revertible by reverting its commits, not a flag (§1).
-- **Each kind vertical consumes shared mechanism (§4.11); it does not add one.** The
-  per-kind cut is *backends × kinds*, which §5.6 requires to stay closed. S3.8a broke
-  that by adding a second declaration walk rather than using the one S3.7b had just
-  built, so the walk is unified (S3.8b) and rule-enforced (S3.8c) before any further
-  kind lands.
 - **External-file-change invalidation gets its own slice and acceptance**, not a
   hand-wave to §5.3 — it is a classic LSP correctness minefield.
   `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and
@@ -406,10 +401,10 @@ row must be discharged at the Definition of Done (Step Z).
     TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
     CodeResolver knowledge-facing methods                     Step 4
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
-    FilesystemBackend per-kind declaration walks (S3.8a)      S3.8b
     WorkspaceIndexer (dead today)                             SC.1
     ScopeFinder::extractImports/resolveFromUseStatements       SC.2
-    Hand-rolled namespace tracking (SymbolExtractor)           SC.3
+    Hand-rolled namespace tracking (SymbolExtractor,           SC.3
+      FilesystemBackend::findClassInAst)
     Hand-rolled file:// conversion (4 sites)                   SC.4
 
 A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
@@ -432,7 +427,7 @@ Each was found by an audit, not by a step.
 
 So each major section ends with an explicit audit slice, and the terminal gate re-runs it repo-wide.
 
-**What an audit looks for.** A violation of §4.11 — a single capability with more than one implementation — in the shapes this codebase actually produces them:
+**What an audit looks for.** A single capability with more than one implementation, in the shapes this codebase actually produces them:
 
 - a traversal or walk written per consumer instead of once (the #334 shape);
 - a mechanism hand-rolled per call site — path/URI conversion, name normalization and case handling, FQN construction, memoization;
