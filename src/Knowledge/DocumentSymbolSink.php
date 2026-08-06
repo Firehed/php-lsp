@@ -7,12 +7,14 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
+use PhpParser\NodeFinder;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
@@ -78,10 +80,11 @@ final class DocumentSymbolSink implements SymbolSink
         $ast = $this->parser->parse($document) ?? [];
 
         $classes = $this->classesIn($ast, $document->uri);
-        $this->backend->updateDocument($document->uri, $classes);
+        $functions = $this->functionsIn($ast, $document->uri);
+        $this->backend->updateDocument($document->uri, $classes, $functions);
         $this->indexer->indexParsed($document, $ast);
 
-        $this->assertStoresAgree($classes);
+        $this->assertStoresAgree($classes, $functions);
     }
 
     /**
@@ -94,25 +97,62 @@ final class DocumentSymbolSink implements SymbolSink
      * superset — it also records class-likes declared inside conditional or nested
      * statements, which the top-level lookup registration does not.
      *
+     * Functions are checked on the same terms, and need it more: the two stores
+     * qualify a function name by different routes — the parser's `namespacedName`
+     * here, a hand-tracked enclosing namespace in {@see \Firehed\PhpLsp\Index\SymbolExtractor} —
+     * so agreement is a property of two implementations rather than of one.
+     *
      * @param list<ClassInfo> $classes
+     * @param array<string, FunctionInfo> $functions
      */
-    private function assertStoresAgree(array $classes): void
+    private function assertStoresAgree(array $classes, array $functions): void
     {
         foreach ($classes as $classInfo) {
-            if ($this->index->findByFqn($classInfo->name->fqn) === null) {
-                // Unreachable: both stores derive their class-likes from the one AST
-                // parsed above, so a class registered for lookup is always indexed. The
-                // guard fails loudly if that ever ceases to hold.
-                // @codeCoverageIgnoreStart
-                throw new \LogicException(sprintf(
-                    'Write-path divergence: class-like %s is registered for lookup but absent '
-                    . 'from the symbol index; the two stores are written from one parse and '
-                    . 'must agree (RFC 1 §4.3).',
-                    $classInfo->name->fqn,
-                ));
-                // @codeCoverageIgnoreEnd
-            }
+            $this->assertIndexed('class-like', $classInfo->name->fqn);
         }
+
+        foreach (array_keys($functions) as $fqn) {
+            $this->assertIndexed('function', $fqn);
+        }
+    }
+
+    private function assertIndexed(string $kind, string $fqn): void
+    {
+        if ($this->index->findByFqn($fqn) !== null) {
+            return;
+        }
+
+        // Unreachable: both stores derive their symbols from the one AST parsed
+        // above, so a name registered for lookup is always indexed. The guard fails
+        // loudly if that ever ceases to hold.
+        // @codeCoverageIgnoreStart
+        throw new \LogicException(sprintf(
+            'Write-path divergence: %s %s is registered for lookup but absent from the '
+            . 'symbol index; the two stores are written from one parse and must agree '
+            . '(RFC 1 §4.3).',
+            $kind,
+            $fqn,
+        ));
+        // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * A declaration at any depth counts, matching what the on-disk backends resolve
+     * (a polyfill guarded by `function_exists` is the common shape). Opening a file
+     * must not make a name that already resolved disappear (RFC 1 §4.2).
+     *
+     * @param array<Stmt> $ast
+     * @return array<string, FunctionInfo> Fully-qualified name -> metadata
+     */
+    private function functionsIn(array $ast, string $uri): array
+    {
+        $functions = [];
+        foreach ((new NodeFinder())->findInstanceOf($ast, Stmt\Function_::class) as $node) {
+            $fqn = ($node->namespacedName ?? $node->name)->toString();
+            $functions[$fqn] ??= FunctionInfo::fromNode($node, $uri);
+        }
+
+        return $functions;
     }
 
     /**

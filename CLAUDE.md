@@ -101,9 +101,10 @@ says how to write it.
 
 ### Symbol Backends
 
-Class-like lookup, namespace enumeration, and class-like prefix search flow through the
-**`SymbolSource`** read seam (`src/Knowledge/`), implemented by **`CompositeSymbolSource`**
-over a fixed-precedence list of **`SymbolBackend`s** (RFC 1 §5.3):
+Class-like lookup, function lookup, namespace enumeration, and class-like prefix search
+flow through the **`SymbolSource`** read seam (`src/Knowledge/`), implemented by
+**`CompositeSymbolSource`** over a fixed-precedence list of **`SymbolBackend`s**
+(RFC 1 §5.3):
 
 1. **`OpenDocumentBackend`** — the editor's open documents (never cached); its answer overrides the rest.
 2. **`FilesystemBackend`** (workspace) — the project's own on-disk code, resolved via Composer's non-`vendor/` autoload prefixes: locate one file and parse it.
@@ -113,7 +114,16 @@ over a fixed-precedence list of **`SymbolBackend`s** (RFC 1 §5.3):
 A lookup takes the first backend that answers; enumeration and search merge every
 backend, the earlier (more authoritative) one winning a name clash. Caching is a
 per-backend PSR-16 policy (`src/Cache/`); on-disk and built-in results are cached, open
-documents never.
+documents never. A cache key carries the `NameKind` (`SymbolCacheKey`): PHP's three
+symbol namespaces are independent, so a class and a function may share a name.
+
+Lookup is **per-kind**, taking a name type that carries its kind (`ClassName`,
+`FunctionName`) rather than a name plus a `NameKind` argument. `lookupFunction` reaches
+open documents, the `autoload.files` set, and PHP's built-ins — the last filtered to
+`isInternal()`, because reflection also sees the functions the *server's* own
+dependencies declare, which are not the project's. A function in an unopened PSR-4 file
+has no name→file route at all: Composer's maps address class-likes only, which is
+RFC 1 §3's locate-only limitation, not a backend gap.
 
 Each `FilesystemBackend` finds its file through a **`CompositeSymbolLocator`** chaining
 two routes, cheapest first: `ComposerSymbolLocator` (PSR-4/PSR-0/classmap — arithmetic
@@ -121,7 +131,7 @@ on the name) and `AutoloadFilesLocator`. The latter exists because `autoload.fil
 entries are addressed by *no* name at all, so the only route is to parse the set and
 derive the map; it is built eagerly, covers all three symbol namespaces (a name-keyed
 route cannot know which kind a file declares), and applies PHP's per-kind case rules via
-`NameKind::isCaseSensitive()`. A test pins the parse *count* at construction, which is
+`NameKind::normalize()`. A test pins the parse *count* at construction, which is
 not a cost measurement; the set is explicit and usually tiny.
 
 The same derived index also answers the backend's `childrenOf`, merged with the
@@ -129,8 +139,11 @@ directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: �
 requires lookup and enumeration to draw on the same backends, so a name that resolved
 on hover while being invisible to completion is the split this tier exists to prevent.
 
-The write path is **`SymbolSink`** (`DocumentSymbolSink`), which
-registers class metadata and indexes symbols from one document.
+The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers class and
+function metadata and indexes symbols from one document. A declaration at any depth is
+registered, not just a top-level one — a polyfill guarded by `function_exists` is a name
+the file validly declares, and the on-disk backends resolve one, so opening the file must
+not make it disappear.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
 
@@ -138,8 +151,8 @@ sharing one open-document backend and symbol index.
 producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable`, so
 `invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
 the next query re-reads disk. It fans out to the cached on-disk backends (also
-`Invalidatable`): `FilesystemBackend` evicts that file's class-likes (a path→key
-reverse map), `CachedNamespaceCatalog` drops its listings, and the locator chain
+`Invalidatable`): `FilesystemBackend` evicts that file's class-likes and functions (a
+path→key reverse map), `CachedNamespaceCatalog` drops its listings, and the locator chain
 re-derives the `autoload.files` index if the changed file is in that set — evicting
 only the `ClassInfo` cache would leave the name→file map itself stale.
 Two triggers reach it:
@@ -152,7 +165,8 @@ until a file is opened and closed).
 
 Class-like prefix search (`searchClassLikes`) is served only by the open-document
 backend today; project-wide on-disk search is the deferred workspace-index scope
-(RFC 1 §3). Function/constant reach is Step 3b.
+(RFC 1 §3). Function search, and the migration of the consumers still calling
+`FunctionRepository`, are later Step 3b slices; constant reach is S3.8b.
 
 - **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.

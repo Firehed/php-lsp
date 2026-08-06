@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
@@ -54,6 +55,78 @@ final class BuiltinBackendTest extends TestCase
 
         self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
         self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-reflect');
+    }
+
+    public function testLookupFunctionReflectsABuiltinFunction(): void
+    {
+        $info = $this->backend(self::createStub(NamespaceCatalog::class))
+            ->lookupFunction(FunctionName::fromFullyQualified('str_contains'));
+
+        self::assertNotNull($info, 'a built-in function must resolve through reflection');
+        self::assertSame('str_contains', $info->name);
+        self::assertCount(2, $info->parameters, 'the reflected signature must be carried');
+    }
+
+    public function testLookupFunctionIsCaseInsensitive(): void
+    {
+        self::assertNotNull(
+            $this->backend(self::createStub(NamespaceCatalog::class))
+                ->lookupFunction(FunctionName::fromFullyQualified('STR_CONTAINS')),
+            'PHP matches function names case-insensitively',
+        );
+    }
+
+    public function testLookupFunctionIgnoresFunctionsOnlyTheServerHasLoaded(): void
+    {
+        // The server is itself a PHP program, so reflection can see every function
+        // its own dependencies declare. Those are not the project's, and answering
+        // for one would report a function the user's code cannot call. The backend
+        // enumerates only internal functions (BuiltinFunctionParityTest), so lookup
+        // must agree or a name resolves on hover yet never appears in completion
+        // (RFC 1 §4.2).
+        require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
+
+        self::assertNull(
+            $this->backend(self::createStub(NamespaceCatalog::class))
+                ->lookupFunction(FunctionName::fromFullyQualified('testDocumentedFunction')),
+            'a userland function loaded in the server process is not a built-in',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullForAnUnknownFunction(): void
+    {
+        self::assertNull(
+            $this->backend(self::createStub(NamespaceCatalog::class))
+                ->lookupFunction(FunctionName::fromFullyQualified('no_such_builtin')),
+            'a name reflection cannot load is absent from this backend (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupFunctionCachesAResolvedFunction(): void
+    {
+        $backend = $this->backend(self::createStub(NamespaceCatalog::class));
+        $name = FunctionName::fromFullyQualified('str_contains');
+
+        $first = $backend->lookupFunction($name);
+        $second = $backend->lookupFunction($name);
+
+        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
+        self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-reflect');
+    }
+
+    public function testFunctionAndClassLikeCachesDoNotCollide(): void
+    {
+        // PHP's three symbol namespaces are independent, so one name can be both a
+        // class and a function. A cache keyed on the name alone would serve a
+        // ClassInfo to a function lookup.
+        $backend = $this->backend(self::createStub(NamespaceCatalog::class));
+
+        $backend->lookupClassLike(self::className(\ArrayObject::class));
+
+        self::assertNull(
+            $backend->lookupFunction(FunctionName::fromFullyQualified('ArrayObject')),
+            'a cached class-like must not answer a function lookup of the same name',
+        );
     }
 
     public function testSearchClassLikesIsEmpty(): void

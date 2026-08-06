@@ -128,6 +128,26 @@ class FunctionInfoTest extends TestCase
         self::assertSame([], $func->parameters);
         self::assertNull($func->returnType);
         self::assertNull($func->docblock);
+        self::assertNull($func->file, 'a node carries no file of its own');
+    }
+
+    public function testFromNodeRecordsTheDeclaringFile(): void
+    {
+        $node = new Stmt\Function_(
+            name: new Identifier('myFunc'),
+            subNodes: [
+                'params' => [],
+                'returnType' => null,
+            ],
+        );
+
+        $func = FunctionInfo::fromNode($node, '/path/to/helpers.php');
+
+        self::assertSame(
+            '/path/to/helpers.php',
+            $func->file,
+            'a function resolved from a file needs its definition site',
+        );
     }
 
     public function testFromNodeWithParams(): void

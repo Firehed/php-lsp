@@ -7,13 +7,14 @@ namespace Firehed\PhpLsp\Tests;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 
 /**
- * Builds minimal {@see ClassInfo} value objects for tests that need class-likes
- * without a real parse — only the identity and, where a subtype walk is under
- * test, the parent and interface edges.
+ * Builds minimal domain value objects for tests that need symbols without a real
+ * parse — only the identity, the declaring file where precedence is under test,
+ * and, for a class-like, the parent and interface edges a subtype walk follows.
  */
-trait BuildsClassInfoTrait
+trait BuildsSymbolInfoTrait
 {
     /**
      * @param list<string> $interfaces
@@ -43,6 +44,11 @@ trait BuildsClassInfoTrait
             file: $file,
             line: null,
         );
+    }
+
+    private static function functionInfo(string $shortName, ?string $file = null): FunctionInfo
+    {
+        return new FunctionInfo($shortName, [], null, null, $file, 1);
     }
 
     /**

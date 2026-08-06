@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -95,6 +96,143 @@ final class FilesystemBackendTest extends TestCase
         self::assertNull(
             $backend->lookupClassLike(self::className('Fixtures\TypeInference\NotDeclaredHere')),
             'a located file that does not declare the requested class resolves to null',
+        );
+    }
+
+    public function testLookupFunctionResolvesAFunctionDeclaredInAnAutoloadFilesEntry(): void
+    {
+        $info = $this->backend()->lookupFunction(
+            FunctionName::fromFullyQualified('Fixtures\Helpers\helperFormat'),
+        );
+
+        self::assertNotNull($info, 'a function in the files set must resolve through the derived index');
+        self::assertCount(1, $info->parameters, 'the parsed signature must be carried');
+        self::assertSame(
+            $this->fixturesRoot . '/AutoloadFiles/helpers.php',
+            $info->file,
+            'a function resolved from disk must carry its definition site',
+        );
+    }
+
+    public function testLookupFunctionResolvesADeclarationBelowTheTopLevel(): void
+    {
+        // The shape most `autoload.files` entries take: a polyfill declares itself
+        // only where the runtime lacks it, so the declaration is nested. A scan
+        // narrowed to top-level statements would miss it, and the name would resolve
+        // from an open document but not from disk.
+        self::assertNotNull(
+            $this->backend()->lookupFunction(FunctionName::fromFullyQualified('fixtureConditionalHelper')),
+            'a conditionally declared function must resolve like any other declaration',
+        );
+    }
+
+    public function testLookupFunctionIsCaseInsensitive(): void
+    {
+        self::assertNotNull(
+            $this->backend()->lookupFunction(
+                FunctionName::fromFullyQualified('FIXTURES\HELPERS\HELPERFORMAT'),
+            ),
+            'PHP matches function names case-insensitively',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullForAFunctionOnlyAPsr4FileDeclares(): void
+    {
+        // Composer's PSR-4, PSR-0 and classmap entries all address class-likes, so a
+        // function in an unopened PSR-4 file has no name -> file route at all. That
+        // is Plan 0002 §3's locate-only limitation, not a gap in the backend.
+        self::assertNull(
+            $this->backend()->lookupFunction(
+                FunctionName::fromFullyQualified('Fixtures\Completion\calculateSum'),
+            ),
+            'no autoload map addresses a function by name outside the files set',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullForAnAbsentFunction(): void
+    {
+        self::assertNull(
+            $this->backend()->lookupFunction(FunctionName::fromFullyQualified('Fixtures\no_such_helper')),
+            'a name no locator can reach is absent from this backend (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullWhenTheLocatedFileDoesNotDeclareIt(): void
+    {
+        $backend = $this->backendWithLocator(
+            $this->locatorReturning($this->fixturesRoot . '/src/Domain/User.php'),
+        );
+
+        self::assertNull(
+            $backend->lookupFunction(FunctionName::fromFullyQualified('notInThisFile')),
+            'a located file that does not declare the requested function resolves to null',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullWhenTheLocatedFileIsUnreadable(): void
+    {
+        $backend = $this->backendWithLocator($this->locatorReturning('/no/such/file/helpers.php'));
+
+        self::assertNull(
+            $backend->lookupFunction(FunctionName::fromFullyQualified('ghostHelper')),
+            'a located path that is not readable degrades to not-found rather than an error',
+        );
+    }
+
+    public function testLookupFunctionCachesAResolvedFunction(): void
+    {
+        $backend = $this->backend();
+        $name = FunctionName::fromFullyQualified('Fixtures\Helpers\helperFormat');
+
+        $first = $backend->lookupFunction($name);
+        $second = $backend->lookupFunction($name);
+
+        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
+        self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-parse');
+    }
+
+    public function testFunctionAndClassLikeCachesDoNotCollide(): void
+    {
+        // PHP's symbol namespaces are independent, so one file may declare a class
+        // and a function of the same name. A cache keyed on the name alone would
+        // serve whichever was resolved first to both queries.
+        $path = tempnam(sys_get_temp_dir(), 'php-lsp-fsb-dual-');
+        self::assertNotFalse($path, 'a temp file must be creatable');
+
+        try {
+            self::assertNotFalse(
+                file_put_contents($path, "<?php\nclass Dual {}\nfunction Dual(): void {}\n"),
+                'the temp file must be writable',
+            );
+
+            $backend = $this->backendWithLocator($this->locatorReturning($path));
+
+            $class = $backend->lookupClassLike(self::className('Dual'));
+            $function = $backend->lookupFunction(FunctionName::fromFullyQualified('Dual'));
+
+            self::assertNotNull($class, 'the class-like must resolve');
+            self::assertNotNull($function, 'the function must resolve rather than hit the class entry');
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function testInvalidateEvictsTheCachedFunctionSoTheNextLookupReParses(): void
+    {
+        $backend = $this->backend();
+        $name = FunctionName::fromFullyQualified('Fixtures\Helpers\helperFormat');
+
+        $first = $backend->lookupFunction($name);
+        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
+
+        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/AutoloadFiles/helpers.php'));
+        $second = $backend->lookupFunction($name);
+
+        self::assertNotNull($second, 'the function must resolve again after invalidation');
+        self::assertNotSame(
+            $first,
+            $second,
+            'invalidate must evict cached functions too, or an edited file is served stale (RFC 1 §5.3)',
         );
     }
 
@@ -293,12 +431,20 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
+    /**
+     * Wired with the same locator chain {@see \Firehed\PhpLsp\Knowledge\KnowledgeStack}
+     * gives it: the autoload maps address class-likes by name, and the derived index
+     * covers the `files` set, which they address by no name at all.
+     */
     private function backend(): FilesystemBackend
     {
         $map = ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot);
 
         return new FilesystemBackend(
-            new ComposerSymbolLocator($map),
+            new CompositeSymbolLocator([
+                new ComposerSymbolLocator($map),
+                new AutoloadFilesLocator($map, $this->parser, new DeclarationScanner()),
+            ]),
             new ComposerNamespaceSource($map),
             $this->parser,
             $this->factory,

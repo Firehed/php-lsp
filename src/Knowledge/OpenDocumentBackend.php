@@ -6,11 +6,15 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
+use Firehed\PhpLsp\Resolution\NameKind;
 
 /**
  * The highest-precedence {@see SymbolBackend}: the documents the editor has open
@@ -46,6 +50,12 @@ final class OpenDocumentBackend implements SymbolBackend
     /** @var array<string, list<string>> URI -> the lowercase FQNs it declared */
     private array $fqnsByUri = [];
 
+    /** @var array<string, FunctionInfo> Lowercase FQN -> function metadata */
+    private array $functionsByFqn = [];
+
+    /** @var array<string, list<string>> URI -> the lowercase function FQNs it declared */
+    private array $functionFqnsByUri = [];
+
     private readonly WorkspaceNamespaceSource $namespaces;
 
     public function __construct(
@@ -61,7 +71,12 @@ final class OpenDocumentBackend implements SymbolBackend
 
     public function lookupClassLike(ClassName $name): ?ClassInfo
     {
-        return $this->byFqn[self::normalizeKey($name->fqn)] ?? null;
+        return $this->byFqn[self::key(NameKind::ClassLike, $name->fqn)] ?? null;
+    }
+
+    public function lookupFunction(FunctionName $name): ?FunctionInfo
+    {
+        return $this->functionsByFqn[$name->kind()->normalize($name->qualifiedName)] ?? null;
     }
 
     /**
@@ -73,22 +88,34 @@ final class OpenDocumentBackend implements SymbolBackend
     }
 
     /**
-     * Register the class-likes declared in an open document for lookup, replacing
-     * any previously registered for the same URI.
+     * Register the class-likes and functions declared in an open document for
+     * lookup, replacing any previously registered for the same URI.
+     *
+     * Functions arrive keyed because {@see FunctionInfo} carries only the short
+     * name; the caller read the qualified one from the declaration.
      *
      * @param list<ClassInfo> $classes
+     * @param array<string, FunctionInfo> $functions Fully-qualified name -> metadata
      */
-    public function updateDocument(string $uri, array $classes): void
+    public function updateDocument(string $uri, array $classes, array $functions = []): void
     {
         $this->removeDocument($uri);
 
         $keys = [];
         foreach ($classes as $classInfo) {
-            $key = self::normalizeKey($classInfo->name->fqn);
+            $key = self::key(NameKind::ClassLike, $classInfo->name->fqn);
             $this->byFqn[$key] = $classInfo;
             $keys[] = $key;
         }
         $this->fqnsByUri[$uri] = $keys;
+
+        $functionKeys = [];
+        foreach ($functions as $fqn => $functionInfo) {
+            $key = self::key(NameKind::Function_, $fqn);
+            $this->functionsByFqn[$key] = $functionInfo;
+            $functionKeys[] = $key;
+        }
+        $this->functionFqnsByUri[$uri] = $functionKeys;
     }
 
     public function removeDocument(string $uri): void
@@ -97,10 +124,21 @@ final class OpenDocumentBackend implements SymbolBackend
             unset($this->byFqn[$key]);
         }
         unset($this->fqnsByUri[$uri]);
+
+        foreach ($this->functionFqnsByUri[$uri] ?? [] as $key) {
+            unset($this->functionsByFqn[$key]);
+        }
+        unset($this->functionFqnsByUri[$uri]);
     }
 
-    private static function normalizeKey(string $fqn): string
+    /**
+     * Registration and lookup must agree on the case rule, and that rule differs by
+     * kind, so both go through {@see NameKind::normalize()} rather than a local
+     * lowercasing of the whole FQN — which is right for these two kinds and wrong
+     * for a constant.
+     */
+    private static function key(NameKind $kind, string $fqn): string
     {
-        return strtolower(ltrim($fqn, '\\'));
+        return $kind->normalize(QualifiedName::fromFullyQualified($fqn));
     }
 }

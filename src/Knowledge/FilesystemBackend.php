@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
@@ -17,6 +18,7 @@ use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Resolution\NameKind;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
+use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use Psr\SimpleCache\CacheInterface;
@@ -69,7 +71,8 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
 
     public function lookupClassLike(ClassName $name): ?ClassInfo
     {
-        $cacheKey = CacheKey::from(strtolower(ltrim($name->fqn, '\\')));
+        $qualifiedName = QualifiedName::fromClassName($name);
+        $cacheKey = SymbolCacheKey::for($qualifiedName, NameKind::ClassLike);
 
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
@@ -77,7 +80,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
             return $cached;
         }
 
-        $filePath = $this->locator->locate(QualifiedName::fromClassName($name), NameKind::ClassLike);
+        $filePath = $this->locator->locate($qualifiedName, NameKind::ClassLike);
         if ($filePath === null) {
             return null;
         }
@@ -89,6 +92,30 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         }
 
         return $classInfo;
+    }
+
+    public function lookupFunction(FunctionName $name): ?FunctionInfo
+    {
+        $cacheKey = SymbolCacheKey::for($name->qualifiedName, $name->kind());
+
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            assert($cached instanceof FunctionInfo);
+            return $cached;
+        }
+
+        $filePath = $this->locator->locate($name->qualifiedName, $name->kind());
+        if ($filePath === null) {
+            return null;
+        }
+
+        $functionInfo = $this->parseFunctionFrom($name, $filePath);
+        if ($functionInfo !== null) {
+            $this->cache->set($cacheKey, $functionInfo);
+            $this->cacheKeysByPath[$filePath][] = $cacheKey;
+        }
+
+        return $functionInfo;
     }
 
     /**
@@ -116,14 +143,46 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * Empty by contract: project-wide prefix search over on-disk files needs an
-     * index this backend does not build (RFC 1 §3, §5.3).
+     * Empty by contract: a prefix search over the PSR-4 tree needs a workspace walk
+     * this backend does not do (RFC 1 §3, §5.3). Scoped to the tree, not to every
+     * kind — the derived `autoload.files` index is a filter, not a walk.
      *
      * @return list<never>
      */
     public function searchClassLikes(string $prefix): array
     {
         return [];
+    }
+
+    /**
+     * A declaration at any depth counts, not just a top-level one: the shape most
+     * `autoload.files` entries take is a polyfill declared inside an
+     * `if (!function_exists(...))`, and that is a name the file validly declares
+     * (matching {@see \Firehed\PhpLsp\Index\DeclarationScanner}, which derived the
+     * name -> file map this lookup arrived through).
+     */
+    private function parseFunctionFrom(FunctionName $name, string $filePath): ?FunctionInfo
+    {
+        $ast = $this->parser->parseFile($filePath);
+        if ($ast === null) {
+            return null;
+        }
+
+        $kind = $name->kind();
+        $target = $kind->normalize($name->qualifiedName);
+
+        $node = (new NodeFinder())->findFirst(
+            $ast,
+            static fn(Node $node): bool => $node instanceof Stmt\Function_
+                && $kind->normalize(
+                    QualifiedName::fromFullyQualified(($node->namespacedName ?? $node->name)->toString()),
+                ) === $target,
+        );
+        if (!$node instanceof Stmt\Function_) {
+            return null;
+        }
+
+        return FunctionInfo::fromNode($node, $filePath);
     }
 
     private function parseClassFrom(ClassName $name, string $filePath): ?ClassInfo

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
-use Firehed\PhpLsp\Tests\BuildsClassInfoTrait;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -21,7 +22,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class OpenDocumentBackendTest extends TestCase
 {
-    use BuildsClassInfoTrait;
+    use BuildsSymbolInfoTrait;
 
     private SymbolIndex $index;
     private OpenDocumentBackend $backend;
@@ -86,6 +87,81 @@ final class OpenDocumentBackendTest extends TestCase
         self::assertNull(
             $this->backend->lookupClassLike(self::className('V\Nothing')),
             'removing a document that was never registered must not error',
+        );
+    }
+
+    public function testLookupFunctionReturnsARegisteredFunction(): void
+    {
+        $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
+
+        $info = $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\format'));
+
+        self::assertNotNull($info, 'a registered function must resolve');
+        self::assertSame('format', $info->name, 'the registered function must be returned unchanged');
+    }
+
+    public function testLookupFunctionIsCaseInsensitive(): void
+    {
+        $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
+
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\FORMAT')),
+            'PHP matches function names case-insensitively',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullForAnUnregisteredFunction(): void
+    {
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\absent')),
+            'a name no open document declares is absent from this backend (RFC 1 §5.3)',
+        );
+    }
+
+    public function testFunctionAndClassLikeRegistrationsDoNotCollide(): void
+    {
+        $this->backend->updateDocument(
+            'file:///Dual.php',
+            [self::classInfo('V\Dual')],
+            ['V\Dual' => self::functionInfo('Dual')],
+        );
+
+        self::assertNotNull(
+            $this->backend->lookupClassLike(self::className('V\Dual')),
+            'the class-like must resolve',
+        );
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\Dual')),
+            'a function sharing the name must resolve too: the symbol namespaces are independent',
+        );
+    }
+
+    public function testUpdateDocumentReplacesThePriorFunctionsForThatUri(): void
+    {
+        $uri = 'file:///helpers.php';
+        $this->backend->updateDocument($uri, [], ['V\alpha' => self::functionInfo('alpha')]);
+        $this->backend->updateDocument($uri, [], ['V\beta' => self::functionInfo('beta')]);
+
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\alpha')),
+            'the prior function must be dropped when the document is re-registered',
+        );
+        self::assertNotNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\beta')),
+            'the new function must be registered',
+        );
+    }
+
+    public function testRemoveDocumentDropsItsFunctions(): void
+    {
+        $uri = 'file:///helpers.php';
+        $this->backend->updateDocument($uri, [], ['V\ephemeral' => self::functionInfo('ephemeral')]);
+
+        $this->backend->removeDocument($uri);
+
+        self::assertNull(
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\ephemeral')),
+            'closing a document must drop the functions it registered',
         );
     }
 

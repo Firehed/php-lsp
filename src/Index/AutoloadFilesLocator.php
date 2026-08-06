@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\NameKind;
-use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * Locates a declaration in Composer's `autoload.files` set, by deriving the
@@ -91,7 +90,7 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
     public function locate(QualifiedName $name, NameKind $kind): ?string
     {
         $declarations = $this->index[$kind->name];
-        $key = self::key($name, $kind);
+        $key = $kind->normalize($name);
 
         return array_key_exists($key, $declarations) ? $declarations[$key] : null;
     }
@@ -119,23 +118,12 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
     }
 
     /**
-     * Only constant short names are matched exactly. A namespace path is
-     * case-insensitive for every kind, so the rule applies to the short name alone.
-     */
-    private static function key(QualifiedName $name, NameKind $kind): string
-    {
-        $shortName = $kind->isCaseSensitive() ? $name->shortName : strtolower($name->shortName);
-
-        return NamespacePath::join(strtolower($name->namespace), $shortName);
-    }
-
-    /**
      * @param list<QualifiedName> $names
      */
     private function record(NameKind $kind, array $names, string $path): void
     {
         foreach ($names as $name) {
-            $key = self::key($name, $kind);
+            $key = $kind->normalize($name);
 
             // Composer requires the entries in order, so the first declaration of a
             // name is the one that takes effect; a later guarded redeclaration of
