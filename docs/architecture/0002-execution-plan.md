@@ -740,6 +740,9 @@ once Step P is green.
   wrapper — it must coexist with `ClassName`'s dual role as the class `Type` (§5.3).
 - What §5.3's global-constant name type is called. `Domain\ConstantName` is taken: it
   names a *class* constant. Resolve before constant reach lands, not inside it (Step 3b).
+- What a kind-agnostic backend `resolve` returns (§5.6). The on-disk backends locate a
+  declaration node; the Builtin backend resolves through reflection and has none, so
+  whatever the facade builds its typed info from must cover both (Step 3b).
 - Whether completion detail after the `search` migration comes from a follow-up
   `lookupFunction` or a `completionItem/resolve` capability (§5.4) (Step 3b).
 - Whether the Workspace backend is lazy-only or gains bounded background indexing
