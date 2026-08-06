@@ -24,9 +24,7 @@ throughout. That file must land first, or in the same merge; until it does, the
 
 - **Strangler-fig, always green.** Introduce a seam, migrate consumers onto it in
   small commits, then reshape behind it. No big-bang rewrite; every step merges on
-  its own and keeps the suite passing. The window where old and new coexist is what
-  RFC §4.11 calls a **declared migration**, and the three things it requires are the
-  next principle's scoped rule, a Teardown ledger row, and a remover slice id.
+  its own and keeps the suite passing.
 - **Enforcement lands with the seam — scoped, not baselined.** When a step
   introduces an invariant's seam, its §8.1 enforcement mechanism lands in the same
   step. During a partial migration a rule ships with an **explicit, code-level
@@ -97,7 +95,7 @@ Notes:
   perceptible (§8.4), the work moves to the deferred scheduler tier (Step 6).
 - Background/eager indexing is optional and bounded (§5.3). `WorkspaceIndexer` is
   revived only if/when the workspace scope is taken up; otherwise it is deleted — which
-  is deleted, since it is dead today (zero references) and the workspace scope is
+  is slice **SC.1**, since it is dead today (zero references) and the workspace scope is
   not scheduled. Reviving it later is cheaper than carrying dead code until then.
 - On-disk backends cache **derived info** (`ClassInfo`, symbols — small), never raw
   ASTs. `ClassRepository` already does this; preserve it.
@@ -286,19 +284,6 @@ Step 4 (Section 6).
   backend's function enumeration matches `get_defined_functions()` (as
   `TypeGraphParityTest` uses reflection for members). Revert profile: structural —
   revertible by reverting its commits, not a flag (§1).
-- **A new kind is a factory and a facade accessor, not a change to every backend** (§5.6, §4.11).
-Three unifications are prerequisites of constant reach, each behavior-preserving and proven by the existing goldens.
-  - **One declaration walk**, yielding each declaration with its node.
-Needing the node for `ClassInfoFactory` / `FunctionInfo::fromNode` is a return-shape difference, not a second query.
-It serves the write path too, so a class-like declared below the top level is registered for lookup exactly as a function already is (§4.2) — new write-path behavior, proven by a fixture.
-  - **One backend lookup**: `SymbolBackend` resolves uniformly, `resolve(QualifiedName, NameKind)`, returning the located declaration; the facade builds the typed `ClassInfo` / `FunctionInfo` from the existing factories.
-`SymbolSource` keeps its typed per-kind methods, since a name type carrying its own kind is stronger than a name plus an enum.
-The dividing rule: kind is a *parameter* where the return type does not vary with it, a *method* where it does.
-Reflection is itself per-kind, so the Builtin backend keeps one internal `match`; no other backend carries a kind branch.
-  - **One lookup-and-memoize routine** across the backends, rather than a copy per kind.
-- **Constant reach lands whole** — lookup, search and enumeration together — because §4.2 requires identical coverage across them, and a kind split across two steps resolves on hover while staying invisible to completion.
-- **#181 is not closable on reach alone.**
-Its acceptance asks for these symbols in *hover and completion*, and for a startup-time benchmark; pinning a parse count is not that measurement.
 - **External-file-change invalidation gets its own slice and acceptance**, not a
   hand-wave to §5.3 — it is a classic LSP correctness minefield.
   `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and
@@ -397,13 +382,6 @@ feature-detected with a synchronous fallback (Fibers / FFI may be relied on).
 - §4.10 client conformance defects — review-only by design; carries no seam. The
   running defect list lives in RFC 1 Appendix B (currently: ale `textEdit` range,
   ale#4274). No step owns it; it is maintained on review.
-- §4.1 handler responsibility — a rule plus its `RuleTestCase`, asserting handlers depend on no parser, repository, or reflection.
-Already true in `src/`, and §8.1 requires a mechanism rather than documentation.
-- §4.3 read/write segregation — a rule plus its `RuleTestCase`, asserting consumers depend on `SymbolSource` / `SymbolSink` and never a concrete implementation.
-"Consumer" scopes to code outside the knowledge and index tiers: composition roots wire the concrete stores, and the tier that owns them holds them directly.
-A wider reading makes this a migration rather than a rule.
-- §4.11 single implementation — a rule naming, in its own configuration, the one owner of each shared mechanism: the declaration walk, positional walks, the parse pipeline's name resolution, assignment-flow analysis, backend lookup-and-memoize, path and URI conversion, and FQN construction.
-Every AST traversal in `src/` is classified by it as an owner or a declared migration; a migration entry requires a remover, since Step Z requires the rule to carry no remaining scope.
 
 ### Teardown ledger
 
@@ -423,38 +401,37 @@ row must be discharged at the Definition of Done (Step Z).
     TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
     CodeResolver knowledge-facing methods                     Step 4
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
-    Per-kind declaration walks across read and write paths   Step 3b
-    Per-kind backend lookup and memoize routines             Step 3b
-    §4.11 rule scope for SymbolExtractor / ScopeFinder       —
-    WorkspaceIndexer (dead today)                            —
-    ScopeFinder::extractImports/resolveFromUseStatements     —
-    Hand-rolled namespace tracking (SymbolExtractor)         —
-    Hand-rolled file:// conversion (4 sites)                 —
+    WorkspaceIndexer (dead today)                             SC.1
+    ScopeFinder::extractImports/resolveFromUseStatements       SC.2
+    Hand-rolled namespace tracking (SymbolExtractor,           SC.3
+      FilesystemBackend::findClassInAst)
+    Hand-rolled file:// conversion (4 sites)                   SC.4
 
 A scaffold with no discharged remover by Step Z is a defect, not an acceptable end
 state. Conversely, the Step P parity harness is deliberately **not** on this ledger:
 it is a permanent regression net kept past Step Z, not scaffolding to remove.
 
-The rows carrying no step are **pre-existing** duplication and dead code rather than
-scaffolding this plan introduced, so no step's acceptance covers them. They are listed
-anyway: the series exists to remove duplication, so a known-removable thing is the same
-defect whether or not a step produced it. They are ordered for execution in the
-manifest.
+The `SC.*` rows are **pre-existing** duplication and dead code, not scaffolding this
+plan introduced — so no step's acceptance covers them, which is how they stayed
+unowned. They are listed anyway: the series exists to remove duplication, so a
+known-removable thing without an owning slice is the same defect as an undischarged
+scaffold. A remover must be a slice id; a prose note is not an owner, because
+`/do-next` cannot select one.
 
 ### Duplication audits
 
 The ledger above tracks scaffolding *this plan knowingly introduced*.
 It cannot catch the failure mode the series exists to end: a capability that ends up implemented twice, which is how the M×N problem returns.
-Every instance found so far went unnoticed precisely because no step's acceptance covered it: hand-written type-graph traversals (#334), `file://` conversion in four places, namespace tracking in two, a superseded import extractor with unmigrated callers, a declaration walk written per kind, and a lookup routine copied into every backend.
+Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places (SC.4), namespace tracking in two (SC.3), a superseded import extractor with three unmigrated callers (SC.2).
 Each was found by an audit, not by a step.
 
 So each major section ends with an explicit audit slice, and the terminal gate re-runs it repo-wide.
 
-**What an audit looks for.** A violation of §4.11 — a single capability with more than one implementation — in the shapes this codebase actually produces them:
+**What an audit looks for.** A single capability with more than one implementation, in the shapes this codebase actually produces them:
 
 - a traversal or walk written per consumer instead of once (the #334 shape);
 - a mechanism hand-rolled per call site — path/URI conversion, name normalization and case handling, FQN construction, memoization;
-- a seam that landed while some callers kept the old path;
+- a seam that landed while some callers kept the old path (the SC.2 shape);
 - a branch per kind, per handler, or per node type where one generic path should serve (#190, #253, #256).
 
 **Scope: substantial mechanics, not one-liners.** The target is work with real substance behind it — parsing, AST traversal, symbol extraction, name and FQN construction, path/URI conversion, caching.
@@ -469,7 +446,7 @@ If neither finds something, that is a known limit of the method, not a reason to
 
 A finding is not discharged by noting it: it is either fixed in the audit slice, or it becomes a numbered slice row with an owner.
 
-**Outcome rule, and the one difference between them.** The Step 3 and Step 4 audits may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
+**Outcome rule, and the one difference between them.** The pre-cleanup audits (**S3.11**, **S4.7**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
 The terminal audit in **Step Z** may not: there, an unowned *or* unfixed duplicate is a failure, because there is no later section to own it.
 
 An audit reporting no findings must show the enumeration it ran.
@@ -486,7 +463,7 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
 - **Enforcement is complete.** Every §8.1 enforcement rule is active **repo-wide with
   zero remaining exemptions or allowlists** (the Step 2 §4.2 exemption, and any other,
   are gone). A rule still carrying a scope is an open step, not done.
-- **Conformance is repo-wide.** RFC §8's checklist passes across the whole
+- **Conformance is repo-wide.** RFC §8's 12-item checklist passes across the whole
   codebase, not merely per change.
 - **Parity is trustworthy.** The Step P harness is green **and** its branch coverage of
   the migrated surfaces is adequate — no unexercised surface branch (Step P) — and
@@ -509,10 +486,9 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   either **fixed** or **converted to an explicitly-tracked deferred gap with an open
   issue** — none silently persists.
 - **Remaining gaps are named.** The only surviving non-conformances are the
-  explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5, #401),
-  the workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266),
-  computed-name `define()` (§3), and position encodings other than UTF-16 (#192/#371).
-  A gap not on this list is a bug, not a deferral.
+  explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5), the
+  workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266), and
+  computed-name `define()` (§3). A gap not on this list is a bug, not a deferral.
 
 Only when all seven hold is the foundation deemed complete.
 
