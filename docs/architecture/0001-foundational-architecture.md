@@ -674,13 +674,19 @@ into target environment (4.7) and session capabilities (4.8, 5.4).
   are server-initiated output subject to Sections 4.8 and 6. This document defines
   the invariants those tiers MUST satisfy; it does not schedule them.
 - **Current divergences (informative).** This RFC is the target state, not a
-  description of the code as it stands. Known gaps at adoption time include:
-  function resolution requires a caller-supplied syntax tree, uses bare-string
-  names, and returns nullable results (violates Sections 4.4 and 5.1); global
-  constants do not resolve at all; client capabilities are not read; and position
-  offsets are handled as bytes (violates Section 4.9). These are to be migrated
-  toward this document, not grandfathered; each SHOULD be tracked as an issue
-  citing the section it violates.
+  description of the code as it stands. Known gaps at adoption time:
+  - Function resolution requires a caller-supplied syntax tree, uses bare-string
+    names, and returns nullable results (Sections 4.4, 5.1).
+  - Global constants do not resolve at all (Section 5.1).
+  - Prefix search answers only class-likes, and only from open documents, so
+    coverage is neither uniform across kinds nor project-wide (Section 5.1).
+  - No kind-agnostic location query exists, so a kind-ambiguous position has no
+    conforming query to use (Sections 4.5, 5.1).
+  - Client capabilities are not read (Section 4.8).
+  - Position offsets are handled as bytes (Section 4.9).
+
+  These are to be migrated toward this document, not grandfathered; each SHOULD be
+  tracked as an issue citing the section it violates.
 - **Observed client defects (informative).** Per Section 4.10, accommodations for
   clients that advertise a capability but mishandle it are recorded here as they
   are found. Known: some clients ignore a completion item's `textEdit` range and
