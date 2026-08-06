@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\Location;
@@ -14,7 +13,7 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Resolution\NameKind;
-use Firehed\PhpLsp\Tests\BuildsClassInfoTrait;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -27,7 +26,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class CompositeSymbolSourceTest extends TestCase
 {
-    use BuildsClassInfoTrait;
+    use BuildsSymbolInfoTrait;
 
     public function testLookupClassLikeTakesTheFirstBackendThatAnswers(): void
     {
@@ -268,11 +267,6 @@ final class CompositeSymbolSourceTest extends TestCase
             'app\ifacea' => self::classInfo('App\IfaceA', interfaces: ['App\IfaceBase']),
             'app\ifacebase' => self::classInfo('App\IfaceBase'),
         ]);
-    }
-
-    private static function functionInfo(string $shortName, string $file): FunctionInfo
-    {
-        return new FunctionInfo($shortName, [], null, null, $file, 1);
     }
 
     private static function symbol(string $fqn, string $file): Symbol

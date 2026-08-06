@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
@@ -12,7 +11,7 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
-use Firehed\PhpLsp\Tests\BuildsClassInfoTrait;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -23,7 +22,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class OpenDocumentBackendTest extends TestCase
 {
-    use BuildsClassInfoTrait;
+    use BuildsSymbolInfoTrait;
 
     private SymbolIndex $index;
     private OpenDocumentBackend $backend;
@@ -203,11 +202,6 @@ final class OpenDocumentBackendTest extends TestCase
             $contents->childNamespaces,
             'a namespace with a deeper declaration must be listed as a child',
         );
-    }
-
-    private static function functionInfo(string $shortName): FunctionInfo
-    {
-        return new FunctionInfo($shortName, [], null, null, null, 1);
     }
 
     private function addSymbol(string $name, string $fqn, SymbolKind $kind): void
