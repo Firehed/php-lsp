@@ -309,9 +309,9 @@ Step 4 (Section 6).
   close-after-edit both invalidate cached / indexed workspace state. *Its own
   acceptance:* an external edit to an unopened file, a branch checkout, and a file
   deletion are each reflected on the next query; closing an edited file re-reads from
-  disk rather than restoring the pre-edit cache (§5.3). When the client does not
-  support watched-file notifications, the fallback (lazy re-read vs. no invalidation)
-  is an open decision (§7).
+  disk rather than restoring the pre-edit cache (§5.3). A client that does not support
+  watched-file notifications gets no invalidation until a file is opened and closed;
+  that close re-reads disk.
 
 *Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
 environment-parameterized, so it does **not** satisfy §4.7 — it cannot answer for a
@@ -736,23 +736,18 @@ once Step P is green.
 
 ## 7. Open decisions (resolve at implementation time)
 
-- ~~The perceptibility threshold and cache decision from the Step 0 spike.~~
-  **Resolved — see Section 8.**
 - Whether `ClassLikeName` is the existing `ClassName` reused as-is, renamed, or a
   wrapper — it must coexist with `ClassName`'s dual role as the class `Type` (§5.3).
-- Whether `FunctionName` / `ConstantName` / `NamespaceName` land in Step 2 as prep
-  or in Step 3 with their lookups (lean: Step 3, to avoid an unused-type commit;
-  `NamespaceName` is needed by `childrenOf` in Step 2, so it lands then).
+- What §5.3's global-constant name type is called. `Domain\ConstantName` is taken: it
+  names a *class* constant. Resolve before constant reach lands, not inside it (Step 3b).
 - Whether completion detail after the `search` migration comes from a follow-up
-  `lookupFunction` or a `completionItem/resolve` capability (§5.4).
+  `lookupFunction` or a `completionItem/resolve` capability (§5.4) (Step 3b).
 - Whether the Workspace backend is lazy-only or gains bounded background indexing
   (only relevant if the workspace scope is taken up).
 - The future version-aware built-in source for Step 5 — **TBD, explicitly not
   `phpstorm-stubs`** (known issues) — and, when chosen, its ingestion / derivation
   model and the `TargetEnvironment` / undeclared-extension policy. Until then the
   interim is reflection + optimistic availability, and §4.7 is a tracked gap.
-- The external-change invalidation fallback when the client does not support
-  `didChangeWatchedFiles` (lazy re-read vs. no invalidation) (Step 3).
 
 ## 8. Step 0 spike record (measured)
 
