@@ -548,9 +548,9 @@ interface SymbolSource
     // Step 3b (functions/constants gain project reach; a second searchable kind exists):
     //   lookupFunction(FunctionName): ?FunctionInfo
     //   lookupConstant(ConstantName): ?ConstantInfo
+    //   locate(QualifiedName, NameKind): ?SymbolDefinition   // kind-neutral def-site (§5.1)
     //   searchClassLikes generalizes to search(string $prefix, NameKind $kind)
     // Future (workspace scope, #264):
-    //   locate(QualifiedName, NameKind): ?SymbolDefinition   // kind-neutral def-site, only if a feature needs it
     //   project-wide / cross-file search (workspace/symbol)
 }
 
@@ -567,18 +567,18 @@ the features, like everything else in the plan. Step 2 carries only what the mig
 features need — exact class-like lookup, class-like prefix search, namespace
 enumeration — plus the `SymbolSink` writes. `lookupFunction` / `lookupConstant` arrive
 in Step 3b; a kind-parameterized `search` arrives with them (a `NameKind` argument is
-meaningless while only class-likes are searchable); `locate` and a cross-file `search`
-arrive with the workspace scope. A method with no current caller is not carried.
+meaningless while only class-likes are searchable); a cross-file `search` arrives with
+the workspace scope. A method with no current caller is not carried.
 
-The three verbs, and why two defer: **`lookup*`** = exact name → full typed info
-(`ClassInfo`); **`search*`** = prefix *fragment* → lightweight candidates; **`locate`**
-= exact name → just a definition site, kind-neutral. `lookup` and `search` are clearly
-distinct (exact vs. prefix; full info vs. candidates) and both serve current
-completion / hover / def. `locate` overlaps `lookup` — go-to-definition can already use
-`lookupClassLike($name)?->getDefinitionLocation()` — so it earns a slot only if a later
-feature needs a def-site *without* building full info, or a kind-neutral workspace
-entry. Deferring it removes the naming ambiguity and lets it be named when a concrete
-need defines it.
+The three verbs: **`lookup*`** = exact name → full typed info (`ClassInfo`);
+**`search*`** = prefix *fragment* → lightweight candidates; **`locate`** = exact name →
+just a definition site, kind-neutral. `lookup` and `search` are clearly distinct (exact
+vs. prefix; full info vs. candidates) and both serve current completion / hover / def.
+`locate` overlaps `lookup` — go-to-definition can already use
+`lookupClassLike($name)?->getDefinitionLocation()` — but §5.1 requires it, and §4.5
+requires it wherever a position is genuinely kind-ambiguous, so it is not optional.
+It lands in Step 3b alongside the kind parameter, being that same backend call with
+the kind unknown rather than a second path.
 
 ### 5.3. The name-type model
 
