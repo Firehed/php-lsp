@@ -73,14 +73,16 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
     S3.7e  3b    Enumerate the derived index in childrenOf          S3.7d             —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
-    S3.8b  3b    lookupConstant project reach                       S3.7d             —
-    S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
+    S3.8b  3b    One declaration walk; backends consume it          S3.8a             —
+    S3.8c  3b    §8.1 rule: one owner per shared mechanism          S3.8b             —
+    S3.8d  3b    Retire the AST-in function lookup from consumers   S3.8b             —
     S3.9a  3b    Generalize search to a kind parameter              S3.8a             —
-    S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
-    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
+    S3.9b  3b    Function search + FunctionCandidates migration     S3.8c,S3.9a       —
+    S3.9c  3b    Constant vertical: lookup, search, enumeration     S3.8c,S3.9a       —
+    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8d,S3.9b,S3.9c —
     S3.11  3     Step 3 duplication audit                          all Step 3        —
     S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
-    S4.2   4     Extract node locator + scope analyzer              S3.8c,S4.1        —
+    S4.2   4     Extract node locator + scope analyzer              S3.8d,S4.1        —
     S4.3   4     Extract member-access + call-context detectors     S4.2              —
     S4.4   4     Extract name-context resolver                      S4.2              —
     S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
@@ -88,9 +90,8 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S4.7   4     Step 4 duplication audit                          all Step 4        —
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
     SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
-    SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
+    SC.3   —     SymbolExtractor -> the parser's namespacedName      S3.8b             —
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
-    SC.5   —     Merge the two class-like AST traversals             SC.3              —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -126,7 +127,11 @@ Notes:
 - **S3.8 and S3.9 are cut by symbol namespace, not by layer.** A layer cut (interface,
   then backends, then consumers) would land `SymbolBackend` methods no backend
   implements, so each slice is instead one vertical: a kind's name type, its
-  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. S3.8c
+  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. A
+  vertical consumes shared mechanism and never adds one (RFC §4.11) — **S3.8b** unifies
+  the declaration walk S3.8a duplicated (`DeclarationScanner` yields each declaration
+  with its *node*, since needing the node is a return-shape difference, not a second
+  query) and **S3.8c** adds the rule that holds it, both ahead of any further kind. S3.8d
   then migrates the consumers (`SymbolResolver`, `BasicTypeResolver`) off
   `FunctionRepository::get(string, array $ast)` — it is the Step 3b slice that edits
   `SymbolResolver`, so it, not S3.8a, is what S4.2 serializes against (§6).
@@ -136,18 +141,23 @@ Notes:
   makes the backends answer function search and moves `FunctionCandidates` onto it,
   rewriting only the function-surface golden S3.6 froze. Note `BuiltinBackend` MUST
   answer function search in S3.9b or built-in function completion regresses — that
-  golden is what catches it.
+  golden is what catches it. **S3.9c** lands constants whole rather than lookup-first:
+  splitting a kind across a lookup slice and a later search slice is what produced
+  S3.7e, and RFC §4.2 requires identical coverage across the two. Enumeration is likely
+  already satisfied by S3.7e's per-declaration `NameKind`, making it a fixture to prove
+  rather than code to write; offering constants at expression start (#317) is a feature
+  on this reach and stays out of scope.
 - **Name-type model is JIT (§5.3).** Each type lands with its first caller, not ahead
   of it. `NameKind` already exists (it predates Wave 2, as the catalog's coarse kind);
   Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7b**,
   whose `DeclarationScanner` is its first caller; `FunctionName` in **S3.8a** and
-  `ConstantName` in **S3.8b**, with their lookups.
+  `ConstantName` in **S3.9c**, with their lookups.
   - **`ConstantName` is already taken.** `Domain\ConstantName` wraps a *class* constant
     name; §5.3's `ConstantName` is a *global* constant FQN. Decide the naming before
-    S3.8b rather than inside it — this is the same coexistence question §7 leaves open
+    S3.9c rather than inside it — this is the same coexistence question §7 leaves open
     for `ClassLikeName` versus `ClassName`.
 - **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
-  gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
+  gated on S3.8d (the 3b lookup migration) so the two never run concurrently; manifest
   order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
   rules) is independent of Step 3 and may proceed alongside.
 - **Teardown discharge.** S3.2 removes the duplicate `ComposerAutoloadMap`; S3.4 the
@@ -167,28 +177,18 @@ Notes:
     by `NameContextFactory` and their own docblock says they go away once #331 moves the
     callers. #331 landed (#337); three callers did not move (`SymbolResolver` ×2,
     `TextFallbackHelper` ×1). Gated on S4.4/S4.5, which rewrite exactly those sites.
-  - **SC.3** — `SymbolExtractor` and `FilesystemBackend::findClassInAst` each hand-track
-    `Stmt\Namespace_` to build FQNs that `NameResolver` already computed into
-    `namespacedName` (which `DefaultClassInfoFactory`, `DefaultFunctionRepository`,
-    `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
-    write-path and class-like-lookup goldens prove it. `SymbolExtractor`'s `Class::method`
-    FQNs are its own and stay.
+  - **SC.3** — `SymbolExtractor` hand-tracks `Stmt\Namespace_` to build FQNs that
+    `NameResolver` already computed into `namespacedName` (which `DefaultClassInfoFactory`,
+    `DefaultFunctionRepository`, `ScopeFinder`, and `DeclarationScanner` all read).
+    Behavior-preserving, so the Step P write-path golden proves it. `SymbolExtractor`'s
+    `Class::method` FQNs are its own and stay. Gated on S3.8b, which removes
+    `FilesystemBackend::findClassInAst` — the other site this row originally covered.
   - **SC.4** — `file://` URI and path conversion is hand-rolled in four live places
     (`DefaultClassInfoFactory`, `FilesystemBackend` ×2, `Location`, and the dead
     `WorkspaceIndexer`), each differing in how it handles the scheme and percent-
     encoding. One `FileUri` replaces them. Found while splitting S3.7, whose locator
     wanted a fifth copy; the duplication predates that slice and belongs to no step,
     so S3.7c is gated on it rather than carrying it.
-  - **SC.5** — `FilesystemBackend::findClassInAst` and `Index\DeclarationScanner` both
-    walk an AST to find the class-likes a file declares. They differ in what they
-    return (one matched *node* versus every declared *name*) and in stopping early, so
-    this is scoped as **evaluate and merge if warranted** — concluding "two genuinely
-    different queries, one walk" is an acceptable outcome, but it must be concluded and
-    recorded, not left unexamined. Gated only on SC.3, which rewrites `findClassInAst`'s
-    namespace handling; it is deliberately *not* gated on S3.11, because an audit files
-    slices and a slice already filed must not wait on the audit that would have found
-    it. Found while reviewing S3.7d, which put the two traversals side by side without
-    merging them.
 - **Each section ends with a duplication audit** (**S3.11**, **S4.7**), and Step Z's
   acceptance carries the repo-wide one. Method, scope and outcome rule are defined once
   in 0002 §Duplication audits and the terminal condition is a Step Z acceptance item —
@@ -212,7 +212,7 @@ Notes:
     claiming #181 must show class-like reach, not just functions and constants.
     - **#181 is not closable before S3.9b.** Its acceptance asks for these symbols in
       *hover and completion*, not merely resolvable: functions need S3.8a and S3.9b,
-      constants S3.8b, namespace completion S3.7e. It also asks for a startup-time
+      constants S3.9c, namespace completion S3.7e. It also asks for a startup-time
       benchmark, which S3.7d's eager index makes a live question rather than a
       formality — S3.7d pins the parse *count*, which is not the same measurement.
       Read the issue body before wiring `Closes`; the reach landing is not the
