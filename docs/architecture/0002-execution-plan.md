@@ -25,6 +25,16 @@ throughout. That file must land first, or in the same merge; until it does, the
 - **Strangler-fig, always green.** Introduce a seam, migrate consumers onto it in
   small commits, then reshape behind it. No big-bang rewrite; every step merges on
   its own and keeps the suite passing.
+- **A migration window is scheduled, never assumed (§4.11).** A step MAY leave a
+  second implementation of a mechanism standing only if the step that removes it is
+  already scheduled — scheduled before the divergence lands, not after it is noticed.
+  A step is free to make things temporarily worse on that basis; it is not free to
+  leave the unification to whoever finds it.
+- **A new kind consumes mechanism; it never adds one (§4.11).** Extending an axis
+  reaches the existing implementation. A kind added by copying a routine into each
+  backend, or a walk written per consumer, is the M×N defect this series exists to
+  end, and it costs a unification step to undo before the next kind can land — so
+  unifying first is the cheaper order, not the purer one.
 - **Enforcement lands with the seam — scoped, not baselined.** When a step
   introduces an invariant's seam, its §8.1 enforcement mechanism lands in the same
   step. During a partial migration a rule ships with an **explicit, code-level
