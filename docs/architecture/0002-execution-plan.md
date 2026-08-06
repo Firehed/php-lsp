@@ -473,7 +473,7 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
 - **Enforcement is complete.** Every §8.1 enforcement rule is active **repo-wide with
   zero remaining exemptions or allowlists** (the Step 2 §4.2 exemption, and any other,
   are gone). A rule still carrying a scope is an open step, not done.
-- **Conformance is repo-wide.** RFC §8's 12-item checklist passes across the whole
+- **Conformance is repo-wide.** RFC §8's conformance checklist passes across the whole
   codebase, not merely per change.
 - **Parity is trustworthy.** The Step P harness is green **and** its branch coverage of
   the migrated surfaces is adequate — no unexercised surface branch (Step P) — and
