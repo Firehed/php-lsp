@@ -137,11 +137,6 @@ Notes:
   rewriting only the function-surface golden S3.6 froze. Note `BuiltinBackend` MUST
   answer function search in S3.9b or built-in function completion regresses — that
   golden is what catches it.
-  - **`FilesystemBackend` MUST answer function search from the derived
-    `autoload.files` index.** Its empty `searchClassLikes` is about the PSR-4 tree,
-    which needs a walk (§3); the `files` index is already derived, so searching it is
-    a filter. Omitting it hides a name `lookupFunction` resolves — S3.7e's split, one
-    symbol namespace over.
 - **Name-type model is JIT (§5.3).** Each type lands with its first caller, not ahead
   of it. `NameKind` already exists (it predates Wave 2, as the catalog's coarse kind);
   Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7b**,

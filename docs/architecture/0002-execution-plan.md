@@ -271,11 +271,15 @@ Step 4 (Section 6).
   no name to index); migrate `FunctionCandidates`
   to `search` (which subsumes `getFileFunctions` — the open-document backend knows a
   document's functions, so that query disappears with its last caller); remove the
-  Step 2 rule exemption. This step **both changes and preserves** behavior on the
-  function surface: the added project reach is new (proven by **new fixtures**), but
-  built-in and open-document function completion is *existing* behavior that must not
-  regress. So the function-surface golden (Step P) is **captured before this step**
-  from today's path (`get_defined_functions()['internal']` + open-doc functions) and
+  Step 2 rule exemption. *Acceptance on search reach:* every backend that answers
+  `lookupFunction` MUST also answer function `search`, so a name resolvable on hover
+  is offered in completion (§4.2). For `FilesystemBackend` that means the derived
+  `autoload.files` index — its empty `searchClassLikes` is scoped to the PSR-4 tree,
+  which needs a workspace walk (§3), not to every kind. This step **both changes and
+  preserves** behavior on the function surface: the added project reach is new
+  (proven by **new fixtures**), but built-in and open-document function completion is
+  *existing* behavior that must not regress. So the function-surface golden (Step P)
+  is **captured before this step** from today's path (`get_defined_functions()['internal']` + open-doc functions) and
   frozen for the preservation half, and a **parity oracle** asserts the Builtin
   backend's function enumeration matches `get_defined_functions()` (as
   `TypeGraphParityTest` uses reflection for members). Revert profile: structural —
