@@ -24,20 +24,17 @@ Progress is **derived from git / PR merge state**, keyed by deterministic branch
 names — not from a hand-maintained "status" column, which drifts the moment a merge
 happens outside the tool.
 
-- The **manifest** (`build-manifest.md`) is a *static* slice registry: id, step,
-  title, dependencies, deterministic branch name, and which existing issues a slice
-  closes. It is append-only as later phases are reached; it never records progress.
+- The **manifest** (`build-manifest.md`) is an ordered checklist: id, step, title. It
+  is appended to as later phases are reached; it never records progress, and it never
+  restates the plan.
 - A slice's **status is computed**, checked in this order:
   - `done` — a **merged PR** exists whose head ref is `slice/<id>`
     (`gh pr list --state merged --head slice/<id>`).
   - `in-flight` — an **open PR** exists for `slice/<id>`.
   - `todo` — neither.
-- The **next slice** = the first `todo` in the manifest whose dependencies are all
-  `done`. A dependency is normally a slice id; the audit/DoD gates instead use a
-  collective form, resolved before the check: **`all Step N`** expands to every other
-  slice whose Step column is `N` (sub-steps included), and **`all prior`** to every
-  other slice in the table. A gate depends on its whole section, so it cannot run
-  while any slice of that section is unbuilt — which an id chain does not guarantee.
+- The **next slice** = the first `todo` in manifest order. Order is the sequencing:
+  every row above a slice must be `done` before it starts, so there is no dependency
+  graph to resolve and none to go stale.
 
 Because status is computed from merge reality, a cold session cannot be misled by a
 stale field, and nothing needs updating by hand.
@@ -69,13 +66,12 @@ squash-deleted branch is never misread as unstarted.
 1. **Preconditions (halt if unmet).** Working tree clean; on `main`; `main` synced
    with origin; `composer test` green on `main`. If any fails, report and stop.
 2. **Compute X.** Parse the manifest; compute each slice's status from merged-PR
-   state; `X` = first `todo` whose dependencies are all `done`.
+   state; `X` = the first `todo` in manifest order.
 3. **Safeguards (halt and ask, do not guess) if:**
-   - nothing is unblocked (report how many are `done` / blocked / in-flight);
+   - every slice is `done` (the checklist is finished);
    - a slice is already `in-flight` that is not yet `done` (finish or review it
      first — one slice in flight at a time);
-   - the manifest references a merged branch for a slice whose dependencies are not
-     merged (state drift — surface it).
+   - a slice below `X` is already merged (state drift — surface it).
 4. **Explain X.** Describe in plain english the work to be done, then wait for
    approval, clarification, or modification.
 5. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
@@ -124,8 +120,8 @@ squash-deleted branch is never misread as unstarted.
 
 ## Relationship to GitHub issues
 
-The manifest is the driver's source of truth. GitHub issues are the *human-facing*
-mirror and the mechanism for closing pre-existing issues (the `Closes` column).
+The manifest is the driver's build order. GitHub issues are the *human-facing*
+mirror and the mechanism for closing pre-existing issues.
 Create the per-slice issue when its phase is reached (just-in-time, one phase ahead
 — not the whole tree up front). Existing design epics (#264/#265/#266) are reused as
 the later-phase trackers, not duplicated.

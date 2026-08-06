@@ -88,9 +88,9 @@ burn 75k+ tokens re-deriving the whole measurement.
 
 ## 4. If the pass is clean (no surviving findings)
 
-- For each `Closes` candidate in the manifest for this slice: `gh issue view <n>`,
-  confirm its acceptance criteria are met **by this change**; if so, add `Closes #<n>`
-  to the PR body with a one-line verification note. If not met, leave it and say why.
+- For each issue this slice plausibly closes: `gh issue view <n>`, confirm its
+  acceptance criteria are met **by this change**; if so, add `Closes #<n>` to the PR
+  body with a one-line verification note. If not met, leave it and say why.
 - `gh pr ready` if the PR was a draft.
 - Report: **"Pass clean. Verified closes: #n. Ready to land — merge when ready."**
   Do **not** auto-merge — merging is irreversible and outward-facing; the user lands.

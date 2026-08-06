@@ -20,22 +20,15 @@ slice from durable state, not from memory.
 
 ## 2. Compute the next slice X
 
-- Read `docs/architecture/build-manifest.md`; parse the slice table (ID, Step,
-  Depends on, Closes).
+- Read `docs/architecture/build-manifest.md`; parse the slice table (ID, Step, Title).
 - Compute each slice's status from **GitHub PR merge state** (not git commit
   ancestry, and not any written status), checked in this order:
   - `done` — a merged PR exists for the head branch:
     `gh pr list --state merged --head slice/<ID> --json number` returns one.
   - `in-flight` — an open PR exists: `gh pr list --state open --head slice/<ID>`.
   - `todo` — neither.
-- `X` = the first `todo` slice whose every dependency is `done`.
-
-Dependencies are normally slice ids. The audit and Definition-of-Done gates use a
-collective form instead, which must be expanded before the check:
-
-- `all Step N` — every **other** slice whose Step column is `N`, sub-steps included
-  (`all Step 3` covers 3a and 3b).
-- `all prior` — every other slice in the table.
+- `X` = the first `todo` slice in table order. The table is ordered, so every row
+  above `X` must already be `done`; there is no dependency column to resolve.
 
 Deriving from PR merge state (not ancestry) is what keeps this correct under the
 project's **Squash and Merge**: a squash rewrites the branch into one new commit on
@@ -71,8 +64,6 @@ modification before writing anything.
 
 - PR title carries no issue number; the body cites the slice id, plan step, and RFC
   section(s), and lists the acceptance criteria as a checklist.
-- List manifest `Closes` candidates as "Candidate closes (pending review
-  verification): #n" — do **not** wire `Closes #n` here; that is the reviewer's job
-  after reading the issue body.
+- Do **not** wire `Closes #n`; that is the reviewer's job after reading the issue body.
 - Report the PR URL and the **next** computed slice, so a follow-up `/do-next` is
   predictable.
