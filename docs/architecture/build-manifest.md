@@ -1,6 +1,6 @@
 # Build Manifest (ordered checklist)
 
-    Status:   Draft — seeded through Wave 2 (Steps 3, 4, Z; Steps 5, 6 deferred)
+    Status:   In-Flight
     Driver:   build-procedure.md
     Plan:     0002-execution-plan.md
 
@@ -35,7 +35,7 @@ Append later phases as they are reached; do not create the whole tree up front.
     S2.5   2     Migrate TextDocumentSyncHandler -> SymbolSink
     S2.6   2     §4.2 enforcement rule (scoped-exempt FunctionRepo)
 
-## Wave 2 — Steps 3, 4, Z
+## Wave 2 — Steps 3, C
 
     ID     Step  Title
     -----  ----  -------------------------------------------------
@@ -52,6 +52,11 @@ Append later phases as they are reached; do not create the whole tree up front.
     S3.7e  3b    Enumerate the derived index in childrenOf
     SC.4   —     Dedupe the hand-rolled file:// conversion
     S3.8a  3b    lookupFunction project reach
+
+## Wave 3
+
+    ID     Step  Title
+    -----  ----  -------------------------------------------------
     1      —     Delete the dead WorkspaceIndexer
     2      —     SymbolExtractor -> the parser's namespacedName
     3      —     §4.1 handler-responsibility architecture test
