@@ -452,17 +452,18 @@ undischarged scaffold. An owner must be a step; a prose note is not one.
 
 The ledger above tracks scaffolding *this plan knowingly introduced*.
 It cannot catch the failure mode the series exists to end: a capability that ends up implemented twice, which is how the M×N problem returns.
-Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places (SC.4), namespace tracking in two (SC.3), a superseded import extractor with three unmigrated callers (SC.2).
+Every instance found so far went unnoticed precisely because no step's acceptance covered it — six hand-written type-graph traversals (#334), `file://` conversion in four places, namespace tracking in two, a superseded import extractor with three unmigrated callers, a per-kind lookup copied into every backend.
 Each was found by an audit, not by a step.
 
-So each major section ends with an explicit audit slice, and the terminal gate re-runs it repo-wide.
+So each major section ends with an explicit audit, and the terminal gate re-runs it repo-wide.
 
 **What an audit looks for.** A single capability with more than one implementation, in the shapes this codebase actually produces them:
 
 - a traversal or walk written per consumer instead of once (the #334 shape);
 - a mechanism hand-rolled per call site — path/URI conversion, name normalization and case handling, FQN construction, memoization;
-- a seam that landed while some callers kept the old path (the SC.2 shape);
-- a branch per kind, per handler, or per node type where one generic path should serve (#190, #253, #256).
+- a seam that landed while some callers kept the old path;
+- a branch per kind, per handler, or per node type where one generic path should serve (#190, #253, #256);
+- the same steps repeated under a different signature — per kind, per backend, or per return type (§4.11).
 
 **Scope: substantial mechanics, not one-liners.** The target is work with real substance behind it — parsing, AST traversal, symbol extraction, name and FQN construction, path/URI conversion, caching.
 A duplicated one-liner is worth folding in when it turns up, but it is not what this is for, and no effort is spent hunting for it.
@@ -474,9 +475,9 @@ Then enumerate each seam's callers and confirm none kept the old path.
 Static analysis is better where it reaches and is not foolproof where it does not; grep plus the existing rules is the accepted floor.
 If neither finds something, that is a known limit of the method, not a reason to build a detector.
 
-A finding is not discharged by noting it: it is either fixed in the audit slice, or it becomes a numbered slice row with an owner.
+A finding is not discharged by noting it: it is either fixed in the audit itself, or it becomes an ordered step with an owner.
 
-**Outcome rule, and the one difference between them.** The pre-cleanup audits (**S3.11**, **S4.7**) may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
+**Outcome rule, and the one difference between them.** The Step 3 and Step 4 audits may *track* rather than fix — they pass when every finding has an owner, because a removal that belongs to a later section should not be dragged forward into this one.
 The terminal audit in **Step Z** may not: there, an unowned *or* unfixed duplicate is a failure, because there is no later section to own it.
 
 An audit reporting no findings must show the enumeration it ran.
@@ -508,7 +509,7 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   condition the whole series exists to produce (#190, #253, #256, #334): if it does
   not hold, the foundation did not meet its goal, whatever else passed. The repo-wide
   audit (above) is run and comes back empty with its enumeration shown, and every
-  earlier audit is discharged along with every slice they filed. A surviving duplicate
+  earlier audit is discharged along with every step they filed. A surviving duplicate
   fails this gate outright and may not be deferred — there is no later section to own
   it.
 - **Divergences are reconciled.** Each entry in RFC 1 Appendix B "current divergences"
