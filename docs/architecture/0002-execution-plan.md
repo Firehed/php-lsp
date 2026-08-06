@@ -286,10 +286,11 @@ Step 4 (Section 6).
   backend's function enumeration matches `get_defined_functions()` (as
   `TypeGraphParityTest` uses reflection for members). Revert profile: structural —
   revertible by reverting its commits, not a flag (§1).
-- **Each kind vertical consumes shared mechanism (§4.11); it does not add one.** The
-  per-kind cut is *backends × kinds*, which §5.6 requires to stay closed. S3.8a broke
-  that by adding a second declaration walk rather than using the one S3.7b had just
-  built, so the walk is unified and rule-enforced before any further kind lands.
+- **A new kind is a factory and a facade accessor, not a change to every backend**
+  (§5.6). S3.8a broke that twice over: it copied `lookupFunction` into all four
+  backends, each copy repeating one cache-key / locate / parse / store routine, and it
+  added a second declaration walk rather than using the one S3.7b had built. Both are
+  unified, and rule-enforced (§4.11), before constants would make each of them three.
 - **External-file-change invalidation gets its own slice and acceptance**, not a
   hand-wave to §5.3 — it is a classic LSP correctness minefield.
   `workspace/didChangeWatchedFiles` (capability-gated, dynamic registration) and

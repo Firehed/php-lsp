@@ -135,16 +135,21 @@ Notes:
     derived index knows every name each entry declares, so this is wiring enumeration
     onto it, not a second scan. Found while reviewing S3.7d, which delivered the lookup
     half only.
-- **The remaining kinds are cut by symbol namespace, not by layer.** A layer cut
-  (interface, then backends, then consumers) would land `SymbolBackend` methods no
-  backend implements, so each slice is instead one vertical: a kind's name type, its
-  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. Slice 7
-  then migrates the consumers (`SymbolResolver`, `BasicTypeResolver`) off
-  `FunctionRepository::get(string, array $ast)` — it is the Step 3b slice that edits
-  `SymbolResolver`, so it, not S3.8a, is what slice 14 serializes against (§6).
-  Search divides on provability rather than kind: **slice 8** widens `searchClassLikes`
-  to `search(string $prefix, NameKind $kind)` with class-likes still the only searchable
-  kind, which is behavior-preserving and leaves every Step P golden frozen; **slice 9**
+- **A kind is cut at the facade, never across the backends.** `SymbolSource` keeps a
+  typed method per kind — three, closed, because PHP has three symbol namespaces (0002
+  §5.6) — while `SymbolBackend` takes the kind as a parameter. The dividing rule: kind
+  is a parameter where the return type does not vary with it, a method where it does.
+  So a new kind is a factory plus a facade accessor, never a method added to all four
+  backends. S3.8a did the latter, copying `lookupFunction` into every backend with the
+  same cache-key / locate / parse / store routine inside each; slice 22 undoes it before
+  constants would make that three. Slice 7 migrates the consumers (`SymbolResolver`,
+  `BasicTypeResolver`) off `FunctionRepository::get(string, array $ast)` — it is the
+  Step 3b slice that edits `SymbolResolver`, so it, not S3.8a, is what slice 14
+  serializes against (§6).
+  Search already follows the rule, since one return type serves every kind: **slice 8**
+  widens `searchClassLikes` to `search(string $prefix, NameKind $kind)` with class-likes
+  still the only searchable kind, which is behavior-preserving and leaves every Step P
+  golden frozen; **slice 9**
   makes the backends answer function search and moves `FunctionCandidates` onto it,
   rewriting only the function-surface golden S3.6 froze. Note `BuiltinBackend` MUST
   answer function search in slice 9 or built-in function completion regresses — that
