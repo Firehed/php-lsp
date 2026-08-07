@@ -76,6 +76,9 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
     S3.7e  3b    Enumerate the derived index in childrenOf          S3.7d             —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
+    SC.2   —     Retire ScopeFinder's superseded import extraction   —                 —
+    SC.5   —     One declaration finder for the five hand-written    —                 —
+    SC.6   —     CompositeSymbolSource case rule -> NameKind         —                 —
     S3.8d  3b    Collapse per-kind lookup to one kind-parameterized call  SC.5        —
     S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.5,SC.6,S3.8d  —
     S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
@@ -91,11 +94,8 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
     S4.7   4     Step 4 duplication audit                          all Step 4        —
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
-    SC.2   —     Retire ScopeFinder's superseded import extraction   —                 —
     SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
-    SC.5   —     One declaration finder for the five hand-written    —                 —
-    SC.6   —     CompositeSymbolSource case rule -> NameKind         —                 —
     SC.7   —     Six member-hierarchy walks -> one                   —                 —
     SC.8   —     Prefix matching: SymbolIndex -> PrefixMatcher       —                 —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
@@ -181,6 +181,16 @@ Notes:
   them — which is exactly how they went unowned until an audit found them. They are in
   the table so `/do-next` can select them and SZ.1 can require them, not because a step
   produced them. A removal with no owning slice is a defect; put it here.
+  - **SC.2, SC.5 and SC.6 sit up in the Step 3b rows, not here.** They are `SC.*` by origin
+    — all three predate the plan — but each is a live defect rather than a redundancy, and
+    row order is what `/do-next` uses to break ties between unblocked slices. Left in this
+    block they would be picked after S4.1, which is unblocked and listed earlier, so wrong
+    completion results would stand for another slice or two for no reason. Their notes stay
+    below with the rest of the `SC.*` explanations.
+
+    Their Step column stays `—`, so `all Step 3` does not expand to include them and S3.11
+    is not gated on them. That is correct and not an oversight: they are not Step 3's work,
+    they merely run during it. `all prior` does reach them, so SZ.1 still requires them.
   - **SC.1 and SC.3 are still undone**, and both predate the rows added since. Neither is
     blocked by anything. SC.3 narrows once SC.5 lands, which removes its
     `FilesystemBackend::findClassInAst` half and leaves `SymbolExtractor` — where the FQN
