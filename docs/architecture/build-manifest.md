@@ -12,7 +12,10 @@ Append later phases as they are reached; do not create the whole tree up front.
 
 ## Columns
 
-- **ID** — stable slice id; the branch is `slice/<ID>`.
+- **ID** — stable slice id; the branch is `slice/<ID>`. An id is assigned when the slice is
+  filed and never changes, because a merged slice is found by it. It therefore does **not**
+  imply execution order: order is this table's row order plus `Depends on`, so a row can be
+  inserted anywhere without renumbering merged work.
 - **Step** — the plan step in 0002 that owns the acceptance criteria.
 - **Depends on** — slice ids that must be `done` (merged) first. Two collective forms
   exist so a gate's dependencies cannot go stale as slices are added: **`all Step N`**
