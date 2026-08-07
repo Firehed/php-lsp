@@ -552,6 +552,11 @@ invariant added by amendment MUST specify its mechanism.
     4.9 Position encoding             Test: multibyte round-trip at the boundary;
                                       review of interior offset use.
     4.10 Client conformance defects   Review only; defect list in Appendix B.
+    5.1 Uniform coverage across kinds Test: a backend x kind x query grid, each cell either
+                                      answering over the fixtures or explicitly registered
+                                      as not-applicable with its reason; and a name a
+                                      backend can look up is returned by that backend's
+                                      search and appears in its namespace enumeration.
     5.2 / 5.3 Write path, precedence, Architecture test + review: one write path,
         cache seam, bounded coverage  caching behind the abstraction, bounds observable.
     6 Synchronous correctness         By construction: the suite runs the interior

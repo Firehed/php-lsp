@@ -275,7 +275,13 @@ Step 4 (Section 6).
   `lookupFunction` MUST also answer function `search`, so a name resolvable on hover
   is offered in completion (§4.2). For `FilesystemBackend` that means the derived
   `autoload.files` index — its empty `searchClassLikes` is scoped to the PSR-4 tree,
-  which needs a workspace walk (§3), not to every kind. This step **both changes and
+  which needs a workspace walk (§3), not to every kind.
+  That clause was written by hand after S3.7e had already been filed for the same reason —
+  the same rule failing twice, patched twice, because §5.1's uniformity requirement had no
+  entry in §8.1's mechanism table. It now has one, and **S3.8d carries it**: the
+  backend × kind × query grid, per the rule that a seam ships with its enforcement. Once
+  the grid exists this paragraph is a description of what the test asserts, not an
+  instruction to remember. This step **both changes and
   preserves** behavior on the function surface: the added project reach is new
   (proven by **new fixtures**), but built-in and open-document function completion is
   *existing* behavior that must not regress. So the function-surface golden (Step P)
