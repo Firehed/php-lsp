@@ -311,12 +311,29 @@ shown to fail against the code it replaces. `/review-slice` checks for these by 
   not only on hover. This is the one correction here that **changes** behaviour: it
   rewrites the function-surface golden S3.6 froze, and every other golden stays frozen.
   Recapture deliberately and review that diff rather than accepting it.
-- **SC.6** — two constants differing only in case stay distinct through the composite's
-  merge and through the subtype walk's visited set. It cannot fail until constants exist,
-  so it lands with S3.8b, and S3.8b must show it failing against the `strtolower` SC.6
-  removed.
-- **S3.8d** — the coverage grid below, plus the S3.8b criterion that a new kind's diff
-  touches no backend.
+- **SC.6** — two constants differing only in case stay distinct through every key derived
+  from a symbol name: the composite's search merge and subtype visited set, and the
+  namespace enumeration path. It fails **today** rather than once constants exist —
+  `CatalogSymbol` already carries `NameKind::Constant`, and S3.7e already enumerates
+  constants from the derived `autoload.files` index, so `NamespaceContents::merge`
+  collapses `Foo\BAR` and `Foo\bar` now. The test lands with SC.6 itself.
+- **S3.8d** — the §5.1 coverage grid, which is §8.1's mechanism for that invariant and
+  which this slice carries. Its axes are **derived, not listed**: rows from the composite's
+  own ordered backend list, columns from `NameKind::cases()` crossed with the query set
+  (`lookup`, `search`, `childrenOf`). Every cell is either an assertion over the fixtures
+  or a not-applicable registration naming its blocker as a slice id or an RFC section, and
+  an **unregistered cell fails** — that is what makes a new kind or a new backend break the
+  grid rather than quietly leaving a hole in it. A hand-listed grid would reproduce the
+  failure the mechanism exists to close.
+
+  SZ.1 requires every surviving not-applicable to still name a live deferral. Without
+  that, the block `searchClassLikes` must carry until S3.9b and the §3 workspace walk
+  calcifies into a permanent exemption, and the grid certifies the hole it was added to
+  expose.
+
+  S3.8b's proof — **its diff touches no `SymbolBackend` implementation** — belongs with
+  the grid but is not a test: it is a claim about the diff's shape, checked by reading the
+  diff, with nothing it could fail against.
 
 *Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
 environment-parameterized, so it does **not** satisfy §4.7 — it cannot answer for a
