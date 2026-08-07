@@ -31,3 +31,11 @@ class IncompleteCollidingImport
         /*brace*/ (Widget::/*|colliding_static*/
     }
 }
+
+class IncompleteCollidingNew
+{
+    public function testNew(): void
+    {
+        new Widget(/*|colliding_new*/
+    }
+}

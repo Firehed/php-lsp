@@ -1934,6 +1934,27 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('__construct', $context->callable->format());
     }
 
+    public function testGetCallContextKeepsClassAndFunctionImportsApart(): void
+    {
+        // `new Widget(` is unrecoverable, so the name is resolved from text. The
+        // file imports both Models\Widget (a class) and Helpers\Widget (a
+        // function): reading one table for the other resolves the function's FQN,
+        // where no constructor is found and there is no call context at all.
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/AliasedImports.php', 'colliding_new');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNotNull($context, 'A `use function` of the same short name must not shadow the class import');
+        self::assertStringContainsString(
+            'size',
+            $context->callable->format(),
+            'The constructor resolved should be the imported class\' own',
+        );
+    }
+
     public function testGetCallContextNoUseNoNamespace(): void
     {
         $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'no_use_no_namespace');

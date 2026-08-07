@@ -46,11 +46,8 @@ namespace Fixtures\Namespacing\Models {
 
     class Widget
     {
-        public const SIZE_LARGE = 'large';
-
-        public static function build(): self
+        public function __construct(public readonly string $size)
         {
-            return new self();
         }
     }
 
