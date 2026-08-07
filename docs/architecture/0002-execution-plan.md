@@ -275,13 +275,10 @@ Step 4 (Section 6).
   `lookupFunction` MUST also answer function `search`, so a name resolvable on hover
   is offered in completion (§4.2). For `FilesystemBackend` that means the derived
   `autoload.files` index — its empty `searchClassLikes` is scoped to the PSR-4 tree,
-  which needs a workspace walk (§3), not to every kind.
-  That clause was written by hand after S3.7e had already been filed for the same reason —
-  the same rule failing twice, patched twice, because §5.1's uniformity requirement had no
-  entry in §8.1's mechanism table. It now has one, and **S3.8d carries it**: the
-  backend × kind × query grid, per the rule that a seam ships with its enforcement. Once
-  the grid exists this paragraph is a description of what the test asserts, not an
-  instruction to remember. This step **both changes and
+  which needs a workspace walk (§3), not to every kind. **S3.8d carries the mechanism**
+  that makes this general — §8.1's backend × kind × query grid — after which this clause
+  describes what the test asserts rather than a rule to remember.
+  This step **both changes and
   preserves** behavior on the function surface: the added project reach is new
   (proven by **new fixtures**), but built-in and open-document function completion is
   *existing* behavior that must not regress. So the function-surface golden (Step P)
@@ -313,27 +310,23 @@ shown to fail against the code it replaces. `/review-slice` checks for these by 
   Recapture deliberately and review that diff rather than accepting it.
 - **SC.6** — two constants differing only in case stay distinct through every key derived
   from a symbol name: the composite's search merge and subtype visited set, and the
-  namespace enumeration path. It fails **today** rather than once constants exist —
-  `CatalogSymbol` already carries `NameKind::Constant`, and S3.7e already enumerates
-  constants from the derived `autoload.files` index, so `NamespaceContents::merge`
-  collapses `Foo\BAR` and `Foo\bar` now. The test lands with SC.6 itself.
-- **S3.8d** — the §5.1 coverage grid, which is §8.1's mechanism for that invariant and
-  which this slice carries. Its axes are **derived, not listed**: rows from the composite's
-  own ordered backend list, columns from `NameKind::cases()` crossed with the query set
-  (`lookup`, `search`, `childrenOf`). Every cell is either an assertion over the fixtures
-  or a not-applicable registration naming its blocker as a slice id or an RFC section, and
-  an **unregistered cell fails** — that is what makes a new kind or a new backend break the
-  grid rather than quietly leaving a hole in it. A hand-listed grid would reproduce the
-  failure the mechanism exists to close.
+  namespace enumeration path. It fails against today's code, not only once constants are
+  looked up — `CatalogSymbol` carries `NameKind::Constant` and S3.7e enumerates constants,
+  so `NamespaceContents::merge` collapses `Foo\BAR` and `Foo\bar` already.
+- **S3.8d** — the §5.1 coverage grid, §8.1's mechanism for that invariant. Its axes are
+  **derived, not listed**: rows from the composite's own ordered backend list, columns from
+  `NameKind::cases()` crossed with the query set (`lookup`, `search`, `childrenOf`). Every
+  cell is either an assertion over the fixtures or a not-applicable registration naming its
+  blocker as a slice id or an RFC section, and an **unregistered cell fails** — which is
+  what makes a new kind or a new backend break the grid rather than leave a hole in it. A
+  hand-listed grid enforces nothing a hand-written clause did not.
 
-  SZ.1 requires every surviving not-applicable to still name a live deferral. Without
-  that, the block `searchClassLikes` must carry until S3.9b and the §3 workspace walk
-  calcifies into a permanent exemption, and the grid certifies the hole it was added to
-  expose.
+  SZ.1 requires every surviving not-applicable to still name a live deferral, so the block
+  `searchClassLikes` carries until S3.9b and the §3 workspace walk cannot calcify into a
+  permanent exemption.
 
-  S3.8b's proof — **its diff touches no `SymbolBackend` implementation** — belongs with
-  the grid but is not a test: it is a claim about the diff's shape, checked by reading the
-  diff, with nothing it could fail against.
+  S3.8b's proof — **its diff touches no `SymbolBackend` implementation** — is a claim about
+  the diff's shape rather than a test, so it is checked by reading the diff.
 
 *Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
 environment-parameterized, so it does **not** satisfy §4.7 — it cannot answer for a
@@ -370,11 +363,11 @@ below the glue, not beside the handler.
 independently testable units (e.g. node locator, scope analyzer, member-access
 detector, call-context detector, name-context resolver, text fallback).
 
-*Named duplication this step must remove.* An audit found the following already present
-across `SymbolResolver`, `TextFallbackHelper`, `ScopeFinder` and `Scope`. It is recorded
-here, rather than as `SC.*` slices, because these are the exact sites the decomposition
-rewrites — but without naming them the step can be declared done with every one intact,
-since "the class is thin now" says nothing about where its contents went.
+*Named duplication this step must remove.* The following already exists across
+`SymbolResolver`, `TextFallbackHelper`, `ScopeFinder` and `Scope`. It belongs on these
+rows rather than in an `SC.*` slice, because the decomposition rewrites exactly these
+sites; naming it is what stops the step being declared done with every one intact, since
+"the class is thin now" says nothing about where its contents went.
 
 - **S4.2 — one node locator.** "Innermost node containing an offset" exists three times:
   `Index\NodeAtPosition` (unfiltered), `Scope::findEnclosingFunctionLike` (filtered to
@@ -492,14 +485,9 @@ scaffold. A remover must be a slice id; a prose note is not an owner, because
 `/do-next` cannot select one.
 
 **This ledger is not a duplication register, and must not be read as one.** It tracks
-what this plan knowingly introduced; it is structurally blind to everything that was
-already there. The blindness is not theoretical — a single audit of the knowledge and
-resolution tiers found ten duplicated mechanisms with no owner between them, one of which
-returns a wrong answer today (a `function_exists`-guarded function resolves on hover and
-is absent from completion, because the five hand-written declaration finders disagree on
-whether a nested declaration counts). Four became `SC.*` rows; the rest became acceptance
-criteria on the Step 4 rows. Neither the ledger nor a green suite would have surfaced any
-of them. Only the audits below do, which is why they are gates and not suggestions.
+what this plan knowingly introduced, and is structurally blind to everything that was
+already there. Only the audits below reach that, which is why they are gates rather than
+suggestions.
 
 ### Duplication audits
 
@@ -537,11 +525,10 @@ An audit reporting no findings must show the enumeration it ran.
 
 **The enumeration has a floor**, set by what the audits have actually caught rather than by what seems thorough.
 It must cover, at minimum: AST traversal (every `NodeVisitorAbstract`, `NodeTraverser` and `NodeFinder` site), namespace and FQN construction (`Stmt\Namespace_` handling against the parser's `namespacedName`), case normalization (`strtolower` / `strcasecmp` on a symbol name, against `NameKind::normalize`), prefix matching, member-hierarchy walks, and path/URI conversion.
-Each of those has already produced a finding, several of them silently wrong rather than merely redundant.
 
 Two questions distinguish a duplicate that is worth folding from one that is a defect, and the audits must ask both.
-Not "is this the same code" but **"do these agree?"** — the five declaration finders were tolerable as five until they were found to disagree about nested declarations, at which point one of them was serving wrong completion results.
-And not "is this reachable" but **"which of these does each surface reach?"** — a mechanism duplicated across an AST path and a text-fallback path is two answers to one question, and the fallback is exactly where a divergence hides, because it only runs on code the parser could not handle.
+Not "is this the same code" but **"do these agree?"** — copies that agree are redundant, and copies that disagree are serving a wrong answer on whichever surface reaches the wrong one.
+And not "is this reachable" but **"which of these does each surface reach?"** — a mechanism duplicated across an AST path and a text-fallback path is two answers to one question, and the fallback is where a divergence hides, because it only runs on code the parser could not handle.
 
 ### Step Z — Definition of Done (final verification gate)
 
@@ -747,23 +734,19 @@ Consumer migration (construction moves to `Server.php`):
   routing), *backends × kinds*, and *kinds × operations*. A new kind is a name type, an
   info type, and one factory case — never a change to every backend.
 
-  **This was got wrong once.** S3.8a read the first paragraph and added a second per-kind
-  method to `SymbolBackend`, giving `FilesystemBackend` and `BuiltinBackend` the same
-  twenty lines twice and `OpenDocumentBackend` two parallel array pairs. S3.8d reverts that
-  shape before a third kind triples it. Do not re-derive the discarded reading from the
-  facade's closed method set.
+  **Do not re-derive the per-kind backend method from the facade's closed method set.**
+  That reading is the one the guardrail exists to rule out; `SymbolBackend` carries it
+  today and S3.8d removes it, before a third kind triples the copies.
 
   *The shape, so S3.8d does not have to invent it.* The backend takes
   `lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo`, where `SymbolInfo` is a new
   marker on `ClassInfo`, `FunctionInfo` and the global-constant info type. `Formattable`
   is already on all three and must not be reused for this: it is about rendering, not
   about being a symbol. The facade's typed method narrows the result once, with an
-  `assert`. That is O(kinds) narrowings at a single site against the O(kinds × backends)
-  methods the discarded shape produces, which is the whole of the guardrail — a narrowing
-  the facade already knows the answer to is not the cost being avoided. §4.5's `instanceof`
-  ban is scoped to concrete `Type` implementations and `ClassInfo` is not a `Type`, so the
-  assert is in bounds; it is recorded here because a conformance reviewer would otherwise
-  be right to flag it.
+  `assert`: O(kinds) narrowings at one site, against the O(kinds × backends) methods the
+  per-kind shape produces. §4.5's `instanceof` ban is scoped to concrete `Type`
+  implementations and `ClassInfo` is not a `Type`, so the assert is in bounds — recorded
+  here because a conformance reviewer would otherwise be right to flag it.
 - **No `lookupNamespace`.** A namespace has no declaration site; it exists iff
   something is declared under it. "What is in `Psr\Log`" is `childrenOf`, and
   existence is that being non-empty (add a thin `namespaceExists` only if hot).
