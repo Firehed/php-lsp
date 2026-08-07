@@ -5,6 +5,12 @@
             "kind": 3,
             "detail": "function calculateSum(int $a, int $b): int",
             "documentation": "Adds two numbers."
+        },
+        {
+            "label": "calculateProduct",
+            "kind": 3,
+            "detail": "function calculateProduct(int $a, int $b): int",
+            "documentation": "Multiplies two numbers."
         }
     ],
     "document|calc+snippet": [
@@ -15,6 +21,14 @@
             "documentation": "Adds two numbers.",
             "insertText": "calculateSum($0)",
             "insertTextFormat": 2
+        },
+        {
+            "label": "calculateProduct",
+            "kind": 3,
+            "detail": "function calculateProduct(int $a, int $b): int",
+            "documentation": "Multiplies two numbers.",
+            "insertText": "calculateProduct($0)",
+            "insertTextFormat": 2
         }
     ],
     "document|CALCULATE": [
@@ -23,6 +37,12 @@
             "kind": 3,
             "detail": "function calculateSum(int $a, int $b): int",
             "documentation": "Adds two numbers."
+        },
+        {
+            "label": "calculateProduct",
+            "kind": 3,
+            "detail": "function calculateProduct(int $a, int $b): int",
+            "documentation": "Multiplies two numbers."
         }
     ],
     "document|getConfig": [
