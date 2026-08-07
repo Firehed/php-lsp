@@ -17,6 +17,12 @@ runs `/clear` then `/review-slice` again. Only a pass that finds nothing is "cle
 - Check out the branch; ensure it is current with `main` (merge/rebase-free: if
   behind, merge `main` in or report).
 - Compute the diff under review: `git diff main...slice/<id>`.
+- Collect the slice's **owed items** from `0002`: anything the plan attaches by name to
+  this slice id or its step — the step's owed regression tests, and the duplication a step
+  is required to remove (e.g. Step 3b's "Regression tests the 3b corrections owe", Step
+  4's "Named duplication this step must remove"). These are acceptance criteria, not
+  suggestions; carry them into the panel verbatim. A slice that leaves one undone is a
+  finding even if every criterion on its own row is met.
 
 ## 2. Cleanroom review (this is the safeguard — keep it clean)
 
@@ -27,6 +33,8 @@ reasoning, or any implementer rationale — that is what makes it cleanroom. Run
 diverse panel in parallel:
 
 - **Acceptance** — is every acceptance criterion actually met, not just plausibly?
+  Including each owed item from step 1: the named test exists, and it fails against the
+  code it replaces (check that by reverting the fix locally, not by reading the test).
 - **Conformance** — §8.1 conformance for the invariants the slice touches (no
   forbidden reflection/index access, no `instanceof` on a concrete `Type`, no branch
   on a resolved kind, no raw `initialize` params outside the negotiation component,
