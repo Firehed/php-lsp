@@ -329,6 +329,38 @@ below the glue, not beside the handler.
 independently testable units (e.g. node locator, scope analyzer, member-access
 detector, call-context detector, name-context resolver, text fallback).
 
+*Named duplication this step must remove.* An audit found the following already present
+across `SymbolResolver`, `TextFallbackHelper`, `ScopeFinder` and `Scope`. It is recorded
+here, rather than as `SC.*` slices, because these are the exact sites the decomposition
+rewrites — but without naming them the step can be declared done with every one intact,
+since "the class is thin now" says nothing about where its contents went.
+
+- **S4.2 — one node locator.** "Innermost node containing an offset" exists three times:
+  `Index\NodeAtPosition` (unfiltered), `Scope::findEnclosingFunctionLike` (filtered to
+  function-likes), `SymbolResolver::findCallAtPosition` (filtered to call nodes, plus
+  argument analysis). Identical containment predicate, identical last-write-wins descent.
+  One locator taking a type filter serves all three; the argument analysis is genuinely
+  extra and stays with the call-context detector.
+- **S4.4 — one answer per positional question.** "Find the enclosing class at a line"
+  exists three times **and all three disagree on which nodes count**:
+  `ScopeFinder::findClassAtLine` (`Stmt\Class_` only),
+  `SymbolResolver::findEnclosingClassForLine` (class, trait, enum), and
+  `TextFallbackHelper::findEnclosingClassFromContent` (all four, by regex). That is a
+  "works in a class, not in a trait" defect standing in the code now, so its tests must
+  cover a trait and an interface, not only a class. "Find the namespace at a line" exists
+  twice, and the text copy mishandles braced namespaces, which the AST one documents
+  carefully. "Short name to FQN via imports then namespace" exists twice
+  (`SymbolResolver::resolveNameFromText`, `TextFallbackHelper::resolveClassName`).
+- **S4.5 — the text fallback keeps its resilience, not its copies.**
+  `extractMethods` / `extractProperties` / `extractConstants` repeat the visibility,
+  static and filter logic three times. `getInheritedMembers` duplicates
+  `SymbolResolver::getMembersForClass` **and diverges from it** — it omits enum cases, so
+  inherited enum cases vanish whenever the fallback path is taken.
+  `extractUseStatementsFromText` re-derives PHP's `use` grammar (group use, aliases,
+  partial qualification) in ~65 lines of regex. That last one is legitimate where no AST
+  exists, so the requirement is that it share the *shape* of the AST path, not that it be
+  deleted.
+
 ### Step 5 — Environment-parameterized built-ins (deferred; tracked §4.7 gap)
 
 *Status:* **deferred.** §4.7 (built-in knowledge parameterized by the project's
@@ -417,6 +449,16 @@ unowned. They are listed anyway: the series exists to remove duplication, so a
 known-removable thing without an owning slice is the same defect as an undischarged
 scaffold. A remover must be a slice id; a prose note is not an owner, because
 `/do-next` cannot select one.
+
+**This ledger is not a duplication register, and must not be read as one.** It tracks
+what this plan knowingly introduced; it is structurally blind to everything that was
+already there. The blindness is not theoretical — a single audit of the knowledge and
+resolution tiers found ten duplicated mechanisms with no owner between them, one of which
+returns a wrong answer today (a `function_exists`-guarded function resolves on hover and
+is absent from completion, because the five hand-written declaration finders disagree on
+whether a nested declaration counts). Four became `SC.*` rows; the rest became acceptance
+criteria on the Step 4 rows. Neither the ledger nor a green suite would have surfaced any
+of them. Only the audits below do, which is why they are gates and not suggestions.
 
 ### Duplication audits
 
