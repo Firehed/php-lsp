@@ -294,6 +294,24 @@ Step 4 (Section 6).
   support watched-file notifications, the fallback (lazy re-read vs. no invalidation)
   is an open decision (§7).
 
+*Regression tests the 3b corrections owe.* Each of the following fixes a defect that is
+invisible to a green suite, so the slice is not done until its test exists and has been
+shown to fail against the code it replaces. `/review-slice` checks for these by name.
+
+- **SC.2** — a class and a function sharing a short name, both imported in one file,
+  resolve independently. Fails today: `extractImports` folds the three import tables into
+  one.
+- **SC.5** — a function declared inside `if (!function_exists(...))` appears in completion,
+  not only on hover. This is the one correction here that **changes** behaviour: it
+  rewrites the function-surface golden S3.6 froze, and every other golden stays frozen.
+  Recapture deliberately and review that diff rather than accepting it.
+- **SC.6** — two constants differing only in case stay distinct through the composite's
+  merge and through the subtype walk's visited set. It cannot fail until constants exist,
+  so it lands with S3.8b, and S3.8b must show it failing against the `strtolower` SC.6
+  removed.
+- **S3.8d** — the coverage grid below, plus the S3.8b criterion that a new kind's diff
+  touches no backend.
+
 *Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
 environment-parameterized, so it does **not** satisfy §4.7 — it cannot answer for a
 target version or extension the server process lacks. This is **deferred** (Step 5)
@@ -493,6 +511,14 @@ The terminal audit in **Step Z** may not: there, an unowned *or* unfixed duplica
 
 An audit reporting no findings must show the enumeration it ran.
 "None found" without evidence is indistinguishable from not looking, which is exactly how these survived to be found by audit in the first place.
+
+**The enumeration has a floor**, set by what the audits have actually caught rather than by what seems thorough.
+It must cover, at minimum: AST traversal (every `NodeVisitorAbstract`, `NodeTraverser` and `NodeFinder` site), namespace and FQN construction (`Stmt\Namespace_` handling against the parser's `namespacedName`), case normalization (`strtolower` / `strcasecmp` on a symbol name, against `NameKind::normalize`), prefix matching, member-hierarchy walks, and path/URI conversion.
+Each of those has already produced a finding, several of them silently wrong rather than merely redundant.
+
+Two questions distinguish a duplicate that is worth folding from one that is a defect, and the audits must ask both.
+Not "is this the same code" but **"do these agree?"** — the five declaration finders were tolerable as five until they were found to disagree about nested declarations, at which point one of them was serving wrong completion results.
+And not "is this reachable" but **"which of these does each surface reach?"** — a mechanism duplicated across an AST path and a text-fallback path is two answers to one question, and the fallback is exactly where a divergence hides, because it only runs on code the parser could not handle.
 
 ### Step Z — Definition of Done (final verification gate)
 
