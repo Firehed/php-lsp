@@ -78,7 +78,7 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
     SC.2   —     Retire ScopeFinder's superseded import extraction  —                 —
     SC.5   —     One declaration finder, not five hand-written      —                 —
-    SC.6   —     CompositeSymbolSource case rule -> NameKind        —                 —
+    SC.6   —     Symbol-name keys -> NameKind::normalize           —                 —
     S3.8d  3b    Collapse per-kind lookup to one call               SC.5              —
     S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.6,S3.8d  —
     S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
@@ -244,12 +244,20 @@ Notes:
     narrowing that slice to `SymbolExtractor` alone. Deliberately not gated on S3.11: an
     audit files slices, and a slice already filed must not wait on the audit that would
     have found it.
-  - **SC.6** — `CompositeSymbolSource` lowercases a whole FQN in two places (the
-    `searchClassLikes` merge, and the subtype walk's visited set). `NameKind::normalize()`
-    owns PHP's per-kind case rule, and `OpenDocumentBackend` already routes through it,
-    with a comment noting that whole-FQN lowercasing is right for class-likes and functions
-    and wrong for a constant. Constants are case-sensitive, so `FOO` and `foo` would
-    collapse. Ahead of S3.8b for that reason.
+  - **SC.6** — every key derived from a symbol name routes through
+    `NameKind::normalize()`, which owns PHP's per-kind case rule. A whole-FQN `strtolower`
+    is hand-rolled instead in `CompositeSymbolSource` (the `searchClassLikes` merge, and
+    the subtype walk's visited set), in `NamespaceContents` (`merge` and
+    `indexByNamespace`), and in `SymbolIndex`. `OpenDocumentBackend` already routes through
+    `normalize`, with a comment noting that whole-FQN lowercasing is right for class-likes
+    and functions and wrong for a constant.
+
+    Constants are case-sensitive, so `Foo\BAR` and `Foo\bar` collapse — and that is **live
+    now, not a consequence of S3.8b**: `CatalogSymbol` already carries the `NameKind` these
+    sites discard, and S3.7e already enumerates constants from the derived `autoload.files`
+    index. Scoping this to `CompositeSymbolSource` alone would leave the collapse standing
+    on the enumeration path and let S3.8b land on top of it, so the row is the case rule
+    everywhere, not two lines. Ahead of S3.8b for that reason.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over
@@ -258,8 +266,9 @@ Notes:
     more copies. Outside Step 4's scope — that step decomposes `src/Resolution/`, this is
     `src/Repository/`.
   - **SC.8** — `Completion\PrefixMatcher::matches` and `SymbolIndex::findByPrefix` both
-    hand-roll `str_starts_with(strtolower(...))`. The smallest row here; listed because a
-    duplicated one-liner is worth folding in when it turns up next to work already open.
+    hand-roll `str_starts_with(strtolower(...))`. SC.6 owns the `strtolower` half (it is
+    the same per-kind case rule); what is left here is the duplicated *matching* helper, so
+    take SC.6 first or the two rows fight over the same line.
 - **Each section ends with a duplication audit** (**S3.11**, **S4.7**), and Step Z's
   acceptance carries the repo-wide one. Method, scope and outcome rule are defined once
   in 0002 §Duplication audits and the terminal condition is a Step Z acceptance item —
