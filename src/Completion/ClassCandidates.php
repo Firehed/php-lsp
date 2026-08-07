@@ -57,7 +57,7 @@ final class ClassCandidates
             $this->capabilities->getSessionCapabilities()->positionEncoding,
         );
 
-        $items = $this->fromImports($prefix, $document, $filter, $replaceRange);
+        $items = $this->fromImports($prefix, $context, $filter, $replaceRange);
         return array_merge($items, $this->fromIndex($prefix, $filter, $context, $replaceRange));
     }
 
@@ -66,12 +66,12 @@ final class ClassCandidates
      */
     private function fromImports(
         string $prefix,
-        TextDocument $document,
+        NameContext $context,
         ClassCandidateFilter $filter,
         Range $replaceRange,
     ): array {
         $items = [];
-        foreach ($this->codeResolver->getImports($document) as $shortName => $fqcn) {
+        foreach ($context->classImports as $shortName => $fqcn) {
             if (!PrefixMatcher::matches($shortName, $prefix)) {
                 continue;
             }

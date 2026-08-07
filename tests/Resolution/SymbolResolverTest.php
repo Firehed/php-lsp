@@ -2568,23 +2568,6 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('', $context->namespace, 'A file with no namespace declaration is global');
     }
 
-    public function testGetImportsIncludesAliasedAndGroupedUses(): void
-    {
-        $uri = $this->openFixture('Namespacing/ImportCompletion.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $imports = $this->resolver->getImports($document);
-
-        self::assertSame(
-            'Fixtures\Namespacing\Models\UserRepository',
-            $imports['Repo'] ?? null,
-            'An aliased import should map the alias to its FQCN',
-        );
-        self::assertArrayHasKey('Post', $imports, 'Group use members should be included');
-        self::assertArrayHasKey('SingletonTrait', $imports, 'Plain imports should be included');
-    }
-
     public function testGetFileFunctionsFindsNamespacedFunctions(): void
     {
         $uri = $this->openFixture('src/Completion/FunctionCompletion.php');

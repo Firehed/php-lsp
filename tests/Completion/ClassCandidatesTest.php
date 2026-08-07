@@ -23,9 +23,9 @@ class ClassCandidatesTest extends TestCase
     public function testReplaceRangeMeasuresAMultibytePrefixInCodeUnits(): void
     {
         $resolver = self::createStub(CodeResolver::class);
-        $resolver->method('getNameContext')->willReturn(new NameContext(''));
         // An imported class whose short name carries a multibyte character.
-        $resolver->method('getImports')->willReturn(['Café' => 'App\\Café']);
+        $resolver->method('getNameContext')
+            ->willReturn(new NameContext('', classImports: ['Café' => 'App\\Café']));
 
         // This case exercises the imports path only; the seam reaches no
         // class-likes, so its prefix search is empty.
