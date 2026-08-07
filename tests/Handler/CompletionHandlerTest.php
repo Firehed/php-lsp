@@ -2825,6 +2825,22 @@ class CompletionHandlerTest extends TestCase
         self::assertStringContainsString('Adds two numbers', $functionItem['documentation'] ?? '');
     }
 
+    public function testConditionallyDeclaredFunctionCompletion(): void
+    {
+        $cursor = $this->openFixtureAtCursor('FunctionCompletion.php', 'user_defined_function');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertContains(
+            'calculateProduct',
+            array_column($result['items'], 'label'),
+            'a function_exists-guarded polyfill is a name the file declares, so completion must offer it '
+            . '— hover already resolves one, and a name visible to lookup but not to enumeration is the '
+            . 'split RFC 1 §4.2 forbids',
+        );
+    }
+
     public function testThisCompletionTargetsEnclosingClassNotFirstClass(): void
     {
         // Issue #173: When multiple classes in file, $this-> should complete

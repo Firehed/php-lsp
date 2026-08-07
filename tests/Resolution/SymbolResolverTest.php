@@ -2624,4 +2624,25 @@ final class SymbolResolverTest extends TestCase
         self::assertContains('calculateSum', $names, 'Functions inside a namespace should be found');
         self::assertContains('getConfig', $names, 'Functions inside a namespace should be found');
     }
+
+    public function testGetFileFunctionsFindsDeclarationsAtAnyDepth(): void
+    {
+        $uri = $this->openFixture('FunctionCompletion.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $names = array_map(
+            static fn(FunctionInfo $fn): string => $fn->name,
+            $this->resolver->getFileFunctions($document),
+        );
+
+        // The on-disk backends and the open-document write path both resolve a
+        // declaration at any depth, so a top-level-only walk here made a polyfill
+        // resolve on hover while being invisible to completion (RFC 1 §4.2).
+        self::assertContains(
+            'calculateProduct',
+            $names,
+            'a function declared inside a function_exists guard is still declared by the file',
+        );
+    }
 }
