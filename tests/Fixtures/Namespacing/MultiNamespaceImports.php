@@ -44,6 +44,24 @@ namespace Fixtures\Namespacing\Models {
         return new User();
     }
 
+    class Widget
+    {
+        public function __construct(public readonly string $size)
+        {
+        }
+    }
+
+}
+
+namespace Fixtures\Namespacing\Helpers {
+
+    // Shares its short name with Models\Widget, and deliberately sits in another
+    // namespace so the two imports do not resolve to the same FQN.
+    function Widget(): string
+    {
+        return 'widget';
+    }
+
 }
 
 namespace Fixtures\Namespacing\Controllers {

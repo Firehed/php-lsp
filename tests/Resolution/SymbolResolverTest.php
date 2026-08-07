@@ -1934,6 +1934,27 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('__construct', $context->callable->format());
     }
 
+    public function testGetCallContextKeepsClassAndFunctionImportsApart(): void
+    {
+        // `new Widget(` is unrecoverable, so the name is resolved from text. The
+        // file imports both Models\Widget (a class) and Helpers\Widget (a
+        // function): reading one table for the other resolves the function's FQN,
+        // where no constructor is found and there is no call context at all.
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/AliasedImports.php', 'colliding_new');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNotNull($context, 'A `use function` of the same short name must not shadow the class import');
+        self::assertStringContainsString(
+            'size',
+            $context->callable->format(),
+            'The constructor resolved should be the imported class\' own',
+        );
+    }
+
     public function testGetCallContextNoUseNoNamespace(): void
     {
         $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'no_use_no_namespace');
@@ -2068,8 +2089,6 @@ final class SymbolResolverTest extends TestCase
     public function testGetMemberAccessContextResolvesGroupUseStatic(): void
     {
         // Group use: use Fixtures\Domain\{User, Team};
-        // ScopeFinder::resolveFromUseStatements doesn't handle GroupUse,
-        // so text-based resolution should handle it.
         $this->openFixture('src/Domain/User.php');
         $cursor = $this->openFixtureAtCursor('src/IncompleteCode/GroupImports.php', 'group_static_access');
         $document = $this->documents->get($cursor['uri']);
@@ -2107,6 +2126,26 @@ final class SymbolResolverTest extends TestCase
 
         self::assertNotNull($context);
         self::assertSame('Fixtures\\Domain\\User', $context->type->format());
+    }
+
+    public function testGetMemberAccessContextKeepsClassAndFunctionImportsApart(): void
+    {
+        // The file imports both Models\Widget (a class) and Helpers\Widget (a
+        // function). PHP resolves each from its own table, so the class import
+        // is what `Widget::` names — including on the text fallback path, which
+        // this unrecoverable statement forces.
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/AliasedImports.php', 'colliding_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNotNull($context);
+        self::assertSame(
+            'Fixtures\\Namespacing\\Models\\Widget',
+            $context->type->format(),
+            'A `use function` of the same short name must not shadow the class import',
+        );
     }
 
     public function testGetAccessibleMembersUsesTextFallbackForBrokenClass(): void
@@ -2501,6 +2540,29 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testGetNameContextKeepsCollidingImportsInBothTables(): void
+    {
+        // Both tables are asserted whole: a single folded map answers one of them
+        // correctly whichever import it lets win, so checking only the class side
+        // would accept a fold that happened to be ordered in its favour.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'colliding_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            ['Widget' => 'Fixtures\Namespacing\Models\Widget'],
+            $context->classImports,
+            'The class import keeps the short name in the class table',
+        );
+        self::assertSame(
+            ['Widget' => 'Fixtures\Namespacing\Helpers\Widget'],
+            $context->functionImports,
+            'The function import of the same short name keeps its own table',
+        );
+    }
+
     public function testGetNameContextAfterTheLastStatementOfASemicolonNamespace(): void
     {
         $uri = $this->openFixture('Namespacing/FileWide.php');
@@ -2546,23 +2608,6 @@ final class SymbolResolverTest extends TestCase
         $context = $this->resolver->getNameContext($document, 0);
 
         self::assertSame('', $context->namespace, 'A file with no namespace declaration is global');
-    }
-
-    public function testGetImportsIncludesAliasedAndGroupedUses(): void
-    {
-        $uri = $this->openFixture('Namespacing/ImportCompletion.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $imports = $this->resolver->getImports($document);
-
-        self::assertSame(
-            'Fixtures\Namespacing\Models\UserRepository',
-            $imports['Repo'] ?? null,
-            'An aliased import should map the alias to its FQCN',
-        );
-        self::assertArrayHasKey('Post', $imports, 'Group use members should be included');
-        self::assertArrayHasKey('SingletonTrait', $imports, 'Plain imports should be included');
     }
 
     public function testGetFileFunctionsFindsNamespacedFunctions(): void

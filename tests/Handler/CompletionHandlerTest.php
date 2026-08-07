@@ -1157,6 +1157,26 @@ class CompletionHandlerTest extends TestCase
         self::assertSame('Fixtures\Namespacing\Models\User', $userItem['detail'] ?? null);
     }
 
+    public function testExpressionCompletionKeepsClassAndFunctionImportsApart(): void
+    {
+        // Models\Widget (class) and Helpers\Widget (function) are both imported
+        // under the same short name; the class completion must offer the class.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'colliding_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $widgetItems = array_filter($result['items'], fn($item) => $item['label'] === 'Widget');
+        self::assertNotEmpty($widgetItems, 'The imported class should be offered');
+        $widgetItem = reset($widgetItems);
+        self::assertIsArray($widgetItem);
+        self::assertSame(
+            'Fixtures\Namespacing\Models\Widget',
+            $widgetItem['detail'] ?? null,
+            'A `use function` of the same short name must not shadow the class import',
+        );
+    }
+
     public function testNewCompletionIncludesIndexedClasses(): void
     {
         // Add a class to the index

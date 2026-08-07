@@ -637,21 +637,6 @@ final class SymbolResolver implements CodeResolver
         return new CallContext($callable, $activeParameter, $usedNames, $positionalCount);
     }
 
-    /**
-     * @return array<string, string>
-     */
-    public function getImports(TextDocument $document): array
-    {
-        $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('Parser returned null');
-            // @codeCoverageIgnoreEnd
-        }
-
-        return ScopeFinder::extractImports($ast);
-    }
-
     public function getNameContext(TextDocument $document, int $line): NameContext
     {
         $ast = $this->parser->parse($document);
@@ -910,17 +895,18 @@ final class SymbolResolver implements CodeResolver
             return $name;
         }
 
+        $context = NameContextFactory::fromAst($ast, $line);
+
         // Check use statements first
-        $resolvedFromUse = ScopeFinder::resolveFromUseStatements($className, $ast);
+        $resolvedFromUse = $context->classImports[$className] ?? null;
         if ($resolvedFromUse !== null) {
             $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedFromUse));
             return $name;
         }
 
         // Fall back to namespace prefix
-        $namespace = ScopeFinder::findNamespaceAtLine($ast, $line);
-        if ($namespace !== null) {
-            $name->setAttribute('resolvedName', new Name\FullyQualified($namespace . '\\' . $className));
+        if ($context->namespace !== '') {
+            $name->setAttribute('resolvedName', new Name\FullyQualified($context->namespace . '\\' . $className));
         }
 
         return $name;

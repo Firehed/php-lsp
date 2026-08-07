@@ -415,7 +415,7 @@ final class TextFallbackHelper
         }
 
         // Try AST-based resolution first
-        $resolved = ScopeFinder::resolveFromUseStatements($className, $ast);
+        $resolved = NameContextFactory::fromAst($ast, $line)->classImports[$className] ?? null;
         if ($resolved !== null) {
             return $resolved;
         }

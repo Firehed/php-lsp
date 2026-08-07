@@ -340,9 +340,8 @@ optimistic availability) is intentional.
 and finish the interface split.
 
 *Acceptance:* the positional layer (node-at-offset, scope, member/call detection,
-text fallback, **plus the name-resolution context queries `getImports` /
-`getNameContext`** — these are document-scoped name context, not FQN-knowledge, so
-they live here) is its own unit; `TypeClassifier` owns the predicates; `SymbolResolver`
+text fallback, **plus the name-resolution context query `getNameContext`** — this is
+document-scoped name context, not FQN-knowledge, so it lives here) is its own unit; `TypeClassifier` owns the predicates; `SymbolResolver`
 is thin glue over the positional layer and `SymbolSource`; **`CodeResolver` is reduced
 to the positional-facing interface — its knowledge-facing responsibilities are served
 by `SymbolSource` (there is no second knowledge interface)**; the no-`instanceof`-on-
@@ -358,7 +357,7 @@ below the glue, not beside the handler.
 
 *The positional layer must itself be decomposed.* It would otherwise inherit most of
 `SymbolResolver`'s bulk (node-at-offset, scope, member/call detection, text fallback,
-`getImports` / `getNameContext`) and become a renamed god class. The success metric is
+`getNameContext`) and become a renamed god class. The success metric is
 **not "`SymbolResolver` is thin" alone**; the positional layer lands as cohesive,
 independently testable units (e.g. node locator, scope analyzer, member-access
 detector, call-context detector, name-context resolver, text fallback).

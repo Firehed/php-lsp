@@ -119,14 +119,6 @@ interface CodeResolver
     ): ?CallContext;
 
     /**
-     * Get class imports (`use` statements) in a document as short name => FQCN.
-     * Used by: Completion
-     *
-     * @return array<string, string>
-     */
-    public function getImports(TextDocument $document): array;
-
-    /**
      * Get the name-resolution context at a line: the enclosing namespace and the
      * import tables (`use`, `use function`, `use const`) in effect there.
      *
