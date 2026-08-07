@@ -76,11 +76,11 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
     S3.7e  3b    Enumerate the derived index in childrenOf          S3.7d             —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
-    SC.2   —     Retire ScopeFinder's superseded import extraction   —                 —
-    SC.5   —     One declaration finder for the five hand-written    —                 —
-    SC.6   —     CompositeSymbolSource case rule -> NameKind         —                 —
-    S3.8d  3b    Collapse per-kind lookup to one kind-parameterized call  SC.5        —
-    S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.5,SC.6,S3.8d  —
+    SC.2   —     Retire ScopeFinder's superseded import extraction  —                 —
+    SC.5   —     One declaration finder, not five hand-written      —                 —
+    SC.6   —     CompositeSymbolSource case rule -> NameKind        —                 —
+    S3.8d  3b    Collapse per-kind lookup to one call               SC.5              —
+    S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.6,S3.8d  —
     S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
     S3.9a  3b    Generalize search to a kind parameter              S3.8a,S3.8d       —
     S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
@@ -191,6 +191,9 @@ Notes:
     Their Step column stays `—`, so `all Step 3` does not expand to include them and S3.11
     is not gated on them. That is correct and not an oversight: they are not Step 3's work,
     they merely run during it. `all prior` does reach them, so SZ.1 still requires them.
+
+    S3.8b omits SC.5 from its `Depends on` because S3.8d already carries it; the two rows
+    sit adjacent so the chain is visible. Restore it if S3.8d's dependencies ever change.
   - **SC.1 and SC.3 are still undone**, and both predate the rows added since. Neither is
     blocked by anything. SC.3 narrows once SC.5 lands, which removes its
     `FilesystemBackend::findClassInAst` half and leaves `SymbolExtractor` — where the FQN
