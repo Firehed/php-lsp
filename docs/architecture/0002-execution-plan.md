@@ -580,6 +580,10 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5), the
   workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266), and
   computed-name `define()` (§3). A gap not on this list is a bug, not a deferral.
+  The §5.1 coverage grid is read against this list: every cell still registered
+  not-applicable must name one of these deferrals, so a registration whose blocker has
+  landed fails the gate. Otherwise the grid's own escape hatch outlives what it was
+  granted for, and a hole is certified rather than exposed.
 
 Only when all seven hold is the foundation deemed complete.
 
