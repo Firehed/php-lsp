@@ -240,52 +240,6 @@ final class ScopeFinder
     }
 
     /**
-     * Extract all class imports from `use` statements as short name => FQCN.
-     *
-     * Superseded by {@see NameContextFactory}, which is type-aware and scoped to
-     * one namespace block. This one folds `use function` and `use const` into the
-     * class map and flattens every block in the file; its callers are moved over
-     * in #331, after which it goes away.
-     *
-     * @param array<Stmt> $ast
-     * @return array<string, string>
-     */
-    public static function extractImports(array $ast): array
-    {
-        $imports = [];
-
-        foreach (self::iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\Use_) {
-                foreach ($stmt->uses as $use) {
-                    $shortName = $use->alias?->toString() ?? $use->name->getLast();
-                    $imports[$shortName] = $use->name->toString();
-                }
-            } elseif ($stmt instanceof Stmt\GroupUse) {
-                $prefix = $stmt->prefix->toString();
-                foreach ($stmt->uses as $use) {
-                    $shortName = $use->alias?->toString() ?? $use->name->getLast();
-                    $imports[$shortName] = $prefix . '\\' . $use->name->toString();
-                }
-            }
-        }
-
-        return $imports;
-    }
-
-    /**
-     * Resolve a simple class name using use statements from AST.
-     *
-     * Returns the fully qualified name if found in a use statement,
-     * or null if not found.
-     *
-     * @param array<Stmt> $ast
-     */
-    public static function resolveFromUseStatements(string $className, array $ast): ?string
-    {
-        return self::extractImports($ast)[$className] ?? null;
-    }
-
-    /**
      * Find the namespace declaration containing a given zero-based line.
      *
      * Returns null when the line is outside any namespace block or the enclosing
