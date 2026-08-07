@@ -636,19 +636,30 @@ Consumer migration (construction moves to `Server.php`):
   carries a `ClassKind` discriminator. A future struct is a new `ClassKind` case
   reached through the same method, predicates, and `supertypes()` traversal (§4.5) —
   not a new method.
-- **The method set is closed.** PHP has exactly three symbol namespaces, so the
-  lookup set is those three and cannot grow with new kinds. That is the structural
-  answer to "do per-kind methods recreate M×N": they mirror the language's own
-  symbol table, which does not expand.
+- **Per-kind at the facade, kind-parameterized at the backends.** These are different
+  answers to the same question, and the split is deliberate.
+
+  `SymbolSource` carries a typed method per kind, and that set is **closed**: PHP has
+  exactly three symbol namespaces, so it cannot grow with new kinds, and §5.1 requires a
+  concrete return type rather than a type-erased union. That is the structural answer to
+  "do per-kind methods recreate M×N" *at the facade*.
+
+  It is not the answer one layer down. `SymbolBackend` takes **one** kind-parameterized
+  lookup, because the kind changes only the case rule (`NameKind::normalize`), the
+  unqualified-fallback rule, and which factory builds the metadata — never how a declaring
+  file is found or how a namespace is listed. Three cross-products stay closed:
+  *consumers × kinds* (one kind-dispatch point in the glue, per §4.5's syntactic-position
+  routing), *backends × kinds*, and *kinds × operations*. A new kind is a name type, an
+  info type, and one factory case — never a change to every backend.
+
+  **This was got wrong once.** S3.8a read the first paragraph and added a second per-kind
+  method to `SymbolBackend`, giving `FilesystemBackend` and `BuiltinBackend` the same
+  twenty lines twice and `OpenDocumentBackend` two parallel array pairs. S3.8d reverts that
+  shape before a third kind triples it. Do not re-derive the discarded reading from the
+  facade's closed method set.
 - **No `lookupNamespace`.** A namespace has no declaration site; it exists iff
   something is declared under it. "What is in `Psr\Log`" is `childrenOf`, and
   existence is that being non-empty (add a thin `namespaceExists` only if hot).
-- **Backends stay kind-agnostic — the M×N guardrail.** Two cross-products must stay
-  closed: *consumers × kinds* (one kind-dispatch point in the glue, per §4.5's
-  syntactic-position routing) and *backends × kinds* (backends resolve uniformly —
-  one `resolve(QualifiedName, NameKind)` — with the typed `ClassInfo` / `FunctionInfo`
-  constructed at the facade via the existing factories, §4.6). A new kind is then a
-  factory + a facade accessor, never a change to every backend.
 
 ### 5.7. Why functions and constants are deferred to Step 3
 
