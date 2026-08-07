@@ -76,9 +76,10 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
     S3.7e  3b    Enumerate the derived index in childrenOf          S3.7d             —
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
-    S3.8b  3b    lookupConstant project reach                       S3.7d             —
-    S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a             —
-    S3.9a  3b    Generalize search to a kind parameter              S3.8a             —
+    S3.8d  3b    Collapse per-kind lookup to one kind-parameterized call  SC.5        —
+    S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.5,SC.6,S3.8d  —
+    S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
+    S3.9a  3b    Generalize search to a kind parameter              S3.8a,S3.8d       —
     S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
     S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
     S3.11  3     Step 3 duplication audit                          all Step 3        —
@@ -90,10 +91,13 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
     S4.7   4     Step 4 duplication audit                          all Step 4        —
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
-    SC.2   —     Retire ScopeFinder's superseded import extraction   S4.4,S4.5         —
+    SC.2   —     Retire ScopeFinder's superseded import extraction   —                 —
     SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
-    SC.5   —     Merge the two class-like AST traversals             SC.3              —
+    SC.5   —     One declaration finder for the five hand-written    —                 —
+    SC.6   —     CompositeSymbolSource case rule -> NameKind         —                 —
+    SC.7   —     Six member-hierarchy walks -> one                   —                 —
+    SC.8   —     Prefix matching: SymbolIndex -> PrefixMatcher       —                 —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -126,10 +130,23 @@ Notes:
     derived index knows every name each entry declares, so this is wiring enumeration
     onto it, not a second scan. Found while reviewing S3.7d, which delivered the lookup
     half only.
+- **S3.8d corrects the shape S3.8a landed.** S3.8a gave `SymbolBackend` a second per-kind
+  method, following the note below; 0002 §5.6's other half says backends take one
+  kind-parameterized lookup and that a new kind is "never a change to every backend". The
+  contradiction is resolved in 0002 in favour of the guardrail: the public `SymbolSource`
+  keeps a typed method per kind (§5.1 requires concrete return types), the backends behind
+  it take one. Today `FilesystemBackend` and `BuiltinBackend` each carry the same twenty
+  lines twice and `OpenDocumentBackend` two parallel array pairs; after SC.5 those differ
+  only in which factory builds the metadata. S3.8d also carries the §8.1 mechanism for §5.1
+  (see 0002), per the rule that a seam ships with its enforcement.
+  - **S3.8b is the proof.** Its acceptance carries one criterion that cannot be met by
+    appearance: **its diff must touch no `SymbolBackend` implementation.** If it does,
+    S3.8d did not work.
 - **S3.8 and S3.9 are cut by symbol namespace, not by layer.** A layer cut (interface,
   then backends, then consumers) would land `SymbolBackend` methods no backend
   implements, so each slice is instead one vertical: a kind's name type, its
-  `SymbolSource`/`SymbolBackend` method across all four backends, and its tests. S3.8c
+  `SymbolSource` method, its extraction, and its tests — **not** a `SymbolBackend` method
+  per kind, which is what S3.8a built and S3.8d undoes. S3.8c
   then migrates the consumers (`SymbolResolver`, `BasicTypeResolver`) off
   `FunctionRepository::get(string, array $ast)` — it is the Step 3b slice that edits
   `SymbolResolver`, so it, not S3.8a, is what S4.2 serializes against (§6).
@@ -164,12 +181,25 @@ Notes:
   them — which is exactly how they went unowned until an audit found them. They are in
   the table so `/do-next` can select them and SZ.1 can require them, not because a step
   produced them. A removal with no owning slice is a defect; put it here.
+  - **SC.1 and SC.3 are still undone**, and both predate the rows added since. Neither is
+    blocked by anything. SC.3 narrows once SC.5 lands, which removes its
+    `FilesystemBackend::findClassInAst` half and leaves `SymbolExtractor` — where the FQN
+    is rebuilt by string concatenation in three places, against a `namespacedName` the
+    parser already computed and four other sites already read.
+  - **Duplication that Step 4 will touch anyway is not filed here.** It is recorded as
+    acceptance criteria on the S4.2 / S4.4 / S4.5 rows in 0002 instead, so the
+    decomposition cannot be declared done while it survives. Filing it twice would put a
+    slice and a step in competition for the same edit.
   - **SC.1** — `Index/WorkspaceIndexer` has zero references in `src/` or `tests/`. It was
     previously a ledger row whose remover was a *§3 note*, which no slice could discharge.
   - **SC.2** — `ScopeFinder::extractImports` / `resolveFromUseStatements` were superseded
     by `NameContextFactory` and their own docblock says they go away once #331 moves the
     callers. #331 landed (#337); three callers did not move (`SymbolResolver` ×2,
-    `TextFallbackHelper` ×1). Gated on S4.4/S4.5, which rewrite exactly those sites.
+    `TextFallbackHelper` ×1). **Ungated, and ahead of S3.8b: this is a live defect, not a
+    tidy-up.** `extractImports` folds `use function` and `use const` into the class import
+    map, so a class and a function sharing a short name collide — and the constant table it
+    also folds in is exactly what constant resolution will read. `NameContext::importsFor()`
+    already keeps the three tables apart, so no caller needs Step 4 to move.
   - **SC.3** — `SymbolExtractor` and `FilesystemBackend::findClassInAst` each hand-track
     `Stmt\Namespace_` to build FQNs that `NameResolver` already computed into
     `namespacedName` (which `DefaultClassInfoFactory`, `DefaultFunctionRepository`,
@@ -182,16 +212,41 @@ Notes:
     encoding. One `FileUri` replaces them. Found while splitting S3.7, whose locator
     wanted a fifth copy; the duplication predates that slice and belongs to no step,
     so S3.7c is gated on it rather than carrying it.
-  - **SC.5** — `FilesystemBackend::findClassInAst` and `Index\DeclarationScanner` both
-    walk an AST to find the class-likes a file declares. They differ in what they
-    return (one matched *node* versus every declared *name*) and in stopping early, so
-    this is scoped as **evaluate and merge if warranted** — concluding "two genuinely
-    different queries, one walk" is an acceptable outcome, but it must be concluded and
-    recorded, not left unexamined. Gated only on SC.3, which rewrites `findClassInAst`'s
-    namespace handling; it is deliberately *not* gated on S3.11, because an audit files
-    slices and a slice already filed must not wait on the audit that would have found
-    it. Found while reviewing S3.7d, which put the two traversals side by side without
-    merging them.
+  - **SC.5** — **Five** sites ask "which node declares this name", against
+    `Index\DeclarationScanner`, which already answers the general form:
+    `DefaultFunctionRepository::findFunctionInAst`, `FilesystemBackend::parseFunctionFrom`,
+    `FilesystemBackend::findClassInAst`, `DocumentSymbolSink::functionsIn`, and
+    `SymbolResolver::getFileFunctions`. What the backends need beyond the scanner is the
+    declaring *node*, so metadata can be built; that is the one thing to add.
+
+    Originally scoped to two class-like traversals and framed as "evaluate and merge if
+    warranted". A later audit found the other three and, with them, the reason this is not
+    optional: **the five disagree.** `getFileFunctions` feeds completion and iterates
+    top-level statements only, while `parseFunctionFrom` and `functionsIn` walk all depths,
+    so a `function_exists`-guarded polyfill resolves on hover and never appears in
+    completion. That is a §4.2 violation in the code today, which is why this now precedes
+    S3.8b and S3.8c rather than trailing them.
+
+    Ungated. It no longer depends on SC.3 — it *removes* the `findClassInAst` half of SC.3,
+    narrowing that slice to `SymbolExtractor` alone. Deliberately not gated on S3.11: an
+    audit files slices, and a slice already filed must not wait on the audit that would
+    have found it.
+  - **SC.6** — `CompositeSymbolSource` lowercases a whole FQN in two places (the
+    `searchClassLikes` merge, and the subtype walk's visited set). `NameKind::normalize()`
+    owns PHP's per-kind case rule, and `OpenDocumentBackend` already routes through it,
+    with a comment noting that whole-FQN lowercasing is right for class-likes and functions
+    and wrong for a constant. Constants are case-sensitive, so `FOO` and `foo` would
+    collapse. Ahead of S3.8b for that reason.
+  - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
+    `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
+    each a seen-check, a scan of the class's own members, and a recursion over
+    `supertypes()`. #334 centralised the type-graph *edges*, and `supertypes()` is correct
+    and stays; the *walk* over them was never centralised, so a new member kind adds two
+    more copies. Outside Step 4's scope — that step decomposes `src/Resolution/`, this is
+    `src/Repository/`.
+  - **SC.8** — `Completion\PrefixMatcher::matches` and `SymbolIndex::findByPrefix` both
+    hand-roll `str_starts_with(strtolower(...))`. The smallest row here; listed because a
+    duplicated one-liner is worth folding in when it turns up next to work already open.
 - **Each section ends with a duplication audit** (**S3.11**, **S4.7**), and Step Z's
   acceptance carries the repo-wide one. Method, scope and outcome rule are defined once
   in 0002 §Duplication audits and the terminal condition is a Step Z acceptance item —
