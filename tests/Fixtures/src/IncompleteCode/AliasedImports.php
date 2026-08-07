@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Fixtures\IncompleteCode;
 
 use Fixtures\Domain\User as AliasedUser;
+use Fixtures\Namespacing\Models\Widget;
+use function Fixtures\Namespacing\Helpers\Widget;
 
 class IncompleteAliasedParam
 {
@@ -19,5 +21,13 @@ class IncompleteAliasedStatic
     public function testStatic(): void
     {
         /*brace*/ (AliasedUser::/*|aliased_static_access*/
+    }
+}
+
+class IncompleteCollidingImport
+{
+    public function testStatic(): void
+    {
+        /*brace*/ (Widget::/*|colliding_static*/
     }
 }

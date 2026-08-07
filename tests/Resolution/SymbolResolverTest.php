@@ -2109,6 +2109,26 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('Fixtures\\Domain\\User', $context->type->format());
     }
 
+    public function testGetMemberAccessContextKeepsClassAndFunctionImportsApart(): void
+    {
+        // The file imports both Models\Widget (a class) and Helpers\Widget (a
+        // function). PHP resolves each from its own table, so the class import
+        // is what `Widget::` names — including on the text fallback path, which
+        // this unrecoverable statement forces.
+        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/AliasedImports.php', 'colliding_static');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertNotNull($context);
+        self::assertSame(
+            'Fixtures\\Namespacing\\Models\\Widget',
+            $context->type->format(),
+            'A `use function` of the same short name must not shadow the class import',
+        );
+    }
+
     public function testGetAccessibleMembersUsesTextFallbackForBrokenClass(): void
     {
         // VeryBrokenTarget is missing its opening brace - parser can't recognize it as a class.

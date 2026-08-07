@@ -42,6 +42,18 @@ namespace Fixtures\Namespacing\ImportCompletion\Grouped {
 
 }
 
+namespace Fixtures\Namespacing\ImportCompletion\Collision {
+
+    use Fixtures\Namespacing\Models\Widget;
+    use function Fixtures\Namespacing\Helpers\Widget;
+
+    function triggerCollidingPartial()
+    {
+        $x = Widg/*|colliding_partial*/
+    }
+
+}
+
 namespace Fixtures\Namespacing\ImportCompletion\MixedGroup {
 
     use Fixtures\Namespacing\Models\{
