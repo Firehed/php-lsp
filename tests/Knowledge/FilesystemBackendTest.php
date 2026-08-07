@@ -263,6 +263,7 @@ final class FilesystemBackendTest extends TestCase
             new CachedNamespaceCatalog($counting, CacheFactory::inMemory()),
             $this->parser,
             $this->factory,
+            new DeclarationScanner(),
             CacheFactory::inMemory(),
         );
 
@@ -409,6 +410,7 @@ final class FilesystemBackendTest extends TestCase
             $catalog,
             $this->parser,
             $this->factory,
+            new DeclarationScanner(),
             CacheFactory::inMemory(),
         );
 
@@ -448,6 +450,7 @@ final class FilesystemBackendTest extends TestCase
             new ComposerNamespaceSource($map),
             $this->parser,
             $this->factory,
+            new DeclarationScanner(),
             CacheFactory::inMemory(),
         );
     }
@@ -459,6 +462,7 @@ final class FilesystemBackendTest extends TestCase
             self::createStub(NamespaceCatalog::class),
             $this->parser,
             $this->factory,
+            new DeclarationScanner(),
             CacheFactory::inMemory(),
         );
     }

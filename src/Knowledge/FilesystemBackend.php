@@ -11,16 +11,13 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Index\DeclarationScanner;
+use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Resolution\NameKind;
-use PhpParser\Node;
-use PhpParser\Node\Stmt;
-use PhpParser\NodeFinder;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 use Psr\SimpleCache\CacheInterface;
 
 /**
@@ -60,6 +57,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         private readonly NamespaceCatalog $namespaces,
         private readonly ParserService $parser,
         private readonly ClassInfoFactory $factory,
+        private readonly DeclarationScanner $scanner,
         private readonly CacheInterface $cache,
     ) {
     }
@@ -154,100 +152,44 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         return [];
     }
 
-    /**
-     * A declaration at any depth counts, not just a top-level one: the shape most
-     * `autoload.files` entries take is a polyfill declared inside an
-     * `if (!function_exists(...))`, and that is a name the file validly declares
-     * (matching {@see \Firehed\PhpLsp\Index\DeclarationScanner}, which derived the
-     * name -> file map this lookup arrived through).
-     */
     private function parseFunctionFrom(FunctionName $name, string $filePath): ?FunctionInfo
     {
-        $ast = $this->parser->parseFile($filePath);
-        if ($ast === null) {
-            return null;
-        }
-
         $kind = $name->kind();
         $target = $kind->normalize($name->qualifiedName);
 
-        $node = (new NodeFinder())->findFirst(
-            $ast,
-            static fn(Node $node): bool => $node instanceof Stmt\Function_
-                && $kind->normalize(
-                    QualifiedName::fromFullyQualified(($node->namespacedName ?? $node->name)->toString()),
-                ) === $target,
-        );
-        if (!$node instanceof Stmt\Function_) {
-            return null;
+        foreach ($this->declarationsIn($filePath)->functions as $declaration) {
+            if ($kind->normalize($declaration->name) === $target) {
+                return FunctionInfo::fromNode($declaration->node, $filePath);
+            }
         }
 
-        return FunctionInfo::fromNode($node, $filePath);
+        return null;
     }
 
     private function parseClassFrom(ClassName $name, string $filePath): ?ClassInfo
     {
-        $ast = $this->parser->parseFile($filePath);
-        if ($ast === null) {
-            return null;
+        $target = QualifiedName::fromClassName($name)->fullyQualifiedName();
+
+        foreach ($this->declarationsIn($filePath)->classLikes as $declaration) {
+            if ($declaration->name->fullyQualifiedName() === $target) {
+                return $this->factory->fromAstNode($declaration->node, FileUri::fromPath($filePath));
+            }
         }
 
-        $node = $this->findClassInAst($name->fqn, $ast);
-        if ($node === null) {
-            return null;
-        }
-
-        return $this->factory->fromAstNode($node, FileUri::fromPath($filePath));
+        return null;
     }
 
     /**
-     * @param array<Stmt> $ast
+     * A declaration at any depth counts, not just a top-level one: the shape most
+     * `autoload.files` entries take is a polyfill declared inside an
+     * `if (!function_exists(...))`, and that is a name the file validly declares.
+     * This is the scan that derived the name -> file map the lookup arrived through,
+     * so the two cannot disagree about what the file declares.
      */
-    private function findClassInAst(
-        string $className,
-        array $ast,
-    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
-        $finder = new class ($className) extends NodeVisitorAbstract {
-            public Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found = null;
-            private string $namespace = '';
+    private function declarationsIn(string $filePath): FileDeclarations
+    {
+        $ast = $this->parser->parseFile($filePath);
 
-            public function __construct(private readonly string $className)
-            {
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Namespace_) {
-                    $this->namespace = $node->name?->toString() ?? '';
-                    return null;
-                }
-
-                if (
-                    $node instanceof Stmt\Class_
-                    || $node instanceof Stmt\Interface_
-                    || $node instanceof Stmt\Trait_
-                    || $node instanceof Stmt\Enum_
-                ) {
-                    $name = $node->name?->toString();
-                    if ($name === null) {
-                        return null;
-                    }
-                    $fqn = $this->namespace !== '' ? $this->namespace . '\\' . $name : $name;
-
-                    if ($fqn === $this->className || $name === $this->className) {
-                        $this->found = $node;
-                        return NodeTraverser::STOP_TRAVERSAL;
-                    }
-                }
-
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        return $finder->found;
+        return $ast === null ? new FileDeclarations([], [], []) : $this->scanner->scan($ast);
     }
 }

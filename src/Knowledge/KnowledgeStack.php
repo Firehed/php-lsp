@@ -122,6 +122,7 @@ final readonly class KnowledgeStack
             ),
             $parser,
             $classInfoFactory,
+            $scanner,
             CacheFactory::inMemory(),
         );
     }
