@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -48,6 +49,7 @@ class DefinitionHandlerTest extends TestCase
             $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
+            new DeclarationScanner(),
         );
         $this->handler = new DefinitionHandler(
             $this->documents,

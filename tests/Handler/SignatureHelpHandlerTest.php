@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
@@ -46,6 +47,7 @@ class SignatureHelpHandlerTest extends TestCase
             $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
+            new DeclarationScanner(),
         );
         $this->handler = new SignatureHelpHandler(
             $this->documents,

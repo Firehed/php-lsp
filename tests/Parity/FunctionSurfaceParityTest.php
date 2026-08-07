@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -87,6 +88,7 @@ final class FunctionSurfaceParityTest extends TestCase
             $memberResolver,
             new BasicTypeResolver($memberResolver, new DefaultFunctionRepository()),
             new DefaultFunctionRepository(),
+            new DeclarationScanner(),
         );
     }
 

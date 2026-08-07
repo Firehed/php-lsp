@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
@@ -73,6 +74,7 @@ final class SymbolResolverTest extends TestCase
             memberResolver: $memberResolver,
             typeResolver: $typeResolver,
             functionRepository: new DefaultFunctionRepository(),
+            declarationScanner: new DeclarationScanner(),
         );
 
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);

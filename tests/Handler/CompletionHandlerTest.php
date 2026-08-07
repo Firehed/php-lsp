@@ -25,6 +25,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
@@ -91,6 +92,7 @@ class CompletionHandlerTest extends TestCase
             $memberResolver,
             $typeResolver,
             new DefaultFunctionRepository(),
+            new DeclarationScanner(),
         );
         $this->handler = $this->makeHandler($this->symbolSource);
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
