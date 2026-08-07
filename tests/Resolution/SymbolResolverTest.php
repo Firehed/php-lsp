@@ -2542,6 +2542,29 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testGetNameContextKeepsCollidingImportsInBothTables(): void
+    {
+        // Both tables are asserted whole: a single folded map answers one of them
+        // correctly whichever import it lets win, so checking only the class side
+        // would accept a fold that happened to be ordered in its favour.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'colliding_partial');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getNameContext($document, $cursor['line']);
+
+        self::assertSame(
+            ['Widget' => 'Fixtures\Namespacing\Models\Widget'],
+            $context->classImports,
+            'The class import keeps the short name in the class table',
+        );
+        self::assertSame(
+            ['Widget' => 'Fixtures\Namespacing\Helpers\Widget'],
+            $context->functionImports,
+            'The function import of the same short name keeps its own table',
+        );
+    }
+
     public function testGetNameContextAfterTheLastStatementOfASemicolonNamespace(): void
     {
         $uri = $this->openFixture('Namespacing/FileWide.php');
