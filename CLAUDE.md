@@ -43,7 +43,7 @@ All symbol resolution flows through the `CodeResolver` interface (implemented by
 - `getCallContext(doc, line, char): ?CallContext` — SignatureHelp, named-argument completion
 
 **File queries** (parser-agnostic; keep completion sources off the raw AST):
-- `getImports(doc): array<string, string>` — `use` imports as short name => FQCN
+- `getNameContext(doc, line): NameContext` — the namespace and the three import tables in effect
 - `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document
 
 **Type checks:**
