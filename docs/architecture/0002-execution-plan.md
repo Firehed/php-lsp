@@ -731,6 +731,18 @@ Consumer migration (construction moves to `Server.php`):
   twenty lines twice and `OpenDocumentBackend` two parallel array pairs. S3.8d reverts that
   shape before a third kind triples it. Do not re-derive the discarded reading from the
   facade's closed method set.
+
+  *The shape, so S3.8d does not have to invent it.* The backend takes
+  `lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo`, where `SymbolInfo` is a new
+  marker on `ClassInfo`, `FunctionInfo` and the global-constant info type. `Formattable`
+  is already on all three and must not be reused for this: it is about rendering, not
+  about being a symbol. The facade's typed method narrows the result once, with an
+  `assert`. That is O(kinds) narrowings at a single site against the O(kinds × backends)
+  methods the discarded shape produces, which is the whole of the guardrail — a narrowing
+  the facade already knows the answer to is not the cost being avoided. §4.5's `instanceof`
+  ban is scoped to concrete `Type` implementations and `ClassInfo` is not a `Type`, so the
+  assert is in bounds; it is recorded here because a conformance reviewer would otherwise
+  be right to flag it.
 - **No `lookupNamespace`.** A namespace has no declaration site; it exists iff
   something is declared under it. "What is in `Psr\Log`" is `childrenOf`, and
   existence is that being non-empty (add a thin `namespaceExists` only if hot).
