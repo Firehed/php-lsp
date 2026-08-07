@@ -100,7 +100,7 @@ final class Server
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;
 
-        $functionRepository = new DefaultFunctionRepository();
+        $functionRepository = new DefaultFunctionRepository(new DeclarationScanner());
         $memberResolver = new MemberResolver($symbolSource);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
 

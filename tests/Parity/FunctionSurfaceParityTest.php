@@ -86,8 +86,8 @@ final class FunctionSurfaceParityTest extends TestCase
             $parser,
             $knowledge->source,
             $memberResolver,
-            new BasicTypeResolver($memberResolver, new DefaultFunctionRepository()),
-            new DefaultFunctionRepository(),
+            new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner())),
+            new DefaultFunctionRepository(new DeclarationScanner()),
             new DeclarationScanner(),
         );
     }

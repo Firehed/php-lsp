@@ -42,13 +42,13 @@ class DefinitionHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
         $symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
             $typeResolver,
-            new DefaultFunctionRepository(),
+            new DefaultFunctionRepository(new DeclarationScanner()),
             new DeclarationScanner(),
         );
         $this->handler = new DefinitionHandler(

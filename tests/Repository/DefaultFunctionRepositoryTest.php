@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -23,7 +24,7 @@ class DefaultFunctionRepositoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->repository = new DefaultFunctionRepository();
+        $this->repository = new DefaultFunctionRepository(new DeclarationScanner());
     }
 
     /**

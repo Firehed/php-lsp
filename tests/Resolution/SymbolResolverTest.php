@@ -66,14 +66,14 @@ final class SymbolResolverTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
             typeResolver: $typeResolver,
-            functionRepository: new DefaultFunctionRepository(),
+            functionRepository: new DefaultFunctionRepository(new DeclarationScanner()),
             declarationScanner: new DeclarationScanner(),
         );
 
