@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\NameKind;
+use PhpParser\Node;
 
 /**
  * Locates a declaration in Composer's `autoload.files` set, by deriving the
@@ -118,11 +119,12 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
     }
 
     /**
-     * @param list<QualifiedName> $names
+     * @param list<Declaration<Node>> $declarations
      */
-    private function record(NameKind $kind, array $names, string $path): void
+    private function record(NameKind $kind, array $declarations, string $path): void
     {
-        foreach ($names as $name) {
+        foreach ($declarations as $declaration) {
+            $name = $declaration->name;
             $key = $kind->normalize($name);
 
             // Composer requires the entries in order, so the first declaration of a
