@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -45,6 +46,7 @@ final class DocumentSymbolSinkTest extends TestCase
             $this->index,
             new DefaultClassInfoFactory(),
             $parser,
+            new DeclarationScanner(),
         );
     }
 
@@ -282,6 +284,7 @@ final class DocumentSymbolSinkTest extends TestCase
             $this->index,
             new DefaultClassInfoFactory(),
             $parser,
+            new DeclarationScanner(),
             array_values($onDiskBackends),
         );
     }

@@ -44,7 +44,7 @@ All symbol resolution flows through the `CodeResolver` interface (implemented by
 
 **File queries** (parser-agnostic; keep completion sources off the raw AST):
 - `getNameContext(doc, line): NameContext` — the namespace and the three import tables in effect
-- `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document
+- `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document, at any depth
 
 **Type checks:**
 - `isInstantiable(ClassName): bool` — valid after `new`
@@ -138,6 +138,14 @@ derive the map; it is built eagerly, covers all three symbol namespaces (a name-
 route cannot know which kind a file declares), and applies PHP's per-kind case rules via
 `NameKind::normalize()`. A test pins the parse *count* at construction, which is
 not a cost measurement; the set is explicit and usually tiny.
+
+**"Which node declares this name" is answered in exactly one place**, `Index\DeclarationScanner`,
+which reports every class-like, function and constant an AST declares — at any depth,
+paired with its declaring node (`Declaration`). Lookup, the write path, and completion's
+file-function query all read it, so none can disagree about what a file declares. Five
+hand-written traversals is how a `function_exists`-guarded polyfill came to resolve on
+hover while being invisible to completion. Do NOT write a new one; a rule about what
+counts as a declaration is a change to the scanner.
 
 The same derived index also answers the backend's `childrenOf`, merged with the
 directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: §4.2

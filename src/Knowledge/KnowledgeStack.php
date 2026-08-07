@@ -79,6 +79,7 @@ final readonly class KnowledgeStack
             $index,
             $classInfoFactory,
             $parser,
+            $scanner,
             // External-change and close-after-edit invalidation drops the on-disk
             // cache for a file so the next query re-reads disk (RFC 1 §5.2, §5.3).
             // The open-document backend is authoritative and never cached, so it is
@@ -121,6 +122,7 @@ final readonly class KnowledgeStack
             ),
             $parser,
             $classInfoFactory,
+            $scanner,
             CacheFactory::inMemory(),
         );
     }

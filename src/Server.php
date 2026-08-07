@@ -25,6 +25,7 @@ use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
@@ -99,7 +100,7 @@ final class Server
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;
 
-        $functionRepository = new DefaultFunctionRepository();
+        $functionRepository = new DefaultFunctionRepository(new DeclarationScanner());
         $memberResolver = new MemberResolver($symbolSource);
         $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
 
@@ -109,6 +110,7 @@ final class Server
             $memberResolver,
             $typeResolver,
             $functionRepository,
+            new DeclarationScanner(),
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);

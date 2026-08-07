@@ -7,6 +7,8 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Index\Declaration;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -79,6 +81,7 @@ final class SymbolResolver implements CodeResolver
         private readonly MemberResolver $memberResolver,
         private readonly TypeResolverInterface $typeResolver,
         private readonly FunctionRepository $functionRepository,
+        private readonly DeclarationScanner $declarationScanner,
     ) {
         $this->textFallback = new TextFallbackHelper($memberResolver);
     }
@@ -661,14 +664,10 @@ final class SymbolResolver implements CodeResolver
             // @codeCoverageIgnoreEnd
         }
 
-        $functions = [];
-        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\Function_) {
-                $functions[] = FunctionInfo::fromNode($stmt);
-            }
-        }
-
-        return $functions;
+        return array_map(
+            static fn(Declaration $declaration): FunctionInfo => FunctionInfo::fromNode($declaration->node),
+            $this->declarationScanner->scan($ast)->functions,
+        );
     }
 
     /**
