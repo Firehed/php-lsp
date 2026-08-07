@@ -2089,8 +2089,6 @@ final class SymbolResolverTest extends TestCase
     public function testGetMemberAccessContextResolvesGroupUseStatic(): void
     {
         // Group use: use Fixtures\Domain\{User, Team};
-        // ScopeFinder::resolveFromUseStatements doesn't handle GroupUse,
-        // so text-based resolution should handle it.
         $this->openFixture('src/Domain/User.php');
         $cursor = $this->openFixtureAtCursor('src/IncompleteCode/GroupImports.php', 'group_static_access');
         $document = $this->documents->get($cursor['uri']);

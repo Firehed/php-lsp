@@ -12,7 +12,7 @@ class NoUseStatementTest
 
     public function testMultiPartClassName(): void
     {
-        // Multi-part class name triggers early return in resolveFromUseStatements
+        // Multi-part class name matches no import and has no namespace to prefix
         new Some\Unknown\Class_(/*|multi_part_class*/
     }
 
