@@ -275,7 +275,10 @@ Step 4 (Section 6).
   `lookupFunction` MUST also answer function `search`, so a name resolvable on hover
   is offered in completion (§4.2). For `FilesystemBackend` that means the derived
   `autoload.files` index — its empty `searchClassLikes` is scoped to the PSR-4 tree,
-  which needs a workspace walk (§3), not to every kind. This step **both changes and
+  which needs a workspace walk (§3), not to every kind. **S3.8d carries the mechanism**
+  that makes this general — §8.1's backend × kind × query grid — after which this clause
+  describes what the test asserts rather than a rule to remember.
+  This step **both changes and
   preserves** behavior on the function surface: the added project reach is new
   (proven by **new fixtures**), but built-in and open-document function completion is
   *existing* behavior that must not regress. So the function-surface golden (Step P)
@@ -293,6 +296,37 @@ Step 4 (Section 6).
   disk rather than restoring the pre-edit cache (§5.3). When the client does not
   support watched-file notifications, the fallback (lazy re-read vs. no invalidation)
   is an open decision (§7).
+
+*Regression tests the 3b corrections owe.* Each of the following fixes a defect that is
+invisible to a green suite, so the slice is not done until its test exists and has been
+shown to fail against the code it replaces. `/review-slice` checks for these by name.
+
+- **SC.2** — a class and a function sharing a short name, both imported in one file,
+  resolve independently. Fails today: `extractImports` folds the three import tables into
+  one.
+- **SC.5** — a function declared inside `if (!function_exists(...))` appears in completion,
+  not only on hover. This is the one correction here that **changes** behaviour: it
+  rewrites the function-surface golden S3.6 froze, and every other golden stays frozen.
+  Recapture deliberately and review that diff rather than accepting it.
+- **SC.6** — two constants differing only in case stay distinct through every key derived
+  from a symbol name: the composite's search merge and subtype visited set, and the
+  namespace enumeration path. It fails against today's code, not only once constants are
+  looked up — `CatalogSymbol` carries `NameKind::Constant` and S3.7e enumerates constants,
+  so `NamespaceContents::merge` collapses `Foo\BAR` and `Foo\bar` already.
+- **S3.8d** — the §5.1 coverage grid, §8.1's mechanism for that invariant. Its axes are
+  **derived, not listed**: rows from the composite's own ordered backend list, columns from
+  `NameKind::cases()` crossed with the query set (`lookup`, `search`, `childrenOf`). Every
+  cell is either an assertion over the fixtures or a not-applicable registration naming its
+  blocker as a slice id or an RFC section, and an **unregistered cell fails** — which is
+  what makes a new kind or a new backend break the grid rather than leave a hole in it. A
+  hand-listed grid enforces nothing a hand-written clause did not.
+
+  SZ.1 requires every surviving not-applicable to still name a live deferral, so the block
+  `searchClassLikes` carries until S3.9b and the §3 workspace walk cannot calcify into a
+  permanent exemption.
+
+  S3.8b's proof — **its diff touches no `SymbolBackend` implementation** — is a claim about
+  the diff's shape rather than a test, so it is checked by reading the diff.
 
 *Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
 environment-parameterized, so it does **not** satisfy §4.7 — it cannot answer for a
@@ -328,6 +362,38 @@ below the glue, not beside the handler.
 **not "`SymbolResolver` is thin" alone**; the positional layer lands as cohesive,
 independently testable units (e.g. node locator, scope analyzer, member-access
 detector, call-context detector, name-context resolver, text fallback).
+
+*Named duplication this step must remove.* The following already exists across
+`SymbolResolver`, `TextFallbackHelper`, `ScopeFinder` and `Scope`. It belongs on these
+rows rather than in an `SC.*` slice, because the decomposition rewrites exactly these
+sites; naming it is what stops the step being declared done with every one intact, since
+"the class is thin now" says nothing about where its contents went.
+
+- **S4.2 — one node locator.** "Innermost node containing an offset" exists three times:
+  `Index\NodeAtPosition` (unfiltered), `Scope::findEnclosingFunctionLike` (filtered to
+  function-likes), `SymbolResolver::findCallAtPosition` (filtered to call nodes, plus
+  argument analysis). Identical containment predicate, identical last-write-wins descent.
+  One locator taking a type filter serves all three; the argument analysis is genuinely
+  extra and stays with the call-context detector.
+- **S4.4 — one answer per positional question.** "Find the enclosing class at a line"
+  exists three times **and all three disagree on which nodes count**:
+  `ScopeFinder::findClassAtLine` (`Stmt\Class_` only),
+  `SymbolResolver::findEnclosingClassForLine` (class, trait, enum), and
+  `TextFallbackHelper::findEnclosingClassFromContent` (all four, by regex). That is a
+  "works in a class, not in a trait" defect standing in the code now, so its tests must
+  cover a trait and an interface, not only a class. "Find the namespace at a line" exists
+  twice, and the text copy mishandles braced namespaces, which the AST one documents
+  carefully. "Short name to FQN via imports then namespace" exists twice
+  (`SymbolResolver::resolveNameFromText`, `TextFallbackHelper::resolveClassName`).
+- **S4.5 — the text fallback keeps its resilience, not its copies.**
+  `extractMethods` / `extractProperties` / `extractConstants` repeat the visibility,
+  static and filter logic three times. `getInheritedMembers` duplicates
+  `SymbolResolver::getMembersForClass` **and diverges from it** — it omits enum cases, so
+  inherited enum cases vanish whenever the fallback path is taken.
+  `extractUseStatementsFromText` re-derives PHP's `use` grammar (group use, aliases,
+  partial qualification) in ~65 lines of regex. That last one is legitimate where no AST
+  exists, so the requirement is that it share the *shape* of the AST path, not that it be
+  deleted.
 
 ### Step 5 — Environment-parameterized built-ins (deferred; tracked §4.7 gap)
 
@@ -418,6 +484,11 @@ known-removable thing without an owning slice is the same defect as an undischar
 scaffold. A remover must be a slice id; a prose note is not an owner, because
 `/do-next` cannot select one.
 
+**This ledger is not a duplication register, and must not be read as one.** It tracks
+what this plan knowingly introduced, and is structurally blind to everything that was
+already there. Only the audits below reach that, which is why they are gates rather than
+suggestions.
+
 ### Duplication audits
 
 The ledger above tracks scaffolding *this plan knowingly introduced*.
@@ -451,6 +522,13 @@ The terminal audit in **Step Z** may not: there, an unowned *or* unfixed duplica
 
 An audit reporting no findings must show the enumeration it ran.
 "None found" without evidence is indistinguishable from not looking, which is exactly how these survived to be found by audit in the first place.
+
+**The enumeration has a floor**, set by what the audits have actually caught rather than by what seems thorough.
+It must cover, at minimum: AST traversal (every `NodeVisitorAbstract`, `NodeTraverser` and `NodeFinder` site), namespace and FQN construction (`Stmt\Namespace_` handling against the parser's `namespacedName`), case normalization (`strtolower` / `strcasecmp` on a symbol name, against `NameKind::normalize`), prefix matching, member-hierarchy walks, and path/URI conversion.
+
+Two questions distinguish a duplicate that is worth folding from one that is a defect, and the audits must ask both.
+Not "is this the same code" but **"do these agree?"** — copies that agree are redundant, and copies that disagree are serving a wrong answer on whichever surface reaches the wrong one.
+And not "is this reachable" but **"which of these does each surface reach?"** — a mechanism duplicated across an AST path and a text-fallback path is two answers to one question, and the fallback is where a divergence hides, because it only runs on code the parser could not handle.
 
 ### Step Z — Definition of Done (final verification gate)
 
@@ -489,6 +567,10 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5), the
   workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266), and
   computed-name `define()` (§3). A gap not on this list is a bug, not a deferral.
+  The §5.1 coverage grid is read against this list: every cell still registered
+  not-applicable must name one of these deferrals, so a registration whose blocker has
+  landed fails the gate. Otherwise the grid's own escape hatch outlives what it was
+  granted for, and a hole is certified rather than exposed.
 
 Only when all seven hold is the foundation deemed complete.
 
@@ -636,19 +718,38 @@ Consumer migration (construction moves to `Server.php`):
   carries a `ClassKind` discriminator. A future struct is a new `ClassKind` case
   reached through the same method, predicates, and `supertypes()` traversal (§4.5) —
   not a new method.
-- **The method set is closed.** PHP has exactly three symbol namespaces, so the
-  lookup set is those three and cannot grow with new kinds. That is the structural
-  answer to "do per-kind methods recreate M×N": they mirror the language's own
-  symbol table, which does not expand.
+- **Per-kind at the facade, kind-parameterized at the backends.** These are different
+  answers to the same question, and the split is deliberate.
+
+  `SymbolSource` carries a typed method per kind, and that set is **closed**: PHP has
+  exactly three symbol namespaces, so it cannot grow with new kinds, and §5.1 requires a
+  concrete return type rather than a type-erased union. That is the structural answer to
+  "do per-kind methods recreate M×N" *at the facade*.
+
+  It is not the answer one layer down. `SymbolBackend` takes **one** kind-parameterized
+  lookup, because the kind changes only the case rule (`NameKind::normalize`), the
+  unqualified-fallback rule, and which factory builds the metadata — never how a declaring
+  file is found or how a namespace is listed. Three cross-products stay closed:
+  *consumers × kinds* (one kind-dispatch point in the glue, per §4.5's syntactic-position
+  routing), *backends × kinds*, and *kinds × operations*. A new kind is a name type, an
+  info type, and one factory case — never a change to every backend.
+
+  **Do not re-derive the per-kind backend method from the facade's closed method set.**
+  That reading is the one the guardrail exists to rule out; `SymbolBackend` carries it
+  today and S3.8d removes it, before a third kind triples the copies.
+
+  *The shape, so S3.8d does not have to invent it.* The backend takes
+  `lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo`, where `SymbolInfo` is a new
+  marker on `ClassInfo`, `FunctionInfo` and the global-constant info type. `Formattable`
+  is already on all three and must not be reused for this: it is about rendering, not
+  about being a symbol. The facade's typed method narrows the result once, with an
+  `assert`: O(kinds) narrowings at one site, against the O(kinds × backends) methods the
+  per-kind shape produces. §4.5's `instanceof` ban is scoped to concrete `Type`
+  implementations and `ClassInfo` is not a `Type`, so the assert is in bounds — recorded
+  here because a conformance reviewer would otherwise be right to flag it.
 - **No `lookupNamespace`.** A namespace has no declaration site; it exists iff
   something is declared under it. "What is in `Psr\Log`" is `childrenOf`, and
   existence is that being non-empty (add a thin `namespaceExists` only if hot).
-- **Backends stay kind-agnostic — the M×N guardrail.** Two cross-products must stay
-  closed: *consumers × kinds* (one kind-dispatch point in the glue, per §4.5's
-  syntactic-position routing) and *backends × kinds* (backends resolve uniformly —
-  one `resolve(QualifiedName, NameKind)` — with the typed `ClassInfo` / `FunctionInfo`
-  constructed at the facade via the existing factories, §4.6). A new kind is then a
-  factory + a facade accessor, never a change to every backend.
 
 ### 5.7. Why functions and constants are deferred to Step 3
 

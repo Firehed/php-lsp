@@ -117,8 +117,13 @@ per-backend PSR-16 policy (`src/Cache/`); on-disk and built-in results are cache
 documents never. A cache key carries the `NameKind` (`SymbolCacheKey`): PHP's three
 symbol namespaces are independent, so a class and a function may share a name.
 
-Lookup is **per-kind**, taking a name type that carries its kind (`ClassName`,
-`FunctionName`) rather than a name plus a `NameKind` argument. `lookupFunction` reaches
+Lookup is **per-kind at the `SymbolSource` facade** — a typed method per kind, taking a
+name type that carries its kind (`ClassName`, `FunctionName`), because RFC 1 §5.1 requires
+a concrete return type rather than a type-erased union — and **kind-parameterized at
+`SymbolBackend`**, so a new kind is never a change to every backend. The backends still
+carry a method per kind today; S3.8d collapses them (Plan 0002 §5.6). Do not read the
+facade's closed method set as licence to add a per-kind backend method.
+`lookupFunction` reaches
 open documents, the `autoload.files` set, and PHP's built-ins — the last filtered to
 `isInternal()`, because reflection also sees the functions the *server's* own
 dependencies declare, which are not the project's. A function in an unopened PSR-4 file
