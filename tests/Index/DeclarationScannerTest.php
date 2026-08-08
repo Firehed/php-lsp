@@ -315,6 +315,11 @@ final class DeclarationScannerTest extends TestCase
         $beta = $declarations->constants[2];
         self::assertSame('FIXTURE_GLOBAL_BETA', $beta->name->shortName, 'the third constant is the second declarator');
         self::assertInstanceOf(Node\Const_::class, $beta->node, 'the declarator is the node, not its statement');
+        self::assertSame(
+            'FIXTURE_GLOBAL_BETA',
+            $beta->node->name->toString(),
+            'the node is this name\'s own declarator, not the first one its statement holds',
+        );
 
         self::assertInstanceOf(
             Expr\FuncCall::class,
