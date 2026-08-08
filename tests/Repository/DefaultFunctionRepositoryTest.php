@@ -65,6 +65,14 @@ class DefaultFunctionRepositoryTest extends TestCase
             'calculateSum',
             'calculateSum',
         ];
+        // A polyfill declares itself only where the runtime lacks it, so the
+        // declaration is nested; the on-disk backends resolve one, and a walk
+        // narrowed to top-level statements here would disagree with them.
+        yield 'namespaced user function declared below the top level' => [
+            'src/Completion/FunctionCompletion.php',
+            'calculateProduct',
+            'calculateProduct',
+        ];
         yield 'built-in function via reflection' => [
             'TypeInference/GlobalFunction.php',
             'strlen',
