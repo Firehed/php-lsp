@@ -22,6 +22,7 @@
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^12.5.22",
+        "spaze/phpstan-disallowed-calls": "^4.14",
         "squizlabs/php_codesniffer": "^4.0"
     },
     "autoload": {
@@ -40,6 +41,7 @@
         "unit": "phpunit",
         "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
+        "phpstan-baseline": "phpstan analyze --generate-baseline",
         "test": [
             "@phpstan",
             "@unit",

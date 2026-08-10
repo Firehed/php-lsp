@@ -1,0 +1,223 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Calling get_defined_functions\(\) is forbidden, runtime symbol enumeration is confined to BuiltinBackend and ReflectionNamespaceSource\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Completion/FunctionCandidates.php
+
+		-
+			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Completion/NamedArgumentCandidates.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 2
+			path: src/Completion/PrefixMatcher.php
+
+		-
+			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Domain/ClassName.php
+
+		-
+			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Domain/MethodName.php
+
+		-
+			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
+			identifier: disallowed.function
+			count: 2
+			path: src/Handler/CompletionHandler.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/AutoloadFilesLocator.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/CachedNamespaceCatalog.php
+
+		-
+			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/ComposerNamespaceSource.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 4
+			path: src/Index/ComposerNamespaceSource.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 5
+			path: src/Index/NamespaceContents.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/ReflectionNamespaceSource.php
+
+		-
+			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 1
+			path: src/Index/SymbolExtractor.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Index/SymbolExtractor.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeVisitorAbstract is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\. \[PhpParser\\NodeVisitorAbstract matches PhpParser\\NodeVisitor\*\]$#'
+			identifier: disallowed.namespace
+			count: 2
+			path: src/Index/SymbolExtractor.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 5
+			path: src/Index/SymbolIndex.php
+
+		-
+			message: '#^Calling file_get_contents\(\) is forbidden, filesystem access is confined\: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/WorkspaceIndexer.php
+
+		-
+			message: '#^Calling is_dir\(\) is forbidden, filesystem access is confined\: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/WorkspaceIndexer.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/WorkspaceNamespaceSource.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 2
+			path: src/Knowledge/CompositeSymbolSource.php
+
+		-
+			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
+			identifier: disallowed.class
+			count: 1
+			path: src/Repository/DefaultFunctionRepository.php
+
+		-
+			message: '#^Namespace ReflectionException is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionException matches Reflection\*\]$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Repository/DefaultFunctionRepository.php
+
+		-
+			message: '#^Namespace ReflectionFunction is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Repository/DefaultFunctionRepository.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Repository/MemberResolver.php
+
+		-
+			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Resolution/ReferenceResolver.php
+
+		-
+			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
+			identifier: disallowed.function
+			count: 8
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Class PhpParser\\NodeFinder is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeFinder is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeVisitorAbstract is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\. \[PhpParser\\NodeVisitorAbstract matches PhpParser\\NodeVisitor\*\]$#'
+			identifier: disallowed.namespace
+			count: 2
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 2
+			path: src/Resolution/TextFallbackHelper.php
+
+		-
+			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 2
+			path: src/TypeInference/BasicTypeResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/TypeInference/BasicTypeResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeVisitorAbstract is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\. \[PhpParser\\NodeVisitorAbstract matches PhpParser\\NodeVisitor\*\]$#'
+			identifier: disallowed.namespace
+			count: 2
+			path: src/TypeInference/BasicTypeResolver.php
+
+		-
+			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Utility/NamespacePath.php

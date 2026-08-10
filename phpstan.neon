@@ -1,7 +1,112 @@
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/spaze/phpstan-disallowed-calls/extension.neon
+    - phpstan-baseline.neon
 
 parameters:
+    # Default-deny capability confinement: each mechanism below is usable only in
+    # its named home(s). A new use elsewhere is a duplicate implementation waiting
+    # to happen — extend the authority instead, or (rarely) widen the allowlist.
+    # Existing violations are frozen in phpstan-baseline.neon (regenerate with
+    # `composer phpstan-baseline`) and drain via their owning slices; the
+    # baseline must only shrink.
+    disallowedNamespaces:
+        -
+            namespace: 'PhpParser\NodeTraverser'
+            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/NodeAtPosition.php
+                - src/Index/DeclarationScanner.php
+                - src/Utility/Scope.php
+                - src/Utility/ScopeFinder.php
+                - tests/*
+        -
+            namespace: 'PhpParser\NodeFinder'
+            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/NodeAtPosition.php
+                - src/Index/DeclarationScanner.php
+                - src/Utility/Scope.php
+                - src/Utility/ScopeFinder.php
+                - tests/*
+        -
+            namespace: 'Reflection*'
+            message: 'runtime reflection is confined: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories'
+            allowIn:
+                - src/Knowledge/BuiltinBackend.php
+                - src/Index/ReflectionNamespaceSource.php
+                - src/Repository/ClassInfoFactory.php
+                - src/Repository/DefaultClassInfoFactory.php
+                - src/Utility/TypeFactory.php
+                - src/Domain/FunctionInfo.php
+                - src/Domain/ParameterInfo.php
+                - tests/*
+        -
+            namespace: 'PhpParser\NodeVisitor*'
+            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/NodeAtPosition.php
+                - src/Index/DeclarationScanner.php
+                - src/Utility/Scope.php
+                - src/Utility/ScopeFinder.php
+                - tests/*
+
+    disallowedFunctionCalls:
+        -
+            function:
+                - 'strtolower()'
+                - 'strcasecmp()'
+                - 'mb_strtolower()'
+            message: 'case rules for symbol names live in NameKind; non-symbol uses may be allowlisted here consciously'
+            allowIn:
+                - src/Resolution/NameKind.php
+                - src/Transport/MessageReader.php # HTTP header names
+                - src/Domain/Visibility.php # visibility keywords
+                - tests/*
+        -
+            function:
+                - 'preg_match()'
+                - 'preg_match_all()'
+                - 'preg_replace()'
+                - 'preg_split()'
+                - 'preg_quote()'
+            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, TextFallbackHelper'
+            allowIn:
+                - src/Completion/CompletionClassifier.php
+                - src/Utility/DocblockParser.php
+                - src/Resolution/TextFallbackHelper.php
+                - tests/*
+        -
+            function:
+                - 'get_defined_functions()'
+                - 'get_declared_classes()'
+                - 'get_defined_constants()'
+            message: 'runtime symbol enumeration is confined to BuiltinBackend and ReflectionNamespaceSource'
+            allowIn:
+                - src/Knowledge/BuiltinBackend.php
+                - src/Index/ReflectionNamespaceSource.php
+                - tests/*
+        -
+            function:
+                - 'file_get_contents()'
+                - 'file_exists()'
+                - 'is_file()'
+                - 'is_dir()'
+                - 'scandir()'
+                - 'glob()'
+                - 'fopen()'
+                - 'realpath()'
+            message: 'filesystem access is confined: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/ComposerAutoloadMap.php
+                - src/Index/ComposerNamespaceSource.php
+                - src/Transport/*
+                - tests/*
+
     level: max
     paths:
         - src
