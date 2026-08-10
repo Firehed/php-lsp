@@ -1,6 +1,12 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Completion/NamedArgumentCandidates.php
+
+		-
 			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 2
@@ -17,6 +23,12 @@ parameters:
 			identifier: disallowed.function
 			count: 1
 			path: src/Domain/MethodName.php
+
+		-
+			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
+			identifier: disallowed.function
+			count: 2
+			path: src/Handler/CompletionHandler.php
 
 		-
 			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
@@ -101,6 +113,12 @@ parameters:
 			identifier: disallowed.function
 			count: 1
 			path: src/Resolution/ReferenceResolver.php
+
+		-
+			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
+			identifier: disallowed.function
+			count: 8
+			path: src/Resolution/SymbolResolver.php
 
 		-
 			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'

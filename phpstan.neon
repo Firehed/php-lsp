@@ -54,6 +54,19 @@ parameters:
                 - src/Transport/MessageReader.php # HTTP header names
                 - src/Domain/Visibility.php # visibility keywords
                 - tests/*
+        -
+            function:
+                - 'preg_match()'
+                - 'preg_match_all()'
+                - 'preg_replace()'
+                - 'preg_split()'
+                - 'preg_quote()'
+            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, TextFallbackHelper'
+            allowIn:
+                - src/Completion/CompletionClassifier.php
+                - src/Utility/DocblockParser.php
+                - src/Resolution/TextFallbackHelper.php
+                - tests/*
 
     level: max
     paths:
