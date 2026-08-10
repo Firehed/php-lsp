@@ -99,6 +99,7 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
     SC.7   —     Six member-hierarchy walks -> one                   —                 —
     SC.8   —     Prefix matching: SymbolIndex -> PrefixMatcher       —                 —
+    SC.10  —     Enforce the one-declaration-scanner rule            SC.3,SC.9         —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -283,6 +284,15 @@ Notes:
     and stays; the *walk* over them was never centralised, so a new member kind adds two
     more copies. Outside Step 4's scope — that step decomposes `src/Resolution/`, this is
     `src/Repository/`.
+  - **SC.10** — SC.5 states a hard invariant ("Do NOT write a new one; a rule about what
+    counts as a declaration is a change to the scanner") with no mechanism, which §8.1
+    forbids where a static rule or test is feasible. One is: a PHPStan rule confining
+    `NodeVisitorAbstract` / `NodeFinder` / `NodeTraverser` to the parser, the positional
+    finders, and `DeclarationScanner`, in the shape of the existing
+    `SymbolDiscoveryAuthorityExtension`. Gated on its two known violators (SC.3's
+    `SymbolExtractor`, SC.9's `classesIn`) because a rule that must ship with two
+    exemptions enforces nothing. The analogue to follow is `TypeGraphParityTest`, which is
+    how the sibling single-traversal invariant on `supertypes()` is held.
   - **SC.8** — `Completion\PrefixMatcher::matches` and `SymbolIndex::findByPrefix` both
     hand-roll `str_starts_with(strtolower(...))`. SC.6 owns the `strtolower` half (it is
     the same per-kind case rule); what is left here is the duplicated *matching* helper, so
