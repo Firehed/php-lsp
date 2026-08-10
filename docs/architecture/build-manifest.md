@@ -268,6 +268,14 @@ Notes:
     S3.7e enumerates constants from the derived `autoload.files` index. The row is the case
     rule everywhere rather than one class, so the collapse cannot survive on the
     enumeration path for S3.8b to land on top of. Ahead of S3.8b for that reason.
+
+    Also here: `FilesystemBackend::parseClassFrom` compares raw fully-qualified names,
+    while `lookupClassLike` keys its cache through `SymbolCacheKey` — which *does*
+    normalize — and the sibling `parseFunctionFrom` normalizes both sides. So a wrong-case
+    class lookup misses on a cold cache and hits once a correct-case lookup has warmed the
+    same key, and `OpenDocumentBackend` answers a name this backend does not. Predates SC.5
+    (the deleted `findClassInAst` compared raw strings too) and is unpinned in either
+    direction, so the fix owes a test.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over
