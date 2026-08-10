@@ -24,3 +24,20 @@ jobs:
 
       - name: PHPStan
         run: composer phpstan -- --error-format=github
+
+  deptrac:
+    runs-on: ubuntu-latest
+    name: Deptrac
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Deptrac
+        run: composer deptrac -- -f github-actions

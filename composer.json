@@ -19,6 +19,7 @@
         "symfony/cache": "^7 || ^8"
     },
     "require-dev": {
+        "deptrac/deptrac": "^4.7",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^12.5.22",
@@ -42,8 +43,11 @@
         "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
         "phpstan-baseline": "phpstan analyze --generate-baseline",
+        "deptrac": "deptrac analyse --no-progress",
+        "deptrac-baseline": "deptrac analyse --no-progress -f baseline -o deptrac.baseline.yaml",
         "test": [
             "@phpstan",
+            "@deptrac",
             "@unit",
             "@phpcs"
         ]

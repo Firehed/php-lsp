@@ -1,0 +1,144 @@
+imports:
+  - deptrac.baseline.yaml
+
+deptrac:
+  paths:
+    - src
+  # Layer-dependency contract (default-deny): an edge not listed in the ruleset
+  # fails analysis. Existing violations are frozen in deptrac.baseline.yaml
+  # (regenerate with `composer deptrac-baseline`) and must only shrink.
+  # ServerInfo is deliberately unlayered: it is a value Protocol/Capability carry.
+  layers:
+    - name: Root
+      collectors:
+        - type: classLike
+          value: ^Firehed\\PhpLsp\\Server$
+    - name: Cache
+      collectors:
+        - { type: directory, value: src/Cache/.* }
+    - name: Capability
+      collectors:
+        - { type: directory, value: src/Capability/.* }
+    - name: Client
+      collectors:
+        - { type: directory, value: src/Client/.* }
+    - name: Completion
+      collectors:
+        - { type: directory, value: src/Completion/.* }
+    - name: Document
+      collectors:
+        - { type: directory, value: src/Document/.* }
+    - name: Domain
+      collectors:
+        - { type: directory, value: src/Domain/.* }
+    - name: Handler
+      collectors:
+        - { type: directory, value: src/Handler/.* }
+    - name: Index
+      collectors:
+        - { type: directory, value: src/Index/.* }
+    - name: Knowledge
+      collectors:
+        - { type: directory, value: src/Knowledge/.* }
+    - name: Parser
+      collectors:
+        - { type: directory, value: src/Parser/.* }
+    - name: Protocol
+      collectors:
+        - { type: directory, value: src/Protocol/.* }
+    - name: Repository
+      collectors:
+        - { type: directory, value: src/Repository/.* }
+    - name: Resolution
+      collectors:
+        - { type: directory, value: src/Resolution/.* }
+    - name: Transport
+      collectors:
+        - { type: directory, value: src/Transport/.* }
+    - name: TypeInference
+      collectors:
+        - { type: directory, value: src/TypeInference/.* }
+    - name: Utility
+      collectors:
+        - { type: directory, value: src/Utility/.* }
+  ruleset:
+    Root:
+      - Cache
+      - Capability
+      - Client
+      - Completion
+      - Document
+      - Handler
+      - Index
+      - Knowledge
+      - Parser
+      - Protocol
+      - Repository
+      - Resolution
+      - Transport
+      - TypeInference
+    Handler:
+      - Capability
+      - Completion
+      - Document
+      - Domain
+      - Knowledge # write path only (SymbolSink); the SymbolSource read-side ban is held by the PHPStan rules
+      - Protocol
+      - Resolution
+    Completion:
+      - Capability
+      - Document
+      - Domain
+      - Index
+      - Knowledge
+      - Protocol
+      - Resolution
+      - Utility
+    Resolution:
+      - Document
+      - Domain
+      - Index
+      - Knowledge
+      - Parser
+      - Repository
+      - TypeInference
+      - Utility
+    Knowledge:
+      - Cache
+      - Document
+      - Domain
+      - Index
+      - Parser
+      - Repository
+      - Utility
+    Repository:
+      - Document # FileUri, the path/URI conversion authority
+      - Domain
+      - Knowledge
+      - Utility
+    Index:
+      - Cache
+      - Document
+      - Domain
+      - Knowledge
+      - Parser
+      - Utility
+    TypeInference:
+      - Domain
+      - Repository
+      - Utility
+    Utility:
+      - Domain
+      - TypeInference # ExpressionTypeResolver, the documented TypeResolverInterface wrapper
+    Parser:
+      - Document
+    Document:
+      - Protocol
+    Capability:
+      - Client
+      - Protocol
+    Client:
+      - Protocol
+      - Transport
+    Transport:
+      - Protocol
