@@ -141,17 +141,16 @@ not a cost measurement; the set is explicit and usually tiny.
 
 **"Which node declares this name" is answered by `Index\DeclarationScanner`**, which
 reports every class-like, function and constant an AST declares — at any depth, paired
-with its declaring node (`Declaration`). Every function-namespace consumer reads it:
-on-disk and open-document lookup, the write path, the `autoload.files` index, and
-completion's file-function query, so none can disagree about what a file declares. Five
-hand-written traversals is how a `function_exists`-guarded polyfill came to resolve on
-hover while being invisible to completion. Do NOT write a new one; a rule about what
-counts as a declaration is a change to the scanner.
+with its declaring node (`Declaration`). Every consumer reads it: on-disk and
+open-document lookup, the write path, the `autoload.files` index, and completion's
+file-function query, so none can disagree about what a file declares. Hand-written
+traversals are how a `function_exists`-guarded polyfill came to resolve on hover while
+being invisible to completion, and how its `class_exists` twin dropped out of
+open-document lookup. Do NOT write a new one; a rule about what counts as a declaration
+is a change to the scanner.
 
-Two class-like traversals survive it, both tracked: `DocumentSymbolSink::classesIn`
-(top-level only, so a `class_exists`-guarded class drops out of open-document lookup
-while the on-disk backends resolve it) and `Index\SymbolExtractor`, which rebuilds FQNs
-by hand rather than reading `namespacedName`. Neither is licence for a third.
+One traversal survives it, tracked: `Index\SymbolExtractor` rebuilds FQNs by hand rather
+than reading `namespacedName`. That is not licence for a second.
 
 The same derived index also answers the backend's `childrenOf`, merged with the
 directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: §4.2
@@ -159,11 +158,10 @@ requires lookup and enumeration to draw on the same backends, so a name that res
 on hover while being invisible to completion is the split this tier exists to prevent.
 
 The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers class and
-function metadata and indexes symbols from one document. A *function* declared at any
-depth is registered, not just a top-level one — a polyfill guarded by `function_exists`
-is a name the file validly declares, and the on-disk backends resolve one, so opening
-the file must not make it disappear. Class-like registration is still top-level only
-(see `classesIn` above), which is the same defect awaiting its own slice.
+function metadata and indexes symbols from one document. A declaration at any depth is
+registered, not just a top-level one — a class or function guarded by
+`class_exists`/`function_exists` is a name the file validly declares, and the on-disk
+backends resolve one, so opening the file must not make it disappear.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
 
