@@ -98,6 +98,19 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
+    public function testOpenDocumentRegistersAClassLikeBelowTheTopLevel(): void
+    {
+        // The class-like half of the same rule: the on-disk backends resolve a
+        // `class_exists`-guarded declaration, so an open document must too.
+        $uri = 'file:///MultiClass.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture('MultiClass/MultiClass.php')));
+
+        self::assertNotNull(
+            $this->backend->lookupClassLike(self::className('Fixtures\Completion\ConditionalInMultiFile')),
+            'a conditionally declared class must be registered like any other declaration',
+        );
+    }
+
     public function testUpdatingAwayFromAFunctionDropsItsRegistration(): void
     {
         $uri = 'file:///helpers.php';
