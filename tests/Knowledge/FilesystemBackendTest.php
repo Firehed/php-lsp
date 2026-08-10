@@ -99,6 +99,21 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
+    public function testLookupClassLikeResolvesADeclarationBelowTheTopLevel(): void
+    {
+        // The class-like half of the same rule the function path follows: a
+        // `class_exists`-guarded declaration is a name the file declares, so a scan
+        // narrowed to top-level statements would lose it.
+        $backend = $this->backendWithLocator(
+            $this->locatorReturning($this->fixturesRoot . '/MultiClass/MultiClass.php'),
+        );
+
+        self::assertNotNull(
+            $backend->lookupClassLike(self::className('Fixtures\Completion\ConditionalInMultiFile')),
+            'a conditionally declared class must resolve like any other declaration',
+        );
+    }
+
     public function testLookupFunctionResolvesAFunctionDeclaredInAnAutoloadFilesEntry(): void
     {
         $info = $this->backend()->lookupFunction(
