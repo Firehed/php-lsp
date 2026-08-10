@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -23,7 +24,7 @@ class DefaultFunctionRepositoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->repository = new DefaultFunctionRepository();
+        $this->repository = new DefaultFunctionRepository(new DeclarationScanner());
     }
 
     /**
@@ -63,6 +64,14 @@ class DefaultFunctionRepositoryTest extends TestCase
             'src/Completion/FunctionCompletion.php',
             'calculateSum',
             'calculateSum',
+        ];
+        // A polyfill declares itself only where the runtime lacks it, so the
+        // declaration is nested; the on-disk backends resolve one, and a walk
+        // narrowed to top-level statements here would disagree with them.
+        yield 'namespaced user function declared below the top level' => [
+            'src/Completion/FunctionCompletion.php',
+            'calculateProduct',
+            'calculateProduct',
         ];
         yield 'built-in function via reflection' => [
             'TypeInference/GlobalFunction.php',

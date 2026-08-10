@@ -25,6 +25,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
@@ -84,13 +85,14 @@ class CompletionHandlerTest extends TestCase
         $this->symbolSource = $knowledge->source;
 
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
             $typeResolver,
-            new DefaultFunctionRepository(),
+            new DefaultFunctionRepository(new DeclarationScanner()),
+            new DeclarationScanner(),
         );
         $this->handler = $this->makeHandler($this->symbolSource);
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
@@ -2823,6 +2825,22 @@ class CompletionHandlerTest extends TestCase
         self::assertStringContainsString('int $b', $detail);
         self::assertStringContainsString(': int', $detail);
         self::assertStringContainsString('Adds two numbers', $functionItem['documentation'] ?? '');
+    }
+
+    public function testConditionallyDeclaredFunctionCompletion(): void
+    {
+        $cursor = $this->openFixtureAtCursor('FunctionCompletion.php', 'user_defined_function');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        self::assertContains(
+            'calculateProduct',
+            array_column($result['items'], 'label'),
+            'a function_exists-guarded polyfill is a name the file declares, so completion must offer it '
+            . '— hover already resolves one, and a name visible to lookup but not to enumeration is the '
+            . 'split RFC 1 §4.2 forbids',
+        );
     }
 
     public function testThisCompletionTargetsEnclosingClassNotFirstClass(): void

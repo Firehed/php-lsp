@@ -78,6 +78,7 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
     SC.2   —     Retire ScopeFinder's superseded import extraction  —                 —
     SC.5   —     One declaration finder, not five hand-written      —                 —
+    SC.9   —     Class-like registration -> one declaration scan   —                 —
     SC.6   —     Symbol-name keys -> NameKind::normalize           —                 —
     S3.8d  3b    Collapse per-kind lookup to one call               SC.5              —
     S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.6,S3.8d  —
@@ -98,6 +99,7 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
     SC.7   —     Six member-hierarchy walks -> one                   —                 —
     SC.8   —     Prefix matching: SymbolIndex -> PrefixMatcher       —                 —
+    SC.10  —     Enforce the one-declaration-scanner rule            SC.3,SC.9         —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -210,7 +212,7 @@ Notes:
     map, so a class and a function sharing a short name collide — and the constant table it
     also folds in is exactly what constant resolution will read. `NameContext::importsFor()`
     already keeps the three tables apart, so no caller needs Step 4 to move.
-  - **SC.3** — `SymbolExtractor` and `FilesystemBackend::findClassInAst` each hand-track
+  - **SC.3** — `SymbolExtractor` hand-tracks
     `Stmt\Namespace_` to build FQNs that `NameResolver` already computed into
     `namespacedName` (which `DefaultClassInfoFactory`, `DefaultFunctionRepository`,
     `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
@@ -238,6 +240,22 @@ Notes:
     Ungated. It *removes* the `findClassInAst` half of SC.3, narrowing that slice to
     `SymbolExtractor` alone. Deliberately not gated on S3.11: an audit files slices, and a
     slice already filed must not wait on the audit that would have found it.
+  - **SC.9** — the class-like half of SC.5, left standing because SC.5's row names five
+    sites and this is a sixth. `DocumentSymbolSink::classesIn` hand-walks
+    `ScopeFinder::iterateTopLevelStatements` and registers **top-level class-likes only**,
+    while its sibling `functionsIn` reads `DeclarationScanner` at any depth. So a
+    `class_exists`-guarded class in an open buffer is returned by that backend's
+    `searchClassLikes` (which reads `SymbolExtractor`, and does walk all depths) but not by
+    its `lookupClassLike` — the §4.2 lookup/enumeration split, exactly as the polyfill
+    defect was, on the other symbol namespace. `assertStoresAgree`'s own docblock already
+    concedes it ("the index is a superset ... which the top-level lookup registration does
+    not").
+
+    A live defect, so it sits with SC.5 rather than in the redundancy block below. Nothing
+    pins the depth behaviour in either direction: switching `classesIn` to the scanner
+    leaves the suite green, so the slice owes a regression test — a `class_exists`-guarded
+    class resolves through `lookupClassLike` on an open document. It is the last consumer
+    of `iterateTopLevelStatements` in `src/`, which retires with it.
   - **SC.6** — every key derived from a symbol name routes through
     `NameKind::normalize()`, which owns PHP's per-kind case rule. A whole-FQN `strtolower`
     is hand-rolled instead in `CompositeSymbolSource` (the `searchClassLikes` merge, and
@@ -251,6 +269,14 @@ Notes:
     S3.7e enumerates constants from the derived `autoload.files` index. The row is the case
     rule everywhere rather than one class, so the collapse cannot survive on the
     enumeration path for S3.8b to land on top of. Ahead of S3.8b for that reason.
+
+    Also here: `FilesystemBackend::parseClassFrom` compares raw fully-qualified names,
+    while `lookupClassLike` keys its cache through `SymbolCacheKey` — which *does*
+    normalize — and the sibling `parseFunctionFrom` normalizes both sides. So a wrong-case
+    class lookup misses on a cold cache and hits once a correct-case lookup has warmed the
+    same key, and `OpenDocumentBackend` answers a name this backend does not. Predates SC.5
+    (the deleted `findClassInAst` compared raw strings too) and is unpinned in either
+    direction, so the fix owes a test.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over
@@ -258,6 +284,15 @@ Notes:
     and stays; the *walk* over them was never centralised, so a new member kind adds two
     more copies. Outside Step 4's scope — that step decomposes `src/Resolution/`, this is
     `src/Repository/`.
+  - **SC.10** — SC.5 states a hard invariant ("Do NOT write a new one; a rule about what
+    counts as a declaration is a change to the scanner") with no mechanism, which §8.1
+    forbids where a static rule or test is feasible. One is: a PHPStan rule confining
+    `NodeVisitorAbstract` / `NodeFinder` / `NodeTraverser` to the parser, the positional
+    finders, and `DeclarationScanner`, in the shape of the existing
+    `SymbolDiscoveryAuthorityExtension`. Gated on its two known violators (SC.3's
+    `SymbolExtractor`, SC.9's `classesIn`) because a rule that must ship with two
+    exemptions enforces nothing. The analogue to follow is `TypeGraphParityTest`, which is
+    how the sibling single-traversal invariant on `supertypes()` is held.
   - **SC.8** — `Completion\PrefixMatcher::matches` and `SymbolIndex::findByPrefix` both
     hand-roll `str_starts_with(strtolower(...))`. SC.6 owns the `strtolower` half (it is
     the same per-kind case rule); what is left here is the duplicated *matching* helper, so

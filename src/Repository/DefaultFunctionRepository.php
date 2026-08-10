@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use PhpParser\Node;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 use ReflectionException;
 use ReflectionFunction;
 
 final class DefaultFunctionRepository implements FunctionRepository
 {
+    public function __construct(private readonly DeclarationScanner $scanner)
+    {
+    }
+
     public function get(string $functionName, array $ast): ?FunctionInfo
     {
         $node = $this->findFunctionInAst($functionName, $ast);
@@ -36,34 +38,13 @@ final class DefaultFunctionRepository implements FunctionRepository
      */
     private function findFunctionInAst(string $functionName, array $ast): ?Stmt\Function_
     {
-        $finder = new class ($functionName) extends NodeVisitorAbstract {
-            public ?Stmt\Function_ $found = null;
-
-            public function __construct(private readonly string $functionName)
-            {
+        foreach ($this->scanner->scan($ast)->functions as $declaration) {
+            $name = $declaration->name;
+            if ($name->shortName === $functionName || $name->fullyQualifiedName() === $functionName) {
+                return $declaration->node;
             }
+        }
 
-            public function enterNode(Node $node): ?int
-            {
-                if (!$node instanceof Stmt\Function_) {
-                    return null;
-                }
-
-                $shortName = $node->name->toString();
-                $fqn = $node->namespacedName?->toString();
-                if ($shortName === $this->functionName || $fqn === $this->functionName) {
-                    $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
-                }
-
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        return $finder->found;
+        return null;
     }
 }

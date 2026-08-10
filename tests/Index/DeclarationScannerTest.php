@@ -6,15 +6,19 @@ namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Index\Declaration;
 use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use PhpParser\Node;
+use PhpParser\Node\Expr;
+use PhpParser\Node\Stmt;
 use ReflectionFunction;
 
+#[CoversClass(Declaration::class)]
 #[CoversClass(DeclarationScanner::class)]
 #[CoversClass(FileDeclarations::class)]
 final class DeclarationScannerTest extends TestCase
@@ -91,12 +95,12 @@ final class DeclarationScannerTest extends TestCase
 
         $qualified = array_values(array_filter(
             $declarations->constants,
-            static fn(QualifiedName $name): bool => $name->namespace !== '',
+            static fn(Declaration $declaration): bool => $declaration->name->namespace !== '',
         ));
 
         self::assertSame(
             ['Fixtures\Helpers', 'Fixtures\Helpers'],
-            array_map(static fn(QualifiedName $name): string => $name->namespace, $qualified),
+            array_map(static fn(Declaration $declaration): string => $declaration->name->namespace, $qualified),
             'a define() literal carrying a namespace is split like any other qualified name',
         );
     }
@@ -283,6 +287,47 @@ final class DeclarationScannerTest extends TestCase
         self::assertSame([], $declarations->constants, 'a class constant is not a namespaced constant');
     }
 
+    public function testEachDeclarationCarriesTheNodeThatDeclaresIt(): void
+    {
+        $declarations = $this->scanFixture('AutoloadFiles/globals.php');
+
+        // Pairing, not merely presence: a backend builds its metadata from this
+        // node, so a name paired with a neighbouring declaration would describe the
+        // wrong symbol entirely.
+        foreach ($declarations->functions as $declaration) {
+            $node = $declaration->node;
+            self::assertInstanceOf(Stmt\Function_::class, $node, 'a function is declared by a function node');
+            self::assertSame(
+                $declaration->name->shortName,
+                $node->name->toString(),
+                'a declaration carries the node declaring its own name',
+            );
+        }
+
+        self::assertInstanceOf(
+            Stmt\Class_::class,
+            $declarations->classLikes[0]->node,
+            'a class is declared by a class node',
+        );
+
+        // `const A = 1, B = 2;` is one statement holding two declarators, so the
+        // statement cannot be the node: both names would carry the first's value.
+        $beta = $declarations->constants[2];
+        self::assertSame('FIXTURE_GLOBAL_BETA', $beta->name->shortName, 'the third constant is the second declarator');
+        self::assertInstanceOf(Node\Const_::class, $beta->node, 'the declarator is the node, not its statement');
+        self::assertSame(
+            'FIXTURE_GLOBAL_BETA',
+            $beta->node->name->toString(),
+            'the node is this name\'s own declarator, not the first one its statement holds',
+        );
+
+        self::assertInstanceOf(
+            Expr\FuncCall::class,
+            $declarations->constants[3]->node,
+            'a define() constant is declared by the call that names it',
+        );
+    }
+
     public function testAnEmptyAstYieldsNothing(): void
     {
         $declarations = $this->scanner->scan([]);
@@ -304,11 +349,14 @@ final class DeclarationScannerTest extends TestCase
     }
 
     /**
-     * @param list<QualifiedName> $names
+     * @param list<Declaration<Node>> $declarations
      * @return list<string>
      */
-    private static function fqns(array $names): array
+    private static function fqns(array $declarations): array
     {
-        return array_map(static fn(QualifiedName $name): string => $name->fullyQualifiedName(), $names);
+        return array_map(
+            static fn(Declaration $declaration): string => $declaration->name->fullyQualifiedName(),
+            $declarations,
+        );
     }
 }

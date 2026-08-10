@@ -36,31 +36,34 @@ final class DeclarationScanner
     public function scan(array $ast): FileDeclarations
     {
         $visitor = new class () extends NodeVisitorAbstract {
-            /** @var list<QualifiedName> */
+            /** @var list<Declaration<Stmt\ClassLike>> */
             public array $classLikes = [];
 
-            /** @var list<QualifiedName> */
+            /** @var list<Declaration<Stmt\Function_>> */
             public array $functions = [];
 
-            /** @var list<QualifiedName> */
+            /** @var list<Declaration<Node\Const_|Expr\FuncCall>> */
             public array $constants = [];
 
             public function enterNode(Node $node): null
             {
                 // An anonymous class has no name, so there is nothing to index.
                 if ($node instanceof Stmt\ClassLike && $node->name !== null) {
-                    $this->classLikes[] = self::qualify($node->namespacedName ?? $node->name);
+                    $this->classLikes[] = new Declaration(self::qualify($node->namespacedName ?? $node->name), $node);
                     return null;
                 }
 
                 if ($node instanceof Stmt\Function_) {
-                    $this->functions[] = self::qualify($node->namespacedName ?? $node->name);
+                    $this->functions[] = new Declaration(self::qualify($node->namespacedName ?? $node->name), $node);
                     return null;
                 }
 
                 if ($node instanceof Stmt\Const_) {
                     foreach ($node->consts as $const) {
-                        $this->constants[] = self::qualify($const->namespacedName ?? $const->name);
+                        $this->constants[] = new Declaration(
+                            self::qualify($const->namespacedName ?? $const->name),
+                            $const,
+                        );
                     }
                     return null;
                 }
@@ -87,7 +90,7 @@ final class DeclarationScanner
                     return;
                 }
 
-                $this->constants[] = QualifiedName::fromFullyQualified($name->value);
+                $this->constants[] = new Declaration(QualifiedName::fromFullyQualified($name->value), $node);
             }
 
             /**

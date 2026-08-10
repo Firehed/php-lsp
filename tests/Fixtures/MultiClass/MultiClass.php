@@ -27,6 +27,15 @@ class ChildInMultiFile extends ParentInMultiFile
     }
 }
 
+// The class-like analogue of a polyfill: declared only where the runtime lacks it,
+// so the declaration is nested rather than top-level. It is still a name this file
+// declares.
+if (!class_exists(ConditionalInMultiFile::class)) {
+    class ConditionalInMultiFile
+    {
+    }
+}
+
 class FirstUnrelated
 {
     public const FIRST_CONST = 1;

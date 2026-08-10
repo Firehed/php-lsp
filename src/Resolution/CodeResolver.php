@@ -129,7 +129,9 @@ interface CodeResolver
     public function getNameContext(TextDocument $document, int $line): NameContext;
 
     /**
-     * Get the user-defined functions declared in a document.
+     * Get the user-defined functions declared in a document, at any depth: a
+     * `function_exists`-guarded polyfill is a name the file declares, and the
+     * backends resolve one, so enumeration must not narrow to top level.
      * Used by: Completion
      *
      * @return list<FunctionInfo>

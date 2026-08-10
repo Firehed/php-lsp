@@ -8,13 +8,13 @@ use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeFinder;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
@@ -40,6 +40,7 @@ final class DocumentSymbolSink implements SymbolSink
         private readonly SymbolIndex $index,
         private readonly ClassInfoFactory $classInfoFactory,
         private readonly ParserService $parser,
+        private readonly DeclarationScanner $scanner,
         private readonly array $onDiskBackends = [],
     ) {
     }
@@ -147,9 +148,9 @@ final class DocumentSymbolSink implements SymbolSink
     private function functionsIn(array $ast, string $uri): array
     {
         $functions = [];
-        foreach ((new NodeFinder())->findInstanceOf($ast, Stmt\Function_::class) as $node) {
-            $fqn = ($node->namespacedName ?? $node->name)->toString();
-            $functions[$fqn] ??= FunctionInfo::fromNode($node, $uri);
+        foreach ($this->scanner->scan($ast)->functions as $declaration) {
+            $fqn = $declaration->name->fullyQualifiedName();
+            $functions[$fqn] ??= FunctionInfo::fromNode($declaration->node, $uri);
         }
 
         return $functions;

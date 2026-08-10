@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
-use Firehed\PhpLsp\Domain\QualifiedName;
+use PhpParser\Node;
+use PhpParser\Node\Expr;
+use PhpParser\Node\Stmt;
 
 /**
  * The names one file declares, across all three of PHP's symbol namespaces.
@@ -17,9 +19,10 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 final readonly class FileDeclarations
 {
     /**
-     * @param list<QualifiedName> $classLikes
-     * @param list<QualifiedName> $functions
-     * @param list<QualifiedName> $constants
+     * @param list<Declaration<Stmt\ClassLike>> $classLikes
+     * @param list<Declaration<Stmt\Function_>> $functions
+     * @param list<Declaration<Node\Const_|Expr\FuncCall>> $constants a `const`
+     *        declarator, or the `define()` call that names the constant
      */
     public function __construct(
         public array $classLikes,

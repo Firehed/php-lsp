@@ -44,7 +44,7 @@ All symbol resolution flows through the `CodeResolver` interface (implemented by
 
 **File queries** (parser-agnostic; keep completion sources off the raw AST):
 - `getNameContext(doc, line): NameContext` — the namespace and the three import tables in effect
-- `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document
+- `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document, at any depth
 
 **Type checks:**
 - `isInstantiable(ClassName): bool` — valid after `new`
@@ -139,16 +139,31 @@ route cannot know which kind a file declares), and applies PHP's per-kind case r
 `NameKind::normalize()`. A test pins the parse *count* at construction, which is
 not a cost measurement; the set is explicit and usually tiny.
 
+**"Which node declares this name" is answered by `Index\DeclarationScanner`**, which
+reports every class-like, function and constant an AST declares — at any depth, paired
+with its declaring node (`Declaration`). Every function-namespace consumer reads it:
+on-disk and open-document lookup, the write path, the `autoload.files` index, and
+completion's file-function query, so none can disagree about what a file declares. Five
+hand-written traversals is how a `function_exists`-guarded polyfill came to resolve on
+hover while being invisible to completion. Do NOT write a new one; a rule about what
+counts as a declaration is a change to the scanner.
+
+Two class-like traversals survive it, both tracked: `DocumentSymbolSink::classesIn`
+(top-level only, so a `class_exists`-guarded class drops out of open-document lookup
+while the on-disk backends resolve it) and `Index\SymbolExtractor`, which rebuilds FQNs
+by hand rather than reading `namespacedName`. Neither is licence for a third.
+
 The same derived index also answers the backend's `childrenOf`, merged with the
 directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: §4.2
 requires lookup and enumeration to draw on the same backends, so a name that resolved
 on hover while being invisible to completion is the split this tier exists to prevent.
 
 The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers class and
-function metadata and indexes symbols from one document. A declaration at any depth is
-registered, not just a top-level one — a polyfill guarded by `function_exists` is a name
-the file validly declares, and the on-disk backends resolve one, so opening the file must
-not make it disappear.
+function metadata and indexes symbols from one document. A *function* declared at any
+depth is registered, not just a top-level one — a polyfill guarded by `function_exists`
+is a name the file validly declares, and the on-disk backends resolve one, so opening
+the file must not make it disappear. Class-like registration is still top-level only
+(see `classesIn` above), which is the same defect awaiting its own slice.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
 

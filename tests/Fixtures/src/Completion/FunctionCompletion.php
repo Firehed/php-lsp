@@ -17,6 +17,19 @@ function getConfig(): Config
     return new Config();
 }
 
+// A polyfill declares itself only where the runtime lacks it, so the declaration is
+// nested rather than top-level. It is still a name this file declares, and the
+// completion surface must offer it (RFC 1 §4.2).
+if (!function_exists(__NAMESPACE__ . '\calculateProduct')) {
+    /**
+     * Multiplies two numbers.
+     */
+    function calculateProduct(int $a, int $b): int
+    {
+        return $a * $b;
+    }
+}
+
 class FunctionCompletionTriggers
 {
     public function triggerBuiltinFunction(): void

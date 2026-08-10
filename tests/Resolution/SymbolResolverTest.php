@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
@@ -65,14 +66,15 @@ final class SymbolResolverTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository());
+        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
             typeResolver: $typeResolver,
-            functionRepository: new DefaultFunctionRepository(),
+            functionRepository: new DefaultFunctionRepository(new DeclarationScanner()),
+            declarationScanner: new DeclarationScanner(),
         );
 
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
@@ -2623,5 +2625,26 @@ final class SymbolResolverTest extends TestCase
 
         self::assertContains('calculateSum', $names, 'Functions inside a namespace should be found');
         self::assertContains('getConfig', $names, 'Functions inside a namespace should be found');
+    }
+
+    public function testGetFileFunctionsFindsDeclarationsAtAnyDepth(): void
+    {
+        $uri = $this->openFixture('FunctionCompletion.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $names = array_map(
+            static fn(FunctionInfo $fn): string => $fn->name,
+            $this->resolver->getFileFunctions($document),
+        );
+
+        // The on-disk backends and the open-document write path both resolve a
+        // declaration at any depth, so a top-level-only walk here made a polyfill
+        // resolve on hover while being invisible to completion (RFC 1 §4.2).
+        self::assertContains(
+            'calculateProduct',
+            $names,
+            'a function declared inside a function_exists guard is still declared by the file',
+        );
     }
 }
