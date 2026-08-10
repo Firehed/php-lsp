@@ -1,0 +1,67 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 1
+			path: src/Index/SymbolExtractor.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Index/SymbolExtractor.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeVisitorAbstract is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\. \[PhpParser\\NodeVisitorAbstract matches PhpParser\\NodeVisitor\*\]$#'
+			identifier: disallowed.namespace
+			count: 2
+			path: src/Index/SymbolExtractor.php
+
+		-
+			message: '#^Class PhpParser\\NodeFinder is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeFinder is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeVisitorAbstract is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\. \[PhpParser\\NodeVisitorAbstract matches PhpParser\\NodeVisitor\*\]$#'
+			identifier: disallowed.namespace
+			count: 2
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.class
+			count: 2
+			path: src/TypeInference/BasicTypeResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
+			identifier: disallowed.namespace
+			count: 1
+			path: src/TypeInference/BasicTypeResolver.php
+
+		-
+			message: '#^Namespace PhpParser\\NodeVisitorAbstract is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\. \[PhpParser\\NodeVisitorAbstract matches PhpParser\\NodeVisitor\*\]$#'
+			identifier: disallowed.namespace
+			count: 2
+			path: src/TypeInference/BasicTypeResolver.php

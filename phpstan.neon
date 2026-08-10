@@ -1,7 +1,47 @@
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/spaze/phpstan-disallowed-calls/extension.neon
+    - phpstan-baseline.neon
 
 parameters:
+    # Default-deny capability confinement: each mechanism below is usable only in
+    # its named home(s). A new use elsewhere is a duplicate implementation waiting
+    # to happen — extend the authority instead, or (rarely) widen the allowlist.
+    # Existing violations are frozen in phpstan-baseline.neon (regenerate with
+    # `composer phpstan-baseline`) and drain via their owning slices; the
+    # baseline must only shrink.
+    disallowedNamespaces:
+        -
+            namespace: 'PhpParser\NodeTraverser'
+            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/NodeAtPosition.php
+                - src/Index/DeclarationScanner.php
+                - src/Utility/Scope.php
+                - src/Utility/ScopeFinder.php
+                - tests/*
+        -
+            namespace: 'PhpParser\NodeFinder'
+            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/NodeAtPosition.php
+                - src/Index/DeclarationScanner.php
+                - src/Utility/Scope.php
+                - src/Utility/ScopeFinder.php
+                - tests/*
+        -
+            namespace: 'PhpParser\NodeVisitor*'
+            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/NodeAtPosition.php
+                - src/Index/DeclarationScanner.php
+                - src/Utility/Scope.php
+                - src/Utility/ScopeFinder.php
+                - tests/*
+
     level: max
     paths:
         - src

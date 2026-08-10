@@ -41,6 +41,7 @@
         "unit": "phpunit",
         "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
+        "phpstan-baseline": "phpstan analyze --generate-baseline",
         "test": [
             "@phpstan",
             "@unit",
