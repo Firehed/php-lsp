@@ -97,6 +97,18 @@ parameters:
 			path: src/Index/SymbolIndex.php
 
 		-
+			message: '#^Calling file_get_contents\(\) is forbidden, filesystem access is confined\: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/WorkspaceIndexer.php
+
+		-
+			message: '#^Calling is_dir\(\) is forbidden, filesystem access is confined\: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams\.$#'
+			identifier: disallowed.function
+			count: 1
+			path: src/Index/WorkspaceIndexer.php
+
+		-
 			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 1

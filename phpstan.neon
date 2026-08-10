@@ -89,6 +89,23 @@ parameters:
                 - src/Knowledge/BuiltinBackend.php
                 - src/Index/ReflectionNamespaceSource.php
                 - tests/*
+        -
+            function:
+                - 'file_get_contents()'
+                - 'file_exists()'
+                - 'is_file()'
+                - 'is_dir()'
+                - 'scandir()'
+                - 'glob()'
+                - 'fopen()'
+                - 'realpath()'
+            message: 'filesystem access is confined: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
+            allowIn:
+                - src/Parser/ParserService.php
+                - src/Index/ComposerAutoloadMap.php
+                - src/Index/ComposerNamespaceSource.php
+                - src/Transport/*
+                - tests/*
 
     level: max
     paths:
