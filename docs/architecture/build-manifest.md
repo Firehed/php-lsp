@@ -210,7 +210,7 @@ Notes:
     map, so a class and a function sharing a short name collide — and the constant table it
     also folds in is exactly what constant resolution will read. `NameContext::importsFor()`
     already keeps the three tables apart, so no caller needs Step 4 to move.
-  - **SC.3** — `SymbolExtractor` and `FilesystemBackend::findClassInAst` each hand-track
+  - **SC.3** — `SymbolExtractor` hand-tracks
     `Stmt\Namespace_` to build FQNs that `NameResolver` already computed into
     `namespacedName` (which `DefaultClassInfoFactory`, `DefaultFunctionRepository`,
     `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
