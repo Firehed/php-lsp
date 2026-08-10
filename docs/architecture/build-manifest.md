@@ -78,6 +78,7 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
     SC.2   —     Retire ScopeFinder's superseded import extraction  —                 —
     SC.5   —     One declaration finder, not five hand-written      —                 —
+    SC.9   —     Class-like registration -> one declaration scan   —                 —
     SC.6   —     Symbol-name keys -> NameKind::normalize           —                 —
     S3.8d  3b    Collapse per-kind lookup to one call               SC.5              —
     S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.6,S3.8d  —
@@ -238,6 +239,22 @@ Notes:
     Ungated. It *removes* the `findClassInAst` half of SC.3, narrowing that slice to
     `SymbolExtractor` alone. Deliberately not gated on S3.11: an audit files slices, and a
     slice already filed must not wait on the audit that would have found it.
+  - **SC.9** — the class-like half of SC.5, left standing because SC.5's row names five
+    sites and this is a sixth. `DocumentSymbolSink::classesIn` hand-walks
+    `ScopeFinder::iterateTopLevelStatements` and registers **top-level class-likes only**,
+    while its sibling `functionsIn` reads `DeclarationScanner` at any depth. So a
+    `class_exists`-guarded class in an open buffer is returned by that backend's
+    `searchClassLikes` (which reads `SymbolExtractor`, and does walk all depths) but not by
+    its `lookupClassLike` — the §4.2 lookup/enumeration split, exactly as the polyfill
+    defect was, on the other symbol namespace. `assertStoresAgree`'s own docblock already
+    concedes it ("the index is a superset ... which the top-level lookup registration does
+    not").
+
+    A live defect, so it sits with SC.5 rather than in the redundancy block below. Nothing
+    pins the depth behaviour in either direction: switching `classesIn` to the scanner
+    leaves the suite green, so the slice owes a regression test — a `class_exists`-guarded
+    class resolves through `lookupClassLike` on an open document. It is the last consumer
+    of `iterateTopLevelStatements` in `src/`, which retires with it.
   - **SC.6** — every key derived from a symbol name routes through
     `NameKind::normalize()`, which owns PHP's per-kind case rule. A whole-FQN `strtolower`
     is hand-rolled instead in `CompositeSymbolSource` (the `searchClassLikes` merge, and
