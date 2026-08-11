@@ -98,7 +98,7 @@ final class ComposerNamespaceSource implements NamespaceCatalog
                     $childNamespaces[strtolower($child)] = $child;
                 }
                 foreach ($contents->symbols as $symbol) {
-                    $symbols[strtolower($symbol->fullyQualifiedName)] = $symbol;
+                    $symbols[$symbol->key()] = $symbol;
                 }
             }
         }

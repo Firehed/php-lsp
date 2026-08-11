@@ -86,7 +86,7 @@ final readonly class NamespaceContents
                 $namespaces[strtolower($namespace)] ??= $namespace;
             }
             foreach ($part->symbols as $symbol) {
-                $symbols[strtolower($symbol->fullyQualifiedName)] ??= $symbol;
+                $symbols[$symbol->key()] ??= $symbol;
             }
         }
 

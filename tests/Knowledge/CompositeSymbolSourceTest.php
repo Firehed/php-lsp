@@ -115,9 +115,9 @@ final class CompositeSymbolSourceTest extends TestCase
         $vendor = new FakeSymbolBackend(namespaces: [
             'App' => new NamespaceContents(
                 ['App\Other'],
-                // Same FQN as the open document's, but a different kind: the open
-                // document's spelling must win the merge.
-                [new CatalogSymbol('App\Shared', NameKind::Function_)],
+                // The same class-like under its case rule, spelled differently:
+                // the open document's spelling must win the merge.
+                [new CatalogSymbol('APP\SHARED', NameKind::ClassLike)],
             ),
         ]);
         $source = new CompositeSymbolSource([$open, $vendor]);
@@ -131,8 +131,8 @@ final class CompositeSymbolSourceTest extends TestCase
         );
         self::assertCount(1, $contents->symbols, 'the clashing symbol must be deduplicated to one');
         self::assertSame(
-            NameKind::ClassLike,
-            $contents->symbols[0]->kind,
+            'App\Shared',
+            $contents->symbols[0]->fullyQualifiedName,
             'the earlier backend must win the clash: the open document overrides the vendored listing',
         );
     }

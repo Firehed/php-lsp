@@ -44,8 +44,10 @@ final class CompositeNamespaceCatalogTest extends TestCase
 
     public function testTheEarlierCatalogWinsANameReportedByBoth(): void
     {
+        // The same class-like under its case rule, spelled differently: the
+        // spelling distinguishes which catalog's report survived the merge.
         $first = new CatalogSymbol('App\Shared', NameKind::ClassLike);
-        $second = new CatalogSymbol('App\Shared', NameKind::Function_);
+        $second = new CatalogSymbol('APP\SHARED', NameKind::ClassLike);
 
         $contents = (new CompositeNamespaceCatalog([
             self::catalogOfSymbols([$first]),

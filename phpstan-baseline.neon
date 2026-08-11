@@ -57,13 +57,13 @@ parameters:
 		-
 			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
-			count: 4
+			count: 3
 			path: src/Index/ComposerNamespaceSource.php
 
 		-
 			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
-			count: 5
+			count: 4
 			path: src/Index/NamespaceContents.php
 
 		-
