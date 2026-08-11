@@ -8,6 +8,8 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -96,7 +98,7 @@ final class CompositeSymbolSource implements SymbolSource
             foreach ($backend->searchClassLikes($prefix) as $symbol) {
                 // The earlier (more authoritative) backend wins a name clash, so an
                 // open document's symbol is not shadowed by a cached copy of it.
-                $byFqn[strtolower($symbol->fullyQualifiedName)] ??= $symbol;
+                $byFqn[self::normalizeKey($symbol->fullyQualifiedName)] ??= $symbol;
             }
         }
 
@@ -139,8 +141,12 @@ final class CompositeSymbolSource implements SymbolSource
         return false;
     }
 
+    /**
+     * Class-like identity under the kind's case rule; every name this class keys
+     * or compares is a class-like. `fromFullyQualified` drops a leading `\`.
+     */
     private static function normalizeKey(string $fqn): string
     {
-        return strtolower(ltrim($fqn, '\\'));
+        return NameKind::ClassLike->normalize(QualifiedName::fromFullyQualified($fqn));
     }
 }

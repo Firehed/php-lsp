@@ -115,12 +115,6 @@ parameters:
 			path: src/Index/WorkspaceNamespaceSource.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 2
-			path: src/Knowledge/CompositeSymbolSource.php
-
-		-
 			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
 			identifier: disallowed.class
 			count: 1
