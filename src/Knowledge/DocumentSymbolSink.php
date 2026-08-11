@@ -138,7 +138,9 @@ final class DocumentSymbolSink implements SymbolSink
     /**
      * A declaration at any depth counts, matching what the on-disk backends resolve
      * (a polyfill guarded by `function_exists` is the common shape). Opening a file
-     * must not make a name that already resolved disappear (RFC 1 §4.2).
+     * must not make a name that already resolved disappear (RFC 1 §4.2). Of duplicate
+     * declarations, the first wins — the one PHP would define, and the one the
+     * on-disk backends return.
      *
      * @return array<string, FunctionInfo> Fully-qualified name -> metadata
      */
@@ -154,9 +156,9 @@ final class DocumentSymbolSink implements SymbolSink
     }
 
     /**
-     * Class-likes follow the same depth rule as functions above, for the same
-     * reason: a `class_exists`-guarded declaration is one the on-disk backends
-     * resolve.
+     * Class-likes follow the same depth and duplicate rules as functions above, for
+     * the same reasons: a `class_exists`-guarded declaration is one the on-disk
+     * backends resolve, and of duplicates they return the first.
      *
      * @return list<ClassInfo>
      */
@@ -164,9 +166,10 @@ final class DocumentSymbolSink implements SymbolSink
     {
         $classes = [];
         foreach ($declarations->classLikes as $declaration) {
-            $classes[] = $this->classInfoFactory->fromAstNode($declaration->node, $uri);
+            $fqn = $declaration->name->fullyQualifiedName();
+            $classes[$fqn] ??= $this->classInfoFactory->fromAstNode($declaration->node, $uri);
         }
 
-        return $classes;
+        return array_values($classes);
     }
 }
