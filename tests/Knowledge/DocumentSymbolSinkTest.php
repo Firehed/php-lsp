@@ -111,6 +111,39 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
+    public function testTheFirstOfDuplicateClassLikeDeclarationsWins(): void
+    {
+        // A file may declare one name twice (an unguarded declaration plus a guarded
+        // twin). PHP defines the first one executed, and the on-disk backends return
+        // the first declaration found — the open document must agree (RFC 1 §4.2).
+        $uri = 'file:///DuplicateDeclarations.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture('MultiClass/DuplicateDeclarations.php')));
+
+        $classInfo = $this->backend->lookupClassLike(self::className('Fixtures\MultiClass\Duplicated'));
+        self::assertNotNull($classInfo, 'the duplicated class must still resolve');
+        self::assertTrue(
+            $classInfo->isFinal,
+            'the first declaration (final) must win, matching runtime and the on-disk backends',
+        );
+    }
+
+    public function testTheFirstOfDuplicateFunctionDeclarationsWins(): void
+    {
+        // The function half of the same rule.
+        $uri = 'file:///DuplicateDeclarations.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture('MultiClass/DuplicateDeclarations.php')));
+
+        $functionInfo = $this->backend->lookupFunction(
+            FunctionName::fromFullyQualified('Fixtures\MultiClass\duplicated'),
+        );
+        self::assertNotNull($functionInfo, 'the duplicated function must still resolve');
+        self::assertSame(
+            'string',
+            $functionInfo->returnType?->format(),
+            'the first declaration (returning string) must win, matching runtime and the on-disk backends',
+        );
+    }
+
     public function testUpdatingAwayFromAFunctionDropsItsRegistration(): void
     {
         $uri = 'file:///helpers.php';
