@@ -10,6 +10,25 @@ composer phpstan -- --error-format=raw --no-progress path/to/analyze # run phpst
 composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ```
 
+## Guardrails (default-deny)
+
+Two CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
+
+- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
+- **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis.
+
+When a rule fires on your change, in order of preference:
+
+1. Move the logic into (or route it through) the confined authority — the usual fix.
+2. If the authority genuinely cannot serve the need, extend the authority.
+3. Widening an allowlist is a last-resort, conscious decision; justify it in the PR.
+
+NEVER regenerate a baseline to absorb a new violation.
+The baselines (`phpstan-baseline.neon`, `deptrac.baseline.yaml`) freeze pre-existing debt only and must shrink to zero; CI enforces shrink-only (`bin/check-baseline-shrink`).
+Regenerate (`composer phpstan-baseline` / `composer deptrac-baseline`) only when draining entries, or when a refactor relocates a violation the baseline already froze — totals may never grow.
+When changing a file that has baseline entries, prefer draining them in the same change.
+This section overrides the global "avoid adding to the baseline" guidance in the strict direction: here, additions are forbidden outright and shrink-churn is the goal.
+
 ## Project Structure
 
 - `src/Handler/` — LSP request handlers (completion, hover, definition, etc.)

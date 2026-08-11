@@ -58,9 +58,10 @@ Step 3 is one plan step with two halves: **3a** is behavior-preserving (proven b
 Step P harness — parity fixtures first), **3b** both preserves and extends the function
 surface (existing behavior frozen to a golden; new project reach proven by new
 fixtures). The `Step` column carries the half, since 3a and 3b own distinct acceptance
-criteria in 0002. Step 4 decomposes `SymbolResolver`; Step Z is the terminal
-Definition-of-Done gate. Steps 3 and 4 each end with a duplication audit (S3.11,
-S4.7), which Step Z re-runs repo-wide as its completion gate.
+criteria in 0002. Step 4 drains the Resolution/TypeInference guardrail-baseline
+entries (0002, reframed 2026-08-10); Step Z is the terminal Definition-of-Done
+gate. Steps 3 and 4 each end with a duplication audit (S3.11, S4.7), which Step Z
+re-runs repo-wide as its completion gate.
 
     ID     Step  Title                                              Depends on        Closes
     -----  ----  -------------------------------------------------  ----------------  -------
@@ -79,7 +80,8 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     SC.2   —     Retire ScopeFinder's superseded import extraction  —                 —
     SC.5   —     One declaration finder, not five hand-written      —                 —
     SC.9   —     Class-like registration -> one declaration scan   —                 —
-    SC.6   —     Symbol-name keys -> NameKind::normalize           —                 —
+    SC.11  —     Move NameKind into Domain                          —                 —
+    SC.6   —     Symbol-name keys -> NameKind::normalize           SC.11             —
     S3.8d  3b    Collapse per-kind lookup to one call               SC.5              —
     S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.6,S3.8d  —
     S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
@@ -92,7 +94,8 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     S4.3   4     Extract member-access + call-context detectors     S4.2              —
     S4.4   4     Extract name-context resolver                      S4.2              —
     S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
-    S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5  —
+    S4.8   4     Bring TypeInference inside the boundary            S4.2              —
+    S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5,S4.8  —
     S4.7   4     Step 4 duplication audit                          all Step 4        —
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
     SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
@@ -100,6 +103,10 @@ S4.7), which Step Z re-runs repo-wide as its completion gate.
     SC.7   —     Six member-hierarchy walks -> one                   —                 —
     SC.8   —     Prefix matching: SymbolIndex -> PrefixMatcher       —                 —
     SC.10  —     Enforce the one-declaration-scanner rule            SC.3,SC.9         —
+    SC.12  —     Move MemberFilter out of Resolution                 —                 —
+    SC.13  —     Settle Domain->Utility type placement               —                 —
+    SC.14  —     Filter BuiltinBackend class-like lookup to internal —                 —
+    SC.15  —     Oracle corpus: trait adaptations and enums          —                 —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -256,6 +263,8 @@ Notes:
     leaves the suite green, so the slice owes a regression test — a `class_exists`-guarded
     class resolves through `lookupClassLike` on an open document. It is the last consumer
     of `iterateTopLevelStatements` in `src/`, which retires with it.
+  - **SC.11** — deptrac froze the edges of Knowledge, Index, and Domain classes importing `Resolution\NameKind`; the type is cross-tier currency, so it moves to `Domain` and those baseline entries drain.
+    It sits ahead of SC.6 so the case-rule work lands in the type's real home; SC.6 depends on it.
   - **SC.6** — every key derived from a symbol name routes through
     `NameKind::normalize()`, which owns PHP's per-kind case rule. A whole-FQN `strtolower`
     is hand-rolled instead in `CompositeSymbolSource` (the `searchClassLikes` merge, and
@@ -277,6 +286,13 @@ Notes:
     same key, and `OpenDocumentBackend` answers a name this backend does not. Predates SC.5
     (the deleted `findClassInAst` compared raw strings too) and is unpinned in either
     direction, so the fix owes a test.
+  - **SC.12** — `MemberResolver`'s deptrac-frozen edges on `Resolution\MemberFilter`: the same placement defect as SC.11, kept as its own row so each move drains reviewably.
+  - **SC.13** — Domain factories reach into Utility (`TypeFactory`, `NamespacePath`); decide the direction in-slice (move the utility into Domain, or the factory methods out) and drain the frozen edges.
+    Related: `ClassName::shortName`/`getNamespace` hand-roll the split `NamespacePath` owns, so the direction chosen also settles that duplicate.
+  - **SC.14** — `BuiltinBackend::lookupClassLike` lacks the `isInternal()` guard its function sibling has, so hover resolves any class the *server's own* autoloader can load while completion never offers it — the §4.2 lookup/enumeration split, live on the class namespace.
+    A live defect; owes a regression test against a class the server vendors but the project does not.
+  - **SC.15** — `TypeGraphParityTest`'s corpus has no trait `insteadof`/`as` shapes and no enums, so the reflection oracle cannot see #73's defect class (nor enum-interface members).
+    Fixture-only slice; #73's fix lands on top of it and must fail before, pass after.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over
@@ -284,6 +300,7 @@ Notes:
     and stays; the *walk* over them was never centralised, so a new member kind adds two
     more copies. Outside Step 4's scope — that step decomposes `src/Resolution/`, this is
     `src/Repository/`.
+    The member-name case rule rides along: the collect keys (`strtolower`), `MethodName::equals` (`strcasecmp`), and the fallback's raw merge key disagree today, and the walks' seen-sets key raw FQNs where `ClassName::equals` is case-insensitive.
   - **SC.10** — SC.5 states a hard invariant ("Do NOT write a new one; a rule about what
     counts as a declaration is a change to the scanner") with no mechanism, which §8.1
     forbids where a static rule or test is feasible. One is: a PHPStan rule confining
@@ -297,6 +314,10 @@ Notes:
     hand-roll `str_starts_with(strtolower(...))`. SC.6 owns the `strtolower` half (it is
     the same per-kind case rule); what is left here is the duplicated *matching* helper, so
     take SC.6 first or the two rows fight over the same line.
+- **S4.8** — see 0002 Step 4: the variable-binding walks and expression dispatch are
+  duplicated across `src/Resolution/` and `src/TypeInference/`, and the latter sat outside
+  the original decomposition's directory boundary. Its guardrail-baseline entries are part
+  of the Step 4 drain; gated on S4.2 because both edit `SymbolResolver`.
 - **Each section ends with a duplication audit** (**S3.11**, **S4.7**), and Step Z's
   acceptance carries the repo-wide one. Method, scope and outcome rule are defined once
   in 0002 §Duplication audits and the terminal condition is a Step Z acceptance item —
@@ -342,3 +363,5 @@ when their phase is reached.
   interactive requests and is cancelable, feature-detecting `pcntl` / `ext-parallel`
   with a synchronous fallback. Appended as slices when a push feature (or #266) takes
   it up.
+- **Feature-matrix runner — deprioritized (2026-08-10).** A fixture-scenario × handler-registry grid (every cell asserts that handler's observable or registers not-applicable; an unregistered cell fails), intended as the cross-feature agreement net and the TDD vehicle for new language features. Revisit after the Step 4 drain and the Wave 3 axes.
+- **Wave 3 — member kind, access context, intent detection.** The axes the 2026-08-10 RFC amendment added (RFC 1 §3.1, Appendix A "target" rows). Sliced when reached, after Step 4; property hooks and asymmetric visibility are the features waiting on the first two.
