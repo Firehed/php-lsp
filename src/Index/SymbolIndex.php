@@ -30,7 +30,7 @@ final class SymbolIndex
         $this->byUri[$symbol->location->uri] ??= [];
         $this->byUri[$symbol->location->uri][] = $symbol->fullyQualifiedName;
 
-        $namespace = strtolower(NamespacePath::namespaceOf($symbol->fullyQualifiedName));
+        $namespace = NamespacePath::caseFold(NamespacePath::namespaceOf($symbol->fullyQualifiedName));
         $this->byNamespace[$namespace][$symbol->fullyQualifiedName] = $symbol;
     }
 
@@ -42,7 +42,7 @@ final class SymbolIndex
      */
     public function inNamespace(string $namespace): array
     {
-        return array_values($this->byNamespace[strtolower($namespace)] ?? []);
+        return array_values($this->byNamespace[NamespacePath::caseFold($namespace)] ?? []);
     }
 
     /**
@@ -120,7 +120,7 @@ final class SymbolIndex
                     unset($this->byName[$symbol->name]);
                 }
 
-                $namespace = strtolower(NamespacePath::namespaceOf($fqn));
+                $namespace = NamespacePath::caseFold(NamespacePath::namespaceOf($fqn));
                 unset($this->byNamespace[$namespace][$fqn]);
                 if (($this->byNamespace[$namespace] ?? []) === []) {
                     unset($this->byNamespace[$namespace]);

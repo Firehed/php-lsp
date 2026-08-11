@@ -46,10 +46,10 @@ final readonly class NamespaceContents
 
         foreach ($symbols as $symbol) {
             $namespace = NamespacePath::namespaceOf($symbol->fullyQualifiedName);
-            $symbolsByNamespace[strtolower($namespace)][] = $symbol;
+            $symbolsByNamespace[NamespacePath::caseFold($namespace)][] = $symbol;
 
             foreach (NamespacePath::ancestors($namespace) as $parent => $child) {
-                $childNamespaces[strtolower($parent)][strtolower($child)] ??= $child;
+                $childNamespaces[NamespacePath::caseFold($parent)][NamespacePath::caseFold($child)] ??= $child;
             }
         }
 
@@ -83,7 +83,7 @@ final readonly class NamespaceContents
 
         foreach ($contents as $part) {
             foreach ($part->childNamespaces as $namespace) {
-                $namespaces[strtolower($namespace)] ??= $namespace;
+                $namespaces[NamespacePath::caseFold($namespace)] ??= $namespace;
             }
             foreach ($part->symbols as $symbol) {
                 $symbols[$symbol->key()] ??= $symbol;
