@@ -191,6 +191,21 @@ final class CompositeSymbolSourceTest extends TestCase
         yield 'unrelated type' => ['App\Unrelated', false];
     }
 
+    public function testIsSubclassOfMatchesEdgesUnderTheClassCaseRule(): void
+    {
+        // The declared parent spelling differs in case from the queried target.
+        $backend = new FakeSymbolBackend([
+            'app\child' => self::classInfo('App\Child', parent: 'APP\PARENTCLASS'),
+            'app\parentclass' => self::classInfo('App\ParentClass'),
+        ]);
+        $source = new CompositeSymbolSource([$backend]);
+
+        self::assertTrue(
+            $source->isSubclassOf(self::className('App\Child'), self::className('App\ParentClass')),
+            'class-like names are case-insensitive, so a case-divergent parent spelling must still match',
+        );
+    }
+
     public function testIsSubclassOfReturnsFalseForAnUnknownClass(): void
     {
         $source = new CompositeSymbolSource([self::openWithChild(), self::vendorGraph()]);
