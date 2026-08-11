@@ -110,7 +110,6 @@ deptrac:
       - Index
       - Parser
       - Repository
-      - Utility
     Repository:
       - Document # FileUri, the path/URI conversion authority
       - Domain

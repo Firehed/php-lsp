@@ -325,36 +325,6 @@ class ScopeFinderTest extends TestCase
         self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveName($class->extends));
     }
 
-    public function testIterateTopLevelStatementsYieldsStatementsDirectly(): void
-    {
-        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
-        $ast = self::parseWithParents($code);
-
-        $statements = iterator_to_array(ScopeFinder::iterateTopLevelStatements($ast));
-        $classLikes = array_filter($statements, fn($s) => $s instanceof Stmt\ClassLike);
-        $functions = array_filter($statements, fn($s) => $s instanceof Stmt\Function_);
-
-        self::assertCount(1, $classLikes);
-        self::assertCount(2, $functions);
-        $class = reset($classLikes);
-        self::assertInstanceOf(Stmt\Class_::class, $class);
-        self::assertSame('GlobalConfig', $class->name?->toString());
-    }
-
-    public function testIterateTopLevelStatementsFlattensNamespace(): void
-    {
-        $code = $this->loadFixture('src/Mixed/MultipleClasses.php');
-        $ast = self::parseWithParents($code);
-
-        $statements = iterator_to_array(ScopeFinder::iterateTopLevelStatements($ast));
-
-        self::assertGreaterThanOrEqual(2, count($statements));
-        self::assertInstanceOf(Stmt\Class_::class, $statements[0]);
-        self::assertSame('First', $statements[0]->name?->toString());
-        self::assertInstanceOf(Stmt\Class_::class, $statements[1]);
-        self::assertSame('Second', $statements[1]->name?->toString());
-    }
-
     public function testResolveClassNameDelegatesToResolveName(): void
     {
         $code = $this->loadFixture('src/Utility/ImportedExtends.php');

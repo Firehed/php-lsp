@@ -10,11 +10,10 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
+use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Utility\ScopeFinder;
-use PhpParser\Node\Stmt;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
@@ -80,8 +79,9 @@ final class DocumentSymbolSink implements SymbolSink
         // failure yields no statements, so both are cleared together.
         $ast = $this->parser->parse($document) ?? [];
 
-        $classes = $this->classesIn($ast, $document->uri);
-        $functions = $this->functionsIn($ast, $document->uri);
+        $declarations = $this->scanner->scan($ast);
+        $classes = $this->classesIn($declarations, $document->uri);
+        $functions = $this->functionsIn($declarations, $document->uri);
         $this->backend->updateDocument($document->uri, $classes, $functions);
         $this->indexer->indexParsed($document, $ast);
 
@@ -92,16 +92,14 @@ final class DocumentSymbolSink implements SymbolSink
      * The lookup store and the symbol index are separate structures, so the Step P
      * parity harness — which compares only observable outputs — could stay green
      * while they diverged internally (Plan 0002 §5.5, Step 3a(iv)). This guards the
-     * invariant directly: every class-like registered for lookup MUST also be
-     * indexed, so a name is never resolvable through one surface yet invisible to the
-     * other (RFC 1 §4.3). The check is one-directional because the index is a
-     * superset — it also records class-likes declared inside conditional or nested
-     * statements, which the top-level lookup registration does not.
+     * invariant directly: every name registered for lookup MUST also be indexed
+     * (RFC 1 §4.3). The check is one-directional because the index is a superset —
+     * it also records members, which are not registered for lookup.
      *
-     * Functions are checked on the same terms, and need it more: the two stores
-     * qualify a function name by different routes — the parser's `namespacedName`
-     * here, a hand-tracked enclosing namespace in {@see \Firehed\PhpLsp\Index\SymbolExtractor} —
-     * so agreement is a property of two implementations rather than of one.
+     * It earns its place because the two stores qualify a name by different routes —
+     * the parser's `namespacedName` here, a hand-tracked enclosing namespace in
+     * {@see \Firehed\PhpLsp\Index\SymbolExtractor} — so agreement is a property of two
+     * implementations rather than of one.
      *
      * @param list<ClassInfo> $classes
      * @param array<string, FunctionInfo> $functions
@@ -140,15 +138,16 @@ final class DocumentSymbolSink implements SymbolSink
     /**
      * A declaration at any depth counts, matching what the on-disk backends resolve
      * (a polyfill guarded by `function_exists` is the common shape). Opening a file
-     * must not make a name that already resolved disappear (RFC 1 §4.2).
+     * must not make a name that already resolved disappear (RFC 1 §4.2). Of duplicate
+     * declarations, the first wins — the one PHP would define, and the one the
+     * on-disk backends return.
      *
-     * @param array<Stmt> $ast
      * @return array<string, FunctionInfo> Fully-qualified name -> metadata
      */
-    private function functionsIn(array $ast, string $uri): array
+    private function functionsIn(FileDeclarations $declarations, string $uri): array
     {
         $functions = [];
-        foreach ($this->scanner->scan($ast)->functions as $declaration) {
+        foreach ($declarations->functions as $declaration) {
             $fqn = $declaration->name->fullyQualifiedName();
             $functions[$fqn] ??= FunctionInfo::fromNode($declaration->node, $uri);
         }
@@ -157,18 +156,20 @@ final class DocumentSymbolSink implements SymbolSink
     }
 
     /**
-     * @param array<Stmt> $ast
+     * Class-likes follow the same depth and duplicate rules as functions above, for
+     * the same reasons: a `class_exists`-guarded declaration is one the on-disk
+     * backends resolve, and of duplicates they return the first.
+     *
      * @return list<ClassInfo>
      */
-    private function classesIn(array $ast, string $uri): array
+    private function classesIn(FileDeclarations $declarations, string $uri): array
     {
         $classes = [];
-        foreach (ScopeFinder::iterateTopLevelStatements($ast) as $stmt) {
-            if ($stmt instanceof Stmt\ClassLike && $stmt->name !== null) {
-                $classes[] = $this->classInfoFactory->fromAstNode($stmt, $uri);
-            }
+        foreach ($declarations->classLikes as $declaration) {
+            $fqn = $declaration->name->fullyQualifiedName();
+            $classes[$fqn] ??= $this->classInfoFactory->fromAstNode($declaration->node, $uri);
         }
 
-        return $classes;
+        return array_values($classes);
     }
 }

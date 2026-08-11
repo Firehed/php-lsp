@@ -98,6 +98,54 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
+    public function testOpenDocumentRegistersAClassLikeBelowTheTopLevel(): void
+    {
+        // The class-like half of the same rule: the on-disk backends resolve a
+        // `class_exists`-guarded declaration, so an open document must too.
+        $uri = 'file:///MultiClass.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture('MultiClass/MultiClass.php')));
+
+        self::assertNotNull(
+            $this->backend->lookupClassLike(self::className('Fixtures\Completion\ConditionalInMultiFile')),
+            'a conditionally declared class must be registered like any other declaration',
+        );
+    }
+
+    public function testTheFirstOfDuplicateClassLikeDeclarationsWins(): void
+    {
+        // A file may declare one name twice (an unguarded declaration plus a guarded
+        // twin). PHP defines the first one executed, and the on-disk backends return
+        // the first declaration found — the open document must agree (RFC 1 §4.2).
+        $uri = 'file:///DuplicateDeclarations.php';
+        $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
+
+        $classInfo = $this->backend->lookupClassLike(self::className('Fixtures\MultiClass\Duplicated'));
+        self::assertNotNull($classInfo, 'the duplicated class must still resolve');
+        self::assertTrue(
+            $classInfo->isFinal,
+            'the first declaration (final) must win, matching runtime and the on-disk backends',
+        );
+    }
+
+    public function testTheFirstOfDuplicateFunctionDeclarationsWins(): void
+    {
+        // The function half of the same rule.
+        $uri = 'file:///DuplicateDeclarations.php';
+        $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
+
+        $functionInfo = $this->backend->lookupFunction(
+            FunctionName::fromFullyQualified('Fixtures\MultiClass\duplicated'),
+        );
+        self::assertNotNull($functionInfo, 'the duplicated function must still resolve');
+        self::assertSame(
+            'string',
+            $functionInfo->returnType?->format(),
+            'the first declaration (returning string) must win, matching runtime and the on-disk backends',
+        );
+    }
+
     public function testUpdatingAwayFromAFunctionDropsItsRegistration(): void
     {
         $uri = 'file:///helpers.php';
