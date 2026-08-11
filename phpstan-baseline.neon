@@ -215,9 +215,3 @@ parameters:
 			identifier: disallowed.namespace
 			count: 2
 			path: src/TypeInference/BasicTypeResolver.php
-
-		-
-			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Utility/NamespacePath.php

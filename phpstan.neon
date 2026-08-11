@@ -63,6 +63,7 @@ parameters:
             message: 'case rules for symbol names live in NameKind; non-symbol uses may be allowlisted here consciously'
             allowIn:
                 - src/Domain/NameKind.php
+                - src/Utility/NamespacePath.php # namespace paths are case-insensitive for every kind; not a symbol name
                 - src/Transport/MessageReader.php # HTTP header names
                 - src/Domain/Visibility.php # visibility keywords
                 - tests/*
