@@ -1,0 +1,50 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Fails when a guardrail baseline grows relative to a base ref (default
+// origin/main). RFC 1 §8.1: baseline totals only shrink; relocating a frozen
+// violation is allowed, absorbing a new one is not.
+
+$baseRef = $argv[1] ?? 'origin/main';
+
+$phpstanTotal = function (string $contents): int {
+    preg_match_all('/^\s*count:\s*(\d+)/m', $contents, $matches);
+    return (int) array_sum($matches[1]);
+};
+
+$deptracTotal = function (string $contents): int {
+    preg_match_all('/^\s+-\s+\S/m', $contents, $matches);
+    return count($matches[0]);
+};
+
+$contentsAt = function (string $ref, string $file): string {
+    $out = shell_exec('git show ' . escapeshellarg("$ref:$file") . ' 2>/dev/null');
+    return is_string($out) ? $out : '';
+};
+
+$files = [
+    'phpstan-baseline.neon' => $phpstanTotal,
+    'deptrac.baseline.yaml' => $deptracTotal,
+];
+
+$failed = false;
+foreach ($files as $file => $total) {
+    $base = $total($contentsAt($baseRef, $file));
+    $head = $total(is_file($file) ? (string) file_get_contents($file) : '');
+    printf("%s: %d -> %d\n", $file, $base, $head);
+    if ($head > $base) {
+        fwrite(STDERR, sprintf(
+            "%s grew (%d -> %d): baselines only shrink. Route the new" .
+            " violation through its authority, or consciously widen the" .
+            " allowlist in the rule config instead.\n",
+            $file,
+            $base,
+            $head,
+        ));
+        $failed = true;
+    }
+}
+
+exit($failed ? 1 : 0);
