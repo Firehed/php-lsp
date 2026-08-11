@@ -4,7 +4,7 @@
     Category:   Architecture Requirements (Best Current Practice)
     Status:     Draft
     Target:     Language Server Protocol 3.17
-    Date:       2026-07-19
+    Date:       2026-08-10
     Supersedes: none
     Relates-To: docs issues #264, #265, #266; architecture invariants in CLAUDE.md
 
@@ -49,6 +49,7 @@ a bumped date.
        4.8. Protocol Capability Negotiation
        4.9. Position Encoding
        4.10. Client Conformance Defects
+       4.11. Parse-Health Collapse
     5. Component Requirements
        5.1. Symbol Knowledge: Read Contract (SymbolSource)
        5.2. Symbol State: Write Contract (SymbolSink)
@@ -63,6 +64,7 @@ a bumped date.
     Appendix A. Axes of Variation Catalog
     Appendix B. Relationship to Existing Invariants and Issues
     Appendix C. LSP Feature and Version Reference
+    Appendix D. Dimension Catalog
 
 ## 1. Introduction
 
@@ -162,11 +164,14 @@ consumers of an axis. The catalog is in Appendix A. The axes are:
 
 - **Data source** — where symbol knowledge comes from.
 - **Symbol kind** — what categories of symbol exist.
+- **Member kind** — what categories of class-like member exist (method, property, constant, enum case; future hooks).
+- **Access context** — which members exist for a position: visibility per operation, static-ness, and vantage point.
 - **Type form** — what shapes a type can take.
 - **Target environment** — which language version/platform is assumed.
 - **Protocol capability** — what the client understands and how output is shaped.
 - **Position/intent** — where in the source a completion or resolution is
-  requested.
+  requested; this decomposes into cursor intent, node type, and parse health
+  (Section 4.11).
 
 Client-supplied configuration (initialization options, `workspace/configuration`)
 is deliberately not a separate axis: version- and platform-like settings fold into
@@ -234,8 +239,8 @@ target environment) alone.
 
 A consumer MUST determine a symbol's suitability for a position or operation by
 querying a capability predicate. A consumer MUST NOT branch on a concrete symbol
-kind enumeration, and MUST NOT use `instanceof` against a concrete type
-implementation, to make such a decision.
+kind enumeration, and MUST NOT use `instanceof` against a concrete implementation
+of the type or resolved-symbol interfaces, to make such a decision.
 
 Consequently, introducing a new symbol kind or a new type form MUST NOT require
 edits to consumers that operate through predicates and interfaces. A new
@@ -342,6 +347,13 @@ last resort, MUST be documented and isolated from feature logic, and MUST NOT le
 A running list of observed client defects and their accommodations SHOULD be
 maintained (Appendix B).
 
+### 4.11. Parse-Health Collapse
+
+A live server answers positional questions on documents that may not currently parse.
+Each positional question MUST be answered through one component regardless of parse state; whether the answer derived from a full syntax tree, a recovered tree, or raw text MUST NOT be observable above the positional layer.
+Text-derived fallback logic MUST be confined to that layer's resilience rim, and MUST agree with the syntax-tree path on input that parses; that agreement MUST be held by test, not review.
+This is the same collapse Section 4.9 requires for encoding, applied to parse state: a dimension without a collapse point silently multiplies every question it touches.
+
 ## 5. Component Requirements
 
 ### 5.1. Symbol Knowledge: Read Contract (SymbolSource)
@@ -360,6 +372,10 @@ Names MUST be represented by typed identifiers, not bare strings (for example,
 distinct identifier types for class, function, and constant names). Coverage MUST
 be uniform across kinds: a query answerable for one kind MUST be answerable for
 all kinds for which it is meaningful.
+
+The query verbs are not all primitive, and derived verbs MUST NOT fork.
+A definition-site query (`locate`) MUST be a projection of lookup, never an independent implementation.
+A search SHOULD be derived from enumeration plus filtering; where cost forces an independent implementation, agreement between search and enumeration MUST be held by test.
 
 ### 5.2. Symbol State: Write Contract (SymbolSink)
 
@@ -487,6 +503,9 @@ single extension point and MUST NOT edit consumers of the axis:
   handler remains a coordinator (retains the existing completion-source
   invariant).
 
+A language or protocol feature MUST be decomposed, before implementation, into the axis values it adds; each touched axis is then served by its extension point above.
+New features are new values on existing axes, not new axes: a feature that does not decompose is the signal that an axis is missing.
+
 A contribution that cannot be expressed as one of the above SHOULD be treated as
 a signal that an axis or extension point is missing, and SHOULD be raised as an
 amendment to this document before implementation.
@@ -503,9 +522,9 @@ exhaustive over the normative sections; each item names the section it checks.
    single write path (Section 4.3).
 4. No knowledge query takes a cursor position or a caller-supplied syntax tree
    (Section 4.4).
-5. No consumer branches on a *resolved* symbol's kind, or on a concrete type
-   implementation, to decide suitability; syntactic-position routing is exempt
-   (Section 4.5).
+5. No consumer branches on a *resolved* symbol's kind, or on a concrete type or
+   resolved-symbol implementation, to decide suitability; syntactic-position
+   routing is exempt (Section 4.5).
 6. Types are constructed only via the factory and consumed only via the interface;
    traversal occurs in one place (Section 4.6).
 7. Built-in knowledge is parameterized by target environment, not the server's
@@ -518,6 +537,8 @@ exhaustive over the normative sections; each item names the section it checks.
     bounded coverage is observable (Section 5.3).
 11. Correctness holds under synchronous execution (Section 6).
 12. Malformed input yields an error response, not process termination (Section 9).
+13. Positional answers do not expose parse health, and the text fallback agrees
+    with the syntax-tree path on parseable input (Section 4.11).
 
 ### 8.1. Enforcement
 
@@ -528,23 +549,36 @@ it was held by *mechanism* — a single interface plus a parity test — not by 
 documented rule, and every invariant here is expected to be held the same way. An
 invariant added by amendment MUST specify its mechanism.
 
+The default-deny mechanisms hold whole categories rather than per-axis rules, because per-axis rules can only guard axes already discovered.
+Capability confinement (PHPStan disallowed-calls) denies AST traversal, symbol-name case folding, regex, runtime reflection, and filesystem access everywhere except each capability's named homes.
+The layer-dependency contract (deptrac) denies any inter-layer dependency the ruleset does not allow.
+Their baselines freeze pre-existing violations only: the violation total MUST only shrink and MUST reach empty (0002 Step Z), and no violation may be introduced by new code.
+An entry MAY be rewritten when a strangler step relocates the code it froze, so incremental migration is never blocked; a drained entry either routes through the authority or is consciously promoted to the allowlist.
+
     Invariant                         Mechanism
     --------------------------------  ------------------------------------------------
-    4.1 Handler responsibility        Architecture test: handler code MUST NOT depend
-                                      on parser, repository, or reflection.
+    4.1 Handler responsibility        Layer contract (deptrac): the Handler layer
+                                      cannot depend on parser, repository, index, or
+                                      type-inference tiers; reflection confined by
+                                      capability rule.
     4.2 SymbolSource authority        Static rule: no ReflectionClass, concrete index,
-                                      or autoload-map use outside a backend.
-    4.3 Read/write segregation        Static rule: consumers depend on SymbolSource or
-                                      SymbolSink, not a concrete impl; single write
-                                      path checked by architecture test.
+                                      or autoload-map use outside a backend; reflection
+                                      and filesystem capability confinement.
+    4.3 Read/write segregation        Layer contract (deptrac) for tier dependencies;
+                                      single write path checked by architecture test.
+                                      The SymbolSource/SymbolSink split within the
+                                      Knowledge layer is below deptrac granularity and
+                                      is held by the §4.2 static rule.
     4.4 Positional/knowledge split    Interface shape: knowledge signatures accept no
                                       position or syntax tree (checked by the type
                                       checker on the interface).
     4.5 Predicates over kind/type     Static rule: no `instanceof` against a concrete
-                                      Type impl, and no `match`/`switch` on the kind
-                                      enum, outside the factory and classifier.
+                                      Type or ResolvedSymbol impl, and no `match`/
+                                      `switch` on the kind enum, outside the factory
+                                      and classifier.
     4.6 Type factory + traversal      Static rule: no `new` of a Type impl outside the
-                                      factory; TypeGraphParityTest for the walk.
+                                      factory; traversal capability confinement;
+                                      TypeGraphParityTest for the walk.
     4.7 Env-parameterized built-ins   Test: built-ins resolve against a supplied
                                       environment, and re-key on its change; review.
     4.8 Capability negotiation        Static rule: raw `initialize` params reachable
@@ -552,6 +586,9 @@ invariant added by amendment MUST specify its mechanism.
     4.9 Position encoding             Test: multibyte round-trip at the boundary;
                                       review of interior offset use.
     4.10 Client conformance defects   Review only; defect list in Appendix B.
+    4.11 Parse-health collapse        Regex capability confinement (the text rim is
+                                      the allowlist) + AST/text agreement tests on
+                                      parseable fixtures.
     5.1 Uniform coverage across kinds Test: a backend x kind x query grid, its axes derived
                                       from the kind enum and the backend registry rather
                                       than listed, each cell either answering over the
@@ -618,10 +655,15 @@ work.
     -------------------  ----------------------------------  -----------------
     Data source          SymbolSource backend                4.2, 5.3
     Symbol kind          kind + lookup + extraction          4.5, 5.1
+    Member kind          one extraction + one walk + preds   4.5, 4.6 (target)
+    Access context       one access-context value + filter   4.5 (target)
     Type form            Type implementation + factory        4.6
     Target environment   environment parameter + backend      4.7
     Protocol capability  session capabilities + handler       4.8, 5.4
     Position/intent      completion source + intent mapping   7
+    Parse health         one positional facade + text rim     4.11
+
+Rows marked (target) name their intended single extension point ahead of it existing; the build manifest owns the work.
 
 Configuration/settings is intentionally not a separate axis (Section 3.1); it folds
 into target environment (4.7) and session capabilities (4.8, 5.4).
@@ -645,6 +687,7 @@ into target environment (4.7) and session capabilities (4.8, 5.4).
   offsets are handled as bytes (violates Section 4.9). These are to be migrated
   toward this document, not grandfathered; each SHOULD be tracked as an issue
   citing the section it violates.
+- **Divergences added by the 2026-08-10 amendment (informative).** The text fallback answers several positional questions per consumer and lacks the Section 4.11 agreement tests; suitability checks in completion use `instanceof` against resolved-symbol implementations (Section 4.5 as widened); class-like search is neither derived from enumeration nor bound to it by test (Section 5.1). Each is frozen in a guardrail baseline or owned by a build-manifest slice; none blocks incremental migration.
 - **Observed client defects (informative).** Per Section 4.10, accommodations for
   clients that advertise a capability but mishandle it are recorded here as they
   are found. Known: some clients ignore a completion item's `textEdit` range and
@@ -681,3 +724,25 @@ locations were checked against the live 3.17 specification.
 
 When the targeted [LSP] version is raised, this appendix and Section 1.4 MUST be
 updated, and any newly available negotiation MUST be reconciled with Section 4.8.
+
+## Appendix D. Dimension Catalog (Non-Normative)
+
+The axes in Appendix A are the load-bearing subset of a larger dimension space.
+The full catalog exists so a feature can be decomposed (Section 7) and so a new "axis" claim can be checked against a bounded list rather than discovered by defect.
+Dimensions derive from the language's semantic model and the protocol's I/O model, both of which change on the order of years; features add values to dimensions, almost never dimensions.
+
+    Group      Dimensions
+    ---------  ----------------------------------------------------------------
+    Verbs      protocol feature; knowledge query verb (lookup, enumerate,
+               search, locate, predicate); write verb (open, update, close,
+               invalidate)
+    Cursor     intent; node type; parse health; scope shape
+    Names      symbol namespace; class-like flavour; member kind; name form;
+               declaration shape
+    Sources    backend; locate route; freshness; target environment
+    Answers    type form; type provenance; inheritance edge (including its
+               payload, e.g. trait adaptations); access context
+    Emission   client capability; position encoding; kind taxonomy; rendering
+
+Every dimension is handled one of three ways: **collapsed** at a boundary into one canonical form (name form, encoding, parse health), **switched** in exactly one place (backend, node type, member kind), or **applied as a modifier** at the edge (client capability, rendering).
+A works-on-X-but-not-Y defect requires a dimension switched in more than one place crossing a dimension enumerated in more than one place; the mechanisms in Section 8.1 exist to make the first half of that conjunction fail CI.
