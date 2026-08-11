@@ -334,19 +334,13 @@ target version or extension the server process lacks. This is **deferred** (Step
 and tracked as an open §4.7 gap, not scheduled; the interim behavior (reflection +
 optimistic availability) is intentional.
 
-### Step 4 — `SymbolResolver` decomposition
+### Step 4 — One implementation per positional question (reframed 2026-08-10)
 
-*Goal:* split the god class into positional layer + thin glue + `TypeClassifier`,
-and finish the interface split.
+*Goal:* drain the guardrail-baseline entries for `src/Resolution/` and `src/TypeInference/` — each drain moves a confined mechanism (a traversal, a regex, a case rule) into its single home — and finish the interface split.
+The original decomposition slices predate the default-deny guardrails; the duplication they targeted is now enumerated mechanically as baseline entries, so "done" is checkable (those entries are gone, each positional question has one implementation) rather than judged (the class looks thin).
+`SymbolResolver` becoming thin glue is the side effect, not the metric.
 
-*Acceptance:* the positional layer (node-at-offset, scope, member/call detection,
-text fallback, **plus the name-resolution context query `getNameContext`** — this is
-document-scoped name context, not FQN-knowledge, so it lives here) is its own unit; `TypeClassifier` owns the predicates; `SymbolResolver`
-is thin glue over the positional layer and `SymbolSource`; **`CodeResolver` is reduced
-to the positional-facing interface — its knowledge-facing responsibilities are served
-by `SymbolSource` (there is no second knowledge interface)**; the no-`instanceof`-on-
-concrete-`Type` and no-branch-on-resolved-kind rules pass, as does the §4.6
-"no `new` of a `Type` implementation outside the factory" rule; parity green.
+*Acceptance:* `phpstan-baseline.neon` and `deptrac.baseline.yaml` carry no entries for `src/Resolution/` or `src/TypeInference/`; each positional question is answered in exactly one place, with parse health collapsed behind the positional facade and the §4.11 AST/text agreement test in place; `TypeClassifier` owns the predicates; **`CodeResolver` is reduced to the positional-facing interface — its knowledge-facing responsibilities are served by `SymbolSource` (there is no second knowledge interface)**; the S4.1 rules pass, with the `instanceof` rule widened to resolved-symbol implementations (§4.5 as amended); parity green.
 
 *Handler dependency shape.* This does not give handlers a second resolver. Point-query
 handlers (Definition / Hover / …) depend on the positional-facing `CodeResolver`
@@ -393,6 +387,14 @@ sites; naming it is what stops the step being declared done with every one intac
   partial qualification) in ~65 lines of regex. That last one is legitimate where no AST
   exists, so the requirement is that it share the *shape* of the AST path, not that it be
   deleted.
+- **S4.8 — `TypeInference` comes inside the boundary.** Two walks answer "which variables
+  are bound before this line" and disagree: `SymbolResolver::collectVariablesFromStatements`
+  knows assign/foreach/catch, `BasicTypeResolver` knows params/assign only, so a foreach or
+  catch variable appears in `$`-completion but its members do not resolve.
+  `BasicTypeResolver`'s expression dispatch also parallels `SymbolResolver::resolveNode`
+  with narrower coverage. `src/TypeInference/` sits outside the original decomposition's
+  directory boundary, which is how both survived every named row above; its guardrail
+  baseline entries are part of this step's drain.
 
 ### Step 5 — Environment-parameterized built-ins (deferred; tracked §4.7 gap)
 
@@ -540,7 +542,7 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
 - **Enforcement is complete.** Every §8.1 enforcement rule is active **repo-wide with
   zero remaining exemptions or allowlists** (the Step 2 §4.2 exemption, and any other,
   are gone). A rule still carrying a scope is an open step, not done.
-- **Conformance is repo-wide.** RFC §8's 12-item checklist passes across the whole
+- **Conformance is repo-wide.** RFC §8's checklist passes across the whole
   codebase, not merely per change.
 - **Parity is trustworthy.** The Step P harness is green **and** its branch coverage of
   the migrated surfaces is adequate — no unexercised surface branch (Step P) — and
@@ -562,6 +564,9 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   (byte offsets, functions-need-AST, constants-unresolved, capabilities-unread) is
   either **fixed** or **converted to an explicitly-tracked deferred gap with an open
   issue** — none silently persists.
+- **Guardrail baselines are empty.** `phpstan-baseline.neon` and `deptrac.baseline.yaml`
+  contain no entries and are deleted; every confinement and layer rule is active with
+  allowlists only, so regrowth is loud.
 - **Remaining gaps are named.** The only surviving non-conformances are the
   explicitly-deferred, tracked ones, each with an issue: §4.7 / built-ins (Step 5), the
   workspace scope (#264/#265), the diagnostics / scheduler tier (Step 6 / #266), and
@@ -571,7 +576,7 @@ verified repo-wide — that the invariants hold and no transitional cruft remain
   landed fails the gate. Otherwise the grid's own escape hatch outlives what it was
   granted for, and a hole is certified rather than exposed.
 
-Only when all seven hold is the foundation deemed complete.
+Only when every item above holds is the foundation deemed complete.
 
 ## 5. Step 2 in depth
 
@@ -822,6 +827,10 @@ once Step P is green.
   interim is reflection + optimistic availability, and §4.7 is a tracked gap.
 - The external-change invalidation fallback when the client does not support
   `didChangeWatchedFiles` (lazy re-read vs. no invalidation) (Step 3).
+- ~~A query-registry reshape of the resolution tier.~~ **Shelved (2026-08-10):**
+  duplication control is held by the default-deny guardrails instead; revisit only if
+  central invalidation or incrementality becomes a live need (a measured performance
+  wall, or the Step 6 scheduler tier).
 
 ## 8. Step 0 spike record (measured)
 
