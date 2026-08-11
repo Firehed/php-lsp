@@ -114,6 +114,18 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
+    public function testLookupClassLikeIsCaseInsensitive(): void
+    {
+        $backend = $this->backendWithLocator(
+            $this->locatorReturning($this->fixturesRoot . '/src/Domain/User.php'),
+        );
+
+        self::assertNotNull(
+            $backend->lookupClassLike(self::className('fixtures\domain\user')),
+            'PHP matches class names case-insensitively, as the function path already does',
+        );
+    }
+
     public function testLookupFunctionResolvesAFunctionDeclaredInAnAutoloadFilesEntry(): void
     {
         $info = $this->backend()->lookupFunction(
