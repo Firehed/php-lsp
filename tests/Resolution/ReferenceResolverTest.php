@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Resolution\NameContext;
-use Firehed\PhpLsp\Resolution\NameKind;
 use Firehed\PhpLsp\Resolution\Reference;
 use Firehed\PhpLsp\Resolution\ReferenceKind;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;

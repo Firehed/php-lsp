@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
-use Firehed\PhpLsp\Resolution\NameKind;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

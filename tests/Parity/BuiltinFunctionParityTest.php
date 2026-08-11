@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Resolution\NameKind;
 use Firehed\PhpLsp\Utility\NamespacePath;
 use PHPUnit\Framework\TestCase;
 

@@ -62,7 +62,7 @@ parameters:
                 - 'mb_strtolower()'
             message: 'case rules for symbol names live in NameKind; non-symbol uses may be allowlisted here consciously'
             allowIn:
-                - src/Resolution/NameKind.php
+                - src/Domain/NameKind.php
                 - src/Transport/MessageReader.php # HTTP header names
                 - src/Domain/Visibility.php # visibility keywords
                 - tests/*

@@ -6,10 +6,10 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\FileUri;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Resolution\NameKind;
 use PhpParser\Node;
 
 /**

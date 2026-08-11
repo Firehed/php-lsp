@@ -2,36 +2,10 @@ deptrac:
   skip_violations:
     Firehed\PhpLsp\Domain\FunctionInfo:
       - Firehed\PhpLsp\Utility\TypeFactory
-    Firehed\PhpLsp\Domain\FunctionName:
-      - Firehed\PhpLsp\Resolution\NameKind
     Firehed\PhpLsp\Domain\ParameterInfo:
       - Firehed\PhpLsp\Utility\TypeFactory
     Firehed\PhpLsp\Domain\QualifiedName:
       - Firehed\PhpLsp\Utility\NamespacePath
-    Firehed\PhpLsp\Index\AutoloadFilesLocator:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Index\CatalogSymbol:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Index\ComposerNamespaceSource:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Index\ComposerSymbolLocator:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Index\ReflectionNamespaceSource:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Index\WorkspaceNamespaceSource:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Knowledge\BuiltinBackend:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Knowledge\CompositeSymbolLocator:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Knowledge\FilesystemBackend:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Knowledge\OpenDocumentBackend:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Knowledge\SymbolCacheKey:
-      - Firehed\PhpLsp\Resolution\NameKind
-    Firehed\PhpLsp\Knowledge\SymbolLocator:
-      - Firehed\PhpLsp\Resolution\NameKind
     Firehed\PhpLsp\Repository\DefaultFunctionRepository:
       - Firehed\PhpLsp\Index\DeclarationScanner
     Firehed\PhpLsp\Repository\MemberResolver:
