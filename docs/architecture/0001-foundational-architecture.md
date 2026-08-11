@@ -549,7 +549,7 @@ it was held by *mechanism* — a single interface plus a parity test — not by 
 documented rule, and every invariant here is expected to be held the same way. An
 invariant added by amendment MUST specify its mechanism.
 
-Two default-deny mechanisms hold whole categories rather than per-axis rules, because per-axis rules can only guard axes already discovered.
+The default-deny mechanisms hold whole categories rather than per-axis rules, because per-axis rules can only guard axes already discovered.
 Capability confinement (PHPStan disallowed-calls) denies AST traversal, symbol-name case folding, regex, runtime reflection, and filesystem access everywhere except each capability's named homes.
 The layer-dependency contract (deptrac) denies any inter-layer dependency the ruleset does not allow.
 Their baselines freeze pre-existing violations only: the violation total MUST only shrink and MUST reach empty (0002 Step Z), and no violation may be introduced by new code.
