@@ -59,6 +59,7 @@ parameters:
             function:
                 - 'strtolower()'
                 - 'strcasecmp()'
+                - 'strncasecmp()'
                 - 'mb_strtolower()'
             message: 'case rules for symbol names live in NameKind; non-symbol uses may be allowlisted here consciously'
             allowIn:
