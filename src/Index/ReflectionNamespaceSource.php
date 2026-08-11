@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
-use Firehed\PhpLsp\Resolution\NameKind;
+use Firehed\PhpLsp\Domain\NameKind;
 use ReflectionClass;
 
 /**

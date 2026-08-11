@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Resolution\NameKind;
 
 /**
  * Chains the routes to a declaration, in order of cost and authority.

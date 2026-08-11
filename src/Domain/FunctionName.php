@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-use Firehed\PhpLsp\Resolution\NameKind;
-
 /**
  * The fully-qualified name of a standalone function (Plan 0002 §5.3): a
  * {@see QualifiedName} that carries its {@see NameKind} intrinsically, so a lookup

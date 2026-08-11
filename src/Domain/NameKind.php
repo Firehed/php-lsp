@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Resolution;
-
-use Firehed\PhpLsp\Domain\QualifiedName;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * The category of symbol a name refers to, which determines how PHP resolves it

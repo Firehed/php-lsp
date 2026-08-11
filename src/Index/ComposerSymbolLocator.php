@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
-use Firehed\PhpLsp\Resolution\NameKind;
 
 /**
  * Locates a declaration through Composer's autoload maps, which address class-likes

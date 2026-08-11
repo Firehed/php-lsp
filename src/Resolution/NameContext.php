@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\NameKind;
+
 /**
  * The name-resolution context at a cursor: the enclosing namespace and the
  * import tables in effect.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**

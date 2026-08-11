@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheKey;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Resolution\NameKind;
 
 /**
  * The cache key a backend stores a resolved symbol under (RFC 1 §5.3).
