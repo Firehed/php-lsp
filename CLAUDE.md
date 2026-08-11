@@ -160,9 +160,10 @@ not a cost measurement; the set is explicit and usually tiny.
 
 **"Which node declares this name" is answered by `Index\DeclarationScanner`**, which
 reports every class-like, function and constant an AST declares — at any depth, paired
-with its declaring node (`Declaration`). Every consumer reads it: on-disk and
-open-document lookup, the write path, the `autoload.files` index, and completion's
-file-function query, so none can disagree about what a file declares. Hand-written
+with its declaring node (`Declaration`). Every consumer but one (tracked below) reads
+it: on-disk and open-document lookup, the write path's lookup half, the
+`autoload.files` index, and completion's file-function query, so none can disagree
+about what a file declares. Hand-written
 traversals are how a `function_exists`-guarded polyfill came to resolve on hover while
 being invisible to completion, and how its `class_exists` twin dropped out of
 open-document lookup. Do NOT write a new one; a rule about what counts as a declaration

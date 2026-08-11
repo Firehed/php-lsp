@@ -92,9 +92,9 @@ final class DocumentSymbolSink implements SymbolSink
      * The lookup store and the symbol index are separate structures, so the Step P
      * parity harness — which compares only observable outputs — could stay green
      * while they diverged internally (Plan 0002 §5.5, Step 3a(iv)). This guards the
-     * invariant directly: every name registered for lookup MUST also be indexed, so
-     * one is never resolvable through one surface yet invisible to the other
-     * (RFC 1 §4.3).
+     * invariant directly: every name registered for lookup MUST also be indexed
+     * (RFC 1 §4.3). The check is one-directional because the index is a superset —
+     * it also records members, which are not registered for lookup.
      *
      * It earns its place because the two stores qualify a name by different routes —
      * the parser's `namespacedName` here, a hand-tracked enclosing namespace in
