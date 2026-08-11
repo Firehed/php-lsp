@@ -168,10 +168,11 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
 
     private function parseClassFrom(ClassName $name, string $filePath): ?ClassInfo
     {
-        $target = QualifiedName::fromClassName($name)->fullyQualifiedName();
+        $kind = NameKind::ClassLike;
+        $target = $kind->normalize(QualifiedName::fromClassName($name));
 
         foreach ($this->declarationsIn($filePath)->classLikes as $declaration) {
-            if ($declaration->name->fullyQualifiedName() === $target) {
+            if ($kind->normalize($declaration->name) === $target) {
                 return $this->factory->fromAstNode($declaration->node, FileUri::fromPath($filePath));
             }
         }
