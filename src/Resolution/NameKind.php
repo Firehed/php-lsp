@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * The category of symbol a name refers to, which determines how PHP resolves it
@@ -57,6 +56,6 @@ enum NameKind
     {
         $shortName = $this->isCaseSensitive() ? $name->shortName : strtolower($name->shortName);
 
-        return NamespacePath::join(strtolower($name->namespace), $shortName);
+        return (new QualifiedName(strtolower($name->namespace), $shortName))->fullyQualifiedName();
     }
 }
