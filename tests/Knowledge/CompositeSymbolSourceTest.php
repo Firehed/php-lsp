@@ -141,7 +141,9 @@ final class CompositeSymbolSourceTest extends TestCase
     {
         $open = new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'open.php')]);
         $vendor = new FakeSymbolBackend(searchResults: [
-            self::symbol('App\Log', 'vendor.php'),
+            // The same class-like under its case rule, spelled differently: it
+            // must still clash, and the open document's spelling must win.
+            self::symbol('APP\LOG', 'vendor.php'),
             self::symbol('App\Logger', 'vendor.php'),
         ]);
         $source = new CompositeSymbolSource([$open, $vendor]);
