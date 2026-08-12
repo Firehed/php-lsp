@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ReflectionSymbolInfoFactory;
+use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Utility\NamespacePath;
 use PHPUnit\Framework\TestCase;
@@ -55,7 +56,7 @@ final class BuiltinFunctionParityTest extends TestCase
         $this->backend = new BuiltinBackend(
             new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory()),
             new CachedNamespaceCatalog(new ReflectionNamespaceSource(), CacheFactory::inMemory()),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
     }
 

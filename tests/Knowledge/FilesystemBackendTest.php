@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
+use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
@@ -281,7 +282,7 @@ final class FilesystemBackendTest extends TestCase
             $this->parser,
             $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
 
         $backend->childrenOf(new NamespaceName('Psr\Log'));
@@ -427,7 +428,7 @@ final class FilesystemBackendTest extends TestCase
             $this->parser,
             $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
 
         self::assertSame(
@@ -467,7 +468,7 @@ final class FilesystemBackendTest extends TestCase
             $this->parser,
             $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
     }
 
@@ -479,7 +480,7 @@ final class FilesystemBackendTest extends TestCase
             $this->parser,
             $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
     }
 

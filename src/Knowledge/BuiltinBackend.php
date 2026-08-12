@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Psr\SimpleCache\CacheInterface;
 
 /**
  * The lowest-precedence {@see SymbolBackend}: the symbols built into PHP and its
@@ -31,7 +30,7 @@ final class BuiltinBackend implements SymbolBackend
     public function __construct(
         private readonly ReflectionSymbolInfoFactory $infoFactory,
         private readonly NamespaceCatalog $namespaces,
-        private readonly CacheInterface $cache,
+        private readonly SymbolCache $cache,
     ) {
     }
 
@@ -42,20 +41,11 @@ final class BuiltinBackend implements SymbolBackend
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        $cacheKey = SymbolCacheKey::for($name, $kind);
-
-        $cached = $this->cache->get($cacheKey);
-        if ($cached !== null) {
-            assert($cached instanceof SymbolInfo);
-            return $cached;
-        }
-
-        $info = $this->infoFactory->fromReflection($name, $kind);
-        if ($info !== null) {
-            $this->cache->set($cacheKey, $info);
-        }
-
-        return $info;
+        return $this->cache->remember(
+            $name,
+            $kind,
+            fn(): ?SymbolInfo => $this->infoFactory->fromReflection($name, $kind),
+        );
     }
 
     /**

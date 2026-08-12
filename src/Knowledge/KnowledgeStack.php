@@ -69,7 +69,7 @@ final readonly class KnowledgeStack
             new BuiltinBackend(
                 new ReflectionSymbolInfoFactory($classInfoFactory),
                 new CachedNamespaceCatalog(new ReflectionNamespaceSource(), CacheFactory::inMemory()),
-                CacheFactory::inMemory(),
+                new SymbolCache(CacheFactory::inMemory()),
             ),
         ]);
 
@@ -123,7 +123,7 @@ final readonly class KnowledgeStack
             $parser,
             $infoFactory,
             $scanner,
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
     }
 }

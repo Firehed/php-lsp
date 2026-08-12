@@ -89,10 +89,14 @@ final class OpenDocumentBackend implements SymbolBackend
 
         $keys = [];
         foreach ($classes as $classInfo) {
-            $keys[] = $this->register(NameKind::ClassLike, $classInfo->name->fqn, $classInfo);
+            $key = self::key(NameKind::ClassLike, QualifiedName::fromClassName($classInfo->name));
+            $this->byKey[$key] = $classInfo;
+            $keys[] = $key;
         }
         foreach ($functions as $fqn => $functionInfo) {
-            $keys[] = $this->register(NameKind::Function_, $fqn, $functionInfo);
+            $key = self::key(NameKind::Function_, QualifiedName::fromFullyQualified($fqn));
+            $this->byKey[$key] = $functionInfo;
+            $keys[] = $key;
         }
         $this->keysByUri[$uri] = $keys;
     }
@@ -103,14 +107,6 @@ final class OpenDocumentBackend implements SymbolBackend
             unset($this->byKey[$key]);
         }
         unset($this->keysByUri[$uri]);
-    }
-
-    private function register(NameKind $kind, string $fqn, SymbolInfo $info): string
-    {
-        $key = self::key($kind, QualifiedName::fromFullyQualified($fqn));
-        $this->byKey[$key] = $info;
-
-        return $key;
     }
 
     /**

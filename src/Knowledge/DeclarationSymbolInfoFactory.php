@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Document\FileUri;
+use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
-use Firehed\PhpLsp\Index\Declaration;
 use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
-use PhpParser\Node;
-use PhpParser\Node\Stmt;
 
 /**
  * The one place a {@see NameKind} picks a declaration list and a builder, which is
@@ -35,36 +33,32 @@ final readonly class DeclarationSymbolInfoFactory
         $target = $kind->normalize($name);
 
         return match ($kind) {
-            NameKind::ClassLike => $this->firstMatching(
-                $declarations->classLikes,
-                $target,
-                $kind,
-                fn(Stmt\ClassLike $node): SymbolInfo => $this->classes->fromAstNode(
-                    $node,
-                    FileUri::fromPath($filePath),
-                ),
-            ),
-            NameKind::Function_ => $this->firstMatching(
-                $declarations->functions,
-                $target,
-                $kind,
-                static fn(Stmt\Function_ $node): SymbolInfo => FunctionInfo::fromNode($node, $filePath),
-            ),
+            NameKind::ClassLike => $this->classLike($declarations, $target, $filePath),
+            NameKind::Function_ => self::standaloneFunction($declarations, $target, $filePath),
             // Scanned, but the global-constant info type lands in S3.8b.
             NameKind::Constant => null,
         };
     }
 
-    /**
-     * @template TNode of Node
-     * @param list<Declaration<TNode>> $declarations
-     * @param callable(TNode): SymbolInfo $build
-     */
-    private function firstMatching(array $declarations, string $target, NameKind $kind, callable $build): ?SymbolInfo
+    private function classLike(FileDeclarations $declarations, string $target, string $filePath): ?ClassInfo
     {
-        foreach ($declarations as $declaration) {
-            if ($kind->normalize($declaration->name) === $target) {
-                return $build($declaration->node);
+        foreach ($declarations->classLikes as $declaration) {
+            if (NameKind::ClassLike->normalize($declaration->name) === $target) {
+                return $this->classes->fromAstNode($declaration->node, FileUri::fromPath($filePath));
+            }
+        }
+
+        return null;
+    }
+
+    private static function standaloneFunction(
+        FileDeclarations $declarations,
+        string $target,
+        string $filePath,
+    ): ?FunctionInfo {
+        foreach ($declarations->functions as $declaration) {
+            if (NameKind::Function_->normalize($declaration->name) === $target) {
+                return FunctionInfo::fromNode($declaration->node, $filePath);
             }
         }
 

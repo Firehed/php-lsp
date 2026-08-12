@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Parser\ParserService;
-use Psr\SimpleCache\CacheInterface;
 
 /**
  * A {@see SymbolBackend} over PHP files on disk, resolved through Composer's
@@ -52,7 +51,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         private readonly ParserService $parser,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
-        private readonly CacheInterface $cache,
+        private readonly SymbolCache $cache,
     ) {
     }
 
@@ -63,26 +62,19 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        $cacheKey = SymbolCacheKey::for($name, $kind);
+        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfo {
+            $filePath = $this->locator->locate($name, $kind);
+            if ($filePath === null) {
+                return null;
+            }
 
-        $cached = $this->cache->get($cacheKey);
-        if ($cached !== null) {
-            assert($cached instanceof SymbolInfo);
-            return $cached;
-        }
+            $info = $this->infoFactory->fromDeclarations($this->declarationsIn($filePath), $name, $kind, $filePath);
+            if ($info !== null) {
+                $this->cacheKeysByPath[$filePath][] = $this->cache->keyFor($name, $kind);
+            }
 
-        $filePath = $this->locator->locate($name, $kind);
-        if ($filePath === null) {
-            return null;
-        }
-
-        $info = $this->infoFactory->fromDeclarations($this->declarationsIn($filePath), $name, $kind, $filePath);
-        if ($info !== null) {
-            $this->cache->set($cacheKey, $info);
-            $this->cacheKeysByPath[$filePath][] = $cacheKey;
-        }
-
-        return $info;
+            return $info;
+        });
     }
 
     /**
