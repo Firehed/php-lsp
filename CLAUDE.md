@@ -139,9 +139,13 @@ symbol namespaces are independent, so a class and a function may share a name.
 Lookup is **per-kind at the `SymbolSource` facade** — a typed method per kind, taking a
 name type that carries its kind (`ClassName`, `FunctionName`), because RFC 1 §5.1 requires
 a concrete return type rather than a type-erased union — and **kind-parameterized at
-`SymbolBackend`**, so a new kind is never a change to every backend. The backends still
-carry a method per kind today; S3.8d collapses them (Plan 0002 §5.6). Do not read the
-facade's closed method set as licence to add a per-kind backend method.
+`SymbolBackend`**: one `lookup(QualifiedName, NameKind): ?SymbolInfo`. Do NOT read the
+facade's closed method set as licence to add a per-kind backend method. The kind
+dispatch lives in two factories, one per metadata route:
+`DeclarationSymbolInfoFactory` (parsed declarations) and `ReflectionSymbolInfoFactory`
+(the loaded runtime), so a new kind is a case in each rather than a method on every
+backend. `SymbolCoverageGridTest` enforces §5.1: a backend × kind × query grid, axes
+derived, every cell answering or naming its blocker, an unregistered cell failing.
 `lookupFunction` reaches
 open documents, the `autoload.files` set, and PHP's built-ins — the last filtered to
 `isInternal()`, because reflection also sees the functions the *server's* own
