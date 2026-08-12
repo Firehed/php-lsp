@@ -73,7 +73,7 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
     {
         $this->namespaces ??= NamespaceContents::indexByNamespace($this->declarations);
 
-        return $this->namespaces[NamespacePath::caseFold($namespace)] ?? new NamespaceContents();
+        return $this->namespaces[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
     }
 
     /**

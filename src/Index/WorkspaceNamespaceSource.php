@@ -45,7 +45,7 @@ final class WorkspaceNamespaceSource implements NamespaceCatalog
             }
 
             $child = NamespacePath::join($namespace, NamespacePath::firstSegment($below));
-            $childNamespaces[NamespacePath::caseFold($child)] = $child;
+            $childNamespaces[NamespacePath::normalize($child)] = $child;
         }
 
         return new NamespaceContents(array_values($childNamespaces), $symbols);

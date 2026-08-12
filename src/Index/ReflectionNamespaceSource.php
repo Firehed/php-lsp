@@ -32,7 +32,7 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
     {
         $this->byNamespace ??= NamespaceContents::indexByNamespace(self::internalSymbols());
 
-        return $this->byNamespace[NamespacePath::caseFold($namespace)] ?? new NamespaceContents();
+        return $this->byNamespace[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
     }
 
     /**

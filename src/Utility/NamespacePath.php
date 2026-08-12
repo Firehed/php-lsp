@@ -37,16 +37,6 @@ final class NamespacePath
         return $ancestors;
     }
 
-    /**
-     * A namespace path as a lookup key. Paths are case-insensitive whatever kind
-     * of symbol they qualify, so the fold is kind-independent — the per-kind
-     * short-name rule lives in NameKind.
-     */
-    public static function caseFold(string $namespace): string
-    {
-        return strtolower($namespace);
-    }
-
     public static function equals(string $a, string $b): bool
     {
         return strcasecmp($a, $b) === 0;
@@ -69,6 +59,16 @@ final class NamespacePath
         $separator = strrpos($fullyQualifiedName, '\\');
 
         return $separator === false ? '' : substr($fullyQualifiedName, 0, $separator);
+    }
+
+    /**
+     * A namespace path as a lookup key. Paths are case-insensitive whatever kind
+     * of symbol they qualify, so the rule is kind-independent — the per-kind
+     * short-name rule lives in NameKind.
+     */
+    public static function normalize(string $namespace): string
+    {
+        return strtolower($namespace);
     }
 
     /**

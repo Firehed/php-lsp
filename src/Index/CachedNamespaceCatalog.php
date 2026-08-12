@@ -42,7 +42,7 @@ final class CachedNamespaceCatalog implements NamespaceCatalog, Invalidatable
     {
         // PHP namespaces are case-insensitive, so `Psr\Log` and `psr\log` are one
         // namespace and must not be two cache entries.
-        $key = CacheKey::from(NamespacePath::caseFold($namespace));
+        $key = CacheKey::from(NamespacePath::normalize($namespace));
 
         $cached = $this->cache->get($key);
         if ($cached !== null) {

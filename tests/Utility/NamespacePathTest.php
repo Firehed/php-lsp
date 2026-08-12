@@ -101,11 +101,11 @@ class NamespacePathTest extends TestCase
         yield 'unqualified' => ['User', 'User'];
     }
 
-    public function testCaseFoldIsTheLookupKeyForAPath(): void
+    public function testNormalizeIsTheLookupKeyForAPath(): void
     {
         self::assertSame(
             'app\model',
-            NamespacePath::caseFold('App\Model'),
+            NamespacePath::normalize('App\Model'),
             'namespace paths are case-insensitive whatever kind of symbol they qualify',
         );
     }
