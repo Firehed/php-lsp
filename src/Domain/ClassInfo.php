@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class, interface, trait, or enum.
  */
-final readonly class ClassInfo implements Formattable
+final readonly class ClassInfo implements Formattable, SymbolInfo
 {
     /**
      * @param list<ClassName> $interfaces Implemented interfaces
