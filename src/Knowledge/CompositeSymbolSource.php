@@ -37,10 +37,12 @@ final class CompositeSymbolSource implements SymbolSource
     /**
      * @param list<SymbolBackend> $backends In descending precedence: the first
      *        that answers a lookup wins, and the first to report a name wins a
-     *        merge.
+     *        merge. Readable so the §5.1 coverage grid derives its rows from the
+     *        composition that actually ships rather than a hand-kept list
+     *        ({@see \Firehed\PhpLsp\Tests\Knowledge\SymbolCoverageGridTest}).
      */
     public function __construct(
-        private readonly array $backends,
+        public readonly array $backends,
     ) {
     }
 
