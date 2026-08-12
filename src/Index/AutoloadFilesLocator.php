@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Utility\NamespacePath;
 use PhpParser\Node;
 
 /**
@@ -72,7 +73,7 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
     {
         $this->namespaces ??= NamespaceContents::indexByNamespace($this->declarations);
 
-        return $this->namespaces[strtolower($namespace)] ?? new NamespaceContents();
+        return $this->namespaces[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
     }
 
     /**

@@ -115,9 +115,9 @@ final class CompositeSymbolSourceTest extends TestCase
         $vendor = new FakeSymbolBackend(namespaces: [
             'App' => new NamespaceContents(
                 ['App\Other'],
-                // Same FQN as the open document's, but a different kind: the open
-                // document's spelling must win the merge.
-                [new CatalogSymbol('App\Shared', NameKind::Function_)],
+                // The same class-like under its case rule, spelled differently:
+                // the open document's spelling must win the merge.
+                [new CatalogSymbol('APP\SHARED', NameKind::ClassLike)],
             ),
         ]);
         $source = new CompositeSymbolSource([$open, $vendor]);
@@ -131,8 +131,8 @@ final class CompositeSymbolSourceTest extends TestCase
         );
         self::assertCount(1, $contents->symbols, 'the clashing symbol must be deduplicated to one');
         self::assertSame(
-            NameKind::ClassLike,
-            $contents->symbols[0]->kind,
+            'App\Shared',
+            $contents->symbols[0]->fullyQualifiedName,
             'the earlier backend must win the clash: the open document overrides the vendored listing',
         );
     }
@@ -141,7 +141,9 @@ final class CompositeSymbolSourceTest extends TestCase
     {
         $open = new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'open.php')]);
         $vendor = new FakeSymbolBackend(searchResults: [
-            self::symbol('App\Log', 'vendor.php'),
+            // The same class-like under its case rule, spelled differently: it
+            // must still clash, and the open document's spelling must win.
+            self::symbol('APP\LOG', 'vendor.php'),
             self::symbol('App\Logger', 'vendor.php'),
         ]);
         $source = new CompositeSymbolSource([$open, $vendor]);
@@ -187,6 +189,21 @@ final class CompositeSymbolSourceTest extends TestCase
         yield 'directly implemented interface' => ['App\IfaceA', true];
         yield 'interface reached through an interface' => ['App\IfaceBase', true];
         yield 'unrelated type' => ['App\Unrelated', false];
+    }
+
+    public function testIsSubclassOfMatchesEdgesUnderTheClassCaseRule(): void
+    {
+        // The declared parent spelling differs in case from the queried target.
+        $backend = new FakeSymbolBackend([
+            'app\child' => self::classInfo('App\Child', parent: 'APP\PARENTCLASS'),
+            'app\parentclass' => self::classInfo('App\ParentClass'),
+        ]);
+        $source = new CompositeSymbolSource([$backend]);
+
+        self::assertTrue(
+            $source->isSubclassOf(self::className('App\Child'), self::className('App\ParentClass')),
+            'class-like names are case-insensitive, so a case-divergent parent spelling must still match',
+        );
     }
 
     public function testIsSubclassOfReturnsFalseForAnUnknownClass(): void

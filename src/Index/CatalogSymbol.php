@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
@@ -27,6 +28,19 @@ final readonly class CatalogSymbol
         public string $fullyQualifiedName,
         public NameKind $kind,
     ) {
+    }
+
+    /**
+     * The symbol's identity as an array key: the kind, and the name under that
+     * kind's case rule. The kind is part of the key because PHP's symbol
+     * namespaces are independent — a class and a function may share a spelling
+     * without being the same symbol.
+     */
+    public function key(): string
+    {
+        $normalized = $this->kind->normalize(QualifiedName::fromFullyQualified($this->fullyQualifiedName));
+
+        return $this->kind->name . '|' . $normalized;
     }
 
     public function shortName(): string

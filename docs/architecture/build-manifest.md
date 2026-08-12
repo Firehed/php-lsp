@@ -289,6 +289,7 @@ Notes:
   - **SC.12** — `MemberResolver`'s deptrac-frozen edges on `Resolution\MemberFilter`: the same placement defect as SC.11, kept as its own row so each move drains reviewably.
   - **SC.13** — Domain factories reach into Utility (`TypeFactory`, `NamespacePath`); decide the direction in-slice (move the utility into Domain, or the factory methods out) and drain the frozen edges.
     Related: `ClassName::shortName`/`getNamespace` hand-roll the split `NamespacePath` owns, so the direction chosen also settles that duplicate.
+    Likewise `NameKind::normalize` re-implements the path fold `NamespacePath::normalize` owns — layer-blocked from routing through it until this move — so the direction also collapses the two folds into one, and the case-folding allowlist follows the file.
   - **SC.14** — `BuiltinBackend::lookupClassLike` lacks the `isInternal()` guard its function sibling has, so hover resolves any class the *server's own* autoloader can load while completion never offers it — the §4.2 lookup/enumeration split, live on the class namespace.
     A live defect; owes a regression test against a class the server vendors but the project does not.
   - **SC.15** — `TypeGraphParityTest`'s corpus has no trait `insteadof`/`as` shapes and no enums, so the reflection oracle cannot see #73's defect class (nor enum-interface members).

@@ -37,42 +37,6 @@ parameters:
 			path: src/Handler/CompletionHandler.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Index/AutoloadFilesLocator.php
-
-		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Index/CachedNamespaceCatalog.php
-
-		-
-			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Index/ComposerNamespaceSource.php
-
-		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 4
-			path: src/Index/ComposerNamespaceSource.php
-
-		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 5
-			path: src/Index/NamespaceContents.php
-
-		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Index/ReflectionNamespaceSource.php
-
-		-
 			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
 			identifier: disallowed.class
 			count: 1
@@ -93,7 +57,7 @@ parameters:
 		-
 			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
-			count: 5
+			count: 2
 			path: src/Index/SymbolIndex.php
 
 		-
@@ -107,18 +71,6 @@ parameters:
 			identifier: disallowed.function
 			count: 1
 			path: src/Index/WorkspaceIndexer.php
-
-		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Index/WorkspaceNamespaceSource.php
-
-		-
-			message: '#^Calling strtolower\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 2
-			path: src/Knowledge/CompositeSymbolSource.php
 
 		-
 			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
@@ -215,9 +167,3 @@ parameters:
 			identifier: disallowed.namespace
 			count: 2
 			path: src/TypeInference/BasicTypeResolver.php
-
-		-
-			message: '#^Calling strcasecmp\(\) is forbidden, case rules for symbol names live in NameKind; non\-symbol uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Utility/NamespacePath.php

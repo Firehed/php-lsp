@@ -62,7 +62,7 @@ final class ComposerNamespaceSource implements NamespaceCatalog
             $below = NamespacePath::relativeTo($prefixNamespace, $namespace);
             if ($below !== null) {
                 $child = NamespacePath::join($namespace, NamespacePath::firstSegment($below));
-                $childNamespaces[strtolower($child)] = $child;
+                $childNamespaces[NamespacePath::normalize($child)] = $child;
                 continue;
             }
 
@@ -95,10 +95,10 @@ final class ComposerNamespaceSource implements NamespaceCatalog
 
                 $contents = self::readDirectory($path, $canonical);
                 foreach ($contents->childNamespaces as $child) {
-                    $childNamespaces[strtolower($child)] = $child;
+                    $childNamespaces[NamespacePath::normalize($child)] = $child;
                 }
                 foreach ($contents->symbols as $symbol) {
-                    $symbols[strtolower($symbol->fullyQualifiedName)] = $symbol;
+                    $symbols[$symbol->key()] = $symbol;
                 }
             }
         }
@@ -127,7 +127,7 @@ final class ComposerNamespaceSource implements NamespaceCatalog
 
             $match = null;
             foreach ($entries as $entry) {
-                if (strcasecmp($entry, $segment) === 0 && is_dir($path . '/' . $entry)) {
+                if (NamespacePath::equals($entry, $segment) && is_dir($path . '/' . $entry)) {
                     $match = $entry;
                     break;
                 }
@@ -198,6 +198,6 @@ final class ComposerNamespaceSource implements NamespaceCatalog
             array_keys($this->map->classMap()),
         ));
 
-        return $this->classMapIndex[strtolower($namespace)] ?? new NamespaceContents();
+        return $this->classMapIndex[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
     }
 }

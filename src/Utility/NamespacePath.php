@@ -62,6 +62,16 @@ final class NamespacePath
     }
 
     /**
+     * A namespace path as a lookup key. Paths are case-insensitive whatever kind
+     * of symbol they qualify, so the rule is kind-independent — the per-kind
+     * short-name rule lives in NameKind.
+     */
+    public static function normalize(string $namespace): string
+    {
+        return strtolower($namespace);
+    }
+
+    /**
      * The portion of $namespace below $ancestor, or null when $ancestor does not
      * strictly contain it. Everything is below the global namespace.
      *
