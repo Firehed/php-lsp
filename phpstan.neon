@@ -36,6 +36,7 @@ parameters:
             message: 'runtime reflection is confined: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories'
             allowIn:
                 - src/Knowledge/BuiltinBackend.php
+                - src/Knowledge/ReflectionSymbolInfoFactory.php
                 - src/Index/ReflectionNamespaceSource.php
                 - src/Repository/ClassInfoFactory.php
                 - src/Repository/DefaultClassInfoFactory.php
