@@ -50,8 +50,6 @@ interface SymbolBackend
      * $prefix. A backend with no affordable prefix enumeration returns an empty
      * list rather than walking its source (RFC 1 §5.3).
      *
-     * A kind parameter arrives with S3.9a.
-     *
      * @return list<Symbol>
      */
     public function searchClassLikes(string $prefix): array;

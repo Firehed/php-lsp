@@ -23,10 +23,10 @@ use Psr\SimpleCache\CacheInterface;
  * given (Plan 0002 §3a: the workspace/vendor precedence split), so one lookup
  * mechanism covers both rather than two hand-written copies.
  *
- * Lookup locates the file for a name and parses that one file — no `vendor/`
- * pre-index (RFC 1 §3, lazy-first). Results are held behind the replaceable cache
- * seam (RFC 1 §5.3): a file on disk is stable while unchanged, so a resolved symbol
- * is memoized. An on-disk change to a file is signalled through
+ * Lookup locates the file for a name and parses that one file — no
+ * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
+ * replaceable cache seam (RFC 1 §5.3): a file on disk is stable while unchanged, so
+ * a resolved symbol is memoized. An on-disk change to a file is signalled through
  * {@see invalidate()} ({@see Invalidatable}), which evicts that file's cached
  * symbols and drops cached namespace listings so the next query reflects disk
  * (RFC 1 §5.2, §5.3).
