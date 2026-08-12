@@ -6,18 +6,14 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\FileUri;
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Psr\SimpleCache\CacheInterface;
 
 /**
@@ -27,12 +23,12 @@ use Psr\SimpleCache\CacheInterface;
  * given (Plan 0002 §3a: the workspace/vendor precedence split), so one lookup
  * mechanism covers both rather than two hand-written copies.
  *
- * Class-like lookup locates the file for a name and parses that one file — no
- * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
- * replaceable cache seam (RFC 1 §5.3): a file on disk is stable while unchanged, so
- * a resolved class is memoized. An on-disk change to a file is signalled through
+ * Lookup locates the file for a name and parses that one file — no `vendor/`
+ * pre-index (RFC 1 §3, lazy-first). Results are held behind the replaceable cache
+ * seam (RFC 1 §5.3): a file on disk is stable while unchanged, so a resolved symbol
+ * is memoized. An on-disk change to a file is signalled through
  * {@see invalidate()} ({@see Invalidatable}), which evicts that file's cached
- * class-likes and drops cached namespace listings so the next query reflects disk
+ * symbols and drops cached namespace listings so the next query reflects disk
  * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
@@ -43,10 +39,10 @@ use Psr\SimpleCache\CacheInterface;
 final class FilesystemBackend implements SymbolBackend, Invalidatable
 {
     /**
-     * The class-cache keys derived from each file, so an on-disk change to one
-     * file evicts exactly its entries. The class cache is keyed by an opaque hash
-     * of the FQN with no reverse mapping to a path, so the path→key relation is
-     * recorded here as classes are cached.
+     * The cache keys derived from each file, so an on-disk change to one file
+     * evicts exactly its entries. The cache is keyed by an opaque hash of the FQN
+     * and kind with no reverse mapping to a path, so the path→key relation is
+     * recorded here as symbols are cached.
      *
      * @var array<string, list<string>>
      */
@@ -56,7 +52,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         private readonly SymbolLocator $locator,
         private readonly NamespaceCatalog $namespaces,
         private readonly ParserService $parser,
-        private readonly ClassInfoFactory $factory,
+        private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly CacheInterface $cache,
     ) {
@@ -67,57 +63,32 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         return $this->namespaces->childrenOf($namespace->path);
     }
 
-    public function lookupClassLike(ClassName $name): ?ClassInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        $qualifiedName = QualifiedName::fromClassName($name);
-        $cacheKey = SymbolCacheKey::for($qualifiedName, NameKind::ClassLike);
+        $cacheKey = SymbolCacheKey::for($name, $kind);
 
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
-            assert($cached instanceof ClassInfo);
+            assert($cached instanceof SymbolInfo);
             return $cached;
         }
 
-        $filePath = $this->locator->locate($qualifiedName, NameKind::ClassLike);
+        $filePath = $this->locator->locate($name, $kind);
         if ($filePath === null) {
             return null;
         }
 
-        $classInfo = $this->parseClassFrom($name, $filePath);
-        if ($classInfo !== null) {
-            $this->cache->set($cacheKey, $classInfo);
+        $info = $this->infoFactory->fromDeclarations($this->declarationsIn($filePath), $name, $kind, $filePath);
+        if ($info !== null) {
+            $this->cache->set($cacheKey, $info);
             $this->cacheKeysByPath[$filePath][] = $cacheKey;
         }
 
-        return $classInfo;
-    }
-
-    public function lookupFunction(FunctionName $name): ?FunctionInfo
-    {
-        $cacheKey = SymbolCacheKey::for($name->qualifiedName, $name->kind());
-
-        $cached = $this->cache->get($cacheKey);
-        if ($cached !== null) {
-            assert($cached instanceof FunctionInfo);
-            return $cached;
-        }
-
-        $filePath = $this->locator->locate($name->qualifiedName, $name->kind());
-        if ($filePath === null) {
-            return null;
-        }
-
-        $functionInfo = $this->parseFunctionFrom($name, $filePath);
-        if ($functionInfo !== null) {
-            $this->cache->set($cacheKey, $functionInfo);
-            $this->cacheKeysByPath[$filePath][] = $cacheKey;
-        }
-
-        return $functionInfo;
+        return $info;
     }
 
     /**
-     * Evict the file's cached class-likes by their recorded keys and drop cached
+     * Evict the file's cached symbols by their recorded keys and drop cached
      * namespace listings, so the next query re-reads disk and the pre-change value
      * is not restored (RFC 1 §5.2, §5.3).
      */
@@ -150,34 +121,6 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     public function searchClassLikes(string $prefix): array
     {
         return [];
-    }
-
-    private function parseFunctionFrom(FunctionName $name, string $filePath): ?FunctionInfo
-    {
-        $kind = $name->kind();
-        $target = $kind->normalize($name->qualifiedName);
-
-        foreach ($this->declarationsIn($filePath)->functions as $declaration) {
-            if ($kind->normalize($declaration->name) === $target) {
-                return FunctionInfo::fromNode($declaration->node, $filePath);
-            }
-        }
-
-        return null;
-    }
-
-    private function parseClassFrom(ClassName $name, string $filePath): ?ClassInfo
-    {
-        $kind = NameKind::ClassLike;
-        $target = $kind->normalize(QualifiedName::fromClassName($name));
-
-        foreach ($this->declarationsIn($filePath)->classLikes as $declaration) {
-            if ($kind->normalize($declaration->name) === $target) {
-                return $this->factory->fromAstNode($declaration->node, FileUri::fromPath($filePath));
-            }
-        }
-
-        return null;
     }
 
     /**

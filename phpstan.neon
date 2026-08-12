@@ -33,9 +33,8 @@ parameters:
                 - tests/*
         -
             namespace: 'Reflection*'
-            message: 'runtime reflection is confined: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories'
+            message: 'runtime reflection is confined: ReflectionNamespaceSource and the fromReflection factories'
             allowIn:
-                - src/Knowledge/BuiltinBackend.php
                 - src/Knowledge/ReflectionSymbolInfoFactory.php
                 - src/Index/ReflectionNamespaceSource.php
                 - src/Repository/ClassInfoFactory.php

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -23,6 +22,7 @@ use PHPUnit\Framework\TestCase;
 final class OpenDocumentBackendTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
+    use LooksUpBackendSymbolsTrait;
 
     private SymbolIndex $index;
     private OpenDocumentBackend $backend;
@@ -37,7 +37,7 @@ final class OpenDocumentBackendTest extends TestCase
     {
         $this->backend->updateDocument('file:///Widget.php', [self::classInfo('V\Widget')]);
 
-        $info = $this->backend->lookupClassLike(self::className('V\Widget'));
+        $info = self::classLikeIn($this->backend, 'V\Widget');
 
         self::assertNotNull($info, 'a registered class must resolve');
         self::assertSame('V\Widget', $info->name->fqn, 'the registered class must be returned unchanged');
@@ -46,7 +46,7 @@ final class OpenDocumentBackendTest extends TestCase
     public function testLookupClassLikeReturnsNullForAnUnregisteredClass(): void
     {
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Absent')),
+            self::classLikeIn($this->backend, 'V\Absent'),
             'a name no open document declares is absent from this backend (RFC 1 §5.3)',
         );
     }
@@ -58,11 +58,11 @@ final class OpenDocumentBackendTest extends TestCase
         $this->backend->updateDocument($uri, [self::classInfo('V\Beta')]);
 
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Alpha')),
+            self::classLikeIn($this->backend, 'V\Alpha'),
             'the prior class must be dropped when the document is re-registered',
         );
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('V\Beta')),
+            self::classLikeIn($this->backend, 'V\Beta'),
             'the new class must be registered',
         );
     }
@@ -75,7 +75,7 @@ final class OpenDocumentBackendTest extends TestCase
         $this->backend->removeDocument($uri);
 
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Ephemeral')),
+            self::classLikeIn($this->backend, 'V\Ephemeral'),
             'closing a document must drop the classes it registered',
         );
     }
@@ -85,7 +85,7 @@ final class OpenDocumentBackendTest extends TestCase
         $this->backend->removeDocument('file:///never-opened.php');
 
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Nothing')),
+            self::classLikeIn($this->backend, 'V\Nothing'),
             'removing a document that was never registered must not error',
         );
     }
@@ -94,7 +94,7 @@ final class OpenDocumentBackendTest extends TestCase
     {
         $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
 
-        $info = $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\format'));
+        $info = self::functionIn($this->backend, 'V\format');
 
         self::assertNotNull($info, 'a registered function must resolve');
         self::assertSame('format', $info->name, 'the registered function must be returned unchanged');
@@ -105,7 +105,7 @@ final class OpenDocumentBackendTest extends TestCase
         $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
 
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\FORMAT')),
+            self::functionIn($this->backend, 'V\FORMAT'),
             'PHP matches function names case-insensitively',
         );
     }
@@ -113,7 +113,7 @@ final class OpenDocumentBackendTest extends TestCase
     public function testLookupFunctionReturnsNullForAnUnregisteredFunction(): void
     {
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\absent')),
+            self::functionIn($this->backend, 'V\absent'),
             'a name no open document declares is absent from this backend (RFC 1 §5.3)',
         );
     }
@@ -127,11 +127,11 @@ final class OpenDocumentBackendTest extends TestCase
         );
 
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('V\Dual')),
+            self::classLikeIn($this->backend, 'V\Dual'),
             'the class-like must resolve',
         );
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\Dual')),
+            self::functionIn($this->backend, 'V\Dual'),
             'a function sharing the name must resolve too: the symbol namespaces are independent',
         );
     }
@@ -143,11 +143,11 @@ final class OpenDocumentBackendTest extends TestCase
         $this->backend->updateDocument($uri, [], ['V\beta' => self::functionInfo('beta')]);
 
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\alpha')),
+            self::functionIn($this->backend, 'V\alpha'),
             'the prior function must be dropped when the document is re-registered',
         );
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\beta')),
+            self::functionIn($this->backend, 'V\beta'),
             'the new function must be registered',
         );
     }
@@ -160,7 +160,7 @@ final class OpenDocumentBackendTest extends TestCase
         $this->backend->removeDocument($uri);
 
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\ephemeral')),
+            self::functionIn($this->backend, 'V\ephemeral'),
             'closing a document must drop the functions it registered',
         );
     }

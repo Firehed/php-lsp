@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -66,26 +67,18 @@ final class CompositeSymbolSource implements SymbolSource
 
     public function lookupClassLike(ClassName $name): ?ClassInfo
     {
-        foreach ($this->backends as $backend) {
-            $info = $backend->lookupClassLike($name);
-            if ($info !== null) {
-                return $info;
-            }
-        }
+        $info = $this->lookup(QualifiedName::fromClassName($name), NameKind::ClassLike);
+        assert($info === null || $info instanceof ClassInfo);
 
-        return null;
+        return $info;
     }
 
     public function lookupFunction(FunctionName $name): ?FunctionInfo
     {
-        foreach ($this->backends as $backend) {
-            $info = $backend->lookupFunction($name);
-            if ($info !== null) {
-                return $info;
-            }
-        }
+        $info = $this->lookup($name->qualifiedName, $name->kind());
+        assert($info === null || $info instanceof FunctionInfo);
 
-        return null;
+        return $info;
     }
 
     /**
@@ -103,6 +96,25 @@ final class CompositeSymbolSource implements SymbolSource
         }
 
         return array_values($byFqn);
+    }
+
+    /**
+     * The first backend that answers wins, which is what makes precedence
+     * positional. The kind travels as an argument here and is narrowed back to a
+     * concrete type by each caller above: O(kinds) narrowings at this one site,
+     * against the O(kinds × backends) methods a per-kind backend would need
+     * (Plan 0002 §5.6).
+     */
+    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    {
+        foreach ($this->backends as $backend) {
+            $info = $backend->lookup($name, $kind);
+            if ($info !== null) {
+                return $info;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -17,7 +17,6 @@ use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 
 /**
@@ -54,20 +53,21 @@ final readonly class KnowledgeStack
     ): self {
         $index ??= new SymbolIndex();
         $classInfoFactory = new DefaultClassInfoFactory();
+        $declarationInfoFactory = new DeclarationSymbolInfoFactory($classInfoFactory);
 
         [$workspaceMap, $vendorMap] = $autoloadMap->partitionByVendorDirectory($vendorDirectory);
 
         $scanner = new DeclarationScanner();
 
         $openDocuments = new OpenDocumentBackend($index);
-        $workspace = self::filesystemBackend($workspaceMap, $parser, $classInfoFactory, $scanner);
-        $vendor = self::filesystemBackend($vendorMap, $parser, $classInfoFactory, $scanner);
+        $workspace = self::filesystemBackend($workspaceMap, $parser, $declarationInfoFactory, $scanner);
+        $vendor = self::filesystemBackend($vendorMap, $parser, $declarationInfoFactory, $scanner);
         $source = new CompositeSymbolSource([
             $openDocuments,
             $workspace,
             $vendor,
             new BuiltinBackend(
-                $classInfoFactory,
+                new ReflectionSymbolInfoFactory($classInfoFactory),
                 new CachedNamespaceCatalog(new ReflectionNamespaceSource(), CacheFactory::inMemory()),
                 CacheFactory::inMemory(),
             ),
@@ -103,7 +103,7 @@ final readonly class KnowledgeStack
     private static function filesystemBackend(
         ComposerAutoloadMap $map,
         ParserService $parser,
-        ClassInfoFactory $classInfoFactory,
+        DeclarationSymbolInfoFactory $infoFactory,
         DeclarationScanner $scanner,
     ): FilesystemBackend {
         $autoloadFiles = new AutoloadFilesLocator($map, $parser, $scanner);
@@ -121,7 +121,7 @@ final readonly class KnowledgeStack
                 CacheFactory::inMemory(),
             ),
             $parser,
-            $classInfoFactory,
+            $infoFactory,
             $scanner,
             CacheFactory::inMemory(),
         );

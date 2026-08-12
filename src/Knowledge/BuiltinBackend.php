@@ -4,19 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Psr\SimpleCache\CacheInterface;
-use ReflectionClass;
-use ReflectionException;
-use ReflectionFunction;
 
 /**
  * The lowest-precedence {@see SymbolBackend}: the symbols built into PHP and its
@@ -24,7 +17,7 @@ use ReflectionFunction;
  * open-document, workspace, and vendor backends, so a name any of them can resolve
  * never reaches reflection (RFC 1 §5.3).
  *
- * Built-ins are fixed for a given target environment, so a resolved class is cached
+ * Built-ins are fixed for a given target environment, so a resolved symbol is cached
  * (RFC 1 §5.3). This backend is reflection-backed and therefore describes the
  * *server's* runtime, not the project's target — a known §4.7 gap deferred to Step 5
  * (Plan 0002 §5); the interim treats every reflected built-in as available.
@@ -36,7 +29,7 @@ use ReflectionFunction;
 final class BuiltinBackend implements SymbolBackend
 {
     public function __construct(
-        private readonly ClassInfoFactory $factory,
+        private readonly ReflectionSymbolInfoFactory $infoFactory,
         private readonly NamespaceCatalog $namespaces,
         private readonly CacheInterface $cache,
     ) {
@@ -47,55 +40,22 @@ final class BuiltinBackend implements SymbolBackend
         return $this->namespaces->childrenOf($namespace->path);
     }
 
-    public function lookupClassLike(ClassName $name): ?ClassInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        $cacheKey = SymbolCacheKey::for(QualifiedName::fromClassName($name), NameKind::ClassLike);
+        $cacheKey = SymbolCacheKey::for($name, $kind);
 
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
-            assert($cached instanceof ClassInfo);
+            assert($cached instanceof SymbolInfo);
             return $cached;
         }
 
-        try {
-            $classInfo = $this->factory->fromReflection(new ReflectionClass($name->fqn));
-        } catch (ReflectionException) {
-            return null;
-        }
-        $this->cache->set($cacheKey, $classInfo);
-
-        return $classInfo;
-    }
-
-    public function lookupFunction(FunctionName $name): ?FunctionInfo
-    {
-        $cacheKey = SymbolCacheKey::for($name->qualifiedName, $name->kind());
-
-        $cached = $this->cache->get($cacheKey);
-        if ($cached !== null) {
-            assert($cached instanceof FunctionInfo);
-            return $cached;
+        $info = $this->infoFactory->fromReflection($name, $kind);
+        if ($info !== null) {
+            $this->cache->set($cacheKey, $info);
         }
 
-        try {
-            $function = new ReflectionFunction($name->fullyQualifiedName());
-        } catch (ReflectionException) {
-            return null;
-        }
-
-        // Reflection sees every function loaded in the *server's* process, which
-        // includes the ones its own dependencies declare. Those are not the
-        // project's, and this backend enumerates only internal functions
-        // (BuiltinFunctionParityTest) — a lookup that answered more broadly would
-        // resolve a name completion never offers (RFC 1 §4.2).
-        if (!$function->isInternal()) {
-            return null;
-        }
-
-        $functionInfo = FunctionInfo::fromReflection($function);
-        $this->cache->set($cacheKey, $functionInfo);
-
-        return $functionInfo;
+        return $info;
     }
 
     /**

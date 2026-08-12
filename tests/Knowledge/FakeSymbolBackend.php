@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
@@ -39,14 +40,15 @@ final class FakeSymbolBackend implements SymbolBackend
         return $this->namespaces[$namespace->path] ?? new NamespaceContents();
     }
 
-    public function lookupClassLike(ClassName $name): ?ClassInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        return $this->classLikes[strtolower(ltrim($name->fqn, '\\'))] ?? null;
-    }
+        $configured = match ($kind) {
+            NameKind::ClassLike => $this->classLikes,
+            NameKind::Function_ => $this->functions,
+            NameKind::Constant => [],
+        };
 
-    public function lookupFunction(FunctionName $name): ?FunctionInfo
-    {
-        return $this->functions[strtolower($name->fullyQualifiedName())] ?? null;
+        return $configured[strtolower($name->fullyQualifiedName())] ?? null;
     }
 
     /**

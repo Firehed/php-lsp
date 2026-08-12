@@ -73,19 +73,19 @@ parameters:
 			path: src/Index/WorkspaceIndexer.php
 
 		-
-			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
+			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
 			identifier: disallowed.class
 			count: 1
 			path: src/Repository/DefaultFunctionRepository.php
 
 		-
-			message: '#^Namespace ReflectionException is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionException matches Reflection\*\]$#'
+			message: '#^Namespace ReflectionException is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionException matches Reflection\*\]$#'
 			identifier: disallowed.namespace
 			count: 1
 			path: src/Repository/DefaultFunctionRepository.php
 
 		-
-			message: '#^Namespace ReflectionFunction is forbidden, runtime reflection is confined\: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
+			message: '#^Namespace ReflectionFunction is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
 			identifier: disallowed.namespace
 			count: 1
 			path: src/Repository/DefaultFunctionRepository.php

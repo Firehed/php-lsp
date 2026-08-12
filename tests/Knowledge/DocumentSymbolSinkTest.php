@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
@@ -30,6 +28,7 @@ use PHPUnit\Framework\TestCase;
 final class DocumentSymbolSinkTest extends TestCase
 {
     use LoadsFixturesTrait;
+    use LooksUpBackendSymbolsTrait;
 
     private SymbolIndex $index;
     private OpenDocumentBackend $backend;
@@ -58,7 +57,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->openDocument(new TextDocument('file:///Widget.php', 'php', 1, $content));
 
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('V\Widget')),
+            self::classLikeIn($this->backend, 'V\Widget'),
             'openDocument must register the class for lookup',
         );
         self::assertNotNull(
@@ -74,11 +73,11 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->openDocument(new TextDocument('file:///helpers.php', 'php', 1, $content));
 
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\helper')),
+            self::functionIn($this->backend, 'V\helper'),
             'openDocument must register the document\'s functions for lookup',
         );
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('helper')),
+            self::functionIn($this->backend, 'helper'),
             'a namespaced function must not be registered under its short name',
         );
     }
@@ -93,7 +92,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->openDocument(new TextDocument('file:///polyfill.php', 'php', 1, $content));
 
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('polyfill')),
+            self::functionIn($this->backend, 'polyfill'),
             'a conditionally declared function must be registered like any other declaration',
         );
     }
@@ -106,7 +105,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture('MultiClass/MultiClass.php')));
 
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('Fixtures\Completion\ConditionalInMultiFile')),
+            self::classLikeIn($this->backend, 'Fixtures\Completion\ConditionalInMultiFile'),
             'a conditionally declared class must be registered like any other declaration',
         );
     }
@@ -120,7 +119,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
 
-        $classInfo = $this->backend->lookupClassLike(self::className('Fixtures\MultiClass\Duplicated'));
+        $classInfo = self::classLikeIn($this->backend, 'Fixtures\MultiClass\Duplicated');
         self::assertNotNull($classInfo, 'the duplicated class must still resolve');
         self::assertTrue(
             $classInfo->isFinal,
@@ -135,9 +134,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
 
-        $functionInfo = $this->backend->lookupFunction(
-            FunctionName::fromFullyQualified('Fixtures\MultiClass\duplicated'),
-        );
+        $functionInfo = self::functionIn($this->backend, 'Fixtures\MultiClass\duplicated');
         self::assertNotNull($functionInfo, 'the duplicated function must still resolve');
         self::assertSame(
             'string',
@@ -154,7 +151,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\n"));
 
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('helper')),
+            self::functionIn($this->backend, 'helper'),
             'a document that no longer declares the function must drop its registration',
         );
     }
@@ -167,7 +164,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->closeDocument($uri);
 
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('helper')),
+            self::functionIn($this->backend, 'helper'),
             'close must drop the registered functions from lookup',
         );
     }
@@ -181,11 +178,11 @@ final class DocumentSymbolSinkTest extends TestCase
         self::assertNull($this->index->findByFqn('V\Alpha'), 'update must clear the prior symbols from the index');
         self::assertNotNull($this->index->findByFqn('V\Beta'), 'update must index the new symbols');
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('V\Beta')),
+            self::classLikeIn($this->backend, 'V\Beta'),
             'update must register the new class for lookup',
         );
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Alpha')),
+            self::classLikeIn($this->backend, 'V\Alpha'),
             'update must drop the prior class from lookup',
         );
     }
@@ -199,7 +196,7 @@ final class DocumentSymbolSinkTest extends TestCase
 
         self::assertNull($this->index->findByFqn('V\Ephemeral'), 'close must clear the indexed symbols');
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Ephemeral')),
+            self::classLikeIn($this->backend, 'V\Ephemeral'),
             'close must drop the registered class from lookup',
         );
     }
@@ -233,7 +230,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $uri = 'file:///Doc.php';
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Widget {}\n"));
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('V\Widget')),
+            self::classLikeIn($this->backend, 'V\Widget'),
             'the class is registered while the document declares it',
         );
 
@@ -245,7 +242,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\n"));
 
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Widget')),
+            self::classLikeIn($this->backend, 'V\Widget'),
             'a document that no longer declares the class must drop its registration',
         );
         self::assertSame(
@@ -266,7 +263,7 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture($fixture)));
 
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className($fqn)),
+            self::classLikeIn($this->backend, $fqn),
             "{$fqn} must be registered for lookup",
         );
         self::assertNotNull(
@@ -335,11 +332,5 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationScanner(),
             array_values($onDiskBackends),
         );
-    }
-
-    private static function className(string $fqn): ClassName
-    {
-        /** @phpstan-ignore argument.type (virtual names are not analyzed) */
-        return new ClassName($fqn);
     }
 }

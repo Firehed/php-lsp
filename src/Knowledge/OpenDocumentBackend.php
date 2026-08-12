@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -22,12 +21,12 @@ use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
  * edits are honored — including edits to a vendored file opened in the editor.
  *
  * Open documents change on every keystroke and are never cached (RFC 1 §5.3): the
- * backend reads the live symbol index and its own registered class metadata
- * directly. Class-like lookup is served from the {@see ClassInfo} registered per
- * document by the write path; namespace enumeration and prefix search are served
- * from the {@see SymbolIndex} the write path also populates. The write path feeds
- * both stores from one parse ({@see DocumentSymbolSink}, Plan 0002 §5.5 Step 3a(iv));
- * here they are read as they stand.
+ * backend reads the live symbol index and its own registered metadata directly.
+ * Lookup is served from the {@see SymbolInfo} registered per document by the write
+ * path; namespace enumeration and prefix search are served from the
+ * {@see SymbolIndex} the write path also populates. The write path feeds both stores
+ * from one parse ({@see DocumentSymbolSink}, Plan 0002 §5.5 Step 3a(iv)); here they
+ * are read as they stand.
  */
 final class OpenDocumentBackend implements SymbolBackend
 {
@@ -44,17 +43,11 @@ final class OpenDocumentBackend implements SymbolBackend
         SymbolKind::Trait_,
     ];
 
-    /** @var array<string, ClassInfo> Lowercase FQN -> class metadata */
-    private array $byFqn = [];
+    /** @var array<string, SymbolInfo> Normalized kind-qualified key -> metadata */
+    private array $byKey = [];
 
-    /** @var array<string, list<string>> URI -> the lowercase FQNs it declared */
-    private array $fqnsByUri = [];
-
-    /** @var array<string, FunctionInfo> Lowercase FQN -> function metadata */
-    private array $functionsByFqn = [];
-
-    /** @var array<string, list<string>> URI -> the lowercase function FQNs it declared */
-    private array $functionFqnsByUri = [];
+    /** @var array<string, list<string>> URI -> the keys it declared */
+    private array $keysByUri = [];
 
     private readonly WorkspaceNamespaceSource $namespaces;
 
@@ -69,14 +62,9 @@ final class OpenDocumentBackend implements SymbolBackend
         return $this->namespaces->childrenOf($namespace->path);
     }
 
-    public function lookupClassLike(ClassName $name): ?ClassInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        return $this->byFqn[self::key(NameKind::ClassLike, $name->fqn)] ?? null;
-    }
-
-    public function lookupFunction(FunctionName $name): ?FunctionInfo
-    {
-        return $this->functionsByFqn[$name->kind()->normalize($name->qualifiedName)] ?? null;
+        return $this->byKey[self::key($kind, $name)] ?? null;
     }
 
     /**
@@ -103,42 +91,42 @@ final class OpenDocumentBackend implements SymbolBackend
 
         $keys = [];
         foreach ($classes as $classInfo) {
-            $key = self::key(NameKind::ClassLike, $classInfo->name->fqn);
-            $this->byFqn[$key] = $classInfo;
-            $keys[] = $key;
+            $keys[] = $this->register(NameKind::ClassLike, $classInfo->name->fqn, $classInfo);
         }
-        $this->fqnsByUri[$uri] = $keys;
-
-        $functionKeys = [];
         foreach ($functions as $fqn => $functionInfo) {
-            $key = self::key(NameKind::Function_, $fqn);
-            $this->functionsByFqn[$key] = $functionInfo;
-            $functionKeys[] = $key;
+            $keys[] = $this->register(NameKind::Function_, $fqn, $functionInfo);
         }
-        $this->functionFqnsByUri[$uri] = $functionKeys;
+        $this->keysByUri[$uri] = $keys;
     }
 
     public function removeDocument(string $uri): void
     {
-        foreach ($this->fqnsByUri[$uri] ?? [] as $key) {
-            unset($this->byFqn[$key]);
+        foreach ($this->keysByUri[$uri] ?? [] as $key) {
+            unset($this->byKey[$key]);
         }
-        unset($this->fqnsByUri[$uri]);
+        unset($this->keysByUri[$uri]);
+    }
 
-        foreach ($this->functionFqnsByUri[$uri] ?? [] as $key) {
-            unset($this->functionsByFqn[$key]);
-        }
-        unset($this->functionFqnsByUri[$uri]);
+    private function register(NameKind $kind, string $fqn, SymbolInfo $info): string
+    {
+        $key = self::key($kind, QualifiedName::fromFullyQualified($fqn));
+        $this->byKey[$key] = $info;
+
+        return $key;
     }
 
     /**
      * Registration and lookup must agree on the case rule, and that rule differs by
      * kind, so both go through {@see NameKind::normalize()} rather than a local
-     * lowercasing of the whole FQN — which is right for these two kinds and wrong
-     * for a constant.
+     * lowercasing of the whole FQN — which is right for class-likes and functions
+     * and wrong for a constant.
+     *
+     * The kind is part of the key because one store now holds every kind, and PHP's
+     * symbol namespaces are independent: a class and a function may share a
+     * spelling without being the same symbol.
      */
-    private static function key(NameKind $kind, string $fqn): string
+    private static function key(NameKind $kind, QualifiedName $name): string
     {
-        return $kind->normalize(QualifiedName::fromFullyQualified($fqn));
+        return $kind->name . '|' . $kind->normalize($name);
     }
 }
