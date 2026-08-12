@@ -295,10 +295,10 @@ Notes:
     A live defect; owes a regression test against a class the server vendors but the project does not.
   - **SC.15** — `TypeGraphParityTest`'s corpus has no trait `insteadof`/`as` shapes and no enums, so the reflection oracle cannot see #73's defect class (nor enum-interface members).
     Fixture-only slice; #73's fix lands on top of it and must fail before, pass after.
-  - **SC.16** — `SymbolExtractor` emits no `SymbolKind::Constant`, so a global constant in an open document is never indexed and `OpenDocumentBackend::childrenOf` cannot enumerate it — while the on-disk (`AutoloadFilesLocator`) and built-in (`ReflectionNamespaceSource`) backends both do.
-    `WorkspaceNamespaceSource` already maps the kind, and only a hand-built index in a unit test ever reaches that arm, so the gap is upstream in the extractor rather than in the catalog.
-    Found by the S3.8d coverage grid on its first run, which is the grid working as intended: the cell is registered against this row until it is drained.
-    Ungated, and ahead of S3.8b — constant lookup landing on an enumeration that cannot see open documents would rebuild the §4.2 split on the third symbol namespace.
+  - **SC.16** — `SymbolExtractor` emits no `SymbolKind::Constant`, so a global constant in an open document is never indexed and `OpenDocumentBackend::childrenOf` cannot enumerate it, while the on-disk and built-in backends both do.
+    `WorkspaceNamespaceSource` already maps the kind, so the gap is upstream in the extractor.
+    Found by the S3.8d coverage grid on its first run.
+    Ungated, and ahead of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over

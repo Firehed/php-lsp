@@ -25,14 +25,10 @@ use Firehed\PhpLsp\Index\Symbol;
  * vendored file, and the built-ins — is the composite's concern, not the
  * backend's: each answers only for its own source.
  *
- * Lookup is **kind-parameterized here and per-kind at the facade**, and the split is
- * deliberate (Plan 0002 §5.6). {@see SymbolSource} carries a typed method per kind
- * because RFC 1 §5.1 requires a concrete return type; a backend takes the kind as an
- * argument because the kind changes only the case rule
- * ({@see NameKind::normalize()}) and which factory builds the metadata — never how a
- * declaring file is found or how a namespace is listed. So a new kind is a name
- * type, an info type, and one factory case, rather than a method on every backend.
- * Do not re-derive a per-kind backend method from the facade's closed method set.
+ * Lookup is kind-parameterized here but per-kind at the facade, because the kind
+ * changes only the case rule and which factory builds the metadata, while §5.1
+ * requires a concrete return type (Plan 0002 §5.6). Do not re-derive a per-kind
+ * backend method from the facade's closed set.
  */
 interface SymbolBackend
 {
@@ -45,10 +41,7 @@ interface SymbolBackend
 
     /**
      * Full metadata for the symbol $name names *as a $kind*, or `null` when this
-     * backend cannot reach such a declaration (RFC 1 §5.3: absence is a bare null).
-     *
-     * PHP's three symbol namespaces are independent, so one name may be both a
-     * class and a function; $kind is what says which is meant.
+     * backend cannot reach such a declaration (RFC 1 §5.3).
      */
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo;
 
@@ -57,8 +50,7 @@ interface SymbolBackend
      * $prefix. A backend with no affordable prefix enumeration returns an empty
      * list rather than walking its source (RFC 1 §5.3).
      *
-     * A kind parameter arrives with S3.9a, which widens search the way this
-     * interface's lookup is already widened.
+     * A kind parameter arrives with S3.9a.
      *
      * @return list<Symbol>
      */

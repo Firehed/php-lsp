@@ -7,13 +7,10 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 
 /**
- * The queries every {@see SymbolBackend} answers, as an axis
- * {@see SymbolCoverageGridTest} crosses with {@see \Firehed\PhpLsp\Domain\NameKind}
- * to derive its columns.
- *
- * An enum rather than a list of strings so the grid's dispatch is exhaustive: a
- * query added to the interface without a probe fails to compile the match instead of
- * falling through a default arm that no cell would ever reach.
+ * The queries every {@see SymbolBackend} answers, crossed with
+ * {@see \Firehed\PhpLsp\Domain\NameKind} to form {@see SymbolCoverageGridTest}'s
+ * columns; an enum so a new query breaks the grid's match rather than falling
+ * through a default.
  */
 enum GridQuery: string
 {

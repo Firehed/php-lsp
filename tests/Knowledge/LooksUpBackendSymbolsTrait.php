@@ -11,14 +11,8 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 
 /**
- * Typed lookups against a {@see SymbolBackend}, whose own method is
- * kind-parameterized and returns the {@see \Firehed\PhpLsp\Domain\SymbolInfo} marker
- * (Plan 0002 §5.6).
- *
- * The narrowing each helper performs is the assertion
- * {@see \Firehed\PhpLsp\Knowledge\CompositeSymbolSource} makes in production, so
- * every call site here also pins the kind → info-type contract: a backend answering
- * a function lookup with a `ClassInfo` fails at the call, not somewhere downstream.
+ * Typed lookups against a {@see SymbolBackend}, narrowing as `CompositeSymbolSource`
+ * does in production so every call site also pins the kind → info-type contract.
  */
 trait LooksUpBackendSymbolsTrait
 {

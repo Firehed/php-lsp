@@ -39,10 +39,8 @@ use Psr\SimpleCache\CacheInterface;
 final class FilesystemBackend implements SymbolBackend, Invalidatable
 {
     /**
-     * The cache keys derived from each file, so an on-disk change to one file
-     * evicts exactly its entries. The cache is keyed by an opaque hash of the FQN
-     * and kind with no reverse mapping to a path, so the path→key relation is
-     * recorded here as symbols are cached.
+     * The cache keys derived from each file, recorded because a key is an opaque hash
+     * with no reverse mapping to a path.
      *
      * @var array<string, list<string>>
      */

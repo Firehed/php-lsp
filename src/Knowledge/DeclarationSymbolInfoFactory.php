@@ -16,14 +16,8 @@ use PhpParser\Node;
 use PhpParser\Node\Stmt;
 
 /**
- * Builds the metadata for a name a parsed file declares, given the kind it is being
- * asked for.
- *
- * This is the one place a {@see NameKind} decides which declaration list to search
- * and which factory builds the result — the whole of what the kind changes on this
- * route (Plan 0002 §5.6). Because it is confined here, {@see SymbolBackend} carries a
- * single kind-parameterized lookup, and a new kind is a case in this match rather
- * than a method on every backend.
+ * The one place a {@see NameKind} picks a declaration list and a builder, which is
+ * what lets {@see SymbolBackend} carry a single lookup (Plan 0002 §5.6).
  */
 final readonly class DeclarationSymbolInfoFactory
 {
@@ -56,9 +50,7 @@ final readonly class DeclarationSymbolInfoFactory
                 $kind,
                 static fn(Stmt\Function_ $node): SymbolInfo => FunctionInfo::fromNode($node, $filePath),
             ),
-            // The declarations are scanned; what is missing is the global-constant
-            // info type, which S3.8b lands with the Domain\ConstantName naming
-            // clash it forces (build-manifest S3.8b).
+            // Scanned, but the global-constant info type lands in S3.8b.
             NameKind::Constant => null,
         };
     }

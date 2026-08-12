@@ -15,10 +15,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The reflection counterpart of {@see DeclarationSymbolInfoFactoryTest}: the one
- * place a {@see NameKind} decides which reflection describes a built-in, so
- * {@see \Firehed\PhpLsp\Knowledge\BuiltinBackend} carries a single kind-parameterized
- * lookup (Plan 0002 §5.6).
+ * The reflection counterpart of {@see DeclarationSymbolInfoFactoryTest}
+ * (Plan 0002 §5.6).
  */
 final class ReflectionSymbolInfoFactoryTest extends TestCase
 {
@@ -47,10 +45,8 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
 
     public function testIgnoresFunctionsOnlyTheServerHasLoaded(): void
     {
-        // The server is itself a PHP program, so reflection sees every function its
-        // own dependencies declare. Those are not the project's, and the backend
-        // enumerates only internal functions — a lookup answering more broadly would
-        // resolve a name completion never offers (RFC 1 §4.2).
+        // Enumeration is filtered to internal, so a broader lookup would resolve a
+        // name completion never offers (RFC 1 §4.2).
         require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
 
         self::assertNull(

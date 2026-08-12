@@ -22,11 +22,9 @@ use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
  *
  * Open documents change on every keystroke and are never cached (RFC 1 §5.3): the
  * backend reads the live symbol index and its own registered metadata directly.
- * Lookup is served from the {@see SymbolInfo} registered per document by the write
- * path; namespace enumeration and prefix search are served from the
- * {@see SymbolIndex} the write path also populates. The write path feeds both stores
- * from one parse ({@see DocumentSymbolSink}, Plan 0002 §5.5 Step 3a(iv)); here they
- * are read as they stand.
+ * Lookup is served from the {@see SymbolInfo} the write path registers per document;
+ * enumeration and prefix search from the {@see SymbolIndex} it also populates. Both
+ * stores come from one parse ({@see DocumentSymbolSink}, Plan 0002 §5.5 Step 3a(iv)).
  */
 final class OpenDocumentBackend implements SymbolBackend
 {
@@ -116,14 +114,10 @@ final class OpenDocumentBackend implements SymbolBackend
     }
 
     /**
-     * Registration and lookup must agree on the case rule, and that rule differs by
-     * kind, so both go through {@see NameKind::normalize()} rather than a local
-     * lowercasing of the whole FQN — which is right for class-likes and functions
-     * and wrong for a constant.
-     *
-     * The kind is part of the key because one store now holds every kind, and PHP's
-     * symbol namespaces are independent: a class and a function may share a
-     * spelling without being the same symbol.
+     * Registration and lookup must agree on the case rule, which differs by kind, so
+     * both go through {@see NameKind::normalize()} rather than lowercasing the whole
+     * FQN — right for class-likes and functions, wrong for a constant. The kind is
+     * part of the key because one store holds all three.
      */
     private static function key(NameKind $kind, QualifiedName $name): string
     {

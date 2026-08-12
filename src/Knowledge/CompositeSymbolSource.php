@@ -37,9 +37,7 @@ final class CompositeSymbolSource implements SymbolSource
     /**
      * @param list<SymbolBackend> $backends In descending precedence: the first
      *        that answers a lookup wins, and the first to report a name wins a
-     *        merge. Readable so the §5.1 coverage grid derives its rows from the
-     *        composition that actually ships rather than a hand-kept list
-     *        ({@see \Firehed\PhpLsp\Tests\Knowledge\SymbolCoverageGridTest}).
+     *        merge. Readable so the §5.1 coverage grid derives its rows from it.
      */
     public function __construct(
         public readonly array $backends,
@@ -101,11 +99,8 @@ final class CompositeSymbolSource implements SymbolSource
     }
 
     /**
-     * The first backend that answers wins, which is what makes precedence
-     * positional. The kind travels as an argument here and is narrowed back to a
-     * concrete type by each caller above: O(kinds) narrowings at this one site,
-     * against the O(kinds × backends) methods a per-kind backend would need
-     * (Plan 0002 §5.6).
+     * The first backend that answers wins; each caller above narrows the result back
+     * to a concrete type, at this one site (Plan 0002 §5.6).
      */
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {

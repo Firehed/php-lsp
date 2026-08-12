@@ -19,20 +19,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The single place a {@see NameKind} selects which declarations to search and which
- * factory builds the metadata (Plan 0002 §5.6). Confining that dispatch here is what
- * lets {@see \Firehed\PhpLsp\Knowledge\SymbolBackend} carry one lookup rather than
- * one per kind, so a new kind is a case here and not a method on every backend.
+ * The single place a {@see NameKind} selects a declaration list and a builder
+ * (Plan 0002 §5.6).
  */
 final class DeclarationSymbolInfoFactoryTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    /**
-     * Declares a class, an interface, a trait, an enum, two functions, and both
-     * `const` and `define()` constants — every kind this factory dispatches on, in
-     * one file, so a kind reading the wrong declaration list is visible.
-     */
+    /** Every kind this factory dispatches on, so reading the wrong list is visible. */
     private const string FIXTURE = 'AutoloadFiles/helpers.php';
 
     private DeclarationSymbolInfoFactory $factory;
@@ -75,10 +69,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     }
 
     /**
-     * The kind selects the declaration list, so a name declared only as one kind is
-     * not answered when asked for as another. Reading a single merged list — or the
-     * wrong list — would resolve these, which is the collision PHP's three
-     * independent symbol namespaces make possible.
+     * A merged list, or the wrong one, would resolve these.
      *
      * @return iterable<string, array{string, NameKind}>
      */
@@ -118,9 +109,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 
     public function testConstantsAreNotYetBuilt(): void
     {
-        // The fixture does declare this constant, so the null is the missing
-        // global-constant info type, not a missing declaration. S3.8b adds it,
-        // together with the Domain\ConstantName naming clash it forces.
+        // The fixture declares it, so the null is the missing info type.
         self::assertNotSame(
             [],
             $this->declarations->constants,
