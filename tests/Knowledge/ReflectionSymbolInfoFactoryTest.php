@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Knowledge\ReflectionSymbolInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Resolution\ResolvesFromInfo;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -28,8 +29,6 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
     }
 
     /**
-     * PHP declares no internal trait, so the fourth flavour cannot be probed here.
-     *
      * @return iterable<string, array{string}>
      */
     public static function loadedClassLikes(): iterable
@@ -37,6 +36,10 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
         yield 'class' => [\ArrayObject::class];
         yield 'interface' => [\Countable::class];
         yield 'enum' => [\Random\IntervalBoundary::class];
+        // PHP declares no internal trait, so the only probe for the fourth flavour is
+        // one the server process loaded — which this branch answers for until SC.14
+        // filters it to internal, after which the branch is dead and goes with it.
+        yield 'trait' => [ResolvesFromInfo::class];
     }
 
     #[DataProvider('loadedClassLikes')]
