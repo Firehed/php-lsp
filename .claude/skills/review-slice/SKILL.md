@@ -61,6 +61,7 @@ Run a small diverse panel in parallel:
   mutation of the implementation (move a statement out of a `finally`, shorten a timed
   span, return a constant) and check whether anything fails. Spot-check that captured
   goldens assert the right values, not just that they diffed clean.
+  Note: instruct the reviewer to revert mutations through the edit tool, not git.
 
 Each returns structured findings; then have them adversarially try to break the
 change.
