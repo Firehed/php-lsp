@@ -22,10 +22,10 @@ use Firehed\PhpLsp\Knowledge\SymbolBackend;
 final class FakeSymbolBackend implements SymbolBackend
 {
     /**
-     * @param array<string, ClassInfo> $classLikes Lowercased FQN -> info
+     * @param array<string, ClassInfo> $classLikes FQN under the kind's case rule -> info
      * @param array<string, NamespaceContents> $namespaces Path -> contents
      * @param list<Symbol> $searchResults Returned (prefix-filtered on short name)
-     * @param array<string, FunctionInfo> $functions Lowercased FQN -> info
+     * @param array<string, FunctionInfo> $functions FQN under the kind's case rule -> info
      */
     public function __construct(
         private readonly array $classLikes = [],
@@ -48,7 +48,7 @@ final class FakeSymbolBackend implements SymbolBackend
             NameKind::Constant => [],
         };
 
-        return $configured[strtolower($name->fullyQualifiedName())] ?? null;
+        return $configured[$kind->normalize($name)] ?? null;
     }
 
     /**
