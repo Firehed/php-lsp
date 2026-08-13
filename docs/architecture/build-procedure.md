@@ -65,6 +65,8 @@ A comment that restates its code is a second copy of it, and the copy is the one
 The project rule already says this (`CLAUDE.md`): name the non-obvious fact a comment carries that the code does not, or delete it, and let length track how subtle the code is rather than how much of it there is.
 It is stated here because it is the rule this project ignores most often.
 
+Comment discipline carries a standing goal-test answer — two copies of one fact drifting apart is this rework's bug class in miniature — so these findings pass the filter without a per-finding sentence.
+
 ## Source of truth: git, not a status field
 
 Progress is **derived from git / PR merge state**, keyed by deterministic branch
