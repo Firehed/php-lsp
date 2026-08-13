@@ -20,14 +20,17 @@ use PHPUnit\Framework\TestCase;
  * RFC 1 §8.1's mechanism for §5.1: a backend × kind × query grid whose axes are
  * derived rather than listed, so a new kind or backend adds cells this file never
  * anticipated. Every cell answers over the fixtures or names a blocker in
- * {@see NOT_APPLICABLE}; an unregistered cell fails, and so does a registration on a
- * cell that answers.
+ * {@see NOT_APPLICABLE}; an unregistered cell fails, so does a registration on a cell
+ * that answers, and so does a blocker naming no row of the slice registry.
  *
  * One row per backend class: the workspace and vendor {@see FilesystemBackend}s
  * differ only in autoload-map subset, so their coverage cannot diverge.
  */
 final class SymbolCoverageGridTest extends TestCase
 {
+    /** The other form a blocker may take, when no slice owns the gap. */
+    private const string SECTION_REFERENCE = '/^(RFC 1|Plan 0002) §\d+(\.\d+)*$/u';
+
     /**
      * Cells the shipped stack cannot answer, each naming a slice id or an RFC
      * section. Keyed `<backend>|<kind>|<query>`.
@@ -170,11 +173,62 @@ final class SymbolCoverageGridTest extends TestCase
         );
     }
 
-    public function testEveryRegistrationNamesABlocker(): void
+    public function testEveryRegistrationNamesALiveBlocker(): void
     {
-        foreach (self::NOT_APPLICABLE as $cell => $blocker) {
-            self::assertNotSame('', $blocker, "the not-applicable cell {$cell} must name its blocker");
+        self::assertSame(
+            [],
+            self::danglingBlockers(self::NOT_APPLICABLE),
+            'a not-applicable cell must name a slice that is still in the registry, or a section: '
+                . 'a blocker nobody owns is the permanent exemption Step Z exists to prevent',
+        );
+    }
+
+    public function testABlockerNamingNoSliceIsReported(): void
+    {
+        // A registry that accepted any non-empty string would outlive the slice it names.
+        self::assertSame(
+            ['BuiltinBackend|Constant|lookup names S9.99'],
+            self::danglingBlockers(['BuiltinBackend|Constant|lookup' => 'S9.99']),
+            'a blocker matching no registry row and no section must be reported',
+        );
+    }
+
+    /**
+     * @param array<string, string> $notApplicable
+     * @return list<string> The `<cell> names <blocker>` pairs that resolve to nothing
+     */
+    private static function danglingBlockers(array $notApplicable): array
+    {
+        $slices = self::sliceIds();
+        $dangling = [];
+
+        foreach ($notApplicable as $cell => $blocker) {
+            foreach (explode(', ', $blocker) as $named) {
+                if (in_array($named, $slices, true) || preg_match(self::SECTION_REFERENCE, $named) === 1) {
+                    continue;
+                }
+                $dangling[] = "{$cell} names {$named}";
+            }
         }
+
+        return $dangling;
+    }
+
+    /**
+     * The registry is the manifest itself, so a blocker cannot outlive the row it
+     * names by the row being renamed or dropped.
+     *
+     * @return list<string>
+     */
+    private static function sliceIds(): array
+    {
+        $manifest = file_get_contents(dirname(__DIR__, 2) . '/docs/architecture/build-manifest.md');
+        self::assertNotFalse($manifest, 'the slice registry must be readable');
+
+        preg_match_all('/^ {4}([A-Z][A-Z0-9]\.\d+[a-z]?) /m', $manifest, $matches);
+        self::assertNotEmpty($matches[1], 'the slice table must be parseable, or every blocker reads as dangling');
+
+        return $matches[1];
     }
 
     /**
