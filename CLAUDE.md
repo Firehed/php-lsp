@@ -133,7 +133,7 @@ flow through the **`SymbolSource`** read seam (`src/Knowledge/`), implemented by
 A lookup takes the first backend that answers; enumeration and search merge every
 backend, the earlier (more authoritative) one winning a name clash. Caching is a
 per-backend PSR-16 policy (`src/Cache/`); on-disk and built-in results are cached, open
-documents never. A cache key carries the `NameKind` (`SymbolCacheKey`): PHP's three
+documents never. A cache key carries the `NameKind` (`SymbolCache`): PHP's three
 symbol namespaces are independent, so a class and a function may share a name.
 
 Lookup is **per-kind at the `SymbolSource` facade** — a typed method per kind, taking a
