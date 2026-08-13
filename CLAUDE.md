@@ -14,7 +14,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 
 Two CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
 
-- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
+- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
 - **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis.
 
 When a rule fires on your change, in order of preference:
