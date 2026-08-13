@@ -140,9 +140,9 @@ squash-deleted branch is never misread as unstarted.
 
 1. **Identify the slice.** The `in-flight` one, or the id given. Check out its
    branch.
-2. **Cleanroom review.** A fresh reviewer (subagent) sees **only** the slice's
-   acceptance criteria, the relevant RFC sections, and the diff — **not** the
-   implementer's reasoning or this conversation. It adversarially verifies:
+2. **Cleanroom review.** A fresh reviewer (subagent) sees **only** the goal section
+   of this document, the slice's acceptance criteria, the relevant RFC sections, and
+   the diff — **not** the implementer's reasoning or this conversation. It adversarially verifies:
    - every acceptance criterion is actually met (not just plausibly);
    - §8.1 conformance for the invariants the slice touches;
    - the parity harness / enforcement rule would **actually catch a regression in**
