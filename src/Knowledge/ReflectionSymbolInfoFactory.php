@@ -37,15 +37,13 @@ final readonly class ReflectionSymbolInfoFactory
 
     private function classInfo(QualifiedName $name): ?SymbolInfo
     {
-        $fqn = $name->fullyQualifiedName();
-
-        // All three, since `class_exists` answers for classes and enums only; each
-        // autoloads exactly as constructing the reflection would.
-        if (!class_exists($fqn) && !interface_exists($fqn) && !trait_exists($fqn)) {
+        try {
+            $reflection = new ReflectionClass($name->fullyQualifiedName());
+        } catch (ReflectionException) {
             return null;
         }
 
-        return $this->classes->fromReflection(new ReflectionClass($fqn));
+        return $this->classes->fromReflection($reflection);
     }
 
     private function functionInfo(QualifiedName $name): ?SymbolInfo

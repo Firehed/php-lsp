@@ -27,12 +27,25 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
         $this->factory = new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory());
     }
 
-    public function testBuildsClassInfoForALoadedClass(): void
+    /**
+     * PHP declares no internal trait, so the fourth flavour cannot be probed here.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function loadedClassLikes(): iterable
     {
-        $info = $this->build(\ArrayObject::class, NameKind::ClassLike);
+        yield 'class' => [\ArrayObject::class];
+        yield 'interface' => [\Countable::class];
+        yield 'enum' => [\Random\IntervalBoundary::class];
+    }
+
+    #[DataProvider('loadedClassLikes')]
+    public function testBuildsClassInfoForEveryClassLikeFlavour(string $fqn): void
+    {
+        $info = $this->build($fqn, NameKind::ClassLike);
 
         self::assertInstanceOf(ClassInfo::class, $info, 'a class-like must build ClassInfo');
-        self::assertSame('ArrayObject', $info->name->fqn, 'the reflected class must be returned');
+        self::assertSame($fqn, $info->name->fqn, 'the reflected class-like must be returned');
     }
 
     public function testBuildsFunctionInfoForAnInternalFunction(): void
