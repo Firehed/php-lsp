@@ -163,7 +163,8 @@ squash-deleted branch is never misread as unstarted.
    A finding without one is reported as noted-not-fixed, in a line, and nothing is
    built for it. Noted lines do not make a pass dirty — only an applied fix forces a
    fresh pass, which is what lets the review loop terminate.
-4. **Fix.** Apply fixes on the branch; re-run the cleanroom pass until clean.
+4. **Fix.** Apply fixes on the branch; the change then needs a fresh pass (a new
+   session) before landing. Land only from a pass that fixed nothing.
 5. **Land.** Mark ready / merge. For each existing issue the manifest says this slice
    closes, **read the issue body, confirm its criteria are met, then** wire
    `Closes #<n>` (or close with a verification note).
