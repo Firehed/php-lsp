@@ -252,22 +252,6 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    private static function declaredClass(string $fqn): DeclaredSymbol
-    {
-        return new DeclaredSymbol(
-            QualifiedName::fromFullyQualified($fqn),
-            NameKind::ClassLike,
-            self::classInfo($fqn),
-        );
-    }
-
-    private static function declaredFunction(string $fqn): DeclaredSymbol
-    {
-        $name = QualifiedName::fromFullyQualified($fqn);
-
-        return new DeclaredSymbol($name, NameKind::Function_, self::functionInfo($name->shortName));
-    }
-
     private function addSymbol(string $name, string $fqn, SymbolKind $kind): void
     {
         $this->index->add(new Symbol($name, $fqn, $kind, new Location('file:///' . $name . '.php', 0, 0, 0, 0)));

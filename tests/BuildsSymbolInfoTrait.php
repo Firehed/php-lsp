@@ -7,15 +7,45 @@ namespace Firehed\PhpLsp\Tests;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
 
 /**
  * Builds minimal domain value objects for tests that need symbols without a real
  * parse — only the identity, the declaring file where precedence is under test,
  * and, for a class-like, the parent and interface edges a subtype walk follows.
+ *
+ * The `declared*` pair wraps the info in the {@see DeclaredSymbol} the kind-agnostic
+ * write and lookup paths take, so a test states the kind once rather than picking a
+ * per-kind slot.
  */
 trait BuildsSymbolInfoTrait
 {
+    /**
+     * @param list<string> $interfaces
+     */
+    private static function declaredClass(
+        string $fqn,
+        ?string $parent = null,
+        array $interfaces = [],
+        ?string $file = null,
+    ): DeclaredSymbol {
+        return new DeclaredSymbol(
+            QualifiedName::fromFullyQualified($fqn),
+            NameKind::ClassLike,
+            self::classInfo($fqn, parent: $parent, interfaces: $interfaces, file: $file),
+        );
+    }
+
+    private static function declaredFunction(string $fqn, ?string $file = null): DeclaredSymbol
+    {
+        $name = QualifiedName::fromFullyQualified($fqn);
+
+        return new DeclaredSymbol($name, NameKind::Function_, self::functionInfo($name->shortName, $file));
+    }
+
     /**
      * @param list<string> $interfaces
      */
