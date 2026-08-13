@@ -18,6 +18,40 @@ step is computed, never remembered.** A session determines what to do from durab
 checkable state and *halts and asks* when that state is ambiguous. This is one or
 two notches below hands-off autonomy by design.
 
+## The goal every slice serves
+
+The rework exists to eliminate one bug class: two features disagreeing about the same symbol.
+Hover resolves a name completion never offers; definition works on a node type type-inference does not.
+That is #190, #253 and #256, and the cause is M×N hand-written pairs — M consumers × N node types or symbol kinds — that drift apart.
+
+The method is one authority per question, so consistency holds by construction rather than by discipline.
+Every seam ships with the enforcement that makes drift fail loudly; a rule without a mechanism is not done (§8.1).
+
+Everything else — fewer lines, tidier layering, better names — is a means.
+It counts when it serves that end or unblocks a feature the plan schedules, and not otherwise.
+
+### The goal test
+
+Before writing a change or raising a finding, answer in one sentence:
+
+> What can two features disagree about if this is not done — or which scheduled feature does it unblock?
+
+No answer means out of scope.
+Note it and move on.
+
+Filing an `SC.*` row is the right disposition when the thing is duplication or divergence, which is the goal's own subject matter.
+It is the wrong disposition for generic tidiness, which belongs in neither the manifest nor the diff.
+
+These are the ways the test gets failed in practice, each observed:
+
+- Enforcement built for a defect nobody can produce.
+- A mechanism widened to catch a risk belonging to a different class of bug.
+- Production API changed to improve the shape of a test.
+- Tidiness fixed or filed on the way past because it was noticed.
+
+A fix whose blast radius exceeds the defect it prevents is a decision for the human, not a reflex.
+State what it would cost and ask.
+
 ## Source of truth: git, not a status field
 
 Progress is **derived from git / PR merge state**, keyed by deterministic branch
@@ -76,12 +110,13 @@ squash-deleted branch is never misread as unstarted.
      first — one slice in flight at a time);
    - the manifest references a merged branch for a slice whose dependencies are not
      merged (state drift — surface it).
-4. **Explain X.** Describe in plain english the work to be done, then wait for
-   approval, clarification, or modification.
+4. **Explain X.** Describe in plain english the work to be done, lead with X's answer
+   to the goal test, then wait for approval, clarification, or modification.
 5. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
-   `composer test`; open a PR citing X.
+   `composer test`; open a PR citing X. Build what X's acceptance requires and
+   nothing beyond it — a problem noticed in passing is reported, not solved.
 6. Stop. Report the PR and the *next* computed slice, so the human knows what a
    follow-up "do the next step" would pick up.
 
@@ -105,11 +140,19 @@ squash-deleted branch is never misread as unstarted.
    PHPStan, PHPCS, coverage percentages. Those run on every push. Review effort goes
    where CI is blind — unverified claims, assertions that survive mutation,
    acceptance criteria met only in appearance.
-3. **Fix.** Apply fixes on the branch; re-run the cleanroom pass until clean.
-4. **Land.** Mark ready / merge. For each existing issue the manifest says this slice
+3. **Apply the goal test.** Every surviving finding carries its one-sentence answer.
+   A finding without one is reported as noted-not-fixed, in a line, and nothing is
+   built for it.
+4. **Fix.** Apply fixes on the branch; re-run the cleanroom pass until clean.
+5. **Land.** Mark ready / merge. For each existing issue the manifest says this slice
    closes, **read the issue body, confirm its criteria are met, then** wire
    `Closes #<n>` (or close with a verification note).
-5. Stop. Report what merged and the next computed slice.
+6. **Close against the goal.** Every pass ends by saying, in plain english, what two
+   features could have disagreed about and what now makes that impossible — or what
+   the change unblocks, if it is groundwork — or what corrections remain before it
+   gets there. A pass that cannot write that paragraph has not understood the change
+   well enough to approve it, and says so instead.
+7. Stop. Report what merged and the next computed slice.
 
 ## The "X is always correct" guarantee, in one place
 
