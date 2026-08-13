@@ -93,12 +93,13 @@ parameters:
         -
             function:
                 - 'class_exists()'
+                - 'constant()'
                 - 'defined()'
                 - 'enum_exists()'
                 - 'function_exists()'
                 - 'interface_exists()'
                 - 'trait_exists()'
-            message: 'asking the runtime whether a symbol exists is a SymbolSource query (RFC 1 §4.2); ReflectionSymbolInfoFactory is the one place it may be the server''s own runtime'
+            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query (RFC 1 §4.2); ReflectionSymbolInfoFactory is the one place it may be the server''s own runtime'
             allowIn:
                 - src/Knowledge/ReflectionSymbolInfoFactory.php
                 - tests/*
