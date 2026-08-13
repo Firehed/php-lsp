@@ -78,9 +78,9 @@ is one you will over- or under-build.
   - Write failing tests, then implement to green.
 - Keep commits small and logical (project rule). Run `composer test` to green.
 - Build what X's acceptance requires and nothing beyond it. A defect, duplication, or
-  rough edge noticed in passing is **reported, not solved** — if it is duplication or
-  divergence it earns an `SC.*` row, and if it is generic tidiness it earns neither a
-  row nor a diff.
+  rough edge noticed in passing is **reported, not solved** — duplication or
+  divergence earns an `SC.*` row; generic tidiness gets one line in the PR body and
+  neither a row nor a diff.
 - Comments earn their place. Name the non-obvious fact each one carries that the code
   does not, or leave it out; length tracks the subtlety of the code, not its size.
   Reviewers raise violations as findings, so writing them costs a round.

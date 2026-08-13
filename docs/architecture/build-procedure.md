@@ -37,10 +37,8 @@ Before writing a change or raising a finding, answer in one sentence:
 > What can two features disagree about if this is not done — or which scheduled feature does it unblock?
 
 No answer means out of scope.
-Note it and move on.
-
-Filing an `SC.*` row is the right disposition when the thing is duplication or divergence, which is the goal's own subject matter.
-It is the wrong disposition for generic tidiness, which belongs in neither the manifest nor the diff.
+Duplication or divergence earns an `SC.*` row — that is the goal's own subject matter.
+Generic tidiness gets one line in the PR body or pass report, and neither a row nor a diff.
 
 These are the ways the test gets failed in practice, each observed:
 
@@ -131,7 +129,8 @@ squash-deleted branch is never misread as unstarted.
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
    `composer test`; open a PR citing X. Build what X's acceptance requires and
-   nothing beyond it — a problem noticed in passing is reported, not solved.
+   nothing beyond it — a problem noticed in passing is reported, not solved (an
+   `SC.*` row for duplication, a line in the PR body for anything else).
 6. Stop. Report the PR and the *next* computed slice, so the human knows what a
    follow-up "do the next step" would pick up.
 
