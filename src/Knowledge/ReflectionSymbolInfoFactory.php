@@ -39,9 +39,9 @@ final readonly class ReflectionSymbolInfoFactory
     {
         $fqn = $name->fullyQualifiedName();
 
-        // Also what narrows the name to a `class-string`, which is why this kind
-        // cannot use the sibling's try/catch. All three, since `class_exists`
-        // answers for classes and enums only; each autoloads exactly as
+        // These also narrow the name to a `class-string`, which is why this kind
+        // cannot use the sibling's try/catch. All three are needed: `class_exists`
+        // answers for classes and enums only. Each autoloads exactly as
         // constructing the reflection would.
         if (!class_exists($fqn) && !interface_exists($fqn) && !trait_exists($fqn)) {
             return null;
