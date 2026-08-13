@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -87,6 +89,20 @@ final class SymbolCoverageGridTest extends TestCase
             'Function_' => ['name' => 'str_contains', 'namespace' => ''],
             'Constant' => ['name' => 'PHP_INT_MAX', 'namespace' => ''],
         ],
+    ];
+
+    /**
+     * The concrete type a lookup of each kind must answer with, so a cell counts as
+     * covered only when the backend answered for the kind it was asked about — §5.1
+     * requires a concrete return type, and the composite's narrowing `assert()` is
+     * gone in production. Null while the kind has no info type yet.
+     *
+     * @var array<string, ?class-string>
+     */
+    private const array INFO_TYPES = [
+        'ClassLike' => ClassInfo::class,
+        'Function_' => FunctionInfo::class,
+        'Constant' => null,
     ];
 
     /** One name of each kind for the open-document row, which no on-disk file can stand in for. */
@@ -286,10 +302,31 @@ final class SymbolCoverageGridTest extends TestCase
         $fqn = $probe['name'];
 
         return match ($query) {
-            GridQuery::Lookup => $backend->lookup(QualifiedName::fromFullyQualified($fqn), $kind) !== null,
+            GridQuery::Lookup => $this->looksUp($backend, $fqn, $kind),
             GridQuery::Search => $this->searchFinds($backend, $fqn),
             GridQuery::ChildrenOf => $this->enumerates($backend, $probe['namespace'], $kind, $fqn),
         };
+    }
+
+    private function looksUp(SymbolBackend $backend, string $fqn, NameKind $kind): bool
+    {
+        $info = $backend->lookup(QualifiedName::fromFullyQualified($fqn), $kind);
+        if ($info === null) {
+            return false;
+        }
+
+        $expected = self::INFO_TYPES[$kind->name] ?? null;
+        self::assertNotNull(
+            $expected,
+            "{$kind->name} has no info type declared, so no backend may answer a lookup of it",
+        );
+        self::assertInstanceOf(
+            $expected,
+            $info,
+            "a {$kind->name} lookup must answer with that kind's own metadata type (RFC 1 §5.1)",
+        );
+
+        return true;
     }
 
     private function searchFinds(SymbolBackend $backend, string $fqn): bool
