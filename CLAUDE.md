@@ -180,11 +180,14 @@ directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: �
 requires lookup and enumeration to draw on the same backends, so a name that resolved
 on hover while being invisible to completion is the split this tier exists to prevent.
 
-The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers class and
-function metadata and indexes symbols from one document. A declaration at any depth is
-registered, not just a top-level one — a class or function guarded by
-`class_exists`/`function_exists` is a name the file validly declares, and the on-disk
-backends resolve one, so opening the file must not make it disappear.
+The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers a document's
+symbols and indexes them. Registration is kind-parameterized like lookup: the sink hands
+`OpenDocumentBackend` `DeclaredSymbol`s built by `DeclarationSymbolInfoFactory`, the same
+factory the on-disk read path uses, so a new kind is a case there rather than another
+parameter on the backend. A declaration at any depth is registered, not just a top-level
+one — a class or function guarded by `class_exists`/`function_exists` is a name the file
+validly declares, and the on-disk backends resolve one, so opening the file must not make
+it disappear.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
 

@@ -148,6 +148,9 @@ Notes:
   pairs; after SC.5 those differ only in which factory builds the metadata. S3.8d also
   carries the §8.1 mechanism for §5.1 (see 0002), per the rule that a seam ships with its
   enforcement.
+  `OpenDocumentBackend`'s *registration* is collapsed with its lookup, for the same
+  reason: a per-kind parameter there would force S3.8b to edit a backend even though the
+  read seam held.
   - **S3.8b is the proof.** Its acceptance carries one criterion that cannot be met by
     appearance: **its diff must touch no `SymbolBackend` implementation.** If it does,
     S3.8d did not work.
