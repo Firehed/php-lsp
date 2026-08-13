@@ -7,7 +7,7 @@ description: One cleanroom adversarial review pass (plus fixes) of a build slice
 
 Execute "Mode B" of `docs/architecture/build-procedure.md`. **One invocation = one
 pass.** If this pass fixes anything, the change needs another fresh pass — the user
-runs `/clear` then `/review-slice` again. Only a pass that finds nothing is "clean".
+runs `/clear` then `/review-slice` again. Only a pass that fixes nothing is "clean".
 
 ## 0. Read the goal first
 
@@ -117,7 +117,8 @@ burn 75k+ tokens re-deriving the whole measurement.
 - Keep only findings you can **confirm against the code**; discard speculation.
 - Backstop the goal test on what survives the panel. A finding that cannot answer it
   (comment discipline carries its standing answer) is reported in one line as
-  noted-not-fixed; nothing gets built for it.
+  noted-not-fixed; nothing gets built for it. Noted lines do not make the pass dirty
+  — only an applied fix forces a fresh pass. This is what lets the loop terminate.
 - Weigh each fix against the defect it prevents. When the change needed is wider than
   the defect — a production API change, a new fixture dependency, a reshaped seam —
   **state the cost and ask** rather than building it. That call is the user's.
@@ -125,7 +126,7 @@ burn 75k+ tokens re-deriving the whole measurement.
   green. Report: **"Pass found N issues, fixed and committed: [...]. Run /clear then
   /review-slice again to verify."** STOP — do not land. A fix needs a fresh pass.
 
-## 4. If the pass is clean (no surviving findings)
+## 4. If the pass is clean (nothing needed a fix)
 
 - For each `Closes` candidate in the manifest for this slice: `gh issue view <n>`,
   confirm its acceptance criteria are met **by this change**; if so, add `Closes #<n>`

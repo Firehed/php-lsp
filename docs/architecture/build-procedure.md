@@ -38,7 +38,7 @@ Before writing a change or raising a finding, answer in one sentence:
 
 No answer means out of scope.
 Duplication or divergence earns an `SC.*` row — that is the goal's own subject matter.
-Generic tidiness gets one line in the PR body or pass report, and neither a row nor a diff.
+Generic tidiness gets at most one line in the PR body or pass report, and neither a row nor a diff.
 
 These are the ways the test gets failed in practice, each observed:
 
@@ -159,7 +159,8 @@ squash-deleted branch is never misread as unstarted.
    acceptance criteria met only in appearance.
 3. **Apply the goal test.** Every surviving finding carries its one-sentence answer.
    A finding without one is reported as noted-not-fixed, in a line, and nothing is
-   built for it.
+   built for it. Noted lines do not make a pass dirty — only an applied fix forces a
+   fresh pass, which is what lets the review loop terminate.
 4. **Fix.** Apply fixes on the branch; re-run the cleanroom pass until clean.
 5. **Land.** Mark ready / merge. For each existing issue the manifest says this slice
    closes, **read the issue body, confirm its criteria are met, then** wire
