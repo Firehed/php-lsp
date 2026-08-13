@@ -106,7 +106,8 @@ squash-deleted branch is never misread as unstarted.
 - **One slice = one branch = one PR.** Branch name is fixed by the manifest:
   `slice/<id>` (e.g. `slice/S2.1`). This is what lets a *review* session find "this
   step's branch" unambiguously from the id alone.
-- **PR body** cites the slice id, its plan step, and the RFC section(s) it satisfies.
+- **PR body** opens with the slice's goal-test answer, then cites the slice id, its
+  plan step, and the RFC section(s) it satisfies.
 - **`Closes #<n>`** is added to a PR **only after the reviewer has read that issue's
   body and confirmed its acceptance criteria are met** — never inferred from a title
   (per the project's review rules).
