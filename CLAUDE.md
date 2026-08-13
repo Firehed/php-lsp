@@ -143,8 +143,9 @@ a concrete return type rather than a type-erased union — and **kind-parameteri
 facade's closed method set as licence to add a per-kind backend method. Kind dispatch
 lives in `DeclarationSymbolInfoFactory` and `ReflectionSymbolInfoFactory`, one per
 metadata route, so a new kind is a case in each rather than a method on every backend.
-`SymbolCoverageGridTest` enforces §5.1 with a backend × kind × query grid whose axes
-are derived: every cell answers or names its blocker, and an unregistered cell fails.
+`SymbolCoverageGridTest` enforces §5.1 with a backend × kind × query grid whose backend
+and kind axes are derived: every cell answers or names its blocker, and an unregistered
+cell fails.
 `lookupFunction` reaches
 open documents, the `autoload.files` set, and PHP's built-ins — the last filtered to
 `isInternal()`, because reflection also sees the functions the *server's* own

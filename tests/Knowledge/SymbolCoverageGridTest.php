@@ -17,9 +17,10 @@ use Firehed\PhpLsp\Parser\ParserService;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 1 §8.1's mechanism for §5.1: a backend × kind × query grid whose axes are
- * derived rather than listed, so a new kind or backend adds cells this file never
- * anticipated. Every cell answers over the fixtures or names a blocker in
+ * RFC 1 §8.1's mechanism for §5.1: a backend × kind × query grid whose backend and
+ * kind axes are derived rather than listed, so a new kind or backend adds cells this
+ * file never anticipated. The query axis is listed ({@see GridQuery}). Every cell
+ * answers over the fixtures or names a blocker in
  * {@see NOT_APPLICABLE}; an unregistered cell fails, so does a registration on a cell
  * that answers, and so does a blocker naming no row of the slice registry.
  *
