@@ -9,6 +9,17 @@ Execute "Mode B" of `docs/architecture/build-procedure.md`. **One invocation = o
 pass.** If this pass fixes anything, the change needs another fresh pass — the user
 runs `/clear` then `/review-slice` again. Only a pass that finds nothing is "clean".
 
+## 0. Read the goal first
+
+Read **"The goal every slice serves"** in `build-procedure.md` before anything else.
+The review exists to protect one thing: that two features cannot disagree about the
+same symbol. Acceptance criteria are how a slice serves that goal, not a substitute
+for it — a pass that checks every box while the change drifts from the goal has
+failed, and so has a pass that generates work the goal does not call for.
+
+Every finding you keep, and every fix you write, carries its one-sentence answer to
+the goal test. No answer, no work.
+
 ## 1. Identify the slice
 
 - If a slice id / branch is given, use `slice/<id>`. Otherwise find the single
@@ -26,11 +37,18 @@ runs `/clear` then `/review-slice` again. Only a pass that finds nothing is "cle
 
 ## 2. Cleanroom review (this is the safeguard — keep it clean)
 
-Spawn independent reviewer subagents (the Agent tool) that see **only**: (a) the
-slice's acceptance criteria from `0002`, (b) the RFC sections it touches from `0001`,
-and (c) the diff. They **must not** be given this conversation, the commit messages'
-reasoning, or any implementer rationale — that is what makes it cleanroom. Run a small
-diverse panel in parallel:
+Spawn independent reviewer subagents (the Agent tool) that see **only**: (a) the goal
+section of `build-procedure.md`, (b) the slice's acceptance criteria from `0002`,
+(c) the RFC sections it touches from `0001`, and (d) the diff. They **must not** be
+given this conversation, the commit messages' reasoning, or any implementer rationale
+— that is what makes it cleanroom. The goal is a published document, not rationale;
+withholding it is what produces box-checking reviews.
+
+Require every finding to carry its one-sentence goal-test answer, and tell the panel
+that a finding without one is to be dropped rather than reported. That filter belongs
+in the reviewer, which has the code in context, not in your post-processing.
+
+Run a small diverse panel in parallel:
 
 - **Acceptance** — is every acceptance criterion actually met, not just plausibly?
   Including each owed item from step 1: the named test exists, and it fails against the
@@ -90,6 +108,11 @@ burn 75k+ tokens re-deriving the whole measurement.
 ## 3. Verify and fix
 
 - Keep only findings you can **confirm against the code**; discard speculation.
+- Apply the goal test yourself to what survives the panel. A finding that cannot
+  answer it is reported in one line as noted-not-fixed; nothing gets built for it.
+- Weigh each fix against the defect it prevents. When the change needed is wider than
+  the defect — a production API change, a new fixture dependency, a reshaped seam —
+  **state the cost and ask** rather than building it. That call is the user's.
 - If any survive: fix them on the branch in small commits; run `composer test` to
   green. Report: **"Pass found N issues, fixed and committed: [...]. Run /clear then
   /review-slice again to verify."** STOP — do not land. A fix needs a fresh pass.
@@ -103,3 +126,19 @@ burn 75k+ tokens re-deriving the whole measurement.
 - Report: **"Pass clean. Verified closes: #n. Ready to land — merge when ready."**
   Do **not** auto-merge — merging is irreversible and outward-facing; the user lands.
 - Report the next computed slice for after landing.
+
+## 5. Close every pass against the goal
+
+The last thing the report says, whether the pass was clean or not, is how this change
+serves the goal — in plain english, not slice ids:
+
+- **What two features could have disagreed about**, and what now makes that
+  impossible rather than merely unlikely. Name the mechanism that would fail.
+- **What the change unblocks**, if it is groundwork rather than a fix — which
+  scheduled feature could not be built until this shape existed.
+- **What corrections remain** before the change actually gets there, if it does not
+  yet. A slice that meets every criterion and still leaves a way for two features to
+  disagree is not finished, and this is where that gets said.
+
+A pass that cannot write this paragraph has not understood the change well enough to
+approve it. Say so instead of approving it.
