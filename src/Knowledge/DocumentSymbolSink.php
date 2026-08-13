@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Parser\ParserService;
 
 /**
@@ -37,7 +36,7 @@ final class DocumentSymbolSink implements SymbolSink
         private readonly OpenDocumentBackend $backend,
         private readonly DocumentIndexer $indexer,
         private readonly SymbolIndex $index,
-        private readonly ClassInfoFactory $classInfoFactory,
+        private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly ParserService $parser,
         private readonly DeclarationScanner $scanner,
         private readonly array $onDiskBackends = [],
@@ -80,12 +79,11 @@ final class DocumentSymbolSink implements SymbolSink
         $ast = $this->parser->parse($document) ?? [];
 
         $declarations = $this->scanner->scan($ast);
-        $classes = $this->classesIn($declarations, $document->uri);
-        $functions = $this->functionsIn($declarations, $document->uri);
-        $this->backend->updateDocument($document->uri, $classes, $functions);
+        $symbols = $this->infoFactory->allIn($declarations, FileUri::toPath($document->uri));
+        $this->backend->updateDocument($document->uri, ...$symbols);
         $this->indexer->indexParsed($document, $ast);
 
-        $this->assertStoresAgree($classes, $functions);
+        $this->assertStoresAgree($symbols);
     }
 
     /**
@@ -101,21 +99,16 @@ final class DocumentSymbolSink implements SymbolSink
      * {@see \Firehed\PhpLsp\Index\SymbolExtractor} — so agreement is a property of two
      * implementations rather than of one.
      *
-     * @param list<ClassInfo> $classes
-     * @param array<string, FunctionInfo> $functions
+     * @param list<DeclaredSymbol> $symbols
      */
-    private function assertStoresAgree(array $classes, array $functions): void
+    private function assertStoresAgree(array $symbols): void
     {
-        foreach ($classes as $classInfo) {
-            $this->assertIndexed('class-like', $classInfo->name->fqn);
-        }
-
-        foreach (array_keys($functions) as $fqn) {
-            $this->assertIndexed('function', $fqn);
+        foreach ($symbols as $symbol) {
+            $this->assertIndexed($symbol->kind, $symbol->name->fullyQualifiedName());
         }
     }
 
-    private function assertIndexed(string $kind, string $fqn): void
+    private function assertIndexed(NameKind $kind, string $fqn): void
     {
         if ($this->index->findByFqn($fqn) !== null) {
             return;
@@ -129,47 +122,9 @@ final class DocumentSymbolSink implements SymbolSink
             'Write-path divergence: %s %s is registered for lookup but absent from the '
             . 'symbol index; the two stores are written from one parse and must agree '
             . '(RFC 1 §4.3).',
-            $kind,
+            $kind->name,
             $fqn,
         ));
         // @codeCoverageIgnoreEnd
-    }
-
-    /**
-     * A declaration at any depth counts, matching what the on-disk backends resolve
-     * (a polyfill guarded by `function_exists` is the common shape). Opening a file
-     * must not make a name that already resolved disappear (RFC 1 §4.2). Of duplicate
-     * declarations, the first wins — the one PHP would define, and the one the
-     * on-disk backends return.
-     *
-     * @return array<string, FunctionInfo> Fully-qualified name -> metadata
-     */
-    private function functionsIn(FileDeclarations $declarations, string $uri): array
-    {
-        $functions = [];
-        foreach ($declarations->functions as $declaration) {
-            $fqn = $declaration->name->fullyQualifiedName();
-            $functions[$fqn] ??= FunctionInfo::fromNode($declaration->node, $uri);
-        }
-
-        return $functions;
-    }
-
-    /**
-     * Class-likes follow the same depth and duplicate rules as functions above, for
-     * the same reasons: a `class_exists`-guarded declaration is one the on-disk
-     * backends resolve, and of duplicates they return the first.
-     *
-     * @return list<ClassInfo>
-     */
-    private function classesIn(FileDeclarations $declarations, string $uri): array
-    {
-        $classes = [];
-        foreach ($declarations->classLikes as $declaration) {
-            $fqn = $declaration->name->fullyQualifiedName();
-            $classes[$fqn] ??= $this->classInfoFactory->fromAstNode($declaration->node, $uri);
-        }
-
-        return array_values($classes);
     }
 }

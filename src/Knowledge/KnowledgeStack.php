@@ -77,7 +77,7 @@ final readonly class KnowledgeStack
             $openDocuments,
             new DocumentIndexer($parser, new SymbolExtractor(), $index),
             $index,
-            $classInfoFactory,
+            $declarationInfoFactory,
             $parser,
             $scanner,
             // External-change and close-after-edit invalidation drops the on-disk

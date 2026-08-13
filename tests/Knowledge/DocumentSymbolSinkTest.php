@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -43,7 +44,7 @@ final class DocumentSymbolSinkTest extends TestCase
             $this->backend,
             new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
             $this->index,
-            new DefaultClassInfoFactory(),
+            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
             $parser,
             new DeclarationScanner(),
         );
@@ -327,7 +328,7 @@ final class DocumentSymbolSinkTest extends TestCase
             $this->backend,
             new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
             $this->index,
-            new DefaultClassInfoFactory(),
+            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
             $parser,
             new DeclarationScanner(),
             array_values($onDiskBackends),

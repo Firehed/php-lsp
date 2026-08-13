@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
@@ -74,28 +73,20 @@ final class OpenDocumentBackend implements SymbolBackend
     }
 
     /**
-     * Register the class-likes and functions declared in an open document for
-     * lookup, replacing any previously registered for the same URI.
+     * Register the symbols declared in an open document for lookup, replacing any
+     * previously registered for the same URI.
      *
-     * Functions arrive keyed because {@see FunctionInfo} carries only the short
-     * name; the caller read the qualified one from the declaration.
-     *
-     * @param list<ClassInfo> $classes
-     * @param array<string, FunctionInfo> $functions Fully-qualified name -> metadata
+     * Each symbol carries its own kind, so this backend never enumerates the kinds
+     * and a new one reaches it without a signature change (Plan 0002 §5.6).
      */
-    public function updateDocument(string $uri, array $classes, array $functions = []): void
+    public function updateDocument(string $uri, DeclaredSymbol ...$symbols): void
     {
         $this->removeDocument($uri);
 
         $keys = [];
-        foreach ($classes as $classInfo) {
-            $key = self::key(NameKind::ClassLike, QualifiedName::fromClassName($classInfo->name));
-            $this->byKey[$key] = $classInfo;
-            $keys[] = $key;
-        }
-        foreach ($functions as $fqn => $functionInfo) {
-            $key = self::key(NameKind::Function_, QualifiedName::fromFullyQualified($fqn));
-            $this->byKey[$key] = $functionInfo;
+        foreach ($symbols as $symbol) {
+            $key = self::key($symbol->kind, $symbol->name);
+            $this->byKey[$key] = $symbol->info;
             $keys[] = $key;
         }
         $this->keysByUri[$uri] = $keys;
