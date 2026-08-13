@@ -61,6 +61,12 @@ Those cost as much to maintain as the real ones and buy nothing.
 Before settling on an implementation, check whether a smaller one makes the same disagreement impossible.
 It usually does.
 
+### Comments earn their place
+
+A comment that restates its code is a second copy of it, and the copy is the one that goes stale.
+The project rule already says this (`CLAUDE.md`): name the non-obvious fact a comment carries that the code does not, or delete it, and let length track how subtle the code is rather than how much of it there is.
+It is stated here because it is the rule this project ignores most often.
+
 ## Source of truth: git, not a status field
 
 Progress is **derived from git / PR merge state**, keyed by deterministic branch

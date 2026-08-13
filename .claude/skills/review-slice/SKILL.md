@@ -63,6 +63,12 @@ Run a small diverse panel in parallel:
   goldens assert the right values, not just that they diffed clean.
   Note: instruct the reviewer to revert mutations through the edit tool, not git.
 
+Every reviewer also checks the comments and docblocks the diff adds or grows: each
+must name a fact the code does not convey, with length tracking the subtlety of the
+code rather than its size (`CLAUDE.md`). Raise these as findings, not nits — the rule
+is long-standing and routinely missed, and prose that restates code is the copy that
+goes stale.
+
 Each returns structured findings; then have them adversarially try to break the
 change.
 

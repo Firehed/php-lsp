@@ -81,6 +81,9 @@ is one you will over- or under-build.
   rough edge noticed in passing is **reported, not solved** — if it is duplication or
   divergence it earns an `SC.*` row, and if it is generic tidiness it earns neither a
   row nor a diff.
+- Comments earn their place. Name the non-obvious fact each one carries that the code
+  does not, or leave it out; length tracks the subtlety of the code, not its size.
+  Reviewers raise violations as findings, so writing them costs a round.
 - If you hit a fundamental design question the plan does not answer, **STOP and ask**
   — do not invent an interpretation.
 
