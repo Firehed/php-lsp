@@ -21,7 +21,7 @@ two notches below hands-off autonomy by design.
 ## The goal every slice serves
 
 The rework exists to eliminate one bug class: two features disagreeing about the same symbol.
-Hover resolves a name completion never offers; definition works on a node type type-inference does not.
+Hover resolves a name completion never offers; definition works on a node type that type-inference does not.
 That is #190, #253 and #256, and the cause is M×N hand-written pairs — M consumers × N node types or symbol kinds — that drift apart.
 
 The method is one authority per question, so consistency holds by construction rather than by discipline.
