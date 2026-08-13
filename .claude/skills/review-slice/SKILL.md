@@ -45,8 +45,8 @@ given this conversation, the commit messages' reasoning, or any implementer rati
 withholding it is what produces box-checking reviews.
 
 Require every finding to carry its one-sentence goal-test answer, and tell the panel
-that a finding without one is to be dropped rather than reported. That filter belongs
-in the reviewer, which has the code in context, not in your post-processing.
+that a finding without one is to be dropped rather than reported. The reviewer applies
+that filter — it has the code in context; step 3 only backstops it.
 
 Run a small diverse panel in parallel:
 
@@ -115,8 +115,9 @@ burn 75k+ tokens re-deriving the whole measurement.
 ## 3. Verify and fix
 
 - Keep only findings you can **confirm against the code**; discard speculation.
-- Apply the goal test yourself to what survives the panel. A finding that cannot
-  answer it is reported in one line as noted-not-fixed; nothing gets built for it.
+- Backstop the goal test on what survives the panel. A finding that cannot answer it
+  (comment discipline carries its standing answer) is reported in one line as
+  noted-not-fixed; nothing gets built for it.
 - Weigh each fix against the defect it prevents. When the change needed is wider than
   the defect — a production API change, a new fixture dependency, a reshaped seam —
   **state the cost and ask** rather than building it. That call is the user's.
