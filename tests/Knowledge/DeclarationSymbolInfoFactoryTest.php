@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -119,6 +120,60 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
             $this->build('Fixtures\Helpers\HELPER_LIMIT', NameKind::Constant),
             'global-constant metadata arrives with S3.8b',
         );
+    }
+
+    public function testAllInReportsEveryBuildableDeclarationWithItsKind(): void
+    {
+        $reported = [];
+        foreach ($this->factory->allIn($this->declarations, $this->path) as $symbol) {
+            $reported[] = $symbol->kind->name . '|' . $symbol->name->fullyQualifiedName();
+        }
+
+        self::assertContains(
+            'ClassLike|Fixtures\Helpers\HelperRegistry',
+            $reported,
+            'a class-like the file declares must be reported for registration',
+        );
+        self::assertContains(
+            'Function_|Fixtures\Helpers\helperFormat',
+            $reported,
+            'a function the file declares must be reported, under its own kind',
+        );
+        self::assertNotContains(
+            'Constant|Fixtures\Helpers\HELPER_LIMIT',
+            $reported,
+            'a scanned kind with no info type yet must be omitted rather than reported empty-handed',
+        );
+    }
+
+    public function testAllInKeepsTheFirstOfDuplicateDeclarations(): void
+    {
+        $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
+        $ast = (new ParserService())->parse(new TextDocument('file:///dupes.php', 'php', 1, $content));
+        self::assertNotNull($ast, 'the fixture must parse');
+
+        $names = [];
+        foreach ($this->factory->allIn((new DeclarationScanner())->scan($ast), '/dupes.php') as $symbol) {
+            $names[] = $symbol->kind->name . '|' . $symbol->name->fullyQualifiedName();
+        }
+
+        self::assertSame(
+            array_unique($names),
+            $names,
+            'PHP defines the first declaration of a name, so a second must not register over it',
+        );
+    }
+
+    public function testLookupAgreesWithTheFullScan(): void
+    {
+        // RFC 1 §5.1: a derived verb must not fork from the one it derives from.
+        foreach ($this->factory->allIn($this->declarations, $this->path) as $symbol) {
+            self::assertEquals(
+                $symbol->info,
+                $this->build($symbol->name->fullyQualifiedName(), $symbol->kind),
+                'every symbol the scan reports must be reachable by name, with the same metadata',
+            );
+        }
     }
 
     private function build(string $fqn, NameKind $kind): ?SymbolInfo
