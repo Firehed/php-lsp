@@ -52,6 +52,15 @@ These are the ways the test gets failed in practice, each observed:
 A fix whose blast radius exceeds the defect it prevents is a decision for the human, not a reflex.
 State what it would cost and ask.
 
+### Prefer the simpler version
+
+Abstractions are how the M×N goes away, so this is not an argument against them.
+It is an argument against generality nobody asked for: a parameter no caller varies, an extension point with one implementation, a seam for a case that is not on the plan.
+Those cost as much to maintain as the real ones and buy nothing.
+
+Before settling on an implementation, check whether a smaller one makes the same disagreement impossible.
+It usually does.
+
 ## Source of truth: git, not a status field
 
 Progress is **derived from git / PR merge state**, keyed by deterministic branch
