@@ -47,6 +47,16 @@ final class OpenDocumentBackendTest extends TestCase
         self::assertSame('V\Widget', $info->name->fqn, 'the registered class must be returned unchanged');
     }
 
+    public function testLookupClassLikeIsCaseInsensitive(): void
+    {
+        $this->backend->updateDocument('file:///Widget.php', self::declaredClass('V\Widget'));
+
+        self::assertNotNull(
+            self::classLikeIn($this->backend, 'v\WIDGET'),
+            'PHP matches class-like names case-insensitively',
+        );
+    }
+
     public function testLookupClassLikeReturnsNullForAnUnregisteredClass(): void
     {
         self::assertNull(
@@ -144,6 +154,15 @@ final class OpenDocumentBackendTest extends TestCase
         self::assertNull(
             $this->backend->lookup($name, NameKind::Function_),
             'and must not answer for another symbol namespace',
+        );
+        self::assertSame(
+            $info,
+            $this->backend->lookup(QualifiedName::fromFullyQualified('v\LIMIT'), NameKind::Constant),
+            'the namespace of a constant is still matched case-insensitively',
+        );
+        self::assertNull(
+            $this->backend->lookup(QualifiedName::fromFullyQualified('V\limit'), NameKind::Constant),
+            'but its own name is not: constants are the one kind PHP matches case-sensitively',
         );
     }
 
