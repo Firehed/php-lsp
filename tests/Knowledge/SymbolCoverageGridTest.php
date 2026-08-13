@@ -28,8 +28,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class SymbolCoverageGridTest extends TestCase
 {
-    /** The other form a blocker may take, when no slice owns the gap. */
-    private const string SECTION_REFERENCE = '/^(RFC 1|Plan 0002) §\d+(\.\d+)*$/u';
+    /** The forms a blocker may take when no slice owns the gap: an issue, or a section. */
+    private const string UNOWNED_BLOCKER = '/^(#\d+|(RFC 1|Plan 0002) §\d+(\.\d+)*)$/u';
 
     /**
      * Cells the shipped stack cannot answer, each naming a slice id or an RFC
@@ -51,10 +51,12 @@ final class SymbolCoverageGridTest extends TestCase
         'BuiltinBackend|Function_|search' => 'S3.9a, S3.9b',
         'BuiltinBackend|Constant|search' => 'S3.9a, S3.8b',
 
-        // A prefix has no name -> file map, and offering an unqualified built-in is
-        // auto-import.
+        // A prefix has no name -> file map on disk. The built-in row is blocked on
+        // something else entirely: the name it would offer does not resolve
+        // unqualified, so the item is only useful once completion can insert the
+        // import with it.
         'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
-        'BuiltinBackend|ClassLike|search' => 'RFC 1 §3',
+        'BuiltinBackend|ClassLike|search' => '#23',
 
         // `SymbolExtractor` emits no `SymbolKind::Constant`, so an open document's
         // constants never reach the index this reads. Found by this grid.
@@ -178,7 +180,7 @@ final class SymbolCoverageGridTest extends TestCase
         self::assertSame(
             [],
             self::danglingBlockers(self::NOT_APPLICABLE),
-            'a not-applicable cell must name a slice that is still in the registry, or a section: '
+            'a not-applicable cell must name a slice still in the registry, an issue, or a section: '
                 . 'a blocker nobody owns is the permanent exemption Step Z exists to prevent',
         );
     }
@@ -189,7 +191,7 @@ final class SymbolCoverageGridTest extends TestCase
         self::assertSame(
             ['BuiltinBackend|Constant|lookup names S9.99'],
             self::danglingBlockers(['BuiltinBackend|Constant|lookup' => 'S9.99']),
-            'a blocker matching no registry row and no section must be reported',
+            'a blocker matching no registry row, issue, or section must be reported',
         );
     }
 
@@ -204,7 +206,7 @@ final class SymbolCoverageGridTest extends TestCase
 
         foreach ($notApplicable as $cell => $blocker) {
             foreach (explode(', ', $blocker) as $named) {
-                if (in_array($named, $slices, true) || preg_match(self::SECTION_REFERENCE, $named) === 1) {
+                if (in_array($named, $slices, true) || preg_match(self::UNOWNED_BLOCKER, $named) === 1) {
                     continue;
                 }
                 $dangling[] = "{$cell} names {$named}";
