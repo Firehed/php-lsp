@@ -1,7 +1,7 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Calling get_defined_functions\(\) is forbidden, runtime symbol enumeration is confined to BuiltinBackend and ReflectionNamespaceSource\.$#'
+			message: '#^Calling get_defined_functions\(\) is forbidden, runtime symbol enumeration is confined to ReflectionNamespaceSource\.$#'
 			identifier: disallowed.function
 			count: 1
 			path: src/Completion/FunctionCandidates.php

@@ -86,9 +86,8 @@ parameters:
                 - 'get_defined_functions()'
                 - 'get_declared_classes()'
                 - 'get_defined_constants()'
-            message: 'runtime symbol enumeration is confined to BuiltinBackend and ReflectionNamespaceSource'
+            message: 'runtime symbol enumeration is confined to ReflectionNamespaceSource'
             allowIn:
-                - src/Knowledge/BuiltinBackend.php
                 - src/Index/ReflectionNamespaceSource.php
                 - tests/*
         -
