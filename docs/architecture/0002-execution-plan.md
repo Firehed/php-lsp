@@ -647,6 +647,15 @@ To stop the two typing models fighting before they are built:
   kind is implicit and `NameKind` is not passed. `ClassLikeName` is today's
   `ClassName` (which per CLAUDE.md also serves as the class `Type`); whether it is
   reused as-is, renamed, or wrapped is an open decision (§7). The other three are new.
+- **One constant type, class-declared or not.** `Domain\ConstantInfo` serves both:
+  `declaringClass` is `?ClassName`, and its absence is what makes a constant global. A
+  global constant is mechanically public and final, so `visibility` and `isFinal` carry
+  the true value rather than a placeholder, and `format()` branches on the declaring
+  class alone. `Domain\ConstantName` likewise holds either a member name or an FQN, so
+  the `ConstantName` above needs no second type. A global constant is **not** a
+  `ResolvedMember` — that interface means *reached through a class*, which is a path it
+  does not have — so `ConstantInfo` implements `ResolvedSymbol` itself rather than
+  gaining a fifth wrapper, which is also a down payment on the collapse in #416.
 - `locate(QualifiedName, NameKind)` is the kind-agnostic entry, used when the caller
   has an FQN whose kind is known only from syntactic position and has not minted a
   typed subtype. `NameKind` is **not** redundant here precisely because the input is
