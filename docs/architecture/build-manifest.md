@@ -304,7 +304,8 @@ Notes:
     `WorkspaceNamespaceSource` already maps the kind, so the gap is upstream in the extractor.
     Found by the S3.8d coverage grid on its first run.
     Ungated, and ahead of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
-  - **SC.17** — telling the parts that hold file-derived state that a file changed is written out three times, each steered by an `instanceof` test: `DocumentSymbolSink` over its on-disk backends, `FilesystemBackend` over its catalog and locator, `CompositeSymbolLocator` over its routes.
+  - **SC.17** — telling the parts that hold file-derived state that a file changed is written out three times: `DocumentSymbolSink` over a list it is handed, `FilesystemBackend` over its catalog and locator, `CompositeSymbolLocator` over its routes.
+    The latter two steer by an `instanceof` test, three in all; the sink instead takes a pre-filtered list, so the composition root already decides who holds state and the knowledge is split between the two styles.
     So adding a holder means finding its parent in that tree by hand, and missing one is silent — the stale value is still served and nothing fails.
     Not only caches: the same route drops `AutoloadFilesLocator`'s derived name→file map, which is rebuilt rather than memoized.
     `SymbolSink extends Invalidatable` solely to give the handler a way in, which is how the write path came to be named after the response instead of the event.
