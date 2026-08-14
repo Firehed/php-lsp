@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
@@ -18,21 +17,28 @@ use Firehed\PhpLsp\Knowledge\SymbolBackend;
  * An in-memory {@see SymbolBackend} configured with fixed answers, so
  * {@see \Firehed\PhpLsp\Tests\Knowledge\CompositeSymbolSourceTest} can prove the
  * composite's precedence and merge behavior without standing up real sources.
+ *
+ * Kind-agnostic like the real backends: a symbol carries its own kind, so a kind this
+ * file has never heard of is configurable without a new parameter (Plan 0002 §5.6).
  */
 final class FakeSymbolBackend implements SymbolBackend
 {
+    /** @var array<string, SymbolInfo> Kind-qualified key -> info */
+    private array $byKey = [];
+
     /**
-     * @param array<string, ClassInfo> $classLikes FQN under the kind's case rule -> info
+     * @param list<DeclaredSymbol> $symbols Keyed here by each one's own case rule
      * @param array<string, NamespaceContents> $namespaces Path -> contents
      * @param list<Symbol> $searchResults Returned (prefix-filtered on short name)
-     * @param array<string, FunctionInfo> $functions FQN under the kind's case rule -> info
      */
     public function __construct(
-        private readonly array $classLikes = [],
+        array $symbols = [],
         private readonly array $namespaces = [],
         private readonly array $searchResults = [],
-        private readonly array $functions = [],
     ) {
+        foreach ($symbols as $symbol) {
+            $this->byKey[self::key($symbol->name, $symbol->kind)] = $symbol->info;
+        }
     }
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
@@ -42,13 +48,7 @@ final class FakeSymbolBackend implements SymbolBackend
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        $configured = match ($kind) {
-            NameKind::ClassLike => $this->classLikes,
-            NameKind::Function_ => $this->functions,
-            NameKind::Constant => [],
-        };
-
-        return $configured[$kind->normalize($name)] ?? null;
+        return $this->byKey[self::key($name, $kind)] ?? null;
     }
 
     /**
@@ -63,5 +63,10 @@ final class FakeSymbolBackend implements SymbolBackend
                 strtolower($prefix),
             ),
         ));
+    }
+
+    private static function key(QualifiedName $name, NameKind $kind): string
+    {
+        return $kind->name . '|' . $kind->normalize($name);
     }
 }
