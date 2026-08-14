@@ -98,11 +98,10 @@ re-runs repo-wide as its completion gate.
     S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5,S4.8  —
     S4.7   4     Step 4 duplication audit                          all Step 4        —
     SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
-    SC.3   —     Namespace tracking -> the parser's namespacedName   —                 —
+    SC.3   —     SymbolExtractor reads DeclarationScanner            —                 —
     SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
     SC.7   —     Six member-hierarchy walks -> one                   —                 —
     SC.8   —     Prefix matching: SymbolIndex -> PrefixMatcher       —                 —
-    SC.10  —     Enforce the one-declaration-scanner rule            SC.3,SC.9         —
     SC.12  —     Move MemberFilter out of Resolution                 —                 —
     SC.13  —     Settle Domain->Utility type placement               —                 —
     SC.14  —     Filter BuiltinBackend class-like lookup to internal —                 —
@@ -110,6 +109,7 @@ re-runs repo-wide as its completion gate.
     SC.16  —     Index an open document's global constants          —                 —
     SC.17  —     Collapse the hand-routed invalidation fan-out      —                 —
     SC.18  —     One home for the kind-qualified symbol key         SC.13             —
+    SC.19  —     Own the four unowned baseline entries               —                 —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -225,12 +225,21 @@ Notes:
     map, so a class and a function sharing a short name collide — and the constant table it
     also folds in is exactly what constant resolution will read. `NameContext::importsFor()`
     already keeps the three tables apart, so no caller needs Step 4 to move.
-  - **SC.3** — `SymbolExtractor` hand-tracks
-    `Stmt\Namespace_` to build FQNs that `NameResolver` already computed into
-    `namespacedName` (which `DefaultClassInfoFactory`, `DefaultFunctionRepository`,
-    `ScopeFinder`, and `DeclarationScanner` all read). Behavior-preserving, so the Step P
-    write-path and class-like-lookup goldens prove it. `SymbolExtractor`'s `Class::method`
-    FQNs are its own and stay.
+  - **SC.3** — `SymbolExtractor` is the last hand-written declaration traversal in `src/`:
+    it walks the AST itself and hand-tracks `Stmt\Namespace_` to rebuild FQNs that
+    `NameResolver` already computed into `namespacedName`. It reads `DeclarationScanner`
+    instead, so no consumer can disagree about what a file declares. Its `Class::method`
+    symbols are **not** an obstacle to that, as this row long claimed: methods come off
+    each class-like's own node via `ClassLike::getMethods()`, which the scanner already
+    hands back, so no visitor is needed for them either. Behavior-preserving, so the Step P
+    write-path and prefix-search goldens prove it.
+
+    The confinement this satisfies is **already enforced** — `phpstan.neon` restricts
+    `NodeTraverser` / `NodeFinder` / `NodeVisitor*` to `ParserService`, the positional
+    finders, and `DeclarationScanner`. `SymbolExtractor`'s violations were merely frozen in
+    `phpstan-baseline.neon`, which is why nothing failed while they stood. Do not file a
+    slice to build that rule; the remaining frozen violations belong to S4.2
+    (`SymbolResolver`) and S4.8 (`BasicTypeResolver`).
   - **SC.4** — `file://` URI and path conversion is hand-rolled in four live places
     (`DefaultClassInfoFactory`, `FilesystemBackend` ×2, `Location`, and the dead
     `WorkspaceIndexer`), each differing in how it handles the scheme and percent-
@@ -324,15 +333,12 @@ Notes:
     more copies. Outside Step 4's scope — that step decomposes `src/Resolution/`, this is
     `src/Repository/`.
     The member-name case rule rides along: the collect keys (`strtolower`), `MethodName::equals` (`strcasecmp`), and the fallback's raw merge key disagree today, and the walks' seen-sets key raw FQNs where `ClassName::equals` is case-insensitive.
-  - **SC.10** — SC.5 states a hard invariant ("Do NOT write a new one; a rule about what
-    counts as a declaration is a change to the scanner") with no mechanism, which §8.1
-    forbids where a static rule or test is feasible. One is: a PHPStan rule confining
-    `NodeVisitorAbstract` / `NodeFinder` / `NodeTraverser` to the parser, the positional
-    finders, and `DeclarationScanner`, in the shape of the existing
-    `SymbolDiscoveryAuthorityExtension`. Gated on its two known violators (SC.3's
-    `SymbolExtractor`, SC.9's `classesIn`) because a rule that must ship with two
-    exemptions enforces nothing. The analogue to follow is `TypeGraphParityTest`, which is
-    how the sibling single-traversal invariant on `supertypes()` is held.
+  - **SC.19** — four `phpstan-baseline.neon` entries that no row above drains:
+    `ReferenceResolver`'s `strcasecmp`, and the `preg_match` calls in `CompletionHandler`
+    and `NamedArgumentCandidates`. The case fold belongs to `NameKind`; the two regexes
+    belong in `CompletionClassifier`, which is where the allowlist already puts
+    text-pattern analysis. Filed because the baseline must reach zero and an entry with no
+    owning slice is how it stalls — found by auditing the baseline against this table.
   - **SC.8** — `Completion\PrefixMatcher::matches` and `SymbolIndex::findByPrefix` both
     hand-roll `str_starts_with(strtolower(...))`. SC.6 owns the `strtolower` half (it is
     the same per-kind case rule); what is left here is the duplicated *matching* helper, so
