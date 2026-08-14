@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Parser\ParserService;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 
 /**
  * RFC 1 §8.1's mechanism for §5.1: a backend × kind × query grid whose backend and
@@ -281,12 +282,20 @@ final class SymbolCoverageGridTest extends TestCase
     }
 
     /**
+     * The composite is the sole authority on backend precedence, so it publishes no
+     * way to reach past it — deriving the rows is the grid's own concern and takes
+     * reflection rather than a production accessor.
+     *
      * @return array<string, SymbolBackend> Backend short name -> the first of its class
      */
     private function rows(): array
     {
+        $backends = (new ReflectionProperty(CompositeSymbolSource::class, 'backends'))->getValue($this->source);
+        assert(is_iterable($backends));
+
         $rows = [];
-        foreach ($this->source->backends as $backend) {
+        foreach ($backends as $backend) {
+            assert($backend instanceof SymbolBackend);
             $parts = explode('\\', $backend::class);
             $rows[end($parts)] ??= $backend;
         }
