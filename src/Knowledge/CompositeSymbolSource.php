@@ -99,8 +99,9 @@ final class CompositeSymbolSource implements SymbolSource
     }
 
     /**
-     * The first backend that answers wins; each caller above narrows the result back
-     * to a concrete type, at this one site (Plan 0002 §5.6).
+     * Answers with the marker type; each caller above narrows it back to a concrete
+     * one. That is the O(kinds) narrowing Plan 0002 §5.6 trades against a lookup
+     * method per kind on every backend.
      */
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
