@@ -33,9 +33,9 @@ parameters:
                 - tests/*
         -
             namespace: 'Reflection*'
-            message: 'runtime reflection is confined: BuiltinBackend, ReflectionNamespaceSource, and the fromReflection factories'
+            message: 'runtime reflection is confined: ReflectionNamespaceSource and the fromReflection factories'
             allowIn:
-                - src/Knowledge/BuiltinBackend.php
+                - src/Knowledge/ReflectionSymbolInfoFactory.php
                 - src/Index/ReflectionNamespaceSource.php
                 - src/Repository/ClassInfoFactory.php
                 - src/Repository/DefaultClassInfoFactory.php
@@ -86,10 +86,22 @@ parameters:
                 - 'get_defined_functions()'
                 - 'get_declared_classes()'
                 - 'get_defined_constants()'
-            message: 'runtime symbol enumeration is confined to BuiltinBackend and ReflectionNamespaceSource'
+            message: 'runtime symbol enumeration is confined to ReflectionNamespaceSource'
             allowIn:
-                - src/Knowledge/BuiltinBackend.php
                 - src/Index/ReflectionNamespaceSource.php
+                - tests/*
+        -
+            function:
+                - 'class_exists()'
+                - 'constant()'
+                - 'defined()'
+                - 'enum_exists()'
+                - 'function_exists()'
+                - 'interface_exists()'
+                - 'trait_exists()'
+            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query (RFC 1 §4.2); ReflectionSymbolInfoFactory is the one place it may be the server''s own runtime'
+            allowIn:
+                - src/Knowledge/ReflectionSymbolInfoFactory.php
                 - tests/*
         -
             function:

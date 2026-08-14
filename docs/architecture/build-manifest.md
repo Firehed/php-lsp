@@ -107,6 +107,9 @@ re-runs repo-wide as its completion gate.
     SC.13  —     Settle Domain->Utility type placement               —                 —
     SC.14  —     Filter BuiltinBackend class-like lookup to internal —                 —
     SC.15  —     Oracle corpus: trait adaptations and enums          —                 —
+    SC.16  —     Index an open document's global constants          —                 —
+    SC.17  —     Collapse the hand-routed invalidation fan-out      —                 —
+    SC.18  —     One home for the kind-qualified symbol key         SC.13             —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -147,6 +150,9 @@ Notes:
   pairs; after SC.5 those differ only in which factory builds the metadata. S3.8d also
   carries the §8.1 mechanism for §5.1 (see 0002), per the rule that a seam ships with its
   enforcement.
+  `OpenDocumentBackend`'s *registration* is collapsed with its lookup, for the same
+  reason: a per-kind parameter there would force S3.8b to edit a backend even though the
+  read seam held.
   - **S3.8b is the proof.** Its acceptance carries one criterion that cannot be met by
     appearance: **its diff must touch no `SymbolBackend` implementation.** If it does,
     S3.8d did not work.
@@ -290,10 +296,26 @@ Notes:
   - **SC.13** — Domain factories reach into Utility (`TypeFactory`, `NamespacePath`); decide the direction in-slice (move the utility into Domain, or the factory methods out) and drain the frozen edges.
     Related: `ClassName::shortName`/`getNamespace` hand-roll the split `NamespacePath` owns, so the direction chosen also settles that duplicate.
     Likewise `NameKind::normalize` re-implements the path fold `NamespacePath::normalize` owns — layer-blocked from routing through it until this move — so the direction also collapses the two folds into one, and the case-folding allowlist follows the file.
-  - **SC.14** — `BuiltinBackend::lookupClassLike` lacks the `isInternal()` guard its function sibling has, so hover resolves any class the *server's own* autoloader can load while completion never offers it — the §4.2 lookup/enumeration split, live on the class namespace.
+  - **SC.14** — `ReflectionSymbolInfoFactory`'s class-like branch lacks the `isInternal()` guard its function sibling has, so hover resolves any class the *server's own* autoloader can load while completion never offers it — the §4.2 lookup/enumeration split, live on the class namespace.
     A live defect; owes a regression test against a class the server vendors but the project does not.
   - **SC.15** — `TypeGraphParityTest`'s corpus has no trait `insteadof`/`as` shapes and no enums, so the reflection oracle cannot see #73's defect class (nor enum-interface members).
     Fixture-only slice; #73's fix lands on top of it and must fail before, pass after.
+  - **SC.16** — `SymbolExtractor` emits no `SymbolKind::Constant`, so a global constant in an open document is never indexed and `OpenDocumentBackend::childrenOf` cannot enumerate it, while the on-disk and built-in backends both do.
+    `WorkspaceNamespaceSource` already maps the kind, so the gap is upstream in the extractor.
+    Found by the S3.8d coverage grid on its first run.
+    Ungated, and ahead of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
+  - **SC.17** — telling the parts that hold file-derived state that a file changed is written out three times: `DocumentSymbolSink` over a list it is handed, `FilesystemBackend` over its catalog and locator, `CompositeSymbolLocator` over its routes.
+    The latter two steer by an `instanceof` test, three in all; the sink instead takes a pre-filtered list, so the composition root already decides who holds state and the knowledge is split between the two styles.
+    So adding a holder means finding its parent in that tree by hand, and missing one is silent — the stale value is still served and nothing fails.
+    Not only caches: the same route drops `AutoloadFilesLocator`'s derived name→file map, which is rebuilt rather than memoized.
+    `SymbolSink extends Invalidatable` solely to give the handler a way in, which is how the write path came to be named after the response instead of the event.
+    Scope is one registration list at the composition root, which deletes the three fan-outs and the three type tests. Whether a general published event replaces it is #415 and is deliberately not settled here.
+    Found while reviewing S3.8d. Ungated.
+  - **SC.18** — the key a name has under its kind, `$kind->name . '|' . $kind->normalize($name)`, is written out four times: `SymbolCache::keyFor`, `OpenDocumentBackend::key`, `DeclarationSymbolInfoFactory::collect`, and the composite's test fake.
+    `SymbolCache::keyFor` and `delete` are public for one caller — `FilesystemBackend` holds hashed key strings to reverse-map a path — so a `forget(QualifiedName, NameKind)` takes both off the surface and lets the backend record what it actually knows.
+    Duplication rather than a defect: the four stores are independent, so no two features can disagree over it today. It is filed because a fifth copy arrives with each new kind.
+    Gated on SC.13, which decides where the case fold lives; the key helper belongs beside it.
+    Found while reviewing S3.8d.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over

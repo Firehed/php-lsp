@@ -11,7 +11,7 @@ use ReflectionFunction;
 /**
  * Metadata about a standalone function.
  */
-final readonly class FunctionInfo implements Formattable
+final readonly class FunctionInfo implements Formattable, SymbolInfo
 {
     /**
      * @param list<ParameterInfo> $parameters

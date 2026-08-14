@@ -14,7 +14,7 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 
 Two CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
 
-- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
+- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
 - **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis.
 
 When a rule fires on your change, in order of preference:
@@ -133,15 +133,19 @@ flow through the **`SymbolSource`** read seam (`src/Knowledge/`), implemented by
 A lookup takes the first backend that answers; enumeration and search merge every
 backend, the earlier (more authoritative) one winning a name clash. Caching is a
 per-backend PSR-16 policy (`src/Cache/`); on-disk and built-in results are cached, open
-documents never. A cache key carries the `NameKind` (`SymbolCacheKey`): PHP's three
+documents never. A cache key carries the `NameKind` (`SymbolCache`): PHP's three
 symbol namespaces are independent, so a class and a function may share a name.
 
 Lookup is **per-kind at the `SymbolSource` facade** — a typed method per kind, taking a
 name type that carries its kind (`ClassName`, `FunctionName`), because RFC 1 §5.1 requires
 a concrete return type rather than a type-erased union — and **kind-parameterized at
-`SymbolBackend`**, so a new kind is never a change to every backend. The backends still
-carry a method per kind today; S3.8d collapses them (Plan 0002 §5.6). Do not read the
-facade's closed method set as licence to add a per-kind backend method.
+`SymbolBackend`**: one `lookup(QualifiedName, NameKind): ?SymbolInfo`. Do NOT read the
+facade's closed method set as licence to add a per-kind backend method. Kind dispatch
+lives in `DeclarationSymbolInfoFactory` and `ReflectionSymbolInfoFactory`, one per
+metadata route, so a new kind is a case in each rather than a method on every backend.
+`SymbolCoverageGridTest` enforces §5.1 with a backend × kind × query grid whose backend
+and kind axes are derived: every cell answers or names its blocker, and an unregistered
+cell fails.
 `lookupFunction` reaches
 open documents, the `autoload.files` set, and PHP's built-ins — the last filtered to
 `isInternal()`, because reflection also sees the functions the *server's* own
@@ -177,11 +181,14 @@ directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: �
 requires lookup and enumeration to draw on the same backends, so a name that resolved
 on hover while being invisible to completion is the split this tier exists to prevent.
 
-The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers class and
-function metadata and indexes symbols from one document. A declaration at any depth is
-registered, not just a top-level one — a class or function guarded by
-`class_exists`/`function_exists` is a name the file validly declares, and the on-disk
-backends resolve one, so opening the file must not make it disappear.
+The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers a document's
+symbols and indexes them. Registration is kind-parameterized like lookup: the sink hands
+`OpenDocumentBackend` `DeclaredSymbol`s built by `DeclarationSymbolInfoFactory`, the same
+factory the on-disk read path uses, so a new kind is a case there rather than another
+parameter on the backend. A declaration at any depth is registered, not just a top-level
+one — a class or function guarded by `class_exists`/`function_exists` is a name the file
+validly declares, and the on-disk backends resolve one, so opening the file must not make
+it disappear.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
 sharing one open-document backend and symbol index.
 

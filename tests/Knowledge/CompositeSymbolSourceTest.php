@@ -30,8 +30,8 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupClassLikeTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend(['app\widget' => self::classInfo('App\Widget', file: 'open.php')]);
-        $vendor = new FakeSymbolBackend(['app\widget' => self::classInfo('App\Widget', file: 'vendor.php')]);
+        $open = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'open.php')]);
+        $vendor = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupClassLike(self::className('App\Widget'));
@@ -47,7 +47,7 @@ final class CompositeSymbolSourceTest extends TestCase
     public function testLookupClassLikeFallsThroughToALaterBackend(): void
     {
         $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend(['app\widget' => self::classInfo('App\Widget', file: 'vendor.php')]);
+        $vendor = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupClassLike(self::className('App\Widget'));
@@ -68,8 +68,8 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupFunctionTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend(functions: ['app\format' => self::functionInfo('format', 'open.php')]);
-        $vendor = new FakeSymbolBackend(functions: ['app\format' => self::functionInfo('format', 'vendor.php')]);
+        $open = new FakeSymbolBackend([self::declaredFunction('App\format', 'open.php')]);
+        $vendor = new FakeSymbolBackend([self::declaredFunction('App\format', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
@@ -85,7 +85,7 @@ final class CompositeSymbolSourceTest extends TestCase
     public function testLookupFunctionFallsThroughToALaterBackend(): void
     {
         $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend(functions: ['app\format' => self::functionInfo('format', 'vendor.php')]);
+        $vendor = new FakeSymbolBackend([self::declaredFunction('App\format', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
@@ -195,8 +195,8 @@ final class CompositeSymbolSourceTest extends TestCase
     {
         // The declared parent spelling differs in case from the queried target.
         $backend = new FakeSymbolBackend([
-            'app\child' => self::classInfo('App\Child', parent: 'APP\PARENTCLASS'),
-            'app\parentclass' => self::classInfo('App\ParentClass'),
+            self::declaredClass('App\Child', parent: 'APP\PARENTCLASS'),
+            self::declaredClass('App\ParentClass'),
         ]);
         $source = new CompositeSymbolSource([$backend]);
 
@@ -221,7 +221,7 @@ final class CompositeSymbolSourceTest extends TestCase
         // Orphan's parent and interface are named but nothing declares them: the walk
         // must skip the unresolved edges rather than crash.
         $backend = new FakeSymbolBackend([
-            'app\orphan' => self::classInfo(
+            self::declaredClass(
                 'App\Orphan',
                 parent: 'App\MissingParent',
                 interfaces: ['App\MissingInterface'],
@@ -240,8 +240,8 @@ final class CompositeSymbolSourceTest extends TestCase
         // Illegal in PHP but reachable in mid-edit code: A extends B extends A. The
         // visited set must break the cycle rather than recurse forever.
         $backend = new FakeSymbolBackend([
-            'app\cyclea' => self::classInfo('App\CycleA', parent: 'App\CycleB'),
-            'app\cycleb' => self::classInfo('App\CycleB', parent: 'App\CycleA'),
+            self::declaredClass('App\CycleA', parent: 'App\CycleB'),
+            self::declaredClass('App\CycleB', parent: 'App\CycleA'),
         ]);
         $source = new CompositeSymbolSource([$backend]);
 
@@ -256,10 +256,10 @@ final class CompositeSymbolSourceTest extends TestCase
         // Two interfaces both extend the same base: the base is reached twice and the
         // visited set must skip the second visit rather than re-walk it.
         $backend = new FakeSymbolBackend([
-            'app\diamond' => self::classInfo('App\Diamond', interfaces: ['App\IfaceA', 'App\IfaceB']),
-            'app\ifacea' => self::classInfo('App\IfaceA', interfaces: ['App\IfaceBase']),
-            'app\ifaceb' => self::classInfo('App\IfaceB', interfaces: ['App\IfaceBase']),
-            'app\ifacebase' => self::classInfo('App\IfaceBase'),
+            self::declaredClass('App\Diamond', interfaces: ['App\IfaceA', 'App\IfaceB']),
+            self::declaredClass('App\IfaceA', interfaces: ['App\IfaceBase']),
+            self::declaredClass('App\IfaceB', interfaces: ['App\IfaceBase']),
+            self::declaredClass('App\IfaceBase'),
         ]);
         $source = new CompositeSymbolSource([$backend]);
 
@@ -272,17 +272,17 @@ final class CompositeSymbolSourceTest extends TestCase
     private static function openWithChild(): FakeSymbolBackend
     {
         return new FakeSymbolBackend([
-            'app\child' => self::classInfo('App\Child', parent: 'App\ParentClass', interfaces: ['App\IfaceA']),
+            self::declaredClass('App\Child', parent: 'App\ParentClass', interfaces: ['App\IfaceA']),
         ]);
     }
 
     private static function vendorGraph(): FakeSymbolBackend
     {
         return new FakeSymbolBackend([
-            'app\parentclass' => self::classInfo('App\ParentClass', parent: 'App\Grandparent'),
-            'app\grandparent' => self::classInfo('App\Grandparent'),
-            'app\ifacea' => self::classInfo('App\IfaceA', interfaces: ['App\IfaceBase']),
-            'app\ifacebase' => self::classInfo('App\IfaceBase'),
+            self::declaredClass('App\ParentClass', parent: 'App\Grandparent'),
+            self::declaredClass('App\Grandparent'),
+            self::declaredClass('App\IfaceA', interfaces: ['App\IfaceBase']),
+            self::declaredClass('App\IfaceBase'),
         ]);
     }
 

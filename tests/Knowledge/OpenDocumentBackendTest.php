@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
+use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
@@ -23,6 +26,7 @@ use PHPUnit\Framework\TestCase;
 final class OpenDocumentBackendTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
+    use LooksUpBackendSymbolsTrait;
 
     private SymbolIndex $index;
     private OpenDocumentBackend $backend;
@@ -35,18 +39,28 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupClassLikeReturnsARegisteredClass(): void
     {
-        $this->backend->updateDocument('file:///Widget.php', [self::classInfo('V\Widget')]);
+        $this->backend->updateDocument('file:///Widget.php', self::declaredClass('V\Widget'));
 
-        $info = $this->backend->lookupClassLike(self::className('V\Widget'));
+        $info = self::classLikeIn($this->backend, 'V\Widget');
 
         self::assertNotNull($info, 'a registered class must resolve');
         self::assertSame('V\Widget', $info->name->fqn, 'the registered class must be returned unchanged');
     }
 
+    public function testLookupClassLikeIsCaseInsensitive(): void
+    {
+        $this->backend->updateDocument('file:///Widget.php', self::declaredClass('V\Widget'));
+
+        self::assertNotNull(
+            self::classLikeIn($this->backend, 'v\WIDGET'),
+            'PHP matches class-like names case-insensitively',
+        );
+    }
+
     public function testLookupClassLikeReturnsNullForAnUnregisteredClass(): void
     {
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Absent')),
+            self::classLikeIn($this->backend, 'V\Absent'),
             'a name no open document declares is absent from this backend (RFC 1 §5.3)',
         );
     }
@@ -54,15 +68,15 @@ final class OpenDocumentBackendTest extends TestCase
     public function testUpdateDocumentReplacesThePriorClassesForThatUri(): void
     {
         $uri = 'file:///Doc.php';
-        $this->backend->updateDocument($uri, [self::classInfo('V\Alpha')]);
-        $this->backend->updateDocument($uri, [self::classInfo('V\Beta')]);
+        $this->backend->updateDocument($uri, self::declaredClass('V\Alpha'));
+        $this->backend->updateDocument($uri, self::declaredClass('V\Beta'));
 
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Alpha')),
+            self::classLikeIn($this->backend, 'V\Alpha'),
             'the prior class must be dropped when the document is re-registered',
         );
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('V\Beta')),
+            self::classLikeIn($this->backend, 'V\Beta'),
             'the new class must be registered',
         );
     }
@@ -70,12 +84,12 @@ final class OpenDocumentBackendTest extends TestCase
     public function testRemoveDocumentDropsItsClasses(): void
     {
         $uri = 'file:///Ephemeral.php';
-        $this->backend->updateDocument($uri, [self::classInfo('V\Ephemeral')]);
+        $this->backend->updateDocument($uri, self::declaredClass('V\Ephemeral'));
 
         $this->backend->removeDocument($uri);
 
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Ephemeral')),
+            self::classLikeIn($this->backend, 'V\Ephemeral'),
             'closing a document must drop the classes it registered',
         );
     }
@@ -85,16 +99,16 @@ final class OpenDocumentBackendTest extends TestCase
         $this->backend->removeDocument('file:///never-opened.php');
 
         self::assertNull(
-            $this->backend->lookupClassLike(self::className('V\Nothing')),
+            self::classLikeIn($this->backend, 'V\Nothing'),
             'removing a document that was never registered must not error',
         );
     }
 
     public function testLookupFunctionReturnsARegisteredFunction(): void
     {
-        $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
+        $this->backend->updateDocument('file:///helpers.php', self::declaredFunction('V\format'));
 
-        $info = $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\format'));
+        $info = self::functionIn($this->backend, 'V\format');
 
         self::assertNotNull($info, 'a registered function must resolve');
         self::assertSame('format', $info->name, 'the registered function must be returned unchanged');
@@ -102,10 +116,10 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupFunctionIsCaseInsensitive(): void
     {
-        $this->backend->updateDocument('file:///helpers.php', [], ['V\format' => self::functionInfo('format')]);
+        $this->backend->updateDocument('file:///helpers.php', self::declaredFunction('V\format'));
 
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\FORMAT')),
+            self::functionIn($this->backend, 'V\FORMAT'),
             'PHP matches function names case-insensitively',
         );
     }
@@ -113,8 +127,42 @@ final class OpenDocumentBackendTest extends TestCase
     public function testLookupFunctionReturnsNullForAnUnregisteredFunction(): void
     {
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\absent')),
+            self::functionIn($this->backend, 'V\absent'),
             'a name no open document declares is absent from this backend (RFC 1 §5.3)',
+        );
+    }
+
+    public function testRegistrationCarriesAKindItKnowsNothingAbout(): void
+    {
+        // The point of the kind-parameterized write path: a kind whose metadata type
+        // this backend has never heard of round-trips, so adding one is a change to
+        // the info factories alone (Plan 0002 §5.6).
+        $info = new class implements SymbolInfo {
+        };
+        $name = QualifiedName::fromFullyQualified('V\LIMIT');
+
+        $this->backend->updateDocument(
+            'file:///consts.php',
+            new DeclaredSymbol($name, NameKind::Constant, $info),
+        );
+
+        self::assertSame(
+            $info,
+            $this->backend->lookup($name, NameKind::Constant),
+            'a registered symbol of any kind must resolve for that kind',
+        );
+        self::assertNull(
+            $this->backend->lookup($name, NameKind::Function_),
+            'and must not answer for another symbol namespace',
+        );
+        self::assertSame(
+            $info,
+            $this->backend->lookup(QualifiedName::fromFullyQualified('v\LIMIT'), NameKind::Constant),
+            'the namespace of a constant is still matched case-insensitively',
+        );
+        self::assertNull(
+            $this->backend->lookup(QualifiedName::fromFullyQualified('V\limit'), NameKind::Constant),
+            'but its own name is not: constants are the one kind PHP matches case-sensitively',
         );
     }
 
@@ -122,16 +170,16 @@ final class OpenDocumentBackendTest extends TestCase
     {
         $this->backend->updateDocument(
             'file:///Dual.php',
-            [self::classInfo('V\Dual')],
-            ['V\Dual' => self::functionInfo('Dual')],
+            self::declaredClass('V\Dual'),
+            self::declaredFunction('V\Dual'),
         );
 
         self::assertNotNull(
-            $this->backend->lookupClassLike(self::className('V\Dual')),
+            self::classLikeIn($this->backend, 'V\Dual'),
             'the class-like must resolve',
         );
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\Dual')),
+            self::functionIn($this->backend, 'V\Dual'),
             'a function sharing the name must resolve too: the symbol namespaces are independent',
         );
     }
@@ -139,15 +187,15 @@ final class OpenDocumentBackendTest extends TestCase
     public function testUpdateDocumentReplacesThePriorFunctionsForThatUri(): void
     {
         $uri = 'file:///helpers.php';
-        $this->backend->updateDocument($uri, [], ['V\alpha' => self::functionInfo('alpha')]);
-        $this->backend->updateDocument($uri, [], ['V\beta' => self::functionInfo('beta')]);
+        $this->backend->updateDocument($uri, self::declaredFunction('V\alpha'));
+        $this->backend->updateDocument($uri, self::declaredFunction('V\beta'));
 
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\alpha')),
+            self::functionIn($this->backend, 'V\alpha'),
             'the prior function must be dropped when the document is re-registered',
         );
         self::assertNotNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\beta')),
+            self::functionIn($this->backend, 'V\beta'),
             'the new function must be registered',
         );
     }
@@ -155,12 +203,12 @@ final class OpenDocumentBackendTest extends TestCase
     public function testRemoveDocumentDropsItsFunctions(): void
     {
         $uri = 'file:///helpers.php';
-        $this->backend->updateDocument($uri, [], ['V\ephemeral' => self::functionInfo('ephemeral')]);
+        $this->backend->updateDocument($uri, self::declaredFunction('V\ephemeral'));
 
         $this->backend->removeDocument($uri);
 
         self::assertNull(
-            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\ephemeral')),
+            self::functionIn($this->backend, 'V\ephemeral'),
             'closing a document must drop the functions it registered',
         );
     }

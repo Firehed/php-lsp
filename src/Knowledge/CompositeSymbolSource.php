@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -36,10 +37,10 @@ final class CompositeSymbolSource implements SymbolSource
     /**
      * @param list<SymbolBackend> $backends In descending precedence: the first
      *        that answers a lookup wins, and the first to report a name wins a
-     *        merge.
+     *        merge. Readable so the §5.1 coverage grid derives its rows from it.
      */
     public function __construct(
-        private readonly array $backends,
+        public readonly array $backends,
     ) {
     }
 
@@ -66,26 +67,18 @@ final class CompositeSymbolSource implements SymbolSource
 
     public function lookupClassLike(ClassName $name): ?ClassInfo
     {
-        foreach ($this->backends as $backend) {
-            $info = $backend->lookupClassLike($name);
-            if ($info !== null) {
-                return $info;
-            }
-        }
+        $info = $this->lookup(QualifiedName::fromClassName($name), NameKind::ClassLike);
+        assert($info === null || $info instanceof ClassInfo);
 
-        return null;
+        return $info;
     }
 
     public function lookupFunction(FunctionName $name): ?FunctionInfo
     {
-        foreach ($this->backends as $backend) {
-            $info = $backend->lookupFunction($name);
-            if ($info !== null) {
-                return $info;
-            }
-        }
+        $info = $this->lookup($name->qualifiedName, $name->kind());
+        assert($info === null || $info instanceof FunctionInfo);
 
-        return null;
+        return $info;
     }
 
     /**
@@ -103,6 +96,23 @@ final class CompositeSymbolSource implements SymbolSource
         }
 
         return array_values($byFqn);
+    }
+
+    /**
+     * Answers with the marker type; each caller above narrows it back to a concrete
+     * one. That is the O(kinds) narrowing Plan 0002 §5.6 trades against a lookup
+     * method per kind on every backend.
+     */
+    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    {
+        foreach ($this->backends as $backend) {
+            $info = $backend->lookup($name, $kind);
+            if ($info !== null) {
+                return $info;
+            }
+        }
+
+        return null;
     }
 
     /**

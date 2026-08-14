@@ -6,8 +6,6 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Document\FileUri;
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -17,18 +15,19 @@ use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
+use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\Index\CountingNamespaceCatalog;
 use Psr\SimpleCache\CacheInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The filesystem backend resolves class-likes by locating and parsing one file, and
+ * The filesystem backend resolves symbols by locating and parsing one file, and
  * enumerates namespaces through the autoload map — the workspace and vendor roles
  * both run this code, differing only in the map subset they are given. These prove
  * lookup, its caching, the not-found paths, the empty prefix search, and that
@@ -36,20 +35,22 @@ use PHPUnit\Framework\TestCase;
  */
 final class FilesystemBackendTest extends TestCase
 {
+    use LooksUpBackendSymbolsTrait;
+
     private string $fixturesRoot;
     private ParserService $parser;
-    private ClassInfoFactory $factory;
+    private DeclarationSymbolInfoFactory $infoFactory;
 
     protected function setUp(): void
     {
         $this->fixturesRoot = dirname(__DIR__, 2) . '/tests/Fixtures';
         $this->parser = new ParserService();
-        $this->factory = new DefaultClassInfoFactory();
+        $this->infoFactory = new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory());
     }
 
     public function testLookupClassLikeResolvesAndParsesAFixtureClass(): void
     {
-        $info = $this->backend()->lookupClassLike(self::className('Fixtures\Domain\User'));
+        $info = self::classLikeIn($this->backend(), 'Fixtures\Domain\User');
 
         self::assertNotNull($info, 'a class reachable through the autoload map must resolve');
         self::assertSame('Fixtures\Domain\User', $info->name->fqn, 'the located class must be returned');
@@ -58,7 +59,7 @@ final class FilesystemBackendTest extends TestCase
     public function testLookupClassLikeReturnsNullForAnAbsentClass(): void
     {
         self::assertNull(
-            $this->backend()->lookupClassLike(self::className('Fixtures\Does\Not\Exist')),
+            self::classLikeIn($this->backend(), 'Fixtures\Does\Not\Exist'),
             'a name the autoload map cannot locate is absent from this backend (RFC 1 §5.3)',
         );
     }
@@ -66,10 +67,9 @@ final class FilesystemBackendTest extends TestCase
     public function testLookupClassLikeCachesAResolvedClass(): void
     {
         $backend = $this->backend();
-        $name = self::className('Fixtures\Domain\User');
 
-        $first = $backend->lookupClassLike($name);
-        $second = $backend->lookupClassLike($name);
+        $first = self::classLikeIn($backend, 'Fixtures\Domain\User');
+        $second = self::classLikeIn($backend, 'Fixtures\Domain\User');
 
         self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
         self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-parse');
@@ -80,7 +80,7 @@ final class FilesystemBackendTest extends TestCase
         $backend = $this->backendWithLocator($this->locatorReturning('/no/such/file/Ghost.php'));
 
         self::assertNull(
-            $backend->lookupClassLike(self::className('Ghost')),
+            self::classLikeIn($backend, 'Ghost'),
             'a located path that is not readable degrades to not-found rather than an error',
         );
     }
@@ -94,7 +94,7 @@ final class FilesystemBackendTest extends TestCase
         );
 
         self::assertNull(
-            $backend->lookupClassLike(self::className('Fixtures\TypeInference\NotDeclaredHere')),
+            self::classLikeIn($backend, 'Fixtures\TypeInference\NotDeclaredHere'),
             'a located file that does not declare the requested class resolves to null',
         );
     }
@@ -109,7 +109,7 @@ final class FilesystemBackendTest extends TestCase
         );
 
         self::assertNotNull(
-            $backend->lookupClassLike(self::className('Fixtures\Completion\ConditionalInMultiFile')),
+            self::classLikeIn($backend, 'Fixtures\Completion\ConditionalInMultiFile'),
             'a conditionally declared class must resolve like any other declaration',
         );
     }
@@ -121,16 +121,14 @@ final class FilesystemBackendTest extends TestCase
         );
 
         self::assertNotNull(
-            $backend->lookupClassLike(self::className('fixtures\domain\user')),
+            self::classLikeIn($backend, 'fixtures\domain\user'),
             'PHP matches class names case-insensitively, as the function path already does',
         );
     }
 
     public function testLookupFunctionResolvesAFunctionDeclaredInAnAutoloadFilesEntry(): void
     {
-        $info = $this->backend()->lookupFunction(
-            FunctionName::fromFullyQualified('Fixtures\Helpers\helperFormat'),
-        );
+        $info = self::functionIn($this->backend(), 'Fixtures\Helpers\helperFormat');
 
         self::assertNotNull($info, 'a function in the files set must resolve through the derived index');
         self::assertCount(1, $info->parameters, 'the parsed signature must be carried');
@@ -148,7 +146,7 @@ final class FilesystemBackendTest extends TestCase
         // narrowed to top-level statements would miss it, and the name would resolve
         // from an open document but not from disk.
         self::assertNotNull(
-            $this->backend()->lookupFunction(FunctionName::fromFullyQualified('fixtureConditionalHelper')),
+            self::functionIn($this->backend(), 'fixtureConditionalHelper'),
             'a conditionally declared function must resolve like any other declaration',
         );
     }
@@ -156,9 +154,7 @@ final class FilesystemBackendTest extends TestCase
     public function testLookupFunctionIsCaseInsensitive(): void
     {
         self::assertNotNull(
-            $this->backend()->lookupFunction(
-                FunctionName::fromFullyQualified('FIXTURES\HELPERS\HELPERFORMAT'),
-            ),
+            self::functionIn($this->backend(), 'FIXTURES\HELPERS\HELPERFORMAT'),
             'PHP matches function names case-insensitively',
         );
     }
@@ -169,9 +165,7 @@ final class FilesystemBackendTest extends TestCase
         // function in an unopened PSR-4 file has no name -> file route at all. That
         // is Plan 0002 §3's locate-only limitation, not a gap in the backend.
         self::assertNull(
-            $this->backend()->lookupFunction(
-                FunctionName::fromFullyQualified('Fixtures\Completion\calculateSum'),
-            ),
+            self::functionIn($this->backend(), 'Fixtures\Completion\calculateSum'),
             'no autoload map addresses a function by name outside the files set',
         );
     }
@@ -179,7 +173,7 @@ final class FilesystemBackendTest extends TestCase
     public function testLookupFunctionReturnsNullForAnAbsentFunction(): void
     {
         self::assertNull(
-            $this->backend()->lookupFunction(FunctionName::fromFullyQualified('Fixtures\no_such_helper')),
+            self::functionIn($this->backend(), 'Fixtures\no_such_helper'),
             'a name no locator can reach is absent from this backend (RFC 1 §5.3)',
         );
     }
@@ -191,7 +185,7 @@ final class FilesystemBackendTest extends TestCase
         );
 
         self::assertNull(
-            $backend->lookupFunction(FunctionName::fromFullyQualified('notInThisFile')),
+            self::functionIn($backend, 'notInThisFile'),
             'a located file that does not declare the requested function resolves to null',
         );
     }
@@ -201,7 +195,7 @@ final class FilesystemBackendTest extends TestCase
         $backend = $this->backendWithLocator($this->locatorReturning('/no/such/file/helpers.php'));
 
         self::assertNull(
-            $backend->lookupFunction(FunctionName::fromFullyQualified('ghostHelper')),
+            self::functionIn($backend, 'ghostHelper'),
             'a located path that is not readable degrades to not-found rather than an error',
         );
     }
@@ -209,10 +203,9 @@ final class FilesystemBackendTest extends TestCase
     public function testLookupFunctionCachesAResolvedFunction(): void
     {
         $backend = $this->backend();
-        $name = FunctionName::fromFullyQualified('Fixtures\Helpers\helperFormat');
 
-        $first = $backend->lookupFunction($name);
-        $second = $backend->lookupFunction($name);
+        $first = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
+        $second = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
 
         self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
         self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-parse');
@@ -234,8 +227,8 @@ final class FilesystemBackendTest extends TestCase
 
             $backend = $this->backendWithLocator($this->locatorReturning($path));
 
-            $class = $backend->lookupClassLike(self::className('Dual'));
-            $function = $backend->lookupFunction(FunctionName::fromFullyQualified('Dual'));
+            $class = self::classLikeIn($backend, 'Dual');
+            $function = self::functionIn($backend, 'Dual');
 
             self::assertNotNull($class, 'the class-like must resolve');
             self::assertNotNull($function, 'the function must resolve rather than hit the class entry');
@@ -247,13 +240,12 @@ final class FilesystemBackendTest extends TestCase
     public function testInvalidateEvictsTheCachedFunctionSoTheNextLookupReParses(): void
     {
         $backend = $this->backend();
-        $name = FunctionName::fromFullyQualified('Fixtures\Helpers\helperFormat');
 
-        $first = $backend->lookupFunction($name);
+        $first = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
         self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
 
         $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/AutoloadFiles/helpers.php'));
-        $second = $backend->lookupFunction($name);
+        $second = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
 
         self::assertNotNull($second, 'the function must resolve again after invalidation');
         self::assertNotSame(
@@ -266,13 +258,12 @@ final class FilesystemBackendTest extends TestCase
     public function testInvalidateEvictsTheCachedClassSoTheNextLookupReParses(): void
     {
         $backend = $this->backend();
-        $name = self::className('Fixtures\Domain\User');
 
-        $first = $backend->lookupClassLike($name);
+        $first = self::classLikeIn($backend, 'Fixtures\Domain\User');
         self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
 
         $backend->invalidate('file://' . $this->fixturesRoot . '/src/Domain/User.php');
-        $second = $backend->lookupClassLike($name);
+        $second = self::classLikeIn($backend, 'Fixtures\Domain\User');
 
         self::assertNotNull($second, 'the class must resolve again after invalidation');
         self::assertNotSame(
@@ -289,9 +280,9 @@ final class FilesystemBackendTest extends TestCase
             self::createStub(SymbolLocator::class),
             new CachedNamespaceCatalog($counting, CacheFactory::inMemory()),
             $this->parser,
-            $this->factory,
+            $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
 
         $backend->childrenOf(new NamespaceName('Psr\Log'));
@@ -322,13 +313,12 @@ final class FilesystemBackendTest extends TestCase
             );
 
             $backend = $this->backendWithLocator($this->locatorReturning($path));
-            $name = self::className('Spaced');
 
-            $first = $backend->lookupClassLike($name);
+            $first = self::classLikeIn($backend, 'Spaced');
             self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
 
             $backend->invalidate('file://' . str_replace(' ', '%20', $path));
-            $second = $backend->lookupClassLike($name);
+            $second = self::classLikeIn($backend, 'Spaced');
 
             self::assertNotNull($second, 'the class must resolve again after invalidation');
             self::assertNotSame(
@@ -369,7 +359,7 @@ final class FilesystemBackendTest extends TestCase
             ]));
 
             self::assertNotNull(
-                $backend->lookupClassLike(self::className('DerivedBefore')),
+                self::classLikeIn($backend, 'DerivedBefore'),
                 'a class-like declared in a files entry must resolve through the derived index',
             );
 
@@ -380,7 +370,7 @@ final class FilesystemBackendTest extends TestCase
             $backend->invalidate(FileUri::fromPath($path));
 
             self::assertNotNull(
-                $backend->lookupClassLike(self::className('DerivedAfter')),
+                self::classLikeIn($backend, 'DerivedAfter'),
                 'invalidate must re-derive the index so a class added on disk resolves',
             );
         } finally {
@@ -395,7 +385,7 @@ final class FilesystemBackendTest extends TestCase
         $backend->invalidate('file:///never/looked/up.php');
 
         self::assertNotNull(
-            $backend->lookupClassLike(self::className('Fixtures\Domain\User')),
+            self::classLikeIn($backend, 'Fixtures\Domain\User'),
             'invalidating a file that was never cached must not disturb later lookups',
         );
     }
@@ -409,7 +399,7 @@ final class FilesystemBackendTest extends TestCase
         $backend->invalidate('untitled:Untitled-1');
 
         self::assertNotNull(
-            $backend->lookupClassLike(self::className('Fixtures\Domain\User')),
+            self::classLikeIn($backend, 'Fixtures\Domain\User'),
             'a non-file:// URI must be handled without error',
         );
     }
@@ -436,9 +426,9 @@ final class FilesystemBackendTest extends TestCase
             self::createStub(SymbolLocator::class),
             $catalog,
             $this->parser,
-            $this->factory,
+            $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
 
         self::assertSame(
@@ -476,9 +466,9 @@ final class FilesystemBackendTest extends TestCase
             ]),
             new ComposerNamespaceSource($map),
             $this->parser,
-            $this->factory,
+            $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
     }
 
@@ -488,9 +478,9 @@ final class FilesystemBackendTest extends TestCase
             $locator,
             self::createStub(NamespaceCatalog::class),
             $this->parser,
-            $this->factory,
+            $this->infoFactory,
             new DeclarationScanner(),
-            CacheFactory::inMemory(),
+            new SymbolCache(CacheFactory::inMemory()),
         );
     }
 
@@ -500,11 +490,5 @@ final class FilesystemBackendTest extends TestCase
         $locator->method('locate')->willReturn($path);
 
         return $locator;
-    }
-
-    private static function className(string $fqn): ClassName
-    {
-        /** @phpstan-ignore argument.type (fixture and virtual names are not analyzed) */
-        return new ClassName($fqn);
     }
 }

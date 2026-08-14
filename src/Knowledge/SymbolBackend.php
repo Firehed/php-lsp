@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -26,10 +25,10 @@ use Firehed\PhpLsp\Index\Symbol;
  * vendored file, and the built-ins — is the composite's concern, not the
  * backend's: each answers only for its own source.
  *
- * Lookup is per-kind: PHP's symbol namespaces are independent, so one name may be
- * both a class and a function, and the query says which is meant. Constant lookup
- * and a kind-parameterized search arrive with the slices that first need them
- * (Plan 0002 §5.2); a method with no caller is not carried ahead.
+ * Lookup is kind-parameterized here but per-kind at the facade, because the kind
+ * changes only the case rule and which factory builds the metadata, while §5.1
+ * requires a concrete return type (Plan 0002 §5.6). Do not re-derive a per-kind
+ * backend method from the facade's closed set.
  */
 interface SymbolBackend
 {
@@ -41,16 +40,10 @@ interface SymbolBackend
     public function childrenOf(NamespaceName $namespace): NamespaceContents;
 
     /**
-     * Full metadata for a class-like this backend declares, or `null` when it
-     * cannot reach a declaration of $name (RFC 1 §5.3: absence is a bare null).
+     * Full metadata for the symbol $name names *as a $kind*, or `null` when this
+     * backend cannot reach such a declaration (RFC 1 §5.3).
      */
-    public function lookupClassLike(ClassName $name): ?ClassInfo;
-
-    /**
-     * Full metadata for a standalone function this backend declares, or `null` when
-     * it cannot reach a declaration of $name (RFC 1 §5.3).
-     */
-    public function lookupFunction(FunctionName $name): ?FunctionInfo;
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo;
 
     /**
      * The class-likes this backend can enumerate whose short name begins with
