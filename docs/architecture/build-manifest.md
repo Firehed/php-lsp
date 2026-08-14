@@ -109,6 +109,7 @@ re-runs repo-wide as its completion gate.
     SC.15  —     Oracle corpus: trait adaptations and enums          —                 —
     SC.16  —     Index an open document's global constants          —                 —
     SC.17  —     Collapse the hand-routed invalidation fan-out      —                 —
+    SC.18  —     One home for the kind-qualified symbol key         SC.13             —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -309,6 +310,11 @@ Notes:
     `SymbolSink extends Invalidatable` solely to give the handler a way in, which is how the write path came to be named after the response instead of the event.
     Scope is one registration list at the composition root, which deletes the three fan-outs and the three type tests. Whether a general published event replaces it is #415 and is deliberately not settled here.
     Found while reviewing S3.8d. Ungated.
+  - **SC.18** — the key a name has under its kind, `$kind->name . '|' . $kind->normalize($name)`, is written out four times: `SymbolCache::keyFor`, `OpenDocumentBackend::key`, `DeclarationSymbolInfoFactory::collect`, and the composite's test fake.
+    `SymbolCache::keyFor` and `delete` are public for one caller — `FilesystemBackend` holds hashed key strings to reverse-map a path — so a `forget(QualifiedName, NameKind)` takes both off the surface and lets the backend record what it actually knows.
+    Duplication rather than a defect: the four stores are independent, so no two features can disagree over it today. It is filed because a fifth copy arrives with each new kind.
+    Gated on SC.13, which decides where the case fold lives; the key helper belongs beside it.
+    Found while reviewing S3.8d.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over
