@@ -108,6 +108,7 @@ re-runs repo-wide as its completion gate.
     SC.14  —     Filter BuiltinBackend class-like lookup to internal —                 —
     SC.15  —     Oracle corpus: trait adaptations and enums          —                 —
     SC.16  —     Index an open document's global constants          —                 —
+    SC.17  —     Collapse the hand-routed invalidation fan-out      —                 —
     SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -302,6 +303,12 @@ Notes:
     `WorkspaceNamespaceSource` already maps the kind, so the gap is upstream in the extractor.
     Found by the S3.8d coverage grid on its first run.
     Ungated, and ahead of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
+  - **SC.17** — telling the parts that hold file-derived state that a file changed is written out three times, each steered by an `instanceof` test: `DocumentSymbolSink` over its on-disk backends, `FilesystemBackend` over its catalog and locator, `CompositeSymbolLocator` over its routes.
+    So adding a holder means finding its parent in that tree by hand, and missing one is silent — the stale value is still served and nothing fails.
+    Not only caches: the same route drops `AutoloadFilesLocator`'s derived name→file map, which is rebuilt rather than memoized.
+    `SymbolSink extends Invalidatable` solely to give the handler a way in, which is how the write path came to be named after the response instead of the event.
+    Scope is one registration list at the composition root, which deletes the three fan-outs and the three type tests. Whether a general published event replaces it is #415 and is deliberately not settled here.
+    Found while reviewing S3.8d. Ungated.
   - **SC.7** — `MemberResolver` has six near-identical hierarchy walks:
     `find{Method,Property,Constant}InHierarchy` and `collect{Methods,Properties,Constants}`,
     each a seen-check, a scan of the class's own members, and a recursion over
