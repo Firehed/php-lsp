@@ -27,7 +27,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    /** Every kind this factory dispatches on, so reading the wrong list is visible. */
+    /** Declares all three kinds, so a lookup reading the wrong list is visible. */
     private const string FIXTURE = 'AutoloadFiles/helpers.php';
 
     private DeclarationSymbolInfoFactory $factory;

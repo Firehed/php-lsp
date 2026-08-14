@@ -103,8 +103,7 @@ final class OpenDocumentBackend implements SymbolBackend
     /**
      * Registration and lookup must agree on the case rule, which differs by kind, so
      * both go through {@see NameKind::normalize()} rather than lowercasing the whole
-     * FQN — right for class-likes and functions, wrong for a constant. The kind is
-     * part of the key because one store holds all three.
+     * FQN — right for class-likes and functions, wrong for a constant.
      */
     private static function key(NameKind $kind, QualifiedName $name): string
     {
