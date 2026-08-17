@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class method.
  */
-final readonly class MethodInfo implements Formattable
+final readonly class MethodInfo implements Formattable, MemberInfo
 {
     /**
      * @param list<ParameterInfo> $parameters
@@ -49,5 +49,15 @@ final readonly class MethodInfo implements Formattable
             $sig .= ': ' . $this->returnType->format();
         }
         return $sig;
+    }
+
+    public function getVisibility(): Visibility
+    {
+        return $this->visibility;
+    }
+
+    public function isStatic(): bool
+    {
+        return $this->isStatic;
     }
 }

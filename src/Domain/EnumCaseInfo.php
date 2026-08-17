@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about an enum case.
  */
-final readonly class EnumCaseInfo implements Formattable
+final readonly class EnumCaseInfo implements Formattable, MemberInfo
 {
     public function __construct(
         public EnumCaseName $name,
@@ -28,5 +28,21 @@ final readonly class EnumCaseInfo implements Formattable
                 : ' = ' . $this->backingValue;
         }
         return $str;
+    }
+
+    /**
+     * An enum case cannot be given a visibility; it is always public.
+     */
+    public function getVisibility(): Visibility
+    {
+        return Visibility::Public;
+    }
+
+    /**
+     * A case is reached on the enum, never on an instance.
+     */
+    public function isStatic(): bool
+    {
+        return true;
     }
 }
