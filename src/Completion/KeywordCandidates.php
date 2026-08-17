@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Domain\PrefixMatcher;
+
 /**
  * Produces keyword completion items for a given {@see KeywordGroup}.
  *

@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSource;

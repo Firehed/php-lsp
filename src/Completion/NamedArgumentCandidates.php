@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Resolution\CallContext;
 
 /**

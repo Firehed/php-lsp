@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Utility\NamespacePath;
 
 final class SymbolIndex
@@ -88,13 +89,12 @@ final class SymbolIndex
     public function findByPrefix(string $prefix, ?array $kinds = null): array
     {
         $results = [];
-        $prefixLower = strtolower($prefix);
 
         foreach ($this->byFqn as $symbol) {
             if ($kinds !== null && !in_array($symbol->kind, $kinds, true)) {
                 continue;
             }
-            if (str_starts_with(strtolower($symbol->name), $prefixLower)) {
+            if (PrefixMatcher::matches($symbol->name, $prefix)) {
                 $results[] = $symbol;
             }
         }

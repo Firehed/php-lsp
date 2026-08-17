@@ -13,22 +13,10 @@ parameters:
 			path: src/Completion/NamedArgumentCandidates.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 2
-			path: src/Completion/PrefixMatcher.php
-
-		-
 			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
 			identifier: disallowed.function
 			count: 2
 			path: src/Handler/CompletionHandler.php
-
-		-
-			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
-			identifier: disallowed.function
-			count: 2
-			path: src/Index/SymbolIndex.php
 
 		-
 			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'

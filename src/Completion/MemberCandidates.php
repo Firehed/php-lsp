@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;

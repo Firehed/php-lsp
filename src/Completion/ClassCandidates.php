@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Protocol\Range;

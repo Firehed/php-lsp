@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Completion;
+namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Completion\PrefixMatcher;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -26,6 +26,7 @@ class PrefixMatcherTest extends TestCase
     {
         yield 'empty prefix matches anything' => ['getName', '', true];
         yield 'case-insensitive prefix' => ['getName', 'GET', true];
+        yield 'case-insensitive name' => ['GETNAME', 'get', true];
         yield 'exact prefix' => ['getName', 'getN', true];
         yield 'non-matching prefix' => ['getName', 'set', false];
         yield 'prefix longer than name' => ['id', 'identifier', false];
