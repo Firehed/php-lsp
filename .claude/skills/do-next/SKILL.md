@@ -1,13 +1,17 @@
 ---
 name: do-next
-description: Implement the next build slice for the RFC-1 / Plan-0002 execution. Reads docs/architecture/build-manifest.md, computes the correct next slice from git/PR merge state (never a status field), enforces preconditions, and implements it under TDD on a slice/<id> branch. Invoke with /do-next.
+description: Report which build slices are startable for the RFC-1 / Plan-0002 execution, then implement the one chosen. Reads docs/architecture/build-manifest.md, derives status from git/PR merge state (never a status field), enforces preconditions, and implements under TDD on a slice/<id> branch. Invoke with /do-next.
 ---
 
-# do-next — implement the next build slice
+# do-next — report what is startable, then build the chosen slice
 
 Execute "Mode A" of `docs/architecture/build-procedure.md`. **Do not guess; halt and
-ask on any ambiguity.** The whole point is that a cold session picks the correct next
-slice from durable state, not from memory.
+ask on any ambiguity.** The point is that a cold session establishes what is *legal to
+start* from durable state rather than from memory — and then the human picks.
+
+**This skill does not choose the slice.** Manifest row order records when a row was
+filed, not what matters next, so picking the first startable row is an arbitrary choice
+dressed as a computed one. Report the set; let the human choose from it.
 
 ## 0. Read the goal first
 
@@ -26,7 +30,7 @@ noticed in passing, or easy.
 - Verify the base is green: run `composer test`. If red, **stop** — do not build on
   a red base.
 
-## 2. Compute the next slice X
+## 2. Compute the startable set
 
 - Read `docs/architecture/build-manifest.md`; parse the slice table (ID, Step,
   Depends on, Closes).
@@ -36,7 +40,7 @@ noticed in passing, or easy.
     `gh pr list --state merged --head slice/<ID> --json number` returns one.
   - `in-flight` — an open PR exists: `gh pr list --state open --head slice/<ID>`.
   - `todo` — neither.
-- `X` = the first `todo` slice whose every dependency is `done`.
+- The **startable set** = every `todo` slice whose every dependency is `done`.
 
 Dependencies are normally slice ids. The audit and Definition-of-Done gates use a
 collective form instead, which must be expanded before the check:
@@ -50,26 +54,49 @@ project's **Squash and Merge**: a squash rewrites the branch into one new commit
 `main`, so an ancestry check would report squashed slices as `todo` forever. Check
 `done` before `in-flight` so a squash-deleted branch is read as done, not unstarted.
 
-## 3. Safeguards (halt and report; do NOT proceed) if
+## 3. Check the set for phantoms
 
-- No slice is unblocked — report done / blocked / in-flight counts and stop.
-- Any slice is `in-flight` and not `done` — one slice in flight at a time; finish or
-  review it first.
+A row states work in prose, and prose goes stale: a row can claim a mechanism that
+already exists, or a removal already made. Selecting one costs a whole session before
+anyone notices, which has happened.
+
+Most cleanup rows are baseline drains, and the baseline is machine-readable, so check
+before offering: for each startable row that names files or entries it drains, confirm
+those entries are still in `phpstan-baseline.neon` / `deptrac.baseline.yaml`. A row
+whose claimed entries are gone is a **phantom** — report it as such rather than
+offering it, and say what appears to have discharged it.
+
+For a row that drains no baseline entry, spot-check its central claim against the code
+before offering it. One `grep` is enough; the failure mode is a row asserting that
+something is absent when it is present.
+
+## 4. Safeguards (halt and report; do NOT proceed) if
+
+- Nothing is startable — report done / blocked / in-flight counts and stop.
 - A slice's branch is merged while a dependency is not — surface the state drift.
 
-## 4. Explain X
+Slices already in flight do **not** block a report. Name them so the human can see what
+is open, and let them decide whether to start another.
 
-Read X's plan step in `docs/architecture/0002-execution-plan.md` for its acceptance
-criteria, and the RFC sections it cites in `0001-foundational-architecture.md`. Then
-describe the work in plain english and **wait** for approval, clarification, or
-modification before writing anything.
+## 5. Report the set and wait
+
+Report every startable slice as one line: id, what it does in plain english, and what
+it discharges — baseline entries drained, or the scheduled slice it unblocks. Mark any
+phantom found in step 3. Then **stop and wait** for the human to pick. Do not
+recommend one unless asked.
+
+Once a slice X is chosen, read its plan step in
+`docs/architecture/0002-execution-plan.md` for the acceptance criteria and the RFC
+sections it cites in `0001-foundational-architecture.md`. Describe the work in plain
+english and **wait** for approval, clarification, or modification before writing
+anything.
 
 Lead that description with X's answer to the goal test: what two features could
 disagree about without X, or which scheduled feature X unblocks. If you cannot write
 that sentence from the plan, **stop and ask** — a slice whose purpose you cannot state
 is one you will over- or under-build.
 
-## 5. Implement X
+## 6. Implement X
 
 - Create `slice/<X>` off `main`.
 - TDD:
@@ -88,7 +115,7 @@ is one you will over- or under-build.
 - If you hit a fundamental design question the plan does not answer, **STOP and ask**
   — do not invent an interpretation.
 
-## 6. Open the PR and report
+## 7. Open the PR and report
 
 - PR title carries no issue number; the body opens with what two features could have
   disagreed about without this change (or what it unblocks), then cites the slice id,
@@ -96,5 +123,5 @@ is one you will over- or under-build.
 - List manifest `Closes` candidates as "Candidate closes (pending review
   verification): #n" — do **not** wire `Closes #n` here; that is the reviewer's job
   after reading the issue body.
-- Report the PR URL and the **next** computed slice, so a follow-up `/do-next` is
-  predictable.
+- Report the PR URL, and the startable set as it now stands, so the human can pick the
+  next one without re-deriving it.

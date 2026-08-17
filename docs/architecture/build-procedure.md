@@ -9,14 +9,17 @@
 Execute the plan across many short sessions without holding state in your head.
 Two commands:
 
-- **"do the next step"** — implement the correct next slice.
+- **"do the next step"** — report which slices are startable, then build the one
+  chosen.
 - **"review this step's branch"** — cleanroom-review and fix a slice, in a fresh
   session.
 
-The safeguard that makes this usable when you are juggling other work: **the next
-step is computed, never remembered.** A session determines what to do from durable,
-checkable state and *halts and asks* when that state is ambiguous. This is one or
-two notches below hands-off autonomy by design.
+The safeguard that makes this usable when you are juggling other work: **what is
+startable is computed, never remembered.** A session determines that from durable,
+checkable state and *halts and asks* when the state is ambiguous. Which of them to
+build is yours to say — the manifest records dependencies, which are checkable, and
+not priority, which is not. This is one or two notches below hands-off autonomy by
+design.
 
 ## The goal every slice serves
 
@@ -82,12 +85,17 @@ happens outside the tool.
     (`gh pr list --state merged --head slice/<id>`).
   - `in-flight` — an **open PR** exists for `slice/<id>`.
   - `todo` — neither.
-- The **next slice** = the first `todo` in the manifest whose dependencies are all
-  `done`. A dependency is normally a slice id; the audit/DoD gates instead use a
-  collective form, resolved before the check: **`all Step N`** expands to every other
-  slice whose Step column is `N` (sub-steps included), and **`all prior`** to every
-  other slice in the table. A gate depends on its whole section, so it cannot run
-  while any slice of that section is unbuilt — which an id chain does not guarantee.
+- The **startable set** = every `todo` whose dependencies are all `done`. A dependency
+  is normally a slice id; the audit/DoD gates instead use a collective form, resolved
+  before the check: **`all Step N`** expands to every other slice whose Step column is
+  `N` (sub-steps included), and **`all prior`** to every other slice in the table. A
+  gate depends on its whole section, so it cannot run while any slice of that section
+  is unbuilt — which an id chain does not guarantee.
+- **Which startable slice to build is a human choice, not a computed one.** Row order
+  records when a row was filed; it is not a priority. Once sections are worked out of
+  sequence — which the `SC.*` cleanup rows invite — the first startable row is an
+  arbitrary pick, and ordering intent written into a note rather than into `Depends on`
+  is invisible to the tool that reads the table.
 
 Because status is computed from merge reality, a cold session cannot be misled by a
 stale field, and nothing needs updating by hand.
@@ -119,25 +127,33 @@ squash-deleted branch is never misread as unstarted.
 
 1. **Preconditions (halt if unmet).** Working tree clean; on `main`; `main` synced
    with origin; `composer test` green on `main`. If any fails, report and stop.
-2. **Compute X.** Parse the manifest; compute each slice's status from merged-PR
-   state; `X` = first `todo` whose dependencies are all `done`.
-3. **Safeguards (halt and ask, do not guess) if:**
-   - nothing is unblocked (report how many are `done` / blocked / in-flight);
-   - a slice is already `in-flight` that is not yet `done` (finish or review it
-     first — one slice in flight at a time);
+2. **Compute the startable set.** Parse the manifest; compute each slice's status from
+   merged-PR state; the set is every `todo` whose dependencies are all `done`.
+3. **Screen for phantoms.** A row states its work in prose, which goes stale — it can
+   claim a mechanism that already exists or a removal already made, and selecting one
+   costs a session before anyone notices. For a row that names baseline entries it
+   drains, confirm they are still there; for one that does not, spot-check its central
+   claim against the code. Report a phantom instead of offering it.
+4. **Safeguards (halt and ask, do not guess) if:**
+   - nothing is startable (report how many are `done` / blocked / in-flight);
    - the manifest references a merged branch for a slice whose dependencies are not
      merged (state drift — surface it).
-4. **Explain X.** Describe in plain english the work to be done, lead with X's answer
-   to the goal test, then wait for approval, clarification, or modification.
-5. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
+
+   An open slice does not block the report: name what is in flight and let the human
+   decide whether to start another.
+5. **Report the set, then explain the chosen slice.** One line per startable slice —
+   id, what it does, what it discharges. Wait for a pick. Then describe that slice's
+   work in plain english, leading with its answer to the goal test, and wait for
+   approval, clarification, or modification.
+6. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
    `composer test`; open a PR citing X. Build what X's acceptance requires and
    nothing beyond it — a problem noticed in passing is reported, not solved (an
    `SC.*` row for duplication, a GitHub issue plus a can-the-next-slice-proceed
    call for a defect, a line in the PR body for tidiness).
-6. Stop. Report the PR and the *next* computed slice, so the human knows what a
-   follow-up "do the next step" would pick up.
+7. Stop. Report the PR and the startable set as it now stands, so the human can pick
+   the next one without re-deriving it.
 
 ## Mode B — "review this step's branch"
 
@@ -173,18 +189,22 @@ squash-deleted branch is never misread as unstarted.
    the change unblocks, if it is groundwork — or what corrections remain before it
    gets there. A pass that cannot write that paragraph has not understood the change
    well enough to approve it, and says so instead.
-7. Stop. Report what merged and the next computed slice.
+7. Stop. Report what merged and the startable set as it now stands.
 
-## The "X is always correct" guarantee, in one place
+## What the driver guarantees, in one place
 
-- Next step is **computed from git truth**, so a cold session cannot pick the wrong
-  one from a stale note.
+- The startable set is **derived from git truth**, so a cold session cannot be misled
+  by a stale note about what is already built.
+- **Selection is the human's.** The tool establishes what is legal to start and never
+  ranks it, because the manifest holds no priority to read — row order is filing
+  order. A tool that picked anyway would be presenting an arbitrary choice as a
+  derived one.
+- **Phantom rows are screened, not discovered mid-build** — a row's claim is checked
+  against the baseline or the code before it is offered.
 - The driver **halts and asks** at every fork it cannot resolve safely (unmet
-  precondition, nothing unblocked, a slice already in flight, state drift, a review
-  it cannot make clean).
+  precondition, nothing startable, state drift, a review it cannot make clean).
 - **Deterministic branch names** mean the review session always finds the right
   branch from the id.
-- **One slice in flight at a time** keeps "the next step" unambiguous.
 
 ## Relationship to GitHub issues
 

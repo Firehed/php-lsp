@@ -134,7 +134,7 @@ burn 75k+ tokens re-deriving the whole measurement.
 - `gh pr ready` if the PR was a draft.
 - Report: **"Pass clean. Verified closes: #n. Ready to land — merge when ready."**
   Do **not** auto-merge — merging is irreversible and outward-facing; the user lands.
-- Report the next computed slice for after landing.
+- Report the slices that become startable once this lands; do not pick one.
 
 ## 5. Close every pass against the goal
 
