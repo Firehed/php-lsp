@@ -7,17 +7,13 @@ namespace Firehed\PhpLsp\Index;
 use Firehed\PhpLsp\Document\TextDocument;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 
-final class SymbolExtractor extends NodeVisitorAbstract
+final class SymbolExtractor
 {
-    /** @var list<Symbol> */
-    private array $symbols = [];
-    private string $uri = '';
-    private string $namespace = '';
-    private ?string $currentClass = null;
-    private TextDocument $document;
+    public function __construct(
+        private readonly DeclarationScanner $declarations = new DeclarationScanner(),
+    ) {
+    }
 
     /**
      * @param array<Stmt> $ast
@@ -25,126 +21,80 @@ final class SymbolExtractor extends NodeVisitorAbstract
      */
     public function extract(TextDocument $document, array $ast): array
     {
-        $this->symbols = [];
-        $this->uri = $document->uri;
-        $this->namespace = '';
-        $this->currentClass = null;
-        $this->document = $document;
+        $declarations = $this->declarations->scan($ast);
+        $symbols = [];
 
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($this);
-        $traverser->traverse($ast);
-
-        return $this->symbols;
-    }
-
-    public function enterNode(Node $node): null
-    {
-        if ($node instanceof Stmt\Namespace_) {
-            $this->namespace = $node->name?->toString() ?? '';
-            return null;
-        }
-
-        if ($node instanceof Stmt\Class_) {
-            $this->addClassLikeSymbol($node, SymbolKind::Class_);
-            $this->currentClass = $node->name?->toString();
-            return null;
-        }
-
-        if ($node instanceof Stmt\Interface_) {
-            $this->addClassLikeSymbol($node, SymbolKind::Interface_);
-            $this->currentClass = $node->name?->toString();
-            return null;
-        }
-
-        if ($node instanceof Stmt\Trait_) {
-            $this->addClassLikeSymbol($node, SymbolKind::Trait_);
-            $this->currentClass = $node->name?->toString();
-            return null;
-        }
-
-        if ($node instanceof Stmt\Enum_) {
-            $this->addClassLikeSymbol($node, SymbolKind::Enum_);
-            $this->currentClass = $node->name?->toString();
-            return null;
-        }
-
-        if ($node instanceof Stmt\Function_) {
-            $name = $node->name->toString();
-            $fqn = $this->namespace !== '' ? $this->namespace . '\\' . $name : $name;
-            $this->symbols[] = new Symbol(
-                name: $name,
+        foreach ($declarations->classLikes as $declaration) {
+            $fqn = $declaration->name->fullyQualifiedName();
+            $symbols[] = new Symbol(
+                name: $declaration->name->shortName,
                 fullyQualifiedName: $fqn,
+                kind: self::kindOf($declaration->node),
+                location: self::locate($document, $declaration->node),
+            );
+
+            foreach ($declaration->node->getMethods() as $method) {
+                $name = $method->name->toString();
+                $symbols[] = new Symbol(
+                    name: $name,
+                    fullyQualifiedName: $fqn . '::' . $name,
+                    kind: SymbolKind::Method,
+                    location: self::locate($document, $method),
+                    containerName: $declaration->name->shortName,
+                );
+            }
+        }
+
+        foreach ($declarations->functions as $declaration) {
+            $symbols[] = new Symbol(
+                name: $declaration->name->shortName,
+                fullyQualifiedName: $declaration->name->fullyQualifiedName(),
                 kind: SymbolKind::Function_,
-                location: $this->createLocation($node),
+                location: self::locate($document, $declaration->node),
             );
-            return null;
         }
 
-        if ($node instanceof Stmt\ClassMethod && $this->currentClass !== null) {
-            $name = $node->name->toString();
-            $fqn = ($this->namespace !== '' ? $this->namespace . '\\' : '')
-                . $this->currentClass . '::' . $name;
-            $this->symbols[] = new Symbol(
-                name: $name,
-                fullyQualifiedName: $fqn,
-                kind: SymbolKind::Method,
-                location: $this->createLocation($node),
-                containerName: $this->currentClass,
+        foreach ($declarations->constants as $declaration) {
+            $symbols[] = new Symbol(
+                name: $declaration->name->shortName,
+                fullyQualifiedName: $declaration->name->fullyQualifiedName(),
+                kind: SymbolKind::Constant,
+                location: self::locate($document, $declaration->node),
             );
-            return null;
         }
 
-        return null;
+        // Callers index `$symbols[0]` as the file's first declaration, which the two
+        // separate scanner lists would otherwise interleave by kind rather than by
+        // where each is written.
+        usort($symbols, self::byPosition(...));
+
+        return $symbols;
     }
 
-    public function leaveNode(Node $node): null
+    private static function byPosition(Symbol $a, Symbol $b): int
     {
-        if (
-            $node instanceof Stmt\Class_
-            || $node instanceof Stmt\Interface_
-            || $node instanceof Stmt\Trait_
-            || $node instanceof Stmt\Enum_
-        ) {
-            $this->currentClass = null;
-        }
-
-        return null;
+        return [$a->location->startLine, $a->location->startCharacter]
+            <=> [$b->location->startLine, $b->location->startCharacter];
     }
 
-    private function addClassLikeSymbol(
-        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node,
-        SymbolKind $kind,
-    ): void {
-        $name = $node->name?->toString();
-        if ($name === null) {
-            return; // Anonymous class
-        }
-
-        $fqn = $this->namespace !== '' ? $this->namespace . '\\' . $name : $name;
-        $this->symbols[] = new Symbol(
-            name: $name,
-            fullyQualifiedName: $fqn,
-            kind: $kind,
-            location: $this->createLocation($node),
-        );
-    }
-
-    private function createLocation(Node $node): Location
+    private static function kindOf(Stmt\ClassLike $node): SymbolKind
     {
-        $startLine = $node->getStartLine() - 1; // LSP is 0-indexed
-        $endLine = $node->getEndLine() - 1;
+        return match (true) {
+            $node instanceof Stmt\Enum_ => SymbolKind::Enum_,
+            $node instanceof Stmt\Interface_ => SymbolKind::Interface_,
+            $node instanceof Stmt\Trait_ => SymbolKind::Trait_,
+            default => SymbolKind::Class_,
+        };
+    }
 
-        // Get character positions from the document
-        $startPos = $this->document->positionAt($node->getStartFilePos());
-        $endPos = $this->document->positionAt($node->getEndFilePos() + 1);
-
+    private static function locate(TextDocument $document, Node $node): Location
+    {
         return new Location(
-            uri: $this->uri,
-            startLine: $startLine,
-            startCharacter: $startPos['character'],
-            endLine: $endLine,
-            endCharacter: $endPos['character'],
+            uri: $document->uri,
+            startLine: $node->getStartLine() - 1, // LSP is 0-indexed
+            startCharacter: $document->positionAt($node->getStartFilePos())['character'],
+            endLine: $node->getEndLine() - 1,
+            endCharacter: $document->positionAt($node->getEndFilePos() + 1)['character'],
         );
     }
 }

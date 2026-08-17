@@ -82,15 +82,30 @@ happens outside the tool.
     (`gh pr list --state merged --head slice/<id>`).
   - `in-flight` — an **open PR** exists for `slice/<id>`.
   - `todo` — neither.
-- The **next slice** = the first `todo` in the manifest whose dependencies are all
-  `done`. A dependency is normally a slice id; the audit/DoD gates instead use a
-  collective form, resolved before the check: **`all Step N`** expands to every other
-  slice whose Step column is `N` (sub-steps included), and **`all prior`** to every
-  other slice in the table. A gate depends on its whole section, so it cannot run
-  while any slice of that section is unbuilt — which an id chain does not guarantee.
+- The **startable set** = every `todo` whose dependencies are all `done`. A dependency
+  is normally a slice id; the audit/DoD gates instead use a collective form, resolved
+  before the check: **`all Step N`** expands to every other slice whose Step column is
+  `N` (sub-steps included), and **`all prior`** to every other slice in the table. A
+  gate depends on its whole section, so it cannot run while any slice of that section
+  is unbuilt — which an id chain does not guarantee.
+- The **next slice** = the highest-ranked member of that set, by the manifest's `Kind`
+  column: **`defect`** first, then **`cleanup`**, then **`scaffold`**; within a kind,
+  the row draining the most guardrail-baseline entries, and row order last. Report the
+  rest of the set alongside it — an override is a slice id said out loud, not a reason
+  to leave the pick unmade.
 
 Because status is computed from merge reality, a cold session cannot be misled by a
 stale field, and nothing needs updating by hand.
+
+**Why `Kind` outranks row order.** Row order records when a row was filed, so once
+sections run out of sequence — which the `SC.*` rows invite — picking the first
+startable row is an arbitrary choice presented as a derived one. `Kind` is the
+priority, stated once: fix what is already wrong, then front-load the unblocked
+cleanup, then build. The guardrail baselines are the reason. Most of what they still
+freeze is the M×N traversal and text-pattern debt this rework exists to remove, so
+draining every entry that is reachable *now* keeps the feature-adjacent reach still
+scheduled from landing on top of it. The rest of the drain is gated on that reach and
+comes with it.
 
 **Squash-merge safety.** Status is derived from GitHub's **PR merge state**, which is
 set identically for squash, rebase, and merge-commit — not from git commit ancestry.
@@ -120,29 +135,38 @@ squash-deleted branch is never misread as unstarted.
 1. **Preconditions (halt if unmet).** Working tree clean; on `main`; `main` synced
    with origin; `composer test` green on `main`. If any fails, report and stop.
 2. **Compute X.** Parse the manifest; compute each slice's status from merged-PR
-   state; `X` = first `todo` whose dependencies are all `done`.
-3. **Safeguards (halt and ask, do not guess) if:**
+   state; the startable set is every `todo` whose dependencies are all `done`; `X` is
+   its highest-ranked member by `Kind` (`defect`, then `cleanup`, then `scaffold`).
+3. **Screen X for phantoms.** A row states its work in prose, which goes stale — it can
+   claim a mechanism that already exists or a removal already made, and selecting one
+   costs a session before anyone notices. If X names baseline entries it drains, confirm
+   they are still there; if it drains none, spot-check its central claim against the
+   code. Report a phantom and move to the next candidate instead of building it.
+4. **Safeguards (halt and ask, do not guess) if:**
    - nothing is unblocked (report how many are `done` / blocked / in-flight);
-   - a slice is already `in-flight` that is not yet `done` (finish or review it
-     first — one slice in flight at a time);
    - the manifest references a merged branch for a slice whose dependencies are not
      merged (state drift — surface it).
-4. **Explain X.** Describe in plain english the work to be done, lead with X's answer
-   to the goal test, then wait for approval, clarification, or modification.
-5. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
+
+   An open slice does not halt this: name what is in flight and carry on. A slice waits
+   on another only through `Depends on`, so an unrelated open PR blocking every other
+   row is a stall rather than a safeguard.
+5. **Explain X.** Describe in plain english the work to be done, lead with X's answer
+   to the goal test, and name the rest of the startable set in one line each so an
+   override is cheap. Then wait for approval, clarification, or modification.
+6. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
    `composer test`; open a PR citing X. Build what X's acceptance requires and
    nothing beyond it — a problem noticed in passing is reported, not solved (an
    `SC.*` row for duplication, a GitHub issue plus a can-the-next-slice-proceed
    call for a defect, a line in the PR body for tidiness).
-6. Stop. Report the PR and the *next* computed slice, so the human knows what a
+7. Stop. Report the PR and the *next* computed slice, so the human knows what a
    follow-up "do the next step" would pick up.
 
 ## Mode B — "review this step's branch"
 
-1. **Identify the slice.** The `in-flight` one, or the id given. Check out its
-   branch.
+1. **Identify the slice.** The id given, or the single `in-flight` one. If more than
+   one is in flight and no id was given, stop and ask which. Check out its branch.
 2. **Cleanroom review.** A fresh reviewer (subagent) sees **only** the goal section
    of this document, the slice's acceptance criteria, the relevant RFC sections, and
    the diff — **not** the implementer's reasoning or this conversation. It adversarially verifies:
@@ -177,14 +201,15 @@ squash-deleted branch is never misread as unstarted.
 
 ## The "X is always correct" guarantee, in one place
 
-- Next step is **computed from git truth**, so a cold session cannot pick the wrong
-  one from a stale note.
+- What may start is **computed from git truth**, so a cold session cannot pick the
+  wrong one from a stale note; what starts first is **read from `Kind`**, so the
+  priority is stated in the manifest rather than implied by row order.
+- **A row's claim is screened before it is built**, so a phantom — work already
+  discharged by something else — is reported rather than discovered mid-slice.
 - The driver **halts and asks** at every fork it cannot resolve safely (unmet
-  precondition, nothing unblocked, a slice already in flight, state drift, a review
-  it cannot make clean).
+  precondition, nothing unblocked, state drift, a review it cannot make clean).
 - **Deterministic branch names** mean the review session always finds the right
   branch from the id.
-- **One slice in flight at a time** keeps "the next step" unambiguous.
 
 ## Relationship to GitHub issues
 

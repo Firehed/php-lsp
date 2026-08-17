@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -133,5 +134,80 @@ class SymbolExtractorTest extends TestCase
         self::assertGreaterThanOrEqual(1, count($symbols));
         self::assertSame('Status', $symbols[0]->name);
         self::assertSame(SymbolKind::Enum_, $symbols[0]->kind);
+    }
+
+    public function testExtractNamespacedConstant(): void
+    {
+        $code = $this->loadFixture('AutoloadFiles/helpers.php');
+        $doc = new TextDocument('file:///test.php', 'php', 1, $code);
+        $ast = $this->parser->parse($doc);
+        self::assertNotNull($ast);
+
+        $constants = $this->constantsIn($this->extractor->extract($doc, $ast));
+
+        self::assertArrayHasKey(
+            'Fixtures\\Helpers\\HELPER_LIMIT',
+            $constants,
+            'a namespaced const must be indexed under the namespace it is written in',
+        );
+        $constant = $constants['Fixtures\\Helpers\\HELPER_LIMIT'];
+        self::assertSame('HELPER_LIMIT', $constant->name, 'the short name is what a prefix search matches on');
+        self::assertSame(
+            self::lineContaining($code, 'const HELPER_LIMIT'),
+            $constant->location->startLine,
+            'the location must come from the declaring node, so go-to-definition lands on it',
+        );
+    }
+
+    /**
+     * The extractor must not grow its own opinion of what declares a constant: the
+     * `define()` spellings, the multi-declarator statement and the computed name that
+     * {@see DeclarationScanner} already rules on are the same set here. A second rule
+     * is how a name came to resolve on hover while being invisible to completion.
+     */
+    public function testConstantsAgreeWithTheDeclarationScanner(): void
+    {
+        $code = $this->loadFixture('AutoloadFiles/globals.php');
+        $doc = new TextDocument('file:///test.php', 'php', 1, $code);
+        $ast = $this->parser->parse($doc);
+        self::assertNotNull($ast);
+
+        $extracted = array_keys($this->constantsIn($this->extractor->extract($doc, $ast)));
+        $scanned = array_map(
+            fn($declaration) => $declaration->name->fullyQualifiedName(),
+            (new DeclarationScanner())->scan($ast)->constants,
+        );
+
+        sort($extracted);
+        sort($scanned);
+        self::assertNotEmpty($scanned, 'the fixture must declare constants, or this asserts nothing');
+        self::assertSame($scanned, $extracted, 'the index must report exactly the declarations the scanner finds');
+    }
+
+    /**
+     * @param list<\Firehed\PhpLsp\Index\Symbol> $symbols
+     * @return array<string, \Firehed\PhpLsp\Index\Symbol> FQN -> symbol
+     */
+    private function constantsIn(array $symbols): array
+    {
+        $constants = [];
+        foreach ($symbols as $symbol) {
+            if ($symbol->kind === SymbolKind::Constant) {
+                $constants[$symbol->fullyQualifiedName] = $symbol;
+            }
+        }
+
+        return $constants;
+    }
+
+    private static function lineContaining(string $code, string $needle): int
+    {
+        foreach (explode("\n", $code) as $number => $line) {
+            if (str_contains($line, $needle)) {
+                return $number;
+            }
+        }
+
+        self::fail("the fixture no longer contains {$needle}");
     }
 }
