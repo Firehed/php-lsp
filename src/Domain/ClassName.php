@@ -58,7 +58,8 @@ final readonly class ClassName implements Type
 
     public function equals(self $other): bool
     {
-        return strcasecmp($this->fqn, $other->fqn) === 0;
+        return NameKind::ClassLike->normalize(QualifiedName::fromClassName($this))
+            === NameKind::ClassLike->normalize(QualifiedName::fromClassName($other));
     }
 
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
