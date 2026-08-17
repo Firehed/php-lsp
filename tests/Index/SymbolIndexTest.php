@@ -8,7 +8,9 @@ use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
+use Firehed\PhpLsp\Tests\Domain\PrefixMatcherTest;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(SymbolIndex::class)]
@@ -122,6 +124,24 @@ class SymbolIndexTest extends TestCase
 
         self::assertSame([], $index->namespaces(), 'A namespace with no symbols left is not reported');
         self::assertSame([], $index->inNamespace('App'), 'Nor does it hold symbols');
+    }
+
+    /**
+     * The index and the completion sources filter by prefix for the same reason, so a
+     * name one of them offers and the other withholds is the split this shares a
+     * matcher to prevent.
+     */
+    #[DataProviderExternal(PrefixMatcherTest::class, 'provideMatches')]
+    public function testFindByPrefixAgreesWithThePrefixMatcher(string $name, string $prefix, bool $expected): void
+    {
+        $index = new SymbolIndex();
+        $index->add(new Symbol($name, 'App\\' . $name, SymbolKind::Class_, new Location('file:///a.php', 0, 0, 0, 10)));
+
+        self::assertCount(
+            $expected ? 1 : 0,
+            $index->findByPrefix($prefix),
+            'The index must match the prefix exactly as PrefixMatcher does',
+        );
     }
 
     public function testFindByName(): void

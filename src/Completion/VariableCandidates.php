@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
 /**
