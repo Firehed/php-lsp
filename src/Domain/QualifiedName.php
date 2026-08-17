@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * A fully-qualified name split into namespace path and short name, carrying no

@@ -4,8 +4,6 @@ deptrac:
       - Firehed\PhpLsp\Utility\TypeFactory
     Firehed\PhpLsp\Domain\ParameterInfo:
       - Firehed\PhpLsp\Utility\TypeFactory
-    Firehed\PhpLsp\Domain\QualifiedName:
-      - Firehed\PhpLsp\Utility\NamespacePath
     Firehed\PhpLsp\Repository\DefaultFunctionRepository:
       - Firehed\PhpLsp\Index\DeclarationScanner
     Firehed\PhpLsp\Repository\MemberResolver:

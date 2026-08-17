@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Utility;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * Operations on namespace and fully-qualified-name strings.

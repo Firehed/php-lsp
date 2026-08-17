@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Utility\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespacePath;
 
 /**
  * Computes how a symbol must be written at a given cursor: the shortest

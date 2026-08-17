@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Utility;
 
-use Firehed\PhpLsp\Utility\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespacePath;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

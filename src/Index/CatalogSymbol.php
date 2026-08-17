@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Utility\NamespacePath;
 
 /**
  * A symbol discovered in a namespace.
