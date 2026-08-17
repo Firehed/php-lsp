@@ -641,21 +641,27 @@ To stop the two typing models fighting before they are built:
 
 - `QualifiedName` is the base FQN value type — a namespace path plus a short name,
   **kind-neutral**.
-- `ClassLikeName`, `FunctionName`, `ConstantName`, `NamespaceName` extend / wrap it
-  and **carry their kind intrinsically** (each exposes `kind(): NameKind`). These are
+- `ClassLikeName`, `FunctionName`, `GlobalConstantName`, `NamespaceName` extend / wrap
+  it and **carry their kind intrinsically** (each exposes `kind(): NameKind`). These are
   the primary currency; the per-kind `lookup*` methods take the matching one, so the
   kind is implicit and `NameKind` is not passed. `ClassLikeName` is today's
   `ClassName` (which per CLAUDE.md also serves as the class `Type`); whether it is
   reused as-is, renamed, or wrapped is an open decision (§7). The other three are new.
-- **One constant type, class-declared or not.** `Domain\ConstantInfo` serves both:
-  `declaringClass` is `?ClassName`, and its absence is what makes a constant global. A
-  global constant is mechanically public and final, so `visibility` and `isFinal` carry
-  the true value rather than a placeholder, and `format()` branches on the declaring
-  class alone. `Domain\ConstantName` likewise holds either a member name or an FQN, so
-  the `ConstantName` above needs no second type. A global constant is **not** a
-  `ResolvedMember` — that interface means *reached through a class*, which is a path it
-  does not have — so `ConstantInfo` implements `ResolvedSymbol` itself rather than
-  gaining a fifth wrapper, which is also a down payment on the collapse in #416.
+- **`GlobalConstantName`, because `ConstantName` is the class constant member name**
+  beside `MethodName` and `PropertyName`. A bare member name is not an FQN, and one type
+  holding both would report `NameKind::Constant` for a member name. Unlike
+  `ClassLikeName` versus `ClassName` in §7, these are two concepts, not two names.
+- **One `ConstantInfo` serves both**, with `?ClassName` for `declaringClass`; its absence
+  is what makes a constant global, and `format()` branches on that alone. `visibility`
+  and `isFinal` carry true values — a redeclared `const` is fatal, a repeated `define()`
+  a no-op. The nullable is a conscious exception to the no-nullable rule: the
+  alternatives are a second metadata type differing in one field, or a sentinel
+  `ClassName` the type system cannot catch as a lie.
+- A global constant is **not** a `ResolvedMember` — that interface means *reached through
+  a class*, which is a path it does not have. Whether it instead gets a fifth wrapper or
+  `ConstantInfo` carries `ResolvedSymbol` itself is #416's, and turns on SC.13:
+  `ResolvedSymbol` is in `Resolution` and returns an `Index\Location`, so a `Domain`
+  object carrying it adds edges the layer contract denies.
 - `locate(QualifiedName, NameKind)` is the kind-agnostic entry, used when the caller
   has an FQN whose kind is known only from syntactic position and has not minted a
   typed subtype. `NameKind` is **not** redundant here precisely because the input is
@@ -665,7 +671,7 @@ To stop the two typing models fighting before they are built:
   is about identifiers, not search fragments. `kind` (once the parameter exists in
   Step 3b) selects which namespace to search.
 - **JIT:** Step 2 uses only `ClassLikeName` (today's `ClassName`) and `NamespaceName`.
-  `QualifiedName`, `NameKind`, `FunctionName`, and `ConstantName` land with the methods
+  `QualifiedName`, `NameKind`, `FunctionName`, and `GlobalConstantName` land with the methods
   that first use them (Step 3b, and `locate` in the workspace scope) — an unused type
   is not carried ahead of its method. This whole model is the *target*; it is
   introduced piecewise.
@@ -823,7 +829,7 @@ once Step P is green.
   **Resolved — see Section 8.**
 - Whether `ClassLikeName` is the existing `ClassName` reused as-is, renamed, or a
   wrapper — it must coexist with `ClassName`'s dual role as the class `Type` (§5.3).
-- Whether `FunctionName` / `ConstantName` / `NamespaceName` land in Step 2 as prep
+- Whether `FunctionName` / `GlobalConstantName` / `NamespaceName` land in Step 2 as prep
   or in Step 3 with their lookups (lean: Step 3, to avoid an unused-type commit;
   `NamespaceName` is needed by `childrenOf` in Step 2, so it lands then).
 - Whether completion detail after the `search` migration comes from a follow-up

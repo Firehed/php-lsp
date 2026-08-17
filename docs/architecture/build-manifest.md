@@ -182,12 +182,11 @@ Notes:
   of it. `NameKind` already exists (it predates Wave 2, as the catalog's coarse kind);
   Step 2 carries `ClassLikeName` / `NamespaceName`; `QualifiedName` lands in **S3.7b**,
   whose `DeclarationScanner` is its first caller; `FunctionName` in **S3.8a** and
-  `ConstantName` in **S3.8b**, with their lookups.
-  - **`ConstantName` is already taken, and stays one type.** `Domain\ConstantName` wraps
-    a *class* constant name; §5.3's `ConstantName` is a *global* constant FQN. One type
-    holds both, as does one `ConstantInfo`: a global constant is a constant whose
-    declaring class is absent (0002 §5.3). So S3.8b introduces no constant type at all —
-    unlike `ClassLikeName` versus `ClassName`, which §7 leaves open.
+  `GlobalConstantName` in **S3.8b**, with their lookups.
+  - **The `ConstantName` collision is settled (0002 §5.3):** the global FQN type is
+    `GlobalConstantName`, `Domain\ConstantName` stays the class member name, and one
+    `ConstantInfo` serves both kinds. The *resolved* shape stays open — it is #416's and
+    turns on SC.13, so take SC.13 first.
 - **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
   gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
   order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
