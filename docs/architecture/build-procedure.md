@@ -128,10 +128,12 @@ squash-deleted branch is never misread as unstarted.
    code. Report a phantom and move to the next candidate instead of building it.
 4. **Safeguards (halt and ask, do not guess) if:**
    - nothing is unblocked (report how many are `done` / blocked / in-flight);
-   - a slice is already `in-flight` that is not yet `done` (finish or review it
-     first — one slice in flight at a time);
    - the manifest references a merged branch for a slice whose dependencies are not
      merged (state drift — surface it).
+
+   An open slice does not halt this: name what is in flight and carry on. A slice waits
+   on another only through `Depends on`, so an unrelated open PR blocking every other
+   row is a stall rather than a safeguard.
 5. **Explain X.** Describe in plain english the work to be done, lead with X's answer
    to the goal test, then wait for approval, clarification, or modification.
 6. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
@@ -146,8 +148,8 @@ squash-deleted branch is never misread as unstarted.
 
 ## Mode B — "review this step's branch"
 
-1. **Identify the slice.** The `in-flight` one, or the id given. Check out its
-   branch.
+1. **Identify the slice.** The id given, or the single `in-flight` one. If more than
+   one is in flight and no id was given, stop and ask which. Check out its branch.
 2. **Cleanroom review.** A fresh reviewer (subagent) sees **only** the goal section
    of this document, the slice's acceptance criteria, the relevant RFC sections, and
    the diff — **not** the implementer's reasoning or this conversation. It adversarially verifies:
@@ -187,11 +189,9 @@ squash-deleted branch is never misread as unstarted.
 - **A row's claim is screened before it is built**, so a phantom — work already
   discharged by something else — is reported rather than discovered mid-slice.
 - The driver **halts and asks** at every fork it cannot resolve safely (unmet
-  precondition, nothing unblocked, a slice already in flight, state drift, a review
-  it cannot make clean).
+  precondition, nothing unblocked, state drift, a review it cannot make clean).
 - **Deterministic branch names** mean the review session always finds the right
   branch from the id.
-- **One slice in flight at a time** keeps "the next step" unambiguous.
 
 ## Relationship to GitHub issues
 

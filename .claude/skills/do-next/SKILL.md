@@ -68,9 +68,11 @@ to have discharged it, and move to the next candidate rather than building it.
 ## 4. Safeguards (halt and report; do NOT proceed) if
 
 - No slice is unblocked — report done / blocked / in-flight counts and stop.
-- Any slice is `in-flight` and not `done` — one slice in flight at a time; finish or
-  review it first.
 - A slice's branch is merged while a dependency is not — surface the state drift.
+
+An open slice does **not** halt this. Name what is in flight so the human can see it,
+and carry on — a slice waits on another only through `Depends on`, and an unrelated
+open PR blocking every other row is a stall, not a safeguard.
 
 ## 5. Explain X
 
