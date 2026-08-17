@@ -90,7 +90,7 @@ re-runs repo-wide as its completion gate.
     SC.11  —     cleanup   Move NameKind into Domain                          —                 —
     SC.6   —     defect    Symbol-name keys -> NameKind::normalize            SC.11             —
     S3.8d  3b    scaffold  Collapse per-kind lookup to one call               SC.5              —
-    S3.8b  3b    scaffold  lookupConstant project reach                       S3.7d,SC.2,SC.6,S3.8d  —
+    S3.8b  3b    scaffold  lookupConstant project reach                       S3.7d,SC.2,SC.6,SC.16,S3.8d  —
     S3.8c  3b    scaffold  Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
     S3.9a  3b    scaffold  Generalize search to a kind parameter              S3.8a,S3.8d       —
     S3.9b  3b    scaffold  Function search + FunctionCandidates migration     S3.9a             —
@@ -320,7 +320,8 @@ Notes:
   - **SC.16** — `SymbolExtractor` emits no `SymbolKind::Constant`, so a global constant in an open document is never indexed and `OpenDocumentBackend::childrenOf` cannot enumerate it, while the on-disk and built-in backends both do.
     `WorkspaceNamespaceSource` already maps the kind, so the gap is upstream in the extractor.
     Found by the S3.8d coverage grid on its first run.
-    Ungated, and ahead of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
+    Ungated itself, and a dependency of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
+    That is a real ordering requirement, so it is in `Depends on` rather than implied by where the row sits.
   - **SC.17** — telling the parts that hold file-derived state that a file changed is written out three times: `DocumentSymbolSink` over a list it is handed, `FilesystemBackend` over its catalog and locator, `CompositeSymbolLocator` over its routes.
     The latter two steer by an `instanceof` test, three in all; the sink instead takes a pre-filtered list, so the composition root already decides who holds state and the knowledge is split between the two styles.
     So adding a holder means finding its parent in that tree by hand, and missing one is silent — the stale value is still served and nothing fails.
