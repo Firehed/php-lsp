@@ -13,10 +13,17 @@ Append later phases as they are reached; do not create the whole tree up front.
 ## Columns
 
 - **ID** — stable slice id; the branch is `slice/<ID>`. An id is assigned when the slice is
-  filed and never changes, because a merged slice is found by it. It therefore does **not**
-  imply execution order: order is this table's row order plus `Depends on`, so a row can be
-  inserted anywhere without renumbering merged work.
+  filed and never changes, because a merged slice is found by it. It carries **no** ordering
+  meaning, and neither does row order, which records when a row was filed: what may start is
+  `Depends on`, and what starts first is `Kind`. So a row can be inserted anywhere without
+  renumbering merged work.
 - **Step** — the plan step in 0002 that owns the acceptance criteria.
+- **Kind** — what the row is, which is what the driver ranks the startable rows by:
+  **`defect`** (behavior is wrong today — two features already disagree), **`cleanup`**
+  (duplication or dead code that predates the plan; no feature is wrong yet), **`scaffold`**
+  (the plan's own construction work — every row with a Step). Ranked `defect`, then
+  `cleanup`, then `scaffold`, so the unblocked cleanup is front-loaded and the guardrail
+  baselines drain before the rework's feature-adjacent reach lands on top of them.
 - **Depends on** — slice ids that must be `done` (merged) first. Two collective forms
   exist so a gate's dependencies cannot go stale as slices are added: **`all Step N`**
   means every *other* slice whose Step column is `N` (sub-steps included, so `all Step
@@ -26,22 +33,22 @@ Append later phases as they are reached; do not create the whole tree up front.
 
 ## Wave 1 — Steps 0, 1, P, 2
 
-    ID     Step  Title                                              Depends on        Closes
-    -----  ----  -------------------------------------------------  ----------------  -------
-    S0.1   0     Instrument parse count/time; run the spike         —                 —
-    S0.2   0     Request-scoped parse dedup (if spike warrants)     S0.1              —
-    S1.1   1     Read ClientCapabilities -> SessionCapabilities     —                 —
-    S1.2   1     Negotiate positionEncoding; convert at the edge    S1.1              #192
-    S1.3   1     Shape hover markup / snippets via capabilities     S1.1              #22
-    S1.4   1     Lifecycle state + malformed-frame robustness       S1.1              —
-    S1.5   1     Position round-trip corpus (regression net)        S1.2              —
-    SP.1   P     Per-surface parity harness + branch-coverage gate  —                 —
-    S2.1   2     Define SymbolSource/SymbolSink + delegating facade SP.1              —
-    S2.2   2     Migrate ClassCandidates -> search                  S2.1              —
-    S2.3   2     Migrate NamespaceCandidates -> childrenOf          S2.1              —
-    S2.4   2     Migrate SymbolResolver class lookups -> lookupClassLike  S2.1        —
-    S2.5   2     Migrate TextDocumentSyncHandler -> SymbolSink      S2.1              —
-    S2.6   2     §4.2 enforcement rule (scoped-exempt FunctionRepo) S2.2,S2.3,S2.4,S2.5  —
+    ID     Step  Kind      Title                                              Depends on        Closes
+    -----  ----  --------  -------------------------------------------------  ----------------  -------
+    S0.1   0     scaffold  Instrument parse count/time; run the spike         —                 —
+    S0.2   0     scaffold  Request-scoped parse dedup (if spike warrants)     S0.1              —
+    S1.1   1     scaffold  Read ClientCapabilities -> SessionCapabilities     —                 —
+    S1.2   1     scaffold  Negotiate positionEncoding; convert at the edge    S1.1              #192
+    S1.3   1     scaffold  Shape hover markup / snippets via capabilities     S1.1              #22
+    S1.4   1     scaffold  Lifecycle state + malformed-frame robustness       S1.1              —
+    S1.5   1     scaffold  Position round-trip corpus (regression net)        S1.2              —
+    SP.1   P     scaffold  Per-surface parity harness + branch-coverage gate  —                 —
+    S2.1   2     scaffold  Define SymbolSource/SymbolSink + delegating facade SP.1              —
+    S2.2   2     scaffold  Migrate ClassCandidates -> search                  S2.1              —
+    S2.3   2     scaffold  Migrate NamespaceCandidates -> childrenOf          S2.1              —
+    S2.4   2     scaffold  Migrate SymbolResolver class lookups -> lookupClassLike  S2.1        —
+    S2.5   2     scaffold  Migrate TextDocumentSyncHandler -> SymbolSink      S2.1              —
+    S2.6   2     scaffold  §4.2 enforcement rule (scoped-exempt FunctionRepo) S2.2,S2.3,S2.4,S2.5  —
 
 Notes:
 
@@ -63,54 +70,54 @@ entries (0002, reframed 2026-08-10); Step Z is the terminal Definition-of-Done
 gate. Steps 3 and 4 each end with a duplication audit (S3.11, S4.7), which Step Z
 re-runs repo-wide as its completion gate.
 
-    ID     Step  Title                                              Depends on        Closes
-    -----  ----  -------------------------------------------------  ----------------  -------
-    S3.1   3a    Existing caches -> replaceable §5.3 seam (verify)  S2.6              —
-    S3.2   3a    Dedupe the duplicate ComposerAutoloadMap           S2.6              —
-    S3.3   3a    Named backends + fixed-precedence composite        S3.1,S3.2         —
-    S3.4   3a    One parse / one write path + consistency check     S3.3              —
-    S3.5   3a    External-file-change invalidation                  S3.3,S3.4         —
-    S3.6   3b    Function-surface golden + Builtin enum oracle      S3.3              —
-    S3.7a  3b    Read autoload.files into ComposerAutoloadMap       S3.3              —
-    S3.7b  3b    Scan a file for the declarations it makes          S3.3              —
-    S3.7c  3b    ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
-    S3.7d  3b    Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
-    S3.7e  3b    Enumerate the derived index in childrenOf          S3.7d             —
-    S3.8a  3b    lookupFunction project reach                       S3.6,S3.7d        —
-    SC.2   —     Retire ScopeFinder's superseded import extraction  —                 —
-    SC.5   —     One declaration finder, not five hand-written      —                 —
-    SC.9   —     Class-like registration -> one declaration scan   —                 —
-    SC.11  —     Move NameKind into Domain                          —                 —
-    SC.6   —     Symbol-name keys -> NameKind::normalize           SC.11             —
-    S3.8d  3b    Collapse per-kind lookup to one call               SC.5              —
-    S3.8b  3b    lookupConstant project reach                       S3.7d,SC.2,SC.6,S3.8d  —
-    S3.8c  3b    Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
-    S3.9a  3b    Generalize search to a kind parameter              S3.8a,S3.8d       —
-    S3.9b  3b    Function search + FunctionCandidates migration     S3.9a             —
-    S3.10  3b    Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
-    S3.11  3     Step 3 duplication audit                          all Step 3        —
-    S4.1   4     TypeClassifier + §4.5/§4.6 static rules            S2.6              —
-    S4.2   4     Extract node locator + scope analyzer              S3.8c,S4.1        —
-    S4.3   4     Extract member-access + call-context detectors     S4.2              —
-    S4.4   4     Extract name-context resolver                      S4.2              —
-    S4.5   4     Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
-    S4.8   4     Bring TypeInference inside the boundary            S4.2              —
-    S4.6   4     SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5,S4.8  —
-    S4.7   4     Step 4 duplication audit                          all Step 4        —
-    SC.1   —     Delete the dead WorkspaceIndexer                    —                 —
-    SC.3   —     SymbolExtractor reads DeclarationScanner            —                 —
-    SC.4   —     Dedupe the hand-rolled file:// conversion           —                 —
-    SC.7   —     Six member-hierarchy walks -> one                   —                 —
-    SC.8   —     Prefix matching: SymbolIndex -> PrefixMatcher       —                 —
-    SC.12  —     Move MemberFilter out of Resolution                 —                 —
-    SC.13  —     Settle Domain->Utility type placement               —                 —
-    SC.14  —     Filter BuiltinBackend class-like lookup to internal —                 —
-    SC.15  —     Oracle corpus: trait adaptations and enums          —                 —
-    SC.16  —     Index an open document's global constants          —                 —
-    SC.17  —     Collapse the hand-routed invalidation fan-out      —                 —
-    SC.18  —     One home for the kind-qualified symbol key         SC.13             —
-    SC.19  —     Own the four unowned baseline entries               —                 —
-    SZ.1   Z     Definition of Done gate + repo-wide dup audit      all prior         —
+    ID     Step  Kind      Title                                              Depends on        Closes
+    -----  ----  --------  -------------------------------------------------  ----------------  -------
+    S3.1   3a    scaffold  Existing caches -> replaceable §5.3 seam (verify)  S2.6              —
+    S3.2   3a    scaffold  Dedupe the duplicate ComposerAutoloadMap           S2.6              —
+    S3.3   3a    scaffold  Named backends + fixed-precedence composite        S3.1,S3.2         —
+    S3.4   3a    scaffold  One parse / one write path + consistency check     S3.3              —
+    S3.5   3a    scaffold  External-file-change invalidation                  S3.3,S3.4         —
+    S3.6   3b    scaffold  Function-surface golden + Builtin enum oracle      S3.3              —
+    S3.7a  3b    scaffold  Read autoload.files into ComposerAutoloadMap       S3.3              —
+    S3.7b  3b    scaffold  Scan a file for the declarations it makes          S3.3              —
+    S3.7c  3b    scaffold  ClassLocator -> kind-agnostic SymbolLocator        S3.3,SC.4         —
+    S3.7d  3b    scaffold  Derived autoload.files index, for all three kinds  S3.7a,S3.7b,S3.7c —
+    S3.7e  3b    scaffold  Enumerate the derived index in childrenOf          S3.7d             —
+    S3.8a  3b    scaffold  lookupFunction project reach                       S3.6,S3.7d        —
+    SC.2   —     defect    Retire ScopeFinder's superseded import extraction  —                 —
+    SC.5   —     defect    One declaration finder, not five hand-written      —                 —
+    SC.9   —     defect    Class-like registration -> one declaration scan    —                 —
+    SC.11  —     cleanup   Move NameKind into Domain                          —                 —
+    SC.6   —     defect    Symbol-name keys -> NameKind::normalize            SC.11             —
+    S3.8d  3b    scaffold  Collapse per-kind lookup to one call               SC.5              —
+    S3.8b  3b    scaffold  lookupConstant project reach                       S3.7d,SC.2,SC.6,SC.16,S3.8d  —
+    S3.8c  3b    scaffold  Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
+    S3.9a  3b    scaffold  Generalize search to a kind parameter              S3.8a,S3.8d       —
+    S3.9b  3b    scaffold  Function search + FunctionCandidates migration     S3.9a             —
+    S3.10  3b    scaffold  Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
+    S3.11  3     scaffold  Step 3 duplication audit                           all Step 3        —
+    S4.1   4     scaffold  TypeClassifier + §4.5/§4.6 static rules            S2.6              —
+    S4.2   4     scaffold  Extract node locator + scope analyzer              S3.8c,S4.1        —
+    S4.3   4     scaffold  Extract member-access + call-context detectors     S4.2              —
+    S4.4   4     scaffold  Extract name-context resolver                      S4.2              —
+    S4.5   4     scaffold  Narrow TextFallbackHelper to FQN recovery          S4.3,S4.4         —
+    S4.8   4     scaffold  Bring TypeInference inside the boundary            S4.2              —
+    S4.6   4     scaffold  SymbolResolver -> glue; CodeResolver positional    S4.2,S4.3,S4.4,S4.5,S4.8  —
+    S4.7   4     scaffold  Step 4 duplication audit                           all Step 4        —
+    SC.1   —     cleanup   Delete the dead WorkspaceIndexer                   —                 —
+    SC.3   —     cleanup   SymbolExtractor reads DeclarationScanner           —                 —
+    SC.4   —     cleanup   Dedupe the hand-rolled file:// conversion          —                 —
+    SC.7   —     defect    Six member-hierarchy walks -> one                  —                 —
+    SC.8   —     cleanup   Prefix matching: SymbolIndex -> PrefixMatcher      —                 —
+    SC.12  —     cleanup   Move MemberFilter out of Resolution                —                 —
+    SC.13  —     cleanup   Settle Domain->Utility type placement              —                 —
+    SC.14  —     defect    Filter BuiltinBackend class-like lookup to internal —                —
+    SC.15  —     cleanup   Oracle corpus: trait adaptations and enums         —                 —
+    SC.16  —     defect    Index an open document's global constants          —                 —
+    SC.17  —     cleanup   Collapse the hand-routed invalidation fan-out      —                 —
+    SC.18  —     cleanup   One home for the kind-qualified symbol key         SC.13             —
+    SC.19  —     cleanup   Own the four unowned baseline entries              —                 —
+    SZ.1   Z     scaffold  Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
 
@@ -194,11 +201,12 @@ Notes:
   predate the plan rather than scaffolding it introduced, so no step's acceptance covers
   them — which is exactly how they went unowned until an audit found them. They are in
   the table so `/do-next` can select them and SZ.1 can require them, not because a step
-  produced them. A removal with no owning slice is a defect; put it here.
-  - **SC.2, SC.5 and SC.6 sit up in the Step 3b rows, not here.** Each is a live defect
-    rather than a redundancy, and row order is what `/do-next` uses to break ties between
-    unblocked slices — in this block they would be picked after S4.1, leaving wrong
-    completion results standing for another slice or two. Keep them ahead of S3.8b; their
+  produced them. A removal with no owning slice is how debt stays unowned; put it here.
+  Their `Kind` splits them: `defect` where behavior is wrong today, `cleanup` where it is
+  redundancy no feature can yet disagree over.
+  - **SC.2, SC.5 and SC.6 sit up in the Step 3b rows, not here** — as a reading aid only.
+    Each is `defect`, so the `Kind` ranking is what puts it ahead of the Step 3b scaffold
+    it must precede; row position carries none of that weight and never should have. Their
     notes stay below with the rest of the `SC.*` explanations.
 
     Their Step column stays `—`, so `all Step 3` does not expand to include them and S3.11
@@ -312,7 +320,8 @@ Notes:
   - **SC.16** — `SymbolExtractor` emits no `SymbolKind::Constant`, so a global constant in an open document is never indexed and `OpenDocumentBackend::childrenOf` cannot enumerate it, while the on-disk and built-in backends both do.
     `WorkspaceNamespaceSource` already maps the kind, so the gap is upstream in the extractor.
     Found by the S3.8d coverage grid on its first run.
-    Ungated, and ahead of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
+    Ungated itself, and a dependency of S3.8b — constant lookup landing on an enumeration blind to open documents would rebuild the §4.2 split on the third symbol namespace.
+    That is a real ordering requirement, so it is in `Depends on` rather than implied by where the row sits.
   - **SC.17** — telling the parts that hold file-derived state that a file changed is written out three times: `DocumentSymbolSink` over a list it is handed, `FilesystemBackend` over its catalog and locator, `CompositeSymbolLocator` over its routes.
     The latter two steer by an `instanceof` test, three in all; the sink instead takes a pre-filtered list, so the composition root already decides who holds state and the knowledge is split between the two styles.
     So adding a holder means finding its parent in that tree by hand, and missing one is silent — the stale value is still served and nothing fails.
