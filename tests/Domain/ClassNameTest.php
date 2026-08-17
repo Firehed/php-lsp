@@ -58,6 +58,15 @@ class ClassNameTest extends TestCase
         self::assertTrue($a->equals($b));
     }
 
+    public function testEqualsIgnoresALeadingSeparator(): void
+    {
+        $a = new ClassName(ClassName::class);
+        /** @var class-string $leadingSeparator */
+        $leadingSeparator = '\\' . ClassName::class;
+        $b = new ClassName($leadingSeparator);
+        self::assertTrue($a->equals($b), 'A leading separator is spelling, not identity');
+    }
+
     public function testFormatReturnsFqn(): void
     {
         $cn = new ClassName(ClassName::class);
