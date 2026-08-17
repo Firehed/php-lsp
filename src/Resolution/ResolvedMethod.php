@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -37,6 +38,11 @@ final readonly class ResolvedMethod implements ResolvedMember, ResolvedCallable
     public function getDeclaringClass(): ClassName
     {
         return $this->info->declaringClass;
+    }
+
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::Method;
     }
 
     public function getName(): MethodName

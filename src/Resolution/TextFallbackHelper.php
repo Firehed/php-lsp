@@ -595,16 +595,28 @@ final class TextFallbackHelper
     {
         $seen = [];
         foreach ($members as $member) {
-            $seen[$member::class . ':' . $member->getName()->name] = true;
+            $seen[self::memberKey($member)] = true;
         }
         foreach ($inherited as $member) {
-            $key = $member::class . ':' . $member->getName()->name;
-            if (!isset($seen[$key])) {
+            $key = self::memberKey($member);
+            if (!array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $members[] = $member;
             }
         }
         return $members;
+    }
+
+    /**
+     * A member's identity within its class: its kind, plus its name under that
+     * kind's case rule, so an override spelled in another case is not a second
+     * member.
+     */
+    private static function memberKey(ResolvedMember $member): string
+    {
+        $kind = $member->getMemberKind();
+
+        return $kind->name . ':' . $kind->normalize($member->getName()->name);
     }
 
     /**
