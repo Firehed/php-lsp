@@ -602,7 +602,7 @@ interface SymbolSource
     // --- Added JIT, when the step that needs them lands (NOT built in Step 2) ---
     // Step 3b (functions/constants gain project reach; a second searchable kind exists):
     //   lookupFunction(FunctionName): ?FunctionInfo
-    //   lookupConstant(ConstantName): ?ConstantInfo
+    //   lookupConstant(GlobalConstantName): ?ConstantInfo
     //   searchClassLikes generalizes to search(string $prefix, NameKind $kind)
     // Future (workspace scope, #264):
     //   locate(QualifiedName, NameKind): ?SymbolDefinition   // kind-neutral def-site, only if a feature needs it
