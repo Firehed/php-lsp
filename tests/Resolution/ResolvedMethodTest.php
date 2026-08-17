@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -75,6 +76,11 @@ class ResolvedMethodTest extends TestCase
 
         self::assertInstanceOf(MethodName::class, $name);
         self::assertSame('doSomething', $name->name);
+    }
+
+    public function testGetMemberKind(): void
+    {
+        self::assertSame(MemberKind::Method, $this->createResolvedMethod()->getMemberKind());
     }
 
     public function testGetVisibility(): void

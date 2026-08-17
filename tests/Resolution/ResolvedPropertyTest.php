@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
@@ -66,6 +67,11 @@ class ResolvedPropertyTest extends TestCase
 
         self::assertInstanceOf(PropertyName::class, $name);
         self::assertSame('name', $name->name);
+    }
+
+    public function testGetMemberKind(): void
+    {
+        self::assertSame(MemberKind::Property, $this->createResolvedProperty()->getMemberKind());
     }
 
     public function testGetVisibility(): void
