@@ -1219,6 +1219,130 @@ final class MemberResolverTest extends TestCase
         self::assertContains($interfaceConst, $result);
     }
 
+    public function testFindMethodMatchesNameCaseInsensitively(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $methodInfo = $this->createMethodInfo('overriddenMethod', Visibility::Public, $className);
+        $classInfo = $this->createClassInfo($className, methods: ['overriddenMethod' => $methodInfo]);
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findMethod($className, new MethodName('OVERRIDDENMETHOD'), Visibility::Public);
+
+        self::assertSame($methodInfo, $result);
+    }
+
+    public function testGetMethodsTreatsCaseVariedOverrideAsOneMethod(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $parentMethod = $this->createMethodInfo('overriddenMethod', Visibility::Public, $parentName);
+        $childMethod = $this->createMethodInfo('OVERRIDDENMETHOD', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, methods: ['overriddenMethod' => $parentMethod]);
+        $childInfo = $this->createClassInfo(
+            $childName,
+            parent: $parentName,
+            methods: ['OVERRIDDENMETHOD' => $childMethod],
+        );
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getMethods($childName, Visibility::Public);
+
+        self::assertSame([$childMethod], $result);
+    }
+
+    public function testFindPropertyMatchesNameCaseSensitively(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $propertyInfo = $this->createPropertyInfo('value', Visibility::Public, $className);
+        $classInfo = $this->createClassInfo($className, properties: ['value' => $propertyInfo]);
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findProperty($className, new PropertyName('VALUE'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testFindConstantMatchesNameCaseSensitively(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $constantInfo = $this->createConstantInfo('VALUE', Visibility::Public, $className);
+        $classInfo = $this->createClassInfo($className, constants: ['VALUE' => $constantInfo]);
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->findConstant($className, new ConstantName('Value'), Visibility::Public);
+
+        self::assertNull($result);
+    }
+
+    public function testFindEnumCaseMatchesNameCaseSensitively(): void
+    {
+        $enumName = new ClassName(self::fakeClass());
+        $caseInfo = $this->createEnumCaseInfo('Draft', $enumName);
+        $enumInfo = $this->createClassInfo($enumName, ClassKind::Enum_, enumCases: ['Draft' => $caseInfo]);
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn($enumInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertNull($resolver->findEnumCase($enumName, new EnumCaseName('DRAFT')));
+    }
+
+    public function testGetConstantsKeepsCaseVariedNamesApart(): void
+    {
+        $parentName = new ClassName(self::fakeClass());
+        $childName = new ClassName(self::fakeClass());
+        $parentConstant = $this->createConstantInfo('VALUE', Visibility::Public, $parentName);
+        $childConstant = $this->createConstantInfo('Value', Visibility::Public, $childName);
+
+        $parentInfo = $this->createClassInfo($parentName, constants: ['VALUE' => $parentConstant]);
+        $childInfo = $this->createClassInfo(
+            $childName,
+            parent: $parentName,
+            constants: ['Value' => $childConstant],
+        );
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $parentName->fqn => $parentInfo,
+                $childName->fqn => $childInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $result = $resolver->getConstants($childName, Visibility::Public);
+
+        self::assertCount(2, $result);
+        self::assertContains($parentConstant, $result);
+        self::assertContains($childConstant, $result);
+    }
+
     public function testIsTraitClassReturnsTrueForTrait(): void
     {
         $traitName = new ClassName(self::fakeClass());

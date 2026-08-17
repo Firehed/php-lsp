@@ -595,16 +595,21 @@ final class TextFallbackHelper
     {
         $seen = [];
         foreach ($members as $member) {
-            $seen[$member::class . ':' . $member->getName()->name] = true;
+            $seen[self::memberKey($member)] = true;
         }
         foreach ($inherited as $member) {
-            $key = $member::class . ':' . $member->getName()->name;
-            if (!isset($seen[$key])) {
+            $key = self::memberKey($member);
+            if (!array_key_exists($key, $seen)) {
                 $seen[$key] = true;
                 $members[] = $member;
             }
         }
         return $members;
+    }
+
+    private static function memberKey(ResolvedMember $member): string
+    {
+        return $member->getMemberKind()->keyFor($member->getName()->name);
     }
 
     /**

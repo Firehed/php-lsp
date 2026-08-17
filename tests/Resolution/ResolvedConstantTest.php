@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\Visibility;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -66,6 +67,11 @@ class ResolvedConstantTest extends TestCase
 
         self::assertInstanceOf(ConstantName::class, $name);
         self::assertSame('MAX_RETRIES', $name->name);
+    }
+
+    public function testGetMemberKind(): void
+    {
+        self::assertSame(MemberKind::Constant, $this->createResolvedConstant()->getMemberKind());
     }
 
     public function testGetVisibility(): void

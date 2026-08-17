@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 
@@ -32,6 +33,11 @@ final readonly class ResolvedConstant implements ResolvedMember
         return $this->info->declaringClass;
     }
 
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::Constant;
+    }
+
     public function getName(): ConstantName
     {
         return $this->info->name;
@@ -39,11 +45,11 @@ final readonly class ResolvedConstant implements ResolvedMember
 
     public function getVisibility(): Visibility
     {
-        return $this->info->visibility;
+        return $this->info->getVisibility();
     }
 
     public function isStatic(): bool
     {
-        return true;
+        return $this->info->isStatic();
     }
 }

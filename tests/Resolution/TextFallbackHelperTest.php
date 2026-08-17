@@ -536,6 +536,53 @@ class TextFallbackHelperTest extends TestCase
         );
     }
 
+    public function testExtractMembersKeepsAMethodAndAPropertyOfTheSameName(): void
+    {
+        $content = $this->loadFixture('TopLevel/method_and_property_same_name.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helperWithReflection->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses fake child class name)
+            new ClassName('Test\\MethodAndPropertySameName'),
+            Visibility::Private,
+            MemberFilter::Instance,
+        );
+
+        $names = self::memberNames($members);
+        $occurrences = count(array_filter($names, static fn (string $name): bool => $name === 'active'));
+        self::assertSame(
+            2,
+            $occurrences,
+            'A method and an inherited property of the same name are two members, not one',
+        );
+    }
+
+    public function testExtractMembersDeduplicatesCaseVariedOverride(): void
+    {
+        $content = $this->loadFixture('TopLevel/case_varied_override_child.php');
+        $document = new TextDocument('file:///test.php', 'php', 1, $content);
+
+        $members = $this->helperWithReflection->extractMembers(
+            $document,
+            // @phpstan-ignore argument.type (test uses fake child class name)
+            new ClassName('Test\\CaseVariedOverrideChild'),
+            Visibility::Private,
+            MemberFilter::Instance,
+        );
+
+        $names = self::memberNames($members);
+        $occurrences = count(array_filter(
+            $names,
+            static fn (string $name): bool => strtolower($name) === 'overriddenmethod',
+        ));
+        self::assertSame(
+            1,
+            $occurrences,
+            'Method names are case-insensitive in PHP, so an override spelled differently is still one method',
+        );
+    }
+
     /**
      * @param list<ResolvedMember> $members
      * @return list<string>

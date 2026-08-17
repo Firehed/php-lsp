@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
@@ -30,6 +31,11 @@ final readonly class ResolvedProperty implements ResolvedMember
     public function getDeclaringClass(): ClassName
     {
         return $this->info->declaringClass;
+    }
+
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::Property;
     }
 
     public function getName(): PropertyName

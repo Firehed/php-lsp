@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -69,6 +70,11 @@ class ResolvedEnumCaseTest extends TestCase
 
         self::assertInstanceOf(EnumCaseName::class, $name);
         self::assertSame('Active', $name->name);
+    }
+
+    public function testGetMemberKind(): void
+    {
+        self::assertSame(MemberKind::EnumCase, $this->createResolvedEnumCase()->getMemberKind());
     }
 
     public function testGetVisibilityAlwaysPublic(): void

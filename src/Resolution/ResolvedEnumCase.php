@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 
@@ -29,6 +30,11 @@ final readonly class ResolvedEnumCase implements ResolvedMember
         return $this->info->declaringClass;
     }
 
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::EnumCase;
+    }
+
     public function getName(): EnumCaseName
     {
         return $this->info->name;
@@ -41,11 +47,11 @@ final readonly class ResolvedEnumCase implements ResolvedMember
 
     public function getVisibility(): Visibility
     {
-        return Visibility::Public;
+        return $this->info->getVisibility();
     }
 
     public function isStatic(): bool
     {
-        return true;
+        return $this->info->isStatic();
     }
 }
