@@ -11,10 +11,14 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\MemberInfo;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Resolution\MemberFilter;
@@ -25,6 +29,11 @@ use Firehed\PhpLsp\Resolution\MemberFilter;
  * Class-like metadata is read through the {@see SymbolSource} seam (RFC 1 §4.2), so
  * the member walk sees the same coverage — open documents overriding the workspace,
  * vendored code, and built-ins — as every other consumer of symbol knowledge.
+ *
+ * Every member kind is answered by the one walk below, over the one type graph
+ * {@see self::supertypes()} defines. What varies between kinds lives in
+ * {@see MemberKind}, so no two kinds can come to disagree about the hierarchy or
+ * about how a member name is matched.
  */
 final class MemberResolver
 {
@@ -33,18 +42,25 @@ final class MemberResolver
     ) {
     }
 
+    public function findConstant(
+        ClassName $class,
+        ConstantName $constant,
+        Visibility $minVisibility,
+    ): ?ConstantInfo {
+        return $this->findMember($class, MemberKind::Constant, ConstantInfo::class, $constant->name, $minVisibility);
+    }
+
+    public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo
+    {
+        return $this->findMember($class, MemberKind::EnumCase, EnumCaseInfo::class, $case->name, Visibility::Public);
+    }
+
     public function findMethod(
         ClassName $class,
         MethodName $method,
         Visibility $minVisibility,
     ): ?MethodInfo {
-        $classInfo = $this->source->lookupClassLike($class);
-        if ($classInfo === null) {
-            return null;
-        }
-
-        $seen = [];
-        return $this->findMethodInHierarchy($classInfo, $method, $minVisibility, $seen, true);
+        return $this->findMember($class, MemberKind::Method, MethodInfo::class, $method->name, $minVisibility);
     }
 
     public function findProperty(
@@ -52,38 +68,35 @@ final class MemberResolver
         PropertyName $property,
         Visibility $minVisibility,
     ): ?PropertyInfo {
-        $classInfo = $this->source->lookupClassLike($class);
-        if ($classInfo === null) {
-            return null;
-        }
-
-        $seen = [];
-        return $this->findPropertyInHierarchy($classInfo, $property, $minVisibility, $seen, true);
+        return $this->findMember($class, MemberKind::Property, PropertyInfo::class, $property->name, $minVisibility);
     }
 
-    public function findConstant(
-        ClassName $class,
-        ConstantName $constant,
-        Visibility $minVisibility,
-    ): ?ConstantInfo {
-        $classInfo = $this->source->lookupClassLike($class);
-        if ($classInfo === null) {
-            return null;
-        }
-
-        $seen = [];
-        return $this->findConstantInHierarchy($classInfo, $constant, $minVisibility, $seen, true);
-    }
-
-    public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo
+    /**
+     * @return list<ConstantInfo>
+     */
+    public function getConstants(ClassName $class, Visibility $minVisibility): array
     {
-        $classInfo = $this->source->lookupClassLike($class);
-        return $classInfo?->enumCases[$case->name] ?? null;
+        return $this->collectMembers(
+            $class,
+            MemberKind::Constant,
+            ConstantInfo::class,
+            $minVisibility,
+            MemberFilter::All,
+        );
     }
 
-    public function isTraitClass(ClassName $class): bool
+    /**
+     * @return list<EnumCaseInfo>
+     */
+    public function getEnumCases(ClassName $class): array
     {
-        return $this->source->lookupClassLike($class)?->kind === ClassKind::Trait_;
+        return $this->collectMembers(
+            $class,
+            MemberKind::EnumCase,
+            EnumCaseInfo::class,
+            Visibility::Public,
+            MemberFilter::All,
+        );
     }
 
     /**
@@ -94,16 +107,7 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        $classInfo = $this->source->lookupClassLike($class);
-        if ($classInfo === null) {
-            return [];
-        }
-
-        $methods = [];
-        $seen = [];
-        $this->collectMethods($classInfo, $minVisibility, $filter, $methods, $seen, true);
-
-        return array_values($methods);
+        return $this->collectMembers($class, MemberKind::Method, MethodInfo::class, $minVisibility, $filter);
     }
 
     /**
@@ -114,220 +118,130 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        $classInfo = $this->source->lookupClassLike($class);
-        if ($classInfo === null) {
-            return [];
-        }
+        return $this->collectMembers($class, MemberKind::Property, PropertyInfo::class, $minVisibility, $filter);
+    }
 
-        $properties = [];
-        $seen = [];
-        $this->collectProperties($classInfo, $minVisibility, $filter, $properties, $seen, true);
-
-        return array_values($properties);
+    public function isTraitClass(ClassName $class): bool
+    {
+        return $this->source->lookupClassLike($class)?->kind === ClassKind::Trait_;
     }
 
     /**
-     * @return list<ConstantInfo>
+     * Every member of $kind visible from $class, nearest declaration winning.
+     *
+     * @template T of MemberInfo
+     * @param class-string<T> $memberType The type $kind is stored as.
+     * @return list<T>
      */
-    public function getConstants(ClassName $class, Visibility $minVisibility): array
+    private function collectMembers(
+        ClassName $class,
+        MemberKind $kind,
+        string $memberType,
+        Visibility $minVisibility,
+        MemberFilter $filter,
+    ): array {
+        $collected = [];
+        foreach ($this->hierarchy($class) as [$classInfo, $isOriginClass]) {
+            foreach ($kind->membersOf($classInfo) as $name => $member) {
+                $key = $kind->normalize($name);
+                if (array_key_exists($key, $collected) || !$member instanceof $memberType) {
+                    continue;
+                }
+                if ($this->isVisible($member, $minVisibility, $filter, $isOriginClass)) {
+                    $collected[$key] = $member;
+                }
+            }
+        }
+
+        return array_values($collected);
+    }
+
+    /**
+     * @template T of MemberInfo
+     * @param class-string<T> $memberType The type $kind is stored as.
+     * @return ?T
+     */
+    private function findMember(
+        ClassName $class,
+        MemberKind $kind,
+        string $memberType,
+        string $name,
+        Visibility $minVisibility,
+    ): ?MemberInfo {
+        $wanted = $kind->normalize($name);
+        foreach ($this->hierarchy($class) as [$classInfo, $isOriginClass]) {
+            foreach ($kind->membersOf($classInfo) as $declared => $member) {
+                if ($kind->normalize($declared) !== $wanted || !$member instanceof $memberType) {
+                    continue;
+                }
+                if ($this->isVisible($member, $minVisibility, MemberFilter::All, $isOriginClass)) {
+                    return $member;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * $class and every type it inherits members from, in PHP's resolution order,
+     * each paired with its isOriginClass flag. A type reached by more than one
+     * edge is visited once; an unresolvable one is skipped.
+     *
+     * @return iterable<array{ClassInfo, bool}>
+     */
+    private function hierarchy(ClassName $class): iterable
     {
         $classInfo = $this->source->lookupClassLike($class);
         if ($classInfo === null) {
-            return [];
+            return;
         }
 
-        $constants = [];
         $seen = [];
-        $this->collectConstants($classInfo, $minVisibility, $constants, $seen, true);
-
-        return array_values($constants);
+        yield from $this->descend($classInfo, true, $seen);
     }
 
     /**
-     * @return list<EnumCaseInfo>
+     * @param array<string, true> $seen
+     * @return iterable<array{ClassInfo, bool}>
      */
-    public function getEnumCases(ClassName $class): array
+    private function descend(ClassInfo $classInfo, bool $isOriginClass, array &$seen): iterable
     {
-        $classInfo = $this->source->lookupClassLike($class);
-        if ($classInfo === null) {
-            return [];
-        }
-
-        return array_values($classInfo->enumCases);
-    }
-
-    /**
-     * @param array<string, true> $seen
-     */
-    private function findMethodInHierarchy(
-        ClassInfo $classInfo,
-        MethodName $method,
-        Visibility $minVisibility,
-        array &$seen,
-        bool $isOriginClass,
-    ): ?MethodInfo {
-        $fqn = $classInfo->name->fqn;
-        if (array_key_exists($fqn, $seen)) {
-            return null;
-        }
-        $seen[$fqn] = true;
-
-        foreach ($classInfo->methods as $methodInfo) {
-            if (!$methodInfo->name->equals($method)) {
-                continue;
-            }
-            if ($this->isAccessible($methodInfo->visibility, $minVisibility, $isOriginClass)) {
-                return $methodInfo;
-            }
-        }
-
-        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
-            $result = $this->findMethodInHierarchy($superInfo, $method, $minVisibility, $seen, $superIsOrigin);
-            if ($result !== null) {
-                return $result;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<string, true> $seen
-     */
-    private function findPropertyInHierarchy(
-        ClassInfo $classInfo,
-        PropertyName $property,
-        Visibility $minVisibility,
-        array &$seen,
-        bool $isOriginClass,
-    ): ?PropertyInfo {
-        $fqn = $classInfo->name->fqn;
-        if (array_key_exists($fqn, $seen)) {
-            return null;
-        }
-        $seen[$fqn] = true;
-
-        if (array_key_exists($property->name, $classInfo->properties)) {
-            $propInfo = $classInfo->properties[$property->name];
-            if ($this->isAccessible($propInfo->visibility, $minVisibility, $isOriginClass)) {
-                return $propInfo;
-            }
-        }
-
-        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
-            $result = $this->findPropertyInHierarchy($superInfo, $property, $minVisibility, $seen, $superIsOrigin);
-            if ($result !== null) {
-                return $result;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<string, true> $seen
-     */
-    private function findConstantInHierarchy(
-        ClassInfo $classInfo,
-        ConstantName $constant,
-        Visibility $minVisibility,
-        array &$seen,
-        bool $isOriginClass,
-    ): ?ConstantInfo {
-        $fqn = $classInfo->name->fqn;
-        if (array_key_exists($fqn, $seen)) {
-            return null;
-        }
-        $seen[$fqn] = true;
-
-        if (array_key_exists($constant->name, $classInfo->constants)) {
-            $constInfo = $classInfo->constants[$constant->name];
-            if ($this->isAccessible($constInfo->visibility, $minVisibility, $isOriginClass)) {
-                return $constInfo;
-            }
-        }
-
-        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
-            $result = $this->findConstantInHierarchy($superInfo, $constant, $minVisibility, $seen, $superIsOrigin);
-            if ($result !== null) {
-                return $result;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<string, MethodInfo> $methods
-     * @param array<string, true> $seen
-     */
-    private function collectMethods(
-        ClassInfo $classInfo,
-        Visibility $minVisibility,
-        MemberFilter $filter,
-        array &$methods,
-        array &$seen,
-        bool $isOriginClass,
-    ): void {
-        $fqn = $classInfo->name->fqn;
-        if (array_key_exists($fqn, $seen)) {
+        $key = NameKind::ClassLike->normalize(QualifiedName::fromClassName($classInfo->name));
+        if (array_key_exists($key, $seen)) {
             return;
         }
-        $seen[$fqn] = true;
+        $seen[$key] = true;
 
-        foreach ($classInfo->methods as $methodInfo) {
-            $key = strtolower($methodInfo->name->name);
-            if (array_key_exists($key, $methods)) {
-                continue;
-            }
-            if (!$this->matchesFilter($methodInfo->isStatic, $filter)) {
-                continue;
-            }
-            if (!$this->isAccessible($methodInfo->visibility, $minVisibility, $isOriginClass)) {
-                continue;
-            }
-            $methods[$key] = $methodInfo;
-        }
+        yield [$classInfo, $isOriginClass];
 
         foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
-            $this->collectMethods($superInfo, $minVisibility, $filter, $methods, $seen, $superIsOrigin);
+            yield from $this->descend($superInfo, $superIsOrigin, $seen);
         }
     }
 
-    /**
-     * @param array<string, PropertyInfo> $properties
-     * @param array<string, true> $seen
-     */
-    private function collectProperties(
-        ClassInfo $classInfo,
+    private function isVisible(
+        MemberInfo $member,
         Visibility $minVisibility,
         MemberFilter $filter,
-        array &$properties,
-        array &$seen,
         bool $isOriginClass,
-    ): void {
-        $fqn = $classInfo->name->fqn;
-        if (array_key_exists($fqn, $seen)) {
-            return;
-        }
-        $seen[$fqn] = true;
-
-        foreach ($classInfo->properties as $key => $propInfo) {
-            if (array_key_exists($key, $properties)) {
-                continue;
-            }
-            if (!$this->matchesFilter($propInfo->isStatic, $filter)) {
-                continue;
-            }
-            if (!$this->isAccessible($propInfo->visibility, $minVisibility, $isOriginClass)) {
-                continue;
-            }
-            $properties[$key] = $propInfo;
+    ): bool {
+        $matchesFilter = match ($filter) {
+            MemberFilter::All => true,
+            MemberFilter::Static => $member->isStatic(),
+            MemberFilter::Instance => !$member->isStatic(),
+        };
+        if (!$matchesFilter) {
+            return false;
         }
 
-        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
-            $this->collectProperties($superInfo, $minVisibility, $filter, $properties, $seen, $superIsOrigin);
+        $visibility = $member->getVisibility();
+        if (!$visibility->isAccessibleFrom($minVisibility)) {
+            return false;
         }
+
+        // A private member is only reachable from the class that declares it.
+        return $visibility !== Visibility::Private || $isOriginClass;
     }
 
     /**
@@ -364,62 +278,5 @@ final class MemberResolver
         }
 
         return $supertypes;
-    }
-
-    private function matchesFilter(bool $isStatic, MemberFilter $filter): bool
-    {
-        return match ($filter) {
-            MemberFilter::All => true,
-            MemberFilter::Static => $isStatic,
-            MemberFilter::Instance => !$isStatic,
-        };
-    }
-
-    /**
-     * @param array<string, ConstantInfo> $constants
-     * @param array<string, true> $seen
-     */
-    private function collectConstants(
-        ClassInfo $classInfo,
-        Visibility $minVisibility,
-        array &$constants,
-        array &$seen,
-        bool $isOriginClass,
-    ): void {
-        $fqn = $classInfo->name->fqn;
-        if (array_key_exists($fqn, $seen)) {
-            return;
-        }
-        $seen[$fqn] = true;
-
-        foreach ($classInfo->constants as $key => $constInfo) {
-            if (array_key_exists($key, $constants)) {
-                continue;
-            }
-            if (!$this->isAccessible($constInfo->visibility, $minVisibility, $isOriginClass)) {
-                continue;
-            }
-            $constants[$key] = $constInfo;
-        }
-
-        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
-            $this->collectConstants($superInfo, $minVisibility, $constants, $seen, $superIsOrigin);
-        }
-    }
-
-    private function isAccessible(
-        Visibility $memberVisibility,
-        Visibility $minVisibility,
-        bool $isOriginClass,
-    ): bool {
-        if (!$memberVisibility->isAccessibleFrom($minVisibility)) {
-            return false;
-        }
-
-        if ($memberVisibility === Visibility::Private) {
-            return $isOriginClass;
-        }
-
-        return true;
     }
 }
