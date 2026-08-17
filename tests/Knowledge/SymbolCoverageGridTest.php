@@ -60,10 +60,6 @@ final class SymbolCoverageGridTest extends TestCase
         // import with it.
         'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
         'BuiltinBackend|ClassLike|search' => '#23',
-
-        // `SymbolExtractor` emits no `SymbolKind::Constant`, so an open document's
-        // constants never reach the index this reads. Found by this grid.
-        'OpenDocumentBackend|Constant|childrenOf' => 'SC.16',
     ];
 
     /**

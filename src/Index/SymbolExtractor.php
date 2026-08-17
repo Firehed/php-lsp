@@ -54,6 +54,15 @@ final class SymbolExtractor
             );
         }
 
+        foreach ($declarations->constants as $declaration) {
+            $symbols[] = new Symbol(
+                name: $declaration->name->shortName,
+                fullyQualifiedName: $declaration->name->fullyQualifiedName(),
+                kind: SymbolKind::Constant,
+                location: self::locate($document, $declaration->node),
+            );
+        }
+
         // Callers index `$symbols[0]` as the file's first declaration, which the two
         // separate scanner lists would otherwise interleave by kind rather than by
         // where each is written.
