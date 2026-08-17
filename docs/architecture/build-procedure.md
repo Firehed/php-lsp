@@ -121,22 +121,27 @@ squash-deleted branch is never misread as unstarted.
    with origin; `composer test` green on `main`. If any fails, report and stop.
 2. **Compute X.** Parse the manifest; compute each slice's status from merged-PR
    state; `X` = first `todo` whose dependencies are all `done`.
-3. **Safeguards (halt and ask, do not guess) if:**
+3. **Screen X for phantoms.** A row states its work in prose, which goes stale — it can
+   claim a mechanism that already exists or a removal already made, and selecting one
+   costs a session before anyone notices. If X names baseline entries it drains, confirm
+   they are still there; if it drains none, spot-check its central claim against the
+   code. Report a phantom and move to the next candidate instead of building it.
+4. **Safeguards (halt and ask, do not guess) if:**
    - nothing is unblocked (report how many are `done` / blocked / in-flight);
    - a slice is already `in-flight` that is not yet `done` (finish or review it
      first — one slice in flight at a time);
    - the manifest references a merged branch for a slice whose dependencies are not
      merged (state drift — surface it).
-4. **Explain X.** Describe in plain english the work to be done, lead with X's answer
+5. **Explain X.** Describe in plain english the work to be done, lead with X's answer
    to the goal test, then wait for approval, clarification, or modification.
-5. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
+6. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
    `composer test`; open a PR citing X. Build what X's acceptance requires and
    nothing beyond it — a problem noticed in passing is reported, not solved (an
    `SC.*` row for duplication, a GitHub issue plus a can-the-next-slice-proceed
    call for a defect, a line in the PR body for tidiness).
-6. Stop. Report the PR and the *next* computed slice, so the human knows what a
+7. Stop. Report the PR and the *next* computed slice, so the human knows what a
    follow-up "do the next step" would pick up.
 
 ## Mode B — "review this step's branch"
@@ -179,6 +184,8 @@ squash-deleted branch is never misread as unstarted.
 
 - Next step is **computed from git truth**, so a cold session cannot pick the wrong
   one from a stale note.
+- **A row's claim is screened before it is built**, so a phantom — work already
+  discharged by something else — is reported rather than discovered mid-slice.
 - The driver **halts and asks** at every fork it cannot resolve safely (unmet
   precondition, nothing unblocked, a slice already in flight, state drift, a review
   it cannot make clean).

@@ -50,14 +50,29 @@ project's **Squash and Merge**: a squash rewrites the branch into one new commit
 `main`, so an ancestry check would report squashed slices as `todo` forever. Check
 `done` before `in-flight` so a squash-deleted branch is read as done, not unstarted.
 
-## 3. Safeguards (halt and report; do NOT proceed) if
+## 3. Check X for phantoms
+
+A row states its work in prose, and prose goes stale: a row can claim a mechanism that
+already exists, or a removal already made. Selecting one costs a whole session before
+anyone notices, which has happened.
+
+Most cleanup rows are baseline drains, and the baseline is machine-readable, so check
+before offering: if X names files or entries it drains, confirm those entries are still
+in `phpstan-baseline.neon` / `deptrac.baseline.yaml`. If X drains no baseline entry,
+spot-check its central claim against the code — one `grep` is enough; the failure mode
+is a row asserting that something is absent when it is present.
+
+A row whose claim no longer holds is a **phantom**. Report it as such, say what appears
+to have discharged it, and move to the next candidate rather than building it.
+
+## 4. Safeguards (halt and report; do NOT proceed) if
 
 - No slice is unblocked — report done / blocked / in-flight counts and stop.
 - Any slice is `in-flight` and not `done` — one slice in flight at a time; finish or
   review it first.
 - A slice's branch is merged while a dependency is not — surface the state drift.
 
-## 4. Explain X
+## 5. Explain X
 
 Read X's plan step in `docs/architecture/0002-execution-plan.md` for its acceptance
 criteria, and the RFC sections it cites in `0001-foundational-architecture.md`. Then
@@ -69,7 +84,7 @@ disagree about without X, or which scheduled feature X unblocks. If you cannot w
 that sentence from the plan, **stop and ask** — a slice whose purpose you cannot state
 is one you will over- or under-build.
 
-## 5. Implement X
+## 6. Implement X
 
 - Create `slice/<X>` off `main`.
 - TDD:
@@ -88,7 +103,7 @@ is one you will over- or under-build.
 - If you hit a fundamental design question the plan does not answer, **STOP and ask**
   — do not invent an interpretation.
 
-## 6. Open the PR and report
+## 7. Open the PR and report
 
 - PR title carries no issue number; the body opens with what two features could have
   disagreed about without this change (or what it unblocks), then cites the slice id,
