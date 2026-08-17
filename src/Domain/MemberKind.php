@@ -39,11 +39,22 @@ enum MemberKind
     }
 
     /**
+     * A member's identity within a class-like: its kind, plus its name under
+     * that kind's case rule. Two members collide only when both match.
+     */
+    public function keyFor(string $name): string
+    {
+        return $this->name . ':' . $this->normalize($name);
+    }
+
+    /**
      * The name as a lookup key. PHP matches method names case-insensitively;
      * every other member kind is matched letter-for-letter.
      */
     public function normalize(string $name): string
     {
-        return ($this === self::Method ? NameCase::Insensitive : NameCase::Sensitive)->fold($name);
+        $rule = $this === self::Method ? NameCase::Insensitive : NameCase::Sensitive;
+
+        return $rule->normalize($name);
     }
 }

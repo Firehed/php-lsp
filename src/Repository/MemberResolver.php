@@ -143,7 +143,7 @@ final class MemberResolver
         $collected = [];
         foreach ($this->hierarchy($class) as [$classInfo, $isOriginClass]) {
             foreach ($kind->membersOf($classInfo) as $name => $member) {
-                $key = $kind->normalize($name);
+                $key = $kind->keyFor($name);
                 if (array_key_exists($key, $collected) || !$member instanceof $memberType) {
                     continue;
                 }
@@ -168,10 +168,10 @@ final class MemberResolver
         string $name,
         Visibility $minVisibility,
     ): ?MemberInfo {
-        $wanted = $kind->normalize($name);
+        $wanted = $kind->keyFor($name);
         foreach ($this->hierarchy($class) as [$classInfo, $isOriginClass]) {
             foreach ($kind->membersOf($classInfo) as $declared => $member) {
-                if ($kind->normalize($declared) !== $wanted || !$member instanceof $memberType) {
+                if ($kind->keyFor($declared) !== $wanted || !$member instanceof $memberType) {
                     continue;
                 }
                 if ($this->isVisible($member, $minVisibility, MemberFilter::All, $isOriginClass)) {

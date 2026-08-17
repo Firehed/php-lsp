@@ -607,16 +607,9 @@ final class TextFallbackHelper
         return $members;
     }
 
-    /**
-     * A member's identity within its class: its kind, plus its name under that
-     * kind's case rule, so an override spelled in another case is not a second
-     * member.
-     */
     private static function memberKey(ResolvedMember $member): string
     {
-        $kind = $member->getMemberKind();
-
-        return $kind->name . ':' . $kind->normalize($member->getName()->name);
+        return $member->getMemberKind()->keyFor($member->getName()->name);
     }
 
     /**

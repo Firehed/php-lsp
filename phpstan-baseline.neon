@@ -13,7 +13,7 @@ parameters:
 			path: src/Completion/NamedArgumentCandidates.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, which case rule applies to a name is NameKind \(symbols\) or MemberKind \(members\); applying it is NameCase; other uses may be allowlisted here consciously\.$#'
+			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 2
 			path: src/Completion/PrefixMatcher.php
@@ -25,7 +25,7 @@ parameters:
 			path: src/Handler/CompletionHandler.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, which case rule applies to a name is NameKind \(symbols\) or MemberKind \(members\); applying it is NameCase; other uses may be allowlisted here consciously\.$#'
+			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 2
 			path: src/Index/SymbolIndex.php
@@ -61,7 +61,7 @@ parameters:
 			path: src/Repository/DefaultFunctionRepository.php
 
 		-
-			message: '#^Calling strcasecmp\(\) is forbidden, which case rule applies to a name is NameKind \(symbols\) or MemberKind \(members\); applying it is NameCase; other uses may be allowlisted here consciously\.$#'
+			message: '#^Calling strcasecmp\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 1
 			path: src/Resolution/ReferenceResolver.php
@@ -73,7 +73,7 @@ parameters:
 			path: src/Resolution/SymbolResolver.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, which case rule applies to a name is NameKind \(symbols\) or MemberKind \(members\); applying it is NameCase; other uses may be allowlisted here consciously\.$#'
+			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 1
 			path: src/Resolution/SymbolResolver.php
@@ -109,7 +109,7 @@ parameters:
 			path: src/Resolution/SymbolResolver.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, which case rule applies to a name is NameKind \(symbols\) or MemberKind \(members\); applying it is NameCase; other uses may be allowlisted here consciously\.$#'
+			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 2
 			path: src/Resolution/TextFallbackHelper.php

@@ -52,11 +52,11 @@ final readonly class ResolvedMethod implements ResolvedMember, ResolvedCallable
 
     public function getVisibility(): Visibility
     {
-        return $this->info->visibility;
+        return $this->info->getVisibility();
     }
 
     public function isStatic(): bool
     {
-        return $this->info->isStatic;
+        return $this->info->isStatic();
     }
 }

@@ -45,11 +45,11 @@ final readonly class ResolvedProperty implements ResolvedMember
 
     public function getVisibility(): Visibility
     {
-        return $this->info->visibility;
+        return $this->info->getVisibility();
     }
 
     public function isStatic(): bool
     {
-        return $this->info->isStatic;
+        return $this->info->isStatic();
     }
 }
