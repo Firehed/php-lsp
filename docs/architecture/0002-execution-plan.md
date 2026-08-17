@@ -926,8 +926,8 @@ never warms. The first-touch column is recorded so that a later reader does not
 mistake a cold-start measurement for a regression.
 
 One caveat on the completion rows: they do not vary between the columns today only
-because `SymbolIndex` holds open documents alone — `WorkspaceIndexer` is not wired
-into `Server.php`. Class-position completion resolves every candidate through the
+because `SymbolIndex` holds open documents alone; no workspace index feeds it.
+Class-position completion resolves every candidate through the
 repository, so if a workspace index later feeds it, its first-touch column grows
 with the index while its steady state does not.
 
