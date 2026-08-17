@@ -82,15 +82,30 @@ happens outside the tool.
     (`gh pr list --state merged --head slice/<id>`).
   - `in-flight` — an **open PR** exists for `slice/<id>`.
   - `todo` — neither.
-- The **next slice** = the first `todo` in the manifest whose dependencies are all
-  `done`. A dependency is normally a slice id; the audit/DoD gates instead use a
-  collective form, resolved before the check: **`all Step N`** expands to every other
-  slice whose Step column is `N` (sub-steps included), and **`all prior`** to every
-  other slice in the table. A gate depends on its whole section, so it cannot run
-  while any slice of that section is unbuilt — which an id chain does not guarantee.
+- The **startable set** = every `todo` whose dependencies are all `done`. A dependency
+  is normally a slice id; the audit/DoD gates instead use a collective form, resolved
+  before the check: **`all Step N`** expands to every other slice whose Step column is
+  `N` (sub-steps included), and **`all prior`** to every other slice in the table. A
+  gate depends on its whole section, so it cannot run while any slice of that section
+  is unbuilt — which an id chain does not guarantee.
+- The **next slice** = the highest-ranked member of that set, by the manifest's `Kind`
+  column: **`defect`** first, then **`cleanup`**, then **`scaffold`**; within a kind,
+  the row draining the most guardrail-baseline entries, and row order last. Report the
+  rest of the set alongside it — an override is a slice id said out loud, not a reason
+  to leave the pick unmade.
 
 Because status is computed from merge reality, a cold session cannot be misled by a
 stale field, and nothing needs updating by hand.
+
+**Why `Kind` outranks row order.** Row order records when a row was filed, so once
+sections run out of sequence — which the `SC.*` rows invite — picking the first
+startable row is an arbitrary choice presented as a derived one. `Kind` is the
+priority, stated once: fix what is already wrong, then front-load the unblocked
+cleanup, then build. The guardrail baselines are the reason. Most of what they still
+freeze is the M×N traversal and text-pattern debt this rework exists to remove, so
+draining every entry that is reachable *now* keeps the feature-adjacent reach still
+scheduled from landing on top of it. The rest of the drain is gated on that reach and
+comes with it.
 
 **Squash-merge safety.** Status is derived from GitHub's **PR merge state**, which is
 set identically for squash, rebase, and merge-commit — not from git commit ancestry.
@@ -120,7 +135,8 @@ squash-deleted branch is never misread as unstarted.
 1. **Preconditions (halt if unmet).** Working tree clean; on `main`; `main` synced
    with origin; `composer test` green on `main`. If any fails, report and stop.
 2. **Compute X.** Parse the manifest; compute each slice's status from merged-PR
-   state; `X` = first `todo` whose dependencies are all `done`.
+   state; the startable set is every `todo` whose dependencies are all `done`; `X` is
+   its highest-ranked member by `Kind` (`defect`, then `cleanup`, then `scaffold`).
 3. **Screen X for phantoms.** A row states its work in prose, which goes stale — it can
    claim a mechanism that already exists or a removal already made, and selecting one
    costs a session before anyone notices. If X names baseline entries it drains, confirm
@@ -135,7 +151,8 @@ squash-deleted branch is never misread as unstarted.
    on another only through `Depends on`, so an unrelated open PR blocking every other
    row is a stall rather than a safeguard.
 5. **Explain X.** Describe in plain english the work to be done, lead with X's answer
-   to the goal test, then wait for approval, clarification, or modification.
+   to the goal test, and name the rest of the startable set in one line each so an
+   override is cheap. Then wait for approval, clarification, or modification.
 6. **Implement X.** Create `slice/<X>`; work the plan-step's acceptance under TDD
    (for a behavior-preserving step: parity fixtures first; for a step that
    introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
@@ -184,8 +201,9 @@ squash-deleted branch is never misread as unstarted.
 
 ## The "X is always correct" guarantee, in one place
 
-- Next step is **computed from git truth**, so a cold session cannot pick the wrong
-  one from a stale note.
+- What may start is **computed from git truth**, so a cold session cannot pick the
+  wrong one from a stale note; what starts first is **read from `Kind`**, so the
+  priority is stated in the manifest rather than implied by row order.
 - **A row's claim is screened before it is built**, so a phantom — work already
   discharged by something else — is reported rather than discovered mid-slice.
 - The driver **halts and asks** at every fork it cannot resolve safely (unmet
