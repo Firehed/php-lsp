@@ -52,8 +52,10 @@ enum NameKind
      */
     public function normalize(QualifiedName $name): string
     {
-        $shortName = $this->isCaseSensitive() ? $name->shortName : strtolower($name->shortName);
+        $shortName = ($this->isCaseSensitive() ? NameCase::Sensitive : NameCase::Insensitive)
+            ->fold($name->shortName);
 
-        return (new QualifiedName(strtolower($name->namespace), $shortName))->fullyQualifiedName();
+        return (new QualifiedName(NameCase::Insensitive->fold($name->namespace), $shortName))
+            ->fullyQualifiedName();
     }
 }

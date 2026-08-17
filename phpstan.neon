@@ -61,9 +61,9 @@ parameters:
                 - 'strcasecmp()'
                 - 'strncasecmp()'
                 - 'mb_strtolower()'
-            message: 'case rules for symbol names live in NameKind; non-symbol uses may be allowlisted here consciously'
+            message: 'which case rule applies to a name is NameKind (symbols) or MemberKind (members); applying it is NameCase; other uses may be allowlisted here consciously'
             allowIn:
-                - src/Domain/NameKind.php
+                - src/Domain/NameCase.php
                 - src/Utility/NamespacePath.php # namespace paths are case-insensitive for every kind; not a symbol name
                 - src/Transport/MessageReader.php # HTTP header names
                 - src/Domain/Visibility.php # visibility keywords
