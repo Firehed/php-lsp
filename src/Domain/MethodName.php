@@ -16,6 +16,6 @@ final readonly class MethodName
 
     public function equals(self $other): bool
     {
-        return strcasecmp($this->name, $other->name) === 0;
+        return MemberKind::Method->normalize($this->name) === MemberKind::Method->normalize($other->name);
     }
 }
