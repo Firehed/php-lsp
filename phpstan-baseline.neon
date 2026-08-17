@@ -31,18 +31,6 @@ parameters:
 			path: src/Index/SymbolIndex.php
 
 		-
-			message: '#^Calling file_get_contents\(\) is forbidden, filesystem access is confined\: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Index/WorkspaceIndexer.php
-
-		-
-			message: '#^Calling is_dir\(\) is forbidden, filesystem access is confined\: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Index/WorkspaceIndexer.php
-
-		-
 			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
 			identifier: disallowed.class
 			count: 1
