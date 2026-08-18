@@ -31,6 +31,7 @@ class ConstantInfoTest extends TestCase
         self::assertSame('/** Maximum size */', $constant->docblock);
         self::assertSame('/path/to/file.php', $constant->file);
         self::assertSame(5, $constant->line);
+        self::assertNotNull($constant->declaringClass, 'class constant has a declaring class');
         self::assertSame(ConstantInfo::class, $constant->declaringClass->fqn);
     }
 
@@ -96,5 +97,37 @@ class ConstantInfoTest extends TestCase
         );
 
         self::assertSame('private const INTERNAL', $constant->format());
+    }
+
+    public function testFormatGlobalConstant(): void
+    {
+        $constant = new ConstantInfo(
+            name: new ConstantName('DEBUG'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: null,
+        );
+
+        self::assertSame('const DEBUG', $constant->format(), 'global constants omit visibility');
+    }
+
+    public function testFormatGlobalConstantWithType(): void
+    {
+        $constant = new ConstantInfo(
+            name: new ConstantName('MAX_SIZE'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: new PrimitiveType('int'),
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: null,
+        );
+
+        self::assertSame('const int MAX_SIZE', $constant->format(), 'global constants show type after const');
     }
 }

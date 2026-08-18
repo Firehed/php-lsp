@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\Location;
@@ -101,6 +102,59 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertNull(
             $source->lookupFunction(FunctionName::fromFullyQualified('App\absent')),
             'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupConstantTakesTheFirstBackendThatAnswers(): void
+    {
+        $open = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'open.php')]);
+        $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
+        $source = new CompositeSymbolSource([$open, $vendor]);
+
+        $info = $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\DEBUG'));
+
+        self::assertNotNull($info, 'the constant is declared, so the lookup must resolve');
+        self::assertSame(
+            'open.php',
+            $info->file,
+            'the earlier backend must win: an unsaved edit overrides the file it shadows (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupConstantFallsThroughToALaterBackend(): void
+    {
+        $open = new FakeSymbolBackend();
+        $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
+        $source = new CompositeSymbolSource([$open, $vendor]);
+
+        $info = $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\DEBUG'));
+
+        self::assertNotNull($info, 'a later backend must answer when an earlier one cannot');
+        self::assertSame('vendor.php', $info->file, 'the answer must come from the backend that declares it');
+    }
+
+    public function testLookupConstantReturnsNullWhenNoBackendAnswers(): void
+    {
+        $source = new CompositeSymbolSource([new FakeSymbolBackend(), new FakeSymbolBackend()]);
+
+        self::assertNull(
+            $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\ABSENT')),
+            'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupConstantIsCaseSensitive(): void
+    {
+        $backend = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'file.php')]);
+        $source = new CompositeSymbolSource([$backend]);
+
+        self::assertNotNull(
+            $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\DEBUG')),
+            'exact case match must resolve',
+        );
+        self::assertNull(
+            $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\debug')),
+            'constant names are case-sensitive, so a case mismatch must not resolve',
         );
     }
 

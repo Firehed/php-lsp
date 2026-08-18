@@ -7,10 +7,13 @@ namespace Firehed\PhpLsp\Tests;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\Visibility;
 
 /**
  * Builds minimal domain value objects for tests that need symbols without a real
@@ -37,6 +40,13 @@ trait BuildsSymbolInfoTrait
             NameKind::ClassLike,
             self::classInfo($fqn, parent: $parent, interfaces: $interfaces, file: $file),
         );
+    }
+
+    private static function declaredConstant(string $fqn, ?string $file = null): DeclaredSymbol
+    {
+        $name = QualifiedName::fromFullyQualified($fqn);
+
+        return new DeclaredSymbol($name, NameKind::Constant, self::constantInfo($name->shortName, $file));
     }
 
     private static function declaredFunction(string $fqn, ?string $file = null): DeclaredSymbol
@@ -73,6 +83,20 @@ trait BuildsSymbolInfoTrait
             docblock: null,
             file: $file,
             line: null,
+        );
+    }
+
+    private static function constantInfo(string $shortName, ?string $file = null): ConstantInfo
+    {
+        return new ConstantInfo(
+            name: new ConstantName($shortName),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: null,
+            docblock: null,
+            file: $file,
+            line: 1,
+            declaringClass: null,
         );
     }
 

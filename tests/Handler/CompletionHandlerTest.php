@@ -22,8 +22,10 @@ use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\Location;
@@ -661,6 +663,11 @@ class CompletionHandlerTest extends TestCase
             }
 
             public function lookupClassLike(ClassName $name): ?ClassInfo
+            {
+                return null;
+            }
+
+            public function lookupConstant(GlobalConstantName $name): ?ConstantInfo
             {
                 return null;
             }
