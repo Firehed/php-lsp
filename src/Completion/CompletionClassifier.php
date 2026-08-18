@@ -66,10 +66,43 @@ final class CompletionClassifier
     // constants, which are out of this position's scope (#239, #317).
     private const USE_PATTERN = '/\buse\s+' . self::QUALIFIED_TAIL . '$/';
 
+    // The variable name typed after a `$`. Read both by classification and, inside
+    // a call, by the handler offering variables alongside argument names.
+    private const VARIABLE_PATTERN = '/\$(\w*)$/';
+
+    // An argument name typed after a call's `(` or an argument separator.
+    private const ARGUMENT_NAME_PATTERN = '/[(,]\s*(\w*)$/';
+
+    // The value typed after a named argument's `name:`.
+    private const ARGUMENT_VALUE_PATTERN = '/\w+:\s*(\w*)$/';
+
+    /**
+     * The argument name being typed, empty when the position admits one but nothing
+     * has been typed yet.
+     */
+    public static function argumentNamePrefix(string $textBeforeCursor): string
+    {
+        return preg_match(self::ARGUMENT_NAME_PATTERN, $textBeforeCursor, $matches) === 1
+            ? $matches[1]
+            : '';
+    }
+
+    /**
+     * The value being typed after a named argument's colon, or null where the cursor
+     * is not in a value position at all — which the caller must tell apart from a
+     * value position with nothing typed yet, since only the former offers no items.
+     */
+    public static function argumentValuePrefix(string $textBeforeCursor): ?string
+    {
+        return preg_match(self::ARGUMENT_VALUE_PATTERN, $textBeforeCursor, $matches) === 1
+            ? $matches[1]
+            : null;
+    }
+
     public static function classify(string $textBeforeCursor): CompletionClassification
     {
         // Variable completion
-        if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
+        if (preg_match(self::VARIABLE_PATTERN, $textBeforeCursor, $matches) === 1) {
             return new CompletionClassification(CompletionKind::Variable, $matches[1]);
         }
 
@@ -169,6 +202,16 @@ final class CompletionClassifier
         }
 
         return new CompletionClassification(CompletionKind::None, '');
+    }
+
+    /**
+     * The variable name being typed, empty where the cursor is not on one.
+     */
+    public static function variablePrefix(string $textBeforeCursor): string
+    {
+        return preg_match(self::VARIABLE_PATTERN, $textBeforeCursor, $matches) === 1
+            ? $matches[1]
+            : '';
     }
 
     /**

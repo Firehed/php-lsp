@@ -234,4 +234,74 @@ class CompletionClassifierTest extends TestCase
         yield 'none after member arrow' => ['$foo->', CompletionKind::None, ''];
         yield 'none after operator no word' => ['1 + ', CompletionKind::None, ''];
     }
+
+    #[DataProvider('provideVariablePrefixes')]
+    public function testVariablePrefix(string $textBeforeCursor, string $expected): void
+    {
+        self::assertSame($expected, CompletionClassifier::variablePrefix($textBeforeCursor));
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideVariablePrefixes(): iterable
+    {
+        yield 'bare sigil' => ['$', ''];
+        yield 'partial name' => ['$us', 'us'];
+        yield 'inside a call' => ['foo($ba', 'ba'];
+        yield 'not on a variable' => ['foo(', ''];
+        yield 'sigil already closed' => ['$user->', ''];
+    }
+
+    /**
+     * The same extractor serves classification and the in-call variable offer, so
+     * a variable named one way in one position cannot be named another elsewhere.
+     */
+    public function testVariablePrefixAgreesWithClassification(): void
+    {
+        $classification = CompletionClassifier::classify('$us');
+
+        self::assertSame(CompletionKind::Variable, $classification->kind);
+        self::assertSame(
+            $classification->prefix,
+            CompletionClassifier::variablePrefix('$us'),
+            'Classification and direct extraction must read the same prefix',
+        );
+    }
+
+    #[DataProvider('provideArgumentNamePrefixes')]
+    public function testArgumentNamePrefix(string $textBeforeCursor, string $expected): void
+    {
+        self::assertSame($expected, CompletionClassifier::argumentNamePrefix($textBeforeCursor));
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideArgumentNamePrefixes(): iterable
+    {
+        yield 'first argument' => ['foo(', ''];
+        yield 'first argument partly typed' => ['foo(na', 'na'];
+        yield 'later argument' => ['foo($a, na', 'na'];
+        yield 'not in an argument list' => ['$x = na', ''];
+    }
+
+    #[DataProvider('provideArgumentValuePrefixes')]
+    public function testArgumentValuePrefix(string $textBeforeCursor, ?string $expected): void
+    {
+        self::assertSame($expected, CompletionClassifier::argumentValuePrefix($textBeforeCursor));
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, ?string}>
+     */
+    public static function provideArgumentValuePrefixes(): iterable
+    {
+        yield 'nothing typed after the colon' => ['foo(name: ', ''];
+        yield 'value partly typed' => ['foo(name: Sta', 'Sta'];
+        yield 'no colon at all' => ['foo(na', null];
+    }
 }
