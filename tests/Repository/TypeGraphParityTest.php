@@ -55,6 +55,8 @@ final class TypeGraphParityTest extends TestCase
             'interface extending a built-in' => ['Fixtures\Repository\Repository'],
             'PSR-7 request' => ['Psr\Http\Message\RequestInterface'],
             'PSR-7 server request' => ['Psr\Http\Message\ServerRequestInterface'],
+            'trait insteadof and as adaptations' => ['Fixtures\Hierarchy\TraitAdaptationUser'],
+            'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
         ];
     }
 
@@ -75,6 +77,7 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicMethodsMatchRuntime(string $fqcn): void
     {
+        $this->skipKnownGaps($fqcn);
         $resolved = array_map(
             fn ($method) => $method->name->name,
             $this->resolver->getMethods(new ClassName($fqcn), Visibility::Public),
@@ -93,6 +96,7 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicPropertiesMatchRuntime(string $fqcn): void
     {
+        $this->skipKnownGaps($fqcn);
         $expected = array_map(
             fn (ReflectionProperty $property) => $property->getName(),
             (new ReflectionClass($fqcn))->getProperties(ReflectionProperty::IS_PUBLIC),
@@ -116,6 +120,7 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicConstantsMatchRuntime(string $fqcn): void
     {
+        $this->skipKnownGaps($fqcn);
         $expected = [];
         foreach ((new ReflectionClass($fqcn))->getReflectionConstants() as $constant) {
             if ($constant->isPublic()) {
@@ -133,6 +138,17 @@ final class TypeGraphParityTest extends TestCase
             self::normalize($resolved),
             'resolved public constants should match the constants available at runtime',
         );
+    }
+
+    private function skipKnownGaps(string $fqcn): void
+    {
+        $gaps = [
+            'Fixtures\Hierarchy\TraitAdaptationUser' => 'Trait adaptations (insteadof/as) not yet handled #73',
+            'Fixtures\Hierarchy\EnumWithInterface' => 'Enum interface inheritance not yet handled #73',
+        ];
+        if (array_key_exists($fqcn, $gaps)) {
+            self::markTestSkipped($gaps[$fqcn]);
+        }
     }
 
     /**
