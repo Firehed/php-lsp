@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\Declaration;

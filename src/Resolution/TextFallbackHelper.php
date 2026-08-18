@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
