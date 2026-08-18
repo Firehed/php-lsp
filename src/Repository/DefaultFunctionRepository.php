@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Index\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use PhpParser\Node\Stmt;
 use ReflectionException;
 use ReflectionFunction;

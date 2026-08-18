@@ -1,4 +1,2 @@
 deptrac:
-  skip_violations:
-    Firehed\PhpLsp\Repository\DefaultFunctionRepository:
-      - Firehed\PhpLsp\Index\DeclarationScanner
+  skip_violations: {}

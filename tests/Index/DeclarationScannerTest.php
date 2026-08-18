@@ -6,9 +6,9 @@ namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\Declaration;
-use Firehed\PhpLsp\Index\DeclarationScanner;
-use Firehed\PhpLsp\Index\FileDeclarations;
+use Firehed\PhpLsp\Knowledge\Declaration;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\FileDeclarations;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;

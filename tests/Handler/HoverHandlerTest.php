@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;

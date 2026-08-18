@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Index;
+namespace Firehed\PhpLsp\Knowledge;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr;

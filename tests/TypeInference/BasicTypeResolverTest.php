@@ -13,7 +13,7 @@ use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Throwable;

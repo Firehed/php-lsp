@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;

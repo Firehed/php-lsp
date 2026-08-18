@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
-use Firehed\PhpLsp\Index\FileDeclarations;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 
 /**

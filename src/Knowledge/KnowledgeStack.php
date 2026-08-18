@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
 use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
-use Firehed\PhpLsp\Index\DeclarationScanner;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\SymbolExtractor;
