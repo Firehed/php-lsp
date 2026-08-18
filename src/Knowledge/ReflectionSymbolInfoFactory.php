@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Repository\ClassInfoFactory;
 use ReflectionClass;
 use ReflectionException;
@@ -22,6 +26,7 @@ final readonly class ReflectionSymbolInfoFactory
 {
     public function __construct(
         private ClassInfoFactory $classes,
+        private InternalConstantSet $constants = new InternalConstantSet(),
     ) {
     }
 
@@ -29,9 +34,8 @@ final readonly class ReflectionSymbolInfoFactory
     {
         return match ($kind) {
             NameKind::ClassLike => $this->classInfo($name),
+            NameKind::Constant => $this->constantInfo($name),
             NameKind::Function_ => $this->functionInfo($name),
-            // Reflectable, but the info type lands in S3.8b.
-            NameKind::Constant => null,
         };
     }
 
@@ -48,6 +52,25 @@ final readonly class ReflectionSymbolInfoFactory
         }
 
         return $this->classes->fromReflection(new ReflectionClass($fqn));
+    }
+
+    private function constantInfo(QualifiedName $name): ?SymbolInfo
+    {
+        $fqn = $name->fullyQualifiedName();
+        if (!$this->constants->contains($fqn)) {
+            return null;
+        }
+
+        return new ConstantInfo(
+            name: new ConstantName($name->shortName),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: null,
+        );
     }
 
     private function functionInfo(QualifiedName $name): ?SymbolInfo
