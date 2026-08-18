@@ -39,4 +39,20 @@ final class NameKindTest extends TestCase
     ): void {
         self::assertSame($expected, $kind->normalize($name));
     }
+
+    public function testKeyForCombinesKindNameAndNormalizedName(): void
+    {
+        $name = new QualifiedName('Fixtures\Helpers', 'HelperFormat');
+
+        self::assertSame(
+            'ClassLike|fixtures\helpers\helperformat',
+            NameKind::ClassLike->keyFor($name),
+            'the key must be kind name, pipe, normalized FQN',
+        );
+        self::assertSame(
+            'Constant|fixtures\helpers\HelperFormat',
+            NameKind::Constant->keyFor($name),
+            'constant keys preserve the short name case',
+        );
+    }
 }
