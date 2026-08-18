@@ -28,9 +28,14 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
     /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
     private ?array $byNamespace = null;
 
+    public function __construct(
+        private readonly InternalConstantSet $constants = new InternalConstantSet(),
+    ) {
+    }
+
     public function childrenOf(string $namespace): NamespaceContents
     {
-        $this->byNamespace ??= NamespaceContents::indexByNamespace(self::internalSymbols());
+        $this->byNamespace ??= NamespaceContents::indexByNamespace($this->internalSymbols());
 
         return $this->byNamespace[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
     }
@@ -38,7 +43,7 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
     /**
      * @return list<CatalogSymbol>
      */
-    private static function internalSymbols(): array
+    private function internalSymbols(): array
     {
         $symbols = [];
 
@@ -57,12 +62,8 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
             $symbols[] = new CatalogSymbol($function, NameKind::Function_);
         }
 
-        $constants = get_defined_constants(categorize: true);
-        unset($constants['user']);
-        foreach ($constants as $category) {
-            foreach (array_keys($category) as $constant) {
-                $symbols[] = new CatalogSymbol($constant, NameKind::Constant);
-            }
+        foreach (array_keys($this->constants->all()) as $constant) {
+            $symbols[] = new CatalogSymbol($constant, NameKind::Constant);
         }
 
         return $symbols;

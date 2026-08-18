@@ -85,10 +85,16 @@ parameters:
             function:
                 - 'get_defined_functions()'
                 - 'get_declared_classes()'
-                - 'get_defined_constants()'
             message: 'runtime symbol enumeration is confined to ReflectionNamespaceSource'
             allowIn:
                 - src/Index/ReflectionNamespaceSource.php
+                - tests/*
+        -
+            function:
+                - 'get_defined_constants()'
+            message: 'the internal constant set is built in InternalConstantSet, which owns the "is this constant built-in?" check PHP has no ReflectionConstant::isInternal for'
+            allowIn:
+                - src/Index/InternalConstantSet.php
                 - tests/*
         -
             function:
