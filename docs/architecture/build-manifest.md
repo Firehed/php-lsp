@@ -111,7 +111,6 @@ re-runs repo-wide as its completion gate.
     SC.8   —     cleanup   Prefix matching: SymbolIndex -> PrefixMatcher      —                 —
     SC.12  —     cleanup   Move MemberFilter out of Resolution                —                 —
     SC.13  —     cleanup   Settle Domain->Utility type placement              —                 —
-    SC.14  —     cleanup   Filter BuiltinBackend class-like lookup to internal —                —
     SC.15  —     cleanup   Oracle corpus: trait adaptations and enums         —                 —
     SC.16  —     defect    Index an open document's global constants          —                 —
     SC.17  —     cleanup   Collapse the hand-routed invalidation fan-out      —                 —
@@ -314,9 +313,6 @@ Notes:
   - **SC.13** — Domain factories reach into Utility (`TypeFactory`, `NamespacePath`); decide the direction in-slice (move the utility into Domain, or the factory methods out) and drain the frozen edges.
     Related: `ClassName::shortName`/`getNamespace` hand-roll the split `NamespacePath` owns, so the direction chosen also settles that duplicate.
     Likewise `NameKind::normalize` re-implements the path fold `NamespacePath::normalize` owns — layer-blocked from routing through it until this move — so the direction also collapses the two folds into one, and the case-folding allowlist follows the file.
-  - **SC.14** — `ReflectionSymbolInfoFactory`'s class-like branch lacks the `isInternal()` guard its function sibling has, so hover resolves any class the *server's own* autoloader can load while completion never offers it — the §4.2 lookup/enumeration split, live on the class namespace.
-    Owes a regression test against a class the server vendors but the project does not.
-    `cleanup`, not `defect`, despite the behaviour being wrong: only names the server itself vendors can reach the split, so no symbol a project declares or depends on is involved. Ranking it as a defect put it ahead of every baseline drain, which is not where it belongs.
   - **SC.15** — `TypeGraphParityTest`'s corpus has no trait `insteadof`/`as` shapes and no enums, so the reflection oracle cannot see #73's defect class (nor enum-interface members).
     Fixture-only slice; #73's fix lands on top of it and must fail before, pass after.
   - **SC.16** — `SymbolExtractor` emits no `SymbolKind::Constant`, so a global constant in an open document is never indexed and `OpenDocumentBackend::childrenOf` cannot enumerate it, while the on-disk and built-in backends both do.
