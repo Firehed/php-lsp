@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Cache\Invalidatable;
-use Firehed\PhpLsp\Utility\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespacePath;
 use Psr\SimpleCache\CacheInterface;
 
 /**

@@ -2,15 +2,8 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Utility;
+namespace Firehed\PhpLsp\Domain;
 
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\IntersectionType;
-use Firehed\PhpLsp\Domain\LateBindingKeyword;
-use Firehed\PhpLsp\Domain\LateStaticType;
-use Firehed\PhpLsp\Domain\PrimitiveType;
-use Firehed\PhpLsp\Domain\Type;
-use Firehed\PhpLsp\Domain\UnionType;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;

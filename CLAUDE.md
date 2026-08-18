@@ -38,7 +38,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
 - `src/Parser/` — `ParserService` (the only place an AST is produced; memoizes by content for the duration of one handled LSP message, discarded by `Server`'s message loop) and `ParseMetrics` (parse count/time, which every parse is metered through)
-- `src/Utility/` — AST helpers (ScopeFinder, Scope, TypeFactory, DocblockParser)
+- `src/Utility/` — AST helpers (ScopeFinder, Scope, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `src/Capability/` — Protocol capability negotiation (see Capability Negotiation below)
 - `docs/features/` — Feature status documentation
@@ -225,6 +225,8 @@ Typed representations of code constructs in `src/Domain/`:
 - `ParameterInfo`, `FunctionInfo` — Function/method parameter details
 - `Visibility` enum — Public/protected/private with comparison logic
 - `ClassName`, `MethodName`, `PropertyName` — Typed identifiers
+- `TypeFactory` — Creates Type domain objects from AST nodes and reflection
+- `NamespacePath` — Segment operations on namespace and fully-qualified-name strings; the one place a name is split into namespace and short name, and the one place a namespace path is case-folded
 
 Domain objects implement `Formattable` for consistent signature formatting across handlers.
 
@@ -405,7 +407,6 @@ instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, 
 - `Scope` — Value object modelling a lexical scope (params, statements, self/parent context, `$this`, closure captures). Function-like nodes and file-level/global code both map onto it via `Scope::atOffset()`/`forNode()`/`global()`, so type/variable resolution never branches on node type or handles a "no enclosing function" case.
 - `DocblockParser` — Extracts description from docblocks
 - `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
-- `TypeFactory` — Creates Type domain objects from AST nodes and reflection
 
 Note: `MemberAccessResolver` was removed in #262 — instance/static member access now flows through `SymbolResolver`.
 

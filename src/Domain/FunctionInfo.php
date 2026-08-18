@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-use Firehed\PhpLsp\Utility\TypeFactory;
 use PhpParser\Node\Stmt;
 use ReflectionFunction;
 

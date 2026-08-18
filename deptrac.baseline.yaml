@@ -1,11 +1,5 @@
 deptrac:
   skip_violations:
-    Firehed\PhpLsp\Domain\FunctionInfo:
-      - Firehed\PhpLsp\Utility\TypeFactory
-    Firehed\PhpLsp\Domain\ParameterInfo:
-      - Firehed\PhpLsp\Utility\TypeFactory
-    Firehed\PhpLsp\Domain\QualifiedName:
-      - Firehed\PhpLsp\Utility\NamespacePath
     Firehed\PhpLsp\Repository\DefaultFunctionRepository:
       - Firehed\PhpLsp\Index\DeclarationScanner
     Firehed\PhpLsp\Repository\MemberResolver:

@@ -40,20 +40,14 @@ final readonly class ClassName implements Type
 
     public function shortName(): string
     {
-        $lastSeparator = strrpos($this->fqn, '\\');
-        if ($lastSeparator === false) {
-            return $this->fqn;
-        }
-        return substr($this->fqn, $lastSeparator + 1);
+        return NamespacePath::shortNameOf($this->fqn);
     }
 
     public function namespace(): ?string
     {
-        $lastSeparator = strrpos($this->fqn, '\\');
-        if ($lastSeparator === false) {
-            return null;
-        }
-        return substr($this->fqn, 0, $lastSeparator);
+        $namespace = NamespacePath::namespaceOf($this->fqn);
+
+        return $namespace === '' ? null : $namespace;
     }
 
     public function equals(self $other): bool
