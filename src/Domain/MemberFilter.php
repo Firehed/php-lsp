@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Resolution;
+namespace Firehed\PhpLsp\Domain;
 
 enum MemberFilter
 {

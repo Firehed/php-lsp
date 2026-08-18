@@ -2,5 +2,3 @@ deptrac:
   skip_violations:
     Firehed\PhpLsp\Repository\DefaultFunctionRepository:
       - Firehed\PhpLsp\Index\DeclarationScanner
-    Firehed\PhpLsp\Repository\MemberResolver:
-      - Firehed\PhpLsp\Resolution\MemberFilter
