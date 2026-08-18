@@ -30,6 +30,7 @@ final readonly class ResolvedConstant implements ResolvedMember
 
     public function getDeclaringClass(): ClassName
     {
+        assert($this->info->declaringClass !== null, 'ResolvedConstant is for class constants only');
         return $this->info->declaringClass;
     }
 

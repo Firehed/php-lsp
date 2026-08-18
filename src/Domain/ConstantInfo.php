@@ -4,10 +4,19 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use PhpParser\Node;
+use PhpParser\Node\Expr;
+
 /**
- * Metadata about a class constant.
+ * Metadata about a constant — either a class constant (when declaringClass is
+ * set) or a global constant (when declaringClass is null).
+ *
+ * One type serves both (Plan 0002 §5.3): the nullable is a conscious exception
+ * to the no-nullable rule, since the alternatives are a second metadata type
+ * differing in one field, or a sentinel ClassName the type system cannot catch
+ * as a lie.
  */
-final readonly class ConstantInfo implements Formattable, MemberInfo
+final readonly class ConstantInfo implements Formattable, MemberInfo, SymbolInfo
 {
     public function __construct(
         public ConstantName $name,
@@ -17,11 +26,45 @@ final readonly class ConstantInfo implements Formattable, MemberInfo
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ClassName $declaringClass,
+        public ?ClassName $declaringClass = null,
     ) {
     }
 
+    /**
+     * Build from a global constant declaration: a `const` declarator or a
+     * literal-name `define()` call.
+     *
+     * @param Node\Const_|Expr\FuncCall $node the declaring node
+     * @param string $shortName the constant's short name (already extracted by
+     *        the scanner, so the factory does not re-derive it)
+     */
+    public static function fromGlobalDeclaration(
+        Node\Const_|Expr\FuncCall $node,
+        string $shortName,
+        ?string $file = null,
+    ): self {
+        return new self(
+            name: new ConstantName($shortName),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: null,
+            docblock: $node->getDocComment()?->getText(),
+            file: $file,
+            line: $node->getStartLine(),
+            declaringClass: null,
+        );
+    }
+
     public function format(): string
+    {
+        if ($this->declaringClass === null) {
+            return $this->formatGlobal();
+        }
+
+        return $this->formatClassConstant();
+    }
+
+    private function formatClassConstant(): string
     {
         $parts = [$this->visibility->format()];
         if ($this->isFinal) {
@@ -32,6 +75,15 @@ final readonly class ConstantInfo implements Formattable, MemberInfo
             $parts[] = $this->type->format();
         }
         $parts[] = $this->name->name;
+        return implode(' ', $parts);
+    }
+
+    private function formatGlobal(): string
+    {
+        $parts = ['const', $this->name->name];
+        if ($this->type !== null) {
+            array_splice($parts, 1, 0, [$this->type->format()]);
+        }
         return implode(' ', $parts);
     }
 
