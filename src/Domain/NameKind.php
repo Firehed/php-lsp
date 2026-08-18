@@ -46,6 +46,15 @@ enum NameKind
     }
 
     /**
+     * The kind-qualified key for a name, used to store and retrieve symbols. The
+     * single home for this computation — do not duplicate it.
+     */
+    public function keyFor(QualifiedName $name): string
+    {
+        return $this->name . '|' . $this->normalize($name);
+    }
+
+    /**
      * The name as a lookup key under this kind's case rule. A namespace path is
      * case-insensitive whatever it qualifies, so the rule applies to the short
      * name alone.

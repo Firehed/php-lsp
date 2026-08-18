@@ -83,7 +83,7 @@ final readonly class DeclarationSymbolInfoFactory
         NameKind $kind,
         SymbolInfo $info,
     ): void {
-        $key = $kind->name . '|' . $kind->normalize($name);
+        $key = $kind->keyFor($name);
         if (array_key_exists($key, $seen)) {
             return;
         }

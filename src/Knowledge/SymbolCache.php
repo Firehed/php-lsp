@@ -27,14 +27,9 @@ final readonly class SymbolCache
     ) {
     }
 
-    public function delete(string $key): void
+    public function forget(QualifiedName $name, NameKind $kind): void
     {
-        $this->cache->delete($key);
-    }
-
-    public function keyFor(QualifiedName $name, NameKind $kind): string
-    {
-        return CacheKey::from($kind->name . '|' . $kind->normalize($name));
+        $this->cache->delete($this->keyFor($name, $kind));
     }
 
     /**
@@ -56,5 +51,10 @@ final readonly class SymbolCache
         }
 
         return $info;
+    }
+
+    private function keyFor(QualifiedName $name, NameKind $kind): string
+    {
+        return CacheKey::from($kind->keyFor($name));
     }
 }

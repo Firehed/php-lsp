@@ -61,7 +61,7 @@ final class OpenDocumentBackend implements SymbolBackend
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        return $this->byKey[self::key($kind, $name)] ?? null;
+        return $this->byKey[$kind->keyFor($name)] ?? null;
     }
 
     /**
@@ -85,7 +85,7 @@ final class OpenDocumentBackend implements SymbolBackend
 
         $keys = [];
         foreach ($symbols as $symbol) {
-            $key = self::key($symbol->kind, $symbol->name);
+            $key = $symbol->kind->keyFor($symbol->name);
             $this->byKey[$key] = $symbol->info;
             $keys[] = $key;
         }
@@ -98,15 +98,5 @@ final class OpenDocumentBackend implements SymbolBackend
             unset($this->byKey[$key]);
         }
         unset($this->keysByUri[$uri]);
-    }
-
-    /**
-     * Registration and lookup must agree on the case rule, which differs by kind, so
-     * both go through {@see NameKind::normalize()} rather than lowercasing the whole
-     * FQN — right for class-likes and functions, wrong for a constant.
-     */
-    private static function key(NameKind $kind, QualifiedName $name): string
-    {
-        return $kind->name . '|' . $kind->normalize($name);
     }
 }
