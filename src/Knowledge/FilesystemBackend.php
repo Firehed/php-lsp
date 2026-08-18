@@ -38,12 +38,11 @@ use Firehed\PhpLsp\Parser\ParserService;
 final class FilesystemBackend implements SymbolBackend, Invalidatable
 {
     /**
-     * The cache keys derived from each file, recorded because a key is an opaque hash
-     * with no reverse mapping to a path.
+     * The symbols derived from each file, recorded so invalidation can evict them.
      *
-     * @var array<string, list<string>>
+     * @var array<string, list<array{QualifiedName, NameKind}>>
      */
-    private array $cacheKeysByPath = [];
+    private array $symbolsByPath = [];
 
     public function __construct(
         private readonly SymbolLocator $locator,
@@ -70,7 +69,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
 
             $info = $this->infoFactory->fromDeclarations($this->declarationsIn($filePath), $name, $kind, $filePath);
             if ($info !== null) {
-                $this->cacheKeysByPath[$filePath][] = $this->cache->keyFor($name, $kind);
+                $this->symbolsByPath[$filePath][] = [$name, $kind];
             }
 
             return $info;
@@ -78,16 +77,16 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * Evict the file's cached symbols by their recorded keys, so the next query
-     * re-reads disk and the pre-change value is not restored (RFC 1 §5.2, §5.3).
+     * Evict the file's cached symbols, so the next query re-reads disk and the
+     * pre-change value is not restored (RFC 1 §5.2, §5.3).
      */
     public function invalidate(string $uri): void
     {
         $path = FileUri::toPath($uri);
-        foreach ($this->cacheKeysByPath[$path] ?? [] as $cacheKey) {
-            $this->cache->delete($cacheKey);
+        foreach ($this->symbolsByPath[$path] ?? [] as [$name, $kind]) {
+            $this->cache->forget($name, $kind);
         }
-        unset($this->cacheKeysByPath[$path]);
+        unset($this->symbolsByPath[$path]);
     }
 
     /**

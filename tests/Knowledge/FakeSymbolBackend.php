@@ -37,7 +37,7 @@ final class FakeSymbolBackend implements SymbolBackend
         private readonly array $searchResults = [],
     ) {
         foreach ($symbols as $symbol) {
-            $this->byKey[self::key($symbol->name, $symbol->kind)] = $symbol->info;
+            $this->byKey[$symbol->kind->keyFor($symbol->name)] = $symbol->info;
         }
     }
 
@@ -48,7 +48,7 @@ final class FakeSymbolBackend implements SymbolBackend
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
     {
-        return $this->byKey[self::key($name, $kind)] ?? null;
+        return $this->byKey[$kind->keyFor($name)] ?? null;
     }
 
     /**
@@ -63,10 +63,5 @@ final class FakeSymbolBackend implements SymbolBackend
                 strtolower($prefix),
             ),
         ));
-    }
-
-    private static function key(QualifiedName $name, NameKind $kind): string
-    {
-        return $kind->name . '|' . $kind->normalize($name);
     }
 }
