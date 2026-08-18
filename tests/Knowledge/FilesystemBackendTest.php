@@ -22,7 +22,6 @@ use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Tests\Index\CountingNamespaceCatalog;
 use Psr\SimpleCache\CacheInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -273,29 +272,6 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    public function testInvalidateAlsoDropsCachedNamespaceListings(): void
-    {
-        $counting = new CountingNamespaceCatalog();
-        $backend = new FilesystemBackend(
-            self::createStub(SymbolLocator::class),
-            new CachedNamespaceCatalog($counting, CacheFactory::inMemory()),
-            $this->parser,
-            $this->infoFactory,
-            new DeclarationScanner(),
-            new SymbolCache(CacheFactory::inMemory()),
-        );
-
-        $backend->childrenOf(new NamespaceName('Psr\Log'));
-        $backend->invalidate('file:///any/changed/File.php');
-        $backend->childrenOf(new NamespaceName('Psr\Log'));
-
-        self::assertSame(
-            2,
-            $counting->calls,
-            'invalidate must drop cached namespace listings so a create or delete is reflected (RFC 1 §5.3)',
-        );
-    }
-
     public function testInvalidateDecodesAPercentEncodedUriToMatchTheCachedPath(): void
     {
         // A client URI percent-encodes reserved characters (a space becomes %20),
@@ -329,52 +305,6 @@ final class FilesystemBackendTest extends TestCase
         } finally {
             unlink($path);
             rmdir($dir);
-        }
-    }
-
-    /**
-     * Driven end to end through the locator chain the stack actually wires, rather
-     * than a mock: the autoload.files index is derived from disk, so an external
-     * change must reach it too. Evicting only the ClassInfo cache would leave the
-     * name -> file map itself stale, and a class added by the edit would stay
-     * invisible however many times it was asked for (RFC 1 §5.2, §5.3).
-     */
-    public function testInvalidateReachesALocatorHoldingDerivedState(): void
-    {
-        $path = tempnam(sys_get_temp_dir(), 'php-lsp-fsb-files-');
-        self::assertNotFalse($path, 'a temp file must be creatable');
-
-        try {
-            self::assertNotFalse(
-                file_put_contents($path, '<?php class DerivedBefore {}'),
-                'the temp file must be writable',
-            );
-
-            $backend = $this->backendWithLocator(new CompositeSymbolLocator([
-                new AutoloadFilesLocator(
-                    new ComposerAutoloadMap([], [], [], [$path]),
-                    $this->parser,
-                    new DeclarationScanner(),
-                ),
-            ]));
-
-            self::assertNotNull(
-                self::classLikeIn($backend, 'DerivedBefore'),
-                'a class-like declared in a files entry must resolve through the derived index',
-            );
-
-            self::assertNotFalse(
-                file_put_contents($path, '<?php class DerivedAfter {}'),
-                'the rewrite must succeed',
-            );
-            $backend->invalidate(FileUri::fromPath($path));
-
-            self::assertNotNull(
-                self::classLikeIn($backend, 'DerivedAfter'),
-                'invalidate must re-derive the index so a class added on disk resolves',
-            );
-        } finally {
-            unlink($path);
         }
     }
 

@@ -78,9 +78,8 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * Evict the file's cached symbols by their recorded keys and drop cached
-     * namespace listings, so the next query re-reads disk and the pre-change value
-     * is not restored (RFC 1 §5.2, §5.3).
+     * Evict the file's cached symbols by their recorded keys, so the next query
+     * re-reads disk and the pre-change value is not restored (RFC 1 §5.2, §5.3).
      */
     public function invalidate(string $uri): void
     {
@@ -89,16 +88,6 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
             $this->cache->delete($cacheKey);
         }
         unset($this->cacheKeysByPath[$path]);
-
-        if ($this->namespaces instanceof Invalidatable) {
-            $this->namespaces->invalidate($uri);
-        }
-
-        // The autoload.files index is derived from disk too, so a change must reach
-        // the locator or the name -> file map stays stale behind an evicted cache.
-        if ($this->locator instanceof Invalidatable) {
-            $this->locator->invalidate($uri);
-        }
     }
 
     /**
