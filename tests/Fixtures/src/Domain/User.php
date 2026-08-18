@@ -316,4 +316,8 @@ class User implements Entity, Person
         echo $this->createdAt; //hover:trait_property_consumer
     }
 
+    public function triggerHoverBuiltinConstant(): void
+    {
+        echo PHP_VERSION; //hover:builtin_constant
+    }
 }

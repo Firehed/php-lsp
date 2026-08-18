@@ -161,6 +161,12 @@
             "containerName": "User"
         },
         {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverBuiltinConstant",
+            "name": "triggerHoverBuiltinConstant",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
             "fqn": "Fixtures\\Domain\\User::triggerHoverMethod",
             "name": "triggerHoverMethod",
             "kind": "Method",

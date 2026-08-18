@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Resolution\ResolvedClass;
 use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedFunction;
+use Firehed\PhpLsp\Resolution\ResolvedGlobalConstant;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -163,6 +164,21 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedFunction::class, $result);
         self::assertStringContainsString('strlen', $result->format());
+    }
+
+    public function testResolvesBuiltinConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'builtin_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedGlobalConstant::class,
+            $result,
+            'built-in constants should resolve to ResolvedGlobalConstant',
+        );
     }
 
     public function testResolvesPropertyFetch(): void

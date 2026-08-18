@@ -159,6 +159,7 @@
             "triggerDynamicNew": "public function triggerDynamicNew(): self",
             "triggerDynamicProperty": "public function triggerDynamicProperty(): void",
             "triggerDynamicStaticCall": "public function triggerDynamicStaticCall(): void",
+            "triggerHoverBuiltinConstant": "public function triggerHoverBuiltinConstant(): void",
             "triggerHoverMethod": "public function triggerHoverMethod(): void",
             "triggerHoverMultilineChain": "public function triggerHoverMultilineChain(): void",
             "triggerHoverNullsafeMethod": "public function triggerHoverNullsafeMethod(): void",
