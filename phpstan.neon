@@ -39,7 +39,7 @@ parameters:
                 - src/Index/ReflectionNamespaceSource.php
                 - src/Repository/ClassInfoFactory.php
                 - src/Repository/DefaultClassInfoFactory.php
-                - src/Utility/TypeFactory.php
+                - src/Domain/TypeFactory.php
                 - src/Domain/FunctionInfo.php
                 - src/Domain/ParameterInfo.php
                 - tests/*

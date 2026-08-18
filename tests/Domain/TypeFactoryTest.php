@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Utility;
+namespace Firehed\PhpLsp\Tests\Domain;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\UnionType;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\IntersectionType as AstIntersectionType;

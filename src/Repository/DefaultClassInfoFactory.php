@@ -20,7 +20,7 @@ use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Utility\TypeFactory;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use PhpParser\Modifiers;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
