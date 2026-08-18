@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\QualifiedName;
 
 /**
  * Computes how a symbol must be written at a given cursor: the shortest
@@ -171,17 +172,9 @@ final class ReferenceResolver
         return NamespacePath::relativeTo($namespace, $ancestor);
     }
 
-    /**
-     * Namespaces are case-insensitive even for constants — only a constant's
-     * final segment is case-sensitive.
-     */
     private static function namesMatch(string $a, string $b, NameKind $kind): bool
     {
-        if (!$kind->isCaseSensitive()) {
-            return strcasecmp($a, $b) === 0;
-        }
-
-        return NamespacePath::equals(NamespacePath::namespaceOf($a), NamespacePath::namespaceOf($b))
-            && NamespacePath::shortNameOf($a) === NamespacePath::shortNameOf($b);
+        return $kind->normalize(QualifiedName::fromFullyQualified($a))
+            === $kind->normalize(QualifiedName::fromFullyQualified($b));
     }
 }

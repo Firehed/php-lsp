@@ -117,6 +117,7 @@ re-runs repo-wide as its completion gate.
     SC.17  —     cleanup   Collapse the hand-routed invalidation fan-out      —                 —
     SC.18  —     cleanup   One home for the kind-qualified symbol key         SC.13             —
     SC.19  —     cleanup   Own the four unowned baseline entries              —                 —
+    SC.20  —     cleanup   Own the last unowned layer-contract entry          —                 —
     SZ.1   Z     scaffold  Definition of Done gate + repo-wide dup audit      all prior         —
 
 Notes:
@@ -349,6 +350,19 @@ Notes:
     belong in `CompletionClassifier`, which is where the allowlist already puts
     text-pattern analysis. Filed because the baseline must reach zero and an entry with no
     owning slice is how it stalls — found by auditing the baseline against this table.
+    It covers `phpstan-baseline.neon` only; the other baseline is SC.20.
+  - **SC.20** — `deptrac.baseline.yaml` freezes `DefaultFunctionRepository` depending on
+    `Index\DeclarationScanner`, and no row removes it. `Repository` may not reach `Index`
+    under the layer contract, and SC.5 created the edge on purpose, so it is real rather
+    than an oversight: the repository has to ask what a file declares, and the scanner is
+    the one thing that answers.
+    S3.10 is not the remover, though it looks like it — S3.10 retires that class's AST-in
+    *signature*, which is a different thing from the dependency and leaves it standing.
+    The slice decides which way the edge goes: let `Repository` read `Index`, move the
+    scanner somewhere both may reach, or route the repository through a seam it already
+    has. Take it after S3.10, whose teardown may narrow the choice.
+    The only entry either baseline still holds with no owning row. Found while reviewing
+    the wording of SC.19, which had claimed all four of its own were the last.
   - **SC.8** — `Completion\PrefixMatcher::matches` and `SymbolIndex::findByPrefix` both
     hand-roll `str_starts_with(strtolower(...))`. SC.6 owns the `strtolower` half (it is
     the same per-kind case rule); what is left here is the duplicated *matching* helper, so

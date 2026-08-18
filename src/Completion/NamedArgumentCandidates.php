@@ -51,9 +51,6 @@ final class NamedArgumentCandidates
 
     private function extractPrefix(string $textBeforeCursor): string
     {
-        if (preg_match('/[(,]\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
-            return $matches[1];
-        }
-        return '';
+        return CompletionClassifier::argumentNamePrefix($textBeforeCursor);
     }
 }

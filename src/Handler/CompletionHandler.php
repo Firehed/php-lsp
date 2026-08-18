@@ -158,18 +158,19 @@ final class CompletionHandler implements HandlerInterface
             $items = $this->namedArgumentCandidates->find($callContext, $textBeforeCursor);
 
             // Also offer variables - filter by prefix if cursor is on one
-            $varPrefix = '';
-            if (preg_match('/\$(\w*)$/', $textBeforeCursor, $matches) === 1) {
-                $varPrefix = $matches[1];
-            }
             $items = array_merge(
                 $items,
-                $this->variableCandidates->find($varPrefix, $document, $line, $character),
+                $this->variableCandidates->find(
+                    CompletionClassifier::variablePrefix($textBeforeCursor),
+                    $document,
+                    $line,
+                    $character,
+                ),
             );
 
             // After named arg colon (value position), also offer expression keywords and classes
-            if (preg_match('/\w+:\s*(\w*)$/', $textBeforeCursor, $matches) === 1) {
-                $prefix = $matches[1];
+            $prefix = CompletionClassifier::argumentValuePrefix($textBeforeCursor);
+            if ($prefix !== null) {
                 $items = array_merge($items, $this->keywordCandidates->find($prefix, KeywordGroup::Expression));
                 $items = array_merge(
                     $items,
