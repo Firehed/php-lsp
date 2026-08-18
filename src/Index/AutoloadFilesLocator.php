@@ -9,6 +9,8 @@ use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Knowledge\Declaration;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use PhpParser\Node;
