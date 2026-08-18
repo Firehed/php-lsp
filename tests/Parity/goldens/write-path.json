@@ -167,6 +167,12 @@
             "containerName": "User"
         },
         {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverDefineConstant",
+            "name": "triggerHoverDefineConstant",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
             "fqn": "Fixtures\\Domain\\User::triggerHoverMethod",
             "name": "triggerHoverMethod",
             "kind": "Method",
@@ -205,6 +211,12 @@
         {
             "fqn": "Fixtures\\Domain\\User::triggerHoverTraitMethod",
             "name": "triggerHoverTraitMethod",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverUserConstant",
+            "name": "triggerHoverUserConstant",
             "kind": "Method",
             "containerName": "User"
         },

@@ -320,4 +320,14 @@ class User implements Entity, Person
     {
         echo PHP_VERSION; //hover:builtin_constant
     }
+
+    public function triggerHoverUserConstant(): void
+    {
+        echo \Fixtures\Helpers\HELPER_LIMIT; //hover:user_constant
+    }
+
+    public function triggerHoverDefineConstant(): void
+    {
+        echo FIXTURE_HELPER_DEFINED; //hover:define_constant
+    }
 }

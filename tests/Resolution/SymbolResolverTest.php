@@ -59,11 +59,10 @@ final class SymbolResolverTest extends TestCase
         $this->parser = new ParserService();
         $this->documents = new DocumentManager();
 
-        // No autoload map: classes referenced but not opened resolve through the
-        // built-in reflection backend, as they did under the prior stub locator.
+        $fixturesRoot = dirname(__DIR__) . '/Fixtures';
         $knowledge = KnowledgeStack::forProject(
-            new ComposerAutoloadMap(),
-            dirname(__DIR__) . '/Fixtures/vendor',
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
@@ -178,6 +177,36 @@ final class SymbolResolverTest extends TestCase
             ResolvedGlobalConstant::class,
             $result,
             'built-in constants should resolve to ResolvedGlobalConstant',
+        );
+    }
+
+    public function testResolvesUserDefinedConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'user_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedGlobalConstant::class,
+            $result,
+            'user-defined constants from autoload.files should resolve to ResolvedGlobalConstant',
+        );
+    }
+
+    public function testResolvesDefineConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'define_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedGlobalConstant::class,
+            $result,
+            'constants defined via define() should resolve to ResolvedGlobalConstant',
         );
     }
 
