@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-
 /**
  * A fully-qualified name split into namespace path and short name, carrying no
  * notion of what it names (Plan 0002 §5.3: the kind-neutral base FQN value type).
