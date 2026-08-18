@@ -37,8 +37,8 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
         yield 'interface' => [\Countable::class];
         yield 'enum' => [\Random\IntervalBoundary::class];
         // PHP declares no internal trait, so the only probe for the fourth flavour is
-        // one the server process loaded — which this branch answers for until SC.14
-        // filters it to internal, after which the branch is dead and goes with it.
+        // one the server process loaded — which this branch answers for because it is
+        // unfiltered. #429 filters it to internal, after which this case goes with it.
         yield 'trait' => [ResolvesFromInfo::class];
     }
 
