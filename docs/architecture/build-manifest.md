@@ -91,12 +91,14 @@ re-runs repo-wide as its completion gate.
     SC.6   —     defect    Symbol-name keys -> NameKind::normalize            SC.11             —
     S3.8d  3b    scaffold  Collapse per-kind lookup to one call               SC.5              —
     S3.8b  3b    scaffold  lookupConstant project reach                       S3.7d,SC.2,SC.6,SC.16,S3.8d  —
+    S4.1   4     scaffold  TypeClassifier + §4.5/§4.6 static rules            S2.6              —
+    SC.21  —     defect    §4.3/§5.2 write-path check as a real test          —                 —
+    SC.22  —     defect    §4.11 AST/text agreement tests                     —                 —
     S3.8c  3b    scaffold  Retire the AST-in function lookup from consumers   S3.8a,SC.5        —
     S3.9a  3b    scaffold  Generalize search to a kind parameter              S3.8a,S3.8d       —
     S3.9b  3b    scaffold  Function search + FunctionCandidates migration     S3.9a             —
     S3.10  3b    scaffold  Remove §4.2 fn-path exemption; retire scaffolding  S3.8b,S3.8c,S3.9b —
     S3.11  3     scaffold  Step 3 duplication audit                           all Step 3        —
-    S4.1   4     scaffold  TypeClassifier + §4.5/§4.6 static rules            S2.6              —
     S4.2   4     scaffold  Extract node locator + scope analyzer              S3.8c,S4.1        —
     S4.3   4     scaffold  Extract member-access + call-context detectors     S4.2              —
     S4.4   4     scaffold  Extract name-context resolver                      S4.2              —
@@ -190,7 +192,29 @@ Notes:
 - **Steps 3 and 4 both edit `SymbolResolver` (§6).** S4.2 (positional extraction) is
   gated on S3.8 (the 3b lookup migration) so the two never run concurrently; manifest
   order keeps Step 3 ahead of Step 4 regardless. S4.1 (`TypeClassifier` + the §4.5/§4.6
-  rules) is independent of Step 3 and may proceed alongside.
+  rules) is independent of Step 3, and is now taken ahead of the remaining Step 3 rows —
+  see the mechanism audit below.
+- **The unbuilt §8.1 mechanisms come first, ahead of any further feature slice.** An audit
+  of the §8.1 table against the repo found four mechanisms specified but not built: the
+  §4.5 kind/`instanceof` rule and the §4.6 no-`new`-of-a-Type-impl rule (both S4.1), the
+  §4.3/§5.2 single-write-path check (SC.21, presently a runtime `assert()` in
+  `DocumentSymbolSink` and therefore off in production), and the §4.11 AST/text agreement
+  tests (SC.22, previously bundled into Step 4's acceptance and so unreachable until the
+  whole positional decomposition landed). None was blocked; each simply sat below the
+  Step 3 rows, and every slice landed meanwhile was written under no rule.
+
+  The pattern is worth naming: every mechanism expressible as a `phpstan.neon` allowlist
+  entry got built, and only two of the four needing a custom rule did. The cheap ones
+  confine *capabilities*; the expensive ones confine *branching* — which is where the M×N
+  the whole rework exists to end actually lives. So the two that lapsed are precisely the
+  two that matter most.
+
+  A baseline records what a rule reports, so an unbuilt mechanism's violations are not
+  frozen anywhere — they are absent from the record. "The baselines are shrinking" measures
+  the built rules only, and cannot be read as "the invariants hold" until the set is
+  complete. Landing these will grow the baselines once, which RFC 1 §8.1 now states is the
+  one event permitted to (a rule reveals pre-existing violations; it does not introduce
+  them).
 - **Teardown discharge.** S3.2 removes the duplicate `ComposerAutoloadMap`; S3.4 the
   Step 2 double-write facade and (if built) the Step 0 cache rider; S3.10 the §4.2
   function-path exemption, `getFileFunctions`, and the `DefaultFunctionRepository`
