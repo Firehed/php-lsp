@@ -330,4 +330,9 @@ class User implements Entity, Person
     {
         echo FIXTURE_HELPER_DEFINED; //hover:define_constant
     }
+
+    public function triggerHoverUndefinedConstant(): void
+    {
+        echo TOTALLY_UNDEFINED_CONSTANT; //hover:undefined_constant
+    }
 }

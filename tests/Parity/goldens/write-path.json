@@ -215,6 +215,12 @@
             "containerName": "User"
         },
         {
+            "fqn": "Fixtures\\Domain\\User::triggerHoverUndefinedConstant",
+            "name": "triggerHoverUndefinedConstant",
+            "kind": "Method",
+            "containerName": "User"
+        },
+        {
             "fqn": "Fixtures\\Domain\\User::triggerHoverUserConstant",
             "name": "triggerHoverUserConstant",
             "kind": "Method",

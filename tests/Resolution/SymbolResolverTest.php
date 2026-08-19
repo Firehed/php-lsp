@@ -208,6 +208,26 @@ final class SymbolResolverTest extends TestCase
             $result,
             'constants defined via define() should resolve to ResolvedGlobalConstant',
         );
+        self::assertStringContainsString(
+            'FIXTURE_HELPER_DEFINED',
+            $result->format(),
+            'the resolved constant should format to its declaration',
+        );
+        self::assertNull(
+            $result->getType(),
+            'define() constants have no static type information',
+        );
+    }
+
+    public function testUndefinedConstantReturnsNull(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'undefined_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($result, 'an undefined constant should not resolve');
     }
 
     public function testResolvesPropertyFetch(): void

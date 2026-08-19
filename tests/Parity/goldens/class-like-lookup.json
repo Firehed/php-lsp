@@ -168,6 +168,7 @@
             "triggerHoverProperty": "public function triggerHoverProperty(): void",
             "triggerHoverStaticMethod": "public function triggerHoverStaticMethod(): self",
             "triggerHoverTraitMethod": "public function triggerHoverTraitMethod(): void",
+            "triggerHoverUndefinedConstant": "public function triggerHoverUndefinedConstant(): void",
             "triggerHoverUserConstant": "public function triggerHoverUserConstant(): void",
             "triggerHoverVariable": "public function triggerHoverVariable(): void",
             "triggerLiteralHover": "public function triggerLiteralHover(): int",
