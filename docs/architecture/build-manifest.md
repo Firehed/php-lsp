@@ -383,6 +383,32 @@ Notes:
     has. Take it after S3.10, whose teardown may narrow the choice.
     The only entry either baseline still holds with no owning row. Found while reviewing
     the wording of SC.19, which had claimed all four of its own were the last.
+  - **SC.21** — §8.1 designates an architecture test for the single write path; what exists
+    is `DocumentSymbolSink::assertStoresAgree`, a runtime `assert()`. Asserts are disabled
+    in production, which §9 relies on elsewhere, so the mechanism is off in the only
+    environment that matters and the check runs only where a test would have run anyway.
+    S3.4 landed it as that slice's "consistency check" and no row promotes it. The slice
+    moves the agreement into a test over the fixtures and deletes the assert, so the two
+    stores cannot silently diverge in a released build.
+  - **SC.22** — the §4.11 AST/text agreement tests. Appendix B already concedes they are
+    missing; what it does not say is that Step 4's acceptance is the only thing asking for
+    them, so they could not land until the entire positional decomposition had. They do not
+    depend on it: the assertion is that the AST path and the text-fallback path answer the
+    same question the same way on parseable fixtures, which is behavioural and writable
+    against the code as it stands. Landing it first constrains the Step 4 refactor instead
+    of trailing it, which is the point of an agreement test.
+  - **What S4.1's §4.5 rule will surface in `src/Completion/`** (hand-found ahead of the
+    rule; it will find the rest). `NamespaceCandidates::offerSymbol` decides suitability by
+    branching on a kind enum — it drops every symbol `childrenOf` hands it that is not a
+    class-like, which is why S3.8b made a global constant hoverable and jump-to-able while
+    completion still could not offer one. And `getExpressionCompletions` fans out to one
+    source per kind at a position that is genuinely kind-ambiguous, which §4.5 names
+    explicitly ("an ad hoc scan that branches on each candidate kind's result"). Collapsing
+    the two is what makes a constant appear without a `ConstantCandidates` existing.
+    Consequently **#317 must be rewritten, not built as filed**: it specifies a new
+    per-kind source mirroring `FunctionCandidates`, including a direct
+    `get_defined_constants()` that S3.8b confined to `InternalConstantSet`. Its Part 2
+    (namespace-correct references via `ReferenceResolver`) is unaffected and still wanted.
   - **SC.8** — `Completion\PrefixMatcher::matches` and `SymbolIndex::findByPrefix` both
     hand-roll `str_starts_with(strtolower(...))`. SC.6 owns the `strtolower` half (it is
     the same per-kind case rule); what is left here is the duplicated *matching* helper, so
