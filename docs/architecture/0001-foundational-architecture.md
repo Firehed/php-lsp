@@ -554,6 +554,8 @@ Capability confinement (PHPStan disallowed-calls) denies AST traversal, symbol-n
 The layer-dependency contract (deptrac) denies any inter-layer dependency the ruleset does not allow.
 Their baselines freeze pre-existing violations only: the violation total MUST only shrink and MUST reach empty (0002 Step Z), and no violation may be introduced by new code.
 An entry MAY be rewritten when a strangler step relocates the code it froze, so incremental migration is never blocked; a drained entry either routes through the authority or is consciously promoted to the allowlist.
+Adding a rule is the one event that MAY grow a baseline, and only for the violations that rule newly reveals: those are pre-existing violations that were previously unrecorded, not new code.
+A rule MUST NOT be deferred to avoid the growth, because the totals are meaningful only once the rule set is complete — a violation no rule reports is absent from the record rather than frozen in it, and every change landed before the rule escapes the measurement entirely.
 
     Invariant                         Mechanism
     --------------------------------  ------------------------------------------------
