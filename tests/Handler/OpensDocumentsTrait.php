@@ -241,6 +241,14 @@ trait OpensDocumentsTrait
                 $candidates[] = $match[1];
             }
 
+            // Constants: bare identifiers not preceded by ->, ?->, ::, or $
+            $constMatch = [];
+            $constPattern = '/(?<!->|::|\\?->|\$)\b([A-Z_][A-Z0-9_]*)\b(?!\s*\()/';
+            preg_match_all($constPattern, $line, $constMatch, PREG_OFFSET_CAPTURE);
+            foreach ($constMatch[1] as $match) {
+                $candidates[] = $match[1];
+            }
+
             // Named arguments: identifier: (but not ::)
             $beforeMarker = substr($line, 0, $markerPos);
             $colonPos = strrpos($beforeMarker, ':');

@@ -108,17 +108,18 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         );
     }
 
-    public function testConstantsAreNotYetBuilt(): void
+    public function testConstantsAreBuilt(): void
     {
-        // The fixture declares it, so the null is the missing info type.
         self::assertNotSame(
             [],
             $this->declarations->constants,
             'the fixture must declare constants, or this test would pass vacuously',
         );
-        self::assertNull(
-            $this->build('Fixtures\Helpers\HELPER_LIMIT', NameKind::Constant),
-            'global-constant metadata arrives with S3.8b',
+        $info = $this->build('Fixtures\Helpers\HELPER_LIMIT', NameKind::Constant);
+        self::assertInstanceOf(
+            \Firehed\PhpLsp\Domain\ConstantInfo::class,
+            $info,
+            'a declared constant must resolve to ConstantInfo',
         );
     }
 
@@ -139,10 +140,10 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
             $reported,
             'a function the file declares must be reported, under its own kind',
         );
-        self::assertNotContains(
+        self::assertContains(
             'Constant|Fixtures\Helpers\HELPER_LIMIT',
             $reported,
-            'a scanned kind with no info type yet must be omitted rather than reported empty-handed',
+            'a constant the file declares must be reported, under its own kind',
         );
     }
 

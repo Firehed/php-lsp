@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Resolution\ResolvedClass;
 use Firehed\PhpLsp\Resolution\ResolvedConstant;
 use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedFunction;
+use Firehed\PhpLsp\Resolution\ResolvedGlobalConstant;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -58,11 +59,10 @@ final class SymbolResolverTest extends TestCase
         $this->parser = new ParserService();
         $this->documents = new DocumentManager();
 
-        // No autoload map: classes referenced but not opened resolve through the
-        // built-in reflection backend, as they did under the prior stub locator.
+        $fixturesRoot = dirname(__DIR__) . '/Fixtures';
         $knowledge = KnowledgeStack::forProject(
-            new ComposerAutoloadMap(),
-            dirname(__DIR__) . '/Fixtures/vendor',
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
@@ -163,6 +163,71 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedFunction::class, $result);
         self::assertStringContainsString('strlen', $result->format());
+    }
+
+    public function testResolvesBuiltinConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'builtin_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedGlobalConstant::class,
+            $result,
+            'built-in constants should resolve to ResolvedGlobalConstant',
+        );
+    }
+
+    public function testResolvesUserDefinedConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'user_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedGlobalConstant::class,
+            $result,
+            'user-defined constants from autoload.files should resolve to ResolvedGlobalConstant',
+        );
+    }
+
+    public function testResolvesDefineConstant(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'define_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedGlobalConstant::class,
+            $result,
+            'constants defined via define() should resolve to ResolvedGlobalConstant',
+        );
+        self::assertStringContainsString(
+            'FIXTURE_HELPER_DEFINED',
+            $result->format(),
+            'the resolved constant should format to its declaration',
+        );
+        self::assertNull(
+            $result->getType(),
+            'define() constants have no static type information',
+        );
+    }
+
+    public function testUndefinedConstantReturnsNull(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'undefined_constant');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull($result, 'an undefined constant should not resolve');
     }
 
     public function testResolvesPropertyFetch(): void

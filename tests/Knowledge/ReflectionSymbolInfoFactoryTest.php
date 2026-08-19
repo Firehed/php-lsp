@@ -93,11 +93,27 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
         );
     }
 
-    public function testConstantsAreNotYetBuilt(): void
+    public function testBuiltinConstantIsResolved(): void
     {
+        $info = $this->build('PHP_INT_MAX', NameKind::Constant);
+
+        self::assertInstanceOf(
+            \Firehed\PhpLsp\Domain\ConstantInfo::class,
+            $info,
+            'a built-in constant must resolve to ConstantInfo',
+        );
+    }
+
+    public function testUserConstantIsNotResolved(): void
+    {
+        // Define a "user" constant that will be filtered out
+        if (!defined('TEST_USER_CONSTANT')) {
+            define('TEST_USER_CONSTANT', 'value');
+        }
+
         self::assertNull(
-            $this->build('PHP_INT_MAX', NameKind::Constant),
-            'global-constant metadata arrives with S3.8b',
+            $this->build('TEST_USER_CONSTANT', NameKind::Constant),
+            'a user-defined constant is not a built-in, so reflection must not resolve it',
         );
     }
 

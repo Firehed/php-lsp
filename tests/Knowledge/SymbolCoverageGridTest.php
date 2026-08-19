@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -41,18 +42,13 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        // The kind reaches the backends; the info type does not exist yet.
-        'OpenDocumentBackend|Constant|lookup' => 'S3.8b',
-        'FilesystemBackend|Constant|lookup' => 'S3.8b',
-        'BuiltinBackend|Constant|lookup' => 'S3.8b',
-
         // `searchClassLikes` has no kind parameter until S3.9a.
         'OpenDocumentBackend|Function_|search' => 'S3.9a, S3.9b',
-        'OpenDocumentBackend|Constant|search' => 'S3.9a, S3.8b',
+        'OpenDocumentBackend|Constant|search' => 'S3.9a',
         'FilesystemBackend|Function_|search' => 'S3.9a, S3.9b',
-        'FilesystemBackend|Constant|search' => 'S3.9a, S3.8b',
+        'FilesystemBackend|Constant|search' => 'S3.9a',
         'BuiltinBackend|Function_|search' => 'S3.9a, S3.9b',
-        'BuiltinBackend|Constant|search' => 'S3.9a, S3.8b',
+        'BuiltinBackend|Constant|search' => 'S3.9a',
 
         // A prefix has no name -> file map on disk. The built-in row is blocked on
         // something else entirely: the name it would offer does not resolve
@@ -91,14 +87,14 @@ final class SymbolCoverageGridTest extends TestCase
      * The concrete type a lookup of each kind must answer with, so a cell counts as
      * covered only when the backend answered for the kind it was asked about — §5.1
      * requires a concrete return type, and the composite's narrowing `assert()` is
-     * gone in production. Null while the kind has no info type yet.
+     * gone in production.
      *
-     * @var array<string, ?class-string>
+     * @var array<string, class-string>
      */
     private const array INFO_TYPES = [
         'ClassLike' => ClassInfo::class,
+        'Constant' => ConstantInfo::class,
         'Function_' => FunctionInfo::class,
-        'Constant' => null,
     ];
 
     /** One name of each kind for the open-document row, which no on-disk file can stand in for. */
@@ -311,13 +307,13 @@ final class SymbolCoverageGridTest extends TestCase
             return false;
         }
 
-        $expected = self::INFO_TYPES[$kind->name] ?? null;
-        self::assertNotNull(
-            $expected,
+        self::assertArrayHasKey(
+            $kind->name,
+            self::INFO_TYPES,
             "{$kind->name} has no info type declared, so no backend may answer a lookup of it",
         );
         self::assertInstanceOf(
-            $expected,
+            self::INFO_TYPES[$kind->name],
             $info,
             "a {$kind->name} lookup must answer with that kind's own metadata type (RFC 1 §5.1)",
         );

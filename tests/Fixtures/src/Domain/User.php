@@ -316,4 +316,23 @@ class User implements Entity, Person
         echo $this->createdAt; //hover:trait_property_consumer
     }
 
+    public function triggerHoverBuiltinConstant(): void
+    {
+        echo PHP_VERSION; //hover:builtin_constant
+    }
+
+    public function triggerHoverUserConstant(): void
+    {
+        echo \Fixtures\Helpers\HELPER_LIMIT; //hover:user_constant
+    }
+
+    public function triggerHoverDefineConstant(): void
+    {
+        echo FIXTURE_HELPER_DEFINED; //hover:define_constant
+    }
+
+    public function triggerHoverUndefinedConstant(): void
+    {
+        echo TOTALLY_UNDEFINED_CONSTANT; //hover:undefined_constant
+    }
 }

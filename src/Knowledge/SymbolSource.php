@@ -6,8 +6,10 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -49,6 +51,21 @@ interface SymbolSource
      * source can reach declares it (RFC 1 §5.3: absence is a bare null).
      */
     public function lookupClassLike(ClassName $name): ?ClassInfo;
+
+    /**
+     * Full metadata for a global constant by its exact name, or null when
+     * nothing the source can reach declares it (RFC 1 §5.3).
+     *
+     * Reach is what a name can be resolved *through*: an open document, an
+     * `autoload.files` entry, or a built-in. A constant in an unopened PSR-4
+     * file has no name -> file route at all, which is Plan 0002 §3's
+     * locate-only limitation rather than an absence.
+     *
+     * Covers `const` declarations and literal-name `define()` calls; a
+     * computed-name `define()` is a runtime call invisible to static parse
+     * (Plan 0002 §3).
+     */
+    public function lookupConstant(GlobalConstantName $name): ?ConstantInfo;
 
     /**
      * Full metadata for a standalone function by its exact name, or null when

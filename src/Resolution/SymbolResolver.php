@@ -24,9 +24,11 @@ use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\MethodCall;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use PhpParser\Node\Arg;
@@ -1404,6 +1406,11 @@ final class SymbolResolver implements CodeResolver
             return $this->resolveFunctionCall($node, $ast);
         }
 
+        // Global constant: resolve to ResolvedGlobalConstant
+        if ($parent instanceof ConstFetch) {
+            return $this->resolveConstFetch($node);
+        }
+
         // Class reference (new, instanceof, static call, type hint, etc.)
         $classNameStr = ScopeFinder::resolveClassName($node);
 
@@ -1421,6 +1428,17 @@ final class SymbolResolver implements CodeResolver
     private function resolveFunctionCall(Name $node, array $ast): ?ResolvedFunction
     {
         return $this->resolveFunctionByName($node->toString(), $ast);
+    }
+
+    private function resolveConstFetch(Name $node): ?ResolvedGlobalConstant
+    {
+        $name = ScopeFinder::resolveName($node);
+        $constantInfo = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($name));
+        if ($constantInfo === null) {
+            return null;
+        }
+
+        return new ResolvedGlobalConstant($constantInfo);
     }
 
     /**

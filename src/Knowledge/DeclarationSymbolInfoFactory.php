@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Document\FileUri;
+use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -33,8 +34,6 @@ final readonly class DeclarationSymbolInfoFactory
      * Every symbol the file declares, at any depth. Of duplicates the first wins —
      * the one PHP would define.
      *
-     * Global constants are scanned but not built: their info type lands in S3.8b.
-     *
      * @return list<DeclaredSymbol>
      */
     public function allIn(FileDeclarations $declarations, string $filePath): array
@@ -49,6 +48,10 @@ final readonly class DeclarationSymbolInfoFactory
         foreach ($declarations->functions as $declaration) {
             $info = FunctionInfo::fromNode($declaration->node, $filePath);
             self::collect($symbols, $seen, $declaration->name, NameKind::Function_, $info);
+        }
+        foreach ($declarations->constants as $declaration) {
+            $info = ConstantInfo::fromGlobalDeclaration($declaration->node, $declaration->name->shortName, $filePath);
+            self::collect($symbols, $seen, $declaration->name, NameKind::Constant, $info);
         }
 
         return $symbols;
