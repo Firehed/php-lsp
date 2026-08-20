@@ -25,6 +25,7 @@ final class TypeConstructionRule implements Rule
         \Firehed\PhpLsp\Domain\UnionType::class,
         \Firehed\PhpLsp\Domain\IntersectionType::class,
         \Firehed\PhpLsp\Domain\PrimitiveType::class,
+        \Firehed\PhpLsp\Domain\LateStaticType::class,
     ];
 
     private const array ALLOWED_FILES = [
