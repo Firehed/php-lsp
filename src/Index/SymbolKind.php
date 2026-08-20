@@ -20,7 +20,7 @@ enum SymbolKind: int
     /**
      * The index kinds that belong to a knowledge kind. Four class-likes collapse to
      * one because PHP resolves them in a single symbol namespace: a name is a class
-     * or an interface, never both, so a search cannot need to tell them apart.
+     * or an interface, never both.
      *
      * @return list<self>
      */

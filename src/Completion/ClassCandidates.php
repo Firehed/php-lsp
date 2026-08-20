@@ -138,8 +138,7 @@ final class ClassCandidates
     private function indexKinds(ClassCandidateFilter $filter): array
     {
         return match ($filter) {
-            // Not a fourth literal: "every class-like" is the seam's own answer, so
-            // a class-like kind added there must not be dropped by this gate.
+            // A class-like kind added to the seam must not be dropped by this gate.
             ClassCandidateFilter::Any => SymbolKind::forNameKind(NameKind::ClassLike),
             ClassCandidateFilter::Instantiable => [
                 SymbolKind::Class_,
