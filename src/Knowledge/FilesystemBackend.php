@@ -29,12 +29,8 @@ use Firehed\PhpLsp\Parser\ParserService;
  * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
- * ({@see NamespaceCatalog}). Prefix search is empty: a name→file map exists for
- * classes, but a bare prefix has no such map, so project-wide search over disk is
- * the deferred workspace-index scope (RFC 1 §3), not an unbounded walk here. That
- * blocks the PSR-4 tree alone — the `autoload.files` index is name-keyed and already
- * in memory, so its functions and constants are searchable and owed by
- * `function-search`; until then they enumerate but do not prefix-search.
+ * ({@see NamespaceCatalog}). Prefix search is empty for every kind;
+ * `SymbolCoverageGridTest` records what blocks each one.
  */
 final class FilesystemBackend implements SymbolBackend, Invalidatable
 {
@@ -91,10 +87,6 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * Empty by contract: a prefix search over the PSR-4 tree needs a workspace walk
-     * this backend does not do (RFC 1 §3, §5.3). The `autoload.files` index needs no
-     * walk and is owed instead of blocked — see the class docblock.
-     *
      * @return list<never>
      */
     public function search(string $prefix, NameKind $kind): array
