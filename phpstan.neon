@@ -147,6 +147,10 @@ services:
         tags:
             - phpstan.rules.rule
     -
+        class: Firehed\PhpLsp\Tests\Architecture\KindInspectionRule
+        tags:
+            - phpstan.rules.rule
+    -
         class: Firehed\PhpLsp\Tests\Architecture\SymbolDiscoveryAuthorityExtension
         tags:
             - phpstan.restrictedClassNameUsageExtension
