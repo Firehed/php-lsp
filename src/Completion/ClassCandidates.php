@@ -138,12 +138,9 @@ final class ClassCandidates
     private function indexKinds(ClassCandidateFilter $filter): array
     {
         return match ($filter) {
-            ClassCandidateFilter::Any => [
-                SymbolKind::Class_,
-                SymbolKind::Interface_,
-                SymbolKind::Trait_,
-                SymbolKind::Enum_,
-            ],
+            // Not a fourth literal: "every class-like" is the seam's own answer, so
+            // a class-like kind added there must not be dropped by this gate.
+            ClassCandidateFilter::Any => SymbolKind::forNameKind(NameKind::ClassLike),
             ClassCandidateFilter::Instantiable => [
                 SymbolKind::Class_,
                 SymbolKind::Enum_,
