@@ -37,6 +37,7 @@ final class KindEnumMatchRule implements Rule
         'src/Domain/MemberKind.php',
         'src/Domain/ClassKind.php',
         'src/Domain/ClassInfo.php',
+        'src/Index/SymbolKind.php',
         'src/Resolution/NameContext.php',
         'src/Repository/DefaultClassInfoFactory.php',
         'src/Knowledge/ReflectionSymbolInfoFactory.php',
