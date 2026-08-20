@@ -60,6 +60,8 @@ Ordered. Each row starts when the one above it merges.
 
   The collapse is what makes a constant appear *without* a `ConstantCandidates` existing: position filters take the typed name the symbol denotes and default to accepting it, restricting positions ask a `CodeResolver` predicate (`isInstantiable`, `isInterface`), and a single kind-dispatched factory is the one place a kind is named. Adding a kind then breaks exactly one `match` and every position keeps working.
 
+  **`PHP_E|` still offers nothing when this slice is done, and that is not a defect.** The collapse routes expression-start through `search`, but only the open-document backend answers it — built-in constant search is owed by **function-search**, the row below. Judge this slice on a constant declared in an open document, and on the absence of a per-kind source; a built-in one goes dark until the next row lands.
+
   Consequently **#317 must be rewritten, not built as filed.** It specifies a new per-kind source mirroring `FunctionCandidates` — a consumer edit that RFC 1 §7 forbids for a new symbol kind — including a direct `get_defined_constants()` that S3.8b confined to `InternalConstantSet`. Its Part 2 (namespace-correct references via `ReferenceResolver`) is unaffected and still wanted.
 
 - [ ] **function-search** — Function and constant search + FunctionCandidates migration
