@@ -50,6 +50,14 @@ Ordered. Each row starts when the one above it merges.
 
   `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, and the `NameKind` → `SymbolKind` mapping gets one home (`SymbolKind::forNameKind`). `OpenDocumentBackend` answers every kind through it — its index already holds them, and suppressing two would be a filter written to keep a promise rather than to serve a caller. The on-disk and built-in backends still answer no kind (**function-search** owes those). Class-likes remain the only kind any *consumer* searches, so every Step P golden stays frozen. This is what **completion-kind-collapse** needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
 
+- [ ] **symbol-index-kind-keys** — Key the symbol index by kind, not by name alone
+
+  `SymbolIndex` keys `byFqn`, `byNamespace` and its per-URI reverse map on the fully-qualified name string alone, so a name declared as more than one kind in one document keeps only the last one written. PHP allows all three at once — `const Limit`, `function Limit()` and `class Limit` are independent symbols — and `OpenDocumentBackend::lookup` resolves each of them, because its own key carries the kind. Prefix search and namespace enumeration read the index instead, and report one. So the name hovers and jumps while completion never offers it: the §4.2 lookup-versus-enumeration split, at the seam built to close it. The defect is older than **search-kind-param**; that row is what gives search all three kinds to lose.
+
+  *Acceptance is both halves, mechanism first.* `SymbolCoverageGridTest`'s open-document fixture declares one shared name as all three kinds, so the collision fails the grid — committed red, ahead of the fix, per the project's TDD rule. Then `byFqn`, `byNamespace` and the URI reverse map key through `NameKind::keyFor()`, which `OpenDocumentBackend` already uses, so `findByPrefix`, `inNamespace` and `clearByUri` each hold the kinds apart. Closing a document must evict all three, not the first symbol whose name matches.
+
+  Case folding stays out of scope: `byFqn` compares raw strings, so `App\Foo` and `App\foo` are distinct already, and whether a class-like lookup should fold them belongs to the per-kind case rule `NameKind::normalize()` owns. Every Step P golden should stay frozen. If one moves, the parity corpus holds a collision of its own — review that diff rather than accept it.
+
 - [ ] **completion-kind-collapse** — Collapse completion's per-kind sources and kind branches
 
   The largest §4.5 violation, and the one that proves the rule works. Two forms, both in `src/Completion/`:
