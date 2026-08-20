@@ -221,7 +221,7 @@ final class OpenDocumentBackendTest extends TestCase
         // because prefix search covers the class-like namespace only.
         $this->addSymbol('Userland', 'App\Userland', SymbolKind::Function_);
 
-        $results = $this->backend->searchClassLikes('User');
+        $results = $this->backend->search('User', NameKind::ClassLike);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains('App\User', $fqns, 'a class-like matching the prefix must be found');

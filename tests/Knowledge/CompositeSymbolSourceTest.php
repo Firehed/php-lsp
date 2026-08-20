@@ -202,7 +202,7 @@ final class CompositeSymbolSourceTest extends TestCase
         ]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
-        $results = $source->searchClassLikes('Log');
+        $results = $source->search('Log', NameKind::ClassLike);
 
         $byFqn = [];
         foreach ($results as $symbol) {

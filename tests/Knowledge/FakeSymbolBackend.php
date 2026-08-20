@@ -54,7 +54,7 @@ final class FakeSymbolBackend implements SymbolBackend
     /**
      * @return list<Symbol>
      */
-    public function searchClassLikes(string $prefix): array
+    public function search(string $prefix, NameKind $kind): array
     {
         return array_values(array_filter(
             $this->searchResults,
