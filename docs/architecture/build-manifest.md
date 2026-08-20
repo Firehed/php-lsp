@@ -24,8 +24,8 @@ That is why **enforcement-rules** comes first: until those rules exist, no slice
 
 - Remaining work is an **ordered list**. Each row starts when the one above it merges.
 - The **slug** (bold text) is the slice id; the branch is `slice/<slug>`.
-- Status is **computed from whether `slice/<slug>` is merged**, never from a field here. The checkboxes are a reading aid; the merge is the truth.
-- A finished row moves to *Complete*, and its explanatory note goes with it — into git history, not into the row.
+- Status is **computed from whether `slice/<slug>` is merged**, never from a field here.
+- **Landing a slice includes checking its box.** The PR that merges the slice also checks the box — one diff, one review. Rows move to *Complete* in bulk when a wave closes; explanatory notes go into git history, not the Complete section.
 - To reorder: move the line. No cross-references to update.
 
 ## Remaining work

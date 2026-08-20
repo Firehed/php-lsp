@@ -164,9 +164,10 @@ squash-deleted branch is never misread as unstarted.
    fresh pass, which is what lets the review loop terminate.
 4. **Fix.** Apply fixes on the branch; the change then needs a fresh pass (a new
    session) before landing. Land only from a pass that fixed nothing.
-5. **Land.** Mark ready / merge. For each existing issue the manifest says this slice
-   closes, **read the issue body, confirm its criteria are met, then** wire
-   `Closes #<n>` (or close with a verification note).
+5. **Land.** Mark ready; **check the slice's box in the manifest** (one diff, one
+   review). For each existing issue the manifest says this slice closes, **read the
+   issue body, confirm its criteria are met, then** wire `Closes #<n>` (or close with
+   a verification note). Merge.
 6. **Close against the goal.** Every pass ends by saying, in plain english, what two
    features could have disagreed about and what now makes that impossible — or what
    the change unblocks, if it is groundwork — or what corrections remain before it

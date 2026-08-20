@@ -132,6 +132,8 @@ burn 75k+ tokens re-deriving the whole measurement.
   confirm its acceptance criteria are met **by this change**; if so, add `Closes #<n>`
   to the PR body with a one-line verification note. If not met, leave it and say why.
 - `gh pr ready` if the PR was a draft.
+- **Check the slice's box** in the manifest. This is part of the PR — one diff, one
+  review.
 - Report: **"Pass clean. Verified closes: #n. Ready to land — merge when ready."**
   Do **not** auto-merge — merging is irreversible and outward-facing; the user lands.
 - Report the next slice (the row below this one in the manifest).
