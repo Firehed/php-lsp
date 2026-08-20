@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Golden parity for the prefix-search surface — `SymbolIndex::findByPrefix()`,
- * which Step 2 migrates onto `SymbolSource::searchClassLikes`. A fixed set of
+ * which Step 2 migrates onto `SymbolSource::search`. A fixed set of
  * workspace documents is indexed, then a curated set of prefix queries (with and
  * without a kind filter, matching and not) is frozen. All inputs are in-repo, so
  * the golden is deterministic.

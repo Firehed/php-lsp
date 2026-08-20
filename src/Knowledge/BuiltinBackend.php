@@ -21,9 +21,11 @@ use Firehed\PhpLsp\Index\NamespaceContents;
  * *server's* runtime, not the project's target — a known §4.7 gap deferred to Step 5
  * (Plan 0002 §5); the interim treats every reflected built-in as available.
  *
- * Prefix search is empty here for the same reason as on disk: a bare prefix would
- * mean surfacing built-ins that do not resolve unqualified in the file's namespace,
- * which is auto-import, a separate concern — not this backend's job.
+ * Prefix search is empty for every kind, for two different reasons. A bare class-like
+ * prefix would surface names that do not resolve unqualified in the file's namespace,
+ * which is auto-import (#23) — a separate concern, not this backend's job. Functions
+ * and constants fall back to the global namespace and so have no such obstacle; they
+ * are simply unimplemented, and owed by the `function-search` slice.
  */
 final class BuiltinBackend implements SymbolBackend
 {

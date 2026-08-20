@@ -233,7 +233,7 @@ final class CompositeSymbolSourceTest extends TestCase
         );
     }
 
-    public function testSearchClassLikesMergesAndDeduplicatesByFqnEarlierWinning(): void
+    public function testSearchMergesAndDeduplicatesByFqnEarlierWinning(): void
     {
         $open = new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'open.php')]);
         $vendor = new FakeSymbolBackend(searchResults: [

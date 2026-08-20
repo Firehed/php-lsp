@@ -96,7 +96,7 @@ exercise — to surface before the harness is trusted.
 The corpus drives the *lookup* and *enumeration* surfaces through the
 `CompositeSymbolSource` and its backends. Two things it deliberately does **not**
 drive, so their lines show here as unexecuted but are fully covered elsewhere: the
-per-backend `searchClassLikes` (empty on the workspace, vendor, and built-in
+per-backend `search` (empty on the workspace, vendor, and built-in
 backends) and the composite's prefix-search merge — prefix-search parity runs against
 `SymbolIndex` directly, and the backends' own unit tests exercise the rest.
 

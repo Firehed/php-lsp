@@ -208,10 +208,14 @@ registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outb
 `dynamicRegistration`; an unregistered client follows the §7 fallback (no invalidation
 until a file is opened and closed).
 
-Class-like prefix search (`searchClassLikes`) is served only by the open-document
-backend today; project-wide on-disk search is the deferred workspace-index scope
-(RFC 1 §3). Function search, and the migration of the consumers still calling
-`FunctionRepository`, are later Step 3b slices; constant reach is S3.8b.
+Prefix search is `search(string $prefix, NameKind)` — kind-parameterized like `lookup`,
+so a new searchable kind is an argument, not a method. `SymbolKind::forNameKind()` is
+the one place a `NameKind` becomes the index kinds it covers, and `SymbolKind::nameKind()`
+is its derived inverse; neither mapping is written twice. Only the open-document backend
+answers today, and it answers for every kind. The PSR-4 tree cannot: a fragment has no
+arithmetic route to a file, which is the deferred workspace-index scope (RFC 1 §3). The
+`autoload.files` index and the built-ins can, and are owed by the `function-search`
+slice, along with the migration of the consumers still calling `FunctionRepository`.
 
 - **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
