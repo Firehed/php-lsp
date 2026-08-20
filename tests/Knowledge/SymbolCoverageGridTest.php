@@ -46,9 +46,9 @@ final class SymbolCoverageGridTest extends TestCase
         // The PSR-4 tree offers no prefix route: a name reaches a file by arithmetic
         // on the whole name, which a fragment cannot do (RFC 1 §3). That blocks the
         // tree alone — the `autoload.files` index is name-keyed and in memory, and
-        // `childrenOf` already reads it, so search over it is implementable and owed
-        // for all three kinds, class-likes included.
-        'FilesystemBackend|ClassLike|search' => 'RFC 1 §3, function-search',
+        // `childrenOf` already reads it, so its function and constant search is
+        // implementable and owed.
+        'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
         'FilesystemBackend|Function_|search' => 'function-search',
         'FilesystemBackend|Constant|search' => 'function-search',
 
