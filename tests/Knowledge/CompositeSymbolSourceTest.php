@@ -229,7 +229,7 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertEqualsCanonicalizing(
             ['Grid\LIMIT', 'Grid\Limit'],
             $fqns,
-            'constant names are case-sensitive in PHP, so two spellings are two constants and neither may be merged away',
+            'constant names are case-sensitive in PHP, so two spellings are two constants and neither may be merged',
         );
     }
 
