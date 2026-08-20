@@ -10,6 +10,7 @@
 
 An M×N pair is M consumers each hand-writing their own handling of N cases — handler × node type, backend × symbol kind, completion position × symbol kind, member kind × hierarchy walk.
 They drift, and when they drift two features disagree about the same code: #190, #253 and #256 are all one bug wearing three faces.
+The full axis list is Appendix A of RFC 1; three axes are deferred (member kind, access context, target environment).
 
 Nothing else here outranks that.
 A slice that removes a pair is worth more than a slice that adds reach, and a slice that adds reach while leaving a pair open is a regression however useful the reach.
@@ -17,20 +18,21 @@ Not-yet-started functionality is in scope too: a feature that cannot be built wi
 
 Elimination is not enough on its own, because the next contributor cannot see a pair that is merely absent.
 Every axis therefore ends with a **rule** that fails analysis when a consumer branches per-case, so the pair cannot come back.
-That is why **SM.1 comes first**: until those rules exist, no slice — landed or pending — can prove it moved toward the goal.
+That is why **enforcement-rules** comes first: until those rules exist, no slice — landed or pending — can prove it moved toward the goal.
 
 ## How to read this
 
-- **ID** — stable; the branch is `slice/<ID>`. Assigned at filing, never changed, because a merged slice is found by it. It carries no ordering meaning.
-- **Depends on** — ids that must be merged first. `all prior` means every other row.
-- Status is **computed from whether `slice/<ID>` is merged**, never from a field here. The checkboxes below are a reading aid; the merge is the truth.
-- A finished row moves from *Remaining* to *Complete*, and its explanatory note goes with it — into git history, not into the row.
+- Remaining work is an **ordered list**. Each row starts when the one above it merges.
+- The **slug** (bold text) is the slice id; the branch is `slice/<slug>`.
+- Status is **computed from whether `slice/<slug>` is merged**, never from a field here. The checkboxes are a reading aid; the merge is the truth.
+- A finished row moves to *Complete*, and its explanatory note goes with it — into git history, not into the row.
+- To reorder: move the line. No cross-references to update.
 
 ## Remaining work
 
-### 1. Enforcement — first, ahead of everything
+Ordered. Each row starts when the one above it merges.
 
-- [ ] **SM.1 — Install every M×N enforcement rule.** Depends on: —
+- [ ] **enforcement-rules** — Install every M×N enforcement rule
 
   One slice, every unbuilt mechanism RFC 1 §8.1 designates. They were specified together and lapsed together; splitting them just recreates the window in which some axes are guarded and others are not.
 
@@ -44,9 +46,11 @@ That is why **SM.1 comes first**: until those rules exist, no slice — landed o
 
   Note what the growth means: every violation these rules report has been in the tree all along, unrecorded. "The baselines are shrinking" has only ever measured the rules that were built.
 
-### 2. Drain what SM.1 reveals
+- [ ] **search-kind-param** — Generalize search to a kind parameter
 
-- [ ] **SM.2 — Collapse completion's per-kind sources and kind branches.** Depends on: SM.1, S3.9a
+  `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, with class-likes still the only searchable kind. Behavior-preserving, so every Step P golden stays frozen. This is what **completion-kind-collapse** needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
+
+- [ ] **completion-kind-collapse** — Collapse completion's per-kind sources and kind branches
 
   The largest §4.5 violation, and the one that proves the rule works. Two forms, both in `src/Completion/`:
 
@@ -58,54 +62,47 @@ That is why **SM.1 comes first**: until those rules exist, no slice — landed o
 
   Consequently **#317 must be rewritten, not built as filed.** It specifies a new per-kind source mirroring `FunctionCandidates` — a consumer edit that RFC 1 §7 forbids for a new symbol kind — including a direct `get_defined_constants()` that S3.8b confined to `InternalConstantSet`. Its Part 2 (namespace-correct references via `ReferenceResolver`) is unaffected and still wanted.
 
-- [ ] **SM.3 — Drain the SM.1 entries no Step 4 row owns.** Depends on: SM.1
-
-  The §4.6 `new`-of-a-Type sites outside `TypeFactory` (`DefaultClassInfoFactory`, and whatever else the rule finds), plus any §5.4 default the capability grid reports missing. `SymbolResolver`, `TextFallbackHelper` and `BasicTypeResolver` are excluded — S4.2, S4.5 and S4.8 already own those files, and filing them twice puts two slices in competition for one edit.
-
-### 3. Finish the symbol-kind axis
-
-The axis is closed at three kinds by PHP itself. What is left is making search kind-parameterized so consumers stop naming kinds, and retiring the function-shaped scaffolding that predates the seam.
-
-- [ ] **S3.9a — Generalize search to a kind parameter.** Depends on: —
-
-  `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, with class-likes still the only searchable kind. Behavior-preserving, so every Step P golden stays frozen. This is what SM.2 needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
-
-- [ ] **S3.9b — Function search + `FunctionCandidates` migration.** Depends on: S3.9a
+- [ ] **function-search** — Function search + FunctionCandidates migration
 
   Backends answer function search; `FunctionCandidates` moves onto the seam and its frozen `get_defined_functions()` baseline entry drains. `BuiltinBackend` **must** answer function search here or built-in function completion regresses — the function-surface golden S3.6 froze is what catches it.
 
-- [ ] **S3.8c — Retire the AST-in function lookup from consumers.** Depends on: —
+- [ ] **retire-ast-in-lookup** — Retire the AST-in function lookup from consumers
 
-  Moves `SymbolResolver` and `BasicTypeResolver` off `FunctionRepository::get(string, array $ast)`. This is the Step 3b slice that edits `SymbolResolver`, so it — not S3.8a — is what S4.2 serializes against (0002 §6).
+  Moves `SymbolResolver` and `BasicTypeResolver` off `FunctionRepository::get(string, array $ast)`. This is the slice that edits `SymbolResolver` before the Step 4 decomposition, so **node-locator** serializes against it.
 
-- [ ] **S3.10 — Remove the §4.2 function-path exemption; retire scaffolding.** Depends on: S3.8c, S3.9b
+- [ ] **retire-function-exemption** — Remove §4.2 function-path exemption; retire scaffolding
 
   Drops S2.6's scoped exemption for `FunctionRepository`, `getFileFunctions`, and the `DefaultFunctionRepository` AST-in signature. Its reflection entries in `phpstan-baseline.neon` drain with it.
 
-### 4. Positional decomposition (Step 4)
+- [ ] **drain-enforcement-entries** — Drain the enforcement-rules entries no Step 4 row owns
 
-`SymbolResolver` answers every positional question and holds most of the remaining baseline. The point of the decomposition is that each positional question is answered in exactly one place — the same single-authority shape as the knowledge seam, on the other axis.
+  The §4.6 `new`-of-a-Type sites outside `TypeFactory` (`DefaultClassInfoFactory`, and whatever else the rule finds), plus any §5.4 default the capability grid reports missing. `SymbolResolver`, `TextFallbackHelper` and `BasicTypeResolver` are excluded — later rows own those files.
 
-- [ ] **S4.1 — `TypeClassifier`.** Depends on: — · *(its §4.5/§4.6 rules moved to SM.1)*
-- [ ] **S4.2 — Extract node locator + scope analyzer.** Depends on: S3.8c, S4.1
-- [ ] **S4.3 — Extract member-access + call-context detectors.** Depends on: S4.2
-- [ ] **S4.4 — Extract name-context resolver.** Depends on: S4.2
-- [ ] **S4.5 — Narrow `TextFallbackHelper` to FQN recovery.** Depends on: S4.3, S4.4
-- [ ] **S4.8 — Bring TypeInference inside the boundary.** Depends on: S4.2
+- [ ] **type-classifier** — TypeClassifier
 
-  The variable-binding walks and expression dispatch are duplicated across `src/Resolution/` and `src/TypeInference/`; the latter sat outside the original decomposition's directory boundary. Gated on S4.2 because both edit `SymbolResolver`.
+  *(Its §4.5/§4.6 rules moved to enforcement-rules.)*
 
-- [ ] **S4.6 — `SymbolResolver` → glue; `CodeResolver` positional-only.** Depends on: S4.2, S4.3, S4.4, S4.5, S4.8
+- [ ] **node-locator** — Extract node locator + scope analyzer
+
+- [ ] **member-call-detectors** — Extract member-access + call-context detectors
+
+- [ ] **name-context** — Extract name-context resolver
+
+- [ ] **text-fallback-narrow** — Narrow TextFallbackHelper to FQN recovery
+
+- [ ] **type-inference-merge** — Bring TypeInference inside the boundary
+
+  The variable-binding walks and expression dispatch are duplicated across `src/Resolution/` and `src/TypeInference/`; the latter sat outside the original decomposition's directory boundary.
+
+- [ ] **resolver-glue** — SymbolResolver → glue; CodeResolver positional-only
 
   `CodeResolver` reduces to the positional-facing interface; its knowledge-facing responsibilities are served by `SymbolSource`, with no second knowledge interface.
 
-### 5. Terminal gate
-
-- [ ] **SZ.1 — Definition of Done + repo-wide duplication audit.** Depends on: all prior
+- [ ] **done** — Definition of Done + repo-wide duplication audit
 
   Both baselines empty, every teardown discharged, and no unowned duplicate anywhere in `src/`.
 
-  This absorbs the former per-section audits (S3.11, S4.7). They were hand-run tracking gates from before the rules existed; SM.1's rules are the continuous version, and running a manual audit twice more in the middle adds ceremony without adding a check. One completion gate, where an unowned or unfixed duplicate fails outright.
+  This absorbs the former per-section audits (S3.11, S4.7). They were hand-run tracking gates from before the rules existed; **enforcement-rules**'s rules are the continuous version, and running a manual audit twice more in the middle adds ceremony without adding a check. One completion gate, where an unowned or unfixed duplicate fails outright.
 
 ## Complete
 
@@ -167,23 +164,21 @@ Wave 2 — Step 3, and the SC.* debt that predated the plan.
 
 SC.10 and SC.14 were never built: SC.14 was struck from the manifest (#430) and SC.10 was never filed.
 
-Verified beyond the merge: `deptrac.baseline.yaml` is empty, and SC.19's four `phpstan-baseline.neon` entries are gone. What the PHPStan baseline still holds belongs to S3.9b, S3.10, S4.2, S4.5 and S4.8, each named on its row above.
+Verified beyond the merge: `deptrac.baseline.yaml` is empty, and SC.19's four `phpstan-baseline.neon` entries are gone. What the PHPStan baseline still holds belongs to **function-search**, **retire-function-exemption**, **node-locator**, **text-fallback-narrow** and **type-inference-merge**, each named on its row above.
 
-One acceptance carve-out is recorded rather than reopened: **S3.4** landed its write-path consistency check as a runtime `assert()`, which is not the architecture test §8.1 designates. SM.1 carries the promotion.
+One acceptance carve-out is recorded rather than reopened: **S3.4** landed its write-path consistency check as a runtime `assert()`, which is not the architecture test §8.1 designates. **enforcement-rules** carries the promotion.
 
-## Deferred (excluded from `/do-next` until reached)
+## Deferred (excluded until reached)
 
-A pickable row with satisfiable dependencies gets picked, so these are kept out of the table until their phase arrives.
-
-- **Step 5 — environment-parameterized built-ins (§4.7).** Not plannable: its version-aware source is an open TBD (0002 §7, explicitly not `phpstorm-stubs`). The reflection-backed Builtin backend from S3.3 is the interim, and does not satisfy §4.7. SZ.1 permits it to remain a named gap.
+- **Step 5 — environment-parameterized built-ins (§4.7).** Not plannable: its version-aware source is an open TBD (0002 §7, explicitly not `phpstorm-stubs`). The reflection-backed Builtin backend from S3.3 is the interim, and does not satisfy §4.7. **done** permits it to remain a named gap.
 - **Step 6 — scheduler / async tier (#266).** Deferred until a push feature needs it: `$/cancelRequest` for superseded work, debounced `publishDiagnostics`, and a bounded background scheduler that feature-detects `pcntl` / `ext-parallel` with a synchronous fallback.
-- **Wave 3 — member kind, access context, intent detection.** The axes the 2026-08-10 RFC amendment added (RFC 1 §3.1, Appendix A "target" rows). Property hooks and asymmetric visibility wait on the first two. Sliced after Step 4 — and each ends in a rule, per the goal above.
+- **Wave 3 — member kind, access context, intent detection.** The axes the 2026-08-10 RFC amendment added (RFC 1 §3.1, Appendix A "target" rows). Property hooks and asymmetric visibility wait on the first two. Sliced after the **done** gate — and each ends in a rule, per the goal above.
 - **Feature-matrix runner.** A fixture-scenario × handler-registry grid, every cell asserting that handler's observable or registering not-applicable, an unregistered cell failing. Deprioritized 2026-08-10; revisit after the Step 4 drain. Worth reconsidering sooner than that priority implies — it is the cross-feature agreement net, and the same shape as the §5.1 grid that has already caught real gaps.
 
 ## Issue wiring
 
 `Closes` is assigned when a slice issue is created, after a reviewer reads the issue — never inferred from a title.
 
-- **#181** is not closable before S3.9b: its acceptance asks for these symbols in hover *and completion*, not merely resolvable, and it asks for a startup-time benchmark that S3.7d's eager index makes a live question. S3.7d pinned the parse *count*, which is not that measurement.
-- **#317** needs rewriting before it can be wired to anything — see SM.2.
+- **#181** is not closable before **function-search**: its acceptance asks for these symbols in hover *and completion*, not merely resolvable, and it asks for a startup-time benchmark that S3.7d's eager index makes a live question. S3.7d pinned the parse *count*, which is not that measurement.
+- **#317** needs rewriting before it can be wired to anything — see **completion-kind-collapse**.
 - **#295** (Visibility enum) wants a small cleanup slice, not yet placed.
