@@ -94,14 +94,15 @@ final class CompositeSymbolSource implements SymbolSource
     /**
      * @return list<Symbol>
      */
-    public function searchClassLikes(string $prefix): array
+    public function search(string $prefix, NameKind $kind): array
     {
         $byFqn = [];
         foreach ($this->backends as $backend) {
-            foreach ($backend->searchClassLikes($prefix) as $symbol) {
+            foreach ($backend->search($prefix, $kind) as $symbol) {
                 // The earlier (more authoritative) backend wins a name clash, so an
                 // open document's symbol is not shadowed by a cached copy of it.
-                $byFqn[self::normalizeKey($symbol->fullyQualifiedName)] ??= $symbol;
+                $key = $kind->normalize(QualifiedName::fromFullyQualified($symbol->fullyQualifiedName));
+                $byFqn[$key] ??= $symbol;
             }
         }
 

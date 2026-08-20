@@ -94,7 +94,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
      *
      * @return list<never>
      */
-    public function searchClassLikes(string $prefix): array
+    public function search(string $prefix, NameKind $kind): array
     {
         return [];
     }

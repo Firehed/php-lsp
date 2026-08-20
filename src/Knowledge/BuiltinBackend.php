@@ -51,7 +51,7 @@ final class BuiltinBackend implements SymbolBackend
     /**
      * @return list<never>
      */
-    public function searchClassLikes(string $prefix): array
+    public function search(string $prefix, NameKind $kind): array
     {
         return [];
     }
