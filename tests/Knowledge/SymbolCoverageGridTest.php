@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
@@ -321,13 +322,20 @@ final class SymbolCoverageGridTest extends TestCase
     {
         $prefix = QualifiedName::fromFullyQualified($fqn)->shortName;
 
+        $found = false;
         foreach ($backend->search($prefix, $kind) as $symbol) {
-            if ($symbol->fullyQualifiedName === $fqn) {
-                return true;
-            }
+            // Mirrors `enumerates`: a cell counts as covered only when the backend
+            // answered for the kind it was asked about, so search and enumeration
+            // cannot come to disagree about which kind a name denotes (§4.2).
+            self::assertContains(
+                $symbol->kind,
+                SymbolKind::forNameKind($kind),
+                "a {$kind->name} search must not return {$symbol->fullyQualifiedName}, which is not that kind",
+            );
+            $found = $found || $symbol->fullyQualifiedName === $fqn;
         }
 
-        return false;
+        return $found;
     }
 
     private function enumerates(SymbolBackend $backend, string $namespace, NameKind $kind, string $fqn): bool
