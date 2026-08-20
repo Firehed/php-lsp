@@ -57,6 +57,10 @@ in `phpstan-baseline.neon` / `deptrac.baseline.yaml`. If the row drains no basel
 entry, spot-check its central claim against the code — one `grep` is enough; the
 failure mode is a row asserting that something is absent when it is present.
 
+**Baseline rule:** `enforcement-rules` is the only slice that may grow a baseline (the
+human overrides CI). Every other slice must leave baselines flat or shrink them —
+widening an enforcement rule's allowlist to avoid growth is the same failure.
+
 A row whose claim no longer holds is a **phantom**. Report it as such, say what appears
 to have discharged it, and ask whether to remove it from the list and continue to the
 next row.

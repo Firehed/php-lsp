@@ -25,7 +25,7 @@ That is why **enforcement-rules** comes first: until those rules exist, no slice
 - Remaining work is an **ordered list**. Each row starts when the one above it merges.
 - The **slug** (bold text) is the slice id; the branch is `slice/<slug>`.
 - Status is **computed from whether `slice/<slug>` is merged**, never from a field here.
-- **Landing a slice includes checking its box.** The PR that merges the slice also checks the box — one diff, one review. Rows move to *Complete* in bulk when a wave closes; explanatory notes go into git history, not the Complete section.
+- **Landing a slice includes checking its box.** The PR that merges the slice also checks the box — one diff, one review. Checked rows stay where they are; nothing moves to *Complete* from this point forward.
 - To reorder: move the line. No cross-references to update.
 
 ## Remaining work
@@ -42,9 +42,9 @@ Ordered. Each row starts when the one above it merges.
   - **§4.11** — the AST/text agreement tests: the AST path and the text-fallback path must answer the same question the same way on parseable fixtures. Writable against the code as it stands, and landing it first constrains the Step 4 refactor instead of trailing it.
   - **§5.4** — a safe default for every capability the client did not declare. §5.4 has no §8.1 row at all; §4.8's rule enforces *where* raw parameters may be read, not this. Add a capability with no default and nothing fails today. Same shape as the §5.1 coverage grid.
 
-  **The baselines grow, once.** That is expected and correct: a rule reveals pre-existing violations, it does not introduce them (RFC 1 §8.1). `bin/check-baseline-shrink` will fail on the growth — say so in the PR body and merge anyway; that gate exists to stop unconscious growth, and this is the one conscious event. From that commit the totals shrink again and must reach zero.
+  **The baselines grow, once.** That is expected and correct: a rule reveals pre-existing violations, it does not introduce them (RFC 1 §8.1). `bin/check-baseline-shrink` will fail on the growth — the human overrides CI and merges anyway. That gate exists to stop unconscious growth, and this is the one conscious event. From that commit the totals shrink again and must reach zero.
 
-  Note what the growth means: every violation these rules report has been in the tree all along, unrecorded. "The baselines are shrinking" has only ever measured the rules that were built.
+  **Every other slice must leave the baselines flat or shrink them.** No exceptions, no judgment calls. If a slice is not `enforcement-rules` and CI fails on baseline growth, the slice is wrong — and widening an enforcement rule's allowlist to avoid the growth is the same failure with extra steps.
 
 - [ ] **search-kind-param** — Generalize search to a kind parameter
 
@@ -104,7 +104,9 @@ Ordered. Each row starts when the one above it merges.
 
   This absorbs the former per-section audits (S3.11, S4.7). They were hand-run tracking gates from before the rules existed; **enforcement-rules**'s rules are the continuous version, and running a manual audit twice more in the middle adds ceremony without adding a check. One completion gate, where an unowned or unfixed duplicate fails outright.
 
-## Complete
+## Complete (archival)
+
+This section is frozen. Merged slices stay checked in *Remaining work*; nothing moves here.
 
 Wave 1 — Steps 0, 1, P, 2.
 
