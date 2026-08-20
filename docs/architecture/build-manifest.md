@@ -48,7 +48,7 @@ Ordered. Each row starts when the one above it merges.
 
 - [ ] **search-kind-param** — Generalize search to a kind parameter
 
-  `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, with class-likes still the only searchable kind. Behavior-preserving, so every Step P golden stays frozen. This is what **completion-kind-collapse** needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
+  `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, and the `NameKind` → `SymbolKind` mapping gets one home (`SymbolKind::forNameKind`). `OpenDocumentBackend` answers every kind through it — its index already holds them, and suppressing two would be a filter written to keep a promise rather than to serve a caller. The on-disk and built-in backends still answer no kind (**function-search** owes those). Class-likes remain the only kind any *consumer* searches, so every Step P golden stays frozen. This is what **completion-kind-collapse** needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
 
 - [ ] **completion-kind-collapse** — Collapse completion's per-kind sources and kind branches
 
@@ -62,9 +62,11 @@ Ordered. Each row starts when the one above it merges.
 
   Consequently **#317 must be rewritten, not built as filed.** It specifies a new per-kind source mirroring `FunctionCandidates` — a consumer edit that RFC 1 §7 forbids for a new symbol kind — including a direct `get_defined_constants()` that S3.8b confined to `InternalConstantSet`. Its Part 2 (namespace-correct references via `ReferenceResolver`) is unaffected and still wanted.
 
-- [ ] **function-search** — Function search + FunctionCandidates migration
+- [ ] **function-search** — Function and constant search + FunctionCandidates migration
 
-  Backends answer function search; `FunctionCandidates` moves onto the seam and its frozen `get_defined_functions()` baseline entry drains. `BuiltinBackend` **must** answer function search here or built-in function completion regresses — the function-surface golden S3.6 froze is what catches it.
+  Backends answer function *and constant* search; `FunctionCandidates` moves onto the seam and its frozen `get_defined_functions()` baseline entry drains. `BuiltinBackend` **must** answer function search here or built-in function completion regresses — the function-surface golden S3.6 froze is what catches it. Constants ride along because they are blocked on nothing else: unlike a class-like, a global constant resolves unqualified, so offering one needs no import (#23). `InternalConstantSet` already holds the built-in set.
+
+  `FilesystemBackend` owes both kinds over its `autoload.files` index, which is name-keyed and in memory — `childrenOf` reads it today while `search` does not, so a function declared there is offered by namespace completion and never by prefix completion. The PSR-4 tree stays out: a fragment has no arithmetic route to a file, which is the deferred workspace index (RFC 1 §3). Four `search` cells in `SymbolCoverageGridTest`'s blocker list name this row, and the grid fails the moment one is answered without being unregistered.
 
 - [ ] **retire-ast-in-lookup** — Retire the AST-in function lookup from consumers
 

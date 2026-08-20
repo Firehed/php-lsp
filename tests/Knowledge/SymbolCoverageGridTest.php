@@ -43,16 +43,22 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        // A prefix has no name -> file map on disk (RFC 1 §3).
+        // The PSR-4 tree offers no prefix route: a name reaches a file by arithmetic
+        // on the whole name, which a fragment cannot do (RFC 1 §3). That blocks the
+        // tree alone — the `autoload.files` index is name-keyed and in memory, and
+        // `childrenOf` already reads it, so its function and constant search is
+        // implementable and owed.
         'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
-        'FilesystemBackend|Function_|search' => 'RFC 1 §3',
-        'FilesystemBackend|Constant|search' => 'RFC 1 §3',
+        'FilesystemBackend|Function_|search' => 'function-search',
+        'FilesystemBackend|Constant|search' => 'function-search',
 
-        // Built-in search needs auto-import (#23) or to answer via reflection
-        // (function-search).
+        // A bare built-in class-like name does not resolve unqualified, so offering
+        // one is only useful once completion can insert the import with it. Functions
+        // and constants fall back to the global namespace and need no import, so
+        // nothing but the implementation blocks them.
         'BuiltinBackend|ClassLike|search' => '#23',
         'BuiltinBackend|Function_|search' => 'function-search',
-        'BuiltinBackend|Constant|search' => '#23',
+        'BuiltinBackend|Constant|search' => 'function-search',
     ];
 
     /**
