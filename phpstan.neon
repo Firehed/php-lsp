@@ -127,6 +127,33 @@ parameters:
                 - src/Transport/*
                 - tests/*
 
+    disallowedMethodCalls:
+        -
+            method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::updateDocument()'
+            message: 'single write path (RFC 1 §4.3/§5.2): document symbol registration goes through DocumentSymbolSink'
+            allowIn:
+                - src/Knowledge/DocumentSymbolSink.php
+                - tests/*
+        -
+            method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::removeDocument()'
+            message: 'single write path (RFC 1 §4.3/§5.2): document symbol registration goes through DocumentSymbolSink'
+            allowIn:
+                - src/Knowledge/DocumentSymbolSink.php
+                - src/Knowledge/OpenDocumentBackend.php
+                - tests/*
+        -
+            method: 'Firehed\PhpLsp\Index\SymbolIndex::add()'
+            message: 'single write path (RFC 1 §4.3/§5.2): symbol indexing goes through DocumentIndexer'
+            allowIn:
+                - src/Index/DocumentIndexer.php
+                - tests/*
+        -
+            method: 'Firehed\PhpLsp\Index\SymbolIndex::clearByUri()'
+            message: 'single write path (RFC 1 §4.3/§5.2): symbol indexing goes through DocumentIndexer'
+            allowIn:
+                - src/Index/DocumentIndexer.php
+                - tests/*
+
     level: max
     paths:
         - src
