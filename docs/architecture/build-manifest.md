@@ -32,7 +32,7 @@ That is why **enforcement-rules** comes first: until those rules exist, no slice
 
 Ordered. Each row starts when the one above it merges.
 
-- [ ] **enforcement-rules** — Install every M×N enforcement rule
+- [x] **enforcement-rules** — Install every M×N enforcement rule
 
   One slice, every unbuilt mechanism RFC 1 §8.1 designates. They were specified together and lapsed together; splitting them just recreates the window in which some axes are guarded and others are not.
 
