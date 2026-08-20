@@ -191,6 +191,48 @@ final class CompositeSymbolSourceTest extends TestCase
         );
     }
 
+    public function testSearchAsksBackendsForTheKindItWasGiven(): void
+    {
+        $backend = new FakeSymbolBackend(searchResults: [
+            self::symbol('Grid\GridWidget', 'open.php'),
+            self::symbol('Grid\gridHelper', 'open.php', SymbolKind::Function_),
+        ]);
+        $source = new CompositeSymbolSource([$backend]);
+
+        $fqns = array_map(
+            static fn(Symbol $symbol): string => $symbol->fullyQualifiedName,
+            $source->search('grid', NameKind::Function_),
+        );
+
+        self::assertSame(
+            ['Grid\gridHelper'],
+            $fqns,
+            'the kind must reach the backend: a function search must not surface a same-prefixed class-like',
+        );
+    }
+
+    public function testSearchKeysConstantsCaseSensitively(): void
+    {
+        $open = new FakeSymbolBackend(searchResults: [
+            self::symbol('Grid\LIMIT', 'open.php', SymbolKind::Constant),
+        ]);
+        $vendor = new FakeSymbolBackend(searchResults: [
+            self::symbol('Grid\Limit', 'vendor.php', SymbolKind::Constant),
+        ]);
+        $source = new CompositeSymbolSource([$open, $vendor]);
+
+        $fqns = array_map(
+            static fn(Symbol $symbol): string => $symbol->fullyQualifiedName,
+            $source->search('Limit', NameKind::Constant),
+        );
+
+        self::assertEqualsCanonicalizing(
+            ['Grid\LIMIT', 'Grid\Limit'],
+            $fqns,
+            'constant names are case-sensitive in PHP, so two spellings are two constants and neither may be merged away',
+        );
+    }
+
     public function testSearchClassLikesMergesAndDeduplicatesByFqnEarlierWinning(): void
     {
         $open = new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'open.php')]);
@@ -340,7 +382,7 @@ final class CompositeSymbolSourceTest extends TestCase
         ]);
     }
 
-    private static function symbol(string $fqn, string $file): Symbol
+    private static function symbol(string $fqn, string $file, SymbolKind $kind = SymbolKind::Class_): Symbol
     {
         $shortName = strrchr($fqn, '\\');
         $shortName = $shortName === false ? $fqn : substr($shortName, 1);
@@ -348,7 +390,7 @@ final class CompositeSymbolSourceTest extends TestCase
         return new Symbol(
             $shortName,
             $fqn,
-            SymbolKind::Class_,
+            $kind,
             new Location('file://' . $file, 0, 0, 0, 0),
         );
     }
