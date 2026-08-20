@@ -36,6 +36,20 @@ class KindInspectionRuleTest extends RuleTestCase
         );
     }
 
+    public function testInstanceofTypeImplIsReported(): void
+    {
+        $this->analyse(
+            [__DIR__ . '/data/instanceof-type.php'],
+            [
+                [
+                    'instanceof ClassName branches on concrete Type; '
+                        . 'use predicates (RFC 1 §4.5).',
+                    18,
+                ],
+            ],
+        );
+    }
+
     public function testCompletionItemFactoryMayMapSymbolToKind(): void
     {
         $this->analyse([__DIR__ . '/../../src/Completion/CompletionItemFactory.php'], []);
