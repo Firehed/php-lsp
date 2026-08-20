@@ -18,8 +18,9 @@ enum SymbolKind: int
     case Enum_ = 13;
 
     /**
-     * The index kinds that belong to a knowledge kind. The single home for this
-     * mapping — backends call this rather than branching on kind themselves.
+     * The index kinds that belong to a knowledge kind. Four class-likes collapse to
+     * one because PHP resolves them in a single symbol namespace: a name is a class
+     * or an interface, never both, so a search cannot need to tell them apart.
      *
      * @return list<self>
      */
@@ -30,5 +31,22 @@ enum SymbolKind: int
             NameKind::Constant => [self::Constant],
             NameKind::Function_ => [self::Function_],
         };
+    }
+
+    /**
+     * The inverse of {@see forNameKind}, derived from it rather than restated: two
+     * hand-written tables of one mapping are how prefix search and namespace
+     * enumeration come to disagree about which kind a name denotes. Null for the
+     * member kinds, which name nothing an FQN can address.
+     */
+    public function nameKind(): ?NameKind
+    {
+        foreach (NameKind::cases() as $kind) {
+            if (in_array($this, self::forNameKind($kind), true)) {
+                return $kind;
+            }
+        }
+
+        return null;
     }
 }

@@ -25,6 +25,31 @@ final class SymbolKindTest extends TestCase
         );
     }
 
+    #[DataProvider('nameKindProvider')]
+    public function testNameKind(SymbolKind $kind, ?NameKind $expected): void
+    {
+        self::assertSame(
+            $expected,
+            $kind->nameKind(),
+            'the inverse mapping must agree with forNameKind, which it is derived from',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{SymbolKind, ?NameKind}>
+     */
+    public static function nameKindProvider(): iterable
+    {
+        yield 'Class_' => [SymbolKind::Class_, NameKind::ClassLike];
+        yield 'Interface_' => [SymbolKind::Interface_, NameKind::ClassLike];
+        yield 'Trait_' => [SymbolKind::Trait_, NameKind::ClassLike];
+        yield 'Enum_' => [SymbolKind::Enum_, NameKind::ClassLike];
+        yield 'Function_' => [SymbolKind::Function_, NameKind::Function_];
+        yield 'Constant' => [SymbolKind::Constant, NameKind::Constant];
+        yield 'Method names nothing an FQN addresses' => [SymbolKind::Method, null];
+        yield 'Property names nothing an FQN addresses' => [SymbolKind::Property, null];
+    }
+
     /**
      * @return iterable<string, array{NameKind, list<SymbolKind>}>
      */
