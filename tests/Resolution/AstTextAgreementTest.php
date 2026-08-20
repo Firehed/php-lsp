@@ -59,6 +59,7 @@ final class AstTextAgreementTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
+        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
         $astResult = ScopeFinder::findClassAtLine($ast, $line);
         $textResult = $this->textFallback->findEnclosingClassFromContent($content, $line);
@@ -96,7 +97,7 @@ final class AstTextAgreementTest extends TestCase
     #[DataProvider('enclosingClassDivergenceFixtures')]
     public function testEnclosingClassDivergence(string $fixture, int $line, string $expected): void
     {
-        $this->markTestSkipped(
+        self::markTestSkipped(
             'Known divergence (node-locator): findClassAtLine handles only Class_, '
             . 'text fallback handles all class-likes. See RFC 1 §4.11, Plan 0002 S4.2/S4.4.',
         );

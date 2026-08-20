@@ -19,17 +19,17 @@ class KindInspectionRuleTest extends RuleTestCase
             [
                 [
                     'instanceof ResolvedMethod branches on concrete ResolvedSymbol; '
-                        . 'use capability predicates instead (RFC 1 §4.5).',
+                        . 'use predicates (RFC 1 §4.5).',
                     19,
                 ],
                 [
                     'instanceof ResolvedMethod branches on concrete ResolvedSymbol; '
-                        . 'use capability predicates instead (RFC 1 §4.5).',
+                        . 'use predicates (RFC 1 §4.5).',
                     25,
                 ],
                 [
                     'instanceof ResolvedProperty branches on concrete ResolvedSymbol; '
-                        . 'use capability predicates instead (RFC 1 §4.5).',
+                        . 'use predicates (RFC 1 §4.5).',
                     26,
                 ],
             ],

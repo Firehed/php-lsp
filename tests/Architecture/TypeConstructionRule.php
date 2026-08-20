@@ -63,7 +63,7 @@ final class TypeConstructionRule implements Rule
             }
         }
 
-        $shortName = (new \ReflectionClass($className))->getShortName();
+        $shortName = $this->shortName($className);
         $message = sprintf(
             'new %s is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).',
             $shortName,
@@ -74,5 +74,11 @@ final class TypeConstructionRule implements Rule
                 ->identifier('phpLsp.typeConstruction')
                 ->build(),
         ];
+    }
+
+    private function shortName(string $className): string
+    {
+        $parts = explode('\\', $className);
+        return end($parts);
     }
 }

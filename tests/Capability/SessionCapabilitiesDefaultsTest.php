@@ -53,7 +53,11 @@ final class SessionCapabilitiesDefaultsTest extends TestCase
     {
         $capabilities = new SessionCapabilities();
 
-        self::assertNotNull($capabilities, 'SessionCapabilities must be constructable with no arguments');
+        self::assertInstanceOf(
+            SessionCapabilities::class,
+            $capabilities,
+            'SessionCapabilities must be constructable with no arguments',
+        );
     }
 
     public function testAllDefaultsAreExplicit(): void

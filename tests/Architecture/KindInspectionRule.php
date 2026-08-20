@@ -88,29 +88,37 @@ final class KindInspectionRule implements Rule
         $className = $scope->resolveName($class);
 
         if (in_array($className, self::CONFINED_TYPE_IMPLS, true)) {
-            $shortName = (new \ReflectionClass($className))->getShortName();
+            $shortName = $this->shortName($className);
+            $message = sprintf(
+                'instanceof %s branches on concrete Type; use predicates (RFC 1 §4.5).',
+                $shortName,
+            );
             return [
-                RuleErrorBuilder::message(sprintf(
-                    'instanceof %s branches on concrete Type; use Type interface or capability predicates instead (RFC 1 §4.5).',
-                    $shortName,
-                ))
+                RuleErrorBuilder::message($message)
                     ->identifier('phpLsp.kindInspection')
                     ->build(),
             ];
         }
 
         if (in_array($className, self::CONFINED_RESOLVED_IMPLS, true)) {
-            $shortName = (new \ReflectionClass($className))->getShortName();
+            $shortName = $this->shortName($className);
+            $message = sprintf(
+                'instanceof %s branches on concrete ResolvedSymbol; use predicates (RFC 1 §4.5).',
+                $shortName,
+            );
             return [
-                RuleErrorBuilder::message(sprintf(
-                    'instanceof %s branches on concrete ResolvedSymbol; use capability predicates instead (RFC 1 §4.5).',
-                    $shortName,
-                ))
+                RuleErrorBuilder::message($message)
                     ->identifier('phpLsp.kindInspection')
                     ->build(),
             ];
         }
 
         return [];
+    }
+
+    private function shortName(string $className): string
+    {
+        $parts = explode('\\', $className);
+        return end($parts);
     }
 }

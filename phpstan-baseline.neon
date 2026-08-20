@@ -1,10 +1,46 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 2
+			path: src/Completion/ClassCandidates.php
+
+		-
 			message: '#^Calling get_defined_functions\(\) is forbidden, runtime symbol enumeration is confined to ReflectionNamespaceSource\.$#'
 			identifier: disallowed.function
 			count: 1
 			path: src/Completion/FunctionCandidates.php
+
+		-
+			message: '#^instanceof ResolvedMethod branches on concrete ResolvedSymbol; use predicates \(RFC 1 §4\.5\)\.$#'
+			identifier: phpLsp.kindInspection
+			count: 1
+			path: src/Completion/MemberCandidates.php
+
+		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
+			path: src/Completion/NamespaceCandidates.php
+
+		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 6
+			path: src/Repository/DefaultClassInfoFactory.php
+
+		-
+			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 3
+			path: src/Repository/DefaultClassInfoFactory.php
+
+		-
+			message: '#^new UnionType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
+			path: src/Repository/DefaultClassInfoFactory.php
 
 		-
 			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
@@ -67,9 +103,27 @@ parameters:
 			path: src/Resolution/SymbolResolver.php
 
 		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 15
+			path: src/Resolution/SymbolResolver.php
+
+		-
 			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase; other uses may be allowlisted here consciously\.$#'
 			identifier: disallowed.function
 			count: 2
+			path: src/Resolution/TextFallbackHelper.php
+
+		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 7
+			path: src/Resolution/TextFallbackHelper.php
+
+		-
+			message: '#^new UnionType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
 			path: src/Resolution/TextFallbackHelper.php
 
 		-
@@ -89,3 +143,21 @@ parameters:
 			identifier: disallowed.namespace
 			count: 2
 			path: src/TypeInference/BasicTypeResolver.php
+
+		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 4
+			path: src/TypeInference/BasicTypeResolver.php
+
+		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
+			path: src/Utility/ExpressionTypeResolver.php
+
+		-
+			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
+			path: src/Utility/Scope.php
