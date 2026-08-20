@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -79,11 +80,11 @@ interface SymbolSource
     public function lookupFunction(FunctionName $name): ?FunctionInfo;
 
     /**
-     * The class-likes whose short name begins with $prefix. The prefix is the partial
-     * fragment the user is typing, not a complete identifier, so a bare string is
-     * correct here (Plan 0002 §5.3).
+     * Symbols of $kind whose short name begins with $prefix. The prefix is the
+     * partial fragment the user is typing, not a complete identifier, so a bare
+     * string is correct here (Plan 0002 §5.3).
      *
      * @return list<Symbol>
      */
-    public function searchClassLikes(string $prefix): array;
+    public function search(string $prefix, NameKind $kind): array;
 }
