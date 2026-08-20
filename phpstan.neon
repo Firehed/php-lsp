@@ -127,6 +127,33 @@ parameters:
                 - src/Transport/*
                 - tests/*
 
+    disallowedMethodCalls:
+        -
+            method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::updateDocument()'
+            message: 'single write path (RFC 1 §4.3/§5.2): document symbol registration goes through DocumentSymbolSink'
+            allowIn:
+                - src/Knowledge/DocumentSymbolSink.php
+                - tests/*
+        -
+            method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::removeDocument()'
+            message: 'single write path (RFC 1 §4.3/§5.2): document symbol registration goes through DocumentSymbolSink'
+            allowIn:
+                - src/Knowledge/DocumentSymbolSink.php
+                - src/Knowledge/OpenDocumentBackend.php
+                - tests/*
+        -
+            method: 'Firehed\PhpLsp\Index\SymbolIndex::add()'
+            message: 'single write path (RFC 1 §4.3/§5.2): symbol indexing goes through DocumentIndexer'
+            allowIn:
+                - src/Index/DocumentIndexer.php
+                - tests/*
+        -
+            method: 'Firehed\PhpLsp\Index\SymbolIndex::clearByUri()'
+            message: 'single write path (RFC 1 §4.3/§5.2): symbol indexing goes through DocumentIndexer'
+            allowIn:
+                - src/Index/DocumentIndexer.php
+                - tests/*
+
     level: max
     paths:
         - src
@@ -140,6 +167,18 @@ services:
     # RFC 1 §8.1 enforcement mechanisms.
     -
         class: Firehed\PhpLsp\Tests\Architecture\RawInitializeCapabilitiesRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Firehed\PhpLsp\Tests\Architecture\TypeConstructionRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Firehed\PhpLsp\Tests\Architecture\KindInspectionRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Firehed\PhpLsp\Tests\Architecture\KindEnumMatchRule
         tags:
             - phpstan.rules.rule
     -
