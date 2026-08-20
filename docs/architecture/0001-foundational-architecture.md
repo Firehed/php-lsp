@@ -554,6 +554,8 @@ Capability confinement (PHPStan disallowed-calls) denies AST traversal, symbol-n
 The layer-dependency contract (deptrac) denies any inter-layer dependency the ruleset does not allow.
 Their baselines freeze pre-existing violations only: the violation total MUST only shrink and MUST reach empty (0002 Step Z), and no violation may be introduced by new code.
 An entry MAY be rewritten when a strangler step relocates the code it froze, so incremental migration is never blocked; a drained entry either routes through the authority or is consciously promoted to the allowlist.
+Adding a rule is the one event that MAY grow a baseline, and only for the violations that rule newly reveals: those are pre-existing violations that were previously unrecorded, not new code.
+A rule MUST NOT be deferred to avoid the growth, because the totals are meaningful only once the rule set is complete — a violation no rule reports is absent from the record rather than frozen in it, and every change landed before the rule escapes the measurement entirely.
 
     Invariant                         Mechanism
     --------------------------------  ------------------------------------------------
@@ -687,7 +689,7 @@ into target environment (4.7) and session capabilities (4.8, 5.4).
   offsets are handled as bytes (violates Section 4.9). These are to be migrated
   toward this document, not grandfathered; each SHOULD be tracked as an issue
   citing the section it violates.
-- **Divergences added by the 2026-08-10 amendment (informative).** The text fallback answers several positional questions per consumer and lacks the Section 4.11 agreement tests; suitability checks in completion use `instanceof` against resolved-symbol implementations (Section 4.5 as widened); class-like search is neither derived from enumeration nor bound to it by test (Section 5.1). Each is frozen in a guardrail baseline or owned by a build-manifest slice; none blocks incremental migration.
+- **Divergences added by the 2026-08-10 amendment (informative).** The text fallback answers several positional questions per consumer and lacks the Section 4.11 agreement tests; suitability checks in completion use `instanceof` against resolved-symbol implementations, and branch on the symbol kind enum besides — expression-start fans out to one candidate source per kind, and namespace navigation drops every enumerated symbol that is not a class-like (Section 4.5 as widened); class-like search is neither derived from enumeration nor bound to it by test (Section 5.1). Each is owned by a build-manifest slice; none blocks incremental migration. None is frozen in a guardrail baseline, because the Section 4.5 mechanism is not yet built and a baseline records only what a rule reports — so these are absent from the totals rather than held by them, which is why the mechanism is taken before further feature work.
 - **Observed client defects (informative).** Per Section 4.10, accommodations for
   clients that advertise a capability but mishandle it are recorded here as they
   are found. Known: some clients ignore a completion item's `textEdit` range and

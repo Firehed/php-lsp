@@ -1,18 +1,17 @@
 ---
 name: do-next
-description: Implement the next build slice for the RFC-1 / Plan-0002 execution. Reads docs/architecture/build-manifest.md, computes the correct next slice from git/PR merge state (never a status field), enforces preconditions, and implements it under TDD on a slice/<id> branch. Invoke with /do-next.
+description: Implement the next build slice for the RFC-1 / Plan-0002 execution. Reads docs/architecture/build-manifest.md, picks the first unmerged row, and implements it under TDD on a slice/<slug> branch. Invoke with /do-next.
 ---
 
 # do-next — implement the next build slice
 
 Execute "Mode A" of `docs/architecture/build-procedure.md`. **Do not guess; halt and
 ask on any ambiguity.** The whole point is that a cold session picks the correct next
-slice from durable state, not from memory — what *may* start from git, what starts
-*first* from the manifest's `Kind` column.
+slice from durable state, not from memory.
 
 ## 0. Read the goal first
 
-Read **"The goal every slice serves"** in `build-procedure.md` before anything else.
+Read **"The goal every row serves"** in `build-manifest.md` before anything else.
 Slices exist to make it impossible for two features to disagree about the same
 symbol. A slice's acceptance criteria are how it serves that goal, not a substitute
 for it — and work the goal does not call for is not made in-scope by being nearby,
@@ -27,84 +26,75 @@ noticed in passing, or easy.
 - Verify the base is green: run `composer test`. If red, **stop** — do not build on
   a red base.
 
-## 2. Compute the startable set, then rank it
+## 2. Find the next slice
 
-- Read `docs/architecture/build-manifest.md`; parse the slice table (ID, Step, Kind,
-  Depends on, Closes).
-- Compute each slice's status from **GitHub PR merge state** (not git commit
-  ancestry, and not any written status), checked in this order:
-  - `done` — a merged PR exists for the head branch:
-    `gh pr list --state merged --head slice/<ID> --json number` returns one.
-  - `in-flight` — an open PR exists: `gh pr list --state open --head slice/<ID>`.
+- Read `docs/architecture/build-manifest.md`. The **Remaining work** section is an
+  ordered list. Each row has a **slug** in bold (e.g. `**enforcement-rules**`); the
+  branch is `slice/<slug>`.
+- Walk the list top to bottom. For each row, check **GitHub PR merge state**:
+  - `done` — a merged PR exists: `gh pr list --state merged --head slice/<slug> --json number` returns one.
+  - `in-flight` — an open PR exists: `gh pr list --state open --head slice/<slug>`.
   - `todo` — neither.
-- The **startable set** = every `todo` slice whose every dependency is `done`.
-- `X` = its highest-ranked member by the `Kind` column: **`defect`** first, then
-  **`cleanup`**, then **`scaffold`**. Within a kind, prefer the row draining the most
-  `phpstan-baseline.neon` / `deptrac.baseline.yaml` entries; row order breaks what is
-  left. Row order carries no priority of its own — it records when a row was filed.
-
-Dependencies are normally slice ids. The audit and Definition-of-Done gates use a
-collective form instead, which must be expanded before the check:
-
-- `all Step N` — every **other** slice whose Step column is `N`, sub-steps included
-  (`all Step 3` covers 3a and 3b).
-- `all prior` — every other slice in the table.
+- The **next slice** is the first `todo` row.
+- **Preflight sanity check:** every row above the next slice should be `done`. If any
+  is `in-flight` or `todo`, report the state drift and halt — the list order is the
+  dependency order.
 
 Deriving from PR merge state (not ancestry) is what keeps this correct under the
 project's **Squash and Merge**: a squash rewrites the branch into one new commit on
 `main`, so an ancestry check would report squashed slices as `todo` forever. Check
 `done` before `in-flight` so a squash-deleted branch is read as done, not unstarted.
 
-## 3. Check X for phantoms
+## 3. Check for phantoms
 
 A row states its work in prose, and prose goes stale: a row can claim a mechanism that
 already exists, or a removal already made. Selecting one costs a whole session before
 anyone notices, which has happened.
 
-Most cleanup rows are baseline drains, and the baseline is machine-readable, so check
-before offering: if X names files or entries it drains, confirm those entries are still
-in `phpstan-baseline.neon` / `deptrac.baseline.yaml`. If X drains no baseline entry,
-spot-check its central claim against the code — one `grep` is enough; the failure mode
-is a row asserting that something is absent when it is present.
+Most rows are baseline drains, and the baseline is machine-readable, so check before
+offering: if the row names files or entries it drains, confirm those entries are still
+in `phpstan-baseline.neon` / `deptrac.baseline.yaml`. If the row drains no baseline
+entry, spot-check its central claim against the code — one `grep` is enough; the
+failure mode is a row asserting that something is absent when it is present.
+
+**Baseline rule:** `enforcement-rules` is the only slice that may grow a baseline (the
+human overrides CI). Every other slice must leave baselines flat or shrink them —
+widening an enforcement rule's allowlist to avoid growth is the same failure.
 
 A row whose claim no longer holds is a **phantom**. Report it as such, say what appears
-to have discharged it, and move to the next candidate rather than building it.
+to have discharged it, and ask whether to remove it from the list and continue to the
+next row.
 
 ## 4. Safeguards (halt and report; do NOT proceed) if
 
-- No slice is unblocked — report done / blocked / in-flight counts and stop.
-- A slice's branch is merged while a dependency is not — surface the state drift.
+- All slices are done — the manifest is complete.
+- A row above the next slice is not merged — state drift (see preflight above).
 
-An open slice does **not** halt this. Name what is in flight so the human can see it,
-and carry on — a slice waits on another only through `Depends on`, and an unrelated
-open PR blocking every other row is a stall, not a safeguard.
+## 5. Explain the slice
 
-## 5. Explain X
+Read the slice's plan step in `docs/architecture/0002-execution-plan.md` for its
+acceptance criteria, and the RFC sections it cites in `0001-foundational-architecture.md`.
+Then describe the work in plain english and **wait** for approval, clarification, or
+modification before writing anything.
 
-Read X's plan step in `docs/architecture/0002-execution-plan.md` for its acceptance
-criteria, and the RFC sections it cites in `0001-foundational-architecture.md`. Then
-describe the work in plain english, name the rest of the startable set in one line
-each so an override costs the human a single id, and **wait** for approval,
-clarification, or modification before writing anything.
+Lead that description with the slice's answer to the goal test: what two features could
+disagree about without this slice, or which scheduled feature it unblocks. If you cannot
+write that sentence from the plan, **stop and ask** — a slice whose purpose you cannot
+state is one you will over- or under-build.
 
-Lead that description with X's answer to the goal test: what two features could
-disagree about without X, or which scheduled feature X unblocks. If you cannot write
-that sentence from the plan, **stop and ask** — a slice whose purpose you cannot state
-is one you will over- or under-build.
+## 6. Implement the slice
 
-## 6. Implement X
-
-- Create `slice/<X>` off `main`.
+- Create `slice/<slug>` off `main`.
 - TDD:
   - Behavior-preserving slice → add/extend the Step P parity fixtures **first**.
   - Seam-introducing slice → add its §8.1 enforcement rule in this slice.
   - Write failing tests, then implement to green.
 - Keep commits small and logical (project rule). Run `composer test` to green.
-- Build what X's acceptance requires and nothing beyond it. A defect, duplication, or
-  rough edge noticed in passing is **reported, not solved** — duplication or
-  divergence earns an `SC.*` row; a defect gets a GitHub issue plus a line in the
-  final report saying whether the next slice can proceed while it stays open;
-  generic tidiness gets one line in the PR body and neither a row nor a diff.
+- Build what the acceptance criteria require and nothing beyond it. A defect,
+  duplication, or rough edge noticed in passing is **reported, not solved** —
+  duplication or divergence earns a new manifest row; a defect gets a GitHub issue
+  plus a line in the final report saying whether the next slice can proceed while it
+  stays open; generic tidiness gets one line in the PR body and neither a row nor a diff.
 - Comments earn their place. Name the non-obvious fact each one carries that the code
   does not, or leave it out; length tracks the subtlety of the code, not its size.
   Reviewers raise violations as findings, so writing them costs a round.
@@ -114,10 +104,10 @@ is one you will over- or under-build.
 ## 7. Open the PR and report
 
 - PR title carries no issue number; the body opens with what two features could have
-  disagreed about without this change (or what it unblocks), then cites the slice id,
+  disagreed about without this change (or what it unblocks), then cites the slice slug,
   plan step, and RFC section(s), and lists the acceptance criteria as a checklist.
-- List manifest `Closes` candidates as "Candidate closes (pending review
-  verification): #n" — do **not** wire `Closes #n` here; that is the reviewer's job
-  after reading the issue body.
-- Report the PR URL and the **next** computed slice, plus the rest of the startable
-  set, so a follow-up `/do-next` is predictable and an override is cheap.
+- List manifest `Closes` candidates from the Issue wiring section as "Candidate closes
+  (pending review verification): #n" — do **not** wire `Closes #n` here; that is the
+  reviewer's job after reading the issue body.
+- Report the PR URL and name the **next** slice (the row below this one) so a follow-up
+  `/do-next` is predictable.

@@ -1,6 +1,6 @@
 ---
 name: review-slice
-description: One cleanroom adversarial review pass (plus fixes) of a build slice branch for the RFC-1 / Plan-0002 execution. Reviews against the slice's acceptance criteria + RFC only, never the implementer's reasoning. Invoke with /review-slice [slice-id]; after /clear, re-run until a pass is clean, then land.
+description: One cleanroom adversarial review pass (plus fixes) of a build slice branch for the RFC-1 / Plan-0002 execution. Reviews against the slice's acceptance criteria + RFC only, never the implementer's reasoning. Invoke with /review-slice [slug]; after /clear, re-run until a pass is clean, then land.
 ---
 
 # review-slice — one cleanroom review pass (+ fix)
@@ -22,14 +22,14 @@ the goal test. No answer, no work.
 
 ## 1. Identify the slice
 
-- If a slice id / branch is given, use `slice/<id>`. Otherwise find the single
+- If a slice slug / branch is given, use `slice/<slug>`. Otherwise find the single
   in-flight slice (an open, unmerged `slice/*` PR). If more than one, **STOP and ask**
   which.
 - Check out the branch; ensure it is current with `main` (merge/rebase-free: if
   behind, merge `main` in or report).
-- Compute the diff under review: `git diff main...slice/<id>`.
+- Compute the diff under review: `git diff main...slice/<slug>`.
 - Collect the slice's **owed items** from `0002`: anything the plan attaches by name to
-  this slice id or its step — the step's owed regression tests, and the duplication a step
+  this slice or its step — the step's owed regression tests, and the duplication a step
   is required to remove (e.g. Step 3b's "Regression tests the 3b corrections owe", Step
   4's "Named duplication this step must remove"). These are acceptance criteria, not
   suggestions; carry them into the panel verbatim. A slice that leaves one undone is a
@@ -132,10 +132,11 @@ burn 75k+ tokens re-deriving the whole measurement.
   confirm its acceptance criteria are met **by this change**; if so, add `Closes #<n>`
   to the PR body with a one-line verification note. If not met, leave it and say why.
 - `gh pr ready` if the PR was a draft.
+- **Check the slice's box** in the manifest. This is part of the PR — one diff, one
+  review.
 - Report: **"Pass clean. Verified closes: #n. Ready to land — merge when ready."**
   Do **not** auto-merge — merging is irreversible and outward-facing; the user lands.
-- Report the next computed slice for after landing (highest `Kind` in the startable
-  set), and the rest of that set in one line each.
+- Report the next slice (the row below this one in the manifest).
 
 ## 5. Close every pass against the goal
 

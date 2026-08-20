@@ -42,13 +42,13 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        // `searchClassLikes` has no kind parameter until S3.9a.
-        'OpenDocumentBackend|Function_|search' => 'S3.9a, S3.9b',
-        'OpenDocumentBackend|Constant|search' => 'S3.9a',
-        'FilesystemBackend|Function_|search' => 'S3.9a, S3.9b',
-        'FilesystemBackend|Constant|search' => 'S3.9a',
-        'BuiltinBackend|Function_|search' => 'S3.9a, S3.9b',
-        'BuiltinBackend|Constant|search' => 'S3.9a',
+        // `searchClassLikes` has no kind parameter until search-kind-param.
+        'OpenDocumentBackend|Function_|search' => 'search-kind-param, function-search',
+        'OpenDocumentBackend|Constant|search' => 'search-kind-param',
+        'FilesystemBackend|Function_|search' => 'search-kind-param, function-search',
+        'FilesystemBackend|Constant|search' => 'search-kind-param',
+        'BuiltinBackend|Function_|search' => 'search-kind-param, function-search',
+        'BuiltinBackend|Constant|search' => 'search-kind-param',
 
         // A prefix has no name -> file map on disk. The built-in row is blocked on
         // something else entirely: the name it would offer does not resolve
@@ -236,8 +236,8 @@ final class SymbolCoverageGridTest extends TestCase
         $manifest = file_get_contents(dirname(__DIR__, 2) . '/docs/architecture/build-manifest.md');
         self::assertNotFalse($manifest, 'the slice registry must be readable');
 
-        preg_match_all('/^ {4}([A-Z][A-Z0-9]\.\d+[a-z]?) /m', $manifest, $matches);
-        self::assertNotEmpty($matches[1], 'the slice table must be parseable, or every blocker reads as dangling');
+        preg_match_all('/^- \[[ x]\] \*\*([a-z0-9-]+)\*\*/m', $manifest, $matches);
+        self::assertNotEmpty($matches[1], 'the slice list must be parseable, or every blocker reads as dangling');
 
         return $matches[1];
     }
