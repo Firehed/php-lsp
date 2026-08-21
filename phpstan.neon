@@ -7,8 +7,15 @@ parameters:
     # Default-deny capability confinement: each mechanism below is usable only in
     # its named home(s). A new use elsewhere is a duplicate implementation waiting
     # to happen — extend the authority instead.
-    # Adding to a deny list tightens; adding to an allowIn list loosens and is the
-    # human's edit only. See docs/architecture/enforcement-edits.md.
+    #
+    # Every entry in the three disallowed* blocks has the same shape, and each
+    # part has one edit meaning (docs/architecture/enforcement-edits.md):
+    #   namespace / function / method  — the deny list. Adding tightens.
+    #   allowIn                        — the allowlist. Adding loosens (human only).
+    #                                    On a new entry, each path must be one file
+    #                                    that calls the denied thing today.
+    #   message                        — text only. Changing it is lateral, and the
+    #                                    baseline must be regenerated at the same total.
     disallowedNamespaces:
         -
             namespace: 'PhpParser\NodeTraverser'
@@ -157,13 +164,16 @@ parameters:
     paths:
         - src
         - tests
+    # Adding a path here removes it from every check: loosen (human only).
     excludePaths:
         - tests/Fixtures
         # Deliberate rule violations, analysed only by RuleTestCase.
         - tests/Architecture/data
 
 services:
-    # RFC 1 §8.1 enforcement mechanisms.
+    # RFC 1 §8.1 enforcement mechanisms. Registering a rule tightens; removing
+    # one loosens (human only). Each rule's own lists are documented on its
+    # constants.
     -
         class: Firehed\PhpLsp\Tests\Architecture\RawInitializeCapabilitiesRule
         tags:
