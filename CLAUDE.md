@@ -208,14 +208,17 @@ registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outb
 `dynamicRegistration`; an unregistered client follows the §7 fallback (no invalidation
 until a file is opened and closed).
 
-Prefix search is `search(string $prefix, NameKind)` — kind-parameterized like `lookup`,
-so a new searchable kind is an argument, not a method. `SymbolKind::forNameKind()` is
-the one place a `NameKind` becomes the index kinds it covers, and `SymbolKind::nameKind()`
-is its derived inverse; neither mapping is written twice. Only the open-document backend
-answers today, and it answers for every kind. The PSR-4 tree cannot: a fragment has no
-arithmetic route to a file, which is the deferred workspace-index scope (RFC 1 §3). The
-`autoload.files` index and the built-ins can, and are owed by the `function-search`
-slice, along with the migration of the consumers still calling `FunctionRepository`.
+Prefix search is `search(string $prefix, NameKind)`, kind-parameterized at the facade
+as well as the backend — every kind returns the same `Symbol`, so §5.1's concrete-return
+requirement asks nothing more here. A new searchable kind is an argument, not a method.
+`SymbolKind::nameKind()` is the one place an index kind becomes the name kind it denotes,
+and `SymbolKind::forNameKind()` is its derived inverse; neither mapping is written twice.
+Only the open-document backend answers today, and it answers for every kind. The PSR-4
+tree cannot: a fragment has no arithmetic route to a file, which is the deferred
+workspace-index scope (RFC 1 §3). Function and constant search over the `autoload.files`
+index and the built-ins is owed by the `function-search` slice, along with the migration
+of the consumers still calling `FunctionRepository`; a built-in class-like waits on
+import insertion instead (#23).
 
 - **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.

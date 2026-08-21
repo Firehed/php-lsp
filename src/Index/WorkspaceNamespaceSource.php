@@ -15,8 +15,7 @@ use Firehed\PhpLsp\Domain\NamespacePath;
  * renamed still being offered.
  *
  * Class members are indexed too, but they are not symbols *of a namespace* — a
- * method is reached through its class, never by name — so they are skipped
- * ({@see SymbolKind::nameKind()} reports no name kind for them).
+ * method is reached through its class, never by name — so they are skipped.
  */
 final class WorkspaceNamespaceSource implements NamespaceCatalog
 {

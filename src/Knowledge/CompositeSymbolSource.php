@@ -163,9 +163,8 @@ final class CompositeSymbolSource implements SymbolSource
     }
 
     /**
-     * Class-like identity under that kind's case rule, hard-coded because every edge
-     * of the inheritance walk is a class-like by construction. `fromFullyQualified`
-     * drops a leading `\`.
+     * The kind is hard-coded because every edge of the inheritance walk is a
+     * class-like by construction. `fromFullyQualified` drops a leading `\`.
      */
     private static function normalizeKey(string $fqn): string
     {
