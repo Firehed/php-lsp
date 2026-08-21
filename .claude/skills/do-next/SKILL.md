@@ -57,9 +57,12 @@ in `phpstan-baseline.neon` / `deptrac.baseline.yaml`. If the row drains no basel
 entry, spot-check its central claim against the code — one `grep` is enough; the
 failure mode is a row asserting that something is absent when it is present.
 
-**Baseline rule:** `enforcement-rules` is the only slice that may grow a baseline (the
-human overrides CI). Every other slice must leave baselines flat or shrink them —
-widening an enforcement rule's allowlist to avoid growth is the same failure.
+**Baseline rule:** every slice leaves the baselines flat or shrinks them. A slice
+never makes a **Loosen** edit (`docs/architecture/enforcement-edits.md`): no allowlist
+addition, no layer edge, no baseline growth for an existing check, no skipped test, no
+change to `bin/`, `.github/`, `.claude/`, or a policy paragraph in this manifest or the
+build procedure. If the slice cannot land without one, **stop and report** — the human
+makes that edit, or strikes the slice.
 
 A row whose claim no longer holds is a **phantom**. Report it as such, say what appears
 to have discharged it, and ask whether to remove it from the list and continue to the
