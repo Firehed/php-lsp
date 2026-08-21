@@ -61,16 +61,8 @@ final class KindEnumMatchRule implements Rule
 
     public function processNode(Node $node, Scope $scope): array
     {
-        $file = $scope->getFile();
-
-        if (str_contains($file, '/tests/') && !str_contains($file, '/tests/Architecture/data/')) {
+        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
             return [];
-        }
-
-        foreach (self::ALLOWED_FILES as $allowed) {
-            if (str_ends_with($file, $allowed)) {
-                return [];
-            }
         }
 
         $condType = $scope->getType($node->cond);
