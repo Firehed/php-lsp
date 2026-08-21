@@ -16,6 +16,7 @@ A reviewer classifies every edit to the files above with this table before readi
 | Remove an edge from the layer ruleset | Tighten | Anyone. |
 | Remove a path from an allowlist | Tighten | Anyone. |
 | Add a check, rule, test, or layer | Tighten | Anyone. |
+| Add a deny entry or rule together with its allowlist | Tighten, when every allowlist path is one file that uses the denied thing today (`tests/*` is the one directory glob). A directory glob, or a file with no use, is a Loosen hidden inside a Tighten. | Anyone, under that condition. The reviewer greps each denied name in `src/`: the hits and the allowlist must be the same set, with the rest in the baseline. |
 | Rename a path in an allowlist or a baseline entry | Lateral | Anyone, only when the same PR moves that file (git reports a rename) and the entry count does not change. |
 | Rename a rule identifier or message, with the baseline rewritten to match | Lateral | Anyone, only when the total for that rule does not change. |
 | Add a path to an allowlist | Loosen | The human only. |
