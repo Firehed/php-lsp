@@ -18,35 +18,32 @@ enum SymbolKind: int
     case Enum_ = 13;
 
     /**
-     * The index kinds that belong to a knowledge kind. Four class-likes collapse to
-     * one because PHP resolves them in a single symbol namespace: a name is a class
-     * or an interface, never both.
+     * The inverse of {@see nameKind}, derived from it rather than restated: two
+     * hand-written tables of one mapping are how prefix search and namespace
+     * enumeration come to disagree about which kind a name denotes.
      *
      * @return list<self>
      */
     public static function forNameKind(NameKind $kind): array
     {
-        return match ($kind) {
-            NameKind::ClassLike => [self::Class_, self::Interface_, self::Trait_, self::Enum_],
-            NameKind::Constant => [self::Constant],
-            NameKind::Function_ => [self::Function_],
-        };
+        return array_values(array_filter(
+            self::cases(),
+            static fn (self $case): bool => $case->nameKind() === $kind,
+        ));
     }
 
     /**
-     * The inverse of {@see forNameKind}, derived from it rather than restated: two
-     * hand-written tables of one mapping are how prefix search and namespace
-     * enumeration come to disagree about which kind a name denotes. Null for the
-     * member kinds, which name nothing an FQN can address.
+     * Four class-likes collapse to one name kind because PHP resolves them in a
+     * single symbol namespace: a name is a class or an interface, never both. Null
+     * for the member kinds, which name nothing an FQN can address.
      */
     public function nameKind(): ?NameKind
     {
-        foreach (NameKind::cases() as $kind) {
-            if (in_array($this, self::forNameKind($kind), true)) {
-                return $kind;
-            }
-        }
-
-        return null;
+        return match ($this) {
+            self::Class_, self::Interface_, self::Trait_, self::Enum_ => NameKind::ClassLike,
+            self::Function_ => NameKind::Function_,
+            self::Constant => NameKind::Constant,
+            self::Method, self::Property => null,
+        };
     }
 }

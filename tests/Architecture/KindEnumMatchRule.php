@@ -37,9 +37,6 @@ final class KindEnumMatchRule implements Rule
         'src/Domain/MemberKind.php',
         'src/Domain/ClassKind.php',
         'src/Domain/ClassInfo.php',
-        // forNameKind matches on NameKind, and cannot live on NameKind itself:
-        // that would make Domain depend on Index, which deptrac forbids.
-        'src/Index/SymbolKind.php',
         'src/Resolution/NameContext.php',
         'src/Repository/DefaultClassInfoFactory.php',
         'src/Knowledge/ReflectionSymbolInfoFactory.php',
