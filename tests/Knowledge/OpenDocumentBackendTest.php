@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -213,24 +214,34 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    public function testSearchClassLikesFiltersByPrefixAndToClassLikeKindsOnly(): void
+    #[DataProvider('searchKinds')]
+    public function testSearchFiltersByPrefixAndToTheSearchedKindAlone(NameKind $kind, string $expected): void
     {
+        // One name of every kind shares the prefix, so a search that ignored its kind
+        // would return the other two — PHP's three symbol namespaces are independent.
         $this->addSymbol('User', 'App\User', SymbolKind::Class_);
-        $this->addSymbol('Entity', 'App\Entity', SymbolKind::Class_);
-        // A function whose name also begins with the prefix: it must not be returned,
-        // because prefix search covers the class-like namespace only.
         $this->addSymbol('Userland', 'App\Userland', SymbolKind::Function_);
+        $this->addSymbol('USER_MAX', 'App\USER_MAX', SymbolKind::Constant);
+        $this->addSymbol('Entity', 'App\Entity', SymbolKind::Class_);
 
-        $results = $this->backend->searchClassLikes('User');
+        $results = $this->backend->search('User', $kind);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
-        self::assertContains('App\User', $fqns, 'a class-like matching the prefix must be found');
-        self::assertNotContains('App\Entity', $fqns, 'a class-like not matching the prefix must be excluded');
-        self::assertNotContains(
-            'App\Userland',
+        self::assertSame(
+            [$expected],
             $fqns,
-            'a function must be excluded even when its name matches the prefix',
+            'a search must return the prefix matches of the kind it was asked for, and nothing else',
         );
+    }
+
+    /**
+     * @return iterable<string, array{NameKind, string}>
+     */
+    public static function searchKinds(): iterable
+    {
+        yield 'class-like' => [NameKind::ClassLike, 'App\User'];
+        yield 'function' => [NameKind::Function_, 'App\Userland'];
+        yield 'constant' => [NameKind::Constant, 'App\USER_MAX'];
     }
 
     public function testChildrenOfEnumeratesTheOpenDocumentNamespace(): void

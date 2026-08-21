@@ -102,7 +102,7 @@ final class ClassCandidates
         // repository lookup cannot vouch for a symbol whose declaration it cannot
         // reach (Plan 0002 §5.5: identical behavior).
         $kinds = $this->indexKinds($filter);
-        $symbols = $this->symbolSource->searchClassLikes($prefix);
+        $symbols = $this->symbolSource->search($prefix, NameKind::ClassLike);
         $items = [];
 
         foreach ($symbols as $symbol) {
@@ -138,12 +138,7 @@ final class ClassCandidates
     private function indexKinds(ClassCandidateFilter $filter): array
     {
         return match ($filter) {
-            ClassCandidateFilter::Any => [
-                SymbolKind::Class_,
-                SymbolKind::Interface_,
-                SymbolKind::Trait_,
-                SymbolKind::Enum_,
-            ],
+            ClassCandidateFilter::Any => SymbolKind::forNameKind(NameKind::ClassLike),
             ClassCandidateFilter::Instantiable => [
                 SymbolKind::Class_,
                 SymbolKind::Enum_,

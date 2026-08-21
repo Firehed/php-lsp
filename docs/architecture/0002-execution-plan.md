@@ -274,8 +274,8 @@ Step 4 (Section 6).
   Step 2 rule exemption. *Acceptance on search reach:* every backend that answers
   `lookupFunction` MUST also answer function `search`, so a name resolvable on hover
   is offered in completion (§4.2). For `FilesystemBackend` that means the derived
-  `autoload.files` index — its empty `searchClassLikes` is scoped to the PSR-4 tree,
-  which needs a workspace walk (§3), not to every kind. **S3.8d carries the mechanism**
+  `autoload.files` index — its empty `search` is scoped to the PSR-4 tree, which needs
+  a workspace walk (§3), and blocks no kind beyond it, class-likes included. **S3.8d carries the mechanism**
   that makes this general — §8.1's backend × kind × query grid — after which this clause
   describes what the test asserts rather than a rule to remember.
   This step **both changes and
@@ -322,8 +322,8 @@ shown to fail against the code it replaces. `/review-slice` checks for these by 
   hand-listed grid enforces nothing a hand-written clause did not.
 
   SZ.1 requires every surviving not-applicable to still name a live deferral, so the block
-  `searchClassLikes` carries until S3.9b and the §3 workspace walk cannot calcify into a
-  permanent exemption.
+  `search` carries until **function-search** and the §3 workspace walk cannot calcify into
+  a permanent exemption.
 
   S3.8b's proof — **its diff touches no `SymbolBackend` implementation** — is a claim about
   the diff's shape rather than a test, so it is checked by reading the diff.

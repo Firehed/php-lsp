@@ -94,14 +94,15 @@ final class CompositeSymbolSource implements SymbolSource
     /**
      * @return list<Symbol>
      */
-    public function searchClassLikes(string $prefix): array
+    public function search(string $prefix, NameKind $kind): array
     {
         $byFqn = [];
         foreach ($this->backends as $backend) {
-            foreach ($backend->searchClassLikes($prefix) as $symbol) {
+            foreach ($backend->search($prefix, $kind) as $symbol) {
                 // The earlier (more authoritative) backend wins a name clash, so an
                 // open document's symbol is not shadowed by a cached copy of it.
-                $byFqn[self::normalizeKey($symbol->fullyQualifiedName)] ??= $symbol;
+                $key = $kind->normalize(QualifiedName::fromFullyQualified($symbol->fullyQualifiedName));
+                $byFqn[$key] ??= $symbol;
             }
         }
 
@@ -162,8 +163,8 @@ final class CompositeSymbolSource implements SymbolSource
     }
 
     /**
-     * Class-like identity under the kind's case rule; every name this class keys
-     * or compares is a class-like. `fromFullyQualified` drops a leading `\`.
+     * The kind is hard-coded because every edge of the inheritance walk is a
+     * class-like by construction. `fromFullyQualified` drops a leading `\`.
      */
     private static function normalizeKey(string $fqn): string
     {

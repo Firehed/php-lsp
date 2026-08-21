@@ -48,7 +48,15 @@ Ordered. Each row starts when the one above it merges.
 
 - [ ] **search-kind-param** — Generalize search to a kind parameter
 
-  `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, with class-likes still the only searchable kind. Behavior-preserving, so every Step P golden stays frozen. This is what **completion-kind-collapse** needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
+  `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, and the `NameKind` → `SymbolKind` mapping gets one home (`SymbolKind::forNameKind`). `OpenDocumentBackend` answers every kind through it — its index already holds them, and suppressing two would be a filter written to keep a promise rather than to serve a caller. The on-disk and built-in backends still answer no kind (**function-search** owes those). Class-likes remain the only kind any *consumer* searches, so every Step P golden stays frozen. This is what **completion-kind-collapse** needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
+
+- [ ] **symbol-index-kind-keys** — Key the symbol index by kind, not by name alone
+
+  `SymbolIndex` keys `byFqn`, `byNamespace` and its per-URI reverse map on the fully-qualified name string alone, so a name declared as more than one kind in one document keeps only the last one written. PHP allows all three at once — `const Limit`, `function Limit()` and `class Limit` are independent symbols — and `OpenDocumentBackend::lookup` resolves each of them, because its own key carries the kind. Prefix search and namespace enumeration read the index instead, and report one. So the name hovers and jumps while completion never offers it: the §4.2 lookup-versus-enumeration split, at the seam built to close it. The defect is older than **search-kind-param**; that row is what gives search all three kinds to lose.
+
+  *Acceptance is both halves, mechanism first.* `SymbolCoverageGridTest`'s open-document fixture declares one shared name as all three kinds, so the collision fails the grid — committed red, ahead of the fix, per the project's TDD rule. Then `byFqn`, `byNamespace` and the URI reverse map key through `NameKind::keyFor()`, which `OpenDocumentBackend` already uses, so `findByPrefix`, `inNamespace` and `clearByUri` each hold the kinds apart. Closing a document must evict all three, not the first symbol whose name matches.
+
+  Case folding stays out of scope: `byFqn` compares raw strings, so `App\Foo` and `App\foo` are distinct already, and whether a class-like lookup should fold them belongs to the per-kind case rule `NameKind::normalize()` owns. Every Step P golden should stay frozen. If one moves, the parity corpus holds a collision of its own — review that diff rather than accept it.
 
 - [ ] **completion-kind-collapse** — Collapse completion's per-kind sources and kind branches
 
@@ -60,11 +68,17 @@ Ordered. Each row starts when the one above it merges.
 
   The collapse is what makes a constant appear *without* a `ConstantCandidates` existing: position filters take the typed name the symbol denotes and default to accepting it, restricting positions ask a `CodeResolver` predicate (`isInstantiable`, `isInterface`), and a single kind-dispatched factory is the one place a kind is named. Adding a kind then breaks exactly one `match` and every position keeps working.
 
+  **`PHP_E|` still offers nothing when this slice is done, and that is not a defect.** The collapse routes expression-start through `search`, but only the open-document backend answers it — built-in constant search is owed by **function-search**, the row below. Judge this slice on a constant declared in an open document, and on the absence of a per-kind source; a built-in one goes dark until the next row lands.
+
   Consequently **#317 must be rewritten, not built as filed.** It specifies a new per-kind source mirroring `FunctionCandidates` — a consumer edit that RFC 1 §7 forbids for a new symbol kind — including a direct `get_defined_constants()` that S3.8b confined to `InternalConstantSet`. Its Part 2 (namespace-correct references via `ReferenceResolver`) is unaffected and still wanted.
 
-- [ ] **function-search** — Function search + FunctionCandidates migration
+- [ ] **function-search** — Function and constant search + FunctionCandidates migration
 
-  Backends answer function search; `FunctionCandidates` moves onto the seam and its frozen `get_defined_functions()` baseline entry drains. `BuiltinBackend` **must** answer function search here or built-in function completion regresses — the function-surface golden S3.6 froze is what catches it.
+  Backends answer function *and constant* search; `FunctionCandidates` moves onto the seam and its frozen `get_defined_functions()` baseline entry drains. `BuiltinBackend` **must** answer function search here or built-in function completion regresses — the function-surface golden S3.6 froze is what catches it. Constants ride along because they are blocked on nothing else: unlike a class-like, a global constant resolves unqualified, so offering one needs no import (#23). `InternalConstantSet` already holds the built-in set.
+
+  `FilesystemBackend` owes all three kinds over its `autoload.files` index, which is name-keyed and in memory — `childrenOf` reads it today while `search` does not, so a name declared there is offered by namespace completion and never by prefix completion. Class-likes are included: the index records them beside the other two, so the deferred workspace index (RFC 1 §3) blocks the PSR-4 tree alone, where a fragment has no arithmetic route to a file. Four `search` cells in `SymbolCoverageGridTest`'s blocker list name this row, and the grid fails the moment one is answered without being unregistered.
+
+  Two gaps the grid cannot witness, so this row must check them by hand. The `autoload.files` class-likes have no cell: a row carries one probe per kind and all three queries share it, so that row's class-like probe must stay a PSR-4 name for `lookup` to mean anything. And `searchFinds` catches a kind leak only where a row's three probes share their first three characters — true of the open-document row, false of the on-disk and built-in rows, whose `search` cells answer nothing today. Give those rows colliding probes when they start answering, or a backend that ignores its `$kind` ships green.
 
 - [ ] **retire-ast-in-lookup** — Retire the AST-in function lookup from consumers
 

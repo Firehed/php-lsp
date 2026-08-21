@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
@@ -42,20 +43,25 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        // `searchClassLikes` has no kind parameter until search-kind-param.
-        'OpenDocumentBackend|Function_|search' => 'search-kind-param, function-search',
-        'OpenDocumentBackend|Constant|search' => 'search-kind-param',
-        'FilesystemBackend|Function_|search' => 'search-kind-param, function-search',
-        'FilesystemBackend|Constant|search' => 'search-kind-param',
-        'BuiltinBackend|Function_|search' => 'search-kind-param, function-search',
-        'BuiltinBackend|Constant|search' => 'search-kind-param',
-
-        // A prefix has no name -> file map on disk. The built-in row is blocked on
-        // something else entirely: the name it would offer does not resolve
-        // unqualified, so the item is only useful once completion can insert the
-        // import with it.
+        // The PSR-4 tree offers no prefix route: a name reaches a file by arithmetic
+        // on the whole name, which a fragment cannot do (RFC 1 §3). That blocks the
+        // tree alone — the `autoload.files` index is name-keyed and in memory, and
+        // `childrenOf` already reads it, so search over it is implementable and owed.
+        // The class-like probe below is a PSR-4 name, so this cell witnesses the tree
+        // only; the `autoload.files` class-likes function-search also owes have no
+        // cell of their own, because a row's one probe per kind serves all three
+        // queries and lookup needs the PSR-4 name.
         'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
+        'FilesystemBackend|Function_|search' => 'function-search',
+        'FilesystemBackend|Constant|search' => 'function-search',
+
+        // A bare built-in class-like name does not resolve unqualified, so offering
+        // one is only useful once completion can insert the import with it. Functions
+        // and constants fall back to the global namespace and need no import, so
+        // nothing but the implementation blocks them.
         'BuiltinBackend|ClassLike|search' => '#23',
+        'BuiltinBackend|Function_|search' => 'function-search',
+        'BuiltinBackend|Constant|search' => 'function-search',
     ];
 
     /**
@@ -295,7 +301,7 @@ final class SymbolCoverageGridTest extends TestCase
 
         return match ($query) {
             GridQuery::Lookup => $this->looksUp($backend, $fqn, $kind),
-            GridQuery::Search => $this->searchFinds($backend, $fqn),
+            GridQuery::Search => $this->searchFinds($backend, $fqn, $kind),
             GridQuery::ChildrenOf => $this->enumerates($backend, $probe['namespace'], $kind, $fqn),
         };
     }
@@ -321,17 +327,25 @@ final class SymbolCoverageGridTest extends TestCase
         return true;
     }
 
-    private function searchFinds(SymbolBackend $backend, string $fqn): bool
+    private function searchFinds(SymbolBackend $backend, string $fqn, NameKind $kind): bool
     {
-        $prefix = QualifiedName::fromFullyQualified($fqn)->shortName;
+        // A fragment, not the whole name, which matches one probe alone and so cannot
+        // show a leak. The assertion below bites only where a row's three probes share
+        // this many characters — the open-document row does; see the build manifest's
+        // function-search row for the two that do not.
+        $prefix = substr(QualifiedName::fromFullyQualified($fqn)->shortName, 0, 3);
 
-        foreach ($backend->searchClassLikes($prefix) as $symbol) {
-            if ($symbol->fullyQualifiedName === $fqn) {
-                return true;
-            }
+        $found = false;
+        foreach ($backend->search($prefix, $kind) as $symbol) {
+            self::assertContains(
+                $symbol->kind,
+                SymbolKind::forNameKind($kind),
+                "a {$kind->name} search must not return {$symbol->fullyQualifiedName}, which is not that kind",
+            );
+            $found = $found || $symbol->fullyQualifiedName === $fqn;
         }
 
-        return false;
+        return $found;
     }
 
     private function enumerates(SymbolBackend $backend, string $namespace, NameKind $kind, string $fqn): bool

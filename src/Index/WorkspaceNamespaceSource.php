@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 
 /**
@@ -29,7 +28,7 @@ final class WorkspaceNamespaceSource implements NamespaceCatalog
     {
         $symbols = [];
         foreach ($this->index->inNamespace($namespace) as $symbol) {
-            $kind = self::nameKindOf($symbol->kind);
+            $kind = $symbol->kind->nameKind();
             if ($kind !== null) {
                 $symbols[] = new CatalogSymbol($symbol->fullyQualifiedName, $kind);
             }
@@ -49,22 +48,5 @@ final class WorkspaceNamespaceSource implements NamespaceCatalog
         }
 
         return new NamespaceContents(array_values($childNamespaces), $symbols);
-    }
-
-    /**
-     * Discovery only distinguishes the kinds that name resolution distinguishes;
-     * which flavour of class-like a symbol is takes resolving it.
-     */
-    private static function nameKindOf(SymbolKind $kind): ?NameKind
-    {
-        return match ($kind) {
-            SymbolKind::Class_,
-            SymbolKind::Interface_,
-            SymbolKind::Trait_,
-            SymbolKind::Enum_ => NameKind::ClassLike,
-            SymbolKind::Function_ => NameKind::Function_,
-            SymbolKind::Constant => NameKind::Constant,
-            SymbolKind::Method, SymbolKind::Property => null,
-        };
     }
 }

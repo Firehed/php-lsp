@@ -30,7 +30,7 @@ class ClassCandidatesTest extends TestCase
         // This case exercises the imports path only; the seam reaches no
         // class-likes, so its prefix search is empty.
         $symbolSource = self::createStub(SymbolSource::class);
-        $symbolSource->method('searchClassLikes')->willReturn([]);
+        $symbolSource->method('search')->willReturn([]);
 
         $candidates = new ClassCandidates($symbolSource, $resolver, self::utf16Capabilities());
         $document = new TextDocument('file:///test.php', 'php', 1, '<?php Café');
