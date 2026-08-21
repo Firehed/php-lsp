@@ -68,6 +68,8 @@ Ordered. Each row starts when the one above it merges.
 
   The collapse is what makes a constant appear *without* a `ConstantCandidates` existing: position filters take the typed name the symbol denotes and default to accepting it, restricting positions ask a `CodeResolver` predicate (`isInstantiable`, `isInterface`), and a single kind-dispatched factory is the one place a kind is named. Adding a kind then breaks exactly one `match` and every position keeps working.
 
+  *The row ships the rule that holds it.* Once the branches are gone, `CompletionKind` and `ClassCandidateFilter` join `KindEnumMatchRule`'s confined list with the factory as their only exempt file — the collapse is undone by the next hand-written `match` otherwise, and nothing would fail.
+
   **`PHP_E|` still offers nothing when this slice is done, and that is not a defect.** The collapse routes expression-start through `search`, but only the open-document backend answers it — built-in constant search is owed by **function-search**, the row below. Judge this slice on a constant declared in an open document, and on the absence of a per-kind source; a built-in one goes dark until the next row lands.
 
   Consequently **#317 must be rewritten, not built as filed.** It specifies a new per-kind source mirroring `FunctionCandidates` — a consumer edit that RFC 1 §7 forbids for a new symbol kind — including a direct `get_defined_constants()` that S3.8b confined to `InternalConstantSet`. Its Part 2 (namespace-correct references via `ReferenceResolver`) is unaffected and still wanted.
@@ -188,7 +190,7 @@ One acceptance carve-out is recorded rather than reopened: **S3.4** landed its w
 
 - **Step 5 — environment-parameterized built-ins (§4.7).** Not plannable: its version-aware source is an open TBD (0002 §7, explicitly not `phpstorm-stubs`). The reflection-backed Builtin backend from S3.3 is the interim, and does not satisfy §4.7. **done** permits it to remain a named gap.
 - **Step 6 — scheduler / async tier (#266).** Deferred until a push feature needs it: `$/cancelRequest` for superseded work, debounced `publishDiagnostics`, and a bounded background scheduler that feature-detects `pcntl` / `ext-parallel` with a synchronous fallback.
-- **Wave 3 — member kind, access context, intent detection.** The axes the 2026-08-10 RFC amendment added (RFC 1 §3.1, Appendix A "target" rows). Property hooks and asymmetric visibility wait on the first two. Sliced after the **done** gate — and each ends in a rule, per the goal above.
+- **Wave 3 — member kind, access context, intent detection.** The axes the 2026-08-10 RFC amendment added (RFC 1 §3.1, Appendix A "target" rows). Property hooks and asymmetric visibility wait on the first two. Sliced after the **done** gate — and each ends in a rule, per the goal above: `MemberFilter` and `MemberAccessKind` join `KindEnumMatchRule`'s confined list once `MemberResolver` and `MemberCandidates` stop branching on them.
 - **Feature-matrix runner.** A fixture-scenario × handler-registry grid, every cell asserting that handler's observable or registering not-applicable, an unregistered cell failing. Deprioritized 2026-08-10; revisit after the Step 4 drain. Worth reconsidering sooner than that priority implies — it is the cross-feature agreement net, and the same shape as the §5.1 grid that has already caught real gaps.
 
 ## Issue wiring
