@@ -27,7 +27,12 @@ use PHPStan\Rules\RuleErrorBuilder;
  */
 final class KindInspectionRule implements Rule
 {
-    /** @var list<class-string> */
+    /**
+     * Adding an entry tightens. Removing one loosens (human only). See
+     * docs/architecture/enforcement-edits.md.
+     *
+     * @var list<class-string>
+     */
     private const array CONFINED_TYPE_IMPLS = [
         \Firehed\PhpLsp\Domain\ClassName::class,
         \Firehed\PhpLsp\Domain\UnionType::class,
@@ -36,7 +41,11 @@ final class KindInspectionRule implements Rule
         \Firehed\PhpLsp\Domain\LateStaticType::class,
     ];
 
-    /** @var list<class-string> */
+    /**
+     * Adding an entry tightens. Removing one loosens (human only).
+     *
+     * @var list<class-string>
+     */
     private const array CONFINED_RESOLVED_IMPLS = [
         \Firehed\PhpLsp\Resolution\ResolvedClass::class,
         \Firehed\PhpLsp\Resolution\ResolvedConstant::class,
@@ -49,6 +58,11 @@ final class KindInspectionRule implements Rule
         \Firehed\PhpLsp\Resolution\ResolvedVariable::class,
     ];
 
+    /**
+     * Adding an entry loosens (human only). Removing one tightens. Renaming one
+     * is lateral only when the same PR moves the file. See
+     * docs/architecture/enforcement-edits.md.
+     */
     private const array ALLOWED_FILES = [
         'src/Domain/TypeFactory.php',
         'src/Domain/ClassName.php',
