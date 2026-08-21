@@ -329,17 +329,14 @@ final class SymbolCoverageGridTest extends TestCase
 
     private function searchFinds(SymbolBackend $backend, string $fqn, NameKind $kind): bool
     {
-        // A fragment, not the whole name: a row's three probes share their first
-        // letters, so a backend that ignored the kind would answer with the other
-        // kinds' names here and the assertion below would catch it. The whole name
-        // matches one probe alone, which hides that.
+        // A fragment, not the whole name, which matches one probe alone and so cannot
+        // show a leak. The assertion below bites only where a row's three probes share
+        // this many characters — the open-document row does; see the build manifest's
+        // function-search row for the two that do not.
         $prefix = substr(QualifiedName::fromFullyQualified($fqn)->shortName, 0, 3);
 
         $found = false;
         foreach ($backend->search($prefix, $kind) as $symbol) {
-            // Mirrors `enumerates`: a cell counts as covered only when the backend
-            // answered for the kind it was asked about, so search and enumeration
-            // cannot come to disagree about which kind a name denotes (§4.2).
             self::assertContains(
                 $symbol->kind,
                 SymbolKind::forNameKind($kind),
