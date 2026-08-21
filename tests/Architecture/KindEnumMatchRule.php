@@ -25,13 +25,23 @@ use PHPStan\Type\ObjectType;
  */
 final class KindEnumMatchRule implements Rule
 {
-    /** @var list<class-string> */
+    /**
+     * Adding an entry tightens. Removing one loosens (human only). See
+     * docs/architecture/enforcement-edits.md.
+     *
+     * @var list<class-string>
+     */
     private const array CONFINED_KIND_ENUMS = [
         \Firehed\PhpLsp\Domain\NameKind::class,
         \Firehed\PhpLsp\Domain\MemberKind::class,
         \Firehed\PhpLsp\Domain\ClassKind::class,
     ];
 
+    /**
+     * Adding an entry loosens (human only). Removing one tightens. Renaming one
+     * is lateral only when the same PR moves the file. See
+     * docs/architecture/enforcement-edits.md.
+     */
     private const array ALLOWED_FILES = [
         'src/Domain/NameKind.php',
         'src/Domain/MemberKind.php',

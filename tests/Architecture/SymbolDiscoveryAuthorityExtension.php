@@ -44,6 +44,9 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
      * has no namespace prefix). Class-like lookup is now served entirely by the
      * {@see \Firehed\PhpLsp\Knowledge\SymbolBackend}s, so `ClassRepository` is gone.
      *
+     * Adding an entry tightens. Removing one loosens (human only). See
+     * docs/architecture/enforcement-edits.md.
+     *
      * @var list<class-string>
      */
     private const array CONFINED_COLLABORATORS = [
@@ -62,6 +65,8 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
      * carve-out — so the two names sit in the confined set above and are exempted here
      * rather than simply omitted.
      *
+     * Adding an entry loosens (human only). Removing one tightens.
+     *
      * @var list<class-string>
      */
     private const array FUNCTION_PATH_EXEMPTION = [
@@ -72,6 +77,8 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
     /**
      * The composition root (Server) wires the concrete collaborators into the backend,
      * so the root namespace names them directly.
+     *
+     * Changing this loosens (human only).
      */
     private const string COMPOSITION_ROOT_NAMESPACE = 'Firehed\PhpLsp';
 
@@ -80,6 +87,8 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
      * compose, and tests are not production consumers — the parity suites use
      * reflection as the §4.7 oracle by design. A namespace equal to or nested under one
      * of these is exempt.
+     *
+     * Adding an entry loosens (human only). Removing one tightens.
      *
      * @var list<string>
      */
