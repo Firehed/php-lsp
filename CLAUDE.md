@@ -215,10 +215,11 @@ requirement asks nothing more here. A new searchable kind is an argument, not a 
 and `SymbolKind::forNameKind()` is its derived inverse; neither mapping is written twice.
 Only the open-document backend answers today, and it answers for every kind. The PSR-4
 tree cannot: a fragment has no arithmetic route to a file, which is the deferred
-workspace-index scope (RFC 1 §3). Function and constant search over the `autoload.files`
-index and the built-ins is owed by the `function-search` slice, along with the migration
-of the consumers still calling `FunctionRepository`; a built-in class-like waits on
-import insertion instead (#23).
+workspace-index scope (RFC 1 §3). The `autoload.files` index is name-keyed and in
+memory, so search over it is owed for all three kinds, as is built-in function and
+constant search — the `function-search` slice, along with the migration of the consumers
+still calling `FunctionRepository`. A built-in class-like waits on import insertion
+instead (#23).
 
 - **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
