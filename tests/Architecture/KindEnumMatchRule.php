@@ -31,6 +31,7 @@ final class KindEnumMatchRule implements Rule
         \Firehed\PhpLsp\Domain\MemberKind::class,
         \Firehed\PhpLsp\Domain\ClassKind::class,
         \Firehed\PhpLsp\Index\SymbolKind::class,
+        \Firehed\PhpLsp\Completion\CompletionItemKind::class,
     ];
 
     private const array ALLOWED_FILES = [
