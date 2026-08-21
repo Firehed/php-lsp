@@ -138,7 +138,6 @@ final class ClassCandidates
     private function indexKinds(ClassCandidateFilter $filter): array
     {
         return match ($filter) {
-            // A class-like kind added to the seam must not be dropped by this gate.
             ClassCandidateFilter::Any => SymbolKind::forNameKind(NameKind::ClassLike),
             ClassCandidateFilter::Instantiable => [
                 SymbolKind::Class_,

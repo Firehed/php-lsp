@@ -31,7 +31,7 @@ final class SymbolKindTest extends TestCase
         self::assertSame(
             $expected,
             $kind->nameKind(),
-            'the inverse mapping must agree with forNameKind, which it is derived from',
+            'this is the one table of the mapping; forNameKind is derived from it',
         );
     }
 

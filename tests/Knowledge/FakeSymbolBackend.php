@@ -32,8 +32,7 @@ final class FakeSymbolBackend implements SymbolBackend
     /**
      * @param list<DeclaredSymbol> $symbols Keyed here by each one's own case rule
      * @param array<string, NamespaceContents> $namespaces Path -> contents
-     * @param list<Symbol> $searchResults Returned (filtered to the searched kind,
-     *        then on short-name prefix)
+     * @param list<Symbol> $searchResults
      */
     public function __construct(
         array $symbols = [],
