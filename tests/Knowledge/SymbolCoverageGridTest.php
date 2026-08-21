@@ -326,7 +326,11 @@ final class SymbolCoverageGridTest extends TestCase
 
     private function searchFinds(SymbolBackend $backend, string $fqn, NameKind $kind): bool
     {
-        $prefix = QualifiedName::fromFullyQualified($fqn)->shortName;
+        // A fragment, not the whole name: a row's three probes share their first
+        // letters, so a backend that ignored the kind would answer with the other
+        // kinds' names here and the assertion below would catch it. The whole name
+        // matches one probe alone, which hides that.
+        $prefix = substr(QualifiedName::fromFullyQualified($fqn)->shortName, 0, 3);
 
         $found = false;
         foreach ($backend->search($prefix, $kind) as $symbol) {
