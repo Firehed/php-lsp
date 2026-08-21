@@ -30,12 +30,14 @@ final class KindEnumMatchRule implements Rule
         \Firehed\PhpLsp\Domain\NameKind::class,
         \Firehed\PhpLsp\Domain\MemberKind::class,
         \Firehed\PhpLsp\Domain\ClassKind::class,
+        \Firehed\PhpLsp\Index\SymbolKind::class,
     ];
 
     private const array ALLOWED_FILES = [
         'src/Domain/NameKind.php',
         'src/Domain/MemberKind.php',
         'src/Domain/ClassKind.php',
+        'src/Index/SymbolKind.php',
         'src/Domain/ClassInfo.php',
         'src/Resolution/NameContext.php',
         'src/Repository/DefaultClassInfoFactory.php',
