@@ -50,6 +50,15 @@ that filter — it has the code in context; step 3 only backstops it.
 
 Run a small diverse panel in parallel:
 
+- **Policy surface** — classify every hunk touching `phpstan.neon`, `deptrac.yaml`,
+  `tests/Architecture/`, either baseline, `bin/`, `.github/`, `.claude/`, or the
+  policy paragraphs of the manifest and build procedure, using the table in
+  `docs/architecture/enforcement-edits.md`. A **Loosen** edit is a finding, always;
+  a **Lateral** edit is a finding unless the same diff contains the file move it
+  depends on; baseline growth is a finding unless every new entry is reported by a
+  check the same diff adds. This reviewer carries the standing goal-test answer
+  (a loosened rule removes a violation from the record instead of freezing it), so
+  the drop rule does not apply to it.
 - **Acceptance** — is every acceptance criterion actually met, not just plausibly?
   Including each owed item from step 1: the named test exists, and it fails against the
   code it replaces (check that by reverting the fix locally, not by reading the test).
