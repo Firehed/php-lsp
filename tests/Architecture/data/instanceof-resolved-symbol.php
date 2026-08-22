@@ -19,6 +19,13 @@ final class InstanceofResolvedSymbol
         return $symbol instanceof ResolvedMethod;
     }
 
+    public function isSuitableViaVariable(ResolvedSymbol $symbol): bool
+    {
+        $wanted = ResolvedMethod::class;
+
+        return $symbol instanceof $wanted;
+    }
+
     public function getKind(ResolvedSymbol $symbol): string
     {
         return match (true) {

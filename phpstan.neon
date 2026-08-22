@@ -50,6 +50,16 @@ parameters:
                 - src/Domain/ParameterInfo.php
                 - tests/*
         -
+            namespace:
+                - 'PhpParser\ParserFactory'
+                - 'PhpParser\Parser'
+                - 'PhpParser\Parser\*'
+                - 'PhpParser\Lexer*'
+            message: 'an AST is produced in one place: ParserService'
+            allowIn:
+                - src/Parser/ParserService.php
+                - tests/*
+        -
             namespace: 'PhpParser\NodeVisitor*'
             message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
@@ -67,6 +77,17 @@ parameters:
                 - 'strcasecmp()'
                 - 'strncasecmp()'
                 - 'mb_strtolower()'
+                - 'strtoupper()'
+                - 'mb_strtoupper()'
+                - 'mb_convert_case()'
+                - 'ucfirst()'
+                - 'ucwords()'
+                - 'lcfirst()'
+                - 'strnatcasecmp()'
+                - 'str_ireplace()'
+                - 'stripos()'
+                - 'strripos()'
+                - 'stristr()'
             message: 'which case rule a name follows is NameKind (symbols) or MemberKind (class-like members); applying one is NameCase'
             allowIn:
                 - src/Domain/NameCase.php
@@ -81,6 +102,10 @@ parameters:
                 - 'preg_replace()'
                 - 'preg_split()'
                 - 'preg_quote()'
+                - 'preg_replace_callback()'
+                - 'preg_replace_callback_array()'
+                - 'preg_grep()'
+                - 'fnmatch()'
             message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, TextFallbackHelper'
             allowIn:
                 - src/Completion/CompletionClassifier.php
@@ -91,6 +116,11 @@ parameters:
             function:
                 - 'get_defined_functions()'
                 - 'get_declared_classes()'
+                - 'get_declared_interfaces()'
+                - 'get_declared_traits()'
+                - 'get_class_methods()'
+                - 'get_class_vars()'
+                - 'get_object_vars()'
             message: 'runtime symbol enumeration is confined to ReflectionNamespaceSource'
             allowIn:
                 - src/Index/ReflectionNamespaceSource.php
@@ -111,9 +141,30 @@ parameters:
                 - 'function_exists()'
                 - 'interface_exists()'
                 - 'trait_exists()'
+                - 'method_exists()'
+                - 'property_exists()'
+                - 'is_callable()'
             message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query (RFC 1 §4.2); ReflectionSymbolInfoFactory is the one place it may be the server''s own runtime'
             allowIn:
                 - src/Knowledge/ReflectionSymbolInfoFactory.php
+                - tests/*
+        -
+            function:
+                - 'get_class()'
+                - 'get_parent_class()'
+                - 'is_a()'
+                - 'is_subclass_of()'
+                - 'class_implements()'
+                - 'class_uses()'
+            message: 'asking the runtime for a value''s concrete kind is kind inspection (RFC 1 §4.5); use predicates'
+            allowIn:
+                - tests/*
+        -
+            function:
+                - 'token_get_all()'
+            message: 'lexing outside the parser is the token rim: ContextDetector'
+            allowIn:
+                - src/Completion/ContextDetector.php
                 - tests/*
         -
             function:
@@ -125,12 +176,56 @@ parameters:
                 - 'glob()'
                 - 'fopen()'
                 - 'realpath()'
+                - 'is_readable()'
+                - 'is_writable()'
+                - 'is_link()'
+                - 'file()'
+                - 'readfile()'
+                - 'filemtime()'
+                - 'filesize()'
+                - 'stat()'
+                - 'opendir()'
+                - 'readdir()'
+                - 'fread()'
+                - 'fgets()'
+                - 'fwrite()'
+                - 'stream_get_contents()'
+                - 'file_put_contents()'
+                - 'unlink()'
+                - 'mkdir()'
+                - 'rmdir()'
+                - 'touch()'
+                - 'copy()'
+                - 'rename()'
+                - 'tempnam()'
             message: 'filesystem access is confined: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
             allowIn:
                 - src/Parser/ParserService.php
                 - src/Index/ComposerAutoloadMap.php
                 - src/Index/ComposerNamespaceSource.php
                 - src/Transport/*
+                - tests/*
+
+    disallowedStaticCalls:
+        -
+            method: 'PhpToken::tokenize()'
+            message: 'lexing outside the parser is the token rim: ContextDetector'
+            allowIn:
+                - src/Completion/ContextDetector.php
+                - tests/*
+
+    disallowedClasses:
+        -
+            class:
+                - 'DirectoryIterator'
+                - 'RecursiveDirectoryIterator'
+                - 'FilesystemIterator'
+                - 'GlobIterator'
+                - 'SplFileInfo'
+                - 'SplFileObject'
+                - 'SplTempFileObject'
+            message: 'filesystem access is confined: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
+            allowIn:
                 - tests/*
 
     disallowedMethodCalls:
@@ -187,7 +282,7 @@ services:
         tags:
             - phpstan.rules.rule
     -
-        class: Firehed\PhpLsp\Tests\Architecture\KindEnumMatchRule
+        class: Firehed\PhpLsp\Tests\Architecture\KindBranchRule
         tags:
             - phpstan.rules.rule
     -
