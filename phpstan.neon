@@ -288,7 +288,7 @@ parameters:
                 - 'SplFileInfo'
                 - 'SplFileObject'
                 - 'SplTempFileObject'
-            message: 'filesystem access is confined: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
+            message: 'filesystem access is confined, and its readers (ParserService, ComposerAutoloadMap, ComposerNamespaceSource, transport) reach the disk through functions rather than through a file object'
             allowIn:
                 - tests/*
 
