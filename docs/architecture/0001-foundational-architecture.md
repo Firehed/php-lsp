@@ -558,6 +558,8 @@ Their baselines freeze pre-existing violations only: the violation total MUST on
 An entry MAY be rewritten when a strangler step relocates the code it froze, so incremental migration is never blocked; a drained entry either routes through the authority or is consciously promoted to the allowlist.
 Adding a rule is the one event that MAY grow a baseline, and only for the violations that rule newly reveals: those are pre-existing violations that were previously unrecorded, not new code.
 A rule MUST NOT be deferred to avoid the growth, because the totals are meaningful only once the rule set is complete — a violation no rule reports is absent from the record rather than frozen in it, and every change landed before the rule escapes the measurement entirely.
+A step that introduces an authority MUST deny that authority's capability in the same step, which is the same prohibition measured from the other end: a rule that follows its authority leaves every use in between unmeasured.
+Draining is subject to the same test. A drained entry MUST name the authority its code now routes through *and* the rule that stops an equivalent violation reappearing; draining while the capability stays undenied empties the record without closing the door, which reaches zero without meaning it.
 
     Invariant                         Mechanism
     --------------------------------  ------------------------------------------------

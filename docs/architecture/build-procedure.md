@@ -129,9 +129,13 @@ squash-deleted branch is never misread as unstarted.
 5. **Explain X.** Describe in plain english the work to be done, lead with X's answer
    to the goal test. Then wait for approval, clarification, or modification.
 6. **Implement X.** Create `slice/<slug>`; work the plan-step's acceptance under TDD
-   (for a behavior-preserving step: parity fixtures first; for a step that
-   introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
-   `composer test`; open a PR citing X. Build what X's acceptance requires and
+   (for a behavior-preserving step: parity fixtures first; for a step that introduces
+   an authority or an invariant seam: the §8.1 rule confining that capability, in the
+   same slice — a rule that arrives later is the deferral §8.1 forbids); run
+   `composer test`; open a PR citing X. Every baseline entry X drains carries one
+   sentence naming the authority the code now routes through **and** the rule that
+   stops an equivalent violation reappearing; where no rule does, X adds it. Build
+   what X's acceptance requires and
    nothing beyond it — a problem noticed in passing is reported, not solved (a new
    manifest row for duplication, a GitHub issue plus a can-the-next-slice-proceed
    call for a defect, a line in the PR body for tidiness).
