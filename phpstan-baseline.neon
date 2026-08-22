@@ -13,6 +13,12 @@ parameters:
 			path: src/Completion/ClassCandidates.php
 
 		-
+			message: '#^class constant fetch on a computed class name; name the class literally \(RFC 1 §4\.5\)\.$#'
+			identifier: phpLsp.dynamicClassReference
+			count: 1
+			path: src/Completion/CompletionItemFactory.php
+
+		-
 			message: '#^Calling get_defined_functions\(\) is forbidden, runtime symbol enumeration is confined to ReflectionNamespaceSource\.$#'
 			identifier: disallowed.function
 			count: 1
@@ -47,6 +53,12 @@ parameters:
 			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Completion/NamespaceCandidates.php
+
+		-
+			message: '#^class constant fetch on a computed class name; name the class literally \(RFC 1 §4\.5\)\.$#'
+			identifier: phpLsp.dynamicClassReference
+			count: 2
+			path: src/Domain/TypeFactory.php
 
 		-
 			message: '#^\!\=\= on NameKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
@@ -112,6 +124,12 @@ parameters:
 			message: '#^\=\=\= on ClassKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
 			identifier: phpLsp.kindInspection
 			count: 1
+			path: src/Repository/MemberResolver.php
+
+		-
+			message: '#^instanceof on a computed class name; name the class literally \(RFC 1 §4\.5\)\.$#'
+			identifier: phpLsp.dynamicClassReference
+			count: 2
 			path: src/Repository/MemberResolver.php
 
 		-

@@ -286,6 +286,10 @@ services:
         tags:
             - phpstan.rules.rule
     -
+        class: Firehed\PhpLsp\Tests\Architecture\DynamicClassReferenceRule
+        tags:
+            - phpstan.rules.rule
+    -
         class: Firehed\PhpLsp\Tests\Architecture\SymbolDiscoveryAuthorityExtension
         tags:
             - phpstan.restrictedClassNameUsageExtension
