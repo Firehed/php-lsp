@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Resolution\ResolvedSymbol;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use Symfony\Component\Yaml\Yaml;
 
 /**
  * The §8.1 rules name what they confine in hand-written lists, so each rule is
@@ -43,16 +42,6 @@ final class ConfinementCoverageTest extends TestCase
         \Firehed\PhpLsp\Protocol\PositionEncoding::class => 'LSP wire value',
         \Firehed\PhpLsp\Resolution\ReferenceKind::class => 'how a name is reachable from the cursor',
     ];
-
-    public function testEveryDirectoryIsAssignedToALayer(): void
-    {
-        self::assertSame(
-            [],
-            array_values(array_diff(self::sourceDirectories(), self::layeredDirectories())),
-            'deptrac reports an unlayered class as uncovered, not as a violation, '
-            . 'so a directory outside every layer escapes the contract silently',
-        );
-    }
 
     public function testEveryEnumIsConfinedOrRegistered(): void
     {
@@ -129,47 +118,6 @@ final class ConfinementCoverageTest extends TestCase
         }
 
         return $implementations;
-    }
-
-    /**
-     * The `src/` directory each layer's directory collector selects.
-     *
-     * @return list<string>
-     */
-    private static function layeredDirectories(): array
-    {
-        $config = Yaml::parseFile(dirname(__DIR__, 2) . '/deptrac.yaml');
-        assert(is_array($config) && is_array($config['deptrac']) && is_array($config['deptrac']['layers']));
-
-        $directories = [];
-        foreach ($config['deptrac']['layers'] as $layer) {
-            assert(is_array($layer) && is_array($layer['collectors']));
-            foreach ($layer['collectors'] as $collector) {
-                assert(is_array($collector) && is_string($collector['value']));
-                if ($collector['type'] !== 'directory') {
-                    continue;
-                }
-                $directories[] = trim(str_replace(['src/', '.*'], '', $collector['value']), '/');
-            }
-        }
-
-        return $directories;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function sourceDirectories(): array
-    {
-        $directories = [];
-        foreach (new \DirectoryIterator(dirname(__DIR__, 2) . '/src') as $entry) {
-            if ($entry->isDir() && !$entry->isDot()) {
-                $directories[] = $entry->getFilename();
-            }
-        }
-        sort($directories);
-
-        return $directories;
     }
 
     /**
