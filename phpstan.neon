@@ -276,7 +276,6 @@ parameters:
             method: 'PhpToken::tokenize()'
             message: 'lexing outside the parser is the token rim: ContextDetector'
             allowIn:
-                - src/Completion/ContextDetector.php
                 - tests/*
 
     disallowedClasses:
