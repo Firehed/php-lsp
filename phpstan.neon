@@ -294,6 +294,13 @@ parameters:
 
     disallowedMethodCalls:
         -
+            method: 'Firehed\PhpLsp\Cache\Invalidatable::invalidate()'
+            message: 'single write path (RFC 1 §5.2/§5.3): every cached on-disk holder forgets a changed file together, which is DocumentSymbolSink''s fan-out; evicting one leaves the others stale'
+            allowIn:
+                - src/Knowledge/DocumentSymbolSink.php
+                - src/Handler/DidChangeWatchedFilesHandler.php # the watched-file trigger, which calls the sink
+                - tests/*
+        -
             method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::updateDocument()'
             message: 'single write path (RFC 1 §4.3/§5.2): document symbol registration goes through DocumentSymbolSink'
             allowIn:
