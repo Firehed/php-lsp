@@ -7,12 +7,15 @@ deptrac:
   # Layer-dependency contract (default-deny): an edge not listed in the ruleset
   # fails analysis. Adding a layer tightens; adding a ruleset edge loosens and is
   # the human's edit only. See docs/architecture/enforcement-edits.md.
-  # ServerInfo is deliberately unlayered: it is a value Protocol/Capability carry.
   layers:
     - name: Root
       collectors:
         - type: classLike
           value: ^Firehed\\PhpLsp\\Server$
+    - name: ServerInfo
+      collectors:
+        - type: classLike
+          value: ^Firehed\\PhpLsp\\ServerInfo$
     - name: Cache
       collectors:
         - { type: directory, value: src/Cache/.* }
@@ -75,6 +78,7 @@ deptrac:
       - Protocol
       - Repository
       - Resolution
+      - ServerInfo
       - Transport
       - TypeInference
     Handler:
@@ -136,8 +140,11 @@ deptrac:
     Capability:
       - Client
       - Protocol
+      - ServerInfo
     Client:
       - Protocol
       - Transport
     Transport:
       - Protocol
+    Protocol:
+      - ServerInfo
