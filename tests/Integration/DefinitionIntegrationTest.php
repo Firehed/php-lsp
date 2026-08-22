@@ -9,7 +9,7 @@ use Amp\ByteStream\WritableBuffer;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\OutgoingMessage;
 use Firehed\PhpLsp\Server;
-use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\MessageReader;

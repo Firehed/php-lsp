@@ -34,6 +34,7 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
+use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;

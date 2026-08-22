@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\PositionEncoding;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Protocol\ServerInfo;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

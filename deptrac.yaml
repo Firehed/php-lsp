@@ -12,10 +12,6 @@ deptrac:
       collectors:
         - type: classLike
           value: ^Firehed\\PhpLsp\\Server$
-    - name: ServerInfo
-      collectors:
-        - type: classLike
-          value: ^Firehed\\PhpLsp\\ServerInfo$
     - name: Cache
       collectors:
         - { type: directory, value: src/Cache/.* }
@@ -78,7 +74,6 @@ deptrac:
       - Protocol
       - Repository
       - Resolution
-      - ServerInfo
       - Transport
       - TypeInference
     Handler:
@@ -140,11 +135,8 @@ deptrac:
     Capability:
       - Client
       - Protocol
-      - ServerInfo
     Client:
       - Protocol
       - Transport
     Transport:
       - Protocol
-    Protocol:
-      - ServerInfo
