@@ -10,6 +10,8 @@ use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\BinaryOp;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\Match_;
+use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Switch_;
 use PHPStan\Analyser\Scope;
@@ -21,7 +23,9 @@ use PHPStan\Type\TypeCombinator;
 /**
  * The RFC 1 §8.1 mechanism for §4.5: consumers MUST NOT branch on a
  * symbol-kind enum. Every form that compares a kind is a branch: `match`,
- * `switch`, the four equality operators, and `in_array`.
+ * `switch`, the four equality operators, and the array searches — including
+ * when the compared value is a case's backing value or name rather than the
+ * case itself.
  *
  * Allowed locations: a kind enum's own methods, where a predicate lives; the
  * metadata factories; and the classifier.
@@ -62,6 +66,12 @@ final class KindBranchRule implements Rule
         'src/Completion/CompletionItemFactory.php',
     ];
 
+    /**
+     * Array searches that compare a needle to each element, which is the same
+     * branch written as a call.
+     */
+    private const array SEARCH_FUNCTIONS = ['in_array', 'array_search'];
+
     public function getNodeType(): string
     {
         return Node::class;
@@ -80,26 +90,28 @@ final class KindBranchRule implements Rule
         }
 
         foreach ($operands as $operand) {
-            $type = $scope->getType($operand);
-            if ($type->isNull()->yes()) {
-                continue;
-            }
-            $type = TypeCombinator::removeNull($type);
-            foreach (self::CONFINED_KIND_ENUMS as $kindEnum) {
-                if (!(new ObjectType($kindEnum))->isSuperTypeOf($type)->yes()) {
+            foreach ($this->kindBearingExpressions($operand) as $expression) {
+                $type = $scope->getType($expression);
+                if ($type->isNull()->yes()) {
                     continue;
                 }
-                $message = sprintf(
-                    '%s on %s branches per symbol kind; use predicates (RFC 1 §4.5).',
-                    $form,
-                    $this->shortName($kindEnum),
-                );
+                $type = TypeCombinator::removeNull($type);
+                foreach (self::CONFINED_KIND_ENUMS as $kindEnum) {
+                    if (!(new ObjectType($kindEnum))->isSuperTypeOf($type)->yes()) {
+                        continue;
+                    }
+                    $message = sprintf(
+                        '%s on %s branches per symbol kind; use predicates (RFC 1 §4.5).',
+                        $form,
+                        $this->shortName($kindEnum),
+                    );
 
-                return [
-                    RuleErrorBuilder::message($message)
-                        ->identifier('phpLsp.kindInspection')
-                        ->build(),
-                ];
+                    return [
+                        RuleErrorBuilder::message($message)
+                            ->identifier('phpLsp.kindInspection')
+                            ->build(),
+                    ];
+                }
             }
         }
 
@@ -124,14 +136,36 @@ final class KindBranchRule implements Rule
         if ($isEquality) {
             return [$node->getOperatorSigil(), [$node->left, $node->right]];
         }
-        if ($node instanceof FuncCall && $node->name instanceof Name && $node->name->toLowerString() === 'in_array') {
-            $needle = $node->args[0] ?? null;
-            if ($needle instanceof Arg) {
-                return ['in_array', [$needle->value]];
+        if ($node instanceof FuncCall && $node->name instanceof Name) {
+            $function = $node->name->toLowerString();
+            if (in_array($function, self::SEARCH_FUNCTIONS, true)) {
+                // Every argument, so that naming them cannot reorder the needle
+                // out of reach. A haystack is an array type and never matches.
+                $arguments = array_filter($node->args, static fn($arg): bool => $arg instanceof Arg);
+
+                return [$function, array_values(array_map(static fn(Arg $arg): Expr => $arg->value, $arguments))];
             }
         }
 
         return null;
+    }
+
+    /**
+     * The expressions whose type decides whether $operand is a kind: the
+     * operand, and for `$kind->value` / `$kind->name` the enum behind it —
+     * a backed case's value is the same branch through a second door.
+     *
+     * @return list<Expr>
+     */
+    private function kindBearingExpressions(Expr $operand): array
+    {
+        if ($operand instanceof PropertyFetch && $operand->name instanceof Identifier) {
+            if (in_array($operand->name->toLowerString(), ['value', 'name'], true)) {
+                return [$operand, $operand->var];
+            }
+        }
+
+        return [$operand];
     }
 
     private function shortName(string $className): string

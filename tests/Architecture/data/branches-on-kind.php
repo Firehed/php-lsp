@@ -65,6 +65,32 @@ final class BranchesOnKind
         return in_array($kind, $wanted, true);
     }
 
+    /**
+     * @param list<SymbolKind> $wanted
+     */
+    public function inArrayNamedArguments(SymbolKind $kind, array $wanted): bool
+    {
+        return in_array(strict: true, haystack: $wanted, needle: $kind);
+    }
+
+    /**
+     * @param list<MemberKind> $wanted
+     */
+    public function arraySearch(MemberKind $kind, array $wanted): int|string|false
+    {
+        return array_search($kind, $wanted, true);
+    }
+
+    public function backingValue(CompletionItemKind $kind, int $wireValue): bool
+    {
+        return $kind->value === $wireValue;
+    }
+
+    public function caseName(SymbolKind $kind, string $label): bool
+    {
+        return $kind->name === $label;
+    }
+
     public function matchOnFilter(MemberFilter $filter): bool
     {
         return match ($filter) {

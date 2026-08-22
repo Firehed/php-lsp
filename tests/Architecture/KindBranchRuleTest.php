@@ -24,7 +24,11 @@ class KindBranchRuleTest extends RuleTestCase
                 ['== on SymbolKind branches per symbol kind; use predicates (RFC 1 §4.5).', 52],
                 ['!= on MemberAccessKind branches per symbol kind; use predicates (RFC 1 §4.5).', 57],
                 ['in_array on CompletionItemKind branches per symbol kind; use predicates (RFC 1 §4.5).', 65],
-                ['match on MemberFilter branches per symbol kind; use predicates (RFC 1 §4.5).', 70],
+                ['in_array on SymbolKind branches per symbol kind; use predicates (RFC 1 §4.5).', 73],
+                ['array_search on MemberKind branches per symbol kind; use predicates (RFC 1 §4.5).', 81],
+                ['=== on CompletionItemKind branches per symbol kind; use predicates (RFC 1 §4.5).', 86],
+                ['=== on SymbolKind branches per symbol kind; use predicates (RFC 1 §4.5).', 91],
+                ['match on MemberFilter branches per symbol kind; use predicates (RFC 1 §4.5).', 96],
             ],
         );
     }
