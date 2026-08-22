@@ -45,9 +45,11 @@
         "phpstan-baseline": "phpstan analyze --generate-baseline",
         "deptrac": "deptrac analyse --no-progress",
         "deptrac-baseline": "deptrac analyse --no-progress -f baseline -o deptrac.baseline.yaml",
+        "layer-coverage": "php bin/check-layer-coverage",
         "test": [
             "@phpstan",
             "@deptrac",
+            "@layer-coverage",
             "@unit",
             "@phpcs"
         ]
