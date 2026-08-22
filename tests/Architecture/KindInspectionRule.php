@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Architecture;
 
 use PhpParser\Node;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Instanceof_;
 use PhpParser\Node\Name;
 use PHPStan\Analyser\Scope;
+use PHPStan\Rules\IdentifierRuleError;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
@@ -86,40 +88,61 @@ final class KindInspectionRule implements Rule
             return [];
         }
 
-        $class = $node->class;
-        if (!$class instanceof Name) {
-            return [];
-        }
-
-        $className = $scope->resolveName($class);
-
-        if (in_array($className, self::CONFINED_TYPE_IMPLS, true)) {
-            $shortName = $this->shortName($className);
-            $message = sprintf(
-                'instanceof %s branches on concrete Type; use predicates (RFC 1 §4.5).',
-                $shortName,
-            );
-            return [
-                RuleErrorBuilder::message($message)
-                    ->identifier('phpLsp.kindInspection')
-                    ->build(),
-            ];
-        }
-
-        if (in_array($className, self::CONFINED_RESOLVED_IMPLS, true)) {
-            $shortName = $this->shortName($className);
-            $message = sprintf(
-                'instanceof %s branches on concrete ResolvedSymbol; use predicates (RFC 1 §4.5).',
-                $shortName,
-            );
-            return [
-                RuleErrorBuilder::message($message)
-                    ->identifier('phpLsp.kindInspection')
-                    ->build(),
-            ];
+        foreach ($this->classNames($node->class, $scope) as $className) {
+            $errors = $this->errorsFor($className);
+            if ($errors !== []) {
+                return $errors;
+            }
         }
 
         return [];
+    }
+
+    /**
+     * The classes an `instanceof` right-hand side can name: a literal name, or
+     * an expression whose type is a known class-string.
+     *
+     * @return list<string>
+     */
+    private function classNames(Name|Expr $class, Scope $scope): array
+    {
+        if ($class instanceof Name) {
+            return [$scope->resolveName($class)];
+        }
+
+        $type = $scope->getType($class);
+        $names = $type->getClassStringObjectType()->getObjectClassNames();
+        foreach ($type->getConstantStrings() as $constant) {
+            $names[] = $constant->getValue();
+        }
+
+        return $names;
+    }
+
+    /**
+     * @return list<IdentifierRuleError>
+     */
+    private function errorsFor(string $className): array
+    {
+        if (in_array($className, self::CONFINED_TYPE_IMPLS, true)) {
+            $interface = 'Type';
+        } elseif (in_array($className, self::CONFINED_RESOLVED_IMPLS, true)) {
+            $interface = 'ResolvedSymbol';
+        } else {
+            return [];
+        }
+
+        $message = sprintf(
+            'instanceof %s branches on concrete %s; use predicates (RFC 1 §4.5).',
+            $this->shortName($className),
+            $interface,
+        );
+
+        return [
+            RuleErrorBuilder::message($message)
+                ->identifier('phpLsp.kindInspection')
+                ->build(),
+        ];
     }
 
     private function shortName(string $className): string
