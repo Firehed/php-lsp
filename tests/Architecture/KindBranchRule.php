@@ -119,9 +119,9 @@ final class KindBranchRule implements Rule
         if ($node instanceof Switch_) {
             return ['switch', [$node->cond]];
         }
-        if ($node instanceof BinaryOp\Identical || $node instanceof BinaryOp\NotIdentical
-            || $node instanceof BinaryOp\Equal || $node instanceof BinaryOp\NotEqual
-        ) {
+        $isEquality = $node instanceof BinaryOp\Identical || $node instanceof BinaryOp\NotIdentical
+            || $node instanceof BinaryOp\Equal || $node instanceof BinaryOp\NotEqual;
+        if ($isEquality) {
             return [$node->getOperatorSigil(), [$node->left, $node->right]];
         }
         if ($node instanceof FuncCall && $node->name instanceof Name && $node->name->toLowerString() === 'in_array') {
