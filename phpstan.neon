@@ -290,6 +290,10 @@ services:
         tags:
             - phpstan.rules.rule
     -
+        class: Firehed\PhpLsp\Tests\Architecture\FileInclusionRule
+        tags:
+            - phpstan.rules.rule
+    -
         class: Firehed\PhpLsp\Tests\Architecture\SymbolDiscoveryAuthorityExtension
         tags:
             - phpstan.restrictedClassNameUsageExtension
