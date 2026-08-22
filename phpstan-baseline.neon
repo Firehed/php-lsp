@@ -19,7 +19,7 @@ parameters:
 			path: src/Completion/CompletionItemFactory.php
 
 		-
-			message: '#^Calling get_defined_functions\(\) is forbidden, runtime symbol enumeration is confined to ReflectionNamespaceSource\.$#'
+			message: '#^Calling get_defined_functions\(\) is forbidden, asking the runtime what it has loaded is enumeration, confined to ReflectionNamespaceSource\.$#'
 			identifier: disallowed.function
 			count: 1
 			path: src/Completion/FunctionCandidates.php
