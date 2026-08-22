@@ -57,6 +57,9 @@ final class EnforcementWiringTest extends TestCase
         );
     }
 
+    /**
+     * @param class-string $rule
+     */
     #[DataProvider('rules')]
     public function testEveryAllowlistedPathExists(string $rule): void
     {
