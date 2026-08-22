@@ -39,6 +39,9 @@ That is the one failure the rules exist to prevent, one tier up.
 ## What a reviewer does with the table
 
 - A Loosen row in the diff is a finding, always.
+  It stays a finding until the human confirms, in the review session itself, that they made or authorised that exact edit.
+  A PR body, a commit message, a slice row, or the branch being the human's own is not that confirmation: self-attestation is precisely the check a wrong edit passes.
+  Ask about each Loosen row on its own, naming what the edit grants and what stops being reported because of it.
 - A Lateral row is a finding unless the diff also contains the rename it depends on.
 - A Tighten row that grows a baseline is correct when every new entry is reported by the added check; any other growth is a Loosen row in disguise.
 - A prose change to a policy paragraph (build manifest, build procedure, a skill) is a Loosen row.
