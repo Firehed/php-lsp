@@ -14,8 +14,10 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 
 Two CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
 
-- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
-- **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis.
+- **Capability confinement** (`phpstan.neon`): parsing and lexing, AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration/kind inspection, and filesystem access are each usable only in their named homes (allowlists inline, each with its rationale).
+- **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis. A class in no layer is not analysed at all, so `bin/check-layer-coverage` fails when `deptrac debug:unassigned` lists one.
+- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbol`; no `match`, `switch`, `==`/`===` or `in_array` on a kind enum outside its named homes.
+- **Self-check** (`ConfinementCoverageTest`): every `Type` and `ResolvedSymbol` implementation is in its rule's list, every enum is confined or registered as not a kind.
 
 When a rule fires on your change:
 
