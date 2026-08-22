@@ -77,22 +77,24 @@ final class ConfinementCoverageTest extends TestCase
         );
     }
 
-    public function testEveryTypeImplementationIsConfined(): void
+    public function testEveryTypeImplementationIsConfinedAgainstInspection(): void
     {
-        $implementations = self::implementationsOf(Type::class);
-
         self::assertSame(
             [],
             array_values(array_diff(
-                $implementations,
+                self::implementationsOf(Type::class),
                 self::ruleConstant(KindInspectionRule::class, 'CONFINED_TYPE_IMPLS'),
             )),
             'an unconfined Type implementation may be instanceof-inspected anywhere (RFC 1 §4.5)',
         );
+    }
+
+    public function testEveryTypeImplementationIsConfinedAgainstConstruction(): void
+    {
         self::assertSame(
             [],
             array_values(array_diff(
-                $implementations,
+                self::implementationsOf(Type::class),
                 self::ruleConstant(TypeConstructionRule::class, 'CONFINED_TYPES'),
             )),
             'an unconfined Type implementation may be constructed outside TypeFactory (RFC 1 §4.6)',
