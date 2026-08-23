@@ -26,8 +26,15 @@ use PHPStan\Type\MixedType;
  */
 final class RawInitializeCapabilitiesRule implements Rule
 {
-    /** @var list<string> */
+    /**
+     * Adding an entry tightens. Removing one loosens (human only). See
+     * docs/architecture/enforcement-edits.md.
+     *
+     * @var list<string>
+     */
     private const array CONFINED_FIELDS = ['capabilities', 'general'];
+
+    /** Changing this loosens (human only). */
     private const string NEGOTIATION_NAMESPACE = 'Firehed\PhpLsp\Capability';
 
     public function getNodeType(): string

@@ -42,9 +42,9 @@ Ordered. Each row starts when the one above it merges.
   - **§4.11** — the AST/text agreement tests: the AST path and the text-fallback path must answer the same question the same way on parseable fixtures. Writable against the code as it stands, and landing it first constrains the Step 4 refactor instead of trailing it.
   - **§5.4** — a safe default for every capability the client did not declare. §5.4 has no §8.1 row at all; §4.8's rule enforces *where* raw parameters may be read, not this. Add a capability with no default and nothing fails today. Same shape as the §5.1 coverage grid.
 
-  **The baselines grow, once.** That is expected and correct: a rule reveals pre-existing violations, it does not introduce them (RFC 1 §8.1). `bin/check-baseline-shrink` will fail on the growth — the human overrides CI and merges anyway. That gate exists to stop unconscious growth, and this is the one conscious event. From that commit the totals shrink again and must reach zero.
+  **The baselines grew once, here, at the human's direction.** A rule reveals pre-existing violations, it does not introduce them (RFC 1 §8.1).
 
-  **Every other slice must leave the baselines flat or shrink them.** No exceptions, no judgment calls. If a slice is not `enforcement-rules` and CI fails on baseline growth, the slice is wrong — and widening an enforcement rule's allowlist to avoid the growth is the same failure with extra steps.
+  **Every slice must leave the baselines flat or shrink them.** No exceptions, no judgment calls. If CI fails on baseline growth, the slice is wrong. Widening an allowlist, adding a layer edge, or rewriting this paragraph to permit the growth is the same failure with extra steps; `docs/architecture/enforcement-edits.md` names every such edit as the human's alone.
 
 - [ ] **search-kind-param** — Generalize search to a kind parameter
 

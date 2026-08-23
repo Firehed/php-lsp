@@ -5,9 +5,8 @@ deptrac:
   paths:
     - src
   # Layer-dependency contract (default-deny): an edge not listed in the ruleset
-  # fails analysis. Existing violations are frozen in deptrac.baseline.yaml
-  # (regenerate with `composer deptrac-baseline`) and must only shrink.
-  # ServerInfo is deliberately unlayered: it is a value Protocol/Capability carry.
+  # fails analysis. Adding a layer tightens; adding a ruleset edge loosens and is
+  # the human's edit only. See docs/architecture/enforcement-edits.md.
   layers:
     - name: Root
       collectors:

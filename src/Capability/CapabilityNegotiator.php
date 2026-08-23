@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\PositionEncoding;
-use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Protocol\ServerInfo;
 
 /**
  * The protocol negotiation component (RFC 1 §4.8): the one place that reads the

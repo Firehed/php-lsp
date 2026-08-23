@@ -12,20 +12,27 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 
 ## Guardrails (default-deny)
 
-Two CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
+CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
 
-- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
-- **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis.
+- **Capability confinement** (`phpstan.neon`): parsing and lexing, AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration/kind inspection, and filesystem access are each usable only in their named homes (allowlists inline, each with its rationale). A deny set names every spelling of its capability, aliases included, so do not reach for a synonym.
+- **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis. A class in no layer is not analysed at all, so `composer layer-coverage` fails when `deptrac debug:unassigned` lists one.
+- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbol`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
+- **Literal class references** (`DynamicClassReferenceRule`): a class is named literally. `new $c`, `$v instanceof $c`, `$v::class`, `$c::CONST` and `$c::m()` are denied, because every rule above reads a name to apply. Use `$v::class` nowhere; reach for a predicate instead.
+- **File inclusion** (`FileInclusionRule`): `include`/`require` read the disk, which no call list can name, so they are confined like the filesystem functions.
+- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`): every `Type` and `ResolvedSymbol` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, and every allowlisted path still exists.
 
-When a rule fires on your change, in order of preference:
+When a rule fires on your change:
 
 1. Move the logic into (or route it through) the confined authority — the usual fix.
 2. If the authority genuinely cannot serve the need, extend the authority.
-3. Widening an allowlist is a last-resort, conscious decision; justify it in the PR.
+
+There is no third option. Widening an allowlist, adding a layer edge, or growing a baseline for an existing check is a **Loosen** edit, and only the human makes one.
+`docs/architecture/enforcement-edits.md` classifies every edit to a rule, allowlist, baseline, or policy file as Tighten, Lateral, or Loosen; read it before touching any of them.
+A PR body cannot justify a Loosen edit.
 
 NEVER regenerate a baseline to absorb a new violation.
 The baselines (`phpstan-baseline.neon`, `deptrac.baseline.yaml`) freeze pre-existing debt only and must shrink to zero; CI enforces shrink-only (`bin/check-baseline-shrink`).
-Regenerate (`composer phpstan-baseline` / `composer deptrac-baseline`) only when draining entries, or when a refactor relocates a violation the baseline already froze — totals may never grow.
+Regenerate (`composer phpstan-baseline` / `composer deptrac-baseline`) only when draining entries, when a refactor moves a file whose violations the baseline already froze (a Lateral edit), or when a newly added check reports pre-existing violations (a Tighten edit).
 When changing a file that has baseline entries, prefer draining them in the same change.
 This section overrides the global "avoid adding to the baseline" guidance in the strict direction: here, additions are forbidden outright and shrink-churn is the goal.
 

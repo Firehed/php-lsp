@@ -19,7 +19,12 @@ use PHPStan\Rules\RuleErrorBuilder;
  */
 final class TypeConstructionRule implements Rule
 {
-    /** @var list<class-string> */
+    /**
+     * Adding an entry tightens. Removing one loosens (human only). See
+     * docs/architecture/enforcement-edits.md.
+     *
+     * @var list<class-string>
+     */
     private const array CONFINED_TYPES = [
         \Firehed\PhpLsp\Domain\ClassName::class,
         \Firehed\PhpLsp\Domain\UnionType::class,
@@ -28,6 +33,11 @@ final class TypeConstructionRule implements Rule
         \Firehed\PhpLsp\Domain\LateStaticType::class,
     ];
 
+    /**
+     * Adding an entry loosens (human only). Removing one tightens. Renaming one
+     * is lateral only when the same PR moves the file. See
+     * docs/architecture/enforcement-edits.md.
+     */
     private const array ALLOWED_FILES = [
         'src/Domain/TypeFactory.php',
         'src/Domain/ClassName.php',
@@ -54,14 +64,8 @@ final class TypeConstructionRule implements Rule
             return [];
         }
 
-        $file = $scope->getFile();
-        if (str_contains($file, '/tests/') && !str_contains($file, '/tests/Architecture/data/')) {
+        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
             return [];
-        }
-        foreach (self::ALLOWED_FILES as $allowed) {
-            if (str_ends_with($file, $allowed)) {
-                return [];
-            }
         }
 
         $shortName = $this->shortName($className);

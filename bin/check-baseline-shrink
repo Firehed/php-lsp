@@ -37,8 +37,8 @@ foreach ($files as $file => $total) {
     if ($head > $base) {
         fwrite(STDERR, sprintf(
             "%s grew (%d -> %d): baselines only shrink. Route the new" .
-            " violation through its authority, or consciously widen the" .
-            " allowlist in the rule config instead.\n",
+            " violation through its authority. Growth is permitted only" .
+            " for a newly added check; see docs/architecture/enforcement-edits.md.\n",
             $file,
             $base,
             $head,

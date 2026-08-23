@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
-use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Protocol\ServerInfo;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

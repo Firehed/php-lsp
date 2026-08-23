@@ -129,9 +129,13 @@ squash-deleted branch is never misread as unstarted.
 5. **Explain X.** Describe in plain english the work to be done, lead with X's answer
    to the goal test. Then wait for approval, clarification, or modification.
 6. **Implement X.** Create `slice/<slug>`; work the plan-step's acceptance under TDD
-   (for a behavior-preserving step: parity fixtures first; for a step that
-   introduces an invariant seam: its §8.1 enforcement rule in the same slice); run
-   `composer test`; open a PR citing X. Build what X's acceptance requires and
+   (for a behavior-preserving step: parity fixtures first; for a step that introduces
+   an authority or an invariant seam: the §8.1 rule confining that capability, in the
+   same slice — a rule that arrives later is the deferral §8.1 forbids); run
+   `composer test`; open a PR citing X. Every baseline entry X drains carries one
+   sentence naming the authority the code now routes through **and** the rule that
+   stops an equivalent violation reappearing; where no rule does, X adds it. Build
+   what X's acceptance requires and
    nothing beyond it — a problem noticed in passing is reported, not solved (a new
    manifest row for duplication, a GitHub issue plus a can-the-next-slice-proceed
    call for a defect, a line in the PR body for tidiness).
@@ -158,22 +162,28 @@ squash-deleted branch is never misread as unstarted.
    PHPStan, PHPCS, coverage percentages. Those run on every push. Review effort goes
    where CI is blind — unverified claims, assertions that survive mutation,
    acceptance criteria met only in appearance.
-3. **Apply the goal test.** Every surviving finding carries its one-sentence answer.
+3. **Confirm every Loosen row with the human.** The cleanroom reviewer classifies each
+   enforcement edit against `docs/architecture/enforcement-edits.md` but cannot ask
+   anything; the driving session must. Put each Loosen row to the human directly,
+   naming what it grants and what stops being reported, and take only that answer as
+   approval — never the PR body, the commit message, or the branch's authorship. An
+   unconfirmed Loosen row remains a finding.
+4. **Apply the goal test.** Every surviving finding carries its one-sentence answer.
    A finding without one is reported as noted-not-fixed, in a line, and nothing is
    built for it. Noted lines do not make a pass dirty — only an applied fix forces a
    fresh pass, which is what lets the review loop terminate.
-4. **Fix.** Apply fixes on the branch; the change then needs a fresh pass (a new
+5. **Fix.** Apply fixes on the branch; the change then needs a fresh pass (a new
    session) before landing. Land only from a pass that fixed nothing.
-5. **Land.** Mark ready; **check the slice's box in the manifest** (one diff, one
+6. **Land.** Mark ready; **check the slice's box in the manifest** (one diff, one
    review). For each existing issue the manifest says this slice closes, **read the
    issue body, confirm its criteria are met, then** wire `Closes #<n>` (or close with
    a verification note). Merge.
-6. **Close against the goal.** Every pass ends by saying, in plain english, what two
+7. **Close against the goal.** Every pass ends by saying, in plain english, what two
    features could have disagreed about and what now makes that impossible — or what
    the change unblocks, if it is groundwork — or what corrections remain before it
    gets there. A pass that cannot write that paragraph has not understood the change
    well enough to approve it, and says so instead.
-7. Stop. Report what merged and the next slice (the row below this one).
+8. Stop. Report what merged and the next slice (the row below this one).
 
 ## The "X is always correct" guarantee, in one place
 

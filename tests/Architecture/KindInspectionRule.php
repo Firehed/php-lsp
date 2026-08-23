@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Architecture;
 
 use PhpParser\Node;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Instanceof_;
 use PhpParser\Node\Name;
 use PHPStan\Analyser\Scope;
+use PHPStan\Rules\IdentifierRuleError;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
@@ -27,7 +29,12 @@ use PHPStan\Rules\RuleErrorBuilder;
  */
 final class KindInspectionRule implements Rule
 {
-    /** @var list<class-string> */
+    /**
+     * Adding an entry tightens. Removing one loosens (human only). See
+     * docs/architecture/enforcement-edits.md.
+     *
+     * @var list<class-string>
+     */
     private const array CONFINED_TYPE_IMPLS = [
         \Firehed\PhpLsp\Domain\ClassName::class,
         \Firehed\PhpLsp\Domain\UnionType::class,
@@ -36,7 +43,11 @@ final class KindInspectionRule implements Rule
         \Firehed\PhpLsp\Domain\LateStaticType::class,
     ];
 
-    /** @var list<class-string> */
+    /**
+     * Adding an entry tightens. Removing one loosens (human only).
+     *
+     * @var list<class-string>
+     */
     private const array CONFINED_RESOLVED_IMPLS = [
         \Firehed\PhpLsp\Resolution\ResolvedClass::class,
         \Firehed\PhpLsp\Resolution\ResolvedConstant::class,
@@ -49,6 +60,11 @@ final class KindInspectionRule implements Rule
         \Firehed\PhpLsp\Resolution\ResolvedVariable::class,
     ];
 
+    /**
+     * Adding an entry loosens (human only). Removing one tightens. Renaming one
+     * is lateral only when the same PR moves the file. See
+     * docs/architecture/enforcement-edits.md.
+     */
     private const array ALLOWED_FILES = [
         'src/Domain/TypeFactory.php',
         'src/Domain/ClassName.php',
@@ -68,52 +84,65 @@ final class KindInspectionRule implements Rule
 
     public function processNode(Node $node, Scope $scope): array
     {
-        $file = $scope->getFile();
-
-        if (str_contains($file, '/tests/') && !str_contains($file, '/tests/Architecture/data/')) {
+        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
             return [];
         }
 
-        foreach (self::ALLOWED_FILES as $allowed) {
-            if (str_ends_with($file, $allowed)) {
-                return [];
+        foreach ($this->classNames($node->class, $scope) as $className) {
+            $errors = $this->errorsFor($className);
+            if ($errors !== []) {
+                return $errors;
             }
         }
 
-        $class = $node->class;
-        if (!$class instanceof Name) {
+        return [];
+    }
+
+    /**
+     * The classes an `instanceof` right-hand side can name: a literal name, or
+     * an expression whose type is a known class-string.
+     *
+     * @return list<string>
+     */
+    private function classNames(Name|Expr $class, Scope $scope): array
+    {
+        if ($class instanceof Name) {
+            return [$scope->resolveName($class)];
+        }
+
+        $type = $scope->getType($class);
+        $names = $type->getClassStringObjectType()->getObjectClassNames();
+        foreach ($type->getConstantStrings() as $constant) {
+            $names[] = $constant->getValue();
+        }
+
+        return $names;
+    }
+
+    /**
+     * @return list<IdentifierRuleError>
+     */
+    private function errorsFor(string $className): array
+    {
+        if (in_array($className, self::CONFINED_TYPE_IMPLS, true)) {
+            $interface = 'Type';
+        } elseif (in_array($className, self::CONFINED_RESOLVED_IMPLS, true)) {
+            $interface = 'ResolvedSymbol';
+        } else {
             return [];
         }
 
-        $className = $scope->resolveName($class);
+        $message = sprintf(
+            'instanceof %s branches on concrete %s; use predicates (RFC 1 §4.5).',
+            $this->shortName($className),
+            $interface,
+        );
 
-        if (in_array($className, self::CONFINED_TYPE_IMPLS, true)) {
-            $shortName = $this->shortName($className);
-            $message = sprintf(
-                'instanceof %s branches on concrete Type; use predicates (RFC 1 §4.5).',
-                $shortName,
-            );
-            return [
-                RuleErrorBuilder::message($message)
-                    ->identifier('phpLsp.kindInspection')
-                    ->build(),
-            ];
-        }
-
-        if (in_array($className, self::CONFINED_RESOLVED_IMPLS, true)) {
-            $shortName = $this->shortName($className);
-            $message = sprintf(
-                'instanceof %s branches on concrete ResolvedSymbol; use predicates (RFC 1 §4.5).',
-                $shortName,
-            );
-            return [
-                RuleErrorBuilder::message($message)
-                    ->identifier('phpLsp.kindInspection')
-                    ->build(),
-            ];
-        }
-
-        return [];
+        return [
+            RuleErrorBuilder::message($message)
+                ->identifier('phpLsp.kindInspection')
+                ->build(),
+        ];
     }
 
     private function shortName(string $className): string
