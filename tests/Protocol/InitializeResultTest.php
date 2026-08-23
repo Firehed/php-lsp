@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Protocol;
 
 use Firehed\PhpLsp\Protocol\InitializeResult;
-use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Protocol\ServerInfo;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

@@ -8,7 +8,7 @@ require __DIR__ . '/../vendor/autoload.php';
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
 use Firehed\PhpLsp\Server;
-use Firehed\PhpLsp\ServerInfo;
+use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Transport\StreamTransport;
 
 $serverInfo = new ServerInfo('php-lsp', '0.1.0');

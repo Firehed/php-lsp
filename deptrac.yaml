@@ -7,7 +7,6 @@ deptrac:
   # Layer-dependency contract (default-deny): an edge not listed in the ruleset
   # fails analysis. Adding a layer tightens; adding a ruleset edge loosens and is
   # the human's edit only. See docs/architecture/enforcement-edits.md.
-  # ServerInfo is deliberately unlayered: it is a value Protocol/Capability carry.
   layers:
     - name: Root
       collectors:

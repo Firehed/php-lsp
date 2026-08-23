@@ -12,10 +12,14 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 
 ## Guardrails (default-deny)
 
-Two CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
+CI-enforced mechanisms confine where code may live; a rule firing on your change is design feedback, not an obstacle.
 
-- **Capability confinement** (`phpstan.neon`): AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration, and filesystem reads are each usable only in their named homes (allowlists inline, each with its rationale).
-- **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis.
+- **Capability confinement** (`phpstan.neon`): parsing and lexing, AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration/kind inspection, and filesystem access are each usable only in their named homes (allowlists inline, each with its rationale). A deny set names every spelling of its capability, aliases included, so do not reach for a synonym.
+- **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis. A class in no layer is not analysed at all, so `composer layer-coverage` fails when `deptrac debug:unassigned` lists one.
+- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbol`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
+- **Literal class references** (`DynamicClassReferenceRule`): a class is named literally. `new $c`, `$v instanceof $c`, `$v::class`, `$c::CONST` and `$c::m()` are denied, because every rule above reads a name to apply. Use `$v::class` nowhere; reach for a predicate instead.
+- **File inclusion** (`FileInclusionRule`): `include`/`require` read the disk, which no call list can name, so they are confined like the filesystem functions.
+- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`): every `Type` and `ResolvedSymbol` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, and every allowlisted path still exists.
 
 When a rule fires on your change:
 

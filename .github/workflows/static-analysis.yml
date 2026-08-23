@@ -58,3 +58,6 @@ jobs:
 
       - name: Deptrac
         run: composer deptrac -- -f github-actions
+
+      - name: Every class is in a layer
+        run: composer layer-coverage

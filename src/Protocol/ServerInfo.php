@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp;
+namespace Firehed\PhpLsp\Protocol;
 
 final readonly class ServerInfo
 {

@@ -64,14 +64,8 @@ final class TypeConstructionRule implements Rule
             return [];
         }
 
-        $file = $scope->getFile();
-        if (str_contains($file, '/tests/') && !str_contains($file, '/tests/Architecture/data/')) {
+        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
             return [];
-        }
-        foreach (self::ALLOWED_FILES as $allowed) {
-            if (str_ends_with($file, $allowed)) {
-                return [];
-            }
         }
 
         $shortName = $this->shortName($className);
