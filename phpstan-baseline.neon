@@ -91,12 +91,6 @@ parameters:
 			path: src/Index/WorkspaceNamespaceSource.php
 
 		-
-			message: '#^match on SymbolKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 1
-			path: src/Index/WorkspaceNamespaceSource.php
-
-		-
 			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 6
