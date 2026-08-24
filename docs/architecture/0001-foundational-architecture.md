@@ -678,7 +678,7 @@ work.
     Position/intent      completion source + intent mapping   7
     Parse health         one positional facade + text rim     4.11
 
-Rows marked (target) name their intended single extension point ahead of it existing; the build manifest owns the work.
+Rows marked (target) name their intended single extension point ahead of it existing; issue #443 owns the work.
 
 Configuration/settings is intentionally not a separate axis (Section 3.1); it folds
 into target environment (4.7) and session capabilities (4.8, 5.4).
