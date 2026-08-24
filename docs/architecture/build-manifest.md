@@ -17,7 +17,7 @@ One signal: both baseline files are deleted, and the issues named below are clos
 
 ## Steps
 
-- [ ] **step-0** — Feature-matrix grid, the net for the rewrite behind it: rows are fixture scenarios (file plus cursor marker), columns are the handlers, derived from the handler registry. Each cell asserts that handler's observable or is registered not-applicable against an issue number; an unregistered cell fails, and so does a registration on a cell that answers. Done: the grid runs in `composer test`; adding a handler adds a column with no edit to the test; #445 closed.
+- [x] **step-0** — Feature-matrix grid, the net for the rewrite behind it: rows are fixture scenarios (file plus cursor marker), columns are the handlers, derived from the handler registry. Each cell asserts that handler's observable or is registered not-applicable against an issue number; an unregistered cell fails, and so does a registration on a cell that answers. Done: the grid runs in `composer test`; adding a handler adds a column with no edit to the test; #445 closed.
 - [ ] **step-1** — `SymbolSource::search(prefix, NameKind)` replaces `searchClassLikes` on `SymbolSource` and `SymbolBackend`; `OpenDocumentBackend` answers for every kind; `ClassCandidates` passes `NameKind::ClassLike`. Done: `searchClassLikes` is gone; every parity golden is unchanged.
 - [ ] **step-2** — `FilesystemBackend` answers `search` for functions and constants from the autoload.files index; `BuiltinBackend` answers it from reflection enumeration. Done: `SymbolCoverageGridTest` registers no `search` cell for `Function_` or `Constant`.
 - [ ] **step-3** — `ReflectionSymbolInfoFactory::classInfo()` answers only where `isInternal()` is true. Done: #429 closed.
