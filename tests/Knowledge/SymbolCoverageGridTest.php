@@ -42,13 +42,13 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        // `searchClassLikes` has no kind parameter until search-kind-param.
-        'OpenDocumentBackend|Function_|search' => 'search-kind-param, function-search',
-        'OpenDocumentBackend|Constant|search' => 'search-kind-param',
-        'FilesystemBackend|Function_|search' => 'search-kind-param, function-search',
-        'FilesystemBackend|Constant|search' => 'search-kind-param',
-        'BuiltinBackend|Function_|search' => 'search-kind-param, function-search',
-        'BuiltinBackend|Constant|search' => 'search-kind-param',
+        // `searchClassLikes` has no kind parameter until step-1.
+        'OpenDocumentBackend|Function_|search' => 'step-1',
+        'OpenDocumentBackend|Constant|search' => 'step-1',
+        'FilesystemBackend|Function_|search' => 'step-1, step-2',
+        'FilesystemBackend|Constant|search' => 'step-1, step-2',
+        'BuiltinBackend|Function_|search' => 'step-1, step-2',
+        'BuiltinBackend|Constant|search' => 'step-1, step-2',
 
         // A prefix has no name -> file map on disk. The built-in row is blocked on
         // something else entirely: the name it would offer does not resolve
