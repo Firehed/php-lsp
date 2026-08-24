@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
@@ -37,8 +38,14 @@ use PhpParser\Node;
  * completion is exactly the lookup/enumeration split RFC 1 §4.2 forbids. The kind
  * reported is the declaration's own, not the coarse guess a directory listing makes.
  */
-final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Invalidatable
+final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, PrefixSearchable, Invalidatable
 {
+    /** @var array<string, list<SymbolKind>> */
+    private const array SYMBOL_KINDS = [
+        'Function_' => [SymbolKind::Function_],
+        'Constant' => [SymbolKind::Constant],
+    ];
+
     /**
      * Every name the set declares, as the declaration spells it: the index is keyed
      * for lookup under PHP's per-kind case rules, which loses the casing a
@@ -47,6 +54,14 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
      * @var list<CatalogSymbol>
      */
     private array $declarations;
+
+    /**
+     * Declarations grouped by kind name, so prefix search filters only the
+     * matching kind without comparing enum values (which would branch on kind).
+     *
+     * @var array<string, list<CatalogSymbol>>
+     */
+    private array $declarationsByKind;
 
     /**
      * Kind => normalized name => declaring file.
@@ -91,6 +106,35 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
         $this->buildIndex();
     }
 
+    /**
+     * @return list<Symbol>
+     */
+    public function searchByPrefix(string $prefix, NameKind $kind): array
+    {
+        $symbolKinds = self::SYMBOL_KINDS[$kind->name] ?? null;
+        if ($symbolKinds === null) {
+            return [];
+        }
+
+        $symbols = [];
+        foreach ($this->declarationsByKind[$kind->name] ?? [] as $catalogSymbol) {
+            if (PrefixMatcher::matches($catalogSymbol->shortName(), $prefix)) {
+                $filePath = $this->index[$kind->name][$kind->normalize(
+                    QualifiedName::fromFullyQualified($catalogSymbol->fullyQualifiedName),
+                )] ?? null;
+                $symbols[] = new Symbol(
+                    name: $catalogSymbol->shortName(),
+                    fullyQualifiedName: $catalogSymbol->fullyQualifiedName,
+                    kind: $symbolKinds[0],
+                    location: $filePath !== null
+                        ? new Location(FileUri::fromPath($filePath), 0, 0, 0, 0)
+                        : new Location('', 0, 0, 0, 0),
+                );
+            }
+        }
+        return $symbols;
+    }
+
     public function locate(QualifiedName $name, NameKind $kind): ?string
     {
         $declarations = $this->index[$kind->name];
@@ -102,8 +146,10 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
     private function buildIndex(): void
     {
         $this->index = [];
+        $this->declarationsByKind = [];
         foreach (NameKind::cases() as $kind) {
             $this->index[$kind->name] = [];
+            $this->declarationsByKind[$kind->name] = [];
         }
         $this->declarations = [];
         $this->namespaces = null;
@@ -139,7 +185,9 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
             }
 
             $this->index[$kind->name][$key] = $path;
-            $this->declarations[] = new CatalogSymbol($name->fullyQualifiedName(), $kind);
+            $symbol = new CatalogSymbol($name->fullyQualifiedName(), $kind);
+            $this->declarations[] = $symbol;
+            $this->declarationsByKind[$kind->name][] = $symbol;
         }
     }
 }

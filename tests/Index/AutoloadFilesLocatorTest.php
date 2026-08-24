@@ -10,6 +10,8 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Index\Symbol;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -422,6 +424,97 @@ final class AutoloadFilesLocatorTest extends TestCase
         } finally {
             unlink($path);
         }
+    }
+
+    public function testSearchByPrefixFindsFunctionsByShortNamePrefix(): void
+    {
+        $results = self::locatorForRoot(self::FIXTURES_ROOT)
+            ->searchByPrefix('helperF', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'Fixtures\Helpers\helperFormat',
+            $fqns,
+            'a function whose short name starts with the prefix must be found',
+        );
+    }
+
+    public function testSearchByPrefixFindsConstantsByShortNamePrefix(): void
+    {
+        $results = self::locatorForRoot(self::FIXTURES_ROOT)
+            ->searchByPrefix('HELPER_L', NameKind::Constant);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'Fixtures\Helpers\HELPER_LIMIT',
+            $fqns,
+            'a constant whose short name starts with the prefix must be found',
+        );
+    }
+
+    public function testSearchByPrefixIsCaseInsensitive(): void
+    {
+        $results = self::locatorForRoot(self::FIXTURES_ROOT)
+            ->searchByPrefix('HELPERF', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'Fixtures\Helpers\helperFormat',
+            $fqns,
+            'prefix matching is case-insensitive because the user has not finished typing',
+        );
+    }
+
+    public function testSearchByPrefixReturnsEmptyForNoMatch(): void
+    {
+        self::assertSame(
+            [],
+            self::locatorForRoot(self::FIXTURES_ROOT)->searchByPrefix('zzNoMatch', NameKind::Function_),
+            'a prefix that matches nothing must return an empty list',
+        );
+    }
+
+    public function testSearchByPrefixReturnsSymbolsWithCorrectKind(): void
+    {
+        $results = self::locatorForRoot(self::FIXTURES_ROOT)
+            ->searchByPrefix('helperF', NameKind::Function_);
+
+        self::assertNotEmpty($results, 'the prefix must match at least one function');
+        foreach ($results as $symbol) {
+            self::assertSame(
+                SymbolKind::Function_,
+                $symbol->kind,
+                'every symbol returned for a Function_ search must carry SymbolKind::Function_',
+            );
+        }
+    }
+
+    public function testSearchByPrefixReturnsSymbolsWithFileLocation(): void
+    {
+        $results = self::locatorForRoot(self::FIXTURES_ROOT)
+            ->searchByPrefix('helperF', NameKind::Function_);
+
+        self::assertNotEmpty($results, 'the prefix must match at least one function');
+        foreach ($results as $symbol) {
+            self::assertNotSame(
+                '',
+                $symbol->location->uri,
+                'a symbol from an autoload.files entry must carry its declaring file',
+            );
+        }
+    }
+
+    public function testSearchByPrefixDoesNotCrossKindBoundaries(): void
+    {
+        $results = self::locatorForRoot(self::FIXTURES_ROOT)
+            ->searchByPrefix('Helper', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertNotContains(
+            'Fixtures\Helpers\HelperRegistry',
+            $fqns,
+            'a class-like must not appear in a function search even if its name matches the prefix',
+        );
     }
 
     /**
