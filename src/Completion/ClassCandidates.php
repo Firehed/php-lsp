@@ -102,7 +102,7 @@ final class ClassCandidates
         // repository lookup cannot vouch for a symbol whose declaration it cannot
         // reach (Plan 0002 §5.5: identical behavior).
         $kinds = $this->indexKinds($filter);
-        $symbols = $this->symbolSource->searchClassLikes($prefix);
+        $symbols = $this->symbolSource->search($prefix, NameKind::ClassLike);
         $items = [];
 
         foreach ($symbols as $symbol) {
