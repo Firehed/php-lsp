@@ -31,9 +31,11 @@ use Firehed\PhpLsp\Parser\ParserService;
  * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
- * ({@see NamespaceCatalog}). Prefix search is empty: a name→file map exists for
- * classes, but a bare prefix has no such map, so project-wide search over disk is
- * the deferred workspace-index scope (RFC 1 §3), not an unbounded walk here.
+ * ({@see NamespaceCatalog}). Prefix search for class-likes is empty: a bare prefix
+ * has no name→file map, so project-wide search over disk is the deferred
+ * workspace-index scope (RFC 1 §3). Functions and constants are searched through the
+ * autoload.files index ({@see PrefixSearchable}), which is bounded and already in
+ * memory.
  */
 final class FilesystemBackend implements SymbolBackend, Invalidatable
 {

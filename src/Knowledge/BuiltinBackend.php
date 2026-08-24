@@ -23,9 +23,10 @@ use Firehed\PhpLsp\Index\Symbol;
  * *server's* runtime, not the project's target — a known §4.7 gap deferred to Step 5
  * (Plan 0002 §5); the interim treats every reflected built-in as available.
  *
- * Prefix search is empty here for the same reason as on disk: a bare prefix would
- * mean surfacing built-ins that do not resolve unqualified in the file's namespace,
- * which is auto-import, a separate concern — not this backend's job.
+ * Prefix search for class-likes is empty: a bare prefix would surface built-ins
+ * that do not resolve unqualified in the file's namespace, which is auto-import,
+ * a separate concern. Functions and constants are searched through the reflection
+ * enumeration ({@see PrefixSearchable}), which is bounded and already in memory.
  */
 final class BuiltinBackend implements SymbolBackend
 {
