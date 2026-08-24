@@ -1,116 +1,17 @@
 ---
 name: do-next
-description: Implement the next build slice for the RFC-1 / Plan-0002 execution. Reads docs/architecture/build-manifest.md, picks the first unmerged row, and implements it under TDD on a slice/<slug> branch. Invoke with /do-next.
+description: Implement the next unticked step of docs/architecture/build-manifest.md as one draft PR on branch step/<n>. Invoke with /do-next.
 ---
 
-# do-next — implement the next build slice
+# do-next
 
-Execute "Mode A" of `docs/architecture/build-procedure.md`. **Do not guess; halt and
-ask on any ambiguity.** The whole point is that a cold session picks the correct next
-slice from durable state, not from memory.
-
-## 0. Read the goal first
-
-Read **"The goal every row serves"** in `build-manifest.md` before anything else.
-Slices exist to make it impossible for two features to disagree about the same
-symbol. A slice's acceptance criteria are how it serves that goal, not a substitute
-for it — and work the goal does not call for is not made in-scope by being nearby,
-noticed in passing, or easy.
-
-## 1. Preconditions (halt and report if any fail)
-
-- `git status`: the **tracked** working tree must be clean. Untracked scratch files
-  (e.g. `notes.txt`, coverage output) are fine. If tracked files are modified, stop.
-- Switch to `main` and sync: `git fetch origin`; if `main` is behind, fast-forward;
-  if diverged, stop and report.
-- Verify the base is green: run `composer test`. If red, **stop** — do not build on
-  a red base.
-
-## 2. Find the next slice
-
-- Read `docs/architecture/build-manifest.md`. The **Remaining work** section is an
-  ordered list. Each row has a **slug** in bold (e.g. `**enforcement-rules**`); the
-  branch is `slice/<slug>`.
-- Walk the list top to bottom. For each row, check **GitHub PR merge state**:
-  - `done` — a merged PR exists: `gh pr list --state merged --head slice/<slug> --json number` returns one.
-  - `in-flight` — an open PR exists: `gh pr list --state open --head slice/<slug>`.
-  - `todo` — neither.
-- The **next slice** is the first `todo` row.
-- **Preflight sanity check:** every row above the next slice should be `done`. If any
-  is `in-flight` or `todo`, report the state drift and halt — the list order is the
-  dependency order.
-
-Deriving from PR merge state (not ancestry) is what keeps this correct under the
-project's **Squash and Merge**: a squash rewrites the branch into one new commit on
-`main`, so an ancestry check would report squashed slices as `todo` forever. Check
-`done` before `in-flight` so a squash-deleted branch is read as done, not unstarted.
-
-## 3. Check for phantoms
-
-A row states its work in prose, and prose goes stale: a row can claim a mechanism that
-already exists, or a removal already made. Selecting one costs a whole session before
-anyone notices, which has happened.
-
-Most rows are baseline drains, and the baseline is machine-readable, so check before
-offering: if the row names files or entries it drains, confirm those entries are still
-in `phpstan-baseline.neon` / `deptrac.baseline.yaml`. If the row drains no baseline
-entry, spot-check its central claim against the code — one `grep` is enough; the
-failure mode is a row asserting that something is absent when it is present.
-
-**Baseline rule:** every slice leaves the baselines flat or shrinks them. A slice
-never makes a **Loosen** edit (`docs/architecture/enforcement-edits.md`): no allowlist
-addition, no layer edge, no baseline growth for an existing check, no skipped test, no
-change to `bin/`, `.github/`, `.claude/`, or a policy paragraph in this manifest or the
-build procedure. If the slice cannot land without one, **stop and report** — the human
-makes that edit, or strikes the slice.
-
-A row whose claim no longer holds is a **phantom**. Report it as such, say what appears
-to have discharged it, and ask whether to remove it from the list and continue to the
-next row.
-
-## 4. Safeguards (halt and report; do NOT proceed) if
-
-- All slices are done — the manifest is complete.
-- A row above the next slice is not merged — state drift (see preflight above).
-
-## 5. Explain the slice
-
-Read the slice's plan step in `docs/architecture/0002-execution-plan.md` for its
-acceptance criteria, and the RFC sections it cites in `0001-foundational-architecture.md`.
-Then describe the work in plain english and **wait** for approval, clarification, or
-modification before writing anything.
-
-Lead that description with the slice's answer to the goal test: what two features could
-disagree about without this slice, or which scheduled feature it unblocks. If you cannot
-write that sentence from the plan, **stop and ask** — a slice whose purpose you cannot
-state is one you will over- or under-build.
-
-## 6. Implement the slice
-
-- Create `slice/<slug>` off `main`.
-- TDD:
-  - Behavior-preserving slice → add/extend the Step P parity fixtures **first**.
-  - Seam-introducing slice → add its §8.1 enforcement rule in this slice.
-  - Write failing tests, then implement to green.
-- Keep commits small and logical (project rule). Run `composer test` to green.
-- Build what the acceptance criteria require and nothing beyond it. A defect,
-  duplication, or rough edge noticed in passing is **reported, not solved** —
-  duplication or divergence earns a new manifest row; a defect gets a GitHub issue
-  plus a line in the final report saying whether the next slice can proceed while it
-  stays open; generic tidiness gets one line in the PR body and neither a row nor a diff.
-- Comments earn their place. Name the non-obvious fact each one carries that the code
-  does not, or leave it out; length tracks the subtlety of the code, not its size.
-  Reviewers raise violations as findings, so writing them costs a round.
-- If you hit a fundamental design question the plan does not answer, **STOP and ask**
-  — do not invent an interpretation.
-
-## 7. Open the PR and report
-
-- PR title carries no issue number; the body opens with what two features could have
-  disagreed about without this change (or what it unblocks), then cites the slice slug,
-  plan step, and RFC section(s), and lists the acceptance criteria as a checklist.
-- List manifest `Closes` candidates from the Issue wiring section as "Candidate closes
-  (pending review verification): #n" — do **not** wire `Closes #n` here; that is the
-  reviewer's job after reading the issue body.
-- Report the PR URL and name the **next** slice (the row below this one) so a follow-up
-  `/do-next` is predictable.
+1. Preconditions. `git status` shows no tracked change. `git checkout main` and `git pull --ff-only`. `composer test` is green. If any of these fails, stop and report it.
+2. Pick. Open `docs/architecture/build-manifest.md`. The step is the first row whose box is unticked. If `gh pr list --head step/<n>` shows an open PR, stop and report it.
+3. Read. The row's text and its `Done` clause are the whole specification. Read the code the row names. Read RFC 1 §4 if the row cites a section. Do not read plan 0002, the old manifest history, or commit messages for intent.
+4. Branch `step/<n>` from `main`.
+5. Build it. Write the test for each `Done` clause first, then the change. Small commits: one rename, one type, one test. Run `composer test` before every commit.
+6. Do not add a PHPStan rule, a deny entry, an allowlist path, a deptrac edge, a baseline entry, an `@phpstan-ignore`, or an RFC paragraph. Do not remove or weaken a rule, a deny entry, a layer, or a test. Removing an allowlist path or a baseline entry is fine and expected. If the step cannot be finished without one of these edits, stop, report which one and why, and leave the branch as it is.
+7. Do not fix anything outside the row. Something wrong nearby becomes a GitHub issue, named in the report.
+8. Tick the row's box in the manifest in the last commit.
+9. Open a draft PR from `step/<n>`. Title: the row's first sentence. Body: the `Done` clauses as a checklist, each naming the test or CI check that proves it, then `Closes #n` for every issue the `Done` clause names.
+10. Report the PR URL and the next step number. Stop.

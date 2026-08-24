@@ -1,186 +1,39 @@
-# Build Manifest (slice registry)
+# Build manifest
 
-    Status:   Wave 1 complete; Wave 2 in progress (Steps 5, 6 deferred)
-    Driver:   build-procedure.md
-    Plan:     0002-execution-plan.md
+One goal: no positional or knowledge question has more than one implementation, and completion offers every symbol kind the knowledge tier answers.
+One signal: both baseline files are deleted, and the issues named below are closed.
 
-## The goal every row serves
+## Rules
 
-**Eliminate every M×N pair in the codebase, and make recurrence impossible by rule.**
+- Until every box below is ticked, this list is the only work. Nothing outside it starts unless the human schedules it directly.
+- One step is one PR on branch `step/<n>`.
+- Steps run in order. Step n starts when step n-1 has merged.
+- The PR for a step ticks its own box. A ticked box means merged.
+- The rule set is frozen until both baselines are deleted (step-18): no new PHPStan rule, deny entry, deptrac edge, allowlist path, baseline entry, `@phpstan-ignore`, or RFC amendment. Removing any of those is always allowed. A gap found on the way becomes a GitHub issue.
+- A step's `Done` clause is its whole acceptance. A reviewer checks that clause and nothing else.
+- Background reading is RFC 1 §4 (the invariants). Plan 0002 is history, not work.
+- Regex stays in the files `phpstan.neon` already allows it in. `TextFallbackHelper` is the text branch every positional question calls; it holds regex and nothing else.
+- When step-19 lands, this file and its two driver skills are gone, and work returns to plain issue flow: pick an issue, "do #xxx".
 
-An M×N pair is M consumers each hand-writing their own handling of N cases — handler × node type, backend × symbol kind, completion position × symbol kind, member kind × hierarchy walk.
-They drift, and when they drift two features disagree about the same code: #190, #253 and #256 are all one bug wearing three faces.
-The full axis list is Appendix A of RFC 1; three axes are deferred (member kind, access context, target environment).
+## Steps
 
-Nothing else here outranks that.
-A slice that removes a pair is worth more than a slice that adds reach, and a slice that adds reach while leaving a pair open is a regression however useful the reach.
-Not-yet-started functionality is in scope too: a feature that cannot be built without a new per-case consumer is a feature whose axis has no extension point yet, and the extension point is the work (RFC 1 §7).
-
-Elimination is not enough on its own, because the next contributor cannot see a pair that is merely absent.
-Every axis therefore ends with a **rule** that fails analysis when a consumer branches per-case, so the pair cannot come back.
-That is why **enforcement-rules** comes first: until those rules exist, no slice — landed or pending — can prove it moved toward the goal.
-
-## How to read this
-
-- Remaining work is an **ordered list**. Each row starts when the one above it merges.
-- The **slug** (bold text) is the slice id; the branch is `slice/<slug>`.
-- Status is **computed from whether `slice/<slug>` is merged**, never from a field here.
-- **Landing a slice includes checking its box.** The PR that merges the slice also checks the box — one diff, one review. Checked rows stay where they are; nothing moves to *Complete* from this point forward.
-- To reorder: move the line. No cross-references to update.
-
-## Remaining work
-
-Ordered. Each row starts when the one above it merges.
-
-- [x] **enforcement-rules** — Install every M×N enforcement rule
-
-  One slice, every unbuilt mechanism RFC 1 §8.1 designates. They were specified together and lapsed together; splitting them just recreates the window in which some axes are guarded and others are not.
-
-  - **§4.5** — no `instanceof` against a concrete `Type` / `ResolvedSymbol` implementation, and no `match`/`switch` on a symbol-kind enum, outside the metadata factories and the classifier. This is the rule the whole goal turns on.
-  - **§4.6** — no `new` of a `Type` implementation outside `TypeFactory`.
-  - **§4.3 / §5.2** — the single-write-path check as an architecture test. S3.4 landed it as `DocumentSymbolSink::assertStoresAgree`, a runtime `assert()`, which is disabled in production; the mechanism is off in the only environment that matters.
-  - **§4.11** — the AST/text agreement tests: the AST path and the text-fallback path must answer the same question the same way on parseable fixtures. Writable against the code as it stands, and landing it first constrains the Step 4 refactor instead of trailing it.
-  - **§5.4** — a safe default for every capability the client did not declare. §5.4 has no §8.1 row at all; §4.8's rule enforces *where* raw parameters may be read, not this. Add a capability with no default and nothing fails today. Same shape as the §5.1 coverage grid.
-
-  **The baselines grew once, here, at the human's direction.** A rule reveals pre-existing violations, it does not introduce them (RFC 1 §8.1).
-
-  **Every slice must leave the baselines flat or shrink them.** No exceptions, no judgment calls. If CI fails on baseline growth, the slice is wrong. Widening an allowlist, adding a layer edge, or rewriting this paragraph to permit the growth is the same failure with extra steps; `docs/architecture/enforcement-edits.md` names every such edit as the human's alone.
-
-- [ ] **search-kind-param** — Generalize search to a kind parameter
-
-  `searchClassLikes($prefix)` becomes `search($prefix, NameKind $kind)`, with class-likes still the only searchable kind. Behavior-preserving, so every Step P golden stays frozen. This is what **completion-kind-collapse** needs: expression-start has no namespace path, so enumeration alone cannot serve `PHP_E|`.
-
-- [ ] **completion-kind-collapse** — Collapse completion's per-kind sources and kind branches
-
-  The largest §4.5 violation, and the one that proves the rule works. Two forms, both in `src/Completion/`:
-
-  `NamespaceCandidates::offerSymbol` decides suitability by branching on a kind enum — it drops every symbol `childrenOf` hands it that is not a class-like. `getExpressionCompletions` fans out to one source per kind at a position that is genuinely kind-ambiguous, which §4.5 names outright ("an ad hoc scan that branches on each candidate kind's result").
-
-  Together they are why S3.8b made a global constant hoverable and jump-to-able while completion could not offer one — the §4.2 lookup/enumeration split, one tier above the seam where §4.2 is enforced.
-
-  The collapse is what makes a constant appear *without* a `ConstantCandidates` existing: position filters take the typed name the symbol denotes and default to accepting it, restricting positions ask a `CodeResolver` predicate (`isInstantiable`, `isInterface`), and a single kind-dispatched factory is the one place a kind is named. Adding a kind then breaks exactly one `match` and every position keeps working.
-
-  Consequently **#317 must be rewritten, not built as filed.** It specifies a new per-kind source mirroring `FunctionCandidates` — a consumer edit that RFC 1 §7 forbids for a new symbol kind — including a direct `get_defined_constants()` that S3.8b confined to `InternalConstantSet`. Its Part 2 (namespace-correct references via `ReferenceResolver`) is unaffected and still wanted.
-
-- [ ] **function-search** — Function search + FunctionCandidates migration
-
-  Backends answer function search; `FunctionCandidates` moves onto the seam and its frozen `get_defined_functions()` baseline entry drains. `BuiltinBackend` **must** answer function search here or built-in function completion regresses — the function-surface golden S3.6 froze is what catches it.
-
-- [ ] **retire-ast-in-lookup** — Retire the AST-in function lookup from consumers
-
-  Moves `SymbolResolver` and `BasicTypeResolver` off `FunctionRepository::get(string, array $ast)`. This is the slice that edits `SymbolResolver` before the Step 4 decomposition, so **node-locator** serializes against it.
-
-- [ ] **retire-function-exemption** — Remove §4.2 function-path exemption; retire scaffolding
-
-  Drops S2.6's scoped exemption for `FunctionRepository`, `getFileFunctions`, and the `DefaultFunctionRepository` AST-in signature. Its reflection entries in `phpstan-baseline.neon` drain with it.
-
-- [ ] **drain-enforcement-entries** — Drain the enforcement-rules entries no Step 4 row owns
-
-  The §4.6 `new`-of-a-Type sites outside `TypeFactory` (`DefaultClassInfoFactory`, and whatever else the rule finds), plus any §5.4 default the capability grid reports missing. `SymbolResolver`, `TextFallbackHelper` and `BasicTypeResolver` are excluded — later rows own those files.
-
-- [ ] **type-classifier** — TypeClassifier
-
-  *(Its §4.5/§4.6 rules moved to enforcement-rules.)*
-
-- [ ] **node-locator** — Extract node locator + scope analyzer
-
-- [ ] **member-call-detectors** — Extract member-access + call-context detectors
-
-- [ ] **name-context** — Extract name-context resolver
-
-- [ ] **text-fallback-narrow** — Narrow TextFallbackHelper to FQN recovery
-
-- [ ] **type-inference-merge** — Bring TypeInference inside the boundary
-
-  The variable-binding walks and expression dispatch are duplicated across `src/Resolution/` and `src/TypeInference/`; the latter sat outside the original decomposition's directory boundary.
-
-- [ ] **resolver-glue** — SymbolResolver → glue; CodeResolver positional-only
-
-  `CodeResolver` reduces to the positional-facing interface; its knowledge-facing responsibilities are served by `SymbolSource`, with no second knowledge interface.
-
-- [ ] **done** — Definition of Done + repo-wide duplication audit
-
-  Both baselines empty, every teardown discharged, and no unowned duplicate anywhere in `src/`.
-
-  This absorbs the former per-section audits (S3.11, S4.7). They were hand-run tracking gates from before the rules existed; **enforcement-rules**'s rules are the continuous version, and running a manual audit twice more in the middle adds ceremony without adding a check. One completion gate, where an unowned or unfixed duplicate fails outright.
-
-## Complete (archival)
-
-This section is frozen. Merged slices stay checked in *Remaining work*; nothing moves here.
-
-Wave 1 — Steps 0, 1, P, 2.
-
-    ID     Title
-    -----  -------------------------------------------------
-    S0.1   Instrument parse count/time; run the spike
-    S0.2   Request-scoped parse dedup
-    S1.1   Read ClientCapabilities -> SessionCapabilities
-    S1.2   Negotiate positionEncoding; convert at the edge
-    S1.3   Shape hover markup / snippets via capabilities
-    S1.4   Lifecycle state + malformed-frame robustness
-    S1.5   Position round-trip corpus
-    SP.1   Per-surface parity harness + branch-coverage gate
-    S2.1   Define SymbolSource/SymbolSink + delegating facade
-    S2.2   Migrate ClassCandidates -> search
-    S2.3   Migrate NamespaceCandidates -> childrenOf
-    S2.4   Migrate SymbolResolver lookups -> lookupClassLike
-    S2.5   Migrate TextDocumentSyncHandler -> SymbolSink
-    S2.6   §4.2 enforcement rule (scoped-exempt FunctionRepo)
-
-Wave 2 — Step 3, and the SC.* debt that predated the plan.
-
-    ID     Title
-    -----  -------------------------------------------------
-    S3.1   Existing caches -> replaceable §5.3 seam
-    S3.2   Dedupe the duplicate ComposerAutoloadMap
-    S3.3   Named backends + fixed-precedence composite
-    S3.4   One parse / one write path + consistency check
-    S3.5   External-file-change invalidation
-    S3.6   Function-surface golden + Builtin enum oracle
-    S3.7a  Read autoload.files into ComposerAutoloadMap
-    S3.7b  Scan a file for the declarations it makes
-    S3.7c  ClassLocator -> kind-agnostic SymbolLocator
-    S3.7d  Derived autoload.files index, all three kinds
-    S3.7e  Enumerate the derived index in childrenOf
-    S3.8a  lookupFunction project reach
-    S3.8d  Collapse per-kind lookup to one call
-    S3.8b  lookupConstant project reach
-    SC.1   Delete the dead WorkspaceIndexer
-    SC.2   Retire ScopeFinder's superseded import extraction
-    SC.3   SymbolExtractor reads DeclarationScanner
-    SC.4   Dedupe the hand-rolled file:// conversion
-    SC.5   One declaration finder, not five hand-written
-    SC.6   Symbol-name keys -> NameKind::normalize
-    SC.7   Six member-hierarchy walks -> one
-    SC.8   Prefix matching: SymbolIndex -> PrefixMatcher
-    SC.9   Class-like registration -> one declaration scan
-    SC.11  Move NameKind into Domain
-    SC.12  Move MemberFilter out of Resolution
-    SC.13  Settle Domain->Utility type placement
-    SC.15  Oracle corpus: trait adaptations and enums
-    SC.16  Index an open document's global constants
-    SC.17  Collapse the hand-routed invalidation fan-out
-    SC.18  One home for the kind-qualified symbol key
-    SC.19  Own the four unowned baseline entries
-    SC.20  Own the last unowned layer-contract entry
-
-SC.10 and SC.14 were never built: SC.14 was struck from the manifest (#430) and SC.10 was never filed.
-
-Verified beyond the merge: `deptrac.baseline.yaml` is empty, and SC.19's four `phpstan-baseline.neon` entries are gone. What the PHPStan baseline still holds belongs to **function-search**, **retire-function-exemption**, **node-locator**, **text-fallback-narrow** and **type-inference-merge**, each named on its row above.
-
-One acceptance carve-out is recorded rather than reopened: **S3.4** landed its write-path consistency check as a runtime `assert()`, which is not the architecture test §8.1 designates. **enforcement-rules** carries the promotion.
-
-## Deferred (excluded until reached)
-
-- **Step 5 — environment-parameterized built-ins (§4.7).** Not plannable: its version-aware source is an open TBD (0002 §7, explicitly not `phpstorm-stubs`). The reflection-backed Builtin backend from S3.3 is the interim, and does not satisfy §4.7. **done** permits it to remain a named gap.
-- **Step 6 — scheduler / async tier (#266).** Deferred until a push feature needs it: `$/cancelRequest` for superseded work, debounced `publishDiagnostics`, and a bounded background scheduler that feature-detects `pcntl` / `ext-parallel` with a synchronous fallback.
-- **Wave 3 — member kind, access context, intent detection.** The axes the 2026-08-10 RFC amendment added (RFC 1 §3.1, Appendix A "target" rows). Property hooks and asymmetric visibility wait on the first two. Sliced after the **done** gate — and each ends in a rule, per the goal above.
-- **Feature-matrix runner.** A fixture-scenario × handler-registry grid, every cell asserting that handler's observable or registering not-applicable, an unregistered cell failing. Deprioritized 2026-08-10; revisit after the Step 4 drain. Worth reconsidering sooner than that priority implies — it is the cross-feature agreement net, and the same shape as the §5.1 grid that has already caught real gaps.
-
-## Issue wiring
-
-`Closes` is assigned when a slice issue is created, after a reviewer reads the issue — never inferred from a title.
-
-- **#181** is not closable before **function-search**: its acceptance asks for these symbols in hover *and completion*, not merely resolvable, and it asks for a startup-time benchmark that S3.7d's eager index makes a live question. S3.7d pinned the parse *count*, which is not that measurement.
-- **#317** needs rewriting before it can be wired to anything — see **completion-kind-collapse**.
-- **#295** (Visibility enum) wants a small cleanup slice, not yet placed.
+- [ ] **step-0** — Feature-matrix grid, the net for the rewrite behind it: rows are fixture scenarios (file plus cursor marker), columns are the handlers, derived from the handler registry. Each cell asserts that handler's observable or is registered not-applicable against an issue number; an unregistered cell fails, and so does a registration on a cell that answers. Done: the grid runs in `composer test`; adding a handler adds a column with no edit to the test; #445 closed.
+- [ ] **step-1** — `SymbolSource::search(prefix, NameKind)` replaces `searchClassLikes` on `SymbolSource` and `SymbolBackend`; `OpenDocumentBackend` answers for every kind; `ClassCandidates` passes `NameKind::ClassLike`. Done: `searchClassLikes` is gone; every parity golden is unchanged.
+- [ ] **step-2** — `FilesystemBackend` answers `search` for functions and constants from the autoload.files index; `BuiltinBackend` answers it from reflection enumeration. Done: `SymbolCoverageGridTest` registers no `search` cell for `Function_` or `Constant`.
+- [ ] **step-3** — `ReflectionSymbolInfoFactory::classInfo()` answers only where `isInternal()` is true. Done: #429 closed.
+- [ ] **step-4** — Delete `FunctionRepository` and `DefaultFunctionRepository`. `SymbolResolver` and `BasicTypeResolver` resolve a function name as `NameContext` candidates through `SymbolSource::lookupFunction`. Delete `CodeResolver::getFileFunctions`. Remove the `FunctionRepository` exemption from `SymbolDiscoveryAuthorityExtension`. Done: `src/Repository/*FunctionRepository.php` is gone; its baseline entries are gone.
+- [ ] **step-5** — One `SymbolCandidates` replaces `ClassCandidates` and `FunctionCandidates`. For the kinds a position allows it calls `search`, adds imports from all three tables and `childrenOf(current namespace)`, resolves each through `ReferenceResolver`, applies the position predicate, and builds every item with one `CompletionItemFactory::forSymbol()`. `NamespaceCandidates::offerSymbol` applies the same filter and no longer drops non-class-likes. `ClassCandidates::indexKinds` is gone. Done: #317, #239, #383 closed; the only `src/Completion/` baseline entries left are those in `MemberCandidates`; a test asserts every kind `search` answers is offered at expression start.
+- [ ] **step-6** — The argument-value position offers what expression start offers, plus named arguments. Done: #292 closed.
+- [ ] **step-7** — `MemberCandidates` has no branch on `MemberAccessKind` and no `instanceof`; which members an access kind admits is decided in `MemberAccessContext` and `MemberFilter`. Done: `MemberCandidates` has no baseline entry.
+- [ ] **step-8** — Trait completion after `use` in a class body: one `isTrait` predicate, one filter case, one classifier case. Done: #316 closed; the diff adds no source class.
+- [ ] **step-9** — One node walk: `NodeAtPosition::find(ast, offset, filter)`, moved to `src/Utility/`. `Scope::findEnclosingFunctionLike` and `SymbolResolver::findCallAtPosition` call it instead of walking. Done: `SymbolResolver` has no traversal baseline entry; `Scope` and `ScopeFinder` are removed from the traversal allowlists.
+- [ ] **step-10** — One enclosing class-like: `Scope::atOffset` carries the enclosing class-like node for all four kinds, and one function in `src/Resolution/` answers the question, reading `Scope` when the AST is non-empty and `TextFallbackHelper`'s regex when it is empty. Delete `SymbolResolver::findEnclosingClassForLine` and `ScopeFinder::findClassAtLine`. Done: the skipped cases in `AstTextAgreementTest` run and pass.
+- [ ] **step-11** — One name context: `NameContextFactory` reads `TextFallbackHelper`'s regex only when the AST holds no namespace or `use` node, and `NameContext::candidates(short, NameKind)` is the one place a short name becomes FQN candidates. Delete `SymbolResolver::resolveNameFromText`, `TextFallbackHelper::resolveClassName`, `resolveFromUseStatementsText`, and the import map `extractUseStatementsFromText` builds outside the factory. Done: those methods are gone; `SymbolResolver` has no `preg_match` baseline entry; `AstTextAgreementTest` covers namespace and imports.
+- [ ] **step-12** — `CallContextDetector` in `src/Resolution/`: the AST path and the text path of `getCallContext` in one class, using the walk from step 9 and the names from step 11. Done: `findCallAtPosition`, `findCallFromText`, `parseCallPattern`, `parseArgsFromText` are gone from `SymbolResolver`; `AstTextAgreementTest` covers call context.
+- [ ] **step-13** — `MemberAccessDetector` in `src/Resolution/`: the AST path and the text path of `getMemberAccessContext` in one class, with one function that decides visibility from the vantage class and the target class. Delete the four visibility copies and `TextFallbackHelper`'s member-access and parameter-type methods. Done: one visibility function; `AstTextAgreementTest` covers member access.
+- [ ] **step-14** — One `ExpressionResolver` returns a `ResolvedSymbol` for any expression; its type is `->getType()`. One `VariableBindings::before(scope, offset)` lists parameters, assignments, `foreach`, `catch`, and closure `use` bindings with their nodes; `getVariablesInScope`, variable typing, and `ResolvedVariable::getDefinitionLocation()` read it. Delete `src/TypeInference/`, `ExpressionTypeResolver`, and `TextFallbackHelper::resolveChainType`. Done: `src/TypeInference/` is gone; #301 closed; a `foreach` variable resolves members.
+- [ ] **step-15** — The `*Info` objects implement `ResolvedSymbol` and `ResolvedMember`; the `Resolved*` wrapper classes are deleted; `ResolvedSymbol` and `Location` move to `Domain`. Done: #416 closed; `SymbolResolver::getMembersForClass` is one loop.
+- [ ] **step-16** — Delete `TextFallbackHelper::extractMembers` and its inheritance walk. `DocumentSymbolSink` keeps a document's previous registration when a new version parses to no declarations, so a file broken mid-edit keeps its members. Done: `TextFallbackHelper` holds only regex text branches; `CompletionHandlerTest::testCompletionThisInVeryBrokenFile` passes with no fallback in `getAccessibleMembers`.
+- [ ] **step-17** — Both `ClassInfo` factories add the implicit `UnitEnum` and `BackedEnum` interfaces; the trait edge carries `insteadof` and `as` adaptations and `MemberResolver` applies them. Done: #423 and #73 closed; `TypeGraphParityTest` has no skipped case.
+- [ ] **step-18** — Route the remaining `new ClassName`, `new PrimitiveType`, and `new UnionType` sites through `TypeFactory`. Delete `phpstan-baseline.neon` and `deptrac.baseline.yaml`; `bin/check-baseline-shrink` fails if either file exists (this edit to `bin/` is authorised here). Done: no baseline file exists; CI is green; #181 closed.
+- [ ] **step-19** — Retire the rebuild. Delete this manifest and the `do-next` and `review-slice` skills (this row authorises the `.claude/` and policy deletions), and drop the manifest read from `SymbolCoverageGridTest` so a blocker must name an issue or an RFC section. Done: this file and both skills are gone; `composer test` is green; work continues as plain issues.

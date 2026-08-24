@@ -11,12 +11,13 @@ A reviewer classifies every edit to the files above with this table before readi
 
 | Edit | Meaning | Who may make it |
 |---|---|---|
-| Add a function, class, enum, or implementation to a deny set or confined set | Tighten | Anyone. The baseline may grow in the same PR, by the entries the new check reports and no others. |
+| Add a function, class, enum, or implementation to a deny set or confined set | Tighten | Frozen until both baselines are deleted; then the human only. |
 | Remove a baseline entry | Tighten | Anyone. |
 | Remove an edge from the layer ruleset | Tighten | Anyone. |
 | Remove a path from an allowlist | Tighten | Anyone. |
-| Add a check, rule, test, or layer | Tighten | Anyone. |
-| Add a deny entry or rule together with its allowlist | Tighten, when every allowlist path is one file that uses the denied thing today (`tests/*` is the one directory glob). A directory glob, or a file with no use, is a Loosen hidden inside a Tighten. | Anyone, under that condition. The reviewer greps each denied name in `src/`: the hits and the allowlist must be the same set, with the rest in the baseline. |
+| Add a test | Tighten | Anyone. |
+| Add a check, rule, or layer | Tighten | Frozen until both baselines are deleted; then the human only. |
+| Add a deny entry or rule together with its allowlist | Tighten, when every allowlist path is one file that uses the denied thing today (`tests/*` is the one directory glob). A directory glob, or a file with no use, is a Loosen hidden inside a Tighten. | Frozen until both baselines are deleted; then the human only. |
 | Rename a path in an allowlist or a baseline entry | Lateral | Anyone, only when the same PR moves that file (git reports a rename) and the entry count does not change. |
 | Rename a rule identifier or message, with the baseline rewritten to match | Lateral | Anyone, only when the total for that rule does not change. |
 | Add a path to an allowlist | Loosen | The human only. |
@@ -27,7 +28,7 @@ A reviewer classifies every edit to the files above with this table before readi
 | Skip or delete a test | Loosen | The human only. |
 | Edit `bin/check-baseline-shrink`, a workflow under `.github/`, a skill under `.claude/`, or this document | Loosen | The human only. |
 
-"The human only" means the human writes the edit, or names it in the slice row before the slice starts.
+"The human only" means the human writes the edit, or names it in the manifest step before the step starts.
 A PR body that explains why a Loosen edit was necessary does not make it allowed.
 
 ## Why a Loosen edit is never the implementer's call
