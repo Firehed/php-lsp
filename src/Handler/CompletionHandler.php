@@ -30,8 +30,12 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class CompletionHandler implements HandlerInterface
+final class CompletionHandler implements DocumentFeatureHandler
 {
+    public function method(): string
+    {
+        return 'textDocument/completion';
+    }
     // The widest position is a bare `\`: every root namespace plus every global
     // class-like. Cap the response and report isIncomplete so the client re-queries
     // as the prefix narrows, rather than shipping thousands of items.
@@ -53,7 +57,7 @@ final class CompletionHandler implements HandlerInterface
 
     public function supports(string $method): bool
     {
-        return $method === 'textDocument/completion';
+        return $method === $this->method();
     }
 
     /**

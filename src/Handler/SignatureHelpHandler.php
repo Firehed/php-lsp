@@ -18,8 +18,12 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  *   parameters?: list<ParameterInfoShape>,
  * }
  */
-final class SignatureHelpHandler implements HandlerInterface
+final class SignatureHelpHandler implements DocumentFeatureHandler
 {
+    public function method(): string
+    {
+        return 'textDocument/signatureHelp';
+    }
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
@@ -28,7 +32,7 @@ final class SignatureHelpHandler implements HandlerInterface
 
     public function supports(string $method): bool
     {
-        return $method === 'textDocument/signatureHelp';
+        return $method === $this->method();
     }
 
     /**

@@ -16,8 +16,12 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
 /**
  * @phpstan-import-type LspMarkupContent from MarkupContent
  */
-final class HoverHandler implements HandlerInterface
+final class HoverHandler implements DocumentFeatureHandler
 {
+    public function method(): string
+    {
+        return 'textDocument/hover';
+    }
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
@@ -27,7 +31,7 @@ final class HoverHandler implements HandlerInterface
 
     public function supports(string $method): bool
     {
-        return $method === 'textDocument/hover';
+        return $method === $this->method();
     }
 
     /**
