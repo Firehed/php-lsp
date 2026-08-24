@@ -94,15 +94,6 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     {
         return [];
     }
-
-    /**
-     * @return list<never>
-     */
-    public function searchClassLikes(string $prefix): array
-    {
-        return [];
-    }
-
     /**
      * A declaration at any depth counts, not just a top-level one: the shape most
      * `autoload.files` entries take is a polyfill declared inside an

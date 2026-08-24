@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
@@ -127,11 +128,11 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
-    public function testSearchClassLikesIsEmpty(): void
+    public function testSearchIsEmpty(): void
     {
         self::assertSame(
             [],
-            $this->backend(self::createStub(NamespaceCatalog::class))->searchClassLikes('Array'),
+            $this->backend(self::createStub(NamespaceCatalog::class))->search('Array', NameKind::ClassLike),
             'a bare prefix must not surface built-ins that do not resolve unqualified',
         );
     }

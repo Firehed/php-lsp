@@ -55,12 +55,4 @@ final class BuiltinBackend implements SymbolBackend
     {
         return [];
     }
-
-    /**
-     * @return list<never>
-     */
-    public function searchClassLikes(string $prefix): array
-    {
-        return [];
-    }
 }

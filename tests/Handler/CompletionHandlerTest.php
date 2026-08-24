@@ -682,11 +682,6 @@ class CompletionHandlerTest extends TestCase
             {
                 return [];
             }
-
-            public function searchClassLikes(string $prefix): array
-            {
-                return [];
-            }
         };
         $handler = $this->makeHandler($source);
         $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', 'flood_nav');

@@ -56,14 +56,6 @@ final class FakeSymbolBackend implements SymbolBackend
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return $this->searchClassLikes($prefix);
-    }
-
-    /**
-     * @return list<Symbol>
-     */
-    public function searchClassLikes(string $prefix): array
-    {
         return array_values(array_filter(
             $this->searchResults,
             static fn(Symbol $symbol): bool => str_starts_with(

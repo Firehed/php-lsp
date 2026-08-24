@@ -42,18 +42,11 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        // `searchClassLikes` has no kind parameter until step-1.
-        'OpenDocumentBackend|Function_|search' => 'step-1',
-        'OpenDocumentBackend|Constant|search' => 'step-1',
-        'FilesystemBackend|Function_|search' => 'step-1, step-2',
-        'FilesystemBackend|Constant|search' => 'step-1, step-2',
-        'BuiltinBackend|Function_|search' => 'step-1, step-2',
-        'BuiltinBackend|Constant|search' => 'step-1, step-2',
+        'FilesystemBackend|Function_|search' => 'step-2',
+        'FilesystemBackend|Constant|search' => 'step-2',
+        'BuiltinBackend|Function_|search' => 'step-2',
+        'BuiltinBackend|Constant|search' => 'step-2',
 
-        // A prefix has no name -> file map on disk. The built-in row is blocked on
-        // something else entirely: the name it would offer does not resolve
-        // unqualified, so the item is only useful once completion can insert the
-        // import with it.
         'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
         'BuiltinBackend|ClassLike|search' => '#23',
     ];
@@ -295,7 +288,7 @@ final class SymbolCoverageGridTest extends TestCase
 
         return match ($query) {
             GridQuery::Lookup => $this->looksUp($backend, $fqn, $kind),
-            GridQuery::Search => $this->searchFinds($backend, $fqn),
+            GridQuery::Search => $this->searchFinds($backend, $fqn, $kind),
             GridQuery::ChildrenOf => $this->enumerates($backend, $probe['namespace'], $kind, $fqn),
         };
     }
@@ -321,11 +314,11 @@ final class SymbolCoverageGridTest extends TestCase
         return true;
     }
 
-    private function searchFinds(SymbolBackend $backend, string $fqn): bool
+    private function searchFinds(SymbolBackend $backend, string $fqn, NameKind $kind): bool
     {
         $prefix = QualifiedName::fromFullyQualified($fqn)->shortName;
 
-        foreach ($backend->searchClassLikes($prefix) as $symbol) {
+        foreach ($backend->search($prefix, $kind) as $symbol) {
             if ($symbol->fullyQualifiedName === $fqn) {
                 return true;
             }

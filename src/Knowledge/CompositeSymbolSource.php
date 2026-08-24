@@ -107,14 +107,6 @@ final class CompositeSymbolSource implements SymbolSource
     }
 
     /**
-     * @return list<Symbol>
-     */
-    public function searchClassLikes(string $prefix): array
-    {
-        return $this->search($prefix, NameKind::ClassLike);
-    }
-
-    /**
      * Answers with the marker type; each caller above narrows it back to a concrete
      * one. That is the O(kinds) narrowing Plan 0002 §5.6 trades against a lookup
      * method per kind on every backend.

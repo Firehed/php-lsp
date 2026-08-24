@@ -87,10 +87,4 @@ interface SymbolSource
      * @return list<Symbol>
      */
     public function search(string $prefix, NameKind $kind): array;
-
-    /**
-     * @deprecated Use search() with NameKind::ClassLike instead.
-     * @return list<Symbol>
-     */
-    public function searchClassLikes(string $prefix): array;
 }

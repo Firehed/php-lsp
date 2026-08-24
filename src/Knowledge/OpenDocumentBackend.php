@@ -69,14 +69,6 @@ final class OpenDocumentBackend implements SymbolBackend
     }
 
     /**
-     * @return list<Symbol>
-     */
-    public function searchClassLikes(string $prefix): array
-    {
-        return $this->search($prefix, NameKind::ClassLike);
-    }
-
-    /**
      * Register the symbols declared in an open document for lookup, replacing any
      * previously registered for the same URI.
      *

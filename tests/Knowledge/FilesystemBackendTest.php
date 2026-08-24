@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
@@ -334,11 +335,11 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    public function testSearchClassLikesIsEmpty(): void
+    public function testSearchIsEmpty(): void
     {
         self::assertSame(
             [],
-            $this->backend()->searchClassLikes('User'),
+            $this->backend()->search('User', NameKind::ClassLike),
             'project-wide prefix search over disk is the deferred workspace-index scope (RFC 1 §3)',
         );
     }
