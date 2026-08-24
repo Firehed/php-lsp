@@ -128,6 +128,7 @@ final readonly class KnowledgeStack
             $infoFactory,
             $scanner,
             new SymbolCache(CacheFactory::inMemory()),
+            $autoloadFiles,
         );
 
         return [$backend, [$backend, $cachedCatalog, $autoloadFiles]];

@@ -11,6 +11,8 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Parser\ParserService;
 
 /**
@@ -49,6 +51,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
+        private readonly ?PrefixSearchable $prefixSearch = null,
     ) {
     }
 
@@ -88,11 +91,11 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * @return list<never>
+     * @return list<Symbol>
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return [];
+        return $this->prefixSearch?->searchByPrefix($prefix, $kind) ?? [];
     }
     /**
      * A declaration at any depth counts, not just a top-level one: the shape most
