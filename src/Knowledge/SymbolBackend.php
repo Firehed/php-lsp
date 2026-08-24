@@ -46,10 +46,16 @@ interface SymbolBackend
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo;
 
     /**
-     * The class-likes this backend can enumerate whose short name begins with
-     * $prefix. A backend with no affordable prefix enumeration returns an empty
-     * list rather than walking its source (RFC 1 §5.3).
+     * The symbols of $kind this backend can enumerate whose short name begins
+     * with $prefix. A backend with no affordable prefix enumeration returns an
+     * empty list rather than walking its source (RFC 1 §5.3).
      *
+     * @return list<Symbol>
+     */
+    public function search(string $prefix, NameKind $kind): array;
+
+    /**
+     * @deprecated Use search() with NameKind::ClassLike instead.
      * @return list<Symbol>
      */
     public function searchClassLikes(string $prefix): array;

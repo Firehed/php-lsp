@@ -213,15 +213,13 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    public function testSearchClassLikesFiltersByPrefixAndToClassLikeKindsOnly(): void
+    public function testSearchClassLikeFiltersByPrefixAndToClassLikeKindsOnly(): void
     {
         $this->addSymbol('User', 'App\User', SymbolKind::Class_);
         $this->addSymbol('Entity', 'App\Entity', SymbolKind::Class_);
-        // A function whose name also begins with the prefix: it must not be returned,
-        // because prefix search covers the class-like namespace only.
         $this->addSymbol('Userland', 'App\Userland', SymbolKind::Function_);
 
-        $results = $this->backend->searchClassLikes('User');
+        $results = $this->backend->search('User', NameKind::ClassLike);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains('App\User', $fqns, 'a class-like matching the prefix must be found');
@@ -230,6 +228,38 @@ final class OpenDocumentBackendTest extends TestCase
             'App\Userland',
             $fqns,
             'a function must be excluded even when its name matches the prefix',
+        );
+    }
+
+    public function testSearchFunctionFiltersByPrefixAndToFunctionKindOnly(): void
+    {
+        $this->addSymbol('format', 'App\format', SymbolKind::Function_);
+        $this->addSymbol('Formatter', 'App\Formatter', SymbolKind::Class_);
+
+        $results = $this->backend->search('format', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains('App\format', $fqns, 'a function matching the prefix must be found');
+        self::assertNotContains(
+            'App\Formatter',
+            $fqns,
+            'a class-like must be excluded from a function search',
+        );
+    }
+
+    public function testSearchConstantFiltersByPrefixAndToConstantKindOnly(): void
+    {
+        $this->addSymbol('DEBUG', 'App\DEBUG', SymbolKind::Constant);
+        $this->addSymbol('Debugger', 'App\Debugger', SymbolKind::Class_);
+
+        $results = $this->backend->search('D', NameKind::Constant);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains('App\DEBUG', $fqns, 'a constant matching the prefix must be found');
+        self::assertNotContains(
+            'App\Debugger',
+            $fqns,
+            'a class-like must be excluded from a constant search',
         );
     }
 
