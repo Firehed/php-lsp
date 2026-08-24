@@ -18,17 +18,19 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  *   parameters?: list<ParameterInfoShape>,
  * }
  */
-final class SignatureHelpHandler implements HandlerInterface
+final class SignatureHelpHandler implements DocumentFeatureHandler
 {
+    use SupportsOwnMethod;
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
     ) {
     }
 
-    public function supports(string $method): bool
+    public static function method(): string
     {
-        return $method === 'textDocument/signatureHelp';
+        return 'textDocument/signatureHelp';
     }
 
     /**

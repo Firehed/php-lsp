@@ -9,17 +9,19 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
-final class DefinitionHandler implements HandlerInterface
+final class DefinitionHandler implements DocumentFeatureHandler
 {
+    use SupportsOwnMethod;
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
     ) {
     }
 
-    public function supports(string $method): bool
+    public static function method(): string
     {
-        return $method === 'textDocument/definition';
+        return 'textDocument/definition';
     }
 
     /**
