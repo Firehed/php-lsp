@@ -10,7 +10,7 @@ description: Implement the next unticked step of docs/architecture/build-manifes
 3. Read. The row's text and its `Done` clause are the whole specification. Read the code the row names. Read RFC 1 §4 if the row cites a section. Do not read plan 0002, the old manifest history, or commit messages for intent.
 4. Branch `step/<n>` from `main`.
 5. Build it. Write the test for each `Done` clause first, then the change. Small commits: one rename, one type, one test. Run `composer test` before every commit.
-6. Do not add a PHPStan rule, a deny entry, an allowlist path, a deptrac edge, a baseline entry, an `@phpstan-ignore`, or an RFC paragraph. Removing any of those is fine. If the step cannot be finished without adding one, stop, report which one and why, and leave the branch as it is.
+6. Do not add a PHPStan rule, a deny entry, an allowlist path, a deptrac edge, a baseline entry, an `@phpstan-ignore`, or an RFC paragraph. Do not remove or weaken a rule, a deny entry, a layer, or a test. Removing an allowlist path or a baseline entry is fine and expected. If the step cannot be finished without one of these edits, stop, report which one and why, and leave the branch as it is.
 7. Do not fix anything outside the row. Something wrong nearby becomes a GitHub issue, named in the report.
 8. Tick the row's box in the manifest in the last commit.
 9. Open a draft PR from `step/<n>`. Title: the row's first sentence. Body: the `Done` clauses as a checklist, each naming the test or CI check that proves it, then `Closes #n` for every issue the `Done` clause names.

@@ -9,7 +9,7 @@ description: One review pass of a step PR against its Done clause, with fixes. I
 2. Read the step's row in `docs/architecture/build-manifest.md` and the diff: `git diff main...step/<n>`.
 3. Spawn one reviewer subagent. Give it only the row text, RFC 1 §4, the diff, and the four questions below. Do not give it this conversation or the commit messages. Tell it to run only `composer test`, `composer unit -- --filter X`, `composer phpstan -- --error-format=raw --no-progress`, and `composer phpcs -- -q --report=emacs`.
    - Done: is each `Done` clause true, and which test or CI check proves it? A clause with no proof is a finding.
-   - Freeze: does the diff add a PHPStan rule, deny entry, allowlist path, deptrac edge, baseline entry, or `@phpstan-ignore`? Each one is a finding.
+   - Freeze: does the diff add a PHPStan rule, deny entry, allowlist path, deptrac edge, baseline entry, or `@phpstan-ignore` — or remove or weaken a rule, a deny entry, a layer, or a test? Each one is a finding. Removing an allowlist path or a baseline entry is fine.
    - One implementation: does the diff leave a second implementation of the question it collapses? Name the file and method.
    - Strength: change one line of the new code so it is wrong. Does a test fail? If not, that is a finding. Revert with the edit tool, not git.
 4. Confirm each finding against the code yourself. Drop what you cannot confirm.
