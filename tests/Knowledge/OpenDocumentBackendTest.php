@@ -216,13 +216,19 @@ final class OpenDocumentBackendTest extends TestCase
     public function testSearchClassLikeFiltersByPrefixAndToClassLikeKindsOnly(): void
     {
         $this->addSymbol('User', 'App\User', SymbolKind::Class_);
+        $this->addSymbol('UserEnum', 'App\UserEnum', SymbolKind::Enum_);
+        $this->addSymbol('UserInterface', 'App\UserInterface', SymbolKind::Interface_);
+        $this->addSymbol('UserTrait', 'App\UserTrait', SymbolKind::Trait_);
         $this->addSymbol('Entity', 'App\Entity', SymbolKind::Class_);
         $this->addSymbol('Userland', 'App\Userland', SymbolKind::Function_);
 
         $results = $this->backend->search('User', NameKind::ClassLike);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
-        self::assertContains('App\User', $fqns, 'a class-like matching the prefix must be found');
+        self::assertContains('App\User', $fqns, 'a class must be found');
+        self::assertContains('App\UserEnum', $fqns, 'an enum must be found');
+        self::assertContains('App\UserInterface', $fqns, 'an interface must be found');
+        self::assertContains('App\UserTrait', $fqns, 'a trait must be found');
         self::assertNotContains('App\Entity', $fqns, 'a class-like not matching the prefix must be excluded');
         self::assertNotContains(
             'App\Userland',
