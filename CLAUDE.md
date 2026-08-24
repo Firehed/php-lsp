@@ -215,9 +215,10 @@ registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outb
 `dynamicRegistration`; an unregistered client follows the §7 fallback (no invalidation
 until a file is opened and closed).
 
-Class-like prefix search (`searchClassLikes`) is served only by the open-document
-backend today; project-wide on-disk search is the deferred workspace-index scope
-(RFC 1 §3). Function search, and the migration of the consumers still calling
+Prefix search (`search(prefix, NameKind)`) is kind-parameterized: the open-document
+backend answers for every kind; the on-disk and built-in backends return empty
+(project-wide on-disk search is the deferred workspace-index scope, RFC 1 §3).
+Function search, and the migration of the consumers still calling
 `FunctionRepository`, are later Step 3b slices; constant reach is S3.8b.
 
 - **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).

@@ -88,17 +88,12 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * Empty by contract: a prefix search over the PSR-4 tree needs a workspace walk
-     * this backend does not do (RFC 1 §3, §5.3). Scoped to the tree, not to every
-     * kind — the derived `autoload.files` index is a filter, not a walk.
-     *
      * @return list<never>
      */
-    public function searchClassLikes(string $prefix): array
+    public function search(string $prefix, NameKind $kind): array
     {
         return [];
     }
-
     /**
      * A declaration at any depth counts, not just a top-level one: the shape most
      * `autoload.files` entries take is a polyfill declared inside an

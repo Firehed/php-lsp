@@ -13,8 +13,7 @@ use Firehed\PhpLsp\Knowledge\SymbolBackend;
  *
  * This is the grid's one listed axis: a query needs an argument list and a way to
  * read its answer, which no derivation supplies. So a query added to
- * {@see SymbolBackend} does not add cells on its own — S3.9a, which reshapes
- * `searchClassLikes`, has to add the case.
+ * {@see SymbolBackend} does not add cells on its own.
  */
 enum GridQuery: string
 {

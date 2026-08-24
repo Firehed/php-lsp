@@ -191,18 +191,16 @@ final class CompositeSymbolSourceTest extends TestCase
         );
     }
 
-    public function testSearchClassLikesMergesAndDeduplicatesByFqnEarlierWinning(): void
+    public function testSearchMergesAndDeduplicatesByFqnEarlierWinning(): void
     {
         $open = new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'open.php')]);
         $vendor = new FakeSymbolBackend(searchResults: [
-            // The same class-like under its case rule, spelled differently: it
-            // must still clash, and the open document's spelling must win.
             self::symbol('APP\LOG', 'vendor.php'),
             self::symbol('App\Logger', 'vendor.php'),
         ]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
-        $results = $source->searchClassLikes('Log');
+        $results = $source->search('Log', NameKind::ClassLike);
 
         $byFqn = [];
         foreach ($results as $symbol) {

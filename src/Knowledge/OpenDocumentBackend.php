@@ -28,16 +28,12 @@ use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
 final class OpenDocumentBackend implements SymbolBackend
 {
     /**
-     * The symbol kinds that are class-likes. Prefix search covers this namespace
-     * alone; the function and constant namespaces are Step 3b (Plan 0002 §5.3).
-     *
-     * @var list<SymbolKind>
+     * @var array<string, list<SymbolKind>>
      */
-    private const array CLASS_LIKE_KINDS = [
-        SymbolKind::Class_,
-        SymbolKind::Enum_,
-        SymbolKind::Interface_,
-        SymbolKind::Trait_,
+    private const array KINDS_BY_NAME_KIND = [
+        'ClassLike' => [SymbolKind::Class_, SymbolKind::Enum_, SymbolKind::Interface_, SymbolKind::Trait_],
+        'Function_' => [SymbolKind::Function_],
+        'Constant' => [SymbolKind::Constant],
     ];
 
     /** @var array<string, SymbolInfo> Normalized kind-qualified key -> metadata */
@@ -67,9 +63,9 @@ final class OpenDocumentBackend implements SymbolBackend
     /**
      * @return list<Symbol>
      */
-    public function searchClassLikes(string $prefix): array
+    public function search(string $prefix, NameKind $kind): array
     {
-        return $this->index->findByPrefix($prefix, self::CLASS_LIKE_KINDS);
+        return $this->index->findByPrefix($prefix, self::KINDS_BY_NAME_KIND[$kind->name]);
     }
 
     /**
