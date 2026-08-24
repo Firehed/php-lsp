@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
-use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
@@ -40,12 +39,6 @@ use PhpParser\Node;
  */
 final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, PrefixSearchable, Invalidatable
 {
-    /** @var array<string, list<SymbolKind>> */
-    private const array SYMBOL_KINDS = [
-        'Function_' => [SymbolKind::Function_],
-        'Constant' => [SymbolKind::Constant],
-    ];
-
     /**
      * Every name the set declares, as the declaration spells it: the index is keyed
      * for lookup under PHP's per-kind case rules, which loses the casing a
@@ -111,28 +104,19 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Pre
      */
     public function searchByPrefix(string $prefix, NameKind $kind): array
     {
-        $symbolKinds = self::SYMBOL_KINDS[$kind->name] ?? null;
-        if ($symbolKinds === null) {
-            return [];
-        }
-
-        $symbols = [];
-        foreach ($this->declarationsByKind[$kind->name] ?? [] as $catalogSymbol) {
-            if (PrefixMatcher::matches($catalogSymbol->shortName(), $prefix)) {
+        return PrefixSearch::filter(
+            $this->declarationsByKind[$kind->name] ?? [],
+            $prefix,
+            $kind,
+            function (CatalogSymbol $symbol) use ($kind): Location {
                 $filePath = $this->index[$kind->name][$kind->normalize(
-                    QualifiedName::fromFullyQualified($catalogSymbol->fullyQualifiedName),
+                    QualifiedName::fromFullyQualified($symbol->fullyQualifiedName),
                 )] ?? null;
-                $symbols[] = new Symbol(
-                    name: $catalogSymbol->shortName(),
-                    fullyQualifiedName: $catalogSymbol->fullyQualifiedName,
-                    kind: $symbolKinds[0],
-                    location: $filePath !== null
-                        ? new Location(FileUri::fromPath($filePath), 0, 0, 0, 0)
-                        : new Location('', 0, 0, 0, 0),
-                );
-            }
-        }
-        return $symbols;
+                return $filePath !== null
+                    ? new Location(FileUri::fromPath($filePath), 0, 0, 0, 0)
+                    : new Location('', 0, 0, 0, 0);
+            },
+        );
     }
 
     public function locate(QualifiedName $name, NameKind $kind): ?string

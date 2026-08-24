@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
-use Firehed\PhpLsp\Domain\PrefixMatcher;
 use ReflectionClass;
 
 /**
@@ -26,12 +25,6 @@ use ReflectionClass;
  */
 final class ReflectionNamespaceSource implements NamespaceCatalog, PrefixSearchable
 {
-    /** @var array<string, list<SymbolKind>> */
-    private const array SYMBOL_KINDS = [
-        'Function_' => [SymbolKind::Function_],
-        'Constant' => [SymbolKind::Constant],
-    ];
-
     /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
     private ?array $byNamespace = null;
 
@@ -48,23 +41,12 @@ final class ReflectionNamespaceSource implements NamespaceCatalog, PrefixSearcha
      */
     public function searchByPrefix(string $prefix, NameKind $kind): array
     {
-        $symbolKinds = self::SYMBOL_KINDS[$kind->name] ?? null;
-        if ($symbolKinds === null) {
-            return [];
-        }
-
-        $symbols = [];
-        foreach ($this->symbolsOfKind($kind) as $catalogSymbol) {
-            if (PrefixMatcher::matches($catalogSymbol->shortName(), $prefix)) {
-                $symbols[] = new Symbol(
-                    name: $catalogSymbol->shortName(),
-                    fullyQualifiedName: $catalogSymbol->fullyQualifiedName,
-                    kind: $symbolKinds[0],
-                    location: new Location('', 0, 0, 0, 0),
-                );
-            }
-        }
-        return $symbols;
+        return PrefixSearch::filter(
+            $this->symbolsOfKind($kind),
+            $prefix,
+            $kind,
+            static fn(): Location => new Location('', 0, 0, 0, 0),
+        );
     }
 
     public function childrenOf(string $namespace): NamespaceContents
