@@ -42,11 +42,6 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        'FilesystemBackend|Function_|search' => 'step-2',
-        'FilesystemBackend|Constant|search' => 'step-2',
-        'BuiltinBackend|Function_|search' => 'step-2',
-        'BuiltinBackend|Constant|search' => 'step-2',
-
         'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
         'BuiltinBackend|ClassLike|search' => '#23',
     ];
