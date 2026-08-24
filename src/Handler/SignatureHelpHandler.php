@@ -20,6 +20,8 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  */
 final class SignatureHelpHandler implements DocumentFeatureHandler
 {
+    use SupportsOwnMethod;
+
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
@@ -29,11 +31,6 @@ final class SignatureHelpHandler implements DocumentFeatureHandler
     public function method(): string
     {
         return 'textDocument/signatureHelp';
-    }
-
-    public function supports(string $method): bool
-    {
-        return $method === $this->method();
     }
 
     /**
