@@ -8,6 +8,6 @@ trait SupportsOwnMethod
 {
     public function supports(string $method): bool
     {
-        return $method === $this->method();
+        return $method === static::method();
     }
 }

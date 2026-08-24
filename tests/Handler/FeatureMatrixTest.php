@@ -243,7 +243,7 @@ final class FeatureMatrixTest extends TestCase
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
             'id' => 1,
-            'method' => $handler->method(),
+            'method' => $handler::method(),
             'params' => [
                 'textDocument' => ['uri' => $cursor['uri']],
                 'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],

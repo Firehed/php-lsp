@@ -19,7 +19,7 @@ final class DefinitionHandler implements DocumentFeatureHandler
     ) {
     }
 
-    public function method(): string
+    public static function method(): string
     {
         return 'textDocument/definition';
     }

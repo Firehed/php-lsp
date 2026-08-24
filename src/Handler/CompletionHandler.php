@@ -53,7 +53,7 @@ final class CompletionHandler implements DocumentFeatureHandler
     ) {
     }
 
-    public function method(): string
+    public static function method(): string
     {
         return 'textDocument/completion';
     }

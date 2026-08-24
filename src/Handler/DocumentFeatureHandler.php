@@ -6,5 +6,5 @@ namespace Firehed\PhpLsp\Handler;
 
 interface DocumentFeatureHandler extends HandlerInterface
 {
-    public function method(): string;
+    public static function method(): string;
 }
