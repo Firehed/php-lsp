@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\PrefixSearchable;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -400,6 +401,7 @@ final class FilesystemBackendTest extends TestCase
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
+            self::createStub(PrefixSearchable::class),
         );
 
         self::assertSame(
@@ -454,6 +456,7 @@ final class FilesystemBackendTest extends TestCase
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
+            self::createStub(PrefixSearchable::class),
         );
     }
 

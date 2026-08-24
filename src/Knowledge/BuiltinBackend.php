@@ -34,7 +34,7 @@ final class BuiltinBackend implements SymbolBackend
         private readonly ReflectionSymbolInfoFactory $infoFactory,
         private readonly NamespaceCatalog $namespaces,
         private readonly SymbolCache $cache,
-        private readonly ?PrefixSearchable $prefixSearch = null,
+        private readonly PrefixSearchable $prefixSearch,
     ) {
     }
 
@@ -57,6 +57,6 @@ final class BuiltinBackend implements SymbolBackend
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return $this->prefixSearch?->searchByPrefix($prefix, $kind) ?? [];
+        return $this->prefixSearch->searchByPrefix($prefix, $kind);
     }
 }

@@ -35,6 +35,7 @@ final class BuiltinBackendTest extends TestCase
             new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory()),
             $namespaces,
             new SymbolCache(CacheFactory::inMemory()),
+            self::createStub(PrefixSearchable::class),
         );
     }
 

@@ -53,10 +53,12 @@ final class BuiltinFunctionParityTest extends TestCase
     {
         // Assembled exactly as `KnowledgeStack::forProject` assembles the lowest-
         // precedence backend, so the oracle measures the shipped configuration.
+        $reflectionSource = new ReflectionNamespaceSource();
         $this->backend = new BuiltinBackend(
             new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory()),
-            new CachedNamespaceCatalog(new ReflectionNamespaceSource(), CacheFactory::inMemory()),
+            new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
             new SymbolCache(CacheFactory::inMemory()),
+            $reflectionSource,
         );
     }
 

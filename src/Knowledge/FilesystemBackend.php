@@ -53,7 +53,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
-        private readonly ?PrefixSearchable $prefixSearch = null,
+        private readonly PrefixSearchable $prefixSearch,
     ) {
     }
 
@@ -97,7 +97,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return $this->prefixSearch?->searchByPrefix($prefix, $kind) ?? [];
+        return $this->prefixSearch->searchByPrefix($prefix, $kind);
     }
     /**
      * A declaration at any depth counts, not just a top-level one: the shape most
