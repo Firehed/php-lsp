@@ -9,6 +9,8 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\Symbol;
 
 /**
  * The lowest-precedence {@see SymbolBackend}: the symbols built into PHP and its
@@ -31,6 +33,7 @@ final class BuiltinBackend implements SymbolBackend
         private readonly ReflectionSymbolInfoFactory $infoFactory,
         private readonly NamespaceCatalog $namespaces,
         private readonly SymbolCache $cache,
+        private readonly ?PrefixSearchable $prefixSearch = null,
     ) {
     }
 
@@ -49,10 +52,10 @@ final class BuiltinBackend implements SymbolBackend
     }
 
     /**
-     * @return list<never>
+     * @return list<Symbol>
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return [];
+        return $this->prefixSearch?->searchByPrefix($prefix, $kind) ?? [];
     }
 }

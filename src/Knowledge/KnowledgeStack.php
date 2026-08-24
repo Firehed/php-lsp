@@ -72,14 +72,16 @@ final readonly class KnowledgeStack
             $declarationInfoFactory,
             $scanner,
         );
+        $reflectionSource = new ReflectionNamespaceSource();
         $source = new CompositeSymbolSource([
             $openDocuments,
             $workspace,
             $vendor,
             new BuiltinBackend(
                 new ReflectionSymbolInfoFactory($classInfoFactory),
-                new CachedNamespaceCatalog(new ReflectionNamespaceSource(), CacheFactory::inMemory()),
+                new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
                 new SymbolCache(CacheFactory::inMemory()),
+                $reflectionSource,
             ),
         ]);
 
