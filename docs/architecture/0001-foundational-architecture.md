@@ -554,12 +554,9 @@ Capability confinement (PHPStan disallowed-calls, plus a rule for the reads the 
 A deny set MUST hold every way of spelling its capability, because one unnamed sibling is a door that reports nothing: an alias (`fputs` beside `fwrite`), a second spelling of the same question (`$value::class` beside `get_class()`), or a keyword no call list can name (`require`).
 The layer-dependency contract (deptrac) denies any inter-layer dependency the ruleset does not allow.
 A class in no layer is subject to no edge at all, so layer assignment is itself checked (`deptrac debug:unassigned`) rather than assumed.
-Their baselines freeze pre-existing violations only: the violation total MUST only shrink and MUST reach empty (0002 Step Z), and no violation may be introduced by new code.
-An entry MAY be rewritten when a strangler step relocates the code it froze, so incremental migration is never blocked; a drained entry either routes through the authority or is consciously promoted to the allowlist.
-Adding a rule is the one event that MAY grow a baseline, and only for the violations that rule newly reveals: those are pre-existing violations that were previously unrecorded, not new code.
-A rule MUST NOT be deferred to avoid the growth, because the totals are meaningful only once the rule set is complete — a violation no rule reports is absent from the record rather than frozen in it, and every change landed before the rule escapes the measurement entirely.
-A step that introduces an authority MUST deny that authority's capability in the same step, which is the same prohibition measured from the other end: a rule that follows its authority leaves every use in between unmeasured.
-Draining is subject to the same test. A drained entry MUST name the authority its code now routes through *and* the rule that stops an equivalent violation reappearing; draining while the capability stays undenied empties the record without closing the door, which reaches zero without meaning it.
+Their baselines freeze pre-existing violations only: the violation total MUST only shrink and MUST reach empty (build manifest, last step), and no violation may be introduced by new code.
+An entry MAY be rewritten when a step relocates the code it froze; a drained entry routes through the authority.
+The rule set is frozen at the mechanisms registered in `phpstan.neon` and `deptrac.yaml` until both baselines are deleted; a gap found before then is recorded as an issue, not a rule.
 
     Invariant                         Mechanism
     --------------------------------  ------------------------------------------------
