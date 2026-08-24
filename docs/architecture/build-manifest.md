@@ -5,16 +5,19 @@ One signal: both baseline files are deleted, and the issues named below are clos
 
 ## Rules
 
+- Until every box below is ticked, this list is the only work. Nothing outside it starts unless the human schedules it directly.
 - One step is one PR on branch `step/<n>`.
 - Steps run in order. Step n starts when step n-1 has merged.
 - The PR for a step ticks its own box. A ticked box means merged.
-- The rule set is frozen until the last step lands: no new PHPStan rule, deny entry, deptrac edge, allowlist path, baseline entry, `@phpstan-ignore`, or RFC amendment. Removing any of those is always allowed. A gap found on the way becomes a GitHub issue.
+- The rule set is frozen until both baselines are deleted (step-18): no new PHPStan rule, deny entry, deptrac edge, allowlist path, baseline entry, `@phpstan-ignore`, or RFC amendment. Removing any of those is always allowed. A gap found on the way becomes a GitHub issue.
 - A step's `Done` clause is its whole acceptance. A reviewer checks that clause and nothing else.
 - Background reading is RFC 1 §4 (the invariants). Plan 0002 is history, not work.
 - Regex stays in the files `phpstan.neon` already allows it in. `TextFallbackHelper` is the text branch every positional question calls; it holds regex and nothing else.
+- When step-19 lands, this file and its two driver skills are gone, and work returns to plain issue flow: pick an issue, "do #xxx".
 
 ## Steps
 
+- [ ] **step-0** — Feature-matrix grid, the net for the rewrite behind it: rows are fixture scenarios (file plus cursor marker), columns are the handlers, derived from the handler registry. Each cell asserts that handler's observable or is registered not-applicable against an issue number; an unregistered cell fails, and so does a registration on a cell that answers. Done: the grid runs in `composer test`; adding a handler adds a column with no edit to the test; #445 closed.
 - [ ] **step-1** — `SymbolSource::search(prefix, NameKind)` replaces `searchClassLikes` on `SymbolSource` and `SymbolBackend`; `OpenDocumentBackend` answers for every kind; `ClassCandidates` passes `NameKind::ClassLike`. Done: `searchClassLikes` is gone; every parity golden is unchanged.
 - [ ] **step-2** — `FilesystemBackend` answers `search` for functions and constants from the autoload.files index; `BuiltinBackend` answers it from reflection enumeration. Done: `SymbolCoverageGridTest` registers no `search` cell for `Function_` or `Constant`.
 - [ ] **step-3** — `ReflectionSymbolInfoFactory::classInfo()` answers only where `isInternal()` is true. Done: #429 closed.
@@ -33,3 +36,4 @@ One signal: both baseline files are deleted, and the issues named below are clos
 - [ ] **step-16** — Delete `TextFallbackHelper::extractMembers` and its inheritance walk. `DocumentSymbolSink` keeps a document's previous registration when a new version parses to no declarations, so a file broken mid-edit keeps its members. Done: `TextFallbackHelper` holds only regex text branches; `CompletionHandlerTest::testCompletionThisInVeryBrokenFile` passes with no fallback in `getAccessibleMembers`.
 - [ ] **step-17** — Both `ClassInfo` factories add the implicit `UnitEnum` and `BackedEnum` interfaces; the trait edge carries `insteadof` and `as` adaptations and `MemberResolver` applies them. Done: #423 and #73 closed; `TypeGraphParityTest` has no skipped case.
 - [ ] **step-18** — Route the remaining `new ClassName`, `new PrimitiveType`, and `new UnionType` sites through `TypeFactory`. Delete `phpstan-baseline.neon` and `deptrac.baseline.yaml`; `bin/check-baseline-shrink` fails if either file exists (this edit to `bin/` is authorised here). Done: no baseline file exists; CI is green; #181 closed.
+- [ ] **step-19** — Retire the rebuild. Delete this manifest and the `do-next` and `review-slice` skills (this row authorises the `.claude/` and policy deletions), and drop the manifest read from `SymbolCoverageGridTest` so a blocker must name an issue or an RFC section. Done: this file and both skills are gone; `composer test` is green; work continues as plain issues.
