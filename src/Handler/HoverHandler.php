@@ -18,15 +18,16 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  */
 final class HoverHandler implements DocumentFeatureHandler
 {
-    public function method(): string
-    {
-        return 'textDocument/hover';
-    }
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
         private readonly SessionCapabilitiesProvider $capabilities,
     ) {
+    }
+
+    public function method(): string
+    {
+        return 'textDocument/hover';
     }
 
     public function supports(string $method): bool

@@ -32,10 +32,6 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  */
 final class CompletionHandler implements DocumentFeatureHandler
 {
-    public function method(): string
-    {
-        return 'textDocument/completion';
-    }
     // The widest position is a bare `\`: every root namespace plus every global
     // class-like. Cap the response and report isIncomplete so the client re-queries
     // as the prefix narrows, rather than shipping thousands of items.
@@ -53,6 +49,11 @@ final class CompletionHandler implements DocumentFeatureHandler
         private readonly NamedArgumentCandidates $namedArgumentCandidates,
         private readonly BuiltinTypeCandidates $builtinTypeCandidates,
     ) {
+    }
+
+    public function method(): string
+    {
+        return 'textDocument/completion';
     }
 
     public function supports(string $method): bool

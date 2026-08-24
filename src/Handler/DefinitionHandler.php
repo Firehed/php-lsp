@@ -11,14 +11,15 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
 
 final class DefinitionHandler implements DocumentFeatureHandler
 {
-    public function method(): string
-    {
-        return 'textDocument/definition';
-    }
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
     ) {
+    }
+
+    public function method(): string
+    {
+        return 'textDocument/definition';
     }
 
     public function supports(string $method): bool
