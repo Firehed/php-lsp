@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use ReflectionClass;
 
 /**
@@ -23,14 +24,47 @@ use ReflectionClass;
  * The index is built once, on first use: the set of internal symbols is fixed
  * for the life of the process.
  */
-final class ReflectionNamespaceSource implements NamespaceCatalog
+final class ReflectionNamespaceSource implements NamespaceCatalog, PrefixSearchable
 {
+    /** @var array<string, list<SymbolKind>> */
+    private const array SYMBOL_KINDS = [
+        'Function_' => [SymbolKind::Function_],
+        'Constant' => [SymbolKind::Constant],
+    ];
+
     /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
     private ?array $byNamespace = null;
+
+    /** @var array<string, list<CatalogSymbol>>|null Kind name -> symbols */
+    private ?array $symbolsByKind = null;
 
     public function __construct(
         private readonly InternalConstantSet $constants = new InternalConstantSet(),
     ) {
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    public function searchByPrefix(string $prefix, NameKind $kind): array
+    {
+        $symbolKinds = self::SYMBOL_KINDS[$kind->name] ?? null;
+        if ($symbolKinds === null) {
+            return [];
+        }
+
+        $symbols = [];
+        foreach ($this->symbolsOfKind($kind) as $catalogSymbol) {
+            if (PrefixMatcher::matches($catalogSymbol->shortName(), $prefix)) {
+                $symbols[] = new Symbol(
+                    name: $catalogSymbol->shortName(),
+                    fullyQualifiedName: $catalogSymbol->fullyQualifiedName,
+                    kind: $symbolKinds[0],
+                    location: new Location('', 0, 0, 0, 0),
+                );
+            }
+        }
+        return $symbols;
     }
 
     public function childrenOf(string $namespace): NamespaceContents
@@ -38,6 +72,23 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
         $this->byNamespace ??= NamespaceContents::indexByNamespace($this->internalSymbols());
 
         return $this->byNamespace[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
+    }
+
+    /**
+     * @return list<CatalogSymbol>
+     */
+    private function symbolsOfKind(NameKind $kind): array
+    {
+        if ($this->symbolsByKind === null) {
+            $this->symbolsByKind = [];
+            foreach (NameKind::cases() as $k) {
+                $this->symbolsByKind[$k->name] = [];
+            }
+            foreach ($this->internalSymbols() as $symbol) {
+                $this->symbolsByKind[$symbol->kind->name][] = $symbol;
+            }
+        }
+        return $this->symbolsByKind[$kind->name] ?? [];
     }
 
     /**
