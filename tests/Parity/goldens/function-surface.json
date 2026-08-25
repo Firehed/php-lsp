@@ -55,13 +55,15 @@
     "builtin|str_contains": [
         {
             "label": "str_contains",
-            "kind": 3
+            "kind": 3,
+            "detail": "function str_contains(string $haystack, string $needle): bool"
         }
     ],
     "builtin|str_contains+snippet": [
         {
             "label": "str_contains",
             "kind": 3,
+            "detail": "function str_contains(string $haystack, string $needle): bool",
             "insertText": "str_contains($0)",
             "insertTextFormat": 2
         }
@@ -69,9 +71,23 @@
     "builtin|array_map": [
         {
             "label": "array_map",
-            "kind": 3
+            "kind": 3,
+            "detail": "function array_map(?callable $callback, array $array, array ...$arrays): array"
         }
     ],
-    "other-document|calc": [],
+    "other-document|calc": [
+        {
+            "label": "calculateSum",
+            "kind": 3,
+            "detail": "function calculateSum(int $a, int $b): int",
+            "documentation": "Adds two numbers."
+        },
+        {
+            "label": "calculateProduct",
+            "kind": 3,
+            "detail": "function calculateProduct(int $a, int $b): int",
+            "documentation": "Multiplies two numbers."
+        }
+    ],
     "no-match|zzzz": []
 }
