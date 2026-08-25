@@ -6,6 +6,7 @@ namespace Fixtures\Hover;
 
 use ArrayObject;
 use Exception;
+use function Fixtures\Helpers\helperFormat;
 
 class BuiltinUsage
 {
@@ -18,6 +19,11 @@ class BuiltinUsage
     public function triggerBuiltinClassMethod(ArrayObject $obj): void
     {
         $obj->getArrayCopy(); //hover:builtin_class_method
+    }
+
+    public function triggerImportedFunction(): void
+    {
+        helperFormat('test'); //hover:imported_function
     }
 
     public function triggerBuiltinClassProperty(Exception $e): void

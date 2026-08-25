@@ -148,6 +148,22 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('signatureHelpAdd', $result->format());
     }
 
+    public function testResolvesImportedFunctionCall(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/BuiltinUsage.php', 'imported_function');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedFunction::class,
+            $result,
+            'A use-function import should resolve via lookupFunction',
+        );
+        self::assertStringContainsString('helperFormat', $result->format());
+    }
+
     public function testResolvesBuiltinFunctionCall(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'builtin_strlen');
