@@ -43,15 +43,14 @@ final readonly class ReflectionSymbolInfoFactory
     {
         $fqn = $name->fullyQualifiedName();
 
-        // These also narrow the name to a `class-string`, which is why this kind
-        // cannot use the sibling's try/catch. All three are needed: `class_exists`
-        // answers for classes and enums only. Each autoloads exactly as
-        // constructing the reflection would.
+        // All three probes narrow the name to a `class-string`, which is why
+        // this kind cannot use the sibling's try/catch.
         if (!class_exists($fqn) && !interface_exists($fqn) && !trait_exists($fqn)) {
             return null;
         }
 
-        return $this->classes->fromReflection(new ReflectionClass($fqn));
+        $rc = new ReflectionClass($fqn);
+        return $rc->isInternal() ? $this->classes->fromReflection($rc) : null;
     }
 
     private function constantInfo(QualifiedName $name): ?SymbolInfo

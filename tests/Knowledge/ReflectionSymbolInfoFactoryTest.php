@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Knowledge\ReflectionSymbolInfoFactory;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Resolution\ResolvesFromInfo;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -36,10 +35,9 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
         yield 'class' => [\ArrayObject::class];
         yield 'interface' => [\Countable::class];
         yield 'enum' => [\Random\IntervalBoundary::class];
-        // PHP declares no internal trait, so the only probe for the fourth flavour is
-        // one the server process loaded — which this branch answers for because it is
-        // unfiltered. #429 filters it to internal, after which this case goes with it.
-        yield 'trait' => [ResolvesFromInfo::class];
+        // PHP has no built-in traits as of 8.5; if a future version adds one,
+        // it should be added here.
+        // yield 'trait' => [...];
     }
 
     #[DataProvider('loadedClassLikes')]
@@ -61,13 +59,19 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
 
     public function testIgnoresFunctionsOnlyTheServerHasLoaded(): void
     {
-        // Enumeration is filtered to internal, so a broader lookup would resolve a
-        // name completion never offers (RFC 1 §4.2).
         require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
 
         self::assertNull(
             $this->build('testDocumentedFunction', NameKind::Function_),
             'a userland function loaded in the server process is not a built-in',
+        );
+    }
+
+    public function testIgnoresClassLikesOnlyTheServerHasLoaded(): void
+    {
+        self::assertNull(
+            $this->build(self::class, NameKind::ClassLike),
+            'a userland class loaded in the server process is not a built-in',
         );
     }
 
