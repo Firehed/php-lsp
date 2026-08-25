@@ -35,6 +35,9 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
         yield 'class' => [\ArrayObject::class];
         yield 'interface' => [\Countable::class];
         yield 'enum' => [\Random\IntervalBoundary::class];
+        // PHP has no built-in traits as of 8.5; if a future version adds one,
+        // it should be added here.
+        // yield 'trait' => [...];
     }
 
     #[DataProvider('loadedClassLikes')]
