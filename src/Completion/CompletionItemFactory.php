@@ -85,17 +85,6 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forBuiltinFunction(string $name, bool $snippetSupport = false): array
-    {
-        return self::withCallableSnippet([
-            'label' => $name,
-            'kind' => CompletionItemKind::Function->value,
-        ], $snippetSupport);
-    }
-
-    /**
-     * @return CompletionItem
-     */
     public static function forClass(
         string $reference,
         string $fullyQualifiedName,

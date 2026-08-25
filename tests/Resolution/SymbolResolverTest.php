@@ -7,10 +7,8 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedClass;
@@ -21,7 +19,6 @@ use Firehed\PhpLsp\Resolution\ResolvedGlobalConstant;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -66,15 +63,13 @@ final class SymbolResolverTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
+        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
             typeResolver: $typeResolver,
-            functionRepository: new DefaultFunctionRepository(new DeclarationScanner()),
-            declarationScanner: new DeclarationScanner(),
         );
 
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
@@ -151,6 +146,42 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(ResolvedFunction::class, $result);
         self::assertStringContainsString('signatureHelpAdd', $result->format());
+    }
+
+    public function testResolvesImportedFunctionCall(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/BuiltinUsage.php', 'imported_function');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(
+            ResolvedFunction::class,
+            $result,
+            'A use-function import should resolve via lookupFunction',
+        );
+        self::assertStringContainsString('helperFormat', $result->format());
+    }
+
+    public function testGetCallContextForImportedFunction(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Hover/BuiltinUsage.php', 'imported_function_sig');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext(
+            $document,
+            $cursor['line'],
+            $cursor['character'],
+        );
+
+        self::assertInstanceOf(
+            CallContext::class,
+            $context,
+            'A use-function import should resolve in call context',
+        );
+        self::assertStringContainsString('helperFormat', $context->callable->format());
     }
 
     public function testResolvesBuiltinFunctionCall(): void
@@ -2675,41 +2706,5 @@ final class SymbolResolverTest extends TestCase
         $context = $this->resolver->getNameContext($document, 0);
 
         self::assertSame('', $context->namespace, 'A file with no namespace declaration is global');
-    }
-
-    public function testGetFileFunctionsFindsNamespacedFunctions(): void
-    {
-        $uri = $this->openFixture('src/Completion/FunctionCompletion.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $names = array_map(
-            static fn(FunctionInfo $fn): string => $fn->name,
-            $this->resolver->getFileFunctions($document),
-        );
-
-        self::assertContains('calculateSum', $names, 'Functions inside a namespace should be found');
-        self::assertContains('getConfig', $names, 'Functions inside a namespace should be found');
-    }
-
-    public function testGetFileFunctionsFindsDeclarationsAtAnyDepth(): void
-    {
-        $uri = $this->openFixture('FunctionCompletion.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        $names = array_map(
-            static fn(FunctionInfo $fn): string => $fn->name,
-            $this->resolver->getFileFunctions($document),
-        );
-
-        // The on-disk backends and the open-document write path both resolve a
-        // declaration at any depth, so a top-level-only walk here made a polyfill
-        // resolve on hover while being invisible to completion (RFC 1 §4.2).
-        self::assertContains(
-            'calculateProduct',
-            $names,
-            'a function declared inside a function_exists guard is still declared by the file',
-        );
     }
 }

@@ -8,8 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
-use Firehed\PhpLsp\Repository\FunctionRepository;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\ClassNameUsageLocation;
 use PHPStan\Testing\PHPStanTestCase;
@@ -94,8 +92,7 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
 
     /**
      * References that §4.2 permits: any confined collaborator from a backend package,
-     * the composition root, or the test namespace; and the two function-path names from
-     * anywhere while Step 3 is pending; and any non-confined class.
+     * the composition root, or the test namespace; and any non-confined class.
      *
      * @return iterable<string, array{class-string, ?string}>
      *
@@ -109,11 +106,6 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
         yield 'reflection from the Repository backend' => [ReflectionClass::class, 'Firehed\PhpLsp\Repository'];
         yield 'symbol index from the composition root' => [SymbolIndex::class, 'Firehed\PhpLsp'];
         yield 'reflection from the test namespace' => [ReflectionClass::class, 'Firehed\PhpLsp\Tests\Example'];
-        yield 'function repository from a consumer' => [FunctionRepository::class, 'Firehed\PhpLsp\Resolution'];
-        yield 'default function repository from a consumer' => [
-            DefaultFunctionRepository::class,
-            'Firehed\PhpLsp\TypeInference',
-        ];
         yield 'non-confined class from a consumer' => [TextDocument::class, 'Firehed\PhpLsp\Completion'];
     }
 

@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -128,14 +127,4 @@ interface CodeResolver
      * Used by: Completion
      */
     public function getNameContext(TextDocument $document, int $line): NameContext;
-
-    /**
-     * Get the user-defined functions declared in a document, at any depth: a
-     * `function_exists`-guarded polyfill is a name the file declares, and the
-     * backends resolve one, so enumeration must not narrow to top level.
-     * Used by: Completion
-     *
-     * @return list<FunctionInfo>
-     */
-    public function getFileFunctions(TextDocument $document): array;
 }

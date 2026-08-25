@@ -7,8 +7,6 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
-use Firehed\PhpLsp\Repository\FunctionRepository;
 use PHPStan\Analyser\Scope;
 use PHPStan\Reflection\ClassReflection;
 use PHPStan\Rules\ClassNameUsageLocation;
@@ -39,10 +37,10 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
 {
     /**
      * The symbol-discovery collaborators §4.2 confines to a backend: a concrete index,
-     * autoload map, the function repository (the un-migrated function path, exempted
-     * below until Step 3b), and reflection (`ReflectionClass` is a global class, so it
+     * autoload map, and reflection (`ReflectionClass` is a global class, so it
      * has no namespace prefix). Class-like lookup is now served entirely by the
-     * {@see \Firehed\PhpLsp\Knowledge\SymbolBackend}s, so `ClassRepository` is gone.
+     * {@see \Firehed\PhpLsp\Knowledge\SymbolBackend}s, so `ClassRepository` is gone;
+     * function lookup flows through `SymbolSource::lookupFunction`.
      *
      * Adding an entry tightens. Removing one loosens (human only). See
      * docs/architecture/enforcement-edits.md.
@@ -53,25 +51,7 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
         ComposerAutoloadMap::class,
         NamespaceCatalog::class,
         SymbolIndex::class,
-        DefaultFunctionRepository::class,
-        FunctionRepository::class,
         ReflectionClass::class,
-    ];
-
-    /**
-     * The function/constant path is still served by `FunctionRepository` until Step 3
-     * gives `lookupFunction` / `lookupConstant` real project reach (Plan 0002 §5.5,
-     * §5.7). This is a temporary exemption, REMOVED in Step 3 — not a permanent
-     * carve-out — so the two names sit in the confined set above and are exempted here
-     * rather than simply omitted.
-     *
-     * Adding an entry loosens (human only). Removing one tightens.
-     *
-     * @var list<class-string>
-     */
-    private const array FUNCTION_PATH_EXEMPTION = [
-        DefaultFunctionRepository::class,
-        FunctionRepository::class,
     ];
 
     /**
@@ -106,9 +86,6 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
     ): ?RestrictedUsage {
         $name = $classReflection->getName();
         if (!in_array($name, self::CONFINED_COLLABORATORS, true)) {
-            return null;
-        }
-        if (in_array($name, self::FUNCTION_PATH_EXEMPTION, true)) {
             return null;
         }
         if ($this->isBackendNamespace($scope->getNamespace())) {

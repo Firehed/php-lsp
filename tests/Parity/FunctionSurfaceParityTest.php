@@ -9,14 +9,11 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Knowledge\SymbolSink;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
-use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -67,7 +64,8 @@ final class FunctionSurfaceParityTest extends TestCase
     private const string DOCUMENT_WITHOUT_FUNCTIONS = 'src/Domain/User.php';
 
     private string $fixturesRoot;
-    private SymbolResolver $resolver;
+    private SymbolSource $symbolSource;
+    private SymbolSink $sink;
 
     protected function setUp(): void
     {
@@ -80,16 +78,9 @@ final class FunctionSurfaceParityTest extends TestCase
             $parser,
             new SymbolIndex(),
         );
-        $memberResolver = new MemberResolver($knowledge->source);
 
-        $this->resolver = new SymbolResolver(
-            $parser,
-            $knowledge->source,
-            $memberResolver,
-            new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner())),
-            new DefaultFunctionRepository(new DeclarationScanner()),
-            new DeclarationScanner(),
-        );
+        $this->symbolSource = $knowledge->source;
+        $this->sink = $knowledge->sink;
     }
 
     public function testFunctionCompletionMatchesGolden(): void
@@ -170,7 +161,7 @@ final class FunctionSurfaceParityTest extends TestCase
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
 
-        return new FunctionCandidates($this->resolver, $capabilities);
+        return new FunctionCandidates($this->symbolSource, $capabilities);
     }
 
     private function document(string $relativePath): TextDocument
@@ -179,6 +170,8 @@ final class FunctionSurfaceParityTest extends TestCase
         $content = file_get_contents($path);
         self::assertNotFalse($content, "fixture document should be readable: {$relativePath}");
 
-        return new TextDocument('file://' . $path, 'php', 0, $content);
+        $doc = new TextDocument('file://' . $path, 'php', 0, $content);
+        $this->sink->openDocument($doc);
+        return $doc;
     }
 }

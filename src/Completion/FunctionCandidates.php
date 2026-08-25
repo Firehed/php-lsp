@@ -6,20 +6,21 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Knowledge\SymbolSource;
 
 /**
- * Produces function completion items: user-defined functions declared in the
- * document (read through {@see CodeResolver}, so parser-agnostic) followed by
- * built-in PHP functions.
+ * Produces function completion items from the symbol backends: open documents,
+ * autoload.files, and PHP built-ins.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
 final class FunctionCandidates
 {
     public function __construct(
-        private readonly CodeResolver $codeResolver,
+        private readonly SymbolSource $symbolSource,
         private readonly SessionCapabilitiesProvider $capabilities,
     ) {
     }
@@ -33,20 +34,18 @@ final class FunctionCandidates
 
         $items = [];
 
-        foreach ($this->codeResolver->getFileFunctions($document) as $function) {
-            if (PrefixMatcher::matches($function->name, $prefix)) {
-                $items[] = CompletionItemFactory::forFunction($function, $snippetSupport);
+        foreach ($this->symbolSource->search($prefix, NameKind::Function_) as $symbol) {
+            $funcInfo = $this->symbolSource->lookupFunction(
+                FunctionName::fromFullyQualified($symbol->fullyQualifiedName),
+            );
+            if ($funcInfo === null) {
+                // @codeCoverageIgnoreStart
+                throw new \LogicException("search found {$symbol->fullyQualifiedName} but lookupFunction did not");
+                // @codeCoverageIgnoreEnd
             }
+            $items[] = CompletionItemFactory::forFunction($funcInfo, $snippetSupport);
         }
 
-        foreach (get_defined_functions()['internal'] as $name) {
-            if (PrefixMatcher::matches($name, $prefix)) {
-                $items[] = CompletionItemFactory::forBuiltinFunction($name, $snippetSupport);
-            }
-        }
-
-        // Capping happens centrally in the handler, after ranking across all
-        // sources — not here in arbitrary source order.
         return $items;
     }
 }

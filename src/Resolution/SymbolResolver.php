@@ -8,12 +8,9 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\Declaration;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\NodeAtPosition;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\FunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Domain\ClassKind;
@@ -30,7 +27,7 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\MethodCall;
-use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\Closure;
@@ -83,8 +80,6 @@ final class SymbolResolver implements CodeResolver
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TypeResolverInterface $typeResolver,
-        private readonly FunctionRepository $functionRepository,
-        private readonly DeclarationScanner $declarationScanner,
     ) {
         $this->textFallback = new TextFallbackHelper($memberResolver);
     }
@@ -656,24 +651,6 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * @return list<FunctionInfo>
-     */
-    public function getFileFunctions(TextDocument $document): array
-    {
-        $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('Parser returned null');
-            // @codeCoverageIgnoreEnd
-        }
-
-        return array_map(
-            static fn(Declaration $declaration): FunctionInfo => FunctionInfo::fromNode($declaration->node),
-            $this->declarationScanner->scan($ast)->functions,
-        );
-    }
-
-    /**
      * @param array<Stmt> $ast
      * @return array{
      *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
@@ -875,7 +852,7 @@ final class SymbolResolver implements CodeResolver
             $funcName = $m[1];
             $keywords = ['if', 'while', 'for', 'foreach', 'switch', 'catch', 'array', 'list'];
             if (!in_array(strtolower($funcName), $keywords, true)) {
-                return new FuncCall(new Name($funcName));
+                return new FuncCall(new Name($funcName, ['startLine' => $line + 1]));
             }
         }
 
@@ -1055,7 +1032,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return $this->resolveFunctionByName($name->toString(), $ast);
+        return $this->resolveFunctionByName($name, $ast);
     }
 
     /**
@@ -1427,7 +1404,7 @@ final class SymbolResolver implements CodeResolver
      */
     private function resolveFunctionCall(Name $node, array $ast): ?ResolvedFunction
     {
-        return $this->resolveFunctionByName($node->toString(), $ast);
+        return $this->resolveFunctionByName($node, $ast);
     }
 
     private function resolveConstFetch(Name $node): ?ResolvedGlobalConstant
@@ -1444,14 +1421,35 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveFunctionByName(string $functionName, array $ast): ?ResolvedFunction
+    private function resolveFunctionByName(Name $name, array $ast): ?ResolvedFunction
     {
-        $funcInfo = $this->functionRepository->get($functionName, $ast);
-        if ($funcInfo === null) {
-            return null;
+        $shortName = $name->toString();
+        $line = $name->getStartLine() - 1;
+        $context = NameContextFactory::fromAst($ast, $line);
+
+        $imported = $context->functionImports[$shortName] ?? null;
+        if ($imported !== null) {
+            $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($imported));
+            if ($funcInfo !== null) {
+                return new ResolvedFunction($funcInfo);
+            }
         }
 
-        return new ResolvedFunction($funcInfo);
+        if ($context->namespace !== '') {
+            $funcInfo = $this->symbolSource->lookupFunction(
+                FunctionName::fromFullyQualified($context->namespace . '\\' . $shortName),
+            );
+            if ($funcInfo !== null) {
+                return new ResolvedFunction($funcInfo);
+            }
+        }
+
+        $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($shortName));
+        if ($funcInfo !== null) {
+            return new ResolvedFunction($funcInfo);
+        }
+
+        return null;
     }
 
     /**

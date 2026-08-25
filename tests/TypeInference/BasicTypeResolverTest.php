@@ -13,11 +13,10 @@ use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Throwable;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -34,21 +33,21 @@ class BasicTypeResolverTest extends TestCase
     use LoadsFixturesTrait;
 
     private BasicTypeResolver $resolver;
+    private Knowledge\SymbolSink $sink;
 
     protected function setUp(): void
     {
-        // No autoload map: referenced-but-unopened classes resolve through the
-        // built-in reflection backend, as they did under the prior stub locator.
         $knowledge = KnowledgeStack::forProject(
             new ComposerAutoloadMap(),
             __DIR__ . '/../Fixtures/vendor',
             new ParserService(),
         );
         $memberResolver = new MemberResolver($knowledge->source);
+        $this->sink = $knowledge->sink;
 
         $this->resolver = new BasicTypeResolver(
             $memberResolver,
-            new DefaultFunctionRepository(new DeclarationScanner()),
+            $knowledge->source->lookupFunction(...),
         );
     }
 
@@ -510,7 +509,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveNamespacedFunctionReturnType(): void
     {
-        $ast = $this->parseFixture('src/TypeInference/FunctionTypes.php');
+        $ast = $this->openAndParseFixture('src/TypeInference/FunctionTypes.php');
         $function = $this->findFunctionByName($ast, 'testNamespacedFunction');
         $finder = new \PhpParser\NodeFinder();
         $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
@@ -524,7 +523,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveVariableFromNamespacedFunctionCall(): void
     {
-        $ast = $this->parseFixture('src/TypeInference/FunctionTypes.php');
+        $ast = $this->openAndParseFixture('src/TypeInference/FunctionTypes.php');
         $function = $this->findFunctionByName($ast, 'testNamespacedFunctionUsage');
 
         $type = $this->resolver->resolveVariableType(
@@ -554,7 +553,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveTopLevelFunctionReturnType(): void
     {
-        $ast = $this->parseFixture('TypeInference/GlobalFunction.php');
+        $ast = $this->openAndParseFixture('TypeInference/GlobalFunction.php');
         $function = $this->findFunctionByName($ast, 'testGlobalFunction');
         $finder = new \PhpParser\NodeFinder();
         $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
@@ -572,7 +571,7 @@ class BasicTypeResolverTest extends TestCase
         string $functionName,
         string $expectedFqn,
     ): void {
-        $ast = $this->parseFixture($fixturePath);
+        $ast = $this->openAndParseFixture($fixturePath);
         $function = $this->findFunctionByName($ast, $functionName);
         $finder = new \PhpParser\NodeFinder();
         $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
@@ -605,7 +604,7 @@ class BasicTypeResolverTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('useFunctionImportProvider')]
     public function testResolveUseFunctionImport(string $methodName, string $expectedFqn): void
     {
-        $ast = $this->parseFixture('src/TypeInference/UseFunctionImport.php');
+        $ast = $this->openAndParseFixture('src/TypeInference/UseFunctionImport.php');
         $method = $this->findMethodByName($ast, $methodName);
         $finder = new \PhpParser\NodeFinder();
         $funcCall = $finder->findFirstInstanceOf($method, Expr\FuncCall::class);
@@ -639,7 +638,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveImportedFunctionUsesFullyQualifiedName(): void
     {
-        $ast = $this->parseFixture('src/TypeInference/UseFunctionImport.php');
+        $ast = $this->openAndParseFixture('src/TypeInference/UseFunctionImport.php');
         $method = $this->findMethodByName($ast, 'testImportedShadowsLocal');
         $finder = new \PhpParser\NodeFinder();
         $funcCall = $finder->findFirstInstanceOf($method, Expr\FuncCall::class);
@@ -661,7 +660,7 @@ class BasicTypeResolverTest extends TestCase
 
     public function testResolveFunctionWithResolvedNameAttribute(): void
     {
-        $ast = $this->parseFixture('src/TypeInference/MultiNamespaceFunction.php');
+        $ast = $this->openAndParseFixture('src/TypeInference/MultiNamespaceFunction.php');
         $function = $this->findFunctionByName($ast, 'testNamespaceBFunction');
         $finder = new \PhpParser\NodeFinder();
         $funcCall = $finder->findFirstInstanceOf($function, Expr\FuncCall::class);
@@ -710,6 +709,17 @@ class BasicTypeResolverTest extends TestCase
             }
         }
         throw new \RuntimeException("Could not find function $name");
+    }
+
+    /**
+     * @return array<Stmt>
+     */
+    private function openAndParseFixture(string $fixturePath): array
+    {
+        $fullPath = $this->fixturePath($fixturePath);
+        $content = $this->loadFixture($fixturePath);
+        $this->sink->openDocument(new TextDocument('file://' . $fullPath, 'php', 0, $content));
+        return $this->parse($content);
     }
 
     /**
@@ -945,6 +955,6 @@ class BasicTypeResolverTest extends TestCase
         );
         $memberResolver = new MemberResolver($knowledge->source);
 
-        return new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
+        return new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
     }
 }

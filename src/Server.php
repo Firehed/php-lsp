@@ -25,10 +25,8 @@ use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -101,17 +99,14 @@ final class Server
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;
 
-        $functionRepository = new DefaultFunctionRepository(new DeclarationScanner());
         $memberResolver = new MemberResolver($symbolSource);
-        $typeResolver = new BasicTypeResolver($memberResolver, $functionRepository);
+        $typeResolver = new BasicTypeResolver($memberResolver, $symbolSource->lookupFunction(...));
 
         $symbolResolver = new SymbolResolver(
             $parser,
             $symbolSource,
             $memberResolver,
             $typeResolver,
-            $functionRepository,
-            new DeclarationScanner(),
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);
@@ -150,7 +145,7 @@ final class Server
                     $symbolResolver,
                     $negotiator,
                 ),
-                new FunctionCandidates($symbolResolver, $negotiator),
+                new FunctionCandidates($symbolSource, $negotiator),
                 new KeywordCandidates(),
                 new VariableCandidates($symbolResolver),
                 new MemberCandidates($symbolResolver, $negotiator),
