@@ -70,7 +70,7 @@ final class ReflectionNamespaceSource implements NamespaceCatalog, PrefixSearcha
                 $this->symbolsByKind[$symbol->kind->name][] = $symbol;
             }
         }
-        return $this->symbolsByKind[$kind->name] ?? [];
+        return $this->symbolsByKind[$kind->name];
     }
 
     /**

@@ -105,16 +105,14 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Pre
     public function searchByPrefix(string $prefix, NameKind $kind): array
     {
         return PrefixSearch::filter(
-            $this->declarationsByKind[$kind->name] ?? [],
+            $this->declarationsByKind[$kind->name],
             $prefix,
             $kind,
             function (CatalogSymbol $symbol) use ($kind): Location {
                 $filePath = $this->index[$kind->name][$kind->normalize(
                     QualifiedName::fromFullyQualified($symbol->fullyQualifiedName),
-                )] ?? null;
-                return $filePath !== null
-                    ? new Location(FileUri::fromPath($filePath), 0, 0, 0, 0)
-                    : new Location('', 0, 0, 0, 0);
+                )];
+                return new Location(FileUri::fromPath($filePath), 0, 0, 0, 0);
             },
         );
     }
