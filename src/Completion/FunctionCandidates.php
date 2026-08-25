@@ -38,11 +38,12 @@ final class FunctionCandidates
             $funcInfo = $this->symbolSource->lookupFunction(
                 FunctionName::fromFullyQualified($symbol->fullyQualifiedName),
             );
-            if ($funcInfo !== null) {
-                $items[] = CompletionItemFactory::forFunction($funcInfo, $snippetSupport);
-            } else {
-                $items[] = CompletionItemFactory::forBuiltinFunction($symbol->name, $snippetSupport);
+            if ($funcInfo === null) {
+                // @codeCoverageIgnoreStart
+                throw new \LogicException("search found {$symbol->fullyQualifiedName} but lookupFunction did not");
+                // @codeCoverageIgnoreEnd
             }
+            $items[] = CompletionItemFactory::forFunction($funcInfo, $snippetSupport);
         }
 
         return $items;
