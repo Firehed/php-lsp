@@ -19,12 +19,6 @@ parameters:
 			path: src/Completion/CompletionItemFactory.php
 
 		-
-			message: '#^Calling get_defined_functions\(\) is forbidden, asking the runtime what it has loaded is enumeration, confined to ReflectionNamespaceSource\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Completion/FunctionCandidates.php
-
-		-
 			message: '#^\=\=\= on MemberAccessKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
 			identifier: phpLsp.kindInspection
 			count: 2
@@ -113,24 +107,6 @@ parameters:
 			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Repository/DefaultClassInfoFactory.php
-
-		-
-			message: '#^Class ReflectionFunction is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
-			identifier: disallowed.class
-			count: 1
-			path: src/Repository/DefaultFunctionRepository.php
-
-		-
-			message: '#^Namespace ReflectionException is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionException matches Reflection\*\]$#'
-			identifier: disallowed.namespace
-			count: 1
-			path: src/Repository/DefaultFunctionRepository.php
-
-		-
-			message: '#^Namespace ReflectionFunction is forbidden, runtime reflection is confined\: ReflectionNamespaceSource and the fromReflection factories\. \[ReflectionFunction matches Reflection\*\]$#'
-			identifier: disallowed.namespace
-			count: 1
-			path: src/Repository/DefaultFunctionRepository.php
 
 		-
 			message: '#^\=\=\= on ClassKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
