@@ -61,13 +61,19 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
 
     public function testIgnoresFunctionsOnlyTheServerHasLoaded(): void
     {
-        // Enumeration is filtered to internal, so a broader lookup would resolve a
-        // name completion never offers (RFC 1 §4.2).
         require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
 
         self::assertNull(
             $this->build('testDocumentedFunction', NameKind::Function_),
             'a userland function loaded in the server process is not a built-in',
+        );
+    }
+
+    public function testIgnoresClassLikesOnlyTheServerHasLoaded(): void
+    {
+        self::assertNull(
+            $this->build(self::class, NameKind::ClassLike),
+            'a userland class loaded in the server process is not a built-in',
         );
     }
 
