@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\TypeInference;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\FunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -32,9 +33,12 @@ use PhpParser\NodeVisitorAbstract;
  */
 final class BasicTypeResolver implements TypeResolverInterface
 {
+    /**
+     * @param \Closure(FunctionName): ?FunctionInfo $lookupFunction
+     */
     public function __construct(
         private readonly MemberResolver $memberResolver,
-        private readonly FunctionRepository $functionRepository,
+        private readonly \Closure $lookupFunction,
     ) {
     }
     public function resolveExpressionType(
@@ -102,7 +106,7 @@ final class BasicTypeResolver implements TypeResolverInterface
         // Function call: functionName()
         if ($expr instanceof Expr\FuncCall) {
             if ($expr->name instanceof Node\Name) {
-                return $this->getFunctionReturnType($expr->name, $ast);
+                return $this->getFunctionReturnType($expr->name);
             }
             return null;
         }
@@ -265,16 +269,10 @@ final class BasicTypeResolver implements TypeResolverInterface
         return $propertyInfo?->type;
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function getFunctionReturnType(Node\Name $functionName, array $ast): ?Type
+    private function getFunctionReturnType(Node\Name $functionName): ?Type
     {
         $shortName = $functionName->toString();
 
-        // Candidates follow PHP's name resolution: an explicit resolved FQN, then
-        // the enclosing namespace, then the global fallback. FunctionRepository
-        // handles both the user-defined lookup and the built-in reflection fallback.
         $candidates = [];
 
         $resolvedName = $functionName->getAttribute('resolvedName');
@@ -290,9 +288,9 @@ final class BasicTypeResolver implements TypeResolverInterface
         $candidates[] = $shortName;
 
         foreach ($candidates as $candidate) {
-            $function = $this->functionRepository->get($candidate, $ast);
-            if ($function !== null) {
-                return $function->returnType;
+            $funcInfo = ($this->lookupFunction)(FunctionName::fromFullyQualified($candidate));
+            if ($funcInfo !== null) {
+                return $funcInfo->returnType;
             }
         }
 

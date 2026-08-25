@@ -14,9 +14,7 @@ use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -47,14 +45,12 @@ class HoverHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
+        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
             $typeResolver,
-            new DefaultFunctionRepository(new DeclarationScanner()),
-            new DeclarationScanner(),
         );
         // The default markup kind is plaintext (the pre-initialize default a
         // minimal client is served); the fenced-markdown path is exercised

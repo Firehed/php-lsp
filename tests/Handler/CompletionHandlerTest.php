@@ -28,7 +28,6 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\Location;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
@@ -40,7 +39,6 @@ use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -88,14 +86,12 @@ class CompletionHandlerTest extends TestCase
         $this->symbolSource = $knowledge->source;
 
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, new DefaultFunctionRepository(new DeclarationScanner()));
+        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
             $typeResolver,
-            new DefaultFunctionRepository(new DeclarationScanner()),
-            new DeclarationScanner(),
         );
         $this->handler = $this->makeHandler($this->symbolSource);
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
@@ -112,7 +108,7 @@ class CompletionHandlerTest extends TestCase
             $this->symbolResolver,
             new ClassCandidates($symbolSource, $this->symbolResolver, $capabilities),
             new NamespaceCandidates($symbolSource, $this->symbolResolver, $capabilities),
-            new FunctionCandidates($this->symbolResolver, $capabilities),
+            new FunctionCandidates($this->symbolSource, $capabilities),
             new KeywordCandidates(),
             new VariableCandidates($this->symbolResolver),
             new MemberCandidates($this->symbolResolver, $capabilities),

@@ -22,11 +22,9 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\Repository\DefaultFunctionRepository;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -92,16 +90,13 @@ final class FeatureMatrixTest extends TestCase
         );
 
         $memberResolver = new MemberResolver($knowledge->source);
-        $functionRepo = new DefaultFunctionRepository(new DeclarationScanner());
-        $typeResolver = new BasicTypeResolver($memberResolver, $functionRepo);
+        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
 
         $symbolResolver = new SymbolResolver(
             $parser,
             $knowledge->source,
             $memberResolver,
             $typeResolver,
-            $functionRepo,
-            new DeclarationScanner(),
         );
 
         $capabilities = self::createStub(SessionCapabilitiesProvider::class);
@@ -117,7 +112,7 @@ final class FeatureMatrixTest extends TestCase
                 $symbolResolver,
                 new ClassCandidates($knowledge->source, $symbolResolver, $capabilities),
                 new NamespaceCandidates($knowledge->source, $symbolResolver, $capabilities),
-                new FunctionCandidates($symbolResolver, $capabilities),
+                new FunctionCandidates($knowledge->source, $capabilities),
                 new KeywordCandidates(),
                 new VariableCandidates($symbolResolver),
                 new MemberCandidates($symbolResolver, $capabilities),
