@@ -23,14 +23,30 @@ use ReflectionClass;
  * The index is built once, on first use: the set of internal symbols is fixed
  * for the life of the process.
  */
-final class ReflectionNamespaceSource implements NamespaceCatalog
+final class ReflectionNamespaceSource implements NamespaceCatalog, PrefixSearchable
 {
     /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
     private ?array $byNamespace = null;
 
+    /** @var array<string, list<CatalogSymbol>>|null Kind name -> symbols */
+    private ?array $symbolsByKind = null;
+
     public function __construct(
         private readonly InternalConstantSet $constants = new InternalConstantSet(),
     ) {
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    public function searchByPrefix(string $prefix, NameKind $kind): array
+    {
+        return PrefixSearch::filter(
+            $this->symbolsOfKind($kind),
+            $prefix,
+            $kind,
+            static fn(): Location => new Location('', 0, 0, 0, 0),
+        );
     }
 
     public function childrenOf(string $namespace): NamespaceContents
@@ -38,6 +54,23 @@ final class ReflectionNamespaceSource implements NamespaceCatalog
         $this->byNamespace ??= NamespaceContents::indexByNamespace($this->internalSymbols());
 
         return $this->byNamespace[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
+    }
+
+    /**
+     * @return list<CatalogSymbol>
+     */
+    private function symbolsOfKind(NameKind $kind): array
+    {
+        if ($this->symbolsByKind === null) {
+            $this->symbolsByKind = [];
+            foreach (NameKind::cases() as $k) {
+                $this->symbolsByKind[$k->name] = [];
+            }
+            foreach ($this->internalSymbols() as $symbol) {
+                $this->symbolsByKind[$symbol->kind->name][] = $symbol;
+            }
+        }
+        return $this->symbolsByKind[$kind->name];
     }
 
     /**

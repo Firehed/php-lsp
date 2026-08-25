@@ -72,14 +72,19 @@ final readonly class KnowledgeStack
             $declarationInfoFactory,
             $scanner,
         );
+        // ReflectionNamespaceSource serves both enumeration (cached, via
+        // NamespaceCatalog) and prefix search (uncached, via PrefixSearchable).
+        // Both must draw on the same source so coverage is identical (§4.2).
+        $reflectionSource = new ReflectionNamespaceSource();
         $source = new CompositeSymbolSource([
             $openDocuments,
             $workspace,
             $vendor,
             new BuiltinBackend(
                 new ReflectionSymbolInfoFactory($classInfoFactory),
-                new CachedNamespaceCatalog(new ReflectionNamespaceSource(), CacheFactory::inMemory()),
+                new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
                 new SymbolCache(CacheFactory::inMemory()),
+                $reflectionSource,
             ),
         ]);
 
@@ -109,6 +114,10 @@ final readonly class KnowledgeStack
         DeclarationSymbolInfoFactory $infoFactory,
         DeclarationScanner $scanner,
     ): array {
+        // AutoloadFilesLocator serves three roles: symbol location, namespace
+        // enumeration (composed into the catalog), and prefix search. All three
+        // must be the same instance so coverage is identical (§4.2) and
+        // invalidation propagates to search results.
         $autoloadFiles = new AutoloadFilesLocator($map, $parser, $scanner);
         $cachedCatalog = new CachedNamespaceCatalog(
             new CompositeNamespaceCatalog([
@@ -128,6 +137,7 @@ final readonly class KnowledgeStack
             $infoFactory,
             $scanner,
             new SymbolCache(CacheFactory::inMemory()),
+            $autoloadFiles,
         );
 
         return [$backend, [$backend, $cachedCatalog, $autoloadFiles]];

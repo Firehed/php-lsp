@@ -12,8 +12,11 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Index\Symbol;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\PrefixSearchable;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -335,13 +338,51 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    public function testSearchIsEmpty(): void
+    public function testSearchClassLikeIsEmpty(): void
     {
         self::assertSame(
             [],
             $this->backend()->search('User', NameKind::ClassLike),
             'project-wide prefix search over disk is the deferred workspace-index scope (RFC 1 §3)',
         );
+    }
+
+    public function testSearchFindsFunctionsFromAutoloadFiles(): void
+    {
+        $results = $this->backend()->search('helperF', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'Fixtures\Helpers\helperFormat',
+            $fqns,
+            'a function declared in the autoload.files set must be found by prefix search',
+        );
+    }
+
+    public function testSearchFindsConstantsFromAutoloadFiles(): void
+    {
+        $results = $this->backend()->search('HELPER_L', NameKind::Constant);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'Fixtures\Helpers\HELPER_LIMIT',
+            $fqns,
+            'a constant declared in the autoload.files set must be found by prefix search',
+        );
+    }
+
+    public function testSearchReturnsCorrectSymbolKindForFunctions(): void
+    {
+        $results = $this->backend()->search('helperF', NameKind::Function_);
+
+        self::assertNotEmpty($results, 'the prefix must match at least one function');
+        foreach ($results as $symbol) {
+            self::assertSame(
+                SymbolKind::Function_,
+                $symbol->kind,
+                'every symbol returned for a Function_ search must carry SymbolKind::Function_',
+            );
+        }
     }
 
     public function testChildrenOfForwardsToTheInjectedCatalog(): void
@@ -360,6 +401,7 @@ final class FilesystemBackendTest extends TestCase
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
+            self::createStub(PrefixSearchable::class),
         );
 
         self::assertSame(
@@ -389,17 +431,19 @@ final class FilesystemBackendTest extends TestCase
     private function backend(): FilesystemBackend
     {
         $map = ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot);
+        $autoloadFiles = new AutoloadFilesLocator($map, $this->parser, new DeclarationScanner());
 
         return new FilesystemBackend(
             new CompositeSymbolLocator([
                 new ComposerSymbolLocator($map),
-                new AutoloadFilesLocator($map, $this->parser, new DeclarationScanner()),
+                $autoloadFiles,
             ]),
             new ComposerNamespaceSource($map),
             $this->parser,
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
+            $autoloadFiles,
         );
     }
 
@@ -412,6 +456,7 @@ final class FilesystemBackendTest extends TestCase
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
+            self::createStub(PrefixSearchable::class),
         );
     }
 

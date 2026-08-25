@@ -11,6 +11,8 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Parser\ParserService;
 
 /**
@@ -29,9 +31,11 @@ use Firehed\PhpLsp\Parser\ParserService;
  * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
- * ({@see NamespaceCatalog}). Prefix search is empty: a name→file map exists for
- * classes, but a bare prefix has no such map, so project-wide search over disk is
- * the deferred workspace-index scope (RFC 1 §3), not an unbounded walk here.
+ * ({@see NamespaceCatalog}). Prefix search for class-likes is empty: a bare prefix
+ * has no name→file map, so project-wide search over disk is the deferred
+ * workspace-index scope (RFC 1 §3). Functions and constants are searched through the
+ * autoload.files index ({@see PrefixSearchable}), which is bounded and already in
+ * memory.
  */
 final class FilesystemBackend implements SymbolBackend, Invalidatable
 {
@@ -49,6 +53,7 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
+        private readonly PrefixSearchable $prefixSearch,
     ) {
     }
 
@@ -88,11 +93,11 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     }
 
     /**
-     * @return list<never>
+     * @return list<Symbol>
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return [];
+        return $this->prefixSearch->searchByPrefix($prefix, $kind);
     }
     /**
      * A declaration at any depth counts, not just a top-level one: the shape most

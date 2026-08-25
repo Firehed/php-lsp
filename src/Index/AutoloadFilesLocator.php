@@ -37,7 +37,7 @@ use PhpParser\Node;
  * completion is exactly the lookup/enumeration split RFC 1 §4.2 forbids. The kind
  * reported is the declaration's own, not the coarse guess a directory listing makes.
  */
-final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Invalidatable
+final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, PrefixSearchable, Invalidatable
 {
     /**
      * Every name the set declares, as the declaration spells it: the index is keyed
@@ -47,6 +47,14 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
      * @var list<CatalogSymbol>
      */
     private array $declarations;
+
+    /**
+     * Declarations grouped by kind name, so prefix search filters only the
+     * matching kind without comparing enum values (which would branch on kind).
+     *
+     * @var array<string, list<CatalogSymbol>>
+     */
+    private array $declarationsByKind;
 
     /**
      * Kind => normalized name => declaring file.
@@ -91,6 +99,24 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
         $this->buildIndex();
     }
 
+    /**
+     * @return list<Symbol>
+     */
+    public function searchByPrefix(string $prefix, NameKind $kind): array
+    {
+        return PrefixSearch::filter(
+            $this->declarationsByKind[$kind->name],
+            $prefix,
+            $kind,
+            function (CatalogSymbol $symbol) use ($kind): Location {
+                $filePath = $this->index[$kind->name][$kind->normalize(
+                    QualifiedName::fromFullyQualified($symbol->fullyQualifiedName),
+                )];
+                return new Location(FileUri::fromPath($filePath), 0, 0, 0, 0);
+            },
+        );
+    }
+
     public function locate(QualifiedName $name, NameKind $kind): ?string
     {
         $declarations = $this->index[$kind->name];
@@ -102,8 +128,10 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
     private function buildIndex(): void
     {
         $this->index = [];
+        $this->declarationsByKind = [];
         foreach (NameKind::cases() as $kind) {
             $this->index[$kind->name] = [];
+            $this->declarationsByKind[$kind->name] = [];
         }
         $this->declarations = [];
         $this->namespaces = null;
@@ -139,7 +167,9 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Inv
             }
 
             $this->index[$kind->name][$key] = $path;
-            $this->declarations[] = new CatalogSymbol($name->fullyQualifiedName(), $kind);
+            $symbol = new CatalogSymbol($name->fullyQualifiedName(), $kind);
+            $this->declarations[] = $symbol;
+            $this->declarationsByKind[$kind->name][] = $symbol;
         }
     }
 }

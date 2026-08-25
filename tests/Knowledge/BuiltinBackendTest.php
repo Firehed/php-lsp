@@ -8,6 +8,10 @@ use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
+use Firehed\PhpLsp\Index\Symbol;
+use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ReflectionSymbolInfoFactory;
@@ -31,6 +35,18 @@ final class BuiltinBackendTest extends TestCase
             new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory()),
             $namespaces,
             new SymbolCache(CacheFactory::inMemory()),
+            self::createStub(PrefixSearchable::class),
+        );
+    }
+
+    private function backendWithSearch(): BuiltinBackend
+    {
+        $reflectionSource = new ReflectionNamespaceSource();
+        return new BuiltinBackend(
+            new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory()),
+            $reflectionSource,
+            new SymbolCache(CacheFactory::inMemory()),
+            $reflectionSource,
         );
     }
 
@@ -128,13 +144,51 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
-    public function testSearchIsEmpty(): void
+    public function testSearchClassLikeIsEmpty(): void
     {
         self::assertSame(
             [],
             $this->backend(self::createStub(NamespaceCatalog::class))->search('Array', NameKind::ClassLike),
             'a bare prefix must not surface built-ins that do not resolve unqualified',
         );
+    }
+
+    public function testSearchFindsBuiltinFunctions(): void
+    {
+        $results = $this->backendWithSearch()->search('str_contains', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'str_contains',
+            $fqns,
+            'a built-in function must be found by prefix search',
+        );
+    }
+
+    public function testSearchFindsBuiltinConstants(): void
+    {
+        $results = $this->backendWithSearch()->search('PHP_INT_M', NameKind::Constant);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'PHP_INT_MAX',
+            $fqns,
+            'a built-in constant must be found by prefix search',
+        );
+    }
+
+    public function testSearchReturnsCorrectSymbolKindForFunctions(): void
+    {
+        $results = $this->backendWithSearch()->search('str_contains', NameKind::Function_);
+
+        self::assertNotEmpty($results, 'the prefix must match at least one function');
+        foreach ($results as $symbol) {
+            self::assertSame(
+                SymbolKind::Function_,
+                $symbol->kind,
+                'every symbol returned for a Function_ search must carry SymbolKind::Function_',
+            );
+        }
     }
 
     public function testChildrenOfForwardsToTheReflectionCatalog(): void
