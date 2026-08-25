@@ -43,12 +43,9 @@ final readonly class ReflectionSymbolInfoFactory
     {
         $fqn = $name->fullyQualifiedName();
 
-        // Both probes narrow the name to a `class-string`, which is why this
-        // kind cannot use the sibling's try/catch. `class_exists` answers for
-        // classes and enums; `interface_exists` for interfaces. PHP declares no
-        // internal trait, so `trait_exists` is omitted — it could only admit
-        // names the `isInternal` guard then rejects.
-        if (!class_exists($fqn) && !interface_exists($fqn)) {
+        // All three probes narrow the name to a `class-string`, which is why
+        // this kind cannot use the sibling's try/catch.
+        if (!class_exists($fqn) && !interface_exists($fqn) && !trait_exists($fqn)) {
             return null;
         }
 
