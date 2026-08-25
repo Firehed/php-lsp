@@ -26,6 +26,11 @@ class BuiltinUsage
         helperFormat('test'); //hover:imported_function
     }
 
+    public function triggerImportedFunctionIncomplete(): void
+    {
+        helperFormat(/*|imported_function_sig*/
+    }
+
     public function triggerBuiltinClassProperty(Exception $e): void
     {
         echo $e->message; //hover:builtin_class_property

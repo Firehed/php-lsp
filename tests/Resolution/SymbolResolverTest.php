@@ -164,6 +164,26 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('helperFormat', $result->format());
     }
 
+    public function testGetCallContextForImportedFunction(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Hover/BuiltinUsage.php', 'imported_function_sig');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext(
+            $document,
+            $cursor['line'],
+            $cursor['character'],
+        );
+
+        self::assertInstanceOf(
+            CallContext::class,
+            $context,
+            'A use-function import should resolve in call context',
+        );
+        self::assertStringContainsString('helperFormat', $context->callable->format());
+    }
+
     public function testResolvesBuiltinFunctionCall(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'builtin_strlen');
