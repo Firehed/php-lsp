@@ -9,11 +9,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -4
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 4
                     }
                 },
                 "newText": "calculateSum"
@@ -29,11 +29,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -4
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 4
                     }
                 },
                 "newText": "calculateProduct"
@@ -51,11 +51,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -4
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 4
                     }
                 },
                 "newText": "calculateSum"
@@ -73,11 +73,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -4
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 4
                     }
                 },
                 "newText": "calculateProduct"
@@ -97,11 +97,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -9
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 9
                     }
                 },
                 "newText": "calculateSum"
@@ -117,11 +117,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -9
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 9
                     }
                 },
                 "newText": "calculateProduct"
@@ -139,11 +139,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -9
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 9
                     }
                 },
                 "newText": "getConfig"
@@ -160,11 +160,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -12
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 12
                     }
                 },
                 "newText": "str_contains"
@@ -181,11 +181,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -12
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 12
                     }
                 },
                 "newText": "str_contains"
@@ -204,11 +204,11 @@
                 "range": {
                     "start": {
                         "line": 5,
-                        "character": -9
+                        "character": 0
                     },
                     "end": {
                         "line": 5,
-                        "character": 0
+                        "character": 9
                     }
                 },
                 "newText": "array_map"

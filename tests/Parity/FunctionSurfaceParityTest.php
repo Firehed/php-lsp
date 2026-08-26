@@ -124,7 +124,7 @@ final class FunctionSurfaceParityTest extends TestCase
                 $prefix,
                 $doc,
                 5,
-                0,
+                strlen($prefix),
                 [NameKind::Function_],
                 ClassCandidateFilter::Any,
             );
