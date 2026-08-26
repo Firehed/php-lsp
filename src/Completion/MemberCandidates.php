@@ -6,12 +6,9 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
-use Firehed\PhpLsp\Resolution\MemberAccessKind;
-use Firehed\PhpLsp\Resolution\ResolvedMethod;
 
 /**
  * Produces member completion items after `->`, `?->`, or `::`.
@@ -49,32 +46,23 @@ final class MemberCandidates
      */
     private function itemsFor(MemberAccessContext $context, TextDocument $document): array
     {
-        $filter = match ($context->kind) {
-            MemberAccessKind::Instance => MemberFilter::Instance,
-            MemberAccessKind::Static => MemberFilter::Static,
-            MemberAccessKind::Parent => MemberFilter::All,
-        };
-
         $members = $this->codeResolver->getAccessibleMembers(
             $document,
             $context->type,
             $context->minVisibility,
-            $filter,
+            $context->memberFilter,
         );
 
         $snippetSupport = $this->capabilities->getSessionCapabilities()->snippetSupport;
 
         $items = [];
         foreach ($members as $member) {
-            if ($context->kind === MemberAccessKind::Parent && !$member instanceof ResolvedMethod) {
-                continue;
-            }
-            if (PrefixMatcher::matches($member->getName()->name, $context->prefix)) {
+            if ($context->accepts($member) && PrefixMatcher::matches($member->getName()->name, $context->prefix)) {
                 $items[] = CompletionItemFactory::forResolvedMember($member, $snippetSupport);
             }
         }
 
-        if ($context->kind === MemberAccessKind::Static && PrefixMatcher::matches('class', $context->prefix)) {
+        if ($context->offersClassConstant && PrefixMatcher::matches('class', $context->prefix)) {
             $items[] = CompletionItemFactory::forClassConstant();
         }
 
