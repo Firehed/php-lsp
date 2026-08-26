@@ -46,7 +46,7 @@ final class CompletionItemFactory
             $member instanceof ResolvedConstant => CompletionItemKind::Constant,
             $member instanceof ResolvedEnumCase => CompletionItemKind::EnumMember,
             // @codeCoverageIgnoreStart
-            default => throw new \LogicException('Unexpected member type: ' . $member::class),
+            default => throw new \LogicException('Unexpected ResolvedMember implementation'),
             // @codeCoverageIgnoreEnd
         };
 
