@@ -40,6 +40,33 @@ final class NameKindTest extends TestCase
         self::assertSame($expected, $kind->normalize($name));
     }
 
+    public function testIsClassLikeIsTrueOnlyForClassLike(): void
+    {
+        self::assertTrue(NameKind::ClassLike->isClassLike());
+        self::assertFalse(NameKind::Function_->isClassLike());
+        self::assertFalse(NameKind::Constant->isClassLike());
+    }
+
+    public function testIsFunctionIsTrueOnlyForFunction(): void
+    {
+        self::assertTrue(NameKind::Function_->isFunction());
+        self::assertFalse(NameKind::ClassLike->isFunction());
+        self::assertFalse(NameKind::Constant->isFunction());
+    }
+
+    public function testMatchesReturnsTrueOnlyForSameKind(): void
+    {
+        foreach (NameKind::cases() as $kind) {
+            foreach (NameKind::cases() as $other) {
+                self::assertSame(
+                    $kind === $other,
+                    $kind->matches($other),
+                    "{$kind->name}->matches({$other->name})",
+                );
+            }
+        }
+    }
+
     public function testKeyForCombinesKindNameAndNormalizedName(): void
     {
         $name = new QualifiedName('Fixtures\Helpers', 'HelperFormat');

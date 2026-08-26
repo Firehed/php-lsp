@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
@@ -146,7 +145,7 @@ final class NamespaceCandidates
             }
         }
 
-        return $this->ranked($items);
+        return $items;
     }
 
     /**
@@ -184,7 +183,7 @@ final class NamespaceCandidates
             $items = array_merge($items, $this->offerChildNamespace($fqcn, $reference, $filter, $range));
         }
 
-        return $this->ranked($items);
+        return $items;
     }
 
     /**
@@ -233,23 +232,6 @@ final class NamespaceCandidates
     }
 
     /**
-     * Rank directly-insertable symbols above namespace nodes: a class you can use
-     * now beats a prefix you would keep typing. Within each group, order by label.
-     *
-     * @param list<CompletionItem> $items
-     * @return list<CompletionItem>
-     */
-    private function ranked(array $items): array
-    {
-        foreach ($items as $index => $item) {
-            $isNode = ($item['kind'] ?? null) === CompletionItemKind::Module->value;
-            $items[$index]['sortText'] = ($isNode ? '1' : '0') . '_' . $item['label'];
-        }
-
-        return $items;
-    }
-
-    /**
      * A child namespace with few members is inlined — its contents offered
      * directly, qualified by the segment — so the user need not step through it; a
      * larger one is offered as a node to navigate into. A same-named class is a
@@ -274,13 +256,17 @@ final class NamespaceCandidates
         $contents = $this->symbolSource->childrenOf(new NamespaceName($child));
         $elementCount = count($contents->childNamespaces) + count($contents->symbols);
         if ($elementCount === 0 || $elementCount > self::INLINE_THRESHOLD) {
-            return [CompletionItemFactory::forNamespace($segment, $child, $range)];
+            $item = CompletionItemFactory::forNamespace($segment, $child, $range);
+            $item['sortText'] = '1_' . $item['label'];
+            return [$item];
         }
 
         $items = [];
         foreach ($contents->childNamespaces as $grandchild) {
             $reference = $segment . '\\' . NamespacePath::shortNameOf($grandchild);
-            $items[] = CompletionItemFactory::forNamespace($reference, $grandchild, $range);
+            $item = CompletionItemFactory::forNamespace($reference, $grandchild, $range);
+            $item['sortText'] = '1_' . $item['label'];
+            $items[] = $item;
         }
         foreach ($contents->symbols as $symbol) {
             $reference = $segment . '\\' . $symbol->shortName();
@@ -296,11 +282,9 @@ final class NamespaceCandidates
     }
 
     /**
-     * A single class-like completion item, or null when the symbol is not a valid
-     * class-like for the position. Validity is the same rule the index and imports
-     * use, preceded by an existence gate that drops directory-listing phantoms (a
-     * `functions.php` surfaced as a coarse class-like) before the optimistic
-     * position filter would let them through.
+     * A single symbol completion item, or null when the symbol is not valid for
+     * the position. Class-likes are gated by existence and the position filter;
+     * functions and constants pass through unconditionally.
      *
      * @return ?CompletionItem
      */
@@ -311,19 +295,26 @@ final class NamespaceCandidates
         ClassCandidateFilter $filter,
         Range $range,
     ): ?array {
-        if ($symbol->kind !== NameKind::ClassLike) {
-            return null;
-        }
-        /** @var class-string $fqcn */
-        $fqcn = $symbol->fullyQualifiedName;
-        $className = new ClassName($fqcn);
-        if (!$this->codeResolver->isClassLike($className)) {
-            return null;
-        }
-        if (!$filter->accepts($className, $this->codeResolver)) {
-            return null;
+        $fqn = $symbol->fullyQualifiedName;
+        if ($symbol->kind->isClassLike()) {
+            /** @var class-string $fqn */
+            $className = TypeFactory::className($fqn);
+            if (!$this->codeResolver->isClassLike($className)) {
+                return null;
+            }
+            if (!$filter->accepts($className, $this->codeResolver)) {
+                return null;
+            }
         }
 
-        return CompletionItemFactory::forClass($reference, $fqcn, $range, $filterText);
+        $item = CompletionItemFactory::forSymbol(
+            $reference,
+            $fqn,
+            $symbol->kind,
+            $range,
+            filterText: $filterText,
+        );
+        $item['sortText'] = '0_' . $item['label'];
+        return $item;
     }
 }

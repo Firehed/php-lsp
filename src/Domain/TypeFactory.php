@@ -84,6 +84,14 @@ final class TypeFactory
         // @codeCoverageIgnoreEnd
     }
 
+    /**
+     * @param class-string $fqn
+     */
+    public static function className(string $fqn): ClassName
+    {
+        return new ClassName($fqn);
+    }
+
     public static function fromReflection(?ReflectionType $type): ?Type
     {
         if ($type === null) {

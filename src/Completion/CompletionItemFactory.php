@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
-use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Protocol\Range;
@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
 use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedMethod;
 use Firehed\PhpLsp\Resolution\ResolvedProperty;
-use Firehed\PhpLsp\Utility\DocblockParser;
 
 /**
  * Builds LSP completion items. Centralizing construction here keeps item shape,
@@ -46,7 +45,7 @@ final class CompletionItemFactory
             $member instanceof ResolvedConstant => CompletionItemKind::Constant,
             $member instanceof ResolvedEnumCase => CompletionItemKind::EnumMember,
             // @codeCoverageIgnoreStart
-            default => throw new \LogicException('Unexpected member type: ' . $member::class),
+            default => throw new \LogicException('Unexpected ResolvedMember implementation'),
             // @codeCoverageIgnoreEnd
         };
 
@@ -71,42 +70,42 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forFunction(FunctionInfo $function, bool $snippetSupport = false): array
-    {
-        $item = self::withDocumentation([
-            'label' => $function->name,
-            'kind' => CompletionItemKind::Function->value,
-            'detail' => $function->format(),
-        ], $function->docblock);
-
-        return self::withCallableSnippet($item, $snippetSupport);
-    }
-
-    /**
-     * @return CompletionItem
-     */
-    public static function forClass(
+    public static function forSymbol(
         string $reference,
         string $fullyQualifiedName,
+        NameKind $kind,
         Range $replaceRange,
+        bool $snippetSupport = false,
         ?string $filterText = null,
+        ?string $detail = null,
+        ?string $documentation = null,
     ): array {
-        return [
+        $itemKind = match ($kind) {
+            NameKind::ClassLike => CompletionItemKind::Class_,
+            NameKind::Function_ => CompletionItemKind::Function,
+            NameKind::Constant => CompletionItemKind::Constant,
+        };
+
+        $item = [
             'label' => $reference,
-            'kind' => CompletionItemKind::Class_->value,
-            'detail' => $fullyQualifiedName,
-            // Clients filter on the short name by default, so a relative reference
-            // like `Sub\Thing` still matches when only `Thing` has been typed. An
-            // inlined navigation entry overrides this with its qualified reference,
-            // since the user reaches it by typing the parent segment, not the leaf.
+            'kind' => $itemKind->value,
+            'detail' => $detail ?? $fullyQualifiedName,
             'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
-            // Replace the whole typed token with the reference, so a qualified
-            // name never duplicates the segments already on screen.
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
                 'newText' => $reference,
             ],
         ];
+
+        if ($documentation !== null) {
+            $item['documentation'] = $documentation;
+        }
+
+        if ($kind->isFunction()) {
+            $item = self::withCallableSnippet($item, $snippetSupport);
+        }
+
+        return $item;
     }
 
     /**
@@ -218,21 +217,6 @@ final class CompletionItemFactory
         $item['insertText'] = $item['label'] . '($0)';
         $item['insertTextFormat'] = InsertTextFormat::Snippet->value;
 
-        return $item;
-    }
-
-    /**
-     * @param CompletionItem $item
-     * @return CompletionItem
-     */
-    private static function withDocumentation(array $item, string|false|null $docText): array
-    {
-        if ($docText !== null && $docText !== false && $docText !== '') {
-            $doc = DocblockParser::extractDescription($docText);
-            if ($doc !== '') {
-                $item['documentation'] = $doc;
-            }
-        }
         return $item;
     }
 }

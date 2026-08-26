@@ -67,6 +67,21 @@ enum NameKind
         return (new QualifiedName($namespace, $shortName))->fullyQualifiedName();
     }
 
+    public function isClassLike(): bool
+    {
+        return $this === self::ClassLike;
+    }
+
+    public function isFunction(): bool
+    {
+        return $this === self::Function_;
+    }
+
+    public function matches(self $other): bool
+    {
+        return $this === $other;
+    }
+
     private function caseRule(): NameCase
     {
         return $this->isCaseSensitive() ? NameCase::Sensitive : NameCase::Insensitive;

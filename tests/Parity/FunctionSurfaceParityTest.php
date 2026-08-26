@@ -6,26 +6,24 @@ namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
-use Firehed\PhpLsp\Completion\FunctionCandidates;
+use Firehed\PhpLsp\Completion\ClassCandidateFilter;
+use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSink;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Golden parity for the function-completion surface — `FunctionCandidates::find()`,
- * which Step 3b migrates off its direct `get_defined_functions()` call and onto
- * `SymbolSource::search`.
- *
- * Step 3b both changes and preserves behavior here: the project reach it adds is
- * new, but the built-in and open-document function completion that exists today
- * must not regress. This golden is therefore captured *before* the migration, from
- * today's path, and is the preservation half's acceptance: after the migration
- * these queries must still produce these items, byte for byte.
+ * Golden parity for the function-completion surface — `SymbolCandidates::find()`
+ * with `[NameKind::Function_]`.
  *
  * ## Determinism
  *
@@ -66,6 +64,7 @@ final class FunctionSurfaceParityTest extends TestCase
     private string $fixturesRoot;
     private SymbolSource $symbolSource;
     private SymbolSink $sink;
+    private SymbolResolver $symbolResolver;
 
     protected function setUp(): void
     {
@@ -81,6 +80,15 @@ final class FunctionSurfaceParityTest extends TestCase
 
         $this->symbolSource = $knowledge->source;
         $this->sink = $knowledge->sink;
+
+        $memberResolver = new MemberResolver($knowledge->source);
+        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
+        $this->symbolResolver = new SymbolResolver(
+            $parser,
+            $knowledge->source,
+            $memberResolver,
+            $typeResolver,
+        );
     }
 
     public function testFunctionCompletionMatchesGolden(): void
@@ -111,7 +119,15 @@ final class FunctionSurfaceParityTest extends TestCase
 
         $captured = [];
         foreach ($queries as $label => [$fixture, $prefix, $snippetSupport]) {
-            $captured[$label] = $this->candidates($snippetSupport)->find($prefix, $this->document($fixture));
+            $doc = $this->document($fixture);
+            $captured[$label] = $this->candidates($snippetSupport)->find(
+                $prefix,
+                $doc,
+                5,
+                strlen($prefix),
+                [NameKind::Function_],
+                ClassCandidateFilter::Any,
+            );
         }
 
         $this->assertGoldenMatches('function-surface', $captured);
@@ -124,7 +140,15 @@ final class FunctionSurfaceParityTest extends TestCase
         // names. The exact set is version-fragile and is asserted against
         // reflection in BuiltinFunctionParityTest; here only that the surface
         // passes through the bulk of it.
-        $items = $this->candidates(false)->find('array_', $this->document(self::DOCUMENT_WITHOUT_FUNCTIONS));
+        $doc = $this->document(self::DOCUMENT_WITHOUT_FUNCTIONS);
+        $items = $this->candidates(false)->find(
+            'array_',
+            $doc,
+            5,
+            0,
+            [NameKind::Function_],
+            ClassCandidateFilter::Any,
+        );
 
         $labels = array_column($items, 'label');
 
@@ -146,7 +170,15 @@ final class FunctionSurfaceParityTest extends TestCase
         // version-fragile built-in list — but the head is not: the document's own
         // functions are emitted first, in declaration order. A migration that
         // merged the two halves into one ranked list would reorder this.
-        $items = $this->candidates(false)->find('', $this->document(self::DOCUMENT_WITH_FUNCTIONS));
+        $doc = $this->document(self::DOCUMENT_WITH_FUNCTIONS);
+        $items = $this->candidates(false)->find(
+            '',
+            $doc,
+            5,
+            0,
+            [NameKind::Function_],
+            ClassCandidateFilter::Any,
+        );
 
         self::assertSame(
             ['calculateSum', 'getConfig'],
@@ -155,13 +187,13 @@ final class FunctionSurfaceParityTest extends TestCase
         );
     }
 
-    private function candidates(bool $snippetSupport): FunctionCandidates
+    private function candidates(bool $snippetSupport): SymbolCandidates
     {
         $capabilities = self::createStub(SessionCapabilitiesProvider::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
 
-        return new FunctionCandidates($this->symbolSource, $capabilities);
+        return new SymbolCandidates($this->symbolSource, $this->symbolResolver, $capabilities);
     }
 
     private function document(string $relativePath): TextDocument

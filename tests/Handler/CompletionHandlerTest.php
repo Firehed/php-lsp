@@ -7,15 +7,14 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
-use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\NamespaceCandidates;
+use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
@@ -51,10 +50,9 @@ use PHPUnit\Framework\TestCase;
  */
 #[CoversClass(CompletionHandler::class)]
 #[CoversClass(BuiltinTypeCandidates::class)]
-#[CoversClass(ClassCandidates::class)]
 #[CoversClass(CompletionItemFactory::class)]
-#[CoversClass(FunctionCandidates::class)]
 #[CoversClass(KeywordCandidates::class)]
+#[CoversClass(SymbolCandidates::class)]
 #[CoversClass(MemberCandidates::class)]
 #[CoversClass(NamedArgumentCandidates::class)]
 #[CoversClass(VariableCandidates::class)]
@@ -106,9 +104,8 @@ class CompletionHandlerTest extends TestCase
         return new CompletionHandler(
             $this->documents,
             $this->symbolResolver,
-            new ClassCandidates($symbolSource, $this->symbolResolver, $capabilities),
+            new SymbolCandidates($symbolSource, $this->symbolResolver, $capabilities),
             new NamespaceCandidates($symbolSource, $this->symbolResolver, $capabilities),
-            new FunctionCandidates($this->symbolSource, $capabilities),
             new KeywordCandidates(),
             new VariableCandidates($this->symbolResolver),
             new MemberCandidates($this->symbolResolver, $capabilities),
@@ -1215,19 +1212,8 @@ class CompletionHandlerTest extends TestCase
 
     public function testNewCompletionExcludesIndexedInterfaces(): void
     {
-        // Add an interface and a class to the index
-        $this->symbolIndex->add(new Symbol(
-            'MyInterface',
-            'MyInterface',
-            SymbolKind::Interface_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyClass',
-            'MyClass',
-            SymbolKind::Class_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
+        $this->openDocument('file:///class.php', "<?php\nclass MyClass {}\n");
+        $this->openDocument('file:///iface.php', "<?php\ninterface MyInterface {}\n");
 
         $code = '<?php $x = new My';
         $this->openDocument('file:///test.php', $code);
@@ -1246,9 +1232,7 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        // Should include class
         self::assertContains('MyClass', $labels);
-        // Should NOT include interface
         self::assertNotContains('MyInterface', $labels);
     }
 
@@ -1271,24 +1255,8 @@ class CompletionHandlerTest extends TestCase
 
     public function testTypeHintCompletionExcludesIndexedTraits(): void
     {
-        // Both symbols are indexed but their declaration file is never opened, so
-        // the class repository cannot reach them. isValidTypeHint is optimistic for
-        // an unreachable name (it returns true), so the ClassCandidateFilter
-        // predicate does not exclude the trait here — only the class-like kind gate
-        // does. A resolvable trait would be rejected by the predicate regardless,
-        // leaving the gate's TypeHint arm untested; this pins it on the seam path.
-        $this->symbolIndex->add(new Symbol(
-            'MyClass',
-            'MyClass',
-            SymbolKind::Class_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyTrait',
-            'MyTrait',
-            SymbolKind::Trait_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
+        $this->openDocument('file:///class.php', "<?php\nclass MyClass {}\n");
+        $this->openDocument('file:///trait.php', "<?php\ntrait MyTrait {}\n");
 
         $code = '<?php function foo(): My';
         $this->openDocument('file:///test.php', $code);
@@ -1308,11 +1276,7 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('MyClass', $labels, 'A class is a valid type hint');
-        self::assertNotContains(
-            'MyTrait',
-            $labels,
-            'A trait is not a valid type hint; only the class-like kind gate excludes an unresolvable indexed trait',
-        );
+        self::assertNotContains('MyTrait', $labels, 'A trait is not a valid type hint');
     }
 
     /**
@@ -1356,28 +1320,11 @@ class CompletionHandlerTest extends TestCase
 
     public function testExpressionCompletionIncludesAllIndexedTypes(): void
     {
-        // Add various symbol types to the index
-        $this->symbolIndex->add(new Symbol(
-            'MyClass',
-            'MyClass',
-            SymbolKind::Class_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyInterface',
-            'MyInterface',
-            SymbolKind::Interface_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyTrait',
-            'MyTrait',
-            SymbolKind::Trait_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
+        $this->openDocument('file:///class.php', "<?php\nclass ZqClass {}\n");
+        $this->openDocument('file:///iface.php', "<?php\ninterface ZqInterface {}\n");
+        $this->openDocument('file:///trait.php', "<?php\ntrait ZqTrait {}\n");
 
-        // Expression context (not `new`)
-        $code = '<?php $x = My';
+        $code = '<?php $x = Zq';
         $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
@@ -1394,10 +1341,9 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        // Expression context should include all types
-        self::assertContains('MyClass', $labels);
-        self::assertContains('MyInterface', $labels);
-        self::assertContains('MyTrait', $labels);
+        self::assertContains('ZqClass', $labels);
+        self::assertContains('ZqInterface', $labels);
+        self::assertContains('ZqTrait', $labels);
     }
 
     public function testTypeHintCompletionInReturnType(): void
@@ -3975,6 +3921,120 @@ class CompletionHandlerTest extends TestCase
             CompletionItemKind::Function->value,
             $kinds,
             'Functions must not leak into a wrapped implements list (issue #310)',
+        );
+    }
+
+    public function testExpressionCompletionOffersEverySearchableKind(): void
+    {
+        // Open the multi-namespace file so its functions and constants are
+        // registered, then trigger expression completion from a file that
+        // imports all three symbol kinds.
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_function_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $kindsPresent = array_unique(array_column($result['items'], 'kind'));
+        self::assertContains(
+            CompletionItemKind::Function->value,
+            $kindsPresent,
+            'Expression completion must offer functions',
+        );
+
+        // Now check class-likes at the class prefix marker
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_class_partial');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+        self::assertIsArray($result);
+        $kindsPresent = array_unique(array_column($result['items'], 'kind'));
+        self::assertContains(
+            CompletionItemKind::Class_->value,
+            $kindsPresent,
+            'Expression completion must offer class-likes',
+        );
+
+        // And constants at the constant prefix marker
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_constant_partial');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+        self::assertIsArray($result);
+        $kindsPresent = array_unique(array_column($result['items'], 'kind'));
+        self::assertContains(
+            CompletionItemKind::Constant->value,
+            $kindsPresent,
+            'Expression completion must offer constants',
+        );
+    }
+
+    public function testExpressionCompletionOffersImportedFunction(): void
+    {
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_function_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'makeUser',
+            $labels,
+            'A function imported via `use function` is offered at expression start',
+        );
+    }
+
+    public function testExpressionCompletionOffersImportedConstant(): void
+    {
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_constant_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'DEFAULT_LIMIT',
+            $labels,
+            'A constant imported via `use const` is offered at expression start',
+        );
+    }
+
+    public function testExpressionCompletionOffersGlobalFunctionFromNamespace(): void
+    {
+        // A global built-in function is offered unqualified from inside a namespace
+        // via the global-fallback rule, derived from ReferenceResolver rather than
+        // an unconditional list.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_class_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        // "Us" prefix should not match functions, so use the function prefix marker
+        $cursor = $this->openFixtureAtCursor('src/Completion/FunctionCompletion.php', 'builtin_function');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'array_map',
+            $labels,
+            'A global built-in function is offered unqualified',
+        );
+    }
+
+    public function testCurrentNamespaceClassOfferedWithoutOpening(): void
+    {
+        // A class in the current namespace exists on disk (via Composer's PSR-4)
+        // but is never opened. It should be offered via childrenOf(current namespace).
+        // Fixtures\Domain\User is in tests/Fixtures/src/Domain/User.php — PSR-4
+        // autoloaded. The probe file sits in namespace Fixtures\Domain.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CurrentNamespaceBareProbe.php', 'current_ns_bare');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Domain\User',
+            $byLabel['User'] ?? null,
+            'A class in the current namespace is offered even when never opened (issue #383)',
         );
     }
 }

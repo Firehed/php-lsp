@@ -25,8 +25,8 @@ use PHPUnit\Framework\TestCase;
  * This is an oracle, not a golden. The built-in function list differs across the
  * 8.3/8.4/8.5 CI matrix and with the extensions a machine happens to load, so it
  * cannot be frozen — but it can be compared against the same runtime truth the
- * production path reads today (`FunctionCandidates` calls
- * `get_defined_functions()` directly). That makes the comparison version-agnostic
+ * production path reads today (`SymbolCandidates` via `SymbolSource::search()`).
+ * That makes the comparison version-agnostic
  * in the same way `TypeGraphParityTest` uses reflection as the oracle for member
  * resolution.
  *

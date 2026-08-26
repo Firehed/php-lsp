@@ -6,23 +6,23 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
-use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\ContextDetector;
-use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\NamespaceCandidates;
+use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CodeResolver;
@@ -42,9 +42,8 @@ final class CompletionHandler implements DocumentFeatureHandler
     public function __construct(
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
-        private readonly ClassCandidates $classCandidates,
+        private readonly SymbolCandidates $symbolCandidates,
         private readonly NamespaceCandidates $namespaceCandidates,
-        private readonly FunctionCandidates $functionCandidates,
         private readonly KeywordCandidates $keywordCandidates,
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
@@ -176,7 +175,14 @@ final class CompletionHandler implements DocumentFeatureHandler
                 $items = array_merge($items, $this->keywordCandidates->find($prefix, KeywordGroup::Expression));
                 $items = array_merge(
                     $items,
-                    $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::Any),
+                    $this->symbolCandidates->find(
+                        $prefix,
+                        $document,
+                        $line,
+                        $character,
+                        [NameKind::ClassLike],
+                        ClassCandidateFilter::Any,
+                    ),
                 );
             }
 
@@ -287,7 +293,7 @@ final class CompletionHandler implements DocumentFeatureHandler
         ClassCandidateFilter $filter,
     ): array {
         $items = array_merge(
-            $this->classCandidates->find($prefix, $document, $line, $character, $filter),
+            $this->symbolCandidates->find($prefix, $document, $line, $character, [NameKind::ClassLike], $filter),
             $this->namespaceCandidates->navigate(
                 $prefix,
                 $this->codeResolver->getNameContext($document, $line),
@@ -371,10 +377,16 @@ final class CompletionHandler implements DocumentFeatureHandler
         int $character,
     ): array {
         $items = $this->keywordCandidates->find($prefix, KeywordGroup::All);
-        $items = array_merge($items, $this->functionCandidates->find($prefix, $document));
         $items = array_merge(
             $items,
-            $this->classCandidates->find($prefix, $document, $line, $character, ClassCandidateFilter::Any),
+            $this->symbolCandidates->find(
+                $prefix,
+                $document,
+                $line,
+                $character,
+                NameKind::cases(),
+                ClassCandidateFilter::Any,
+            ),
         );
         return $this->deduplicateCompletions($items);
     }

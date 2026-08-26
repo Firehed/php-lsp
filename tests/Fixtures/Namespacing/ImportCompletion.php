@@ -15,6 +15,16 @@ namespace Fixtures\Namespacing\ImportCompletion {
         $x = Us/*|imported_class_partial*/
     }
 
+    function triggerImportedFunctionPartial()
+    {
+        $x = make/*|imported_function_partial*/
+    }
+
+    function triggerImportedConstantPartial()
+    {
+        $x = DEF/*|imported_constant_partial*/
+    }
+
     function triggerAliasedClassPartial()
     {
         $x = Rep/*|aliased_class_partial*/
