@@ -50,7 +50,7 @@ class MemberAccessContextTest extends TestCase
         self::assertSame('', $ctx->prefix, 'prefix');
     }
 
-    #[DataProvider('instanceAcceptsCases')]
+    #[DataProvider('allMemberKinds')]
     public function testInstanceAcceptsAllKinds(MemberKind $memberKind): void
     {
         $ctx = MemberAccessContext::forInstance(self::type(), Visibility::Public, '');
@@ -60,7 +60,7 @@ class MemberAccessContextTest extends TestCase
         self::assertTrue($ctx->accepts($member), "instance should accept $memberKind->name");
     }
 
-    #[DataProvider('staticAcceptsCases')]
+    #[DataProvider('allMemberKinds')]
     public function testStaticAcceptsAllKinds(MemberKind $memberKind): void
     {
         $ctx = MemberAccessContext::forStatic(self::type(), Visibility::Public, '');
@@ -83,17 +83,7 @@ class MemberAccessContextTest extends TestCase
     /**
      * @return iterable<string, array{MemberKind}>
      */
-    public static function instanceAcceptsCases(): iterable
-    {
-        foreach (MemberKind::cases() as $kind) {
-            yield $kind->name => [$kind];
-        }
-    }
-
-    /**
-     * @return iterable<string, array{MemberKind}>
-     */
-    public static function staticAcceptsCases(): iterable
+    public static function allMemberKinds(): iterable
     {
         foreach (MemberKind::cases() as $kind) {
             yield $kind->name => [$kind];
