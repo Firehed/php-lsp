@@ -87,10 +87,9 @@ final class TextFallbackHelper
             return null;
         }
 
-        return new MemberAccessContext(
+        return MemberAccessContext::forInstance(
             new ClassName($enclosingClass),
             Visibility::Private,
-            MemberAccessKind::Instance,
             $prefix,
         );
     }
@@ -116,7 +115,7 @@ final class TextFallbackHelper
             return null;
         }
 
-        return new MemberAccessContext($type, Visibility::Public, MemberAccessKind::Instance, $prefix);
+        return MemberAccessContext::forInstance($type, Visibility::Public, $prefix);
     }
 
     /**
@@ -140,10 +139,9 @@ final class TextFallbackHelper
                 // self::/static:: outside class - no completion possible
                 return null;
             }
-            return new MemberAccessContext(
+            return MemberAccessContext::forStatic(
                 new ClassName($enclosingClass),
                 Visibility::Private,
-                MemberAccessKind::Static,
                 $prefix,
             );
         }
@@ -159,10 +157,9 @@ final class TextFallbackHelper
             if ($parentClassName === null) {
                 return null;
             }
-            return new MemberAccessContext(
+            return MemberAccessContext::forParent(
                 new ClassName($parentClassName),
                 Visibility::Protected,
-                MemberAccessKind::Parent,
                 $prefix,
             );
         }
@@ -175,11 +172,10 @@ final class TextFallbackHelper
         $isSameClass = $enclosingClass !== null && $enclosingClass === $fqn;
         $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
 
-        return new MemberAccessContext(
+        return MemberAccessContext::forStatic(
             // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
             new ClassName($fqn),
             $visibility,
-            MemberAccessKind::Static,
             $prefix,
         );
     }

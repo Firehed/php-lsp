@@ -351,7 +351,7 @@ final class SymbolResolver implements CodeResolver
                     && $enclosingClassName === $className->fqn;
                 $visibility = ($isThis || $isSameClass) ? Visibility::Private : Visibility::Public;
 
-                return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+                return MemberAccessContext::forInstance($type, $visibility, $prefix);
             }
             // AST found the node but couldn't resolve type - try text-based fallback
             return $this->getMemberAccessContextFromText($document, $ast, $line, $character);
@@ -441,7 +441,7 @@ final class SymbolResolver implements CodeResolver
             && $enclosingClassName === $className->fqn;
         $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
 
-        return new MemberAccessContext($type, $visibility, MemberAccessKind::Instance, $prefix);
+        return MemberAccessContext::forInstance($type, $visibility, $prefix);
     }
 
     /**
@@ -468,10 +468,9 @@ final class SymbolResolver implements CodeResolver
             }
             $parentClassName = ScopeFinder::resolveExtendsName($classNode);
             assert($parentClassName !== null);
-            return new MemberAccessContext(
+            return MemberAccessContext::forParent(
                 new ClassName($parentClassName),
                 Visibility::Protected,
-                MemberAccessKind::Parent,
                 $prefix,
             );
         }
@@ -488,10 +487,9 @@ final class SymbolResolver implements CodeResolver
         $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
         $minVisibility = $this->getMinVisibilityForStaticAccess($enclosingClass, $className);
 
-        return new MemberAccessContext(
+        return MemberAccessContext::forStatic(
             new ClassName($className),
             $minVisibility,
-            MemberAccessKind::Static,
             $prefix,
         );
     }
