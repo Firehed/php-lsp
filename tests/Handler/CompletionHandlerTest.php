@@ -3509,6 +3509,24 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testArgumentValueSortsNamedArgsBeforeKeywords(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'expression_in_bare_arg');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $items = $result['items'];
+        $sortKeys = array_column($items, 'sortText', 'label');
+        self::assertArrayHasKey('name:', $sortKeys, 'Named arg should be present');
+        self::assertArrayHasKey('new', $sortKeys, 'Expression keyword should be present');
+        self::assertLessThan(
+            $sortKeys['new'],
+            $sortKeys['name:'],
+            'Named args should sort before expression keywords',
+        );
+    }
+
     public function testArgumentValueDoesNotOfferExpressionsOnVariable(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'variable_in_call');
