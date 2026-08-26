@@ -588,6 +588,26 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
+    public function testTraitUseDiscoversSameNamespaceTraitWithoutImport(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Traits/TraitUseFromSameNamespace.php', 'same_ns_trait');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'SingletonTrait',
+            $labels,
+            'Same-namespace trait is offered without import or opening its file',
+        );
+        self::assertNotContains(
+            'ConcreteService',
+            $labels,
+            'Same-namespace non-trait class is excluded from trait use',
+        );
+    }
+
     public function testClosureUseCaptureIsNotImportNavigation(): void
     {
         // A closure's `use (...)` clause captures variables from the enclosing

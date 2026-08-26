@@ -237,6 +237,32 @@ class ComposerNamespaceSourceTest extends TestCase
         );
     }
 
+    public function testMultipleDirectoriesForOnePrefixAreMerged(): void
+    {
+        $base = sys_get_temp_dir() . '/php-lsp-multi-dir-' . getmypid();
+        @mkdir($base . '/src', recursive: true);
+        @mkdir($base . '/tests', recursive: true);
+        file_put_contents($base . '/src/Foo.php', "<?php\n");
+        file_put_contents($base . '/tests/Bar.php', "<?php\n");
+
+        try {
+            $source = new ComposerNamespaceSource(new ComposerAutoloadMap(
+                psr4: ['App\\' => [$base . '/src', $base . '/tests']],
+            ));
+
+            $fqns = self::fqns($source->childrenOf('App'));
+
+            self::assertContains('App\Foo', $fqns, 'Symbol from first directory is listed');
+            self::assertContains('App\Bar', $fqns, 'Symbol from second directory is listed');
+        } finally {
+            @unlink($base . '/src/Foo.php');
+            @unlink($base . '/tests/Bar.php');
+            @rmdir($base . '/src');
+            @rmdir($base . '/tests');
+            @rmdir($base);
+        }
+    }
+
     /**
      * @return list<string>
      */
