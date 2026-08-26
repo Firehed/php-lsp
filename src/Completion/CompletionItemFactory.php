@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Protocol\Range;
@@ -107,6 +108,41 @@ final class CompletionItemFactory
                 'newText' => $reference,
             ],
         ];
+    }
+
+    /**
+     * @return CompletionItem
+     */
+    public static function forSymbol(
+        string $reference,
+        string $fullyQualifiedName,
+        NameKind $kind,
+        Range $replaceRange,
+        bool $snippetSupport = false,
+        ?string $filterText = null,
+    ): array {
+        $itemKind = match ($kind) {
+            NameKind::ClassLike => CompletionItemKind::Class_,
+            NameKind::Function_ => CompletionItemKind::Function,
+            NameKind::Constant => CompletionItemKind::Constant,
+        };
+
+        $item = [
+            'label' => $reference,
+            'kind' => $itemKind->value,
+            'detail' => $fullyQualifiedName,
+            'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
+            'textEdit' => [
+                'range' => $replaceRange->toArray(),
+                'newText' => $reference,
+            ],
+        ];
+
+        if ($kind === NameKind::Function_) {
+            $item = self::withCallableSnippet($item, $snippetSupport);
+        }
+
+        return $item;
     }
 
     /**
