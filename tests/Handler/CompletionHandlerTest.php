@@ -550,13 +550,8 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
-    public function testTraitUseInClassBodyIsNotImportNavigation(): void
+    public function testTraitUseInClassBodyOffersTraitsOnly(): void
     {
-        // A `use` inside a class body is a trait application, not an import: it must
-        // resolve like any class reference (through the file's imports), not enter
-        // the absolute namespace navigation an import `use` triggers. The imported
-        // trait is offered by its short name — which absolute import navigation,
-        // walking the global namespace, would never surface.
         $cursor = $this->openFixtureAtCursor('Namespacing/TraitUseCompletion.php', 'trait_use');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
@@ -566,7 +561,7 @@ class CompletionHandlerTest extends TestCase
         self::assertContains(
             'HasTimestamps',
             $labels,
-            'A trait `use` keeps class-reference behavior, offering the imported trait by its short name',
+            'Imported trait is offered by its short name (import-based resolution)',
         );
         $modules = array_filter(
             $result['items'],
@@ -575,7 +570,16 @@ class CompletionHandlerTest extends TestCase
         self::assertSame(
             [],
             $modules,
-            'A trait `use` offers no namespace-navigation nodes; it is not import navigation',
+            'No namespace-navigation nodes — trait use is not import navigation',
+        );
+        $keywords = array_filter(
+            $result['items'],
+            static fn(array $item): bool => ($item['kind'] ?? null) === CompletionItemKind::Keyword->value,
+        );
+        self::assertSame(
+            [],
+            $keywords,
+            'No keywords — trait use offers only class-likes, not expression completions',
         );
     }
 
