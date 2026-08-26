@@ -205,6 +205,24 @@ final class CompletionClassifier
     }
 
     /**
+     * The expression prefix inside a call's argument list. Returns null when the
+     * cursor is on a variable (expression completions are not needed there).
+     */
+    public static function callExpressionPrefix(string $textBeforeCursor): ?string
+    {
+        if (preg_match(self::VARIABLE_PATTERN, $textBeforeCursor) === 1) {
+            return null;
+        }
+        $valuePrefix = self::argumentValuePrefix($textBeforeCursor);
+        if ($valuePrefix !== null) {
+            return $valuePrefix;
+        }
+        return preg_match('/(\w+)$/', $textBeforeCursor, $matches) === 1
+            ? $matches[1]
+            : '';
+    }
+
+    /**
      * The variable name being typed, empty where the cursor is not on one.
      */
     public static function variablePrefix(string $textBeforeCursor): string
