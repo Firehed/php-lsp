@@ -572,6 +572,11 @@ class CompletionHandlerTest extends TestCase
             $modules,
             'No namespace-navigation nodes — trait use is not import navigation',
         );
+        self::assertNotContains(
+            'HasThing',
+            $labels,
+            'Non-trait class-like (imported as HasThing) is excluded from trait use',
+        );
         $keywords = array_filter(
             $result['items'],
             static fn(array $item): bool => ($item['kind'] ?? null) === CompletionItemKind::Keyword->value,
