@@ -212,10 +212,11 @@ final class SymbolResolver implements CodeResolver
 
     public function isValidTypeHint(ClassName $className): bool
     {
-        if (!$this->isClassLike($className)) {
+        $classInfo = $this->symbolSource->lookupClassLike($className);
+        if ($classInfo === null) {
             return true;
         }
-        return !$this->isTrait($className);
+        return !$classInfo->isTrait();
     }
 
     /**
