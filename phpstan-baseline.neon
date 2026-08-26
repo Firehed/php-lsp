@@ -1,18 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^in_array on SymbolKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 1
-			path: src/Completion/ClassCandidates.php
-
-		-
-			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 2
-			path: src/Completion/ClassCandidates.php
-
-		-
 			message: '#^\=\=\= on MemberAccessKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
 			identifier: phpLsp.kindInspection
 			count: 2
