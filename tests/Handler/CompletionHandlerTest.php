@@ -3977,4 +3977,118 @@ class CompletionHandlerTest extends TestCase
             'Functions must not leak into a wrapped implements list (issue #310)',
         );
     }
+
+    public function testExpressionCompletionOffersEverySearchableKind(): void
+    {
+        // Open the multi-namespace file so its functions and constants are
+        // registered, then trigger expression completion from a file that
+        // imports all three symbol kinds.
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_function_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $kindsPresent = array_unique(array_column($result['items'], 'kind'));
+        self::assertContains(
+            CompletionItemKind::Function->value,
+            $kindsPresent,
+            'Expression completion must offer functions',
+        );
+
+        // Now check class-likes at the class prefix marker
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_class_partial');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+        self::assertIsArray($result);
+        $kindsPresent = array_unique(array_column($result['items'], 'kind'));
+        self::assertContains(
+            CompletionItemKind::Class_->value,
+            $kindsPresent,
+            'Expression completion must offer class-likes',
+        );
+
+        // And constants at the constant prefix marker
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_constant_partial');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+        self::assertIsArray($result);
+        $kindsPresent = array_unique(array_column($result['items'], 'kind'));
+        self::assertContains(
+            CompletionItemKind::Constant->value,
+            $kindsPresent,
+            'Expression completion must offer constants',
+        );
+    }
+
+    public function testExpressionCompletionOffersImportedFunction(): void
+    {
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_function_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'makeUser',
+            $labels,
+            'A function imported via `use function` is offered at expression start',
+        );
+    }
+
+    public function testExpressionCompletionOffersImportedConstant(): void
+    {
+        $this->openFixture('Namespacing/MultiNamespaceImports.php');
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_constant_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'DEFAULT_LIMIT',
+            $labels,
+            'A constant imported via `use const` is offered at expression start',
+        );
+    }
+
+    public function testExpressionCompletionOffersGlobalFunctionFromNamespace(): void
+    {
+        // A global built-in function is offered unqualified from inside a namespace
+        // via the global-fallback rule, derived from ReferenceResolver rather than
+        // an unconditional list.
+        $cursor = $this->openFixtureAtCursor('Namespacing/ImportCompletion.php', 'imported_class_partial');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        // "Us" prefix should not match functions, so use the function prefix marker
+        $cursor = $this->openFixtureAtCursor('src/Completion/FunctionCompletion.php', 'builtin_function');
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'array_map',
+            $labels,
+            'A global built-in function is offered unqualified',
+        );
+    }
+
+    public function testCurrentNamespaceClassOfferedWithoutOpening(): void
+    {
+        // A class in the current namespace exists on disk (via Composer's PSR-4)
+        // but is never opened. It should be offered via childrenOf(current namespace).
+        // Fixtures\Domain\User is in tests/Fixtures/src/Domain/User.php — PSR-4
+        // autoloaded. The probe file sits in namespace Fixtures\Domain.
+        $cursor = $this->openFixtureAtCursor('Namespacing/CurrentNamespaceBareProbe.php', 'current_ns_bare');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $byLabel = array_column($result['items'], 'detail', 'label');
+        self::assertSame(
+            'Fixtures\Domain\User',
+            $byLabel['User'] ?? null,
+            'A class in the current namespace is offered even when never opened (issue #383)',
+        );
+    }
 }
