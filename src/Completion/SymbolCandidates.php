@@ -65,9 +65,6 @@ final class SymbolCandidates
     }
 
     /**
-     * @return list<CompletionItem>
-     */
-    /**
      * @param array<string, true> $seen
      * @return list<CompletionItem>
      */
@@ -101,9 +98,6 @@ final class SymbolCandidates
     }
 
     /**
-     * @return list<CompletionItem>
-     */
-    /**
      * @param array<string, true> $seen
      * @return list<CompletionItem>
      */
@@ -134,9 +128,6 @@ final class SymbolCandidates
         return $items;
     }
 
-    /**
-     * @return list<CompletionItem>
-     */
     /**
      * @param array<string, true> $seen
      * @return list<CompletionItem>
@@ -181,9 +172,6 @@ final class SymbolCandidates
         return $items;
     }
 
-    /**
-     * @param string $fqn
-     */
     /**
      * @return CompletionItem
      */
