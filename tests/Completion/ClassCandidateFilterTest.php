@@ -48,5 +48,6 @@ class ClassCandidateFilterTest extends TestCase
         yield 'extendable class' => [ClassCandidateFilter::ExtendableClass, 'isExtendableClass'];
         yield 'throwable' => [ClassCandidateFilter::Throwable, 'isThrowable'];
         yield 'attribute' => [ClassCandidateFilter::Attribute, 'isAttribute'];
+        yield 'trait' => [ClassCandidateFilter::Trait_, 'isTrait'];
     }
 }
