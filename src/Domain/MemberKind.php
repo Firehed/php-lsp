@@ -23,6 +23,11 @@ enum MemberKind
 
     case Property;
 
+    public function isMethod(): bool
+    {
+        return $this === self::Method;
+    }
+
     /**
      * Where a class-like holds the members of this kind, keyed by declared name.
      *
