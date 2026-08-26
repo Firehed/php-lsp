@@ -73,21 +73,9 @@ parameters:
 			path: src/Repository/MemberResolver.php
 
 		-
-			message: '#^\!\=\= on ClassKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 1
-			path: src/Resolution/SymbolResolver.php
-
-		-
 			message: '#^\!\=\= on MemberFilter branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
 			identifier: phpLsp.kindInspection
 			count: 1
-			path: src/Resolution/SymbolResolver.php
-
-		-
-			message: '#^\=\=\= on ClassKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 3
 			path: src/Resolution/SymbolResolver.php
 
 		-

@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
-use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
@@ -208,21 +207,15 @@ final class SymbolResolver implements CodeResolver
         if ($classInfo === null) {
             return true;
         }
-        return !$classInfo->isAbstract && $classInfo->kind === ClassKind::Class_;
+        return !$classInfo->isAbstract && $classInfo->isClass();
     }
 
-    /**
-     * Check if a class-like can be used as a type hint.
-     * Traits are not valid type hints; classes, interfaces, and enums are.
-     * Returns true for unknown classes (optimistic filtering).
-     */
     public function isValidTypeHint(ClassName $className): bool
     {
-        $classInfo = $this->symbolSource->lookupClassLike($className);
-        if ($classInfo === null) {
+        if (!$this->isClassLike($className)) {
             return true;
         }
-        return $classInfo->kind !== ClassKind::Trait_;
+        return !$this->isTrait($className);
     }
 
     /**
@@ -236,7 +229,16 @@ final class SymbolResolver implements CodeResolver
         if ($classInfo === null) {
             return false;
         }
-        return $classInfo->kind === ClassKind::Interface_;
+        return $classInfo->isInterface();
+    }
+
+    public function isTrait(ClassName $className): bool
+    {
+        $classInfo = $this->symbolSource->lookupClassLike($className);
+        if ($classInfo === null) {
+            return false;
+        }
+        return $classInfo->isTrait();
     }
 
     /**
@@ -251,7 +253,7 @@ final class SymbolResolver implements CodeResolver
         if ($classInfo === null) {
             return false;
         }
-        return $classInfo->kind === ClassKind::Class_ && !$classInfo->isFinal;
+        return $classInfo->isClass() && !$classInfo->isFinal;
     }
 
     /**
