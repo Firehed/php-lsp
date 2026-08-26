@@ -49,12 +49,29 @@ class MemberKindTest extends TestCase
         );
     }
 
+    #[DataProvider('isMethodCases')]
+    public function testIsMethod(MemberKind $kind, bool $expected): void
+    {
+        self::assertSame($expected, $kind->isMethod(), $kind->name . ' isMethod');
+    }
+
     public function testKeyForCollapsesACaseVariedMethodOverride(): void
     {
         self::assertSame(
             MemberKind::Method->keyFor('overriddenMethod'),
             MemberKind::Method->keyFor('OVERRIDDENMETHOD'),
         );
+    }
+
+    /**
+     * @return iterable<string, array{MemberKind, bool}>
+     */
+    public static function isMethodCases(): iterable
+    {
+        yield 'constant' => [MemberKind::Constant, false];
+        yield 'enum case' => [MemberKind::EnumCase, false];
+        yield 'method' => [MemberKind::Method, true];
+        yield 'property' => [MemberKind::Property, false];
     }
 
     /**
