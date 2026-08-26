@@ -10,17 +10,14 @@ use Firehed\PhpLsp\Domain\Visibility;
 
 final readonly class MemberAccessContext
 {
-    /**
-     * @codeCoverageIgnore
-     */
-    public function __construct(
+    private function __construct(
         public Type $type,
         public Visibility $minVisibility,
         public MemberAccessKind $kind,
         public string $prefix,
-        public MemberFilter $memberFilter = MemberFilter::Instance,
-        public bool $offersClassConstant = false,
-        private bool $methodsOnly = false,
+        public MemberFilter $memberFilter,
+        public bool $offersClassConstant,
+        private bool $methodsOnly,
     ) {
     }
 
@@ -29,7 +26,15 @@ final readonly class MemberAccessContext
         Visibility $minVisibility,
         string $prefix,
     ): self {
-        return new self($type, $minVisibility, MemberAccessKind::Instance, $prefix, MemberFilter::Instance);
+        return new self(
+            $type,
+            $minVisibility,
+            MemberAccessKind::Instance,
+            $prefix,
+            MemberFilter::Instance,
+            false,
+            false,
+        );
     }
 
     public static function forStatic(
@@ -43,7 +48,8 @@ final readonly class MemberAccessContext
             MemberAccessKind::Static,
             $prefix,
             MemberFilter::Static,
-            offersClassConstant: true,
+            true,
+            false,
         );
     }
 
@@ -58,7 +64,8 @@ final readonly class MemberAccessContext
             MemberAccessKind::Parent,
             $prefix,
             MemberFilter::All,
-            methodsOnly: true,
+            false,
+            true,
         );
     }
 
