@@ -120,6 +120,8 @@ final class CompletionItemFactory
         Range $replaceRange,
         bool $snippetSupport = false,
         ?string $filterText = null,
+        ?string $detail = null,
+        ?string $documentation = null,
     ): array {
         $itemKind = match ($kind) {
             NameKind::ClassLike => CompletionItemKind::Class_,
@@ -130,7 +132,7 @@ final class CompletionItemFactory
         $item = [
             'label' => $reference,
             'kind' => $itemKind->value,
-            'detail' => $fullyQualifiedName,
+            'detail' => $detail ?? $fullyQualifiedName,
             'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
@@ -138,7 +140,11 @@ final class CompletionItemFactory
             ],
         ];
 
-        if ($kind === NameKind::Function_) {
+        if ($documentation !== null) {
+            $item['documentation'] = $documentation;
+        }
+
+        if ($kind->isFunction()) {
             $item = self::withCallableSnippet($item, $snippetSupport);
         }
 

@@ -7,15 +7,14 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\ClassCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
-use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\NamespaceCandidates;
+use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
@@ -51,10 +50,9 @@ use PHPUnit\Framework\TestCase;
  */
 #[CoversClass(CompletionHandler::class)]
 #[CoversClass(BuiltinTypeCandidates::class)]
-#[CoversClass(ClassCandidates::class)]
 #[CoversClass(CompletionItemFactory::class)]
-#[CoversClass(FunctionCandidates::class)]
 #[CoversClass(KeywordCandidates::class)]
+#[CoversClass(SymbolCandidates::class)]
 #[CoversClass(MemberCandidates::class)]
 #[CoversClass(NamedArgumentCandidates::class)]
 #[CoversClass(VariableCandidates::class)]
@@ -106,9 +104,8 @@ class CompletionHandlerTest extends TestCase
         return new CompletionHandler(
             $this->documents,
             $this->symbolResolver,
-            new ClassCandidates($symbolSource, $this->symbolResolver, $capabilities),
+            new SymbolCandidates($symbolSource, $this->symbolResolver, $capabilities),
             new NamespaceCandidates($symbolSource, $this->symbolResolver, $capabilities),
-            new FunctionCandidates($this->symbolSource, $capabilities),
             new KeywordCandidates(),
             new VariableCandidates($this->symbolResolver),
             new MemberCandidates($this->symbolResolver, $capabilities),
@@ -1215,19 +1212,8 @@ class CompletionHandlerTest extends TestCase
 
     public function testNewCompletionExcludesIndexedInterfaces(): void
     {
-        // Add an interface and a class to the index
-        $this->symbolIndex->add(new Symbol(
-            'MyInterface',
-            'MyInterface',
-            SymbolKind::Interface_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyClass',
-            'MyClass',
-            SymbolKind::Class_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
+        $this->openDocument('file:///class.php', "<?php\nclass MyClass {}\n");
+        $this->openDocument('file:///iface.php', "<?php\ninterface MyInterface {}\n");
 
         $code = '<?php $x = new My';
         $this->openDocument('file:///test.php', $code);
@@ -1246,9 +1232,7 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        // Should include class
         self::assertContains('MyClass', $labels);
-        // Should NOT include interface
         self::assertNotContains('MyInterface', $labels);
     }
 
@@ -1271,24 +1255,8 @@ class CompletionHandlerTest extends TestCase
 
     public function testTypeHintCompletionExcludesIndexedTraits(): void
     {
-        // Both symbols are indexed but their declaration file is never opened, so
-        // the class repository cannot reach them. isValidTypeHint is optimistic for
-        // an unreachable name (it returns true), so the ClassCandidateFilter
-        // predicate does not exclude the trait here — only the class-like kind gate
-        // does. A resolvable trait would be rejected by the predicate regardless,
-        // leaving the gate's TypeHint arm untested; this pins it on the seam path.
-        $this->symbolIndex->add(new Symbol(
-            'MyClass',
-            'MyClass',
-            SymbolKind::Class_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyTrait',
-            'MyTrait',
-            SymbolKind::Trait_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
+        $this->openDocument('file:///class.php', "<?php\nclass MyClass {}\n");
+        $this->openDocument('file:///trait.php', "<?php\ntrait MyTrait {}\n");
 
         $code = '<?php function foo(): My';
         $this->openDocument('file:///test.php', $code);
@@ -1308,11 +1276,7 @@ class CompletionHandlerTest extends TestCase
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
         self::assertContains('MyClass', $labels, 'A class is a valid type hint');
-        self::assertNotContains(
-            'MyTrait',
-            $labels,
-            'A trait is not a valid type hint; only the class-like kind gate excludes an unresolvable indexed trait',
-        );
+        self::assertNotContains('MyTrait', $labels, 'A trait is not a valid type hint');
     }
 
     /**
@@ -1356,28 +1320,11 @@ class CompletionHandlerTest extends TestCase
 
     public function testExpressionCompletionIncludesAllIndexedTypes(): void
     {
-        // Add various symbol types to the index
-        $this->symbolIndex->add(new Symbol(
-            'MyClass',
-            'MyClass',
-            SymbolKind::Class_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyInterface',
-            'MyInterface',
-            SymbolKind::Interface_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
-        $this->symbolIndex->add(new Symbol(
-            'MyTrait',
-            'MyTrait',
-            SymbolKind::Trait_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-        ));
+        $this->openDocument('file:///class.php', "<?php\nclass ZqClass {}\n");
+        $this->openDocument('file:///iface.php', "<?php\ninterface ZqInterface {}\n");
+        $this->openDocument('file:///trait.php', "<?php\ntrait ZqTrait {}\n");
 
-        // Expression context (not `new`)
-        $code = '<?php $x = My';
+        $code = '<?php $x = Zq';
         $this->openDocument('file:///test.php', $code);
 
         $request = RequestMessage::fromArray([
@@ -1394,10 +1341,9 @@ class CompletionHandlerTest extends TestCase
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        // Expression context should include all types
-        self::assertContains('MyClass', $labels);
-        self::assertContains('MyInterface', $labels);
-        self::assertContains('MyTrait', $labels);
+        self::assertContains('ZqClass', $labels);
+        self::assertContains('ZqInterface', $labels);
+        self::assertContains('ZqTrait', $labels);
     }
 
     public function testTypeHintCompletionInReturnType(): void

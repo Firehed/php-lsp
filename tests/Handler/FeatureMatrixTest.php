@@ -7,12 +7,11 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\ClassCandidates;
-use Firehed\PhpLsp\Completion\FunctionCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\NamespaceCandidates;
+use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
@@ -110,9 +109,8 @@ final class FeatureMatrixTest extends TestCase
             CompletionHandler::class => new CompletionHandler(
                 $documents,
                 $symbolResolver,
-                new ClassCandidates($knowledge->source, $symbolResolver, $capabilities),
+                new SymbolCandidates($knowledge->source, $symbolResolver, $capabilities),
                 new NamespaceCandidates($knowledge->source, $symbolResolver, $capabilities),
-                new FunctionCandidates($knowledge->source, $capabilities),
                 new KeywordCandidates(),
                 new VariableCandidates($symbolResolver),
                 new MemberCandidates($symbolResolver, $capabilities),
