@@ -31,24 +31,6 @@ parameters:
 			path: src/Completion/MemberCandidates.php
 
 		-
-			message: '#^\!\=\= on NameKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 1
-			path: src/Completion/NamespaceCandidates.php
-
-		-
-			message: '#^\=\=\= on CompletionItemKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 1
-			path: src/Completion/NamespaceCandidates.php
-
-		-
-			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Completion/NamespaceCandidates.php
-
-		-
 			message: '#^class constant fetch on a computed class name; name the class literally \(RFC 1 §4\.5\)\.$#'
 			identifier: phpLsp.dynamicClassReference
 			count: 2

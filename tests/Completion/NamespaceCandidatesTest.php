@@ -166,19 +166,20 @@ class NamespaceCandidatesTest extends TestCase
         );
     }
 
-    public function testOffersClassLikesButNotOtherKinds(): void
+    public function testOffersAllSymbolKinds(): void
     {
         $source = self::source(['App' => new NamespaceContents([], [
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\helper', NameKind::Function_),
+            new CatalogSymbol('App\MAX_SIZE', NameKind::Constant),
         ])]);
-        // Any accepts every class-like, so only the kind gate is exercised here.
         $candidates = new NamespaceCandidates($source, self::classLikeResolver(), self::utf16Capabilities());
 
         $labels = array_column($candidates->find('App', '', 0, 0, ClassCandidateFilter::Any), 'label');
 
         self::assertContains('Widget', $labels, 'A class-like is offered');
-        self::assertNotContains('helper', $labels, 'A function is not a class-like and is not offered here');
+        self::assertContains('helper', $labels, 'A function is offered');
+        self::assertContains('MAX_SIZE', $labels, 'A constant is offered');
     }
 
     public function testFiltersSymbolsByTheSegmentPrefix(): void
