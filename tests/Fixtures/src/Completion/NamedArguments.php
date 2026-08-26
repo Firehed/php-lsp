@@ -73,6 +73,16 @@ class NamedArguments
         $this->multipleParams(/*|additive_with_variable*/);
     }
 
+    public function testExpressionInBareArg(): void
+    {
+        $this->multipleParams(n/*|expression_in_bare_arg*/
+    }
+
+    public function testExpressionInSecondArg(): void
+    {
+        $this->multipleParams('test', arr/*|expression_in_second_arg*/
+    }
+
     public function testAfterNamedArgColon(): void
     {
         $this->multipleParams(name: /*|after_colon*/

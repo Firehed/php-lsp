@@ -304,4 +304,27 @@ class CompletionClassifierTest extends TestCase
         yield 'value partly typed' => ['foo(name: Sta', 'Sta'];
         yield 'no colon at all' => ['foo(na', null];
     }
+
+    #[DataProvider('provideCallExpressionPrefixes')]
+    public function testCallExpressionPrefix(string $textBeforeCursor, ?string $expected): void
+    {
+        self::assertSame($expected, CompletionClassifier::callExpressionPrefix($textBeforeCursor));
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, ?string}>
+     */
+    public static function provideCallExpressionPrefixes(): iterable
+    {
+        yield 'bare identifier after paren' => ['foo(s', 's'];
+        yield 'bare identifier after comma' => ['foo(1, s', 's'];
+        yield 'empty after paren' => ['foo(', ''];
+        yield 'empty after comma' => ['foo(1, ', ''];
+        yield 'after named arg colon' => ['foo(name: s', 's'];
+        yield 'empty after colon' => ['foo(name: ', ''];
+        yield 'on variable' => ['foo($v', null];
+        yield 'on bare sigil' => ['foo($', null];
+        yield 'after operator' => ['foo(1 + s', 's'];
+    }
 }
