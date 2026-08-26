@@ -290,6 +290,14 @@ class TypeFactoryTest extends TestCase
         self::assertTrue($type->isNullable());
     }
 
+    public function testClassNameCreatesClassNameFromFqn(): void
+    {
+        $type = TypeFactory::className(\stdClass::class);
+
+        self::assertInstanceOf(ClassName::class, $type);
+        self::assertSame(\stdClass::class, $type->fqn);
+    }
+
     public function testFromReflectionWithNullReturnsNull(): void
     {
         self::assertNull(TypeFactory::fromReflection(null));
