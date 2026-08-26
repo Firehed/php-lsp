@@ -4,12 +4,40 @@
             "label": "calculateSum",
             "kind": 3,
             "detail": "function calculateSum(int $a, int $b): int",
+            "filterText": "calculateSum",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -4
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "calculateSum"
+            },
             "documentation": "Adds two numbers."
         },
         {
             "label": "calculateProduct",
             "kind": 3,
             "detail": "function calculateProduct(int $a, int $b): int",
+            "filterText": "calculateProduct",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -4
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "calculateProduct"
+            },
             "documentation": "Multiplies two numbers."
         }
     ],
@@ -18,6 +46,20 @@
             "label": "calculateSum",
             "kind": 3,
             "detail": "function calculateSum(int $a, int $b): int",
+            "filterText": "calculateSum",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -4
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "calculateSum"
+            },
             "documentation": "Adds two numbers.",
             "insertText": "calculateSum($0)",
             "insertTextFormat": 2
@@ -26,6 +68,20 @@
             "label": "calculateProduct",
             "kind": 3,
             "detail": "function calculateProduct(int $a, int $b): int",
+            "filterText": "calculateProduct",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -4
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "calculateProduct"
+            },
             "documentation": "Multiplies two numbers.",
             "insertText": "calculateProduct($0)",
             "insertTextFormat": 2
@@ -36,12 +92,40 @@
             "label": "calculateSum",
             "kind": 3,
             "detail": "function calculateSum(int $a, int $b): int",
+            "filterText": "calculateSum",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -9
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "calculateSum"
+            },
             "documentation": "Adds two numbers."
         },
         {
             "label": "calculateProduct",
             "kind": 3,
             "detail": "function calculateProduct(int $a, int $b): int",
+            "filterText": "calculateProduct",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -9
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "calculateProduct"
+            },
             "documentation": "Multiplies two numbers."
         }
     ],
@@ -49,14 +133,42 @@
         {
             "label": "getConfig",
             "kind": 3,
-            "detail": "function getConfig(): Fixtures\\Completion\\Config"
+            "detail": "function getConfig(): Fixtures\\Completion\\Config",
+            "filterText": "getConfig",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -9
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "getConfig"
+            }
         }
     ],
     "builtin|str_contains": [
         {
             "label": "str_contains",
             "kind": 3,
-            "detail": "function str_contains(string $haystack, string $needle): bool"
+            "detail": "function str_contains(string $haystack, string $needle): bool",
+            "filterText": "str_contains",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -12
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "str_contains"
+            }
         }
     ],
     "builtin|str_contains+snippet": [
@@ -64,6 +176,20 @@
             "label": "str_contains",
             "kind": 3,
             "detail": "function str_contains(string $haystack, string $needle): bool",
+            "filterText": "str_contains",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -12
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "str_contains"
+            },
             "insertText": "str_contains($0)",
             "insertTextFormat": 2
         }
@@ -72,22 +198,23 @@
         {
             "label": "array_map",
             "kind": 3,
-            "detail": "function array_map(?callable $callback, array $array, array ...$arrays): array"
+            "detail": "function array_map(?callable $callback, array $array, array ...$arrays): array",
+            "filterText": "array_map",
+            "textEdit": {
+                "range": {
+                    "start": {
+                        "line": 5,
+                        "character": -9
+                    },
+                    "end": {
+                        "line": 5,
+                        "character": 0
+                    }
+                },
+                "newText": "array_map"
+            }
         }
     ],
-    "other-document|calc": [
-        {
-            "label": "calculateSum",
-            "kind": 3,
-            "detail": "function calculateSum(int $a, int $b): int",
-            "documentation": "Adds two numbers."
-        },
-        {
-            "label": "calculateProduct",
-            "kind": 3,
-            "detail": "function calculateProduct(int $a, int $b): int",
-            "documentation": "Multiplies two numbers."
-        }
-    ],
+    "other-document|calc": [],
     "no-match|zzzz": []
 }

@@ -50,13 +50,14 @@ final class SymbolCandidates
         );
 
         $snippets = $caps->snippetSupport;
+        $seen = [];
         $items = [];
         foreach ($kinds as $kind) {
             $items = array_merge(
                 $items,
-                $this->fromSearch($prefix, $kind, $context, $classFilter, $replaceRange, $snippets),
-                $this->fromImports($prefix, $kind, $context, $classFilter, $replaceRange, $snippets),
-                $this->fromCurrentNamespace($prefix, $kind, $context, $classFilter, $replaceRange, $snippets),
+                $this->fromSearch($prefix, $kind, $context, $classFilter, $replaceRange, $snippets, $seen),
+                $this->fromImports($prefix, $kind, $context, $classFilter, $replaceRange, $snippets, $seen),
+                $this->fromCurrentNamespace($prefix, $kind, $context, $classFilter, $replaceRange, $snippets, $seen),
             );
         }
 
@@ -66,6 +67,10 @@ final class SymbolCandidates
     /**
      * @return list<CompletionItem>
      */
+    /**
+     * @param array<string, true> $seen
+     * @return list<CompletionItem>
+     */
     private function fromSearch(
         string $prefix,
         NameKind $kind,
@@ -73,10 +78,14 @@ final class SymbolCandidates
         ClassCandidateFilter $classFilter,
         Range $replaceRange,
         bool $snippetSupport,
+        array &$seen,
     ): array {
         $items = [];
         foreach ($this->symbolSource->search($prefix, $kind) as $symbol) {
             $fqn = $symbol->fullyQualifiedName;
+            if (array_key_exists($fqn, $seen)) {
+                continue;
+            }
             if ($kind->isClassLike() && !$this->acceptsClassLike($fqn, $classFilter)) {
                 continue;
             }
@@ -84,6 +93,7 @@ final class SymbolCandidates
             if (!$reference->isReachable()) {
                 continue;
             }
+            $seen[$fqn] = true;
             $items[] = $this->buildItem($reference->text, $fqn, $kind, $replaceRange, $snippetSupport);
         }
 
@@ -93,6 +103,10 @@ final class SymbolCandidates
     /**
      * @return list<CompletionItem>
      */
+    /**
+     * @param array<string, true> $seen
+     * @return list<CompletionItem>
+     */
     private function fromImports(
         string $prefix,
         NameKind $kind,
@@ -100,15 +114,20 @@ final class SymbolCandidates
         ClassCandidateFilter $classFilter,
         Range $replaceRange,
         bool $snippetSupport,
+        array &$seen,
     ): array {
         $items = [];
         foreach ($context->importsFor($kind) as $shortName => $fqn) {
+            if (array_key_exists($fqn, $seen)) {
+                continue;
+            }
             if (!PrefixMatcher::matches($shortName, $prefix)) {
                 continue;
             }
             if ($kind->isClassLike() && !$this->acceptsClassLike($fqn, $classFilter)) {
                 continue;
             }
+            $seen[$fqn] = true;
             $items[] = $this->buildItem($shortName, $fqn, $kind, $replaceRange, $snippetSupport);
         }
 
@@ -118,6 +137,10 @@ final class SymbolCandidates
     /**
      * @return list<CompletionItem>
      */
+    /**
+     * @param array<string, true> $seen
+     * @return list<CompletionItem>
+     */
     private function fromCurrentNamespace(
         string $prefix,
         NameKind $kind,
@@ -125,6 +148,7 @@ final class SymbolCandidates
         ClassCandidateFilter $classFilter,
         Range $replaceRange,
         bool $snippetSupport,
+        array &$seen,
     ): array {
         if ($context->namespace === '') {
             return [];
@@ -140,6 +164,9 @@ final class SymbolCandidates
                 continue;
             }
             $fqn = $symbol->fullyQualifiedName;
+            if (array_key_exists($fqn, $seen)) {
+                continue;
+            }
             if ($kind->isClassLike() && !$this->acceptsClassLike($fqn, $classFilter)) {
                 continue;
             }
@@ -147,6 +174,7 @@ final class SymbolCandidates
             if (!$reference->isReachable()) {
                 continue;
             }
+            $seen[$fqn] = true;
             $items[] = $this->buildItem($reference->text, $fqn, $kind, $replaceRange, $snippetSupport);
         }
 
