@@ -169,18 +169,20 @@ final class CompletionHandler implements DocumentFeatureHandler
                 ),
             );
 
-            // After named arg colon (value position), also offer expression keywords and classes
-            $prefix = CompletionClassifier::argumentValuePrefix($textBeforeCursor);
-            if ($prefix !== null) {
-                $items = array_merge($items, $this->keywordCandidates->find($prefix, KeywordGroup::Expression));
+            $expressionPrefix = CompletionClassifier::callExpressionPrefix($textBeforeCursor);
+            if ($expressionPrefix !== null) {
+                $items = array_merge($items, array_map(
+                    static fn(array $item): array => ['sortText' => '"' . $item['label']] + $item,
+                    $this->keywordCandidates->find($expressionPrefix, KeywordGroup::Expression),
+                ));
                 $items = array_merge(
                     $items,
                     $this->symbolCandidates->find(
-                        $prefix,
+                        $expressionPrefix,
                         $document,
                         $line,
                         $character,
-                        [NameKind::ClassLike],
+                        NameKind::cases(),
                         ClassCandidateFilter::Any,
                     ),
                 );

@@ -177,10 +177,12 @@ final class CompletionItemFactory
      */
     public static function forNamedArgument(ParameterInfo $parameter): array
     {
+        $label = $parameter->name . ':';
         return [
-            'label' => $parameter->name . ':',
+            'label' => $label,
             'kind' => CompletionItemKind::Field->value,
             'detail' => $parameter->format(),
+            'sortText' => '!' . $label,
         ];
     }
 

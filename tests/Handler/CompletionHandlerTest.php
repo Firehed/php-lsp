@@ -3466,6 +3466,62 @@ class CompletionHandlerTest extends TestCase
     }
 
     // =========================================================================
+    // Argument-value expression completions (issue #292)
+    // =========================================================================
+
+    public function testArgumentValueOffersExpressionKeywords(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'expression_in_bare_arg');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('new', $labels, 'Expression keywords should be offered in argument position');
+        self::assertContains('null', $labels, 'Expression keywords should be offered in argument position');
+        self::assertNotContains('if', $labels, 'Statement keywords should not appear in argument position');
+        self::assertNotContains('class', $labels, 'Declaration keywords should not appear in argument position');
+    }
+
+    public function testArgumentValueOffersNamedArgsAlongside(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'expression_in_bare_arg');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('name:', $labels, 'Named args should still be offered alongside expression items');
+    }
+
+    public function testArgumentValueOffersFunctions(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'expression_in_second_arg');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains(
+            'array_map',
+            $labels,
+            'Built-in functions should be offered in argument position',
+        );
+    }
+
+    public function testArgumentValueDoesNotOfferExpressionsOnVariable(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'variable_in_call');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('$variable', $labels, 'Variables should be offered on $');
+        self::assertNotContains('new', $labels, 'Expression keywords should not appear when cursor is on $');
+    }
+
+    // =========================================================================
     // Incomplete code in control structures - text-based fallback
     // =========================================================================
 
