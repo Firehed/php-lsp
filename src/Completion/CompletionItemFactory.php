@@ -182,6 +182,8 @@ final class CompletionItemFactory
             'label' => $label,
             'kind' => CompletionItemKind::Field->value,
             'detail' => $parameter->format(),
+            // This promotes named args to the top of the list in case it gets
+            // capped, since ! sorts alphabetically before the string
             'sortText' => '!' . $label,
         ];
     }
