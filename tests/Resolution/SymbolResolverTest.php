@@ -1590,6 +1590,40 @@ final class SymbolResolverTest extends TestCase
         self::assertFalse($this->resolver->isInterface(new ClassName('NonExistent\\Unknown')));
     }
 
+    public function testIsTraitReturnsTrueForTrait(): void
+    {
+        $this->openFixture('src/Traits/SingletonTrait.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertTrue($this->resolver->isTrait(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+    }
+
+    public function testIsTraitReturnsFalseForClass(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Domain\\User')));
+    }
+
+    public function testIsTraitReturnsFalseForInterface(): void
+    {
+        $this->openFixture('src/Domain/Entity.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Domain\\Entity')));
+    }
+
+    public function testIsTraitReturnsFalseForEnum(): void
+    {
+        $this->openFixture('src/Enum/Status.php');
+        /** @phpstan-ignore argument.type (fixture class) */
+        self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Enum\\Status')));
+    }
+
+    public function testIsTraitReturnsFalseForUnknownClass(): void
+    {
+        /** @phpstan-ignore argument.type (intentionally non-existent) */
+        self::assertFalse($this->resolver->isTrait(new ClassName('NonExistent\\Unknown')));
+    }
+
     #[DataProvider('extendableClassProvider')]
     public function testIsExtendableClass(?string $fixture, string $fqcn, bool $expected, string $message): void
     {

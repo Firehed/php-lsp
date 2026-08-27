@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ClassInfo::class)]
@@ -74,6 +75,29 @@ class ClassInfoTest extends TestCase
         self::assertNull($class->docblock);
         self::assertNull($class->file);
         self::assertNull($class->line);
+    }
+
+    #[DataProvider('kindPredicateProvider')]
+    public function testKindPredicates(
+        ClassKind $kind,
+        bool $isClass,
+        bool $isInterface,
+        bool $isTrait,
+    ): void {
+        $info = $this->createClassInfo(name: \stdClass::class, kind: $kind);
+        self::assertSame($isClass, $info->isClass(), 'isClass');
+        self::assertSame($isInterface, $info->isInterface(), 'isInterface');
+        self::assertSame($isTrait, $info->isTrait(), 'isTrait');
+    }
+
+    /** @return iterable<string, array{ClassKind, bool, bool, bool}> */
+    public static function kindPredicateProvider(): iterable
+    {
+        //                                    isClass  isIface  isTrait
+        yield 'class'     => [ClassKind::Class_,     true,  false, false];
+        yield 'interface' => [ClassKind::Interface_,  false, true,  false];
+        yield 'trait'     => [ClassKind::Trait_,      false, false, true];
+        yield 'enum'      => [ClassKind::Enum_,       false, false, false];
     }
 
     public function testFormatSimpleClass(): void

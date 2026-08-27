@@ -41,6 +41,9 @@ enum ClassCandidateFilter
     /** Only attribute classes (e.g. in a `#[...]` position) */
     case Attribute;
 
+    /** Only traits (e.g. after `use` in a class body) */
+    case Trait_;
+
     /**
      * Whether a class-like is valid in this position, resolved through the
      * {@see CodeResolver} predicates (which read the caching class repository).
@@ -55,6 +58,7 @@ enum ClassCandidateFilter
             self::ExtendableClass => $codeResolver->isExtendableClass($className),
             self::Throwable => $codeResolver->isThrowable($className),
             self::Attribute => $codeResolver->isAttribute($className),
+            self::Trait_ => $codeResolver->isTrait($className),
         };
     }
 }

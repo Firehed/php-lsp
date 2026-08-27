@@ -37,10 +37,21 @@ final readonly class ClassInfo implements Formattable, SymbolInfo
     ) {
     }
 
-    /**
-     * Returns a formatted class signature for display.
-     * Example: "final class User extends Entity implements JsonSerializable"
-     */
+    public function isClass(): bool
+    {
+        return $this->kind === ClassKind::Class_;
+    }
+
+    public function isInterface(): bool
+    {
+        return $this->kind === ClassKind::Interface_;
+    }
+
+    public function isTrait(): bool
+    {
+        return $this->kind === ClassKind::Trait_;
+    }
+
     public function format(): string
     {
         $parts = [];

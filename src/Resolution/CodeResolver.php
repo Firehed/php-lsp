@@ -69,6 +69,11 @@ interface CodeResolver
     public function isInterface(ClassName $className): bool;
 
     /**
+     * Check if a class-like is a trait (e.g. valid after `use` in a class body).
+     */
+    public function isTrait(ClassName $className): bool;
+
+    /**
      * Check if a class-like can be extended by a class (e.g. valid after
      * `class X extends`). True for non-final classes, abstract included.
      */
