@@ -35,6 +35,7 @@ final class Scope
         private readonly ?string $parentContext,
         private readonly ?ClassName $thisType,
         private readonly array $capturedVariableNames,
+        private readonly Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
     ) {
     }
 
@@ -46,24 +47,28 @@ final class Scope
      */
     public static function atOffset(array $ast, int $offset): self
     {
+        $classLike = self::findEnclosingClassLike($ast, $offset);
         $node = self::findEnclosingFunctionLike($ast, $offset);
         if ($node !== null) {
-            return self::forNode($node);
+            return self::forNode($node, $classLike);
         }
 
-        return self::global(self::globalStatementsAtOffset($ast, $offset));
+        return self::global(self::globalStatementsAtOffset($ast, $offset), $classLike);
     }
 
-    public static function forNode(Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction $node): self
-    {
-        $selfContext = ScopeFinder::findEnclosingClassName($node);
-        $parentContext = null;
-        if ($selfContext !== null) {
-            $classNode = ScopeFinder::findEnclosingClassNode($node);
-            if ($classNode instanceof Stmt\Class_) {
-                $parentContext = ScopeFinder::resolveExtendsName($classNode);
-            }
-        }
+    public static function forNode(
+        Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction $node,
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike = null,
+    ): self {
+        $enclosingClassLike ??= ScopeFinder::findEnclosingClassNode($node);
+
+        $selfContext = $enclosingClassLike !== null
+            ? ScopeFinder::getClassLikeName($enclosingClassLike)
+            : null;
+
+        $parentContext = ($enclosingClassLike instanceof Stmt\Class_)
+            ? ScopeFinder::resolveExtendsName($enclosingClassLike)
+            : null;
 
         $thisType = ($node instanceof Stmt\ClassMethod && $selfContext !== null)
             ? new ClassName($selfContext)
@@ -83,16 +88,25 @@ final class Scope
         }
 
         /** @var ?class-string $selfContext */
-        /** @var ?class-string $parentContext */
-        return new self($node->params, $statements, $selfContext, $parentContext, $thisType, $capturedVariableNames);
+        return new self(
+            $node->params,
+            $statements,
+            $selfContext,
+            $parentContext,
+            $thisType,
+            $capturedVariableNames,
+            $enclosingClassLike,
+        );
     }
 
     /**
      * @param array<Stmt> $statements
      */
-    public static function global(array $statements): self
-    {
-        return new self([], $statements, null, null, null, []);
+    public static function global(
+        array $statements,
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike = null,
+    ): self {
+        return new self([], $statements, null, null, null, [], $enclosingClassLike);
     }
 
     /**
@@ -138,6 +152,11 @@ final class Scope
         return $this->thisType;
     }
 
+    public function getEnclosingClassLike(): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null
+    {
+        return $this->enclosingClassLike;
+    }
+
     /**
      * Whether the named variable is captured by a closure `use()` clause. Such
      * variables are bound from the enclosing scope, so their type cannot be
@@ -146,6 +165,34 @@ final class Scope
     public function capturesVariable(string $name): bool
     {
         return in_array($name, $this->capturedVariableNames, true);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findEnclosingClassLike(
+        array $ast,
+        int $offset,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        $finder = new NodeAtPosition();
+        $node = $finder->find(
+            $ast,
+            $offset,
+            fn (Node $n) => $n instanceof Stmt\Class_
+                || $n instanceof Stmt\Interface_
+                || $n instanceof Stmt\Trait_
+                || $n instanceof Stmt\Enum_,
+        );
+
+        assert(
+            $node === null
+            || $node instanceof Stmt\Class_
+            || $node instanceof Stmt\Interface_
+            || $node instanceof Stmt\Trait_
+            || $node instanceof Stmt\Enum_,
+        );
+
+        return $node;
     }
 
     /**

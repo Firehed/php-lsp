@@ -368,7 +368,7 @@ final class SymbolResolver implements CodeResolver
             }
             // AST found a static access node - if it can't be resolved, that's intentional
             // (e.g., self:: outside a class). Don't fall through to text-based.
-            return $this->resolveStaticAccessContext($node, $ast, $line);
+            return $this->resolveStaticAccessContext($node, $ast, $offset);
         }
 
         // Text-based fallback for incomplete code where AST detection failed
@@ -450,7 +450,7 @@ final class SymbolResolver implements CodeResolver
     private function resolveStaticAccessContext(
         StaticPropertyFetch|StaticCall|ClassConstFetch $node,
         array $ast,
-        int $line,
+        int $offset,
     ): ?MemberAccessContext {
         $class = $node->class;
         if (!$class instanceof Name) {
@@ -459,14 +459,14 @@ final class SymbolResolver implements CodeResolver
 
         $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
         $rawName = $class->toString();
+        $enclosingClassLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
 
         // parent:: has special behavior
         if ($rawName === 'parent') {
-            $classNode = ScopeFinder::findClassAtLine($ast, $line);
-            if ($classNode === null || $classNode->extends === null) {
+            if (!$enclosingClassLike instanceof Stmt\Class_ || $enclosingClassLike->extends === null) {
                 return null;
             }
-            $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+            $parentClassName = ScopeFinder::resolveExtendsName($enclosingClassLike);
             assert($parentClassName !== null);
             return MemberAccessContext::forParent(
                 new ClassName($parentClassName),
@@ -484,8 +484,7 @@ final class SymbolResolver implements CodeResolver
             // @codeCoverageIgnoreEnd
         }
 
-        $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
-        $minVisibility = $this->getMinVisibilityForStaticAccess($enclosingClass, $className);
+        $minVisibility = $this->getMinVisibilityForStaticAccess($enclosingClassLike, $className);
 
         return MemberAccessContext::forStatic(
             new ClassName($className),
@@ -495,19 +494,17 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * Determine minimum visibility for static access from enclosing class.
-     *
      * @param class-string $targetClassName
      */
     private function getMinVisibilityForStaticAccess(
-        ?Stmt\Class_ $enclosingClass,
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
         string $targetClassName,
     ): Visibility {
-        if ($enclosingClass === null) {
+        if ($enclosingClassLike === null) {
             return Visibility::Public;
         }
 
-        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
+        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClassLike);
         if ($enclosingClassName === null) {
             return Visibility::Public;
         }
@@ -516,7 +513,10 @@ final class SymbolResolver implements CodeResolver
             return Visibility::Private;
         }
 
-        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
+        if (
+            $enclosingClassLike instanceof Stmt\Class_
+            && ScopeFinder::resolveExtendsName($enclosingClassLike) === $targetClassName
+        ) {
             return Visibility::Protected;
         }
 
@@ -729,7 +729,7 @@ final class SymbolResolver implements CodeResolver
         $textBeforeParen = substr($content, 0, $parenPos);
 
         // Try to match call patterns and resolve the callable
-        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $line, $content);
+        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $offset, $line, $content);
         if ($callNode === null) {
             return null;
         }
@@ -773,6 +773,7 @@ final class SymbolResolver implements CodeResolver
     private function parseCallPattern(
         string $textBeforeParen,
         array $ast,
+        int $offset,
         int $line,
         string $content,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
@@ -799,10 +800,8 @@ final class SymbolResolver implements CodeResolver
             $isNullsafe = $m[2] === '?';
             $methodName = $m[3];
             $var = new Variable($varName);
-            // For $this, store the enclosing class so resolveMethodCallCallable can use it
             if ($varName === 'this') {
-                $enclosingClass = $this->findEnclosingClassForLine($ast, $line)
-                    ?? $this->textFallback->findEnclosingClassFromContent($content, $line);
+                $enclosingClass = $this->resolveEnclosingClassName($ast, $offset, $content, $line);
                 if ($enclosingClass !== null) {
                     $var->setAttribute('resolvedType', new ClassName($enclosingClass));
                 }
@@ -931,45 +930,20 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * Find the enclosing class name for a given line number.
-     *
      * @param array<Stmt> $ast
-     * @return class-string|null
+     * @return ?class-string
      */
-    private function findEnclosingClassForLine(array $ast, int $line): ?string
-    {
-        $found = self::findClassLikeAtLine($ast, $line);
-        return $found !== null ? ScopeFinder::getClassLikeName($found) : null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private static function findClassLikeAtLine(
+    private function resolveEnclosingClassName(
         array $ast,
+        int $offset,
+        string $content,
         int $line,
-    ): Stmt\Class_|Stmt\Trait_|Stmt\Enum_|null {
-        $target = $line + 1;
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $inner) {
-                    if (
-                        ($inner instanceof Stmt\Class_ || $inner instanceof Stmt\Trait_ || $inner instanceof Stmt\Enum_)
-                        && $inner->getStartLine() <= $target
-                        && $target <= $inner->getEndLine()
-                    ) {
-                        return $inner;
-                    }
-                }
-            } elseif (
-                ($stmt instanceof Stmt\Class_ || $stmt instanceof Stmt\Trait_ || $stmt instanceof Stmt\Enum_)
-                && $stmt->getStartLine() <= $target
-                && $target <= $stmt->getEndLine()
-            ) {
-                return $stmt;
-            }
+    ): ?string {
+        $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
+        if ($classLike !== null) {
+            return ScopeFinder::getClassLikeName($classLike);
         }
-        return null;
+        return $this->textFallback->findEnclosingClassFromContent($content, $line);
     }
 
     /**
@@ -1064,11 +1038,9 @@ final class SymbolResolver implements CodeResolver
             return $type;
         }
 
-        // If AST-based resolution failed and we have document context, try text-based
-        // class detection for expressions that start with $this
         if ($document !== null && $line !== null && $this->expressionStartsWithThis($node->var)) {
-            $enclosingClass = $this->findEnclosingClassForLine($ast, $line)
-                ?? $this->textFallback->findEnclosingClass($document, $line);
+            $offset = $document->offsetAt($line, 0);
+            $enclosingClass = $this->resolveEnclosingClassName($ast, $offset, $document->getContent(), $line);
             if ($enclosingClass !== null) {
                 // Set the resolved type on the $this variable so type resolution can proceed
                 $thisVar = $this->findThisVariable($node->var);

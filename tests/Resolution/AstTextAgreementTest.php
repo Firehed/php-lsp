@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -49,11 +50,7 @@ final class AstTextAgreementTest extends TestCase
         $this->textFallback = new TextFallbackHelper($this->memberResolver);
     }
 
-    /**
-     * The enclosing class-like at a position: for classes, both paths agree.
-     * Traits, interfaces, and enums are a known divergence (node-locator slice).
-     */
-    #[DataProvider('enclosingClassAgreementFixtures')]
+    #[DataProvider('enclosingClassFixtures')]
     public function testEnclosingClassAgreement(string $fixture, int $line, ?string $expected): void
     {
         $content = $this->loadFixture($fixture);
@@ -61,54 +58,23 @@ final class AstTextAgreementTest extends TestCase
         $ast = $this->parser->parse($document);
         self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
-        $astResult = ScopeFinder::findClassAtLine($ast, $line);
+        $offset = $document->offsetAt($line, 0);
+        $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
+        $astResult = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
         $textResult = $this->textFallback->findEnclosingClassFromContent($content, $line);
 
-        if ($expected === null) {
-            self::assertNull($astResult, 'AST path: no enclosing class expected');
-            self::assertNull($textResult, 'Text path must agree: no enclosing class');
-        } else {
-            self::assertNotNull($astResult, 'AST path: enclosing class expected');
-            self::assertNotNull($textResult, 'Text path must agree: enclosing class expected');
-            self::assertSame(
-                $astResult->namespacedName?->toString() ?? $astResult->name?->name,
-                $textResult,
-                'AST and text paths must agree on the enclosing class name',
-            );
-        }
+        self::assertSame($expected, $astResult, 'AST path must match expected');
+        self::assertSame($expected, $textResult, 'Text path must agree with AST path');
     }
 
     /**
      * @return array<string, array{string, int, ?string}>
      */
-    public static function enclosingClassAgreementFixtures(): array
+    public static function enclosingClassFixtures(): array
     {
         return [
             'inside class method' => ['src/Domain/User.php', 50, 'Fixtures\Domain\User'],
             'outside any class' => ['src/Domain/User.php', 3, null],
-        ];
-    }
-
-    /**
-     * Known divergence: ScopeFinder::findClassAtLine returns only Stmt\Class_,
-     * not traits/interfaces/enums. The text fallback handles all four.
-     * Owner: node-locator slice (Step 4).
-     */
-    #[DataProvider('enclosingClassDivergenceFixtures')]
-    public function testEnclosingClassDivergence(string $fixture, int $line, string $expected): void
-    {
-        self::markTestSkipped(
-            'Known divergence (node-locator): findClassAtLine handles only Class_, '
-            . 'text fallback handles all class-likes. See RFC 1 §4.11, Plan 0002 S4.2/S4.4.',
-        );
-    }
-
-    /**
-     * @return array<string, array{string, int, string}>
-     */
-    public static function enclosingClassDivergenceFixtures(): array
-    {
-        return [
             'inside trait method' => ['src/Traits/HasTimestamps.php', 15, 'Fixtures\Traits\HasTimestamps'],
             'inside interface' => ['src/Domain/Entity.php', 10, 'Fixtures\Domain\Entity'],
             'inside enum' => ['src/Enum/Status.php', 15, 'Fixtures\Enum\Status'],
