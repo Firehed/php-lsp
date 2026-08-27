@@ -1355,26 +1355,11 @@ final class SymbolResolver implements CodeResolver
         $line = $name->getStartLine() - 1;
         $context = NameContextFactory::fromAst($ast, $line);
 
-        $imported = $context->functionImports[$shortName] ?? null;
-        if ($imported !== null) {
-            $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($imported));
+        foreach ($context->candidates($shortName, NameKind::Function_) as $candidate) {
+            $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
             if ($funcInfo !== null) {
                 return new ResolvedFunction($funcInfo);
             }
-        }
-
-        if ($context->namespace !== '') {
-            $funcInfo = $this->symbolSource->lookupFunction(
-                FunctionName::fromFullyQualified($context->namespace . '\\' . $shortName),
-            );
-            if ($funcInfo !== null) {
-                return new ResolvedFunction($funcInfo);
-            }
-        }
-
-        $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($shortName));
-        if ($funcInfo !== null) {
-            return new ResolvedFunction($funcInfo);
         }
 
         return null;
