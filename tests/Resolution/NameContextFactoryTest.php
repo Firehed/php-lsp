@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
+use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -142,5 +143,40 @@ final class NameContextFactoryTest extends TestCase
             ['Model' => 'Illuminate\\Database\\Eloquent\\Model'],
             'Trait use inside class body not treated as import',
         ];
+    }
+
+    public function testFromAstOrTextPrefersAstWhenAvailable(): void
+    {
+        // The text regex picks up the `use` inside the string as an import.
+        // The AST path ignores it. fromAstOrText must prefer the AST path.
+        $source = <<<'PHP'
+            <?php
+            namespace App\Models;
+            use Real\Import;
+            $x = "
+            use Fake\Import;
+            ";
+            PHP;
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $ast = $parser->parse($source);
+        self::assertNotNull($ast);
+
+        $lines = explode("\n", $source);
+        $line = 5;
+
+        $fromAstOrText = NameContextFactory::fromAstOrText($ast, $line, $lines);
+        $fromAst = NameContextFactory::fromAst($ast, $line);
+        $fromText = NameContextFactory::fromText($lines, $line);
+
+        self::assertSame(
+            $fromAst->classImports,
+            $fromAstOrText->classImports,
+            'fromAstOrText must match AST path, not text path',
+        );
+        self::assertNotSame(
+            $fromText->classImports,
+            $fromAst->classImports,
+            'Text and AST paths must disagree for this test to be meaningful',
+        );
     }
 }
