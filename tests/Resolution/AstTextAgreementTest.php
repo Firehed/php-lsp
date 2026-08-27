@@ -9,11 +9,18 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
+use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\StaticCall;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -37,6 +44,7 @@ final class AstTextAgreementTest extends TestCase
     private ParserService $parser;
     private MemberResolver $memberResolver;
     private TextFallbackHelper $textFallback;
+    private CallContextDetector $callDetector;
 
     protected function setUp(): void
     {
@@ -49,6 +57,7 @@ final class AstTextAgreementTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($knowledge->source);
         $this->textFallback = new TextFallbackHelper($this->memberResolver);
+        $this->callDetector = new CallContextDetector($this->textFallback);
     }
 
     #[DataProvider('enclosingClassFixtures')]
@@ -103,6 +112,117 @@ final class AstTextAgreementTest extends TestCase
             $fromText->classImports,
             'Class imports must agree between AST and text paths',
         );
+    }
+
+    /**
+     * @param class-string<FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute> $expectedNodeClass
+     */
+    #[DataProvider('callContextFixtures')]
+    public function testCallContextAgreement(
+        string $fixture,
+        string $marker,
+        string $expectedNodeClass,
+        int $expectedActiveParam,
+    ): void {
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $ast = $this->parser->parse($document);
+        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
+
+        $offset = $this->markerOffset($content, $marker);
+        $lines = explode("\n", $content);
+        $line = $this->lineForOffset($content, $offset);
+
+        $astResult = $this->callDetector->fromAst($ast, $offset);
+        $textResult = $this->callDetector->fromText($ast, $offset, $content, $line);
+
+        self::assertNotNull($astResult, 'AST path must detect the call');
+        self::assertNotNull($textResult, 'Text path must detect the call');
+
+        self::assertInstanceOf(
+            $expectedNodeClass,
+            $astResult[0],
+            'AST path must find the expected node type',
+        );
+        self::assertSame(
+            $astResult[0]::class,
+            $textResult[0]::class,
+            'Call node type must agree between AST and text paths',
+        );
+        self::assertSame(
+            $expectedActiveParam,
+            $astResult[1],
+            'AST active parameter must match expected',
+        );
+        self::assertSame(
+            $astResult[1],
+            $textResult[1],
+            'Active parameter must agree between AST and text paths',
+        );
+        self::assertSame(
+            $astResult[2],
+            $textResult[2],
+            'Used parameter names must agree between AST and text paths',
+        );
+        self::assertSame(
+            $astResult[3],
+            $textResult[3],
+            'Positional count must agree between AST and text paths',
+        );
+    }
+
+    /**
+     * @return array<string, array{string, string, class-string, int}>
+     */
+    public static function callContextFixtures(): array
+    {
+        return [
+            'function call first arg' => [
+                'SignatureHelp.php', 'first_param', FuncCall::class, 0,
+            ],
+            'function call second arg' => [
+                'SignatureHelp.php', 'second_param', FuncCall::class, 1,
+            ],
+            'constructor' => [
+                'SignatureHelp.php', 'constructor', New_::class, 0,
+            ],
+            'static call' => [
+                'SignatureHelp.php', 'static_call', StaticCall::class, 0,
+            ],
+            'builtin function' => [
+                'SignatureHelp.php', 'builtin', FuncCall::class, 0,
+            ],
+            '$this method call' => [
+                'src/Domain/User.php', 'sig_this_call', MethodCall::class, 0,
+            ],
+            'new expression' => [
+                'src/Domain/User.php', 'sig_new', New_::class, 0,
+            ],
+            'builtin strlen' => [
+                'src/Domain/User.php', 'sig_builtin_func', FuncCall::class, 0,
+            ],
+            'named args' => [
+                'SignatureHelp.php', 'named_arg', FuncCall::class, 1,
+            ],
+            'typed param method call' => [
+                'SignatureHelp.php', 'typed_param', MethodCall::class, 0,
+            ],
+            'nullsafe method call' => [
+                'SignatureHelp.php', 'nullsafe_param', NullsafeMethodCall::class, 0,
+            ],
+        ];
+    }
+
+    private function markerOffset(string $content, string $marker): int
+    {
+        $pos = strpos($content, '/*|' . $marker . '*/');
+        self::assertNotFalse($pos, "Marker {$marker} not found");
+        return $pos;
+    }
+
+    private function lineForOffset(string $content, int $offset): int
+    {
+        return substr_count($content, "\n", 0, $offset);
     }
 
     /**
