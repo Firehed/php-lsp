@@ -177,45 +177,6 @@ final class ScopeFinder
     }
 
     /**
-     * Check if a node's line range contains the given line (0-indexed).
-     */
-    public static function nodeContainsLine(Node $node, int $line): bool
-    {
-        $startLine = $node->getStartLine();
-        $endLine = $node->getEndLine();
-
-        return $startLine !== -1
-            && $endLine !== -1
-            && $line >= $startLine - 1
-            && $line <= $endLine - 1;
-    }
-
-    /**
-     * Find the class containing the given line (0-indexed).
-     *
-     * Named classes are always at the top level or inside a namespace block,
-     * so a flat walk over those two levels is sufficient.
-     *
-     * @param array<Stmt> $ast
-     */
-    public static function findClassAtLine(array $ast, int $line): ?Stmt\Class_
-    {
-        $found = null;
-        foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Class_ && self::nodeContainsLine($stmt, $line)) {
-                $found = $stmt;
-            } elseif ($stmt instanceof Stmt\Namespace_) {
-                foreach ($stmt->stmts as $inner) {
-                    if ($inner instanceof Stmt\Class_ && self::nodeContainsLine($inner, $line)) {
-                        $found = $inner;
-                    }
-                }
-            }
-        }
-        return $found;
-    }
-
-    /**
      * Find the namespace declaration containing a given zero-based line.
      *
      * Returns null when the line is outside any namespace block or the enclosing
