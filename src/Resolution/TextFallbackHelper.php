@@ -38,6 +38,103 @@ final class TextFallbackHelper
     }
 
     /**
+     * Build a NameContext from raw source lines using regex.
+     *
+     * @param list<string> $lines
+     * @param int $line Zero-based
+     */
+    public static function nameContextFromText(array $lines, int $line): NameContext
+    {
+        $namespace = self::findNamespaceFromText($lines, $line);
+        $imports = self::extractImportsFromText($lines);
+
+        return new NameContext(
+            namespace: $namespace,
+            classImports: $imports,
+        );
+    }
+
+    /**
+     * @param list<string> $lines
+     */
+    private static function findNamespaceFromText(array $lines, int $beforeLine): string
+    {
+        for ($i = min($beforeLine, count($lines) - 1); $i >= 0; $i--) {
+            if (preg_match('/^\s*namespace\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*[;{]/', $lines[$i], $m) === 1) {
+                return $m[1];
+            }
+        }
+        return '';
+    }
+
+    /**
+     * @param list<string> $lines
+     * @return array<string, string>
+     */
+    private static function extractImportsFromText(array $lines): array
+    {
+        $imports = [];
+
+        $classDecl = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+/';
+        $name = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
+        $simpleName = '[A-Za-z_][A-Za-z0-9_]*';
+
+        foreach ($lines as $lineText) {
+            if (preg_match($classDecl, $lineText) === 1) {
+                break;
+            }
+
+            if (preg_match('/^\s*use\s+/', $lineText) !== 1) {
+                continue;
+            }
+
+            // Group use: use Prefix\{A, B as C, D\E};
+            $groupPattern = '/^\s*use\s+(' . $name . ')\s*\\\\?\s*\{(.+)\}\s*;/';
+            if (preg_match($groupPattern, $lineText, $m) === 1) {
+                $prefix = rtrim($m[1], '\\');
+                $items = preg_split('/\s*,\s*/', $m[2]);
+                if ($items === false) {
+                    // @codeCoverageIgnoreStart
+                    throw new \LogicException('preg_split with valid pattern cannot fail');
+                    // @codeCoverageIgnoreEnd
+                }
+                foreach ($items as $item) {
+                    $item = trim($item);
+                    $aliasPattern = '/^(' . $name . ')\s+as\s+(' . $simpleName . ')$/';
+                    if (preg_match($aliasPattern, $item, $im) === 1) {
+                        $imports[$im[2]] = $prefix . '\\' . $im[1];
+                    } else {
+                        $fqn = $prefix . '\\' . $item;
+                        $backslashPos = strrpos($item, '\\');
+                        $lastPart = $backslashPos === false
+                            ? $item
+                            : substr($item, $backslashPos + 1);
+                        $imports[$lastPart] = $fqn;
+                    }
+                }
+                continue;
+            }
+
+            // Simple use with alias: use Foo\Bar as Baz;
+            $simpleAliasPattern = '/^\s*use\s+(' . $name . ')\s+as\s+(' . $simpleName . ')\s*;/';
+            if (preg_match($simpleAliasPattern, $lineText, $m) === 1) {
+                $imports[$m[2]] = $m[1];
+                continue;
+            }
+
+            // Simple use: use Foo\Bar\ClassName;
+            if (preg_match('/^\s*use\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*;/', $lineText, $m) === 1) {
+                $fqn = $m[1];
+                $pos = strrpos($fqn, '\\');
+                $lastPart = $pos === false ? $fqn : substr($fqn, $pos + 1);
+                $imports[$lastPart] = $fqn;
+            }
+        }
+
+        return $imports;
+    }
+
+    /**
      * Detect and resolve member access context from text.
      *
      * @param array<Stmt> $ast AST for namespace/use resolution (may be partial)
