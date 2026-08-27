@@ -256,6 +256,16 @@ class ScopeFinderTest extends TestCase
         self::assertSame('Second', $class->name?->toString());
     }
 
+    public function testFindClassAtLineFindsTopLevelClass(): void
+    {
+        $code = $this->loadFixture('NoNamespace/TopLevelClass.php');
+        $ast = self::parseWithParents($code);
+
+        $class = ScopeFinder::findClassAtLine($ast, 8);
+        self::assertNotNull($class, 'should find top-level class without namespace');
+        self::assertSame('TopLevelClass', $class->name?->toString());
+    }
+
     public function testFindClassAtLineReturnsNullWhenNotInClass(): void
     {
         $code = $this->loadFixture('src/Utility/GlobalScope.php');

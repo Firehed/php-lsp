@@ -2776,6 +2776,17 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('staticMethod', $labels);
     }
 
+    public function testThisCompletionInClassWithoutNamespace(): void
+    {
+        $cursor = $this->openFixtureAtCursor('NoNamespace.php', 'this_no_namespace');
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $labels = array_column($result['items'], 'label');
+        self::assertContains('methodWithThis', $labels, 'own method should appear');
+    }
+
     public function testUserDefinedFunctionCompletion(): void
     {
         $cursor = $this->openFixtureAtCursor('FunctionCompletion.php', 'user_defined_function');
