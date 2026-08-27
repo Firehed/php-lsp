@@ -24,8 +24,6 @@ parameters:
                 - src/Parser/ParserService.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
-                - src/Utility/Scope.php
-                - src/Utility/ScopeFinder.php
                 - tests/*
         -
             namespace: 'PhpParser\NodeFinder'
@@ -34,8 +32,6 @@ parameters:
                 - src/Parser/ParserService.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
-                - src/Utility/Scope.php
-                - src/Utility/ScopeFinder.php
                 - tests/*
         -
             namespace: 'Reflection*'
@@ -66,8 +62,6 @@ parameters:
                 - src/Parser/ParserService.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
-                - src/Utility/Scope.php
-                - src/Utility/ScopeFinder.php
                 - tests/*
 
     disallowedFunctionCalls:
