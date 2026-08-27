@@ -36,8 +36,6 @@ use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
@@ -662,76 +660,50 @@ final class SymbolResolver implements CodeResolver
      */
     private function findCallAtPosition(array $ast, int $offset): ?array
     {
-        $finder = new class ($offset) extends NodeVisitorAbstract {
-            public FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null $found = null;
-            public int $activeParameter = 0;
-            /** @var list<string> */
-            public array $usedNames = [];
-            public int $positionalCount = 0;
+        $nodeFinder = new NodeAtPosition();
+        $node = $nodeFinder->find(
+            $ast,
+            $offset,
+            fn (Node $n) => $n instanceof FuncCall
+                || $n instanceof MethodCall
+                || $n instanceof NullsafeMethodCall
+                || $n instanceof StaticCall
+                || $n instanceof New_
+                || $n instanceof Attribute,
+        );
 
-            public function __construct(private readonly int $offset)
-            {
-            }
-
-            public function enterNode(Node $node): ?int
-            {
-                if (
-                    !$node instanceof FuncCall
-                    && !$node instanceof MethodCall
-                    && !$node instanceof NullsafeMethodCall
-                    && !$node instanceof StaticCall
-                    && !$node instanceof New_
-                    && !$node instanceof Attribute
-                ) {
-                    return null;
-                }
-
-                $startPos = $node->getStartFilePos();
-                $endPos = $node->getEndFilePos();
-
-                if ($startPos <= $this->offset && $this->offset <= $endPos) {
-                    $activeParam = 0;
-                    $usedNames = [];
-                    $positionalCount = 0;
-                    $sawNamedArg = false;
-
-                    foreach ($node->args as $i => $arg) {
-                        $argEnd = $arg->getEndFilePos();
-                        $argBeforeCursor = $this->offset > $argEnd;
-
-                        // Collect ALL named arguments in the call (for completion filtering)
-                        if ($arg instanceof Arg && $arg->name !== null) {
-                            $usedNames[] = $arg->name->name;
-                            $sawNamedArg = true;
-                        } elseif (!$sawNamedArg && $argBeforeCursor) {
-                            // Only count positional args that are complete and before cursor
-                            $positionalCount++;
-                        }
-                        // Track active parameter index based on cursor position
-                        if ($argBeforeCursor) {
-                            $activeParam = $i + 1;
-                        }
-                    }
-
-                    $this->found = $node;
-                    $this->activeParameter = $activeParam;
-                    $this->usedNames = $usedNames;
-                    $this->positionalCount = $positionalCount;
-                }
-
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($finder);
-        $traverser->traverse($ast);
-
-        if ($finder->found === null) {
+        if (
+            !$node instanceof FuncCall
+            && !$node instanceof MethodCall
+            && !$node instanceof NullsafeMethodCall
+            && !$node instanceof StaticCall
+            && !$node instanceof New_
+            && !$node instanceof Attribute
+        ) {
             return null;
         }
 
-        return [$finder->found, $finder->activeParameter, $finder->usedNames, $finder->positionalCount];
+        $activeParam = 0;
+        $usedNames = [];
+        $positionalCount = 0;
+        $sawNamedArg = false;
+
+        foreach ($node->args as $i => $arg) {
+            $argEnd = $arg->getEndFilePos();
+            $argBeforeCursor = $offset > $argEnd;
+
+            if ($arg instanceof Arg && $arg->name !== null) {
+                $usedNames[] = $arg->name->name;
+                $sawNamedArg = true;
+            } elseif (!$sawNamedArg && $argBeforeCursor) {
+                $positionalCount++;
+            }
+            if ($argBeforeCursor) {
+                $activeParam = $i + 1;
+            }
+        }
+
+        return [$node, $activeParam, $usedNames, $positionalCount];
     }
 
     /**
