@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Utility\Scope;
@@ -78,6 +79,43 @@ final class AstTextAgreementTest extends TestCase
             'inside trait method' => ['src/Traits/HasTimestamps.php', 15, 'Fixtures\Traits\HasTimestamps'],
             'inside interface' => ['src/Domain/Entity.php', 10, 'Fixtures\Domain\Entity'],
             'inside enum' => ['src/Enum/Status.php', 15, 'Fixtures\Enum\Status'],
+        ];
+    }
+
+    #[DataProvider('nameContextFixtures')]
+    public function testNameContextAgreement(string $fixture, int $line): void
+    {
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $ast = $this->parser->parse($document);
+        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
+
+        $fromAst = NameContextFactory::fromAst($ast, $line);
+        $fromText = NameContextFactory::fromText(explode("\n", $content), $line);
+
+        self::assertSame(
+            $fromAst->namespace,
+            $fromText->namespace,
+            'Namespace must agree between AST and text paths',
+        );
+        self::assertSame(
+            $fromAst->classImports,
+            $fromText->classImports,
+            'Class imports must agree between AST and text paths',
+        );
+    }
+
+    /**
+     * @return array<string, array{string, int}>
+     */
+    public static function nameContextFixtures(): array
+    {
+        return [
+            'simple namespace + imports' => ['src/Domain/User.php', 10],
+            'aliased import' => ['src/IncompleteCode/AliasedImports.php', 14],
+            'group import' => ['src/IncompleteCode/GroupImports.php', 12],
+            'group import with alias' => ['src/IncompleteCode/GroupImports.php', 38],
+            'no imports' => ['src/Enum/Status.php', 10],
         ];
     }
 }
