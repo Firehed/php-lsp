@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Index\NodeAtPosition;
+use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
