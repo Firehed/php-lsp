@@ -17,4 +17,14 @@ class NoNamespaceClass
     {
         $this->staticMethod();
     }
+
+    public function triggerThis(): void
+    {
+        $this->/*|this_no_namespace*/
+    }
+
+    public function triggerThisCall(): void
+    {
+        $this->staticMethod(/*|this_call_no_ns*/
+    }
 }

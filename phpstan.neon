@@ -22,20 +22,16 @@ parameters:
             message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/ParserService.php
-                - src/Index/NodeAtPosition.php
+                - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
-                - src/Utility/Scope.php
-                - src/Utility/ScopeFinder.php
                 - tests/*
         -
             namespace: 'PhpParser\NodeFinder'
             message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/ParserService.php
-                - src/Index/NodeAtPosition.php
+                - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
-                - src/Utility/Scope.php
-                - src/Utility/ScopeFinder.php
                 - tests/*
         -
             namespace: 'Reflection*'
@@ -64,10 +60,8 @@ parameters:
             message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/ParserService.php
-                - src/Index/NodeAtPosition.php
+                - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
-                - src/Utility/Scope.php
-                - src/Utility/ScopeFinder.php
                 - tests/*
 
     disallowedFunctionCalls:

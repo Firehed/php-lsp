@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\NodeAtPosition;
+use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
+use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -79,5 +80,39 @@ class NodeAtPositionTest extends TestCase
         $node = $finder->find($ast, $doc->offsetAt(0, 10));
 
         self::assertNull($node);
+    }
+
+    public function testFilterNarrowsResult(): void
+    {
+        $code = '<?php $obj->doSomething();';
+        $doc = new TextDocument('file:///test.php', 'php', 1, $code);
+        $ast = $this->parser->parse($doc);
+        self::assertNotNull($ast);
+
+        $finder = new NodeAtPosition();
+
+        // Without filter: returns the deepest node (Identifier for method name)
+        $node = $finder->find($ast, $doc->offsetAt(0, 12));
+        self::assertInstanceOf(Identifier::class, $node, 'without filter, deepest node is returned');
+
+        // With filter: returns the deepest node matching the filter
+        $node = $finder->find($ast, $doc->offsetAt(0, 12), fn (Node $n) => $n instanceof Node\Expr\MethodCall);
+        self::assertInstanceOf(
+            Node\Expr\MethodCall::class,
+            $node,
+            'filter restricts to MethodCall',
+        );
+    }
+
+    public function testFilterReturnsNullWhenNoMatch(): void
+    {
+        $code = '<?php $obj->doSomething();';
+        $doc = new TextDocument('file:///test.php', 'php', 1, $code);
+        $ast = $this->parser->parse($doc);
+        self::assertNotNull($ast);
+
+        $finder = new NodeAtPosition();
+        $node = $finder->find($ast, $doc->offsetAt(0, 12), fn (Node $n) => $n instanceof Node\Expr\StaticCall);
+        self::assertNull($node, 'filter that matches nothing returns null');
     }
 }

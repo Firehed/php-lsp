@@ -2126,6 +2126,17 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($context, 'Unresolved function should return null context');
     }
 
+    public function testGetCallContextThisInNonNamespacedClass(): void
+    {
+        $cursor = $this->openFixtureAtCursor('NoNamespace.php', 'this_call_no_ns');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'should resolve $this->method( in non-namespaced class');
+    }
+
     public function testGetCallContextThisOutsideClass(): void
     {
         $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'this_outside_class');

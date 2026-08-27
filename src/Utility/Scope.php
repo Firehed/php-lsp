@@ -9,8 +9,6 @@ use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 
 /**
  * The lexical scope a variable resolves against.
@@ -157,34 +155,25 @@ final class Scope
         array $ast,
         int $offset,
     ): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null {
-        $visitor = new class ($offset) extends NodeVisitorAbstract {
-            public Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null $found = null;
+        $finder = new NodeAtPosition();
+        $node = $finder->find(
+            $ast,
+            $offset,
+            fn (Node $n) => $n instanceof Stmt\Function_
+                || $n instanceof Stmt\ClassMethod
+                || $n instanceof Closure
+                || $n instanceof ArrowFunction,
+        );
 
-            public function __construct(private readonly int $offset)
-            {
-            }
+        assert(
+            $node === null
+            || $node instanceof Stmt\Function_
+            || $node instanceof Stmt\ClassMethod
+            || $node instanceof Closure
+            || $node instanceof ArrowFunction,
+        );
 
-            public function enterNode(Node $node): ?int
-            {
-                if (
-                    ($node instanceof Stmt\Function_
-                        || $node instanceof Stmt\ClassMethod
-                        || $node instanceof Closure
-                        || $node instanceof ArrowFunction)
-                    && $node->getStartFilePos() <= $this->offset
-                    && $node->getEndFilePos() >= $this->offset
-                ) {
-                    $this->found = $node;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-
-        return $visitor->found;
+        return $node;
     }
 
     /**
