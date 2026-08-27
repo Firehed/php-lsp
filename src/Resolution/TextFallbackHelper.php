@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyName;
@@ -264,7 +265,8 @@ final class TextFallbackHelper
 
         // Regular class name - resolve via use statements
         $lines = explode("\n", $document->getContent());
-        $fqn = $this->resolveClassName($className, $lines, $ast, $line);
+        $context = NameContextFactory::fromAstOrText($ast, $line, $lines);
+        $fqn = $context->candidates($className, NameKind::ClassLike)[0];
 
         // Determine visibility based on whether we're inside the same class
         $isSameClass = $enclosingClass !== null && $enclosingClass === $fqn;
@@ -473,6 +475,8 @@ final class TextFallbackHelper
             return null;
         }
 
+        $context = NameContextFactory::fromAstOrText($ast, $line, $lines);
+
         // Resolve each union member; primitives are skipped since they have no members
         $classTypes = [];
         foreach (explode('|', $matches[1]) as $part) {
@@ -480,7 +484,7 @@ final class TextFallbackHelper
             if ($part === '' || in_array(strtolower($part), PrimitiveType::NAMES, true)) {
                 continue;
             }
-            $fqn = $this->resolveClassName($part, $lines, $ast, $line);
+            $fqn = $context->candidates($part, NameKind::ClassLike)[0];
             /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
             $classTypes[] = new ClassName($fqn);
         }
@@ -492,150 +496,6 @@ final class TextFallbackHelper
             return $classTypes[0];
         }
         return new UnionType($classTypes);
-    }
-
-    /**
-     * Resolve a class name using use statements.
-     *
-     * Tries AST-based resolution first, falls back to text-based when AST is empty.
-     *
-     * @param list<string> $lines Document lines for text-based fallback
-     * @param array<Stmt> $ast
-     */
-    private function resolveClassName(string $className, array $lines, array $ast, int $line): string
-    {
-        // Already fully qualified
-        if (str_starts_with($className, '\\')) {
-            return ltrim($className, '\\');
-        }
-
-        // Try AST-based resolution first
-        $resolved = NameContextFactory::fromAst($ast, $line)->classImports[$className] ?? null;
-        if ($resolved !== null) {
-            return $resolved;
-        }
-
-        // Fall back to text-based use statement search
-        $resolved = $this->resolveFromUseStatementsText($className, $lines);
-        if ($resolved !== null) {
-            return $resolved;
-        }
-
-        // Prepend current namespace (try AST first, then text)
-        $namespace = ScopeFinder::findNamespaceAtLine($ast, $line)
-            ?? $this->findNamespace($lines, $line);
-        if ($namespace !== null) {
-            return $namespace . '\\' . $className;
-        }
-
-        // No namespace - return raw class name (global namespace)
-        return $className;
-    }
-
-    /**
-     * Text-based use statement resolution for when AST is unavailable.
-     *
-     * Handles simple use, aliased use, and group use syntax.
-     * For partially qualified names (e.g., B\CDE where B is aliased),
-     * resolves the first segment and appends the rest.
-     *
-     * @param list<string> $lines
-     */
-    private function resolveFromUseStatementsText(string $className, array $lines): ?string
-    {
-        // Check if className is partially qualified (e.g., B\CDE)
-        $parts = explode('\\', $className);
-        $firstPart = $parts[0];
-        $isPartiallyQualified = count($parts) > 1;
-
-        // Build map of all imports
-        $imports = $this->extractUseStatementsFromText($lines);
-
-        // Check for exact match first
-        if (isset($imports[$className])) {
-            return $imports[$className];
-        }
-
-        // For partially qualified names (e.g., Alias\SubClass), resolve first segment
-        if ($isPartiallyQualified && isset($imports[$firstPart])) {
-            $remainder = implode('\\', array_slice($parts, 1));
-            return $imports[$firstPart] . '\\' . $remainder;
-        }
-
-        return null;
-    }
-
-    /**
-     * Extract all use statements from source lines into alias => FQN map.
-     *
-     * @param list<string> $lines
-     * @return array<string, string> Map of alias/simple name to FQN
-     */
-    private function extractUseStatementsFromText(array $lines): array
-    {
-        $imports = [];
-
-        $classDecl = '/^\s*(?:abstract\s+|final\s+|readonly\s+)*(?:class|interface|trait|enum)\s+/';
-        $name = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
-        $simpleName = '[A-Za-z_][A-Za-z0-9_]*';
-
-        foreach ($lines as $lineText) {
-            // Stop at class/interface/trait/enum declaration
-            if (preg_match($classDecl, $lineText) === 1) {
-                break;
-            }
-
-            // Skip non-use lines
-            if (preg_match('/^\s*use\s+/', $lineText) !== 1) {
-                continue;
-            }
-
-            // Group use: use Prefix\{A, B as C, D\E};
-            $groupPattern = '/^\s*use\s+(' . $name . ')\s*\\\\?\s*\{(.+)\}\s*;/';
-            if (preg_match($groupPattern, $lineText, $m) === 1) {
-                $prefix = rtrim($m[1], '\\');
-                $items = preg_split('/\s*,\s*/', $m[2]);
-                if ($items === false) {
-                    // @codeCoverageIgnoreStart
-                    throw new \LogicException('preg_split with valid pattern cannot fail');
-                    // @codeCoverageIgnoreEnd
-                }
-                foreach ($items as $item) {
-                    $item = trim($item);
-                    // Item with alias: Something as Alias
-                    $aliasPattern = '/^(' . $name . ')\s+as\s+(' . $simpleName . ')$/';
-                    if (preg_match($aliasPattern, $item, $im) === 1) {
-                        $imports[$im[2]] = $prefix . '\\' . $im[1];
-                    } else {
-                        // Simple item or nested: Something or Sub\Thing
-                        $fqn = $prefix . '\\' . $item;
-                        $backslashPos = strrpos($item, '\\');
-                        $lastPart = $backslashPos === false
-                            ? $item
-                            : substr($item, $backslashPos + 1);
-                        $imports[$lastPart] = $fqn;
-                    }
-                }
-                continue;
-            }
-
-            // Simple use with alias: use Foo\Bar as Baz;
-            $simpleAliasPattern = '/^\s*use\s+(' . $name . ')\s+as\s+(' . $simpleName . ')\s*;/';
-            if (preg_match($simpleAliasPattern, $lineText, $m) === 1) {
-                $imports[$m[2]] = $m[1];
-                continue;
-            }
-
-            // Simple use: use Foo\Bar\ClassName;
-            if (preg_match('/^\s*use\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*;/', $lineText, $m) === 1) {
-                $fqn = $m[1];
-                $pos = strrpos($fqn, '\\');
-                $lastPart = $pos === false ? $fqn : substr($fqn, $pos + 1);
-                $imports[$lastPart] = $fqn;
-            }
-        }
-
-        return $imports;
     }
 
     /**
@@ -746,8 +606,9 @@ final class TextFallbackHelper
         $members = [];
         $lines = explode("\n", $document->getContent());
 
-        // Resolve parent class name using use statements
-        $fqn = $this->resolveClassName($parentName, $lines, [], 0);
+        // Resolve parent class name using use statements (no AST available here)
+        $context = NameContextFactory::fromText($lines, 0);
+        $fqn = $context->candidates($parentName, NameKind::ClassLike)[0];
 
         // Get parent members via MemberResolver
         // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
