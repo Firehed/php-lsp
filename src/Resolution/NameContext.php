@@ -34,6 +34,50 @@ final readonly class NameContext
     }
 
     /**
+     * The FQN candidates for a short name, in resolution order.
+     *
+     * For class-likes: exactly one candidate (import or namespace-qualified).
+     * For functions and constants: namespace-qualified first, then global
+     * fallback (PHP manual, name resolution rules 5–7).
+     *
+     * @return list<string>
+     */
+    public function candidates(string $short, NameKind $kind): array
+    {
+        if (str_starts_with($short, '\\')) {
+            return [ltrim($short, '\\')];
+        }
+
+        $imports = $this->importsFor($kind);
+
+        $parts = explode('\\', $short);
+        $firstPart = $parts[0];
+
+        if (isset($imports[$short])) {
+            return [$imports[$short]];
+        }
+
+        if (count($parts) > 1 && isset($imports[$firstPart])) {
+            $remainder = implode('\\', array_slice($parts, 1));
+            return [$imports[$firstPart] . '\\' . $remainder];
+        }
+
+        $namespaced = $this->namespace !== ''
+            ? $this->namespace . '\\' . $short
+            : $short;
+
+        if ($kind === NameKind::ClassLike) {
+            return [$namespaced];
+        }
+
+        if ($this->namespace !== '') {
+            return [$namespaced, $short];
+        }
+
+        return [$short];
+    }
+
+    /**
      * The import table consulted for an *unqualified* name of the given kind.
      *
      * PHP manual, name resolution rule 5.

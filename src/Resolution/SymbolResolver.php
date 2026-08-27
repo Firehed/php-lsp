@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
@@ -778,20 +779,17 @@ final class SymbolResolver implements CodeResolver
         string $content,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
         $text = rtrim($textBeforeParen);
+        $context = NameContextFactory::fromAst($ast, $line);
 
         // Attribute: #[AttributeName — a constructor call on the attribute class.
         // Checked before the function-call catch-all, which would match the name.
         if (preg_match('/#\[\s*(?:[\w\\\\]+\s*,\s*)*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
-            $name = $this->resolveNameFromText($m[1], $ast, $line);
-            return new Attribute($name);
+            return new Attribute(self::resolvedName($m[1], $context));
         }
 
         // Static call: ClassName::methodName
         if (preg_match('/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/', $text, $m) === 1) {
-            $className = $m[1];
-            $methodName = $m[2];
-            $name = $this->resolveNameFromText($className, $ast, $line);
-            return new StaticCall($name, new Identifier($methodName));
+            return new StaticCall(self::resolvedName($m[1], $context), new Identifier($m[2]));
         }
 
         // Instance call: $var->methodName or $var?->methodName
@@ -813,9 +811,7 @@ final class SymbolResolver implements CodeResolver
 
         // Constructor: new ClassName
         if (preg_match('/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
-            $className = $m[1];
-            $name = $this->resolveNameFromText($className, $ast, $line);
-            return new New_($name);
+            return new New_(self::resolvedName($m[1], $context));
         }
 
         // Function call: functionName
@@ -831,34 +827,15 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * Resolve a class name from text, looking up use statements and namespace.
-     *
-     * @param array<Stmt> $ast
+     * Build a Name node with resolvedName attribute set from NameContext.
      */
-    private function resolveNameFromText(string $className, array $ast, int $line): Name
+    private static function resolvedName(string $short, NameContext $context): Name
     {
-        $name = new Name($className);
-
-        // Already fully qualified
-        if (str_starts_with($className, '\\')) {
-            $name->setAttribute('resolvedName', new Name\FullyQualified(ltrim($className, '\\')));
-            return $name;
+        $name = new Name($short);
+        $fqn = $context->candidates($short, NameKind::ClassLike)[0];
+        if ($fqn !== $short) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified($fqn));
         }
-
-        $context = NameContextFactory::fromAst($ast, $line);
-
-        // Check use statements first
-        $resolvedFromUse = $context->classImports[$className] ?? null;
-        if ($resolvedFromUse !== null) {
-            $name->setAttribute('resolvedName', new Name\FullyQualified($resolvedFromUse));
-            return $name;
-        }
-
-        // Fall back to namespace prefix
-        if ($context->namespace !== '') {
-            $name->setAttribute('resolvedName', new Name\FullyQualified($context->namespace . '\\' . $className));
-        }
-
         return $name;
     }
 
@@ -1378,26 +1355,11 @@ final class SymbolResolver implements CodeResolver
         $line = $name->getStartLine() - 1;
         $context = NameContextFactory::fromAst($ast, $line);
 
-        $imported = $context->functionImports[$shortName] ?? null;
-        if ($imported !== null) {
-            $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($imported));
+        foreach ($context->candidates($shortName, NameKind::Function_) as $candidate) {
+            $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
             if ($funcInfo !== null) {
                 return new ResolvedFunction($funcInfo);
             }
-        }
-
-        if ($context->namespace !== '') {
-            $funcInfo = $this->symbolSource->lookupFunction(
-                FunctionName::fromFullyQualified($context->namespace . '\\' . $shortName),
-            );
-            if ($funcInfo !== null) {
-                return new ResolvedFunction($funcInfo);
-            }
-        }
-
-        $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($shortName));
-        if ($funcInfo !== null) {
-            return new ResolvedFunction($funcInfo);
         }
 
         return null;

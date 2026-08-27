@@ -71,6 +71,53 @@ final class NameContextFactory
     }
 
     /**
+     * Build a NameContext preferring the AST, falling back to text regex
+     * when the AST holds no namespace or use node.
+     *
+     * @param array<Stmt> $ast
+     * @param int $line Zero-based
+     * @param list<string> $lines Source lines for the text fallback
+     */
+    public static function fromAstOrText(array $ast, int $line, array $lines): NameContext
+    {
+        if (self::hasNamespaceOrUse($ast)) {
+            return self::fromAst($ast, $line);
+        }
+        return self::fromText($lines, $line);
+    }
+
+    /**
+     * Build a NameContext from raw source lines when the AST holds no
+     * namespace or use node (total parse failure).
+     *
+     * The regex extraction lives in TextFallbackHelper (confinement rule).
+     *
+     * @param list<string> $lines
+     * @param int $line Zero-based
+     */
+    public static function fromText(array $lines, int $line): NameContext
+    {
+        return TextFallbackHelper::nameContextFromText($lines, $line);
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function hasNamespaceOrUse(array $ast): bool
+    {
+        foreach ($ast as $stmt) {
+            if (
+                $stmt instanceof Stmt\Namespace_
+                || $stmt instanceof Stmt\Use_
+                || $stmt instanceof Stmt\GroupUse
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * A group use may mix kinds (`use Foo\{function bar, const BAZ, Qux}`), in
      * which case the item carries the type; otherwise the statement does.
      *
