@@ -13,6 +13,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NameContextFactory::class)]
 final class NameContextFactoryTest extends TestCase
 {
+    /**
+     * @param array<string, string> $expectedClassImports
+     */
     #[DataProvider('textCases')]
     public function testFromText(
         string $source,

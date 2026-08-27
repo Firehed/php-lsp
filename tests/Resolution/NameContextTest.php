@@ -13,6 +13,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NameContext::class)]
 final class NameContextTest extends TestCase
 {
+    /**
+     * @param list<string> $expected
+     */
     #[DataProvider('candidatesCases')]
     public function testCandidates(
         NameContext $context,

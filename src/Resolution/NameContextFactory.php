@@ -106,7 +106,8 @@ final class NameContextFactory
     private static function hasNamespaceOrUse(array $ast): bool
     {
         foreach ($ast as $stmt) {
-            if ($stmt instanceof Stmt\Namespace_
+            if (
+                $stmt instanceof Stmt\Namespace_
                 || $stmt instanceof Stmt\Use_
                 || $stmt instanceof Stmt\GroupUse
             ) {
