@@ -71,6 +71,7 @@ use Throwable;
 final class SymbolResolver implements CodeResolver
 {
     private readonly TextFallbackHelper $textFallback;
+    private readonly CallContextDetector $callDetector;
 
     public function __construct(
         private readonly ParserService $parser,
@@ -79,6 +80,7 @@ final class SymbolResolver implements CodeResolver
         private readonly TypeResolverInterface $typeResolver,
     ) {
         $this->textFallback = new TextFallbackHelper($memberResolver);
+        $this->callDetector = new CallContextDetector($this->textFallback);
     }
 
     /**
@@ -602,7 +604,7 @@ final class SymbolResolver implements CodeResolver
         $offset = $document->offsetAt($line, $character);
         $content = $document->getContent();
 
-        $callInfo = $this->findCallAtPosition($ast, $offset);
+        $callInfo = $this->callDetector->fromAst($ast, $offset);
         $callable = null;
         $activeParameter = 0;
         $usedNames = [];
@@ -612,18 +614,14 @@ final class SymbolResolver implements CodeResolver
             [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
             $callable = $this->resolveCallable($callNode, $ast);
             if ($callable === null) {
-                // AST found a call node but couldn't resolve type - try text-based
-                // This happens with $this-> in incomplete code where AST lacks class context
-                $textCallInfo = $this->findCallFromText($ast, $offset, $content, $line);
+                $textCallInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
                 if ($textCallInfo !== null) {
                     [$callNode, $activeParameter, $usedNames, $positionalCount] = $textCallInfo;
                     $callable = $this->resolveCallable($callNode, $ast);
                 }
             }
         } else {
-            // Fallback: text-based detection for incomplete calls where parser
-            // couldn't create proper call nodes
-            $callInfo = $this->findCallFromText($ast, $offset, $content, $line);
+            $callInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
             if ($callInfo !== null) {
                 [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
                 $callable = $this->resolveCallable($callNode, $ast);
@@ -647,263 +645,6 @@ final class SymbolResolver implements CodeResolver
         }
 
         return NameContextFactory::fromAst($ast, $line);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     * @return array{
-     *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
-     *   1: int,
-     *   2: list<string>,
-     *   3: int,
-     * }|null
-     */
-    private function findCallAtPosition(array $ast, int $offset): ?array
-    {
-        $nodeFinder = new NodeAtPosition();
-        $node = $nodeFinder->find(
-            $ast,
-            $offset,
-            fn (Node $n) => $n instanceof FuncCall
-                || $n instanceof MethodCall
-                || $n instanceof NullsafeMethodCall
-                || $n instanceof StaticCall
-                || $n instanceof New_
-                || $n instanceof Attribute,
-        );
-
-        if (
-            !$node instanceof FuncCall
-            && !$node instanceof MethodCall
-            && !$node instanceof NullsafeMethodCall
-            && !$node instanceof StaticCall
-            && !$node instanceof New_
-            && !$node instanceof Attribute
-        ) {
-            return null;
-        }
-
-        $activeParam = 0;
-        $usedNames = [];
-        $positionalCount = 0;
-        $sawNamedArg = false;
-
-        foreach ($node->args as $i => $arg) {
-            $argEnd = $arg->getEndFilePos();
-            $argBeforeCursor = $offset > $argEnd;
-
-            if ($arg instanceof Arg && $arg->name !== null) {
-                $usedNames[] = $arg->name->name;
-                $sawNamedArg = true;
-            } elseif (!$sawNamedArg && $argBeforeCursor) {
-                $positionalCount++;
-            }
-            if ($argBeforeCursor) {
-                $activeParam = $i + 1;
-            }
-        }
-
-        return [$node, $activeParam, $usedNames, $positionalCount];
-    }
-
-    /**
-     * Text-based fallback for detecting call context when AST-based detection fails.
-     * Handles incomplete code where the parser couldn't create proper call nodes.
-     *
-     * @param array<Stmt> $ast
-     * @return array{
-     *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
-     *   1: int,
-     *   2: list<string>,
-     *   3: int,
-     * }|null
-     */
-    private function findCallFromText(array $ast, int $offset, string $content, int $line): ?array
-    {
-        // Find the last unclosed `(` before cursor
-        $parenPos = $this->findUnclosedParen($content, $offset);
-        if ($parenPos === null) {
-            return null;
-        }
-
-        // Get text before the opening paren
-        $textBeforeParen = substr($content, 0, $parenPos);
-
-        // Try to match call patterns and resolve the callable
-        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $offset, $line, $content);
-        if ($callNode === null) {
-            return null;
-        }
-
-        // Parse arguments between paren and cursor to determine position/used names
-        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
-        [$activeParam, $usedNames, $positionalCount] = $this->parseArgsFromText($argsText);
-
-        return [$callNode, $activeParam, $usedNames, $positionalCount];
-    }
-
-    /**
-     * Find the position of the last unclosed `(` before the given offset.
-     */
-    private function findUnclosedParen(string $content, int $offset): ?int
-    {
-        $depth = 0;
-        for ($i = $offset - 1; $i >= 0; $i--) {
-            $char = $content[$i];
-            if ($char === ')') {
-                $depth++;
-            } elseif ($char === '(') {
-                if ($depth === 0) {
-                    return $i;
-                }
-                $depth--;
-            } elseif ($char === ';' || $char === '{' || $char === '}') {
-                // Statement boundary - stop searching
-                return null;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Parse call pattern from text before opening paren.
-     *
-     * @param array<Stmt> $ast
-     * @return FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null
-     */
-    private function parseCallPattern(
-        string $textBeforeParen,
-        array $ast,
-        int $offset,
-        int $line,
-        string $content,
-    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
-        $text = rtrim($textBeforeParen);
-        $context = NameContextFactory::fromAst($ast, $line);
-
-        // Attribute: #[AttributeName — a constructor call on the attribute class.
-        // Checked before the function-call catch-all, which would match the name.
-        if (preg_match('/#\[\s*(?:[\w\\\\]+\s*,\s*)*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
-            return new Attribute(self::resolvedName($m[1], $context));
-        }
-
-        // Static call: ClassName::methodName
-        if (preg_match('/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/', $text, $m) === 1) {
-            return new StaticCall(self::resolvedName($m[1], $context), new Identifier($m[2]));
-        }
-
-        // Instance call: $var->methodName or $var?->methodName
-        if (preg_match('/\$(\w+)(\?)?->(\w+)\s*$/', $text, $m) === 1) {
-            $varName = $m[1];
-            $isNullsafe = $m[2] === '?';
-            $methodName = $m[3];
-            $var = new Variable($varName);
-            if ($varName === 'this') {
-                $enclosingClass = $this->resolveEnclosingClassName($ast, $offset, $content, $line);
-                if ($enclosingClass !== null) {
-                    $var->setAttribute('resolvedType', new ClassName($enclosingClass));
-                }
-            }
-            return $isNullsafe
-                ? new NullsafeMethodCall($var, new Identifier($methodName))
-                : new MethodCall($var, new Identifier($methodName));
-        }
-
-        // Constructor: new ClassName
-        if (preg_match('/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
-            return new New_(self::resolvedName($m[1], $context));
-        }
-
-        // Function call: functionName
-        if (preg_match('/\b(\w+)\s*$/', $text, $m) === 1) {
-            $funcName = $m[1];
-            $keywords = ['if', 'while', 'for', 'foreach', 'switch', 'catch', 'array', 'list'];
-            if (!in_array(strtolower($funcName), $keywords, true)) {
-                return new FuncCall(new Name($funcName, ['startLine' => $line + 1]));
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Build a Name node with resolvedName attribute set from NameContext.
-     */
-    private static function resolvedName(string $short, NameContext $context): Name
-    {
-        $name = new Name($short);
-        $fqn = $context->candidates($short, NameKind::ClassLike)[0];
-        if ($fqn !== $short) {
-            $name->setAttribute('resolvedName', new Name\FullyQualified($fqn));
-        }
-        return $name;
-    }
-
-    /**
-     * Parse argument text to determine active parameter and used named arguments.
-     *
-     * @return array{0: int, 1: list<string>, 2: int}
-     */
-    private function parseArgsFromText(string $argsText): array
-    {
-        $activeParam = 0;
-        $usedNames = [];
-        $positionalCount = 0;
-        $sawNamedArg = false;
-
-        // Simple parsing: count commas and look for `name:` patterns
-        // This is approximate but handles common cases
-        $depth = 0;
-        $currentArg = '';
-
-        for ($i = 0; $i < strlen($argsText); $i++) {
-            $char = $argsText[$i];
-
-            if ($char === '(' || $char === '[' || $char === '{') {
-                $depth++;
-                $currentArg .= $char;
-            } elseif ($char === ')' || $char === ']' || $char === '}') {
-                $depth--;
-                $currentArg .= $char;
-            } elseif ($char === ',' && $depth === 0) {
-                // End of argument
-                $this->processArgText($currentArg, $usedNames, $positionalCount, $sawNamedArg);
-                $activeParam++;
-                $currentArg = '';
-            } else {
-                $currentArg .= $char;
-            }
-        }
-
-        // Process final partial argument (cursor is here)
-        // Extract named arg if present, but don't increment positional count
-        // since the argument value isn't complete
-        if (preg_match('/^(\w+)\s*:/', trim($currentArg), $m) === 1) {
-            $usedNames[] = $m[1];
-        }
-
-        return [$activeParam, $usedNames, $positionalCount];
-    }
-
-    /**
-     * Process a single argument's text to extract named arg info.
-     *
-     * @param list<string> $usedNames
-     */
-    private function processArgText(string $argText, array &$usedNames, int &$positionalCount, bool &$sawNamedArg): void
-    {
-        $argText = trim($argText);
-        if ($argText === '') {
-            return;
-        }
-
-        // Check for named argument pattern: `name:`
-        if (preg_match('/^(\w+)\s*:/', $argText, $m) === 1) {
-            $usedNames[] = $m[1];
-            $sawNamedArg = true;
-        } elseif (!$sawNamedArg) {
-            $positionalCount++;
-        }
     }
 
     /**
