@@ -368,7 +368,7 @@ final class SymbolResolver implements CodeResolver
             }
             // AST found a static access node - if it can't be resolved, that's intentional
             // (e.g., self:: outside a class). Don't fall through to text-based.
-            return $this->resolveStaticAccessContext($node, $ast, $line);
+            return $this->resolveStaticAccessContext($node, $ast, $offset);
         }
 
         // Text-based fallback for incomplete code where AST detection failed
@@ -450,7 +450,7 @@ final class SymbolResolver implements CodeResolver
     private function resolveStaticAccessContext(
         StaticPropertyFetch|StaticCall|ClassConstFetch $node,
         array $ast,
-        int $line,
+        int $offset,
     ): ?MemberAccessContext {
         $class = $node->class;
         if (!$class instanceof Name) {
@@ -459,14 +459,14 @@ final class SymbolResolver implements CodeResolver
 
         $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
         $rawName = $class->toString();
+        $enclosingClassLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
 
         // parent:: has special behavior
         if ($rawName === 'parent') {
-            $classNode = ScopeFinder::findClassAtLine($ast, $line);
-            if ($classNode === null || $classNode->extends === null) {
+            if (!$enclosingClassLike instanceof Stmt\Class_ || $enclosingClassLike->extends === null) {
                 return null;
             }
-            $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+            $parentClassName = ScopeFinder::resolveExtendsName($enclosingClassLike);
             assert($parentClassName !== null);
             return MemberAccessContext::forParent(
                 new ClassName($parentClassName),
@@ -484,8 +484,7 @@ final class SymbolResolver implements CodeResolver
             // @codeCoverageIgnoreEnd
         }
 
-        $enclosingClass = ScopeFinder::findClassAtLine($ast, $line);
-        $minVisibility = $this->getMinVisibilityForStaticAccess($enclosingClass, $className);
+        $minVisibility = $this->getMinVisibilityForStaticAccess($enclosingClassLike, $className);
 
         return MemberAccessContext::forStatic(
             new ClassName($className),
@@ -495,19 +494,17 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * Determine minimum visibility for static access from enclosing class.
-     *
      * @param class-string $targetClassName
      */
     private function getMinVisibilityForStaticAccess(
-        ?Stmt\Class_ $enclosingClass,
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
         string $targetClassName,
     ): Visibility {
-        if ($enclosingClass === null) {
+        if ($enclosingClassLike === null) {
             return Visibility::Public;
         }
 
-        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClass);
+        $enclosingClassName = ScopeFinder::getClassLikeName($enclosingClassLike);
         if ($enclosingClassName === null) {
             return Visibility::Public;
         }
@@ -516,7 +513,10 @@ final class SymbolResolver implements CodeResolver
             return Visibility::Private;
         }
 
-        if (ScopeFinder::resolveExtendsName($enclosingClass) === $targetClassName) {
+        if (
+            $enclosingClassLike instanceof Stmt\Class_
+            && ScopeFinder::resolveExtendsName($enclosingClassLike) === $targetClassName
+        ) {
             return Visibility::Protected;
         }
 

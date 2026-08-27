@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
 
@@ -148,12 +149,12 @@ final class TextFallbackHelper
 
         // parent:: requires AST to find extends clause
         if ($lowerClassName === 'parent') {
-            $classNode = ScopeFinder::findClassAtLine($ast, $line);
-            if ($classNode === null) {
-                // parent:: outside any class - no completion possible
+            $offset = $document->offsetAt($line, 0);
+            $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
+            if (!$classLike instanceof Stmt\Class_) {
                 return null;
             }
-            $parentClassName = ScopeFinder::resolveExtendsName($classNode);
+            $parentClassName = ScopeFinder::resolveExtendsName($classLike);
             if ($parentClassName === null) {
                 return null;
             }
