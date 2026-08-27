@@ -35,7 +35,6 @@ use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
-use PhpParser\NodeFinder;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
@@ -939,31 +938,38 @@ final class SymbolResolver implements CodeResolver
      */
     private function findEnclosingClassForLine(array $ast, int $line): ?string
     {
-        $finder = new NodeFinder();
-        $classLikes = $finder->find($ast, function (Node $node) use ($line) {
-            if (
-                !$node instanceof Stmt\Class_
-                && !$node instanceof Stmt\Trait_
-                && !$node instanceof Stmt\Enum_
+        $found = self::findClassLikeAtLine($ast, $line);
+        return $found !== null ? ScopeFinder::getClassLikeName($found) : null;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findClassLikeAtLine(
+        array $ast,
+        int $line,
+    ): Stmt\Class_|Stmt\Trait_|Stmt\Enum_|null {
+        $target = $line + 1;
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $inner) {
+                    if (
+                        ($inner instanceof Stmt\Class_ || $inner instanceof Stmt\Trait_ || $inner instanceof Stmt\Enum_)
+                        && $inner->getStartLine() <= $target
+                        && $target <= $inner->getEndLine()
+                    ) {
+                        return $inner;
+                    }
+                }
+            } elseif (
+                ($stmt instanceof Stmt\Class_ || $stmt instanceof Stmt\Trait_ || $stmt instanceof Stmt\Enum_)
+                && $stmt->getStartLine() <= $target
+                && $target <= $stmt->getEndLine()
             ) {
-                return false;
+                return $stmt;
             }
-            $startLine = $node->getStartLine();
-            $endLine = $node->getEndLine();
-            return $startLine <= $line + 1 && $line + 1 <= $endLine;
-        });
-
-        if (count($classLikes) === 0) {
-            return null;
         }
-
-        $classNode = $classLikes[0];
-        assert(
-            $classNode instanceof Stmt\Class_
-            || $classNode instanceof Stmt\Trait_
-            || $classNode instanceof Stmt\Enum_
-        );
-        return ScopeFinder::getClassLikeName($classNode);
+        return null;
     }
 
     /**

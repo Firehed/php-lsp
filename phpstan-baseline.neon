@@ -97,18 +97,6 @@ parameters:
 			path: src/Resolution/SymbolResolver.php
 
 		-
-			message: '#^Class PhpParser\\NodeFinder is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
-			identifier: disallowed.class
-			count: 1
-			path: src/Resolution/SymbolResolver.php
-
-		-
-			message: '#^Namespace PhpParser\\NodeFinder is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
-			identifier: disallowed.namespace
-			count: 1
-			path: src/Resolution/SymbolResolver.php
-
-		-
 			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 15
