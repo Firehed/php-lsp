@@ -11,16 +11,27 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
+use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 
 /**
@@ -496,6 +507,196 @@ final class TextFallbackHelper
             return $classTypes[0];
         }
         return new UnionType($classTypes);
+    }
+
+    /**
+     * Detect a call from text when AST-based detection fails.
+     *
+     * @param array<Stmt> $ast
+     * @return array{
+     *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
+     *   1: int,
+     *   2: list<string>,
+     *   3: int,
+     * }|null
+     */
+    public function detectCallFromText(array $ast, int $offset, string $content, int $line): ?array
+    {
+        $parenPos = self::findUnclosedParen($content, $offset);
+        if ($parenPos === null) {
+            return null;
+        }
+
+        $textBeforeParen = substr($content, 0, $parenPos);
+
+        $callNode = $this->parseCallPattern($textBeforeParen, $ast, $offset, $line, $content);
+        if ($callNode === null) {
+            return null;
+        }
+
+        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
+        [$activeParam, $usedNames, $positionalCount] = self::parseArgsFromText($argsText);
+
+        return [$callNode, $activeParam, $usedNames, $positionalCount];
+    }
+
+    private static function findUnclosedParen(string $content, int $offset): ?int
+    {
+        $depth = 0;
+        for ($i = $offset - 1; $i >= 0; $i--) {
+            $char = $content[$i];
+            if ($char === ')') {
+                $depth++;
+            } elseif ($char === '(') {
+                if ($depth === 0) {
+                    return $i;
+                }
+                $depth--;
+            } elseif ($char === ';' || $char === '{' || $char === '}') {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null
+     */
+    private function parseCallPattern(
+        string $textBeforeParen,
+        array $ast,
+        int $offset,
+        int $line,
+        string $content,
+    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
+        $text = rtrim($textBeforeParen);
+        $context = NameContextFactory::fromAst($ast, $line);
+
+        if (preg_match('/#\[\s*(?:[\w\\\\]+\s*,\s*)*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
+            return new Attribute(self::resolvedName($m[1], $context));
+        }
+
+        if (preg_match('/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/', $text, $m) === 1) {
+            return new StaticCall(self::resolvedName($m[1], $context), new Identifier($m[2]));
+        }
+
+        if (preg_match('/\$(\w+)(\?)?->(\w+)\s*$/', $text, $m) === 1) {
+            $varName = $m[1];
+            $isNullsafe = $m[2] === '?';
+            $methodName = $m[3];
+            $var = new Variable($varName);
+            if ($varName === 'this') {
+                $enclosingClass = $this->resolveEnclosingClassName($ast, $offset, $content, $line);
+                if ($enclosingClass !== null) {
+                    $var->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
+                }
+            }
+            return $isNullsafe
+                ? new NullsafeMethodCall($var, new Identifier($methodName))
+                : new MethodCall($var, new Identifier($methodName));
+        }
+
+        if (preg_match('/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/', $text, $m) === 1) {
+            return new New_(self::resolvedName($m[1], $context));
+        }
+
+        if (preg_match('/\b(\w+)\s*$/', $text, $m) === 1) {
+            $funcName = $m[1];
+            $keywords = ['if', 'while', 'for', 'foreach', 'switch', 'catch', 'array', 'list'];
+            if (!in_array(NameCase::Insensitive->normalize($funcName), $keywords, true)) {
+                return new FuncCall(new Name($funcName, ['startLine' => $line + 1]));
+            }
+        }
+
+        return null;
+    }
+
+    private static function resolvedName(string $short, NameContext $context): Name
+    {
+        $name = new Name($short);
+        $fqn = $context->candidates($short, NameKind::ClassLike)[0];
+        if ($fqn !== $short) {
+            $name->setAttribute('resolvedName', new Name\FullyQualified($fqn));
+        }
+        return $name;
+    }
+
+    /**
+     * @return array{0: int, 1: list<string>, 2: int}
+     */
+    private static function parseArgsFromText(string $argsText): array
+    {
+        $activeParam = 0;
+        $usedNames = [];
+        $positionalCount = 0;
+        $sawNamedArg = false;
+
+        $depth = 0;
+        $currentArg = '';
+
+        for ($i = 0; $i < strlen($argsText); $i++) {
+            $char = $argsText[$i];
+
+            if ($char === '(' || $char === '[' || $char === '{') {
+                $depth++;
+                $currentArg .= $char;
+            } elseif ($char === ')' || $char === ']' || $char === '}') {
+                $depth--;
+                $currentArg .= $char;
+            } elseif ($char === ',' && $depth === 0) {
+                self::processArgText($currentArg, $usedNames, $positionalCount, $sawNamedArg);
+                $activeParam++;
+                $currentArg = '';
+            } else {
+                $currentArg .= $char;
+            }
+        }
+
+        if (preg_match('/^(\w+)\s*:/', trim($currentArg), $m) === 1) {
+            $usedNames[] = $m[1];
+        }
+
+        return [$activeParam, $usedNames, $positionalCount];
+    }
+
+    /**
+     * @param list<string> $usedNames
+     */
+    private static function processArgText(
+        string $argText,
+        array &$usedNames,
+        int &$positionalCount,
+        bool &$sawNamedArg,
+    ): void {
+        $argText = trim($argText);
+        if ($argText === '') {
+            return;
+        }
+
+        if (preg_match('/^(\w+)\s*:/', $argText, $m) === 1) {
+            $usedNames[] = $m[1];
+            $sawNamedArg = true;
+        } elseif (!$sawNamedArg) {
+            $positionalCount++;
+        }
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     * @return ?class-string
+     */
+    public function resolveEnclosingClassName(
+        array $ast,
+        int $offset,
+        string $content,
+        int $line,
+    ): ?string {
+        $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
+        if ($classLike !== null) {
+            return ScopeFinder::getClassLikeName($classLike);
+        }
+        return $this->findEnclosingClassFromContent($content, $line);
     }
 
     /**
