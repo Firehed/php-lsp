@@ -130,7 +130,6 @@ final class AstTextAgreementTest extends TestCase
         self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
         $offset = $this->markerOffset($content, $marker);
-        $lines = explode("\n", $content);
         $line = $this->lineForOffset($content, $offset);
 
         $astResult = $this->callDetector->fromAst($ast, $offset);

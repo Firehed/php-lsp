@@ -648,23 +648,6 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * @param array<Stmt> $ast
-     * @return ?class-string
-     */
-    private function resolveEnclosingClassName(
-        array $ast,
-        int $offset,
-        string $content,
-        int $line,
-    ): ?string {
-        $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
-        if ($classLike !== null) {
-            return ScopeFinder::getClassLikeName($classLike);
-        }
-        return $this->textFallback->findEnclosingClassFromContent($content, $line);
-    }
-
-    /**
      * @param FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call
      * @param array<Stmt> $ast
      */
@@ -758,7 +741,8 @@ final class SymbolResolver implements CodeResolver
 
         if ($document !== null && $line !== null && $this->expressionStartsWithThis($node->var)) {
             $offset = $document->offsetAt($line, 0);
-            $enclosingClass = $this->resolveEnclosingClassName($ast, $offset, $document->getContent(), $line);
+            $content = $document->getContent();
+            $enclosingClass = $this->textFallback->resolveEnclosingClassName($ast, $offset, $content, $line);
             if ($enclosingClass !== null) {
                 // Set the resolved type on the $this variable so type resolution can proceed
                 $thisVar = $this->findThisVariable($node->var);

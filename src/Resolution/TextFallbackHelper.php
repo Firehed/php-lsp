@@ -686,7 +686,7 @@ final class TextFallbackHelper
      * @param array<Stmt> $ast
      * @return ?class-string
      */
-    private function resolveEnclosingClassName(
+    public function resolveEnclosingClassName(
         array $ast,
         int $offset,
         string $content,
