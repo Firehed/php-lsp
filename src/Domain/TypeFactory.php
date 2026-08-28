@@ -92,6 +92,20 @@ final class TypeFactory
         return new ClassName($fqn);
     }
 
+    /**
+     * Build a union from resolved parts. A single-member "union" collapses to
+     * that member, matching how PHP's type system treats it.
+     *
+     * @param non-empty-list<Type> $members
+     */
+    public static function union(array $members): Type
+    {
+        if (count($members) === 1) {
+            return $members[0];
+        }
+        return new UnionType($members);
+    }
+
     public static function fromReflection(?ReflectionType $type): ?Type
     {
         if ($type === null) {

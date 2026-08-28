@@ -147,148 +147,36 @@ final class TextFallbackHelper
     }
 
     /**
-     * Detect and resolve member access context from text.
+     * Match the member-access pattern that ends the given text (typically the
+     * source line before the cursor). Returns a typed match struct describing
+     * the receiver kind, or null if no member-access pattern is at the tail.
      *
-     * @param array<Stmt> $ast AST for namespace/use resolution (may be partial)
+     * This is a text primitive: it holds the regex and nothing else. Resolving
+     * the match to a {@see MemberAccessContext} is the caller's job.
+     *
+     * @return array{kind: 'chain', chain: string, prefix: string}
+     *      | array{kind: 'instance', var: string, prefix: string}
+     *      | array{kind: 'static', class: string, prefix: string}
+     *      | null
      */
-    public function getMemberAccessContext(
-        TextDocument $document,
-        int $line,
-        int $character,
-        array $ast,
-    ): ?MemberAccessContext {
-        $textBeforeCursor = $document->textBeforeCursor($line, $character);
-
+    public function matchMemberAccessAt(string $textBeforeCursor): ?array
+    {
         // Chained instance access: $this->member->prefix or $this?->member->prefix
         if (preg_match('/(\$this(?:\??->[\w]+(?:\([^)]*\))?)+)\??->([\w]*)$/', $textBeforeCursor, $m) === 1) {
-            return $this->resolveChainedAccess($m[1], $m[2], $document, $line);
+            return ['kind' => 'chain', 'chain' => $m[1], 'prefix' => $m[2]];
         }
 
         // Simple instance access: $var->prefix or $var?->prefix
         if (preg_match('/\$(\w+)(\?)?->([\w]*)$/', $textBeforeCursor, $m) === 1) {
-            return $this->resolveInstanceAccess($m[1], $m[3], $document, $line);
+            return ['kind' => 'instance', 'var' => $m[1], 'prefix' => $m[3]];
         }
 
         // Static access: ClassName::prefix (excluding $var::)
         if (preg_match('/(?<!\$)([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::([\w]*)$/', $textBeforeCursor, $m) === 1) {
-            return $this->resolveStaticAccess($m[1], $m[2], $document, $line, $ast);
+            return ['kind' => 'static', 'class' => $m[1], 'prefix' => $m[2]];
         }
 
         return null;
-    }
-
-    /**
-     * Resolve simple instance access ($var-> or $this->).
-     */
-    private function resolveInstanceAccess(
-        string $varName,
-        string $prefix,
-        TextDocument $document,
-        int $line,
-    ): ?MemberAccessContext {
-        // Only $this can be resolved via pure text - other variables need AST
-        if ($varName !== 'this') {
-            return null;
-        }
-
-        $enclosingClass = $this->findEnclosingClass($document, $line);
-        if ($enclosingClass === null) {
-            // $this outside any class - no completion possible
-            return null;
-        }
-
-        return MemberAccessContext::forInstance(
-            new ClassName($enclosingClass),
-            Visibility::Private,
-            $prefix,
-        );
-    }
-
-    /**
-     * Resolve chained access ($this->member-> or $this->method()->).
-     */
-    private function resolveChainedAccess(
-        string $chainExpr,
-        string $prefix,
-        TextDocument $document,
-        int $line,
-    ): ?MemberAccessContext {
-        $enclosingClass = $this->findEnclosingClass($document, $line);
-        if ($enclosingClass === null) {
-            // Chained $this access outside any class - no completion possible
-            return null;
-        }
-
-        $type = $this->resolveChainType($chainExpr, $enclosingClass);
-        if ($type === null) {
-            // Chain resolution failed - member not found or untyped
-            return null;
-        }
-
-        return MemberAccessContext::forInstance($type, Visibility::Public, $prefix);
-    }
-
-    /**
-     * Resolve static access (self::, static::, ClassName::).
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveStaticAccess(
-        string $className,
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        array $ast,
-    ): ?MemberAccessContext {
-        $enclosingClass = $this->findEnclosingClass($document, $line);
-        $lowerClassName = strtolower($className);
-
-        // self:: and static:: resolve to enclosing class
-        if ($lowerClassName === 'self' || $lowerClassName === 'static') {
-            if ($enclosingClass === null) {
-                // self::/static:: outside class - no completion possible
-                return null;
-            }
-            return MemberAccessContext::forStatic(
-                new ClassName($enclosingClass),
-                Visibility::Private,
-                $prefix,
-            );
-        }
-
-        // parent:: requires AST to find extends clause
-        if ($lowerClassName === 'parent') {
-            $offset = $document->offsetAt($line, 0);
-            $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
-            if (!$classLike instanceof Stmt\Class_) {
-                return null;
-            }
-            $parentClassName = ScopeFinder::resolveExtendsName($classLike);
-            if ($parentClassName === null) {
-                return null;
-            }
-            return MemberAccessContext::forParent(
-                new ClassName($parentClassName),
-                Visibility::Protected,
-                $prefix,
-            );
-        }
-
-        // Regular class name - resolve via use statements
-        $lines = explode("\n", $document->getContent());
-        $context = NameContextFactory::fromAstOrText($ast, $line, $lines);
-        $fqn = $context->candidates($className, NameKind::ClassLike)[0];
-
-        // Determine visibility based on whether we're inside the same class
-        $isSameClass = $enclosingClass !== null && $enclosingClass === $fqn;
-        $visibility = $isSameClass ? Visibility::Private : Visibility::Public;
-
-        return MemberAccessContext::forStatic(
-            // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
-            new ClassName($fqn),
-            $visibility,
-            $prefix,
-        );
     }
 
     /**
@@ -424,27 +312,19 @@ final class TextFallbackHelper
     }
 
     /**
-     * Find the type of a parameter by scanning backwards for method declaration.
+     * Match the type text of a named parameter in the enclosing function-like
+     * declaration reached by scanning backwards from the given line. Returns
+     * the raw type token (e.g. "?User" or "Foo|Bar"), or null when no match
+     * lands. Resolving each token to a {@see Type} is the caller's job.
      *
-     * @param array<Stmt> $ast AST for use statement resolution
+     * @param list<string> $lines
      */
-    public function findParameterType(
-        TextDocument $document,
-        int $line,
-        string $varName,
-        array $ast,
-    ): ?Type {
-        $content = $document->getContent();
-        $lines = explode("\n", $content);
-
-        // Scan backwards to find method/function declaration
+    public function matchParameterType(array $lines, int $line, string $varName): ?string
+    {
         for ($i = $line; $i >= 0; $i--) {
             $lineText = $lines[$i] ?? '';
 
-            // Match function/method declaration with parameters
-            // Handles multi-line declarations by accumulating lines
             if (preg_match('/function\s+\w+\s*\(/', $lineText) === 1) {
-                // Accumulate lines until we find closing paren
                 $declaration = $lineText;
                 for ($j = $i; $j < min($i + 10, count($lines)); $j++) {
                     if ($j > $i) {
@@ -455,58 +335,14 @@ final class TextFallbackHelper
                     }
                 }
 
-                // Extract parameter type for the variable
-                $type = $this->extractParameterType($declaration, $varName, $lines, $ast, $line);
-                if ($type !== null) {
-                    return $type;
+                $pattern = '/([?A-Za-z_\\\\][A-Za-z0-9_\\\\|?]*)\s+\$' . preg_quote($varName, '/') . '\b/';
+                if (preg_match($pattern, $declaration, $matches) === 1) {
+                    return $matches[1];
                 }
-                break;
+                return null;
             }
         }
-
         return null;
-    }
-
-    /**
-     * Extract parameter type from a function declaration string.
-     *
-     * @param list<string> $lines
-     * @param array<Stmt> $ast
-     */
-    private function extractParameterType(
-        string $declaration,
-        string $varName,
-        array $lines,
-        array $ast,
-        int $line,
-    ): ?Type {
-        // Pattern: TypeName $varName, ?TypeName $varName, or A|B $varName
-        $pattern = '/([?A-Za-z_\\\\][A-Za-z0-9_\\\\|?]*)\s+\$' . preg_quote($varName, '/') . '\b/';
-        if (preg_match($pattern, $declaration, $matches) !== 1) {
-            return null;
-        }
-
-        $context = NameContextFactory::fromAstOrText($ast, $line, $lines);
-
-        // Resolve each union member; primitives are skipped since they have no members
-        $classTypes = [];
-        foreach (explode('|', $matches[1]) as $part) {
-            $part = ltrim($part, '?');
-            if ($part === '' || in_array(strtolower($part), PrimitiveType::NAMES, true)) {
-                continue;
-            }
-            $fqn = $context->candidates($part, NameKind::ClassLike)[0];
-            /** @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string) */
-            $classTypes[] = new ClassName($fqn);
-        }
-
-        if ($classTypes === []) {
-            return null;
-        }
-        if (count($classTypes) === 1) {
-            return $classTypes[0];
-        }
-        return new UnionType($classTypes);
     }
 
     /**

@@ -29,6 +29,7 @@ use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedParameter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
+use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
@@ -41,6 +42,7 @@ use Throwable;
 use TypeError;
 
 #[CoversClass(CallContextDetector::class)]
+#[CoversClass(MemberAccessDetector::class)]
 #[CoversClass(SymbolResolver::class)]
 #[CoversClass(NameContextFactory::class)]
 #[CoversClass(TextFallbackHelper::class)]

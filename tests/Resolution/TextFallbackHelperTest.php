@@ -94,6 +94,51 @@ class TextFallbackHelperTest extends TestCase
         self::assertSame('App\\Services', $result);
     }
 
+    public function testNameContextFromTextParsesGroupUseWithAndWithoutAlias(): void
+    {
+        $lines = [
+            '<?php',
+            'namespace App;',
+            'use Vendor\\Pkg\\{Plain, Nested\\Deep, Aliased as Alias};',
+            '',
+        ];
+        $context = TextFallbackHelper::nameContextFromText($lines, 3);
+
+        self::assertSame('App', $context->namespace);
+        self::assertSame('Vendor\\Pkg\\Plain', $context->classImports['Plain']);
+        self::assertSame('Vendor\\Pkg\\Nested\\Deep', $context->classImports['Deep']);
+        self::assertSame('Vendor\\Pkg\\Aliased', $context->classImports['Alias']);
+    }
+
+    public function testNameContextFromTextParsesSimpleUseWithAlias(): void
+    {
+        $lines = [
+            '<?php',
+            'use Vendor\\Pkg\\Something as Thing;',
+            '',
+        ];
+        $context = TextFallbackHelper::nameContextFromText($lines, 2);
+
+        self::assertSame('Vendor\\Pkg\\Something', $context->classImports['Thing']);
+    }
+
+    public function testMatchParameterTypeAccumulatesMultilineSignature(): void
+    {
+        $content = $this->loadFixture('TopLevel/multiline_function.php');
+        $lines = explode("\n", $content);
+        // $typed sits on line 10; its declaration begins on line 5 (function longSignature(),
+        // spans four lines to the closing paren on line 9.
+        $result = $this->helper->matchParameterType($lines, 10, 'typed');
+        self::assertSame('SomeClass', $result);
+    }
+
+    public function testMatchParameterTypeReturnsNullWhenNoFunctionDeclarationFound(): void
+    {
+        $lines = ['<?php', '$name = "top-level";'];
+        $result = $this->helper->matchParameterType($lines, 1, 'name');
+        self::assertNull($result, 'Scanning code with no function declaration must yield no type');
+    }
+
     public function testResolveChainTypeReturnsClassForSimpleThis(): void
     {
         // $this-> with nothing after returns the class type
@@ -117,33 +162,6 @@ class TextFallbackHelperTest extends TestCase
         );
 
         self::assertSame([], $members);
-    }
-
-    public function testGetMemberAccessContextReturnsNullForSelfOutsideClass(): void
-    {
-        $content = $this->loadFixture('TopLevel/self_outside_class.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 1: self::, cursor at position 6
-        $result = $this->helper->getMemberAccessContext($document, 1, 6, []);
-        self::assertNull($result, 'self:: outside class should return null');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForStaticOutsideClass(): void
-    {
-        $content = $this->loadFixture('TopLevel/static_outside_class.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 1: static::, cursor at position 8
-        $result = $this->helper->getMemberAccessContext($document, 1, 8, []);
-        self::assertNull($result, 'static:: outside class should return null');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForParentOutsideClass(): void
-    {
-        $content = $this->loadFixture('TopLevel/parent_outside_class.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 1: parent::, cursor at position 8
-        $result = $this->helper->getMemberAccessContext($document, 1, 8, []);
-        self::assertNull($result, 'parent:: outside class should return null');
     }
 
     public function testResolveChainTypeReturnsNullForMethodOnPrimitive(): void
@@ -197,143 +215,6 @@ class TextFallbackHelperTest extends TestCase
         );
         self::assertNotNull($result, 'Should resolve multi-step chain');
         self::assertSame('self', $result->format());
-    }
-
-    public function testGetMemberAccessContextResolvesFullyQualifiedClassName(): void
-    {
-        $content = $this->loadFixture('TopLevel/fully_qualified.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 2: \SomeGlobalClass::/*|fq_static*/
-        // Cursor at position 18 (after ::)
-        $result = $this->helper->getMemberAccessContext($document, 2, 18, []);
-        self::assertNotNull($result, 'Should resolve FQ class name');
-        self::assertSame('SomeGlobalClass', $result->type->format());
-    }
-
-    public function testGetMemberAccessContextResolvesPartiallyQualifiedWithAlias(): void
-    {
-        $content = $this->loadFixture('TopLevel/aliased_partial.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 4 has: Alias\SubClass::/*|partial_alias*/
-        // Position after :: is column 16
-        $result = $this->helper->getMemberAccessContext($document, 4, 16, []);
-        self::assertNotNull($result, 'Should resolve partially qualified name');
-        self::assertSame('Foo\\Bar\\SubClass', $result->type->format());
-    }
-
-    public function testGetMemberAccessContextResolvesNestedGroupUse(): void
-    {
-        $content = $this->loadFixture('TopLevel/nested_group_use.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 4 has: Thing::/*|nested_group*/
-        // Position after :: is column 7
-        $result = $this->helper->getMemberAccessContext($document, 4, 7, []);
-        self::assertNotNull($result, 'Should resolve nested group use');
-        self::assertSame('Vendor\\Package\\Sub\\Thing', $result->type->format());
-    }
-
-    public function testGetMemberAccessContextResolvesSimpleAliasedUse(): void
-    {
-        $content = $this->loadFixture('TopLevel/simple_aliased.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 4 has: Alias::/*|simple_alias*/
-        // Position after :: is column 7
-        $result = $this->helper->getMemberAccessContext($document, 4, 7, []);
-        self::assertNotNull($result, 'Should resolve simple aliased use');
-        self::assertSame('Vendor\\Package\\ClassName', $result->type->format());
-    }
-
-    public function testGetMemberAccessContextResolvesGlobalNamespace(): void
-    {
-        $content = $this->loadFixture('TopLevel/no_ast.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 3 has: SomeClass::/*|empty_ast_static*/
-        // Position after :: is column 11
-        $result = $this->helper->getMemberAccessContext($document, 3, 11, []);
-        self::assertNotNull($result, 'Should resolve class in global namespace');
-        // No namespace, no use - class name stays as-is
-        self::assertSame('SomeClass', $result->type->format());
-    }
-
-    public function testGetMemberAccessContextSlicesPrefixAtByteColumnPastMultibyte(): void
-    {
-        $content = $this->loadFixture('TopLevel/multibyte_static.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // The line carries a "🎉" (one astral codepoint: 2 UTF-16 units, 4 bytes)
-        // before "User::fromArray", so the wire column trails the byte column.
-        ['line' => $line, 'character' => $character] = $this->locateCursorUtf16($content, 'multibyte_static');
-
-        $result = $this->helperWithReflection->getMemberAccessContext($document, $line, $character, []);
-
-        self::assertNotNull($result, 'a static access past a multibyte char must still resolve');
-        self::assertSame('Fixtures\\Domain\\User', $result->type->format());
-        self::assertSame(
-            'fromArray',
-            $result->prefix,
-            'slicing the raw wire column would truncate the member prefix (RFC 1 §4.9)',
-        );
-    }
-
-    public function testFindParameterTypeWithMultilineSignature(): void
-    {
-        $content = $this->loadFixture('TopLevel/multiline_function.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 10 has: $typed->/*|multiline_param*/
-        // Variable $typed is declared on line 9: SomeClass $typed
-        // Function signature spans lines 6-10
-        $result = $this->helper->findParameterType($document, 10, 'typed', []);
-        // Should resolve to 'SomeClass' from the multi-line function signature
-        self::assertNotNull($result, 'Should find parameter type from multi-line signature');
-        self::assertSame('App\\SomeClass', $result->format());
-    }
-
-    public function testGetMemberAccessContextWithAstNamespaceLookup(): void
-    {
-        $content = $this->loadFixture('TopLevel/namespace_unimported.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Parse to get real AST with namespace
-        $ast = $this->parser->parse($document);
-        self::assertNotNull($ast, 'Fixture should parse successfully');
-        // Line 8 (0-indexed) has:         InternalClass::/*|unimported_static*/
-        // 8 spaces + InternalClass (13 chars) + :: = cursor at 23
-        $result = $this->helper->getMemberAccessContext($document, 8, 23, $ast);
-        self::assertNotNull($result, 'Should resolve unimported class with AST namespace');
-        // InternalClass should resolve to App\Services\InternalClass
-        self::assertSame('App\\Services\\InternalClass', $result->type->format());
-    }
-
-    public function testGetMemberAccessContextResolvesGlobalNamespaceImport(): void
-    {
-        // When inside a namespace with `use GlobalClass;`, the import should
-        // resolve to GlobalClass (not App\GlobalClass)
-        $content = $this->loadFixture('TopLevel/global_namespace_use_with_ns.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 8 has: GlobalClass::/*|global_ns_use*/
-        // Position after :: is column 13
-        $result = $this->helper->getMemberAccessContext($document, 8, 13, []);
-        self::assertNotNull($result, 'Should resolve global namespace import');
-        // Class should resolve to GlobalClass, NOT App\GlobalClass
-        self::assertSame(
-            'GlobalClass',
-            $result->type->format(),
-            'Global namespace import should resolve to GlobalClass, not App\\GlobalClass',
-        );
-    }
-
-    public function testGetMemberAccessContextResolvesAliasedGroupUse(): void
-    {
-        // Test aliased item within group use: use Vendor\Package\{Something as Alias}
-        $content = $this->loadFixture('TopLevel/aliased_group_use.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 6 has: Alias::/*|aliased_group*/
-        // Position after :: is column 7
-        $result = $this->helper->getMemberAccessContext($document, 6, 7, []);
-        self::assertNotNull($result, 'Should resolve aliased group use');
-        self::assertSame(
-            'Vendor\\Package\\Something',
-            $result->type->format(),
-            'Aliased group use should resolve to full FQN',
-        );
     }
 
     public function testExtractMembersIncludesInstanceMembersNamedStatic(): void
@@ -458,32 +339,6 @@ class TextFallbackHelperTest extends TestCase
 
         $names = self::memberNames($members);
         self::assertContains('FOO', $names, 'Interface constants should be extracted for static access');
-    }
-
-    public function testFindParameterTypeResolvesUnionType(): void
-    {
-        $content = $this->loadFixture('TopLevel/union_param.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 8 (0-based) is `$thing->`; the parameter is declared on line 6 as `Foo|Bar $thing`
-        $result = $this->helper->findParameterType($document, 8, 'thing', []);
-
-        self::assertNotNull($result, 'Union-typed parameter should resolve to a type');
-        $fqns = array_map(
-            static fn (ClassName $className): string => $className->fqn,
-            $result->getResolvableClassNames(),
-        );
-        self::assertContains('App\\Foo', $fqns, 'Union type must include its first member');
-        self::assertContains('App\\Bar', $fqns, 'Union type must include its second member');
-    }
-
-    public function testFindParameterTypeReturnsNullForPrimitiveType(): void
-    {
-        $content = $this->loadFixture('TopLevel/primitive_param.php');
-        $document = new TextDocument('file:///test.php', 'php', 1, $content);
-        // Line 8 (0-based) is `$value->`; the parameter is declared as `string $value`
-        $result = $this->helper->findParameterType($document, 8, 'value', []);
-
-        self::assertNull($result, 'A primitive-typed parameter has no members and should resolve to null');
     }
 
     public function testExtractMembersExcludesInheritedPrivateMembers(): void

@@ -376,4 +376,19 @@ class TypeFactoryTest extends TestCase
         self::assertInstanceOf(PrimitiveType::class, $type);
         self::assertSame('null', $type->format());
     }
+
+    public function testUnionCollapsesToSingleMember(): void
+    {
+        $type = TypeFactory::className(\DateTime::class);
+        self::assertSame($type, TypeFactory::union([$type]));
+    }
+
+    public function testUnionOfSeveralMembersBuildsUnionType(): void
+    {
+        $a = TypeFactory::className(\DateTime::class);
+        $b = TypeFactory::className(\DateTimeImmutable::class);
+        $type = TypeFactory::union([$a, $b]);
+        self::assertInstanceOf(UnionType::class, $type);
+        self::assertSame('DateTime|DateTimeImmutable', $type->format());
+    }
 }

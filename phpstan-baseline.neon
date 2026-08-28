@@ -79,12 +79,6 @@ parameters:
 			path: src/Resolution/SymbolResolver.php
 
 		-
-			message: '#^Calling preg_match\(\) is forbidden, text\-pattern analysis is the mid\-edit resilience rim\: CompletionClassifier, DocblockParser, TextFallbackHelper\.$#'
-			identifier: disallowed.function
-			count: 1
-			path: src/Resolution/SymbolResolver.php
-
-		-
 			message: '#^Calling property_exists\(\) is forbidden, asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query \(RFC 1 §4\.2\); ReflectionSymbolInfoFactory is the one place it may be the server''s own runtime\.$#'
 			identifier: disallowed.function
 			count: 1
@@ -93,7 +87,7 @@ parameters:
 		-
 			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
-			count: 14
+			count: 9
 			path: src/Resolution/SymbolResolver.php
 
 		-
@@ -109,21 +103,9 @@ parameters:
 			path: src/Resolution/TextFallbackHelper.php
 
 		-
-			message: '#^Calling strtolower\(\) is forbidden, which case rule a name follows is NameKind \(symbols\) or MemberKind \(class\-like members\); applying one is NameCase\.$#'
-			identifier: disallowed.function
-			count: 2
-			path: src/Resolution/TextFallbackHelper.php
-
-		-
 			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
-			count: 7
-			path: src/Resolution/TextFallbackHelper.php
-
-		-
-			message: '#^new UnionType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
+			count: 2
 			path: src/Resolution/TextFallbackHelper.php
 
 		-
