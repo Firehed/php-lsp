@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -228,6 +229,7 @@ final class AstTextAgreementTest extends TestCase
         string $marker,
         MemberAccessKind $expectedKind,
         string $expectedTypeFormat,
+        Visibility $expectedMinVisibility,
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
@@ -255,6 +257,12 @@ final class AstTextAgreementTest extends TestCase
             'Target type must agree between AST and text paths',
         );
         self::assertSame(
+            $expectedMinVisibility,
+            $astResult->minVisibility,
+            'AST minVisibility must match expected — a consistent flip in '
+                . 'visibilityBetween would otherwise pass the agreement check below',
+        );
+        self::assertSame(
             $astResult->minVisibility,
             $textResult->minVisibility,
             'Visibility must agree between AST and text paths',
@@ -267,29 +275,53 @@ final class AstTextAgreementTest extends TestCase
     }
 
     /**
-     * @return array<string, array{string, string, MemberAccessKind, string}>
+     * @return array<string, array{string, string, MemberAccessKind, string, Visibility}>
      */
     public static function memberAccessFixtures(): array
     {
         $fixture = 'src/Resolution/MemberAccessAgreement.php';
         return [
             '$this->method' => [
-                $fixture, 'this_method', MemberAccessKind::Instance, 'Fixtures\\Resolution\\MemberAccessAgreement',
+                $fixture,
+                'this_method',
+                MemberAccessKind::Instance,
+                'Fixtures\\Resolution\\MemberAccessAgreement',
+                Visibility::Private,
             ],
             '$this->property' => [
-                $fixture, 'this_property', MemberAccessKind::Instance, 'Fixtures\\Resolution\\MemberAccessAgreement',
+                $fixture,
+                'this_property',
+                MemberAccessKind::Instance,
+                'Fixtures\\Resolution\\MemberAccessAgreement',
+                Visibility::Private,
             ],
             'self::method' => [
-                $fixture, 'self_static', MemberAccessKind::Static, 'Fixtures\\Resolution\\MemberAccessAgreement',
+                $fixture,
+                'self_static',
+                MemberAccessKind::Static,
+                'Fixtures\\Resolution\\MemberAccessAgreement',
+                Visibility::Private,
             ],
             'parent::method' => [
-                $fixture, 'parent_static', MemberAccessKind::Parent, 'Fixtures\\Inheritance\\ChildClass',
+                $fixture,
+                'parent_static',
+                MemberAccessKind::Parent,
+                'Fixtures\\Inheritance\\ChildClass',
+                Visibility::Protected,
             ],
             'imported class ::method' => [
-                $fixture, 'class_static', MemberAccessKind::Static, 'Fixtures\\Domain\\User',
+                $fixture,
+                'class_static',
+                MemberAccessKind::Static,
+                'Fixtures\\Domain\\User',
+                Visibility::Public,
             ],
             'fully qualified class ::method' => [
-                $fixture, 'fq_static', MemberAccessKind::Static, 'Fixtures\\Domain\\User',
+                $fixture,
+                'fq_static',
+                MemberAccessKind::Static,
+                'Fixtures\\Domain\\User',
+                Visibility::Public,
             ],
         ];
     }
