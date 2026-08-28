@@ -210,6 +210,21 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('create', $result['contents']['value']);
     }
 
+    public function testHoverOnForeachVariableMemberResolvesElementType(): void
+    {
+        // The iterable is UserCollection::all(), whose docblock @return is
+        // User[]. #301 / step-14: the foreach binding takes the element type,
+        // so a member call on $user resolves to User::getName.
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_member');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'a foreach variable must resolve members through its element type');
+        self::assertStringContainsString('getName', $result['contents']['value']);
+    }
+
     public function testHoverOnTypedVariableMethodCall(): void
     {
         $this->openFixture('src/Domain/User.php');

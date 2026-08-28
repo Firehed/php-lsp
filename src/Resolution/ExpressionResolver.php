@@ -245,18 +245,48 @@ final class ExpressionResolver
     }
 
     /**
+     * The raw docblock of the value the expression produces, or null. Reads
+     * the source info (MethodInfo / PropertyInfo / FunctionInfo) directly so
+     * `@tag` lines survive — the description-only accessor would strip them.
+     *
      * @param array<Stmt> $ast
      */
     private function docblockForExpression(Expr $expr, array $ast): ?string
     {
         if ($expr instanceof MethodCall || $expr instanceof NullsafeMethodCall) {
-            return $this->resolveMethodCall($expr, $ast)?->getDocumentation();
+            $receiverType = $this->resolve($expr->var, $ast)?->getType();
+            $classNames = $receiverType?->getResolvableClassNames() ?? [];
+            if ($classNames === [] || !$expr->name instanceof Identifier) {
+                return null;
+            }
+            $info = $this->memberResolver->findMethod(
+                $classNames[0],
+                new MethodName($expr->name->toString()),
+                Visibility::Private,
+            );
+            return $info?->docblock;
         }
         if ($expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch) {
-            return $this->resolvePropertyFetch($expr, $ast)?->getDocumentation();
+            $receiverType = $this->resolve($expr->var, $ast)?->getType();
+            $classNames = $receiverType?->getResolvableClassNames() ?? [];
+            if ($classNames === [] || !$expr->name instanceof Identifier) {
+                return null;
+            }
+            $info = $this->memberResolver->findProperty(
+                $classNames[0],
+                new PropertyName($expr->name->toString()),
+                Visibility::Private,
+            );
+            return $info?->docblock;
         }
-        if ($expr instanceof FuncCall) {
-            return $this->resolveFuncCall($expr, $ast)?->getDocumentation();
+        if ($expr instanceof FuncCall && $expr->name instanceof Name) {
+            $context = NameContextFactory::fromAst($ast, $expr->name->getStartLine() - 1);
+            foreach ($context->candidates($expr->name->toString(), NameKind::Function_) as $candidate) {
+                $info = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
+                if ($info !== null) {
+                    return $info->docblock;
+                }
+            }
         }
         return null;
     }
