@@ -103,36 +103,6 @@ parameters:
 			path: src/Resolution/TextFallbackHelper.php
 
 		-
-			message: '#^Class PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
-			identifier: disallowed.class
-			count: 2
-			path: src/TypeInference/BasicTypeResolver.php
-
-		-
-			message: '#^Namespace PhpParser\\NodeTraverser is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\.$#'
-			identifier: disallowed.namespace
-			count: 1
-			path: src/TypeInference/BasicTypeResolver.php
-
-		-
-			message: '#^Namespace PhpParser\\NodeVisitorAbstract is forbidden, AST traversal is confined\: parser pipeline \(ParserService\), positional finders \(NodeAtPosition, Scope, ScopeFinder\), and DeclarationScanner\. \[PhpParser\\NodeVisitorAbstract matches PhpParser\\NodeVisitor\*\]$#'
-			identifier: disallowed.namespace
-			count: 2
-			path: src/TypeInference/BasicTypeResolver.php
-
-		-
-			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 4
-			path: src/TypeInference/BasicTypeResolver.php
-
-		-
-			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Utility/ExpressionTypeResolver.php
-
-		-
 			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1
