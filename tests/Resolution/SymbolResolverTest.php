@@ -29,7 +29,9 @@ use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedParameter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
@@ -41,9 +43,11 @@ use Throwable;
 use TypeError;
 
 #[CoversClass(CallContextDetector::class)]
+#[CoversClass(ExpressionResolver::class)]
 #[CoversClass(MemberAccessDetector::class)]
-#[CoversClass(SymbolResolver::class)]
 #[CoversClass(NameContextFactory::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
+#[CoversClass(SymbolResolver::class)]
 #[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {

@@ -12,9 +12,14 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
+use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use PHPUnit\Framework\Attributes\CoversNothing;
+use Firehed\PhpLsp\Utility\VariableBinding;
+use Firehed\PhpLsp\Utility\VariableBindings;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -26,7 +31,13 @@ use PHPUnit\Framework\TestCase;
  * be used inside a variable name — it breaks the parser — so a comment marker
  * is used and the helper positions the cursor on the last `$<var>` on the line.
  */
-#[CoversNothing]
+#[CoversClass(DefinitionHandler::class)]
+#[CoversClass(ExpressionResolver::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
+#[CoversClass(ResolvedVariable::class)]
+#[CoversClass(SymbolResolver::class)]
+#[CoversClass(VariableBinding::class)]
+#[CoversClass(VariableBindings::class)]
 class VariableDefinitionTest extends TestCase
 {
     use LoadsFixturesTrait;

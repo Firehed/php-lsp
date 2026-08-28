@@ -39,6 +39,8 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -50,10 +52,12 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CompletionHandler::class)]
 #[CoversClass(BuiltinTypeCandidates::class)]
 #[CoversClass(CompletionItemFactory::class)]
+#[CoversClass(ExpressionResolver::class)]
 #[CoversClass(KeywordCandidates::class)]
-#[CoversClass(SymbolCandidates::class)]
 #[CoversClass(MemberCandidates::class)]
 #[CoversClass(NamedArgumentCandidates::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
+#[CoversClass(SymbolCandidates::class)]
 #[CoversClass(VariableCandidates::class)]
 class CompletionHandlerTest extends TestCase
 {
