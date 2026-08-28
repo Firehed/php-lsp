@@ -70,6 +70,48 @@ class MemberAccessDetectorTest extends TestCase
         self::assertNull($this->detect('TopLevel/parent_outside_class.php', 1, 8));
     }
 
+    public function testFromTextReturnsNullForStaticOutsideClass(): void
+    {
+        $content = $this->loadFixture('TopLevel/static_outside_class.php');
+        $document = new TextDocument('file:///t.php', 'php', 1, $content);
+        $ast = $this->parser->parse($document);
+        self::assertNotNull($ast);
+
+        self::assertNull(
+            $this->detector->fromText($document, $ast, 1, 8),
+            'The text path must decline self::/static:: when the surrounding source has no enclosing class',
+        );
+    }
+
+    public function testFromTextReturnsNullForParentOutsideClass(): void
+    {
+        $document = new TextDocument('file:///t.php', 'php', 1, "<?php\nparent::");
+        $ast = $this->parser->parse($document);
+        self::assertNotNull($ast);
+
+        self::assertNull(
+            $this->detector->fromText($document, $ast, 1, 8),
+            'The text path must decline parent:: when no enclosing class extends anything',
+        );
+    }
+
+    public function testDetectReturnsNullForMemberAccessOnPrimitiveParameter(): void
+    {
+        $document = new TextDocument(
+            'file:///t.php',
+            'php',
+            1,
+            "<?php\nfunction test(string \$s): void {\n    \$s->foo;\n}\n",
+        );
+        $ast = $this->parser->parse($document);
+        self::assertNotNull($ast);
+        // Cursor sits on `foo`.
+        self::assertNull(
+            $this->detector->detect($document, $ast, 2, 9),
+            'A primitive-typed variable has no members and must yield no context',
+        );
+    }
+
     public function testDetectResolvesFullyQualifiedClassName(): void
     {
         $result = $this->detect('TopLevel/fully_qualified.php', 2, 18);

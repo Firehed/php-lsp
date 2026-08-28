@@ -122,6 +122,23 @@ class TextFallbackHelperTest extends TestCase
         self::assertSame('Vendor\\Pkg\\Something', $context->classImports['Thing']);
     }
 
+    public function testMatchParameterTypeAccumulatesMultilineSignature(): void
+    {
+        $content = $this->loadFixture('TopLevel/multiline_function.php');
+        $lines = explode("\n", $content);
+        // $typed sits on line 10; its declaration begins on line 5 (function longSignature(),
+        // spans four lines to the closing paren on line 9.
+        $result = $this->helper->matchParameterType($lines, 10, 'typed');
+        self::assertSame('SomeClass', $result);
+    }
+
+    public function testMatchParameterTypeReturnsNullWhenNoFunctionDeclarationFound(): void
+    {
+        $lines = ['<?php', '$name = "top-level";'];
+        $result = $this->helper->matchParameterType($lines, 1, 'name');
+        self::assertNull($result, 'Scanning code with no function declaration must yield no type');
+    }
+
     public function testResolveChainTypeReturnsClassForSimpleThis(): void
     {
         // $this-> with nothing after returns the class type
