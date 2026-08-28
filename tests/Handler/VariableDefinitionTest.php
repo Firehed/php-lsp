@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\VariableBinding;
 use Firehed\PhpLsp\Utility\VariableBindings;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -35,6 +36,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(ResolvedTypeOnly::class)]
 #[CoversClass(ResolvedVariable::class)]
+#[CoversClass(Scope::class)]
 #[CoversClass(SymbolResolver::class)]
 #[CoversClass(VariableBinding::class)]
 #[CoversClass(VariableBindings::class)]

@@ -69,6 +69,21 @@ class VariableBindingsTest extends TestCase
         self::assertContains('insideClosure', $names, 'Assignment inside the closure is a binding');
     }
 
+    public function testEnumeratesBindingsInFinallyElseIfAndSwitch(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BranchingBindingSites.php'));
+        $method = self::findMethodByName('method', $ast);
+        $scope = Scope::forNode($method);
+
+        $names = self::namesOf(VariableBindings::before($scope, $method->getEndFilePos()));
+
+        self::assertContains('inTry', $names, 'try body binding is enumerated');
+        self::assertContains('inFinally', $names, 'finally body binding is enumerated');
+        self::assertContains('inIf', $names, 'if body binding is enumerated');
+        self::assertContains('inElseIf', $names, 'elseif body binding is enumerated');
+        self::assertContains('inCase', $names, 'switch case body binding is enumerated');
+    }
+
     public function testArrowFunctionScopeExposesOnlyItsParams(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
