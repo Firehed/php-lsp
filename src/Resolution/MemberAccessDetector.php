@@ -202,7 +202,7 @@ final class MemberAccessDetector
     /**
      * @param array<Stmt> $ast
      */
-    private function fromText(
+    public function fromText(
         TextDocument $document,
         array $ast,
         int $line,

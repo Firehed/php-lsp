@@ -10,8 +10,11 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
+use Firehed\PhpLsp\Resolution\MemberAccessDetector;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
+use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -45,19 +48,26 @@ final class AstTextAgreementTest extends TestCase
     private MemberResolver $memberResolver;
     private TextFallbackHelper $textFallback;
     private CallContextDetector $callDetector;
+    private MemberAccessDetector $memberAccessDetector;
 
     protected function setUp(): void
     {
         $this->parser = new ParserService();
 
+        $fixturesRoot = __DIR__ . '/../Fixtures';
         $knowledge = KnowledgeStack::forProject(
-            new ComposerAutoloadMap(),
-            __DIR__ . '/../Fixtures/vendor',
+            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
+            $fixturesRoot . '/vendor',
             $this->parser,
         );
         $this->memberResolver = new MemberResolver($knowledge->source);
         $this->textFallback = new TextFallbackHelper($this->memberResolver);
         $this->callDetector = new CallContextDetector($this->textFallback);
+        $this->memberAccessDetector = new MemberAccessDetector(
+            $knowledge->source,
+            new BasicTypeResolver($this->memberResolver, $knowledge->source->lookupFunction(...)),
+            $this->textFallback,
+        );
     }
 
     #[DataProvider('enclosingClassFixtures')]
@@ -208,6 +218,81 @@ final class AstTextAgreementTest extends TestCase
             ],
             'nullsafe method call' => [
                 'SignatureHelp.php', 'nullsafe_param', NullsafeMethodCall::class, 0,
+            ],
+        ];
+    }
+
+    #[DataProvider('memberAccessFixtures')]
+    public function testMemberAccessAgreement(
+        string $fixture,
+        string $marker,
+        MemberAccessKind $expectedKind,
+        string $expectedTypeFormat,
+    ): void {
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $ast = $this->parser->parse($document);
+        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
+
+        $offset = $this->markerOffset($content, $marker);
+        $line = $this->lineForOffset($content, $offset);
+        $lineStart = strrpos(substr($content, 0, $offset), "\n");
+        $character = $lineStart === false ? $offset : $offset - $lineStart - 1;
+
+        $astResult = $this->memberAccessDetector->detect($document, $ast, $line, $character);
+        $textResult = $this->memberAccessDetector->fromText($document, $ast, $line, $character);
+
+        self::assertNotNull($astResult, 'AST path must detect member access');
+        self::assertNotNull($textResult, 'Text path must detect member access');
+
+        self::assertSame($expectedKind, $astResult->kind, 'AST kind must match expected');
+        self::assertSame($astResult->kind, $textResult->kind, 'Access kind must agree');
+        self::assertSame(
+            $expectedTypeFormat,
+            $astResult->type->format(),
+            'AST target type must match expected',
+        );
+        self::assertSame(
+            $astResult->type->format(),
+            $textResult->type->format(),
+            'Target type must agree between AST and text paths',
+        );
+        self::assertSame(
+            $astResult->minVisibility,
+            $textResult->minVisibility,
+            'Visibility must agree between AST and text paths',
+        );
+        self::assertSame(
+            $astResult->prefix,
+            $textResult->prefix,
+            'Member prefix must agree between AST and text paths',
+        );
+    }
+
+    /**
+     * @return array<string, array{string, string, MemberAccessKind, string}>
+     */
+    public static function memberAccessFixtures(): array
+    {
+        $fixture = 'src/Resolution/MemberAccessAgreement.php';
+        return [
+            '$this->method' => [
+                $fixture, 'this_method', MemberAccessKind::Instance, 'Fixtures\\Resolution\\MemberAccessAgreement',
+            ],
+            '$this->property' => [
+                $fixture, 'this_property', MemberAccessKind::Instance, 'Fixtures\\Resolution\\MemberAccessAgreement',
+            ],
+            'self::method' => [
+                $fixture, 'self_static', MemberAccessKind::Static, 'Fixtures\\Resolution\\MemberAccessAgreement',
+            ],
+            'parent::method' => [
+                $fixture, 'parent_static', MemberAccessKind::Parent, 'Fixtures\\Inheritance\\ChildClass',
+            ],
+            'imported class ::method' => [
+                $fixture, 'class_static', MemberAccessKind::Static, 'Fixtures\\Domain\\User',
+            ],
+            'fully qualified class ::method' => [
+                $fixture, 'fq_static', MemberAccessKind::Static, 'Fixtures\\Domain\\User',
             ],
         ];
     }
