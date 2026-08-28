@@ -13,12 +13,12 @@ use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Type;
-use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
+use Firehed\PhpLsp\Utility\VariableBindings;
 use PhpParser\Node;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
@@ -78,15 +78,19 @@ final class SymbolResolver implements CodeResolver
         private readonly ParserService $parser,
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
-        private readonly TypeResolverInterface $typeResolver,
     ) {
         $this->textFallback = new TextFallbackHelper($memberResolver);
         $this->callDetector = new CallContextDetector($this->textFallback);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
-            $typeResolver,
+            $memberResolver,
             $this->textFallback,
         );
+    }
+
+    private function expressionResolver(TextDocument $document): ExpressionResolver
+    {
+        return new ExpressionResolver($this->memberResolver, $this->symbolSource, $document->uri);
     }
 
     /**
@@ -113,7 +117,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return $this->resolveNode($node, $ast);
+        return $this->resolveNode($node, $ast, $document);
     }
 
     /**
@@ -335,33 +339,29 @@ final class SymbolResolver implements CodeResolver
         }
 
         $offset = $document->offsetAt($line, $character);
-
         $scope = Scope::atOffset($ast, $offset);
+        $exprResolver = $this->expressionResolver($document);
 
         $variables = [];
         $seen = [];
 
-        // Add parameters
-        foreach ($scope->getParams() as $param) {
-            if ($param->var instanceof Variable && is_string($param->var->name)) {
-                $name = $param->var->name;
-                if (!isset($seen[$name])) {
-                    $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
-                    $variables[] = new ResolvedVariable($name, $type);
-                    $seen[$name] = true;
-                }
-            }
-        }
-
-        // Add $this when bound (non-static methods)
         $thisType = $scope->getThisType();
-        if ($thisType !== null && !isset($seen['this'])) {
+        if ($thisType !== null) {
             $variables[] = new ResolvedVariable('this', $thisType);
             $seen['this'] = true;
         }
 
-        // Find variable assignments before cursor
-        $this->collectVariablesFromStatements($scope->getStatements(), $line, $scope, $ast, $variables, $seen);
+        foreach (VariableBindings::before($scope, $offset) as $binding) {
+            if (isset($seen[$binding->name])) {
+                continue;
+            }
+            $resolved = $exprResolver->resolveVariable($binding->name, $scope, $offset, $ast);
+            if ($resolved === null) {
+                continue;
+            }
+            $variables[] = $resolved;
+            $seen[$binding->name] = true;
+        }
 
         return $variables;
     }
@@ -393,19 +393,19 @@ final class SymbolResolver implements CodeResolver
 
         if ($callInfo !== null) {
             [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-            $callable = $this->resolveCallable($callNode, $ast);
+            $callable = $this->resolveCallable($callNode, $ast, $document);
             if ($callable === null) {
                 $textCallInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
                 if ($textCallInfo !== null) {
                     [$callNode, $activeParameter, $usedNames, $positionalCount] = $textCallInfo;
-                    $callable = $this->resolveCallable($callNode, $ast);
+                    $callable = $this->resolveCallable($callNode, $ast, $document);
                 }
             }
         } else {
             $callInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
             if ($callInfo !== null) {
                 [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-                $callable = $this->resolveCallable($callNode, $ast);
+                $callable = $this->resolveCallable($callNode, $ast, $document);
             }
         }
 
@@ -435,13 +435,14 @@ final class SymbolResolver implements CodeResolver
     private function resolveCallable(
         FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         array $ast,
+        TextDocument $document,
     ): ?ResolvedCallable {
         if ($call instanceof FuncCall) {
             return $this->resolveFuncCallCallable($call, $ast);
         }
 
         if ($call instanceof MethodCall || $call instanceof NullsafeMethodCall) {
-            return $this->resolveMethodCallCallable($call, $ast);
+            return $this->resolveMethodCallCallable($call, $ast, $document);
         }
 
         if ($call instanceof StaticCall) {
@@ -473,14 +474,17 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveMethodCallCallable(MethodCall|NullsafeMethodCall $call, array $ast): ?ResolvedCallable
-    {
+    private function resolveMethodCallCallable(
+        MethodCall|NullsafeMethodCall $call,
+        array $ast,
+        TextDocument $document,
+    ): ?ResolvedCallable {
         $methodName = $call->name;
         if (!$methodName instanceof Identifier) {
             return null;
         }
 
-        $className = $this->memberAccessDetector->resolveInstanceAccessClassName($call, $ast);
+        $className = $this->memberAccessDetector->resolveInstanceAccessClassName($call, $ast, $document);
         if ($className === null) {
             return null;
         }
@@ -565,94 +569,8 @@ final class SymbolResolver implements CodeResolver
 
     /**
      * @param array<Stmt> $ast
-     * @return Stmt\Function_|Stmt\ClassMethod|Closure|null
      */
-    /**
-     * @param array<Stmt|Node> $stmts
-     * @param array<Stmt> $ast
-     * @param list<ResolvedVariable> $variables
-     * @param array<string, bool> $seen
-     */
-    private function collectVariablesFromStatements(
-        array $stmts,
-        int $line,
-        Scope $scope,
-        array $ast,
-        array &$variables,
-        array &$seen,
-    ): void {
-        foreach ($stmts as $stmt) {
-            $stmtLine = $stmt->getStartLine() - 1; // Convert to 0-based
-            if ($stmtLine > $line) {
-                continue;
-            }
-
-            // Nested function/class declarations introduce their own scope;
-            // their bodies must not contribute variables to this one.
-            if ($stmt instanceof Stmt\Function_ || $stmt instanceof Stmt\ClassLike) {
-                continue;
-            }
-
-            if ($stmt instanceof Stmt\Expression && $stmt->expr instanceof Assign) {
-                $assign = $stmt->expr;
-                if ($assign->var instanceof Variable && is_string($assign->var->name)) {
-                    $name = $assign->var->name;
-                    if (!isset($seen[$name])) {
-                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
-                        $variables[] = new ResolvedVariable($name, $type);
-                        $seen[$name] = true;
-                    }
-                }
-            }
-
-            // Collect foreach variables
-            if ($stmt instanceof Stmt\Foreach_) {
-                if ($stmt->valueVar instanceof Variable && is_string($stmt->valueVar->name)) {
-                    $name = $stmt->valueVar->name;
-                    if (!isset($seen[$name])) {
-                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
-                        $variables[] = new ResolvedVariable($name, $type);
-                        $seen[$name] = true;
-                    }
-                }
-                if ($stmt->keyVar instanceof Variable && is_string($stmt->keyVar->name)) {
-                    $name = $stmt->keyVar->name;
-                    if (!isset($seen[$name])) {
-                        $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
-                        $variables[] = new ResolvedVariable($name, $type);
-                        $seen[$name] = true;
-                    }
-                }
-            }
-
-            // Recursively check nested structures (if/while/etc.)
-            if (property_exists($stmt, 'stmts') && is_array($stmt->stmts)) {
-                /** @var array<Stmt|Node> $nestedStmts */
-                $nestedStmts = $stmt->stmts;
-                $this->collectVariablesFromStatements($nestedStmts, $line, $scope, $ast, $variables, $seen);
-            }
-
-            // Handle try/catch - process catch blocks
-            if ($stmt instanceof Stmt\TryCatch) {
-                foreach ($stmt->catches as $catch) {
-                    if ($catch->var !== null && is_string($catch->var->name)) {
-                        $name = $catch->var->name;
-                        if (!isset($seen[$name])) {
-                            $type = $this->typeResolver->resolveVariableType($name, $scope, $line, $ast);
-                            $variables[] = new ResolvedVariable($name, $type);
-                            $seen[$name] = true;
-                        }
-                    }
-                    $this->collectVariablesFromStatements($catch->stmts, $line, $scope, $ast, $variables, $seen);
-                }
-            }
-        }
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveNode(Node $node, array $ast): ?ResolvedSymbol
+    private function resolveNode(Node $node, array $ast, TextDocument $document): ?ResolvedSymbol
     {
         // VarLikeIdentifier extends Identifier, so check it first
         if ($node instanceof VarLikeIdentifier) {
@@ -660,7 +578,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         if ($node instanceof Identifier) {
-            return $this->resolveIdentifier($node, $ast);
+            return $this->resolveIdentifier($node, $ast, $document);
         }
 
         if ($node instanceof Name) {
@@ -668,7 +586,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         if ($node instanceof Variable) {
-            return $this->resolveVariable($node, $ast);
+            return $this->resolveVariable($node, $ast, $document);
         }
 
         return null;
@@ -677,14 +595,14 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveIdentifier(Identifier $node, array $ast): ?ResolvedSymbol
+    private function resolveIdentifier(Identifier $node, array $ast, TextDocument $document): ?ResolvedSymbol
     {
         $parent = $node->getAttribute('parent');
 
         // Instance method call: $obj->method() or $obj?->method()
         if (self::isMethodCall($parent)) {
             /** @var MethodCall|NullsafeMethodCall $parent */
-            return $this->resolveMethodCallCallable($parent, $ast);
+            return $this->resolveMethodCallCallable($parent, $ast, $document);
         }
 
         // Static method call: ClassName::method()
@@ -695,7 +613,7 @@ final class SymbolResolver implements CodeResolver
         // Property fetch: $obj->property or $obj?->property
         if (self::isPropertyFetch($parent)) {
             /** @var PropertyFetch|NullsafePropertyFetch $parent */
-            return $this->resolvePropertyFetch($parent, $ast);
+            return $this->resolvePropertyFetch($parent, $ast, $document);
         }
 
         // Class constant or enum case: ClassName::CONSTANT or Enum::Case
@@ -705,7 +623,7 @@ final class SymbolResolver implements CodeResolver
 
         // Named argument: func(name: value) - cursor on 'name'
         if ($parent instanceof Node\Arg && $parent->name === $node) {
-            return $this->resolveNamedArgument($node, $parent, $ast);
+            return $this->resolveNamedArgument($node, $parent, $ast, $document);
         }
 
         return null;
@@ -780,7 +698,7 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveVariable(Variable $node, array $ast): ?ResolvedSymbol
+    private function resolveVariable(Variable $node, array $ast, TextDocument $document): ?ResolvedSymbol
     {
         $name = $node->name;
         if (!is_string($name)) {
@@ -793,9 +711,17 @@ final class SymbolResolver implements CodeResolver
             return $this->resolveParameter($parent);
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($node, $ast, $this->typeResolver);
+        if ($name === 'this') {
+            $enclosing = ScopeFinder::findEnclosingClassName($node);
+            if ($enclosing === null) {
+                return new ResolvedVariable($name, null);
+            }
+            return new ResolvedVariable($name, TypeFactory::className($enclosing));
+        }
 
-        return new ResolvedVariable($name, $type);
+        $scope = Scope::atOffset($ast, $node->getStartFilePos());
+        return $this->expressionResolver($document)->resolveVariable($name, $scope, $node->getStartFilePos(), $ast)
+            ?? new ResolvedVariable($name, null);
     }
 
     private function resolveParameter(Node\Param $param): ResolvedParameter
@@ -844,8 +770,12 @@ final class SymbolResolver implements CodeResolver
      *
      * @param array<Stmt> $ast
      */
-    private function resolveNamedArgument(Identifier $node, Node\Arg $arg, array $ast): ?ResolvedParameter
-    {
+    private function resolveNamedArgument(
+        Identifier $node,
+        Node\Arg $arg,
+        array $ast,
+        TextDocument $document,
+    ): ?ResolvedParameter {
         // Find the call this arg belongs to
         $call = $arg->getAttribute('parent');
 
@@ -866,7 +796,7 @@ final class SymbolResolver implements CodeResolver
         }
         // @codeCoverageIgnoreEnd
 
-        $callable = $this->resolveCallable($call, $ast);
+        $callable = $this->resolveCallable($call, $ast, $document);
         if ($callable === null) {
             return null;
         }
@@ -899,8 +829,11 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolvePropertyFetch(PropertyFetch|NullsafePropertyFetch $fetch, array $ast): ?ResolvedSymbol
-    {
+    private function resolvePropertyFetch(
+        PropertyFetch|NullsafePropertyFetch $fetch,
+        array $ast,
+        TextDocument $document,
+    ): ?ResolvedSymbol {
         $propertyName = $fetch->name;
         // @codeCoverageIgnoreStart
         if (!$propertyName instanceof Identifier) {
@@ -908,7 +841,7 @@ final class SymbolResolver implements CodeResolver
         }
         // @codeCoverageIgnoreEnd
 
-        $className = $this->memberAccessDetector->resolveInstanceAccessClassName($fetch, $ast);
+        $className = $this->memberAccessDetector->resolveInstanceAccessClassName($fetch, $ast, $document);
         if ($className === null) {
             return null;
         }

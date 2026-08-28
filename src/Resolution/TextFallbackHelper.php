@@ -180,81 +180,36 @@ final class TextFallbackHelper
     }
 
     /**
-     * Resolve the type of a chained expression like $this->logger or $this->getLogger().
+     * Split a `$this->foo->bar()` chain into ordered `(name, isMethodCall)`
+     * parts. This is a text primitive: the caller walks the parts against
+     * a class hierarchy. The `$this->` prefix must be trimmed by the caller.
      *
-     * @param class-string $thisClass
+     * @return list<array{name: string, isMethodCall: bool}>
      */
-    public function resolveChainType(string $chainExpr, string $thisClass): ?Type
+    public function splitChainParts(string $chainBody): array
     {
-        if (!str_starts_with($chainExpr, '$this->')) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('resolveChainType called without $this-> prefix');
-            // @codeCoverageIgnoreEnd
-        }
-
-        $chain = substr($chainExpr, 7); // strlen('$this->') = 7
-        $parts = preg_split('/\??->/', $chain);
-        if ($parts === false || $parts === []) {
+        $rawParts = preg_split('/\??->/', $chainBody);
+        if ($rawParts === false) {
             // @codeCoverageIgnoreStart
             throw new \LogicException('preg_split with valid pattern cannot fail');
             // @codeCoverageIgnoreEnd
         }
 
-        $currentType = new ClassName($thisClass);
-        $isFirstPart = true;
-
-        foreach ($parts as $part) {
-            // Empty parts can occur with trailing -> in incomplete code
+        $parts = [];
+        foreach ($rawParts as $part) {
             if ($part === '') {
                 continue;
             }
-
             $isMethodCall = str_contains($part, '(');
-            $memberName = $isMethodCall ? strstr($part, '(', true) : $part;
-            if ($memberName === false || $memberName === '') {
+            $name = $isMethodCall ? strstr($part, '(', true) : $part;
+            if ($name === false || $name === '') {
                 // @codeCoverageIgnoreStart
-                throw new \LogicException('strstr cannot return false when ( is present');
+                throw new \LogicException('name extraction cannot fail after non-empty part check');
                 // @codeCoverageIgnoreEnd
             }
-
-            $classNames = $currentType->getResolvableClassNames();
-            if ($classNames === []) {
-                // Type resolved to primitive or union without classes - can't continue
-                return null;
-            }
-
-            $visibility = $isFirstPart ? Visibility::Private : Visibility::Public;
-            $isFirstPart = false;
-
-            if ($isMethodCall) {
-                $methodInfo = $this->memberResolver->findMethod(
-                    $classNames[0],
-                    new MethodName($memberName),
-                    $visibility,
-                );
-                if ($methodInfo === null) {
-                    return null;
-                }
-                $currentType = $methodInfo->returnType;
-            } else {
-                $propertyInfo = $this->memberResolver->findProperty(
-                    $classNames[0],
-                    new PropertyName($memberName),
-                    $visibility,
-                );
-                if ($propertyInfo === null) {
-                    return null;
-                }
-                $currentType = $propertyInfo->type;
-            }
-
-            if ($currentType === null) {
-                // Untyped method return or property - can't continue chain
-                return null;
-            }
+            $parts[] = ['name' => $name, 'isMethodCall' => $isMethodCall];
         }
-
-        return $currentType;
+        return $parts;
     }
 
     /**

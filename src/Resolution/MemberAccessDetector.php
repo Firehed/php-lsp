@@ -13,8 +13,7 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
-use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -49,10 +48,15 @@ final class MemberAccessDetector
 
     public function __construct(
         private readonly SymbolSource $symbolSource,
-        private readonly TypeResolverInterface $typeResolver,
+        private readonly MemberResolver $memberResolver,
         private readonly TextFallbackHelper $textFallback,
     ) {
         $this->nodeAtPosition = new NodeAtPosition();
+    }
+
+    private function expressionResolver(TextDocument $document): ExpressionResolver
+    {
+        return new ExpressionResolver($this->memberResolver, $this->symbolSource, $document->uri);
     }
 
     /**
@@ -144,9 +148,12 @@ final class MemberAccessDetector
             return $resolvedType;
         }
 
-        $type = ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
-        if ($type !== null) {
-            return $type;
+        $exprResolver = $document !== null ? $this->expressionResolver($document) : null;
+        if ($exprResolver !== null) {
+            $type = $exprResolver->resolve($node->var, $ast)?->getType();
+            if ($type !== null) {
+                return $type;
+            }
         }
 
         if ($document === null || $line === null) {
@@ -170,7 +177,7 @@ final class MemberAccessDetector
         }
 
         $thisVar->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
-        return ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
+        return $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
     }
 
     /**
@@ -182,8 +189,9 @@ final class MemberAccessDetector
     public function resolveInstanceAccessClassName(
         MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
         array $ast,
+        ?TextDocument $document = null,
     ): ?ClassName {
-        $type = $this->resolveInstanceAccessType($node, $ast);
+        $type = $this->resolveInstanceAccessType($node, $ast, $document);
         return $type?->getResolvableClassNames()[0] ?? null;
     }
 
@@ -253,7 +261,7 @@ final class MemberAccessDetector
             if ($enclosingClass === null) {
                 return null;
             }
-            $type = $this->textFallback->resolveChainType($match['chain'], $enclosingClass);
+            $type = $this->walkChain($match['chain'], $enclosingClass);
             $target = $type?->getResolvableClassNames()[0] ?? null;
             if ($type === null || $target === null) {
                 return null;
@@ -358,7 +366,8 @@ final class MemberAccessDetector
         $offset = $document->offsetAt($line, 0);
         $scope = Scope::atOffset($ast, $offset);
 
-        $type = $this->typeResolver->resolveVariableType($match['var'], $scope, $line, $ast);
+        $type = $this->expressionResolver($document)
+            ->resolveVariable($match['var'], $scope, $offset, $ast)?->getType();
 
         if ($type === null) {
             $type = $this->resolveParameterTypeFromText($document, $ast, $line, $match['var']);
@@ -472,6 +481,61 @@ final class MemberAccessDetector
             || $node instanceof NullsafeMethodCall
             || $node instanceof PropertyFetch
             || $node instanceof NullsafePropertyFetch;
+    }
+
+    /**
+     * Walk `$this->foo->bar()->...` against the type graph. The `$this->` prefix
+     * is trimmed; regex-splitting is delegated to TextFallbackHelper.
+     *
+     * @param class-string $thisClass
+     */
+    private function walkChain(string $chainExpr, string $thisClass): ?Type
+    {
+        if (!str_starts_with($chainExpr, '$this->')) {
+            // @codeCoverageIgnoreStart
+            throw new LogicException('walkChain called without $this-> prefix');
+            // @codeCoverageIgnoreEnd
+        }
+
+        $parts = $this->textFallback->splitChainParts(substr($chainExpr, 7));
+        $currentType = TypeFactory::className($thisClass);
+        $isFirstPart = true;
+
+        foreach ($parts as $part) {
+            $classNames = $currentType->getResolvableClassNames();
+            if ($classNames === []) {
+                return null;
+            }
+            $visibility = $isFirstPart ? Visibility::Private : Visibility::Public;
+            $isFirstPart = false;
+
+            if ($part['isMethodCall']) {
+                $method = $this->memberResolver->findMethod(
+                    $classNames[0],
+                    new \Firehed\PhpLsp\Domain\MethodName($part['name']),
+                    $visibility,
+                );
+                if ($method === null) {
+                    return null;
+                }
+                $next = $method->returnType;
+            } else {
+                $property = $this->memberResolver->findProperty(
+                    $classNames[0],
+                    new \Firehed\PhpLsp\Domain\PropertyName($part['name']),
+                    $visibility,
+                );
+                if ($property === null) {
+                    return null;
+                }
+                $next = $property->type;
+            }
+            if ($next === null) {
+                return null;
+            }
+            $currentType = $next;
+        }
+        return $currentType;
     }
 
     private static function findThisVariable(Node\Expr $expr): ?Variable

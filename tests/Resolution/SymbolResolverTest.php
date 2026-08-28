@@ -32,7 +32,6 @@ use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -67,13 +66,11 @@ final class SymbolResolverTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
-            typeResolver: $typeResolver,
         );
 
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);

@@ -17,7 +17,6 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -45,12 +44,10 @@ class HoverHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
-            $typeResolver,
         );
         // The default markup kind is plaintext (the pre-initialize default a
         // minimal client is served); the fenced-markdown path is exercised

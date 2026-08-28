@@ -40,7 +40,6 @@ use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -84,12 +83,10 @@ class CompletionHandlerTest extends TestCase
         $this->symbolSource = $knowledge->source;
 
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
-            $typeResolver,
         );
         $this->handler = $this->makeHandler($this->symbolSource);
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);

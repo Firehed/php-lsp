@@ -81,7 +81,8 @@ final class ExpressionResolver
         }
 
         if ($expr instanceof Variable && is_string($expr->name)) {
-            return $this->resolveVariable($expr->name, $expr, $ast);
+            $scope = Scope::atOffset($ast, $expr->getStartFilePos());
+            return $this->resolveVariable($expr->name, $scope, $expr->getStartFilePos(), $ast);
         }
 
         if ($expr instanceof New_) {
@@ -133,34 +134,34 @@ final class ExpressionResolver
     }
 
     /**
-     * Resolve `$name` referenced at $atNode. Walks the innermost enclosing scope
-     * for a matching binding, then falls through to enclosing scopes only across
-     * arrow functions (implicit capture). Long closures are isolated: an
-     * uncaptured name returns null (#301).
+     * Resolve `$name` referenced at $offset in $scope. Walks the innermost
+     * scope's bindings; falls through only across arrow functions (implicit
+     * capture). Long closures are isolated: an uncaptured name returns null
+     * (#301).
      *
      * @param array<Stmt> $ast
      */
-    public function resolveVariable(string $name, Node $atNode, array $ast): ?ResolvedVariable
+    public function resolveVariable(string $name, Scope $scope, int $offset, array $ast): ?ResolvedVariable
     {
-        $offset = $atNode->getStartFilePos();
-        $scopeNode = ScopeFinder::findEnclosingScope($atNode);
-
         while (true) {
-            $scope = $scopeNode !== null
-                ? Scope::forNode($scopeNode)
-                : Scope::atOffset($ast, $offset);
-
             $binding = $this->findNearestBinding($scope, $offset, $name);
             if ($binding !== null) {
                 $type = $this->typeOfBinding($binding, $scope, $ast);
                 $location = $this->locationFor($binding->node);
                 return new ResolvedVariable($name, $type, $location);
             }
-
-            if ($scopeNode === null || !$scope->allowsImplicitCapture()) {
+            if (!$scope->allowsImplicitCapture()) {
                 return null;
             }
-            $scopeNode = ScopeFinder::findEnclosingScope($scopeNode);
+            $sourceNode = $scope->getSourceNode();
+            if ($sourceNode === null) {
+                return null;
+            }
+            $enclosingNode = ScopeFinder::findEnclosingScope($sourceNode);
+            $scope = $enclosingNode !== null
+                ? Scope::forNode($enclosingNode)
+                : Scope::atOffset($ast, $sourceNode->getStartFilePos());
+            $offset = $sourceNode->getStartFilePos();
         }
     }
 
@@ -184,6 +185,9 @@ final class ExpressionResolver
 
         if ($node instanceof Variable && is_string($node->name)) {
             $parent = $node->getAttribute('parent');
+            if ($parent instanceof Param) {
+                return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
+            }
             if ($parent instanceof Expr\Assign && $parent->var === $node) {
                 return $this->resolve($parent->expr, $ast)?->getType();
             }
@@ -203,7 +207,12 @@ final class ExpressionResolver
             if ($parent instanceof Node\ClosureUse) {
                 $closure = $parent->getAttribute('parent');
                 if ($closure instanceof Node) {
-                    return $this->resolveVariable($node->name, $closure, $ast)?->getType();
+                    $closureOffset = $closure->getStartFilePos();
+                    $enclosingNode = ScopeFinder::findEnclosingScope($closure);
+                    $outerScope = $enclosingNode !== null
+                        ? Scope::forNode($enclosingNode)
+                        : Scope::atOffset($ast, $closureOffset);
+                    return $this->resolveVariable($node->name, $outerScope, $closureOffset, $ast)?->getType();
                 }
                 return null;
             }

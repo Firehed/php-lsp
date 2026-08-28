@@ -26,7 +26,6 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -89,13 +88,11 @@ final class FeatureMatrixTest extends TestCase
         );
 
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
 
         $symbolResolver = new SymbolResolver(
             $parser,
             $knowledge->source,
             $memberResolver,
-            $typeResolver,
         );
 
         $capabilities = self::createStub(SessionCapabilitiesProvider::class);
