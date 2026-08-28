@@ -26,7 +26,7 @@ final class Scope
      * @param array<Stmt> $statements
      * @param ?class-string $selfContext
      * @param ?class-string $parentContext
-     * @param list<string> $capturedVariableNames
+     * @param array<Node\ClosureUse> $uses
      */
     private function __construct(
         private readonly array $params,
@@ -34,8 +34,9 @@ final class Scope
         private readonly ?string $selfContext,
         private readonly ?string $parentContext,
         private readonly ?ClassName $thisType,
-        private readonly array $capturedVariableNames,
+        private readonly array $uses,
         private readonly Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
+        private readonly Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null $sourceNode,
     ) {
     }
 
@@ -78,14 +79,7 @@ final class Scope
         // captured variables come from the enclosing scope, not local assignments.
         $statements = $node instanceof ArrowFunction ? [] : ($node->stmts ?? []);
 
-        $capturedVariableNames = [];
-        if ($node instanceof Closure) {
-            foreach ($node->uses as $use) {
-                if (is_string($use->var->name)) {
-                    $capturedVariableNames[] = $use->var->name;
-                }
-            }
-        }
+        $uses = $node instanceof Closure ? $node->uses : [];
 
         /** @var ?class-string $selfContext */
         return new self(
@@ -94,8 +88,9 @@ final class Scope
             $selfContext,
             $parentContext,
             $thisType,
-            $capturedVariableNames,
+            $uses,
             $enclosingClassLike,
+            $node,
         );
     }
 
@@ -106,7 +101,7 @@ final class Scope
         array $statements,
         Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike = null,
     ): self {
-        return new self([], $statements, null, null, null, [], $enclosingClassLike);
+        return new self([], $statements, null, null, null, [], $enclosingClassLike, null);
     }
 
     /**
@@ -158,13 +153,49 @@ final class Scope
     }
 
     /**
+     * The long-closure `use ($x)` clauses that bind names in this scope. A
+     * closure body's `$x` resolves to its `use` clause; a name absent from the
+     * use list is not bound in a long closure (#301 rule).
+     *
+     * @return array<Node\ClosureUse>
+     */
+    public function getUses(): array
+    {
+        return $this->uses;
+    }
+
+    /**
      * Whether the named variable is captured by a closure `use()` clause. Such
      * variables are bound from the enclosing scope, so their type cannot be
      * determined from local assignments.
      */
     public function capturesVariable(string $name): bool
     {
-        return in_array($name, $this->capturedVariableNames, true);
+        foreach ($this->uses as $use) {
+            if (is_string($use->var->name) && $use->var->name === $name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True when the scope inherits its enclosing scope's variable bindings
+     * implicitly. Only arrow functions do this: `fn () => $x` reads $x from
+     * the enclosing scope with no `use` clause.
+     */
+    public function allowsImplicitCapture(): bool
+    {
+        return $this->sourceNode instanceof ArrowFunction;
+    }
+
+    /**
+     * The function-like node this scope was built from, or null for global
+     * scope. Used to walk to the enclosing scope for arrow-function fall-through.
+     */
+    public function getSourceNode(): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null
+    {
+        return $this->sourceNode;
     }
 
     /**
