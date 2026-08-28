@@ -234,10 +234,7 @@ final class AstTextAgreementTest extends TestCase
         $ast = $this->parser->parse($document);
         self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
-        $offset = $this->markerOffset($content, $marker);
-        $line = $this->lineForOffset($content, $offset);
-        $lineStart = strrpos(substr($content, 0, $offset), "\n");
-        $character = $lineStart === false ? $offset : $offset - $lineStart - 1;
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
 
         $astResult = $this->memberAccessDetector->detect($document, $ast, $line, $character);
         $textResult = $this->memberAccessDetector->fromText($document, $ast, $line, $character);

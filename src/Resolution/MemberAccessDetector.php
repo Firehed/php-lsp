@@ -6,15 +6,16 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\TypeInference\TypeResolverInterface;
 use Firehed\PhpLsp\Utility\ExpressionTypeResolver;
+use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use LogicException;
@@ -44,11 +45,14 @@ use PhpParser\Node\Stmt;
  */
 final class MemberAccessDetector
 {
+    private readonly NodeAtPosition $nodeAtPosition;
+
     public function __construct(
         private readonly SymbolSource $symbolSource,
         private readonly TypeResolverInterface $typeResolver,
         private readonly TextFallbackHelper $textFallback,
     ) {
+        $this->nodeAtPosition = new NodeAtPosition();
     }
 
     /**
@@ -62,8 +66,7 @@ final class MemberAccessDetector
     ): ?MemberAccessContext {
         $offset = $document->offsetAt($line, $character);
 
-        $node = (new \Firehed\PhpLsp\Utility\NodeAtPosition())
-            ->find($ast, $offset > 0 ? $offset - 1 : 0);
+        $node = $this->nodeAtPosition->find($ast, $offset > 0 ? $offset - 1 : 0);
 
         if ($node === null) {
             return $this->fromText($document, $ast, $line, $character);
@@ -94,15 +97,15 @@ final class MemberAccessDetector
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
             $type = $this->resolveInstanceAccessType($node, $ast, $document, $line);
-            if ($type !== null) {
-                $vantage = self::enclosingClassNameOf($node);
-                $target = $type->getResolvableClassNames()[0] ?? null;
-                $isThis = $node->var instanceof Variable && $node->var->name === 'this';
-                $visibility = $isThis
-                    ? Visibility::Private
-                    : ($target !== null ? $this->visibilityBetween($vantage, $target) : Visibility::Public);
-
-                return MemberAccessContext::forInstance($type, $visibility, $prefix);
+            $target = $type?->getResolvableClassNames()[0] ?? null;
+            if ($type !== null && $target !== null) {
+                $enclosingName = ScopeFinder::findEnclosingClassName($node);
+                $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
+                return MemberAccessContext::forInstance(
+                    $type,
+                    $this->visibilityBetween($vantage, $target),
+                    $prefix,
+                );
             }
             return $this->fromText($document, $ast, $line, $character);
         }
@@ -146,24 +149,28 @@ final class MemberAccessDetector
             return $type;
         }
 
-        if ($document !== null && $line !== null && self::expressionStartsWithThis($node->var)) {
-            $offset = $document->offsetAt($line, 0);
-            $content = $document->getContent();
-            $enclosingClass = $this->textFallback->resolveEnclosingClassName($ast, $offset, $content, $line);
-            if ($enclosingClass !== null) {
-                $thisVar = self::findThisVariable($node->var);
-                if ($thisVar !== null) {
-                    $thisVar->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
-                    return ExpressionTypeResolver::resolveExpressionType(
-                        $node->var,
-                        $ast,
-                        $this->typeResolver,
-                    );
-                }
-            }
+        if ($document === null || $line === null) {
+            return null;
         }
 
-        return null;
+        $thisVar = self::findThisVariable($node->var);
+        if ($thisVar === null) {
+            return null;
+        }
+
+        $offset = $document->offsetAt($line, 0);
+        $enclosingClass = $this->textFallback->resolveEnclosingClassName(
+            $ast,
+            $offset,
+            $document->getContent(),
+            $line,
+        );
+        if ($enclosingClass === null) {
+            return null;
+        }
+
+        $thisVar->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
+        return ExpressionTypeResolver::resolveExpressionType($node->var, $ast, $this->typeResolver);
     }
 
     /**
@@ -183,7 +190,10 @@ final class MemberAccessDetector
     /**
      * The one function that decides how visible a target class is to a vantage
      * class. Same class: private. Subclass (any depth): protected. Otherwise
-     * (or no vantage): public.
+     * (or no vantage): public. Every call site — instance, static, `$this`,
+     * `self::`, `parent::`, non-`$this` variable — routes through this
+     * function, so the two paths cannot disagree on which members a position
+     * may see.
      */
     private function visibilityBetween(?ClassName $vantage, ClassName $target): Visibility
     {
@@ -208,17 +218,22 @@ final class MemberAccessDetector
         int $line,
         int $character,
     ): ?MemberAccessContext {
-        $textBeforeCursor = $document->textBeforeCursor($line, $character);
-        $match = $this->textFallback->matchMemberAccessAt($textBeforeCursor);
-
-        if ($match !== null) {
-            $context = $this->resolveTextMatch($match, $document, $ast, $line);
-            if ($context !== null) {
-                return $context;
-            }
+        $match = $this->textFallback->matchMemberAccessAt(
+            $document->textBeforeCursor($line, $character),
+        );
+        if ($match === null) {
+            return null;
         }
 
-        return $this->resolveVariableAccessWithAst($document, $ast, $line, $character);
+        $context = $this->resolveTextMatch($match, $document, $ast, $line);
+        if ($context !== null) {
+            return $context;
+        }
+
+        if ($match['kind'] === 'instance' && $match['var'] !== 'this') {
+            return $this->resolveVariableAccessWithAst($match, $document, $ast, $line);
+        }
+        return null;
     }
 
     /**
@@ -233,63 +248,64 @@ final class MemberAccessDetector
         array $ast,
         int $line,
     ): ?MemberAccessContext {
-        $enclosingClass = $this->textFallback->findEnclosingClass($document, $line);
-
         if ($match['kind'] === 'chain') {
+            $enclosingClass = $this->textFallback->findEnclosingClass($document, $line);
             if ($enclosingClass === null) {
                 return null;
             }
             $type = $this->textFallback->resolveChainType($match['chain'], $enclosingClass);
-            if ($type === null) {
+            $target = $type?->getResolvableClassNames()[0] ?? null;
+            if ($type === null || $target === null) {
                 return null;
             }
-            $target = $type->getResolvableClassNames()[0] ?? null;
-            $vantage = TypeFactory::className($enclosingClass);
-            $visibility = $target !== null
-                ? $this->visibilityBetween($vantage, $target)
-                : Visibility::Public;
-            return MemberAccessContext::forInstance($type, $visibility, $match['prefix']);
+            return MemberAccessContext::forInstance(
+                $type,
+                $this->visibilityBetween(TypeFactory::className($enclosingClass), $target),
+                $match['prefix'],
+            );
         }
 
         if ($match['kind'] === 'instance') {
             if ($match['var'] !== 'this') {
                 return null;
             }
+            $enclosingClass = $this->textFallback->findEnclosingClass($document, $line);
             if ($enclosingClass === null) {
                 return null;
             }
+            $target = TypeFactory::className($enclosingClass);
             return MemberAccessContext::forInstance(
-                TypeFactory::className($enclosingClass),
-                Visibility::Private,
+                $target,
+                $this->visibilityBetween($target, $target),
                 $match['prefix'],
             );
         }
 
-        return $this->resolveStaticText($match, $document, $ast, $line, $enclosingClass);
+        return $this->resolveStaticText($match, $document, $ast, $line);
     }
 
     /**
      * @param array{kind: 'static', class: string, prefix: string} $match
      * @param array<Stmt> $ast
-     * @param class-string|null $enclosingClass
      */
     private function resolveStaticText(
         array $match,
         TextDocument $document,
         array $ast,
         int $line,
-        ?string $enclosingClass,
     ): ?MemberAccessContext {
         $className = $match['class'];
         $lowerClassName = NameCase::Insensitive->normalize($className);
 
         if ($lowerClassName === 'self' || $lowerClassName === 'static') {
+            $enclosingClass = $this->textFallback->findEnclosingClass($document, $line);
             if ($enclosingClass === null) {
                 return null;
             }
+            $target = TypeFactory::className($enclosingClass);
             return MemberAccessContext::forStatic(
-                TypeFactory::className($enclosingClass),
-                Visibility::Private,
+                $target,
+                $this->visibilityBetween($target, $target),
                 $match['prefix'],
             );
         }
@@ -301,12 +317,14 @@ final class MemberAccessDetector
                 return null;
             }
             $parentClassName = ScopeFinder::resolveExtendsName($classLike);
-            if ($parentClassName === null) {
+            $enclosingName = ScopeFinder::getClassLikeName($classLike);
+            if ($parentClassName === null || $enclosingName === null) {
                 return null;
             }
+            $target = TypeFactory::className($parentClassName);
             return MemberAccessContext::forParent(
-                TypeFactory::className($parentClassName),
-                Visibility::Protected,
+                $target,
+                $this->visibilityBetween(TypeFactory::className($enclosingName), $target),
                 $match['prefix'],
             );
         }
@@ -317,6 +335,7 @@ final class MemberAccessDetector
 
         // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
         $target = TypeFactory::className($fqn);
+        $enclosingClass = $this->textFallback->findEnclosingClass($document, $line);
         $vantage = $enclosingClass !== null ? TypeFactory::className($enclosingClass) : null;
 
         return MemberAccessContext::forStatic(
@@ -327,21 +346,15 @@ final class MemberAccessDetector
     }
 
     /**
+     * @param array{kind: 'instance', var: string, prefix: string} $match
      * @param array<Stmt> $ast
      */
     private function resolveVariableAccessWithAst(
+        array $match,
         TextDocument $document,
         array $ast,
         int $line,
-        int $character,
     ): ?MemberAccessContext {
-        $match = $this->textFallback->matchMemberAccessAt(
-            $document->textBeforeCursor($line, $character),
-        );
-        if ($match === null || $match['kind'] !== 'instance' || $match['var'] === 'this') {
-            return null;
-        }
-
         $offset = $document->offsetAt($line, 0);
         $scope = Scope::atOffset($ast, $offset);
 
@@ -355,14 +368,18 @@ final class MemberAccessDetector
             return null;
         }
 
+        $target = $type->getResolvableClassNames()[0] ?? null;
+        if ($target === null) {
+            return null;
+        }
         $enclosingClassName = $scope->getSelfContext();
         $vantage = $enclosingClassName !== null ? TypeFactory::className($enclosingClassName) : null;
-        $target = $type->getResolvableClassNames()[0] ?? null;
-        $visibility = $target !== null
-            ? $this->visibilityBetween($vantage, $target)
-            : Visibility::Public;
 
-        return MemberAccessContext::forInstance($type, $visibility, $match['prefix']);
+        return MemberAccessContext::forInstance(
+            $type,
+            $this->visibilityBetween($vantage, $target),
+            $match['prefix'],
+        );
     }
 
     /**
@@ -414,6 +431,10 @@ final class MemberAccessDetector
         $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
         $rawName = $class->toString();
         $enclosingClassLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
+        $enclosingName = $enclosingClassLike !== null
+            ? ScopeFinder::getClassLikeName($enclosingClassLike)
+            : null;
+        $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
 
         if ($rawName === 'parent') {
             if (!$enclosingClassLike instanceof Stmt\Class_ || $enclosingClassLike->extends === null) {
@@ -421,9 +442,10 @@ final class MemberAccessDetector
             }
             $parentClassName = ScopeFinder::resolveExtendsName($enclosingClassLike);
             assert($parentClassName !== null);
+            $target = TypeFactory::className($parentClassName);
             return MemberAccessContext::forParent(
-                TypeFactory::className($parentClassName),
-                Visibility::Protected,
+                $target,
+                $this->visibilityBetween($vantage, $target),
                 $prefix,
             );
         }
@@ -437,10 +459,6 @@ final class MemberAccessDetector
         }
 
         $target = TypeFactory::className($className);
-        $vantage = $enclosingClassLike !== null
-            ? self::classNameOfClassLike($enclosingClassLike)
-            : null;
-
         return MemberAccessContext::forStatic(
             $target,
             $this->visibilityBetween($vantage, $target),
@@ -456,33 +474,6 @@ final class MemberAccessDetector
             || $node instanceof NullsafePropertyFetch;
     }
 
-    private static function enclosingClassNameOf(Node $node): ?ClassName
-    {
-        $name = ScopeFinder::findEnclosingClassName($node);
-        return $name !== null ? TypeFactory::className($name) : null;
-    }
-
-    private static function classNameOfClassLike(
-        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node,
-    ): ?ClassName {
-        $name = ScopeFinder::getClassLikeName($node);
-        return $name !== null ? TypeFactory::className($name) : null;
-    }
-
-    private static function expressionStartsWithThis(Node\Expr $expr): bool
-    {
-        if ($expr instanceof Variable && $expr->name === 'this') {
-            return true;
-        }
-        if (
-            $expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch
-            || $expr instanceof MethodCall || $expr instanceof NullsafeMethodCall
-        ) {
-            return self::expressionStartsWithThis($expr->var);
-        }
-        return false;
-    }
-
     private static function findThisVariable(Node\Expr $expr): ?Variable
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
@@ -494,8 +485,6 @@ final class MemberAccessDetector
         ) {
             return self::findThisVariable($expr->var);
         }
-        // @codeCoverageIgnoreStart
-        throw new LogicException('findThisVariable called with unhandled expression type');
-        // @codeCoverageIgnoreEnd
+        return null;
     }
 }

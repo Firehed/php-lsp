@@ -107,7 +107,7 @@ class MemberAccessDetectorTest extends TestCase
 
     public function testDetectSlicesPrefixAtByteColumnPastMultibyte(): void
     {
-        $content = $this->loadFixtureContent('TopLevel/multibyte_static.php');
+        $content = $this->loadFixture('TopLevel/multibyte_static.php');
         ['line' => $line, 'character' => $character] = $this->locateCursorUtf16($content, 'multibyte_static');
 
         $result = $this->detectWith($this->detectorWithReflection, 'TopLevel/multibyte_static.php', $line, $character);
@@ -156,20 +156,10 @@ class MemberAccessDetectorTest extends TestCase
         int $line,
         int $character,
     ): ?MemberAccessContext {
-        $content = $this->loadFixtureContent($fixture);
+        $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
         self::assertNotNull($ast, 'Parser must return an AST (may be partial)');
         return $detector->detect($document, $ast, $line, $character);
-    }
-
-    private function loadFixtureContent(string $relativePath): string
-    {
-        $fullPath = __DIR__ . '/../Fixtures/' . $relativePath;
-        $content = file_get_contents($fullPath);
-        if ($content === false) {
-            throw new \RuntimeException("Failed to load fixture: $fullPath");
-        }
-        return $content;
     }
 }
