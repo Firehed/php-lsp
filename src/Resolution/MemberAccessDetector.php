@@ -6,9 +6,11 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -512,7 +514,7 @@ final class MemberAccessDetector
             if ($part['isMethodCall']) {
                 $method = $this->memberResolver->findMethod(
                     $classNames[0],
-                    new \Firehed\PhpLsp\Domain\MethodName($part['name']),
+                    new MethodName($part['name']),
                     $visibility,
                 );
                 if ($method === null) {
@@ -522,7 +524,7 @@ final class MemberAccessDetector
             } else {
                 $property = $this->memberResolver->findProperty(
                     $classNames[0],
-                    new \Firehed\PhpLsp\Domain\PropertyName($part['name']),
+                    new PropertyName($part['name']),
                     $visibility,
                 );
                 if ($property === null) {
