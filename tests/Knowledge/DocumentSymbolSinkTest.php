@@ -144,16 +144,22 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
-    public function testUpdatingAwayFromAFunctionDropsItsRegistration(): void
+    public function testUpdatingAwayFromAFunctionReplacesItWithTheNewDeclarations(): void
     {
         $uri = 'file:///helpers.php';
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nfunction helper(): void {}\n"));
 
-        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\n"));
+        // A version that names any declaration replaces the previous set wholesale;
+        // the old function is dropped because the new set does not name it.
+        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nfunction other(): void {}\n"));
 
         self::assertNull(
             self::functionIn($this->backend, 'helper'),
-            'a document that no longer declares the function must drop its registration',
+            'a version that names other declarations must drop the previous ones',
+        );
+        self::assertNotNull(
+            self::functionIn($this->backend, 'other'),
+            'the new declaration must be registered in the previous one\'s place',
         );
     }
 
@@ -226,30 +232,38 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sinkWithOnDiskBackends($onDisk)->closeDocument($uri);
     }
 
-    public function testUpdatingAwayFromAllClassesClearsTheBackendNotJustTheIndex(): void
+    public function testUpdatingToNoDeclarationsPreservesThePreviousRegistration(): void
     {
         $uri = 'file:///Doc.php';
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Widget {}\n"));
+
+        // The document is edited into a state that parses to no declarations — the same
+        // state a broken mid-edit yields. Completion of $this-> on a broken file must
+        // still find the class's members, so the last-good registration is preserved
+        // rather than cleared. Both stores stay in step (RFC 1 §4.3).
+        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nclass Widget {"));
+
         self::assertNotNull(
             self::classLikeIn($this->backend, 'V\Widget'),
-            'the class is registered while the document declares it',
+            'a broken mid-edit must not drop the class the last-good parse registered',
         );
-
-        // The document is edited until it declares no class at all — the same state a
-        // parse failure yields (registerClasses falls back to an empty statement list).
-        // Both stores must drop the class in lockstep: the backend cannot keep a stale
-        // registration while the index clears (RFC 1 §4.3, the double write moving
-        // together). Skipping the write when nothing is found leaves the backend stale.
-        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\n"));
-
-        self::assertNull(
-            self::classLikeIn($this->backend, 'V\Widget'),
-            'a document that no longer declares the class must drop its registration',
+        self::assertNotNull(
+            $this->index->findByFqn('V\Widget'),
+            'the index must retain the class too — both stores move together (RFC 1 §4.3)',
         );
+    }
+
+    public function testFirstOpenOfADeclarationLessDocumentRegistersNothing(): void
+    {
+        // The preserve-on-empty rule has nothing to preserve on the first open, so
+        // the stores stay empty — there was never anything registered under this URI.
+        $uri = 'file:///Empty.php';
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\n"));
+
         self::assertSame(
             [],
             $this->indexedFqnsFor($uri),
-            'the index must clear too — both stores move together (RFC 1 §4.3)',
+            'a first open with no declarations must not populate the index',
         );
     }
 

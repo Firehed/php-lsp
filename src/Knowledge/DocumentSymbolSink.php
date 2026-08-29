@@ -73,11 +73,20 @@ final class DocumentSymbolSink implements SymbolSink
     private function write(TextDocument $document): void
     {
         // One parse feeds both stores (RFC 1 §4.3): the class-lookup registration and
-        // the symbol index are written transactionally from this single AST. A parse
-        // failure yields no statements, so both are cleared together.
+        // the symbol index are written transactionally from this single AST.
         $ast = $this->parser->parse($document) ?? [];
-
         $declarations = $this->scanner->scan($ast);
+
+        // A version that parses to no declarations keeps the previous registration
+        // rather than clearing it (RFC 1 §5.3). A file broken mid-edit yields no
+        // declarations, and completion of $this-> on that file must still offer the
+        // class's members, so the last-good state stands until the next parse names
+        // declarations again. A first open of a declaration-less document has nothing
+        // to preserve, so the stores stay empty in that case.
+        if ($declarations->classLikes === [] && $declarations->functions === [] && $declarations->constants === []) {
+            return;
+        }
+
         $symbols = $this->infoFactory->allIn($declarations, FileUri::toPath($document->uri));
         $this->backend->updateDocument($document->uri, ...$symbols);
         $this->indexer->indexParsed($document, $ast);
