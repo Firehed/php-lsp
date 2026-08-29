@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\ResolvedCallable;
+
 /**
  * Context for signature help and named argument completion.
  * Captures the callable being invoked and which parameter is active.

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
-use Firehed\PhpLsp\Document\FileUri;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;

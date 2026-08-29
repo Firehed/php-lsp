@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -11,6 +12,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ClassInfo::class)]
 class ClassInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $class = new ClassInfo(
@@ -225,6 +228,24 @@ class ClassInfoTest extends TestCase
         self::assertSame('enum ClassKind', $class->format());
     }
 
+    public function testGetTypeReturnsClassName(): void
+    {
+        $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_);
+
+        self::assertSame(ClassInfo::class, $class->getType()->fqn);
+    }
+
+    protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): ClassInfo
+    {
+        return $this->createClassInfo(
+            ClassInfo::class,
+            ClassKind::Class_,
+            file: $file,
+            line: $line,
+            docblock: $docblock,
+        );
+    }
+
     /**
      * @param class-string $name
      * @param list<ClassName> $interfaces
@@ -237,6 +258,9 @@ class ClassInfoTest extends TestCase
         bool $isReadonly = false,
         ?ClassName $parent = null,
         array $interfaces = [],
+        ?string $file = null,
+        ?int $line = null,
+        ?string $docblock = null,
     ): ClassInfo {
         return new ClassInfo(
             name: new ClassName($name),
@@ -252,9 +276,9 @@ class ClassInfoTest extends TestCase
             properties: [],
             constants: [],
             enumCases: [],
-            docblock: null,
-            file: null,
-            line: null,
+            docblock: $docblock,
+            file: $file,
+            line: $line,
         );
     }
 }

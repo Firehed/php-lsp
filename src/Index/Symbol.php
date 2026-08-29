@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Domain\Location;
+
 final readonly class Symbol
 {
     public function __construct(

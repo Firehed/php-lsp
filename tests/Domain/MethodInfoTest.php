@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(MethodInfo::class)]
 class MethodInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $method = new MethodInfo(
@@ -199,5 +202,62 @@ class MethodInfoTest extends TestCase
         );
 
         self::assertSame('private static final function getInstance(): self', $method->format());
+    }
+
+    public function testResolvedMemberMetadata(): void
+    {
+        $method = $this->makeSubject();
+
+        self::assertSame(MemberKind::Method, $method->getMemberKind());
+        self::assertSame('doSomething', $method->getName()->name);
+        self::assertSame(MethodInfo::class, $method->getDeclaringClass()->fqn);
+        self::assertSame(Visibility::Public, $method->getVisibility());
+        self::assertFalse($method->isStatic());
+    }
+
+    public function testResolvedCallableMetadata(): void
+    {
+        $param = new ParameterInfo(
+            name: 'value',
+            type: new PrimitiveType('string'),
+            hasDefault: false,
+            defaultValue: null,
+            position: 0,
+            isVariadic: false,
+            isPassedByReference: false,
+        );
+        $method = $this->makeSubject(parameters: [$param]);
+
+        self::assertSame('int', $method->getReturnType()?->format());
+        self::assertSame('int', $method->getType()?->format());
+        self::assertSame([$param], $method->getParameters());
+        self::assertSame($param, $method->getParameterByName('value'));
+        self::assertSame($param, $method->getParameterAtPosition(0));
+        self::assertNull($method->getParameterByName('missing'));
+        self::assertNull($method->getParameterAtPosition(1));
+    }
+
+    /**
+     * @param list<ParameterInfo> $parameters
+     */
+    protected function makeSubject(
+        ?string $file = null,
+        ?int $line = null,
+        ?string $docblock = null,
+        array $parameters = [],
+    ): MethodInfo {
+        return new MethodInfo(
+            name: new MethodName('doSomething'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: $parameters,
+            returnType: new PrimitiveType('int'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+            declaringClass: new ClassName(MethodInfo::class),
+        );
     }
 }

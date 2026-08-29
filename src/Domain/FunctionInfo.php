@@ -10,8 +10,11 @@ use ReflectionFunction;
 /**
  * Metadata about a standalone function.
  */
-final readonly class FunctionInfo implements Formattable, SymbolInfo
+final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
 {
+    use HasCallableParameters;
+    use HasSymbolLocation;
+
     /**
      * @param list<ParameterInfo> $parameters
      */
@@ -69,6 +72,16 @@ final readonly class FunctionInfo implements Formattable, SymbolInfo
                 ? $func->getStartLine()
                 : null,
         );
+    }
+
+    public function getReturnType(): ?Type
+    {
+        return $this->returnType;
+    }
+
+    public function getType(): ?Type
+    {
+        return $this->returnType;
     }
 
     public function format(): string

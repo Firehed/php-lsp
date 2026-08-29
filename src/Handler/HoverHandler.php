@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Protocol\MarkupContent;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Resolution\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
 /**

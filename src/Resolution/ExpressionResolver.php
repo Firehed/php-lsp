@@ -6,18 +6,23 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Index\Location;
+use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\Scope;
@@ -187,47 +192,35 @@ final class ExpressionResolver
     private function typeOfBinding(VariableBinding $binding, Scope $scope, array $ast): ?Type
     {
         $node = $binding->node;
+        assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
+        $parent = $node->getAttribute('parent');
 
-        if ($node instanceof Variable && is_string($node->name)) {
-            $parent = $node->getAttribute('parent');
-            if ($parent instanceof Param) {
-                return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
-            }
-            if ($parent instanceof Expr\Assign && $parent->var === $node) {
-                return $this->resolve($parent->expr, $ast)?->getType();
-            }
-            if ($parent instanceof Stmt\Foreach_) {
-                return $this->foreachElementType($parent, $node, $ast);
-            }
-            if ($parent instanceof Stmt\Catch_) {
-                $classNames = [];
-                foreach ($parent->types as $type) {
-                    $classNames[] = TypeFactory::className(ScopeFinder::resolveClassName($type));
-                }
-                if ($classNames === []) {
-                    return null;
-                }
-                return count($classNames) === 1 ? $classNames[0] : TypeFactory::union($classNames);
-            }
-            if ($parent instanceof Node\ClosureUse) {
-                $closure = $parent->getAttribute('parent');
-                if ($closure instanceof Node) {
-                    $closureOffset = $closure->getStartFilePos();
-                    $enclosingNode = ScopeFinder::findEnclosingScope($closure);
-                    $outerScope = $enclosingNode !== null
-                        ? Scope::forNode($enclosingNode)
-                        : Scope::atOffset($ast, $closureOffset);
-                    return $this->resolveVariable($node->name, $outerScope, $closureOffset, $ast)?->getType();
-                }
-                return null;
-            }
+        if ($parent instanceof Expr\Assign && $parent->var === $node) {
+            return $this->resolve($parent->expr, $ast)?->getType();
         }
-
-        if ($node instanceof Param) {
-            return TypeFactory::fromNode($node->type, $scope->getSelfContext(), $scope->getParentContext());
+        if ($parent instanceof Stmt\Foreach_) {
+            return $this->foreachElementType($parent, $node, $ast);
         }
-
-        return null;
+        if ($parent instanceof Stmt\Catch_) {
+            assert($parent->types !== [], 'PHP grammar requires at least one type in a catch clause');
+            $classNames = [];
+            foreach ($parent->types as $type) {
+                $classNames[] = TypeFactory::className(ScopeFinder::resolveClassName($type));
+            }
+            return count($classNames) === 1 ? $classNames[0] : TypeFactory::union($classNames);
+        }
+        if ($parent instanceof Node\ClosureUse) {
+            $closure = $parent->getAttribute('parent');
+            assert($closure instanceof Node, 'ParentConnectingVisitor sets ClosureUse->parent');
+            $closureOffset = $closure->getStartFilePos();
+            $enclosingNode = ScopeFinder::findEnclosingScope($closure);
+            $outerScope = $enclosingNode !== null
+                ? Scope::forNode($enclosingNode)
+                : Scope::atOffset($ast, $closureOffset);
+            return $this->resolveVariable($node->name, $outerScope, $closureOffset, $ast)?->getType();
+        }
+        assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
+        return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
     }
 
     /**
@@ -242,7 +235,7 @@ final class ExpressionResolver
         if ($docblock === null) {
             return null;
         }
-        $elemShort = \Firehed\PhpLsp\Utility\DocblockParser::arrayElementType($docblock);
+        $elemShort = DocblockParser::arrayElementType($docblock);
         if ($elemShort === null) {
             return null;
         }
@@ -333,13 +326,13 @@ final class ExpressionResolver
         if ($classInfo === null) {
             return new ResolvedTypeOnly(TypeFactory::className($className));
         }
-        return new ResolvedClass($classInfo);
+        return $classInfo;
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveMethodCall(MethodCall|NullsafeMethodCall $expr, array $ast): ?ResolvedMethod
+    private function resolveMethodCall(MethodCall|NullsafeMethodCall $expr, array $ast): ?MethodInfo
     {
         if (!$expr->name instanceof Identifier) {
             return null;
@@ -358,10 +351,10 @@ final class ExpressionResolver
         if ($methodInfo === null) {
             return null;
         }
-        return new ResolvedMethod($this->resolveLateBoundReturn($methodInfo, $className));
+        return $this->resolveLateBoundReturn($methodInfo, $className);
     }
 
-    private function resolveStaticCall(StaticCall $expr): ?ResolvedMethod
+    private function resolveStaticCall(StaticCall $expr): ?MethodInfo
     {
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
@@ -379,13 +372,13 @@ final class ExpressionResolver
         if ($methodInfo === null) {
             return null;
         }
-        return new ResolvedMethod($this->resolveLateBoundReturn($methodInfo, $className));
+        return $this->resolveLateBoundReturn($methodInfo, $className);
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveFuncCall(FuncCall $expr, array $ast): ?ResolvedFunction
+    private function resolveFuncCall(FuncCall $expr, array $ast): ?FunctionInfo
     {
         if (!$expr->name instanceof Name) {
             return null;
@@ -397,7 +390,7 @@ final class ExpressionResolver
         foreach ($context->candidates($shortName, NameKind::Function_) as $candidate) {
             $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
             if ($funcInfo !== null) {
-                return new ResolvedFunction($funcInfo);
+                return $funcInfo;
             }
         }
         return null;
@@ -406,7 +399,7 @@ final class ExpressionResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolvePropertyFetch(PropertyFetch|NullsafePropertyFetch $expr, array $ast): ?ResolvedProperty
+    private function resolvePropertyFetch(PropertyFetch|NullsafePropertyFetch $expr, array $ast): ?PropertyInfo
     {
         if (!$expr->name instanceof Identifier) {
             return null;
@@ -421,10 +414,10 @@ final class ExpressionResolver
             new PropertyName($expr->name->toString()),
             Visibility::Private,
         );
-        return $info !== null ? new ResolvedProperty($info) : null;
+        return $info;
     }
 
-    private function resolveStaticPropertyFetch(StaticPropertyFetch $expr): ?ResolvedProperty
+    private function resolveStaticPropertyFetch(StaticPropertyFetch $expr): ?PropertyInfo
     {
         if (!$expr->name instanceof VarLikeIdentifier || !$expr->class instanceof Name) {
             return null;
@@ -438,7 +431,7 @@ final class ExpressionResolver
             new PropertyName($expr->name->toString()),
             Visibility::Private,
         );
-        return $info !== null ? new ResolvedProperty($info) : null;
+        return $info;
     }
 
     private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbol
@@ -453,21 +446,21 @@ final class ExpressionResolver
         $className = TypeFactory::className($classNameStr);
         $enumCase = $this->memberResolver->findEnumCase($className, new EnumCaseName($expr->name->toString()));
         if ($enumCase !== null) {
-            return new ResolvedEnumCase($enumCase);
+            return $enumCase;
         }
         $constant = $this->memberResolver->findConstant(
             $className,
             new ConstantName($expr->name->toString()),
             Visibility::Private,
         );
-        return $constant !== null ? new ResolvedConstant($constant) : null;
+        return $constant;
     }
 
-    private function resolveConstFetch(Expr\ConstFetch $expr): ?ResolvedGlobalConstant
+    private function resolveConstFetch(Expr\ConstFetch $expr): ?ConstantInfo
     {
         $name = ScopeFinder::resolveName($expr->name);
         $info = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($name));
-        return $info !== null ? new ResolvedGlobalConstant($info) : null;
+        return $info;
     }
 
     private function resolveLateBoundReturn(MethodInfo $methodInfo, ClassName $callingClass): MethodInfo

@@ -2,15 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Resolution;
-
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\ConstantName;
-use Firehed\PhpLsp\Domain\EnumCaseName;
-use Firehed\PhpLsp\Domain\MemberKind;
-use Firehed\PhpLsp\Domain\MethodName;
-use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\Visibility;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * A resolved class member (method, property, constant, enum case).

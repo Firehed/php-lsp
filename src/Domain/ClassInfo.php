@@ -7,8 +7,10 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class, interface, trait, or enum.
  */
-final readonly class ClassInfo implements Formattable, SymbolInfo
+final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
 {
+    use HasSymbolLocation;
+
     /**
      * @param list<ClassName> $interfaces Implemented interfaces
      * @param list<ClassName> $traits Used traits
@@ -35,6 +37,14 @@ final readonly class ClassInfo implements Formattable, SymbolInfo
         public ?string $file,
         public ?int $line,
     ) {
+    }
+
+    /**
+     * A resolved class's value type is the class itself.
+     */
+    public function getType(): ClassName
+    {
+        return $this->name;
     }
 
     public function isClass(): bool

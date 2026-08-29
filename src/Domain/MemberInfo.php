@@ -9,9 +9,6 @@ namespace Firehed\PhpLsp\Domain;
  * whether the caller may see it, and whether it is reached on the class or on an
  * instance. Everything else about a member is specific to its {@see MemberKind}.
  */
-interface MemberInfo
+interface MemberInfo extends ResolvedMember
 {
-    public function getVisibility(): Visibility;
-
-    public function isStatic(): bool;
 }

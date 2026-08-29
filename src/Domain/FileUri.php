@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Document;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * Converts between the `file://` URIs LSP identifies documents by and the

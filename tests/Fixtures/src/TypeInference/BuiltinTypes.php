@@ -59,6 +59,7 @@ class BuiltinTypes
     public function cloneExpression(DateTime $dt): DateTime
     {
         $cloned = clone $dt;
+        $cloned->getTimestamp(); //hover:clone_receiver
         return $cloned;
     }
 
@@ -71,6 +72,7 @@ class BuiltinTypes
     public function nullCoalesceExpression(?DateTime $dt): DateTime|DateTimeImmutable|null
     {
         $result = $dt ?? new DateTimeImmutable();
+        $result->getTimestamp(); //hover:coalesce_receiver
         return $result;
     }
 

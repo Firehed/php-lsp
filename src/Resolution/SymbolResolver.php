@@ -6,14 +6,24 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\MemberFilter;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\ResolvedCallable;
+use Firehed\PhpLsp\Domain\ResolvedMember;
+use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Utility\Scope;
@@ -54,9 +64,9 @@ use Throwable;
  *
  * FUTURE: Workspace queries (requires index)
  * - findReferences(SymbolIdentity $symbol, ?Scope $scope = null): array<Location>
- * - findImplementations(ClassName $interface): array<ResolvedClass>
- * - findSubtypes(ClassName $class): array<ResolvedClass>
- * - findSupertypes(ClassName $class): array<ResolvedClass>
+ * - findImplementations(ClassName $interface): array<ClassInfo>
+ * - findSubtypes(ClassName $class): array<ClassInfo>
+ * - findSupertypes(ClassName $class): array<ClassInfo>
  *
  * FUTURE: Call hierarchy
  * - getIncomingCalls(ResolvedCallable $callable): array<CallHierarchyItem>
@@ -159,6 +169,10 @@ final class SymbolResolver implements CodeResolver
     /**
      * Get members for a single class using AST/reflection.
      *
+     * One loop over the kinds a position admits, so no kind can drift onto a
+     * different walk. The *Info metadata objects implement {@see ResolvedMember}
+     * directly, so no wrapper is built per member.
+     *
      * @return list<ResolvedMember>
      */
     private function getMembersForClass(
@@ -167,30 +181,16 @@ final class SymbolResolver implements CodeResolver
         MemberFilter $filter,
         bool $includeStatic,
     ): array {
+        $kinds = $includeStatic
+            ? [MemberKind::Method, MemberKind::Property, MemberKind::Constant, MemberKind::EnumCase]
+            : [MemberKind::Method, MemberKind::Property];
+
         $members = [];
-
-        $methods = $this->memberResolver->getMethods($className, $minVisibility, $filter);
-        foreach ($methods as $methodInfo) {
-            $members[] = new ResolvedMethod($methodInfo);
-        }
-
-        $properties = $this->memberResolver->getProperties($className, $minVisibility, $filter);
-        foreach ($properties as $propertyInfo) {
-            $members[] = new ResolvedProperty($propertyInfo);
-        }
-
-        if ($includeStatic) {
-            $constants = $this->memberResolver->getConstants($className, $minVisibility);
-            foreach ($constants as $constantInfo) {
-                $members[] = new ResolvedConstant($constantInfo);
-            }
-
-            $enumCases = $this->memberResolver->getEnumCases($className);
-            foreach ($enumCases as $enumCaseInfo) {
-                $members[] = new ResolvedEnumCase($enumCaseInfo);
+        foreach ($kinds as $kind) {
+            foreach ($this->memberResolver->getMembersOfKind($className, $kind, $minVisibility, $filter) as $member) {
+                $members[] = $member;
             }
         }
-
         return $members;
     }
 
@@ -491,7 +491,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedMethod($methodInfo);
+        return $methodInfo;
     }
 
     private function resolveStaticCallCallable(StaticCall $call): ?ResolvedCallable
@@ -521,7 +521,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedMethod($methodInfo);
+        return $methodInfo;
     }
 
     private function resolveNewCallable(New_ $call): ?ResolvedCallable
@@ -556,7 +556,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedMethod($methodInfo);
+        return $methodInfo;
     }
 
     /**
@@ -628,12 +628,10 @@ final class SymbolResolver implements CodeResolver
     {
         $parent = $node->getAttribute('parent');
 
-        // Function call: resolve to ResolvedFunction
         if ($parent instanceof FuncCall) {
             return $this->resolveFunctionCall($node, $ast);
         }
 
-        // Global constant: resolve to ResolvedGlobalConstant
         if ($parent instanceof ConstFetch) {
             return $this->resolveConstFetch($node);
         }
@@ -646,18 +644,18 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedClass($classInfo);
+        return $classInfo;
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveFunctionCall(Name $node, array $ast): ?ResolvedFunction
+    private function resolveFunctionCall(Name $node, array $ast): ?FunctionInfo
     {
         return $this->resolveFunctionByName($node, $ast);
     }
 
-    private function resolveConstFetch(Name $node): ?ResolvedGlobalConstant
+    private function resolveConstFetch(Name $node): ?ConstantInfo
     {
         $name = ScopeFinder::resolveName($node);
         $constantInfo = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($name));
@@ -665,13 +663,13 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedGlobalConstant($constantInfo);
+        return $constantInfo;
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveFunctionByName(Name $name, array $ast): ?ResolvedFunction
+    private function resolveFunctionByName(Name $name, array $ast): ?FunctionInfo
     {
         $shortName = $name->toString();
         $line = $name->getStartLine() - 1;
@@ -680,7 +678,7 @@ final class SymbolResolver implements CodeResolver
         foreach ($context->candidates($shortName, NameKind::Function_) as $candidate) {
             $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
             if ($funcInfo !== null) {
-                return new ResolvedFunction($funcInfo);
+                return $funcInfo;
             }
         }
 
@@ -716,7 +714,7 @@ final class SymbolResolver implements CodeResolver
             ?? new ResolvedVariable($name, null);
     }
 
-    private function resolveParameter(Node\Param $param): ResolvedParameter
+    private function resolveParameter(Node\Param $param): ParameterInfo
     {
         $enclosingScope = ScopeFinder::findEnclosingScope($param);
         // @codeCoverageIgnoreStart
@@ -754,7 +752,7 @@ final class SymbolResolver implements CodeResolver
             throw new LogicException('ParameterInfo::fromNode should not return null for valid Param');
         }
         // @codeCoverageIgnoreEnd
-        return new ResolvedParameter($paramInfo);
+        return $paramInfo;
     }
 
     /**
@@ -767,7 +765,7 @@ final class SymbolResolver implements CodeResolver
         Node\Arg $arg,
         array $ast,
         TextDocument $document,
-    ): ?ResolvedParameter {
+    ): ?ParameterInfo {
         // Find the call this arg belongs to
         $call = $arg->getAttribute('parent');
 
@@ -798,10 +796,10 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedParameter($paramInfo);
+        return $paramInfo;
     }
 
-    private function resolveAttributeNamedArgument(Identifier $node, Attribute $attribute): ?ResolvedParameter
+    private function resolveAttributeNamedArgument(Identifier $node, Attribute $attribute): ?ParameterInfo
     {
         $classNameStr = ScopeFinder::resolveClassName($attribute->name);
 
@@ -815,7 +813,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedParameter($paramInfo);
+        return $paramInfo;
     }
 
     /**
@@ -848,7 +846,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedProperty($propertyInfo);
+        return $propertyInfo;
     }
 
     private function resolveClassConstFetch(ClassConstFetch $fetch): ?ResolvedSymbol
@@ -879,7 +877,7 @@ final class SymbolResolver implements CodeResolver
         );
 
         if ($enumCaseInfo !== null) {
-            return new ResolvedEnumCase($enumCaseInfo);
+            return $enumCaseInfo;
         }
 
         // Otherwise it's a class constant
@@ -893,7 +891,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedConstant($constantInfo);
+        return $constantInfo;
     }
 
     private function resolveVarLikeIdentifier(VarLikeIdentifier $node): ?ResolvedSymbol
@@ -937,7 +935,7 @@ final class SymbolResolver implements CodeResolver
             return null;
         }
 
-        return new ResolvedProperty($propertyInfo);
+        return $propertyInfo;
     }
 
     private static function isMethodCall(mixed $node): bool

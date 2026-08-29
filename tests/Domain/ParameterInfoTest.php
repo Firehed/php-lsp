@@ -502,4 +502,21 @@ class ParameterInfoTest extends TestCase
 
         self::assertSame('[]', $param->defaultValue);
     }
+
+    public function testResolvedSymbolMetadata(): void
+    {
+        $param = new ParameterInfo(
+            name: 'value',
+            type: new PrimitiveType('string'),
+            hasDefault: false,
+            defaultValue: null,
+            position: 0,
+            isVariadic: false,
+            isPassedByReference: false,
+        );
+
+        self::assertNull($param->getDefinitionLocation(), 'a parameter has no persistent definition location');
+        self::assertNull($param->getDocumentation(), 'a parameter carries no docblock');
+        self::assertSame('string', $param->getType()?->format());
+    }
 }

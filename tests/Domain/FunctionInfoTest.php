@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PhpParser\Comment\Doc;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
@@ -16,6 +17,8 @@ use ReflectionFunction;
 #[CoversClass(FunctionInfo::class)]
 class FunctionInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $func = new FunctionInfo(
@@ -281,5 +284,28 @@ class FunctionInfoTest extends TestCase
         $func = FunctionInfo::fromReflection($reflection);
 
         self::assertSame("/**\n * A test function with documentation.\n */", $func->docblock);
+    }
+
+    public function testResolvedCallableMetadata(): void
+    {
+        $func = $this->makeSubject();
+
+        self::assertSame('int', $func->getReturnType()?->format());
+        self::assertSame('int', $func->getType()?->format());
+        self::assertSame([], $func->getParameters());
+        self::assertNull($func->getParameterByName('missing'));
+        self::assertNull($func->getParameterAtPosition(0));
+    }
+
+    protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): FunctionInfo
+    {
+        return new FunctionInfo(
+            name: 'myFunction',
+            parameters: [],
+            returnType: new PrimitiveType('int'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+        );
     }
 }

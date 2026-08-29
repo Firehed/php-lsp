@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\UnionType;
@@ -611,22 +612,20 @@ final class TextFallbackHelper
         // access level).
         $inheritedVisibility = Visibility::from(max($minVisibility->value, Visibility::Protected->value));
 
-        $methods = $this->memberResolver->getMethods($parentClassName, $inheritedVisibility, $filter);
-        foreach ($methods as $methodInfo) {
-            $members[] = new ResolvedMethod($methodInfo);
+        foreach ($this->memberResolver->getMethods($parentClassName, $inheritedVisibility, $filter) as $methodInfo) {
+            $members[] = $methodInfo;
         }
 
         if ($filter !== MemberFilter::Static) {
             $properties = $this->memberResolver->getProperties($parentClassName, $inheritedVisibility, $filter);
             foreach ($properties as $propertyInfo) {
-                $members[] = new ResolvedProperty($propertyInfo);
+                $members[] = $propertyInfo;
             }
         }
 
         if ($filter !== MemberFilter::Instance) {
-            $constants = $this->memberResolver->getConstants($parentClassName, $inheritedVisibility);
-            foreach ($constants as $constantInfo) {
-                $members[] = new ResolvedConstant($constantInfo);
+            foreach ($this->memberResolver->getConstants($parentClassName, $inheritedVisibility) as $constantInfo) {
+                $members[] = $constantInfo;
             }
         }
 
@@ -656,7 +655,7 @@ final class TextFallbackHelper
                     || ($isStatic && $includeStatic)
                     || (!$isStatic && !$includeStatic);
                 if ($includeThis) {
-                    $members[] = new ResolvedMethod(new MethodInfo(
+                    $members[] = new MethodInfo(
                         name: new MethodName($match[3]),
                         visibility: $visibility,
                         isStatic: $isStatic,
@@ -668,7 +667,7 @@ final class TextFallbackHelper
                         docblock: null,
                         file: null,
                         line: null,
-                    ));
+                    );
                 }
             }
         }
@@ -698,7 +697,7 @@ final class TextFallbackHelper
                 }
                 $isStatic = $match[2] !== '';
                 if (!$isStatic || $includeStatic) {
-                    $members[] = new ResolvedProperty(new PropertyInfo(
+                    $members[] = new PropertyInfo(
                         name: new PropertyName($match[4]),
                         visibility: $visibility,
                         isStatic: $isStatic,
@@ -709,7 +708,7 @@ final class TextFallbackHelper
                         file: null,
                         line: null,
                         declaringClass: $className,
-                    ));
+                    );
                 }
             }
         }
@@ -738,7 +737,7 @@ final class TextFallbackHelper
                 if (!$visibility->isAccessibleFrom($minVisibility)) {
                     continue;
                 }
-                $members[] = new ResolvedConstant(new ConstantInfo(
+                $members[] = new ConstantInfo(
                     name: new ConstantName($match[2]),
                     visibility: $visibility,
                     isFinal: false,
@@ -747,7 +746,7 @@ final class TextFallbackHelper
                     file: null,
                     line: null,
                     declaringClass: $className,
-                ));
+                );
             }
         }
     }

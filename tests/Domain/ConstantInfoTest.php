@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -11,6 +12,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(PrimitiveType::class)]
 class ConstantInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $constant = new ConstantInfo(
@@ -129,5 +132,59 @@ class ConstantInfoTest extends TestCase
         );
 
         self::assertSame('const int MAX_SIZE', $constant->format(), 'global constants show type after const');
+    }
+
+    public function testResolvedMemberMetadata(): void
+    {
+        $constant = $this->makeSubject();
+
+        self::assertSame(MemberKind::Constant, $constant->getMemberKind());
+        self::assertSame('MAX_SIZE', $constant->getName()->name);
+        self::assertSame(ConstantInfo::class, $constant->getDeclaringClass()->fqn);
+        self::assertSame('int', $constant->getType()?->format());
+        self::assertSame(Visibility::Public, $constant->getVisibility());
+        self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');
+    }
+
+    public function testGetDeclaringClassFailsOnGlobalConstant(): void
+    {
+        $globalConstant = new ConstantInfo(
+            name: new ConstantName('DEBUG'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: null,
+        );
+
+        // With assertions on (dev), assert() throws AssertionError. With them off
+        // (prod), assert() is a no-op and PHP's declared return type raises
+        // TypeError. Either shape enforces the same invariant.
+        try {
+            $globalConstant->getDeclaringClass();
+            self::fail('getDeclaringClass on a global constant should fail');
+        } catch (\AssertionError | \TypeError) {
+            // Expected: one of the two, depending on zend.assertions.
+            $this->addToAssertionCount(1);
+        }
+    }
+
+    protected function makeSubject(
+        ?string $file = null,
+        ?int $line = null,
+        ?string $docblock = null,
+    ): ConstantInfo {
+        return new ConstantInfo(
+            name: new ConstantName('MAX_SIZE'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: new PrimitiveType('int'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+            declaringClass: new ClassName(ConstantInfo::class),
+        );
     }
 }

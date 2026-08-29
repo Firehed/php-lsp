@@ -18,22 +18,22 @@ class KindInspectionRuleTest extends RuleTestCase
             [__DIR__ . '/data/instanceof-resolved-symbol.php'],
             [
                 [
-                    'instanceof ResolvedMethod branches on concrete ResolvedSymbol; '
+                    'instanceof MethodInfo branches on concrete ResolvedSymbol; '
                         . 'use predicates (RFC 1 §4.5).',
                     19,
                 ],
                 [
-                    'instanceof ResolvedMethod branches on concrete ResolvedSymbol; '
+                    'instanceof MethodInfo branches on concrete ResolvedSymbol; '
                         . 'use predicates (RFC 1 §4.5).',
                     26,
                 ],
                 [
-                    'instanceof ResolvedMethod branches on concrete ResolvedSymbol; '
+                    'instanceof MethodInfo branches on concrete ResolvedSymbol; '
                         . 'use predicates (RFC 1 §4.5).',
                     32,
                 ],
                 [
-                    'instanceof ResolvedProperty branches on concrete ResolvedSymbol; '
+                    'instanceof PropertyInfo branches on concrete ResolvedSymbol; '
                         . 'use predicates (RFC 1 §4.5).',
                     33,
                 ],

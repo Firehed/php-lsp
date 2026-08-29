@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PropertyInfo::class)]
 class PropertyInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $property = new PropertyInfo(
@@ -125,5 +128,33 @@ class PropertyInfoTest extends TestCase
         );
 
         self::assertSame('private static readonly array $cache', $property->format());
+    }
+
+    public function testResolvedMemberMetadata(): void
+    {
+        $property = $this->makeSubject();
+
+        self::assertSame(MemberKind::Property, $property->getMemberKind());
+        self::assertSame('value', $property->getName()->name);
+        self::assertSame(PropertyInfo::class, $property->getDeclaringClass()->fqn);
+        self::assertSame('string', $property->getType()?->format());
+        self::assertSame(Visibility::Public, $property->getVisibility());
+        self::assertFalse($property->isStatic());
+    }
+
+    protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): PropertyInfo
+    {
+        return new PropertyInfo(
+            name: new PropertyName('value'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isReadonly: false,
+            isPromoted: false,
+            type: new PrimitiveType('string'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+            declaringClass: new ClassName(PropertyInfo::class),
+        );
     }
 }

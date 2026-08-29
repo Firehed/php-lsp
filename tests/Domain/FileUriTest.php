@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Document;
+namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Document\FileUri;
+use Firehed\PhpLsp\Domain\FileUri;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

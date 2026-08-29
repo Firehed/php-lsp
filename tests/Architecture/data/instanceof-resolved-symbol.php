@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture\Data;
 
-use Firehed\PhpLsp\Resolution\ResolvedMethod;
-use Firehed\PhpLsp\Resolution\ResolvedProperty;
-use Firehed\PhpLsp\Resolution\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\ResolvedSymbol;
 
 /**
  * A consumer deciding suitability by instanceof against concrete ResolvedSymbol
@@ -16,12 +16,12 @@ final class InstanceofResolvedSymbol
 {
     public function isSuitableForParentAccess(ResolvedSymbol $symbol): bool
     {
-        return $symbol instanceof ResolvedMethod;
+        return $symbol instanceof MethodInfo;
     }
 
     public function isSuitableViaVariable(ResolvedSymbol $symbol): bool
     {
-        $wanted = ResolvedMethod::class;
+        $wanted = MethodInfo::class;
 
         return $symbol instanceof $wanted;
     }
@@ -29,8 +29,8 @@ final class InstanceofResolvedSymbol
     public function getKind(ResolvedSymbol $symbol): string
     {
         return match (true) {
-            $symbol instanceof ResolvedMethod => 'method',
-            $symbol instanceof ResolvedProperty => 'property',
+            $symbol instanceof MethodInfo => 'method',
+            $symbol instanceof PropertyInfo => 'property',
             default => 'unknown',
         };
     }

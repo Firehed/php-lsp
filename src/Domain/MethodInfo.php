@@ -7,8 +7,11 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class method.
  */
-final readonly class MethodInfo implements Formattable, MemberInfo
+final readonly class MethodInfo implements MemberInfo, ResolvedCallable
 {
+    use HasCallableParameters;
+    use HasSymbolLocation;
+
     /**
      * @param list<ParameterInfo> $parameters
      */
@@ -27,7 +30,35 @@ final readonly class MethodInfo implements Formattable, MemberInfo
     ) {
     }
 
-    public function format(bool $showDefaults = false): string
+    public function getDeclaringClass(): ClassName
+    {
+        return $this->declaringClass;
+    }
+
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::Method;
+    }
+
+    public function getName(): MethodName
+    {
+        return $this->name;
+    }
+
+    public function getReturnType(): ?Type
+    {
+        return $this->returnType;
+    }
+
+    /**
+     * ResolvedSymbol's value type for a method is its return type.
+     */
+    public function getType(): ?Type
+    {
+        return $this->returnType;
+    }
+
+    public function format(bool $showDefaults = true): string
     {
         $parts = [$this->visibility->format()];
         if ($this->isStatic) {

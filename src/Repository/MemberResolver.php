@@ -121,6 +121,22 @@ final class MemberResolver
         return $this->collectMembers($class, MemberKind::Property, PropertyInfo::class, $minVisibility, $filter);
     }
 
+    /**
+     * Every member of the given kind visible from $class. Kind-parameterized so the
+     * caller can iterate over kinds without a per-kind method for every one, which
+     * is how member completion collapses to one loop over MemberKind cases.
+     *
+     * @return list<MemberInfo>
+     */
+    public function getMembersOfKind(
+        ClassName $class,
+        MemberKind $kind,
+        Visibility $minVisibility,
+        MemberFilter $filter = MemberFilter::All,
+    ): array {
+        return $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter);
+    }
+
     public function isTraitClass(ClassName $class): bool
     {
         return $this->source->lookupClassLike($class)?->kind === ClassKind::Trait_;

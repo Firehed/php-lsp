@@ -7,8 +7,10 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class property.
  */
-final readonly class PropertyInfo implements Formattable, MemberInfo
+final readonly class PropertyInfo implements MemberInfo
 {
+    use HasSymbolLocation;
+
     public function __construct(
         public PropertyName $name,
         public Visibility $visibility,
@@ -37,6 +39,26 @@ final readonly class PropertyInfo implements Formattable, MemberInfo
         }
         $parts[] = '$' . $this->name->name;
         return implode(' ', $parts);
+    }
+
+    public function getDeclaringClass(): ClassName
+    {
+        return $this->declaringClass;
+    }
+
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::Property;
+    }
+
+    public function getName(): PropertyName
+    {
+        return $this->name;
+    }
+
+    public function getType(): ?Type
+    {
+        return $this->type;
     }
 
     public function getVisibility(): Visibility

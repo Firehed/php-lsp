@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser;
 
-use Firehed\PhpLsp\Document\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
 use PhpParser\ErrorHandler;
 use PhpParser\Node\Stmt;
@@ -107,7 +106,9 @@ final class ParserService
             // @codeCoverageIgnoreEnd
         }
 
-        return $this->parse(new TextDocument(FileUri::fromPath($path), 'php', 0, $content));
+        // parseFile only feeds the content-keyed memo in parse(); the TextDocument's
+        // URI is unread on this path, so keep the raw path and skip the URI encode.
+        return $this->parse(new TextDocument($path, 'php', 0, $content));
     }
 
     /**
