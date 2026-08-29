@@ -12,12 +12,15 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(DefinitionHandler::class)]
+#[CoversClass(ExpressionResolver::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
 class DefinitionHandlerTest extends TestCase
 {
     use OpensDocumentsTrait;
@@ -40,12 +43,10 @@ class DefinitionHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
-            $typeResolver,
         );
         $this->handler = new DefinitionHandler(
             $this->documents,
@@ -323,13 +324,15 @@ class DefinitionHandlerTest extends TestCase
         self::assertNull($this->handler->handle($request));
     }
 
-    public function testReturnsNullForDynamicStaticMethodName(): void
+    public function testDynamicStaticMethodNameResolvesTheHoldingVariable(): void
     {
+        // self::$method() — the cursor lands on $method (a Variable, not a method
+        // name). #301: variable JTD resolves it to the preceding $method = ... .
         $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_static_method');
 
         $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($result);
+        self::assertIsArray($result, 'variable JTD lands on the binding, not the unresolved method');
     }
 
     public function testReturnsNullForDynamicClassName(): void
@@ -374,13 +377,15 @@ class DefinitionHandlerTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testReturnsNullForDynamicInstanceMethodName(): void
+    public function testDynamicInstanceMethodNameResolvesTheHoldingVariable(): void
     {
+        // $this->$method() — the cursor lands on $method (a Variable, not a
+        // method name). #301: variable JTD resolves it to $method = ... above.
         $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_instance_method');
 
         $result = $this->handler->handle($this->definitionRequestAt($cursor));
 
-        self::assertNull($result);
+        self::assertIsArray($result, 'variable JTD lands on the binding, not the unresolved method');
     }
 
     public function testReturnsNullForParentWithoutExtends(): void

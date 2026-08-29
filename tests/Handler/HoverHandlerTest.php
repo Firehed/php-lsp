@@ -16,12 +16,15 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(ExpressionResolver::class)]
 #[CoversClass(HoverHandler::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
 class HoverHandlerTest extends TestCase
 {
     use OpensDocumentsTrait;
@@ -45,12 +48,10 @@ class HoverHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
-            $typeResolver,
         );
         // The default markup kind is plaintext (the pre-initialize default a
         // minimal client is served); the fenced-markdown path is exercised
@@ -211,6 +212,21 @@ class HoverHandlerTest extends TestCase
 
         self::assertIsArray($result);
         self::assertStringContainsString('create', $result['contents']['value']);
+    }
+
+    public function testHoverOnForeachVariableMemberResolvesElementType(): void
+    {
+        // The iterable is UserCollection::all(), whose docblock @return is
+        // User[]. #301 / step-14: the foreach binding takes the element type,
+        // so a member call on $user resolves to User::getName.
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_member');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'a foreach variable must resolve members through its element type');
+        self::assertStringContainsString('getName', $result['contents']['value']);
     }
 
     public function testHoverOnTypedVariableMethodCall(): void

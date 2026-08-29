@@ -15,7 +15,6 @@ use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
@@ -66,7 +65,7 @@ final class AstTextAgreementTest extends TestCase
         $this->callDetector = new CallContextDetector($this->textFallback);
         $this->memberAccessDetector = new MemberAccessDetector(
             $knowledge->source,
-            new BasicTypeResolver($this->memberResolver, $knowledge->source->lookupFunction(...)),
+            $this->memberResolver,
             $this->textFallback,
         );
     }

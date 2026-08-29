@@ -28,7 +28,6 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ServerInfo;
@@ -99,13 +98,11 @@ final class Server
         $symbolSink = $knowledge->sink;
 
         $memberResolver = new MemberResolver($symbolSource);
-        $typeResolver = new BasicTypeResolver($memberResolver, $symbolSource->lookupFunction(...));
 
         $symbolResolver = new SymbolResolver(
             $parser,
             $symbolSource,
             $memberResolver,
-            $typeResolver,
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);

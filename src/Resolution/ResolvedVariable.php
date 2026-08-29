@@ -8,16 +8,16 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Index\Location;
 
 /**
- * A resolved variable with its inferred type.
- *
- * Variables don't have persistent definition locations (they're assigned
- * inline), so getDefinitionLocation() always returns null.
+ * A resolved variable with its inferred type and, when known, the nearest
+ * preceding binding site (parameter, assignment, foreach, catch, or long-
+ * closure `use` clause). #301: variable JTD lands on the binding node.
  */
 final readonly class ResolvedVariable implements ResolvedSymbol
 {
     public function __construct(
         private string $name,
         private ?Type $type,
+        private ?Location $definitionLocation = null,
     ) {
     }
 
@@ -28,7 +28,7 @@ final readonly class ResolvedVariable implements ResolvedSymbol
 
     public function getDefinitionLocation(): ?Location
     {
-        return null;
+        return $this->definitionLocation;
     }
 
     public function getDocumentation(): ?string

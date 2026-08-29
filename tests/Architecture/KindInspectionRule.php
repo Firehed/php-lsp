@@ -57,6 +57,7 @@ final class KindInspectionRule implements Rule
         \Firehed\PhpLsp\Resolution\ResolvedMethod::class,
         \Firehed\PhpLsp\Resolution\ResolvedParameter::class,
         \Firehed\PhpLsp\Resolution\ResolvedProperty::class,
+        \Firehed\PhpLsp\Resolution\ResolvedTypeOnly::class,
         \Firehed\PhpLsp\Resolution\ResolvedVariable::class,
     ];
 

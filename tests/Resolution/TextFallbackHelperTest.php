@@ -139,15 +139,6 @@ class TextFallbackHelperTest extends TestCase
         self::assertNull($result, 'Scanning code with no function declaration must yield no type');
     }
 
-    public function testResolveChainTypeReturnsClassForSimpleThis(): void
-    {
-        // $this-> with nothing after returns the class type
-        // @phpstan-ignore argument.type (test uses fake class name)
-        $result = $this->helper->resolveChainType('$this->', 'App\\Foo');
-        self::assertNotNull($result);
-        self::assertSame('App\\Foo', $result->format());
-    }
-
     public function testExtractMembersReturnsEmptyForNonMatchingClass(): void
     {
         $content = $this->loadFixture('TopLevel/empty_class.php');
@@ -162,59 +153,6 @@ class TextFallbackHelperTest extends TestCase
         );
 
         self::assertSame([], $members);
-    }
-
-    public function testResolveChainTypeReturnsNullForMethodOnPrimitive(): void
-    {
-        // When chain resolves to a primitive type, should return null
-        // @phpstan-ignore argument.type (test uses fake class name)
-        $result = $this->helper->resolveChainType('$this->method()->', 'App\\StringReturn');
-        // memberResolver returns null for unknown class, so chain resolution fails before hitting primitive
-        self::assertNull($result);
-    }
-
-    public function testResolveChainTypeHandlesMethodCallReturningObject(): void
-    {
-        // withName() returns self - the type system stores this as literal 'self'
-        $result = $this->helperWithReflection->resolveChainType(
-            '$this->withName()->',
-            'Fixtures\\Domain\\User', // @phpstan-ignore argument.type
-        );
-        self::assertNotNull($result, 'Should resolve chain through method returning object');
-        // Return type is stored as 'self' from parsing
-        self::assertSame('self', $result->format());
-    }
-
-    public function testResolveChainTypeReturnsNullWhenChainContinuesOnPrimitive(): void
-    {
-        // getId() returns string. Trying to continue chain with ->foo should return null
-        // because primitive types have no resolvable class names
-        $result = $this->helperWithReflection->resolveChainType(
-            '$this->getId()->length->',
-            'Fixtures\\Domain\\User', // @phpstan-ignore argument.type
-        );
-        self::assertNull($result, 'Chain should fail when continuing from primitive');
-    }
-
-    public function testResolveChainTypeHandlesPropertyAccess(): void
-    {
-        // manager is ?User property
-        $result = $this->helperWithReflection->resolveChainType(
-            '$this->manager->',
-            'Fixtures\\Domain\\User', // @phpstan-ignore argument.type
-        );
-        self::assertNotNull($result, 'Should resolve property in chain');
-    }
-
-    public function testResolveChainTypeHandlesMultiStepChain(): void
-    {
-        // withName() and withAge() both return self
-        $result = $this->helperWithReflection->resolveChainType(
-            '$this->withName()->withAge()->',
-            'Fixtures\\Domain\\User', // @phpstan-ignore argument.type
-        );
-        self::assertNotNull($result, 'Should resolve multi-step chain');
-        self::assertSame('self', $result->format());
     }
 
     public function testExtractMembersIncludesInstanceMembersNamedStatic(): void

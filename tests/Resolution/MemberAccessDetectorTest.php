@@ -10,15 +10,18 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(ExpressionResolver::class)]
 #[CoversClass(MemberAccessDetector::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
 class MemberAccessDetectorTest extends TestCase
 {
     use LoadsFixturesTrait;
@@ -37,7 +40,7 @@ class MemberAccessDetectorTest extends TestCase
         $emptyMemberResolver = new MemberResolver($emptySource);
         $this->detector = new MemberAccessDetector(
             $emptySource,
-            new BasicTypeResolver($emptyMemberResolver, $emptySource->lookupFunction(...)),
+            $emptyMemberResolver,
             new TextFallbackHelper($emptyMemberResolver),
         );
 
@@ -50,7 +53,7 @@ class MemberAccessDetectorTest extends TestCase
         $memberResolver = new MemberResolver($knowledge->source);
         $this->detectorWithReflection = new MemberAccessDetector(
             $knowledge->source,
-            new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...)),
+            $memberResolver,
             new TextFallbackHelper($memberResolver),
         );
     }

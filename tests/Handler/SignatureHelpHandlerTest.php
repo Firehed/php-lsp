@@ -11,11 +11,14 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(ExpressionResolver::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
 #[CoversClass(SignatureHelpHandler::class)]
 class SignatureHelpHandlerTest extends TestCase
 {
@@ -38,12 +41,10 @@ class SignatureHelpHandlerTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
-            $typeResolver,
         );
         $this->handler = new SignatureHelpHandler(
             $this->documents,

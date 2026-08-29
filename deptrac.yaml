@@ -54,9 +54,6 @@ deptrac:
     - name: Transport
       collectors:
         - { type: directory, value: src/Transport/.* }
-    - name: TypeInference
-      collectors:
-        - { type: directory, value: src/TypeInference/.* }
     - name: Utility
       collectors:
         - { type: directory, value: src/Utility/.* }
@@ -75,7 +72,6 @@ deptrac:
       - Repository
       - Resolution
       - Transport
-      - TypeInference
     Handler:
       - Capability
       - Completion
@@ -100,7 +96,6 @@ deptrac:
       - Knowledge
       - Parser
       - Repository
-      - TypeInference
       - Utility
     Knowledge:
       - Cache
@@ -121,13 +116,8 @@ deptrac:
       - Knowledge
       - Parser
       - Utility
-    TypeInference:
-      - Domain
-      - Repository
-      - Utility
     Utility:
       - Domain
-      - TypeInference # ExpressionTypeResolver, the documented TypeResolverInterface wrapper
     Parser:
       - Document
     Document:

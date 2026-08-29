@@ -29,10 +29,11 @@ use Firehed\PhpLsp\Resolution\ResolvedMember;
 use Firehed\PhpLsp\Resolution\ResolvedParameter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -42,9 +43,11 @@ use Throwable;
 use TypeError;
 
 #[CoversClass(CallContextDetector::class)]
+#[CoversClass(ExpressionResolver::class)]
 #[CoversClass(MemberAccessDetector::class)]
-#[CoversClass(SymbolResolver::class)]
 #[CoversClass(NameContextFactory::class)]
+#[CoversClass(ResolvedTypeOnly::class)]
+#[CoversClass(SymbolResolver::class)]
 #[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {
@@ -67,13 +70,11 @@ final class SymbolResolverTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
-            typeResolver: $typeResolver,
         );
 
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
@@ -610,6 +611,23 @@ final class SymbolResolverTest extends TestCase
         $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
 
         self::assertVariablesContain($variables, 'key', 'value');
+    }
+
+    public function testGetVariablesInScopeDeduplicatesReassignedVariable(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'reassigned_prefix');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $counterCount = 0;
+        foreach ($variables as $variable) {
+            if ($variable->getName() === 'counter') {
+                $counterCount++;
+            }
+        }
+        self::assertSame(1, $counterCount, 'A reassigned variable is reported once, not once per Assign node');
     }
 
     public function testGetVariablesInScopeIncludesCatchVariable(): void

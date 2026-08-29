@@ -18,7 +18,6 @@ use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\TypeInference\BasicTypeResolver;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -82,12 +81,10 @@ final class FunctionSurfaceParityTest extends TestCase
         $this->sink = $knowledge->sink;
 
         $memberResolver = new MemberResolver($knowledge->source);
-        $typeResolver = new BasicTypeResolver($memberResolver, $knowledge->source->lookupFunction(...));
         $this->symbolResolver = new SymbolResolver(
             $parser,
             $knowledge->source,
             $memberResolver,
-            $typeResolver,
         );
     }
 

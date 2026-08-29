@@ -52,4 +52,11 @@ class Variables
             $k/*|foreach_key*/
         }
     }
+
+    public function withReassignment(): void
+    {
+        $counter = 1;
+        $counter = 2;
+        $c/*|reassigned_prefix*/
+    }
 }
