@@ -9,7 +9,7 @@ namespace Firehed\PhpLsp\Domain;
  * The metadata objects (ClassInfo, MethodInfo, etc.) implement this directly so
  * handlers do not branch on kind.
  */
-interface ResolvedSymbol
+interface ResolvedSymbol extends Formattable
 {
     /**
      * Returns the source location where this symbol is defined, or null if unknown.
@@ -25,9 +25,4 @@ interface ResolvedSymbol
      * Returns the symbol's type. For callables, this is the return type.
      */
     public function getType(): ?Type;
-
-    /**
-     * Returns a formatted signature suitable for display (e.g., hover tooltips).
-     */
-    public function format(): string;
 }

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PropertyInfo::class)]
 class PropertyInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $property = new PropertyInfo(
@@ -129,7 +132,7 @@ class PropertyInfoTest extends TestCase
 
     public function testResolvedMemberMetadata(): void
     {
-        $property = $this->makeProperty();
+        $property = $this->makeSubject();
 
         self::assertSame(MemberKind::Property, $property->getMemberKind());
         self::assertSame('value', $property->getName()->name);
@@ -139,35 +142,7 @@ class PropertyInfoTest extends TestCase
         self::assertFalse($property->isStatic());
     }
 
-    public function testGetDefinitionLocation(): void
-    {
-        $property = $this->makeProperty('/path/to/file.php', 5);
-
-        $location = $property->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-        self::assertSame(4, $location->startLine);
-    }
-
-    public function testGetDefinitionLocationNullWhenFileNull(): void
-    {
-        self::assertNull($this->makeProperty(null, 5)->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $property = $this->makeProperty(docblock: "/**\n * A prose line\n */");
-
-        self::assertSame('A prose line', $property->getDocumentation());
-    }
-
-    public function testGetDocumentationNullWhenNoDocblock(): void
-    {
-        self::assertNull($this->makeProperty(docblock: null)->getDocumentation());
-    }
-
-    private function makeProperty(?string $file = null, ?int $line = null, ?string $docblock = null): PropertyInfo
+    protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): PropertyInfo
     {
         return new PropertyInfo(
             name: new PropertyName('value'),

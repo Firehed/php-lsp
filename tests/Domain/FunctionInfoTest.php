@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PhpParser\Comment\Doc;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
@@ -16,6 +17,8 @@ use ReflectionFunction;
 #[CoversClass(FunctionInfo::class)]
 class FunctionInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $func = new FunctionInfo(
@@ -285,7 +288,7 @@ class FunctionInfoTest extends TestCase
 
     public function testResolvedCallableMetadata(): void
     {
-        $func = $this->makeFunction();
+        $func = $this->makeSubject();
 
         self::assertSame('int', $func->getReturnType()?->format());
         self::assertSame('int', $func->getType()?->format());
@@ -294,35 +297,7 @@ class FunctionInfoTest extends TestCase
         self::assertNull($func->getParameterAtPosition(0));
     }
 
-    public function testGetDefinitionLocation(): void
-    {
-        $func = $this->makeFunction('/path/to/file.php', 10);
-
-        $location = $func->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-        self::assertSame(9, $location->startLine);
-    }
-
-    public function testGetDefinitionLocationNullWhenFileNull(): void
-    {
-        self::assertNull($this->makeFunction(null, 10)->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $func = $this->makeFunction(docblock: "/**\n * What it does\n */");
-
-        self::assertSame('What it does', $func->getDocumentation());
-    }
-
-    public function testGetDocumentationNullWhenNoDocblock(): void
-    {
-        self::assertNull($this->makeFunction(docblock: null)->getDocumentation());
-    }
-
-    private function makeFunction(?string $file = null, ?int $line = null, ?string $docblock = null): FunctionInfo
+    protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): FunctionInfo
     {
         return new FunctionInfo(
             name: 'myFunction',

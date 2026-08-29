@@ -16,10 +16,9 @@ use PhpParser\Node\Expr;
  * differing in one field, or a sentinel ClassName the type system cannot catch
  * as a lie.
  */
-final readonly class ConstantInfo implements Formattable, MemberInfo, SymbolInfo
+final readonly class ConstantInfo implements MemberInfo, SymbolInfo
 {
     use HasSymbolLocation;
-
 
     public function __construct(
         public ConstantName $name,

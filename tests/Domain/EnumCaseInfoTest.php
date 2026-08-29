@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(EnumCaseInfo::class)]
 class EnumCaseInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $case = new EnumCaseInfo(
@@ -73,7 +76,7 @@ class EnumCaseInfoTest extends TestCase
 
     public function testResolvedMemberMetadata(): void
     {
-        $case = $this->makeCase();
+        $case = $this->makeSubject();
 
         self::assertSame(MemberKind::EnumCase, $case->getMemberKind());
         self::assertSame('Active', $case->getName()->name);
@@ -83,35 +86,7 @@ class EnumCaseInfoTest extends TestCase
         self::assertTrue($case->isStatic(), 'an enum case is reached on the enum');
     }
 
-    public function testGetDefinitionLocation(): void
-    {
-        $case = $this->makeCase('/path/to/file.php', 8);
-
-        $location = $case->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-        self::assertSame(7, $location->startLine);
-    }
-
-    public function testGetDefinitionLocationNullWhenFileNull(): void
-    {
-        self::assertNull($this->makeCase(null, 8)->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $case = $this->makeCase(docblock: "/**\n * Live status\n */");
-
-        self::assertSame('Live status', $case->getDocumentation());
-    }
-
-    public function testGetDocumentationNullWhenNoDocblock(): void
-    {
-        self::assertNull($this->makeCase(docblock: null)->getDocumentation());
-    }
-
-    private function makeCase(?string $file = null, ?int $line = null, ?string $docblock = null): EnumCaseInfo
+    protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): EnumCaseInfo
     {
         return new EnumCaseInfo(
             name: new EnumCaseName('Active'),

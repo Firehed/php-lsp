@@ -181,18 +181,15 @@ final class SymbolResolver implements CodeResolver
         MemberFilter $filter,
         bool $includeStatic,
     ): array {
-        $kinds = [MemberKind::Method, MemberKind::Property];
-        if ($includeStatic) {
-            $kinds[] = MemberKind::Constant;
-            $kinds[] = MemberKind::EnumCase;
-        }
+        $kinds = $includeStatic
+            ? [MemberKind::Method, MemberKind::Property, MemberKind::Constant, MemberKind::EnumCase]
+            : [MemberKind::Method, MemberKind::Property];
 
         $members = [];
         foreach ($kinds as $kind) {
-            $members = array_merge(
-                $members,
-                $this->memberResolver->getMembersOfKind($className, $kind, $minVisibility, $filter),
-            );
+            foreach ($this->memberResolver->getMembersOfKind($className, $kind, $minVisibility, $filter) as $member) {
+                $members[] = $member;
+            }
         }
         return $members;
     }

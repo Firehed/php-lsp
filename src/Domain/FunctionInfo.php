@@ -10,11 +10,10 @@ use ReflectionFunction;
 /**
  * Metadata about a standalone function.
  */
-final readonly class FunctionInfo implements Formattable, ResolvedCallable, SymbolInfo
+final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
 {
     use HasCallableParameters;
     use HasSymbolLocation;
-
 
     /**
      * @param list<ParameterInfo> $parameters

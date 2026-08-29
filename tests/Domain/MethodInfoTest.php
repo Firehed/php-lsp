@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(MethodInfo::class)]
 class MethodInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $method = new MethodInfo(
@@ -203,7 +206,7 @@ class MethodInfoTest extends TestCase
 
     public function testResolvedMemberMetadata(): void
     {
-        $method = $this->makeMethod();
+        $method = $this->makeSubject();
 
         self::assertSame(MemberKind::Method, $method->getMemberKind());
         self::assertSame('doSomething', $method->getName()->name);
@@ -223,7 +226,7 @@ class MethodInfoTest extends TestCase
             isVariadic: false,
             isPassedByReference: false,
         );
-        $method = $this->makeMethod(parameters: [$param]);
+        $method = $this->makeSubject(parameters: [$param]);
 
         self::assertSame('int', $method->getReturnType()?->format());
         self::assertSame('int', $method->getType()?->format());
@@ -234,38 +237,10 @@ class MethodInfoTest extends TestCase
         self::assertNull($method->getParameterAtPosition(1));
     }
 
-    public function testGetDefinitionLocation(): void
-    {
-        $method = $this->makeMethod('/path/to/file.php', 10);
-
-        $location = $method->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-        self::assertSame(9, $location->startLine);
-    }
-
-    public function testGetDefinitionLocationNullWhenFileNull(): void
-    {
-        self::assertNull($this->makeMethod(null, 10)->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $method = $this->makeMethod(docblock: "/**\n * Test description\n */");
-
-        self::assertSame('Test description', $method->getDocumentation());
-    }
-
-    public function testGetDocumentationNullWhenNoDocblock(): void
-    {
-        self::assertNull($this->makeMethod(docblock: null)->getDocumentation());
-    }
-
     /**
      * @param list<ParameterInfo> $parameters
      */
-    private function makeMethod(
+    protected function makeSubject(
         ?string $file = null,
         ?int $line = null,
         ?string $docblock = null,

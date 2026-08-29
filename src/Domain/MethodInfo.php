@@ -7,11 +7,10 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class method.
  */
-final readonly class MethodInfo implements Formattable, MemberInfo, ResolvedCallable
+final readonly class MethodInfo implements MemberInfo, ResolvedCallable
 {
     use HasCallableParameters;
     use HasSymbolLocation;
-
 
     /**
      * @param list<ParameterInfo> $parameters

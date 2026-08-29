@@ -17,12 +17,9 @@ trait HasCallableParameters
 
     public function getParameterAtPosition(int $position): ?ParameterInfo
     {
-        foreach ($this->parameters as $param) {
-            if ($param->position === $position) {
-                return $param;
-            }
-        }
-        return null;
+        // ParameterInfo::position mirrors the list index, so a direct lookup
+        // beats the linear scan every SignatureHelp/named-argument call otherwise pays.
+        return $this->parameters[$position] ?? null;
     }
 
     public function getParameterByName(string $name): ?ParameterInfo

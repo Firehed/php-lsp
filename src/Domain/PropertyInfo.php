@@ -7,10 +7,9 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class property.
  */
-final readonly class PropertyInfo implements Formattable, MemberInfo
+final readonly class PropertyInfo implements MemberInfo
 {
     use HasSymbolLocation;
-
 
     public function __construct(
         public PropertyName $name,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -11,6 +12,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(PrimitiveType::class)]
 class ConstantInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $constant = new ConstantInfo(
@@ -133,7 +136,7 @@ class ConstantInfoTest extends TestCase
 
     public function testResolvedMemberMetadata(): void
     {
-        $constant = $this->makeClassConstant();
+        $constant = $this->makeSubject();
 
         self::assertSame(MemberKind::Constant, $constant->getMemberKind());
         self::assertSame('MAX_SIZE', $constant->getName()->name);
@@ -160,35 +163,7 @@ class ConstantInfoTest extends TestCase
         $globalConstant->getDeclaringClass();
     }
 
-    public function testGetDefinitionLocation(): void
-    {
-        $constant = $this->makeClassConstant('/path/to/file.php', 5);
-
-        $location = $constant->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-        self::assertSame(4, $location->startLine);
-    }
-
-    public function testGetDefinitionLocationNullWhenFileNull(): void
-    {
-        self::assertNull($this->makeClassConstant(null, 5)->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $constant = $this->makeClassConstant(docblock: "/**\n * The upper bound\n */");
-
-        self::assertSame('The upper bound', $constant->getDocumentation());
-    }
-
-    public function testGetDocumentationNullWhenNoDocblock(): void
-    {
-        self::assertNull($this->makeClassConstant(docblock: null)->getDocumentation());
-    }
-
-    private function makeClassConstant(
+    protected function makeSubject(
         ?string $file = null,
         ?int $line = null,
         ?string $docblock = null,

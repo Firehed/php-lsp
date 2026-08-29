@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use Firehed\PhpLsp\Tests\Domain\HasSymbolLocationTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -11,6 +12,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ClassInfo::class)]
 class ClassInfoTest extends TestCase
 {
+    use HasSymbolLocationTestTrait;
+
     public function testConstruction(): void
     {
         $class = new ClassInfo(
@@ -232,32 +235,15 @@ class ClassInfoTest extends TestCase
         self::assertSame(ClassInfo::class, $class->getType()->fqn);
     }
 
-    public function testGetDefinitionLocation(): void
+    protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): ClassInfo
     {
-        $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_, file: '/path/to/file.php', line: 3);
-
-        $location = $class->getDefinitionLocation();
-
-        self::assertNotNull($location);
-        self::assertSame('file:///path/to/file.php', $location->uri);
-        self::assertSame(2, $location->startLine);
-    }
-
-    public function testGetDefinitionLocationNullWhenFileNull(): void
-    {
-        self::assertNull($this->createClassInfo(ClassInfo::class, ClassKind::Class_)->getDefinitionLocation());
-    }
-
-    public function testGetDocumentation(): void
-    {
-        $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_, docblock: "/**\n * A prose line\n */");
-
-        self::assertSame('A prose line', $class->getDocumentation());
-    }
-
-    public function testGetDocumentationNullWhenNoDocblock(): void
-    {
-        self::assertNull($this->createClassInfo(ClassInfo::class, ClassKind::Class_)->getDocumentation());
+        return $this->createClassInfo(
+            ClassInfo::class,
+            ClassKind::Class_,
+            file: $file,
+            line: $line,
+            docblock: $docblock,
+        );
     }
 
     /**

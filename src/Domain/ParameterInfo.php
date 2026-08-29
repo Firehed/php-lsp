@@ -12,7 +12,7 @@ use ReflectionParameter;
 /**
  * Metadata about a method or function parameter.
  */
-final readonly class ParameterInfo implements Formattable, ResolvedSymbol
+final readonly class ParameterInfo implements ResolvedSymbol
 {
     public function __construct(
         public string $name,
