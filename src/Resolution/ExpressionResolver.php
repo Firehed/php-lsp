@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
@@ -246,7 +247,7 @@ final class ExpressionResolver
         if ($docblock === null) {
             return null;
         }
-        $elemShort = \Firehed\PhpLsp\Domain\DocblockParser::arrayElementType($docblock);
+        $elemShort = DocblockParser::arrayElementType($docblock);
         if ($elemShort === null) {
             return null;
         }
