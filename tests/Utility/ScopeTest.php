@@ -77,8 +77,9 @@ class ScopeTest extends TestCase
 
         $scope = Scope::forNode($closure);
 
-        self::assertTrue($scope->capturesVariable('captured'), 'use($captured) should be a capture');
-        self::assertFalse($scope->capturesVariable('notCaptured'));
+        $captured = self::useNames($scope);
+        self::assertContains('captured', $captured, 'use($captured) should be exposed as a capture');
+        self::assertNotContains('notCaptured', $captured);
         self::assertNull($scope->getThisType(), 'A closure is not a method, so $this is not added here');
         self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext(), 'Closure inherits class context');
     }
@@ -188,7 +189,7 @@ class ScopeTest extends TestCase
         self::assertNull($scope->getSelfContext());
         self::assertNull($scope->getParentContext());
         self::assertNull($scope->getThisType());
-        self::assertFalse($scope->capturesVariable('anything'));
+        self::assertSame([], $scope->getUses(), 'Global scope declares no closure captures');
         self::assertNull($scope->getEnclosingClassLike(), 'Global scope has no class-like');
     }
 
@@ -200,8 +201,9 @@ class ScopeTest extends TestCase
 
         $scope = Scope::atOffset($ast, $offset);
 
-        self::assertTrue(
-            $scope->capturesVariable('captured'),
+        self::assertContains(
+            'captured',
+            self::useNames($scope),
             'Innermost function-like node (the closure) should win over the enclosing method',
         );
     }
@@ -232,6 +234,20 @@ class ScopeTest extends TestCase
 
         self::assertNull($scope->getSelfContext());
         self::assertSame($ast, $scope->getStatements(), 'Without a namespace, global statements are the AST root');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function useNames(Scope $scope): array
+    {
+        $names = [];
+        foreach ($scope->getUses() as $use) {
+            if (is_string($use->var->name)) {
+                $names[] = $use->var->name;
+            }
+        }
+        return $names;
     }
 
     /**

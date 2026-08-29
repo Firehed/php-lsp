@@ -165,21 +165,6 @@ final class Scope
     }
 
     /**
-     * Whether the named variable is captured by a closure `use()` clause. Such
-     * variables are bound from the enclosing scope, so their type cannot be
-     * determined from local assignments.
-     */
-    public function capturesVariable(string $name): bool
-    {
-        foreach ($this->uses as $use) {
-            if (is_string($use->var->name) && $use->var->name === $name) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * True when the scope inherits its enclosing scope's variable bindings
      * implicitly. Only arrow functions do this: `fn () => $x` reads $x from
      * the enclosing scope with no `use` clause.
