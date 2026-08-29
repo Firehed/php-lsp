@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\Type;
-use Firehed\PhpLsp\Index\Location;
+use Firehed\PhpLsp\Domain\Location;
 
 /**
  * A resolved symbol represents a code element that has been located and analyzed.

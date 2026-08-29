@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
