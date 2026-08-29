@@ -3601,15 +3601,23 @@ class CompletionHandlerTest extends TestCase
 
     public function testCompletionThisInVeryBrokenFile(): void
     {
-        // File with NO closing braces - parser fails completely
-        // This tests the pure text-based fallback for both class detection AND member extraction
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/VeryBroken.php', 'this_in_if');
-        $document = $this->documents->get($cursor['uri']);
+        // A file broken mid-edit yields no declarations from the parser, and the
+        // sink preserves the last-good registration so completion of $this-> still
+        // finds the class's members (RFC 1 §5.3). This test drives that path: it
+        // opens a valid version of the class, then updates the same URI to the
+        // broken content that carries the cursor marker.
+        $uri = 'file:///fixtures/src/IncompleteCode/VeryBroken.php';
+        $this->openDocument($uri, $this->loadFixture('TopLevel/very_broken_seed.php'));
+
+        $brokenContent = $this->loadFixture('src/IncompleteCode/VeryBroken.php');
+        $this->changeDocument($uri, $brokenContent);
+
+        $cursor = ['uri' => $uri, ...$this->locateCursor($brokenContent, 'this_in_if')];
+        $document = $this->documents->get($uri);
         assert($document !== null);
 
-        // Verify parser fails
         $ast = $this->parser->parse($document);
-        self::assertEmpty($ast, 'Parser should fail completely for very broken file');
+        self::assertEmpty($ast, 'the broken version must parse to no statements — the case this test covers');
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -3617,9 +3625,8 @@ class CompletionHandlerTest extends TestCase
         self::assertArrayHasKey('items', $result);
         $labels = array_column($result['items'], 'label');
 
-        // Should still offer class members via pure text-based fallback
-        self::assertContains('getName', $labels, 'Methods should be offered even when parser fails');
-        self::assertContains('name', $labels, 'Properties should be offered even when parser fails');
+        self::assertContains('getName', $labels, 'a preserved registration must still offer the class methods');
+        self::assertContains('name', $labels, 'a preserved registration must still offer the class properties');
     }
 
     public function testCompletionChainedAccessInIfCondition(): void

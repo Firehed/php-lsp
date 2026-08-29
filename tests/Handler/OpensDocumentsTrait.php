@@ -48,6 +48,25 @@ trait OpensDocumentsTrait
     }
 
     /**
+     * Sends a textDocument/didChange notification with the given full text.
+     *
+     * Pair with {@see openDocument()} to drive multi-version scenarios: the same URI
+     * gets a first open, then successive updates whose parse states differ (typically
+     * a good version followed by a broken one).
+     */
+    private function changeDocument(string $uri, string $text, int $version = 2): void
+    {
+        $this->syncHandler->handle(NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didChange',
+            'params' => [
+                'textDocument' => ['uri' => $uri, 'version' => $version],
+                'contentChanges' => [['text' => $text]],
+            ],
+        ]));
+    }
+
+    /**
      * Opens a fixture file as a document and returns its URI.
      *
      * Use for tests that need a complete file without cursor positioning,
