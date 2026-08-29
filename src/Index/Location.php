@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
-use Firehed\PhpLsp\Document\FileUri;
+use Firehed\PhpLsp\Domain\FileUri;
 
 final readonly class Location
 {
