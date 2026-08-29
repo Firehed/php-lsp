@@ -77,12 +77,8 @@ final class DocumentSymbolSink implements SymbolSink
         $ast = $this->parser->parse($document) ?? [];
         $declarations = $this->scanner->scan($ast);
 
-        // A version that parses to no declarations keeps the previous registration
-        // rather than clearing it (RFC 1 §5.3). A file broken mid-edit yields no
-        // declarations, and completion of $this-> on that file must still offer the
-        // class's members, so the last-good state stands until the next parse names
-        // declarations again. A first open of a declaration-less document has nothing
-        // to preserve, so the stores stay empty in that case.
+        // A version that names no declarations keeps the previous registration, so
+        // a file broken mid-edit still resolves through its last-good state (RFC 1 §5.3).
         if ($declarations->classLikes === [] && $declarations->functions === [] && $declarations->constants === []) {
             return;
         }

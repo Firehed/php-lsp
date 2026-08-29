@@ -49,10 +49,6 @@ trait OpensDocumentsTrait
 
     /**
      * Sends a textDocument/didChange notification with the given full text.
-     *
-     * Pair with {@see openDocument()} to drive multi-version scenarios: the same URI
-     * gets a first open, then successive updates whose parse states differ (typically
-     * a good version followed by a broken one).
      */
     private function changeDocument(string $uri, string $text, int $version = 2): void
     {

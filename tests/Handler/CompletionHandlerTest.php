@@ -3601,11 +3601,9 @@ class CompletionHandlerTest extends TestCase
 
     public function testCompletionThisInVeryBrokenFile(): void
     {
-        // A file broken mid-edit yields no declarations from the parser, and the
-        // sink preserves the last-good registration so completion of $this-> still
-        // finds the class's members (RFC 1 §5.3). This test drives that path: it
-        // opens a valid version of the class, then updates the same URI to the
-        // broken content that carries the cursor marker.
+        // Open a valid version so the class is registered, then update to the broken
+        // variant whose parse yields no declarations — the sink preserves the prior
+        // registration so completion of $this-> still finds the class's members.
         $uri = 'file:///fixtures/src/IncompleteCode/VeryBroken.php';
         $this->openDocument($uri, $this->loadFixture('TopLevel/very_broken_seed.php'));
 

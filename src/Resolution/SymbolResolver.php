@@ -134,8 +134,6 @@ final class SymbolResolver implements CodeResolver
      * For instance access: returns methods and properties.
      * For static access: also includes constants and enum cases.
      *
-     * Falls back to text-based extraction when AST-based resolution fails.
-     *
      * @return list<ResolvedMember>
      */
     public function getAccessibleMembers(
@@ -153,14 +151,9 @@ final class SymbolResolver implements CodeResolver
         $includeStatic = $filter !== MemberFilter::Instance;
 
         foreach ($classNames as $className) {
-            $classMembers = $this->getMembersForClass($className, $minVisibility, $filter, $includeStatic);
-
-            // Fall back to text-based extraction when AST-based resolution fails
-            if ($classMembers === []) {
-                $classMembers = $this->textFallback->extractMembers($document, $className, $minVisibility, $filter);
+            foreach ($this->getMembersForClass($className, $minVisibility, $filter, $includeStatic) as $member) {
+                $members[] = $member;
             }
-
-            $members = array_merge($members, $classMembers);
         }
 
         return $members;

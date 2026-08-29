@@ -2312,32 +2312,6 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
-    public function testGetAccessibleMembersUsesTextFallbackForBrokenClass(): void
-    {
-        // VeryBrokenTarget is missing its opening brace - parser can't recognize it as a class.
-        // But text-based detection finds `VeryBrokenTarget::` and extractMembers can
-        // find the const and static method via regex.
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenClassMembers.php', 'broken_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Should detect static access on broken class');
-        self::assertSame('Fixtures\\IncompleteCode\\VeryBrokenTarget', $context->type->format());
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::All,
-        );
-
-        // Text-based extraction should find these even though class has broken syntax
-        self::assertMembersContain($members, 'NAME', 'create', 'publicProp');
-        // Private members should be filtered out when accessed externally
-        self::assertNotMembersContain($members, 'SECRET', 'privateHelper', 'privateProp');
-    }
-
     public function testGetMemberAccessContextHandlesParentInIncompleteCode(): void
     {
         // parent:: requires AST to find the extends clause - test that it works
@@ -2364,51 +2338,6 @@ final class SymbolResolverTest extends TestCase
         $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
 
         self::assertNull($context, 'parent:: without extends should return null');
-    }
-
-    public function testGetAccessibleMembersExtractsStaticOnlyFromBrokenClass(): void
-    {
-        // Test that static filter skips property extraction
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenClassMembers.php', 'broken_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context);
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Static,
-        );
-
-        // Should include static members
-        self::assertMembersContain($members, 'NAME', 'create');
-        // Should NOT include instance properties (Static filter skips them)
-        self::assertNotMembersContain($members, 'publicProp');
-    }
-
-    public function testGetAccessibleMembersExtractsInstanceMembersFromBrokenClass(): void
-    {
-        // Test instance member extraction from a broken class
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenClassMembers.php', 'broken_instance');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Should detect $this-> in broken class');
-        self::assertSame('Fixtures\\IncompleteCode\\BrokenInstanceAccess', $context->type->format());
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Instance,
-        );
-
-        // Should find instance members via text extraction
-        self::assertMembersContain($members, 'name', 'test');
     }
 
     public function testGetMemberAccessContextReturnsNullForThisOutsideClass(): void
@@ -2493,53 +2422,6 @@ final class SymbolResolverTest extends TestCase
         // Should resolve to raw class name
         self::assertNotNull($context);
         self::assertSame('SomeClass', $context->type->format());
-    }
-
-    public function testGetAccessibleMembersIncludesInheritedMembersInTextFallback(): void
-    {
-        // Open ParentClass so MemberResolver can find it for inheritance
-        $this->openFixture('src/Inheritance/ParentClass.php');
-
-        // BrokenChildWithParent has broken syntax (missing opening brace)
-        // but extends ParentClass which is resolvable
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenInheritance.php', 'broken_inherited');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Should resolve $this access');
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Instance,
-        );
-
-        // Child member via text fallback, plus inherited members from ParentClass
-        self::assertMembersContain($members, 'childMethod', 'parentMethod', 'parentProperty');
-    }
-
-    public function testGetAccessibleMembersIncludesInheritedStaticMembersInTextFallback(): void
-    {
-        $this->openFixture('src/Inheritance/ParentClass.php');
-
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenInheritance.php', 'broken_static_inherited');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Should resolve self:: access');
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Static,
-        );
-
-        // Child constant via text fallback, plus inherited static members from ParentClass
-        self::assertMembersContain($members, 'CHILD_CONST', 'PARENT_CONST', 'staticMethod');
     }
 
     /**
