@@ -613,6 +613,23 @@ final class SymbolResolverTest extends TestCase
         self::assertVariablesContain($variables, 'key', 'value');
     }
 
+    public function testGetVariablesInScopeDeduplicatesReassignedVariable(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'reassigned_prefix');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
+
+        $counterCount = 0;
+        foreach ($variables as $variable) {
+            if ($variable->getName() === 'counter') {
+                $counterCount++;
+            }
+        }
+        self::assertSame(1, $counterCount, 'A reassigned variable is reported once, not once per Assign node');
+    }
+
     public function testGetVariablesInScopeIncludesCatchVariable(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'catch_var');

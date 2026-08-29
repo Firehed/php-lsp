@@ -356,9 +356,14 @@ final class SymbolResolver implements CodeResolver
                 continue;
             }
             $resolved = $exprResolver->resolveVariable($binding->name, $scope, $offset, $ast);
+            // @codeCoverageIgnoreStart
             if ($resolved === null) {
-                continue;
+                throw new LogicException(
+                    'ExpressionResolver::resolveVariable cannot return null for a name '
+                    . 'reported by VariableBindings::before at the same scope and offset',
+                );
             }
+            // @codeCoverageIgnoreEnd
             $variables[] = $resolved;
             $seen[$binding->name] = true;
         }
