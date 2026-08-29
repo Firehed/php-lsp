@@ -97,6 +97,40 @@ class VariableDefinitionTest extends TestCase
         yield 'arrow function falls through to enclosing' => ['arrow_fallthrough', 73];
     }
 
+    /**
+     * @param positive-int $expectedLine 1-based line of the binding site
+     * @param int<0, max> $expectedCharacter 0-based column of the `$` on the binding line
+     */
+    #[DataProvider('bindingColumnCases')]
+    public function testLandsOnBindingColumn(string $marker, int $expectedLine, int $expectedCharacter): void
+    {
+        $cursor = $this->cursorOnVariable('src/Definition/VariableBindings.php', $marker);
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result, "JTD on {$marker} must return a location");
+        self::assertSame(
+            $expectedLine - 1,
+            $result['range']['start']['line'],
+            "JTD on {$marker} must land on line {$expectedLine}",
+        );
+        self::assertSame(
+            $expectedCharacter,
+            $result['range']['start']['character'],
+            "JTD on {$marker} must land on the binding column, not line start",
+        );
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: positive-int, 2: int<0, max>}>
+     */
+    public static function bindingColumnCases(): iterable
+    {
+        yield 'assignment lands on $x' => ['assignment_usage', 11, 8];
+        yield 'parameter lands on $p' => ['param_usage', 15, 40];
+        yield 'foreach value lands on $v' => ['foreach_value_usage', 22, 27];
+        yield 'catch var lands on $e' => ['catch_usage', 38, 28];
+    }
+
     public function testLongClosureIsolatesUncapturedName(): void
     {
         $cursor = $this->cursorOnVariable('src/Definition/VariableBindings.php', 'closure_uncaptured');

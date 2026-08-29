@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -58,7 +59,7 @@ final class ExpressionResolver
     public function __construct(
         private readonly MemberResolver $memberResolver,
         private readonly SymbolSource $symbolSource,
-        private readonly string $documentUri,
+        private readonly TextDocument $document,
     ) {
     }
 
@@ -493,7 +494,13 @@ final class ExpressionResolver
 
     private function locationFor(Node $node): Location
     {
-        $line = $node->getStartLine() - 1;
-        return new Location($this->documentUri, $line, 0, $line, 0);
+        $start = $this->document->positionAt($node->getStartFilePos());
+        return new Location(
+            $this->document->uri,
+            $start['line'],
+            $start['character'],
+            $start['line'],
+            $start['character'],
+        );
     }
 }

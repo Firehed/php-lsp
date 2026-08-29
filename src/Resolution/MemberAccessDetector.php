@@ -58,7 +58,7 @@ final class MemberAccessDetector
 
     private function expressionResolver(TextDocument $document): ExpressionResolver
     {
-        return new ExpressionResolver($this->memberResolver, $this->symbolSource, $document->uri);
+        return new ExpressionResolver($this->memberResolver, $this->symbolSource, $document);
     }
 
     /**
