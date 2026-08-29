@@ -142,7 +142,7 @@ final class MemberAccessDetector
     public function resolveInstanceAccessType(
         MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
         array $ast,
-        ?TextDocument $document = null,
+        TextDocument $document,
         ?int $line = null,
     ): ?Type {
         $resolvedType = $node->var->getAttribute('resolvedType');
@@ -150,15 +150,13 @@ final class MemberAccessDetector
             return $resolvedType;
         }
 
-        $exprResolver = $document !== null ? $this->expressionResolver($document) : null;
-        if ($exprResolver !== null) {
-            $type = $exprResolver->resolve($node->var, $ast)?->getType();
-            if ($type !== null) {
-                return $type;
-            }
+        $exprResolver = $this->expressionResolver($document);
+        $type = $exprResolver->resolve($node->var, $ast)?->getType();
+        if ($type !== null) {
+            return $type;
         }
 
-        if ($document === null || $line === null) {
+        if ($line === null) {
             return null;
         }
 
@@ -179,7 +177,7 @@ final class MemberAccessDetector
         }
 
         $thisVar->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
-        return $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
+        return $exprResolver->resolve($node->var, $ast)?->getType();
     }
 
     /**
@@ -191,7 +189,7 @@ final class MemberAccessDetector
     public function resolveInstanceAccessClassName(
         MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
         array $ast,
-        ?TextDocument $document = null,
+        TextDocument $document,
     ): ?ClassName {
         $type = $this->resolveInstanceAccessType($node, $ast, $document);
         return $type?->getResolvableClassNames()[0] ?? null;
