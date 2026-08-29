@@ -144,19 +144,20 @@ final class ExpressionResolver
     public function resolveVariable(string $name, Scope $scope, int $offset, array $ast): ?ResolvedVariable
     {
         while (true) {
-            $binding = $this->findNearestBinding($scope, $offset, $name);
-            if ($binding !== null) {
-                $type = $this->typeOfBinding($binding, $scope, $ast);
-                $location = $this->locationFor($binding->node);
-                return new ResolvedVariable($name, $type, $location);
+            $found = null;
+            foreach (VariableBindings::before($scope, $offset) as $binding) {
+                if ($binding->name === $name) {
+                    $found = $binding;
+                }
+            }
+            if ($found !== null) {
+                return $this->resolveBinding($found, $scope, $ast);
             }
             if (!$scope->allowsImplicitCapture()) {
                 return null;
             }
             $sourceNode = $scope->getSourceNode();
-            if ($sourceNode === null) {
-                return null;
-            }
+            assert($sourceNode !== null, 'allowsImplicitCapture() implies an ArrowFunction source node');
             $enclosingNode = ScopeFinder::findEnclosingScope($sourceNode);
             $scope = $enclosingNode !== null
                 ? Scope::forNode($enclosingNode)
@@ -165,15 +166,18 @@ final class ExpressionResolver
         }
     }
 
-    private function findNearestBinding(Scope $scope, int $offset, string $name): ?VariableBinding
+    /**
+     * Resolve a known binding without re-walking the scope. Used by callers that
+     * already have the binding in hand (variable enumeration), so an N-binding
+     * scope costs N type resolutions instead of N² binding walks.
+     *
+     * @param array<Stmt> $ast
+     */
+    public function resolveBinding(VariableBinding $binding, Scope $scope, array $ast): ResolvedVariable
     {
-        $found = null;
-        foreach (VariableBindings::before($scope, $offset) as $binding) {
-            if ($binding->name === $name) {
-                $found = $binding;
-            }
-        }
-        return $found;
+        $type = $this->typeOfBinding($binding, $scope, $ast);
+        $location = $this->locationFor($binding->node);
+        return new ResolvedVariable($binding->name, $type, $location);
     }
 
     /**

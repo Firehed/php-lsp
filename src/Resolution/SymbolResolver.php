@@ -339,30 +339,20 @@ final class SymbolResolver implements CodeResolver
         $scope = Scope::atOffset($ast, $offset);
         $exprResolver = $this->expressionResolver($document);
 
-        $variables = [];
-        $seen = [];
+        $nearest = [];
+        foreach (VariableBindings::before($scope, $offset) as $binding) {
+            $nearest[$binding->name] = $binding;
+        }
 
+        $variables = [];
         $thisType = $scope->getThisType();
         if ($thisType !== null) {
             $variables[] = new ResolvedVariable('this', $thisType);
-            $seen['this'] = true;
+            unset($nearest['this']);
         }
 
-        foreach (VariableBindings::before($scope, $offset) as $binding) {
-            if (isset($seen[$binding->name])) {
-                continue;
-            }
-            $resolved = $exprResolver->resolveVariable($binding->name, $scope, $offset, $ast);
-            // @codeCoverageIgnoreStart
-            if ($resolved === null) {
-                throw new LogicException(
-                    'ExpressionResolver::resolveVariable cannot return null for a name '
-                    . 'reported by VariableBindings::before at the same scope and offset',
-                );
-            }
-            // @codeCoverageIgnoreEnd
-            $variables[] = $resolved;
-            $seen[$binding->name] = true;
+        foreach ($nearest as $binding) {
+            $variables[] = $exprResolver->resolveBinding($binding, $scope, $ast);
         }
 
         return $variables;
