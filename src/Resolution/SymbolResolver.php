@@ -86,7 +86,7 @@ final class SymbolResolver implements CodeResolver
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
     ) {
-        $this->textFallback = new TextFallbackHelper($memberResolver);
+        $this->textFallback = new TextFallbackHelper();
         $this->callDetector = new CallContextDetector($this->textFallback);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,

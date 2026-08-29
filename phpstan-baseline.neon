@@ -85,24 +85,6 @@ parameters:
 			path: src/Resolution/SymbolResolver.php
 
 		-
-			message: '#^\!\=\= on MemberFilter branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 3
-			path: src/Resolution/TextFallbackHelper.php
-
-		-
-			message: '#^\=\=\= on MemberFilter branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
-			identifier: phpLsp.kindInspection
-			count: 2
-			path: src/Resolution/TextFallbackHelper.php
-
-		-
-			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Resolution/TextFallbackHelper.php
-
-		-
 			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1

@@ -61,7 +61,7 @@ final class AstTextAgreementTest extends TestCase
             $this->parser,
         );
         $this->memberResolver = new MemberResolver($knowledge->source);
-        $this->textFallback = new TextFallbackHelper($this->memberResolver);
+        $this->textFallback = new TextFallbackHelper();
         $this->callDetector = new CallContextDetector($this->textFallback);
         $this->memberAccessDetector = new MemberAccessDetector(
             $knowledge->source,
