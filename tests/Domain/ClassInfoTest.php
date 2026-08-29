@@ -225,6 +225,41 @@ class ClassInfoTest extends TestCase
         self::assertSame('enum ClassKind', $class->format());
     }
 
+    public function testGetTypeReturnsClassName(): void
+    {
+        $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_);
+
+        self::assertSame(ClassInfo::class, $class->getType()->fqn);
+    }
+
+    public function testGetDefinitionLocation(): void
+    {
+        $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_, file: '/path/to/file.php', line: 3);
+
+        $location = $class->getDefinitionLocation();
+
+        self::assertNotNull($location);
+        self::assertSame('file:///path/to/file.php', $location->uri);
+        self::assertSame(2, $location->startLine);
+    }
+
+    public function testGetDefinitionLocationNullWhenFileNull(): void
+    {
+        self::assertNull($this->createClassInfo(ClassInfo::class, ClassKind::Class_)->getDefinitionLocation());
+    }
+
+    public function testGetDocumentation(): void
+    {
+        $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_, docblock: "/**\n * A prose line\n */");
+
+        self::assertSame('A prose line', $class->getDocumentation());
+    }
+
+    public function testGetDocumentationNullWhenNoDocblock(): void
+    {
+        self::assertNull($this->createClassInfo(ClassInfo::class, ClassKind::Class_)->getDocumentation());
+    }
+
     /**
      * @param class-string $name
      * @param list<ClassName> $interfaces
@@ -237,6 +272,9 @@ class ClassInfoTest extends TestCase
         bool $isReadonly = false,
         ?ClassName $parent = null,
         array $interfaces = [],
+        ?string $file = null,
+        ?int $line = null,
+        ?string $docblock = null,
     ): ClassInfo {
         return new ClassInfo(
             name: new ClassName($name),
@@ -252,9 +290,9 @@ class ClassInfoTest extends TestCase
             properties: [],
             constants: [],
             enumCases: [],
-            docblock: null,
-            file: null,
-            line: null,
+            docblock: $docblock,
+            file: $file,
+            line: $line,
         );
     }
 }

@@ -282,4 +282,55 @@ class FunctionInfoTest extends TestCase
 
         self::assertSame("/**\n * A test function with documentation.\n */", $func->docblock);
     }
+
+    public function testResolvedCallableMetadata(): void
+    {
+        $func = $this->makeFunction();
+
+        self::assertSame('int', $func->getReturnType()?->format());
+        self::assertSame('int', $func->getType()?->format());
+        self::assertSame([], $func->getParameters());
+        self::assertNull($func->getParameterByName('missing'));
+        self::assertNull($func->getParameterAtPosition(0));
+    }
+
+    public function testGetDefinitionLocation(): void
+    {
+        $func = $this->makeFunction('/path/to/file.php', 10);
+
+        $location = $func->getDefinitionLocation();
+
+        self::assertNotNull($location);
+        self::assertSame('file:///path/to/file.php', $location->uri);
+        self::assertSame(9, $location->startLine);
+    }
+
+    public function testGetDefinitionLocationNullWhenFileNull(): void
+    {
+        self::assertNull($this->makeFunction(null, 10)->getDefinitionLocation());
+    }
+
+    public function testGetDocumentation(): void
+    {
+        $func = $this->makeFunction(docblock: "/**\n * What it does\n */");
+
+        self::assertSame('What it does', $func->getDocumentation());
+    }
+
+    public function testGetDocumentationNullWhenNoDocblock(): void
+    {
+        self::assertNull($this->makeFunction(docblock: null)->getDocumentation());
+    }
+
+    private function makeFunction(?string $file = null, ?int $line = null, ?string $docblock = null): FunctionInfo
+    {
+        return new FunctionInfo(
+            name: 'myFunction',
+            parameters: [],
+            returnType: new PrimitiveType('int'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+        );
+    }
 }

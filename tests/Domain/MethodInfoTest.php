@@ -200,4 +200,89 @@ class MethodInfoTest extends TestCase
 
         self::assertSame('private static final function getInstance(): self', $method->format());
     }
+
+    public function testResolvedMemberMetadata(): void
+    {
+        $method = $this->makeMethod();
+
+        self::assertSame(MemberKind::Method, $method->getMemberKind());
+        self::assertSame('doSomething', $method->getName()->name);
+        self::assertSame(MethodInfo::class, $method->getDeclaringClass()->fqn);
+        self::assertSame(Visibility::Public, $method->getVisibility());
+        self::assertFalse($method->isStatic());
+    }
+
+    public function testResolvedCallableMetadata(): void
+    {
+        $param = new ParameterInfo(
+            name: 'value',
+            type: new PrimitiveType('string'),
+            hasDefault: false,
+            defaultValue: null,
+            position: 0,
+            isVariadic: false,
+            isPassedByReference: false,
+        );
+        $method = $this->makeMethod(parameters: [$param]);
+
+        self::assertSame('int', $method->getReturnType()?->format());
+        self::assertSame('int', $method->getType()?->format());
+        self::assertSame([$param], $method->getParameters());
+        self::assertSame($param, $method->getParameterByName('value'));
+        self::assertSame($param, $method->getParameterAtPosition(0));
+        self::assertNull($method->getParameterByName('missing'));
+        self::assertNull($method->getParameterAtPosition(1));
+    }
+
+    public function testGetDefinitionLocation(): void
+    {
+        $method = $this->makeMethod('/path/to/file.php', 10);
+
+        $location = $method->getDefinitionLocation();
+
+        self::assertNotNull($location);
+        self::assertSame('file:///path/to/file.php', $location->uri);
+        self::assertSame(9, $location->startLine);
+    }
+
+    public function testGetDefinitionLocationNullWhenFileNull(): void
+    {
+        self::assertNull($this->makeMethod(null, 10)->getDefinitionLocation());
+    }
+
+    public function testGetDocumentation(): void
+    {
+        $method = $this->makeMethod(docblock: "/**\n * Test description\n */");
+
+        self::assertSame('Test description', $method->getDocumentation());
+    }
+
+    public function testGetDocumentationNullWhenNoDocblock(): void
+    {
+        self::assertNull($this->makeMethod(docblock: null)->getDocumentation());
+    }
+
+    /**
+     * @param list<ParameterInfo> $parameters
+     */
+    private function makeMethod(
+        ?string $file = null,
+        ?int $line = null,
+        ?string $docblock = null,
+        array $parameters = [],
+    ): MethodInfo {
+        return new MethodInfo(
+            name: new MethodName('doSomething'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: $parameters,
+            returnType: new PrimitiveType('int'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+            declaringClass: new ClassName(MethodInfo::class),
+        );
+    }
 }

@@ -130,4 +130,78 @@ class ConstantInfoTest extends TestCase
 
         self::assertSame('const int MAX_SIZE', $constant->format(), 'global constants show type after const');
     }
+
+    public function testResolvedMemberMetadata(): void
+    {
+        $constant = $this->makeClassConstant();
+
+        self::assertSame(MemberKind::Constant, $constant->getMemberKind());
+        self::assertSame('MAX_SIZE', $constant->getName()->name);
+        self::assertSame(ConstantInfo::class, $constant->getDeclaringClass()->fqn);
+        self::assertSame('int', $constant->getType()?->format());
+        self::assertSame(Visibility::Public, $constant->getVisibility());
+        self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');
+    }
+
+    public function testGetDeclaringClassAssertsOnGlobalConstant(): void
+    {
+        $globalConstant = new ConstantInfo(
+            name: new ConstantName('DEBUG'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+            declaringClass: null,
+        );
+
+        $this->expectException(\AssertionError::class);
+        $globalConstant->getDeclaringClass();
+    }
+
+    public function testGetDefinitionLocation(): void
+    {
+        $constant = $this->makeClassConstant('/path/to/file.php', 5);
+
+        $location = $constant->getDefinitionLocation();
+
+        self::assertNotNull($location);
+        self::assertSame('file:///path/to/file.php', $location->uri);
+        self::assertSame(4, $location->startLine);
+    }
+
+    public function testGetDefinitionLocationNullWhenFileNull(): void
+    {
+        self::assertNull($this->makeClassConstant(null, 5)->getDefinitionLocation());
+    }
+
+    public function testGetDocumentation(): void
+    {
+        $constant = $this->makeClassConstant(docblock: "/**\n * The upper bound\n */");
+
+        self::assertSame('The upper bound', $constant->getDocumentation());
+    }
+
+    public function testGetDocumentationNullWhenNoDocblock(): void
+    {
+        self::assertNull($this->makeClassConstant(docblock: null)->getDocumentation());
+    }
+
+    private function makeClassConstant(
+        ?string $file = null,
+        ?int $line = null,
+        ?string $docblock = null,
+    ): ConstantInfo {
+        return new ConstantInfo(
+            name: new ConstantName('MAX_SIZE'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: new PrimitiveType('int'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+            declaringClass: new ClassName(ConstantInfo::class),
+        );
+    }
 }

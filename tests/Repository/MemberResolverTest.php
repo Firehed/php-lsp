@@ -1496,4 +1496,21 @@ final class MemberResolverTest extends TestCase
             declaringClass: $declaringClass,
         );
     }
+
+    public function testGetMembersOfKindReturnsEmptyForUnknownClass(): void
+    {
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertSame(
+            [],
+            $resolver->getMembersOfKind(
+                new ClassName(self::fakeClass()),
+                \Firehed\PhpLsp\Domain\MemberKind::Method,
+                Visibility::Public,
+            ),
+        );
+    }
 }

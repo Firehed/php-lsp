@@ -126,4 +126,60 @@ class PropertyInfoTest extends TestCase
 
         self::assertSame('private static readonly array $cache', $property->format());
     }
+
+    public function testResolvedMemberMetadata(): void
+    {
+        $property = $this->makeProperty();
+
+        self::assertSame(MemberKind::Property, $property->getMemberKind());
+        self::assertSame('value', $property->getName()->name);
+        self::assertSame(PropertyInfo::class, $property->getDeclaringClass()->fqn);
+        self::assertSame('string', $property->getType()?->format());
+        self::assertSame(Visibility::Public, $property->getVisibility());
+        self::assertFalse($property->isStatic());
+    }
+
+    public function testGetDefinitionLocation(): void
+    {
+        $property = $this->makeProperty('/path/to/file.php', 5);
+
+        $location = $property->getDefinitionLocation();
+
+        self::assertNotNull($location);
+        self::assertSame('file:///path/to/file.php', $location->uri);
+        self::assertSame(4, $location->startLine);
+    }
+
+    public function testGetDefinitionLocationNullWhenFileNull(): void
+    {
+        self::assertNull($this->makeProperty(null, 5)->getDefinitionLocation());
+    }
+
+    public function testGetDocumentation(): void
+    {
+        $property = $this->makeProperty(docblock: "/**\n * A prose line\n */");
+
+        self::assertSame('A prose line', $property->getDocumentation());
+    }
+
+    public function testGetDocumentationNullWhenNoDocblock(): void
+    {
+        self::assertNull($this->makeProperty(docblock: null)->getDocumentation());
+    }
+
+    private function makeProperty(?string $file = null, ?int $line = null, ?string $docblock = null): PropertyInfo
+    {
+        return new PropertyInfo(
+            name: new PropertyName('value'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isReadonly: false,
+            isPromoted: false,
+            type: new PrimitiveType('string'),
+            docblock: $docblock,
+            file: $file,
+            line: $line,
+            declaringClass: new ClassName(PropertyInfo::class),
+        );
+    }
 }
