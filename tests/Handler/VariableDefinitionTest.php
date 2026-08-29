@@ -105,6 +105,19 @@ class VariableDefinitionTest extends TestCase
         self::assertNull($result, 'A long closure must not resolve an uncaptured name to an outer scope');
     }
 
+    public function testResolvesInGlobalScope(): void
+    {
+        $cursor = $this->cursorOnVariable('TopLevel/global_scope_variable_jtd.php', 'global_assignment_usage');
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result, 'JTD on a global-scope variable must return a location');
+        self::assertSame(
+            6,
+            $result['range']['start']['line'],
+            'JTD in global scope lands on the assignment line',
+        );
+    }
+
     public function testThisIsNotAVariableDefinition(): void
     {
         $cursor = $this->cursorOnVariable('src/Definition/VariableBindings.php', 'this_usage');
