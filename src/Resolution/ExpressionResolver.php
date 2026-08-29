@@ -192,47 +192,35 @@ final class ExpressionResolver
     private function typeOfBinding(VariableBinding $binding, Scope $scope, array $ast): ?Type
     {
         $node = $binding->node;
+        assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
+        $parent = $node->getAttribute('parent');
 
-        if ($node instanceof Variable && is_string($node->name)) {
-            $parent = $node->getAttribute('parent');
-            if ($parent instanceof Param) {
-                return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
-            }
-            if ($parent instanceof Expr\Assign && $parent->var === $node) {
-                return $this->resolve($parent->expr, $ast)?->getType();
-            }
-            if ($parent instanceof Stmt\Foreach_) {
-                return $this->foreachElementType($parent, $node, $ast);
-            }
-            if ($parent instanceof Stmt\Catch_) {
-                $classNames = [];
-                foreach ($parent->types as $type) {
-                    $classNames[] = TypeFactory::className(ScopeFinder::resolveClassName($type));
-                }
-                if ($classNames === []) {
-                    return null;
-                }
-                return count($classNames) === 1 ? $classNames[0] : TypeFactory::union($classNames);
-            }
-            if ($parent instanceof Node\ClosureUse) {
-                $closure = $parent->getAttribute('parent');
-                if ($closure instanceof Node) {
-                    $closureOffset = $closure->getStartFilePos();
-                    $enclosingNode = ScopeFinder::findEnclosingScope($closure);
-                    $outerScope = $enclosingNode !== null
-                        ? Scope::forNode($enclosingNode)
-                        : Scope::atOffset($ast, $closureOffset);
-                    return $this->resolveVariable($node->name, $outerScope, $closureOffset, $ast)?->getType();
-                }
-                return null;
-            }
+        if ($parent instanceof Expr\Assign && $parent->var === $node) {
+            return $this->resolve($parent->expr, $ast)?->getType();
         }
-
-        if ($node instanceof Param) {
-            return TypeFactory::fromNode($node->type, $scope->getSelfContext(), $scope->getParentContext());
+        if ($parent instanceof Stmt\Foreach_) {
+            return $this->foreachElementType($parent, $node, $ast);
         }
-
-        return null;
+        if ($parent instanceof Stmt\Catch_) {
+            assert($parent->types !== [], 'PHP grammar requires at least one type in a catch clause');
+            $classNames = [];
+            foreach ($parent->types as $type) {
+                $classNames[] = TypeFactory::className(ScopeFinder::resolveClassName($type));
+            }
+            return count($classNames) === 1 ? $classNames[0] : TypeFactory::union($classNames);
+        }
+        if ($parent instanceof Node\ClosureUse) {
+            $closure = $parent->getAttribute('parent');
+            assert($closure instanceof Node, 'ParentConnectingVisitor sets ClosureUse->parent');
+            $closureOffset = $closure->getStartFilePos();
+            $enclosingNode = ScopeFinder::findEnclosingScope($closure);
+            $outerScope = $enclosingNode !== null
+                ? Scope::forNode($enclosingNode)
+                : Scope::atOffset($ast, $closureOffset);
+            return $this->resolveVariable($node->name, $outerScope, $closureOffset, $ast)?->getType();
+        }
+        assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
+        return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
     }
 
     /**

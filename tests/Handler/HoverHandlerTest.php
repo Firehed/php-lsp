@@ -435,6 +435,26 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('$message', $result['contents']['value']);
     }
 
+    public function testHoverResolvesCloneReceiverType(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/TypeInference/BuiltinTypes.php', 'clone_receiver');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'clone receiver type-resolves so its method hovers');
+        self::assertStringContainsString('getTimestamp', $result['contents']['value'], 'hover names getTimestamp');
+    }
+
+    public function testHoverResolvesNullCoalesceReceiverType(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/TypeInference/BuiltinTypes.php', 'coalesce_receiver');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'null-coalesce receiver type-resolves so its method hovers');
+        self::assertStringContainsString('getTimestamp', $result['contents']['value'], 'hover names getTimestamp');
+    }
+
     public function testHoverOnMethodWithVariadicParameter(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Repository/ClassInfoPatterns.php', 'variadic_param');
