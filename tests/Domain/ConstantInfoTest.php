@@ -146,7 +146,7 @@ class ConstantInfoTest extends TestCase
         self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');
     }
 
-    public function testGetDeclaringClassAssertsOnGlobalConstant(): void
+    public function testGetDeclaringClassFailsOnGlobalConstant(): void
     {
         $globalConstant = new ConstantInfo(
             name: new ConstantName('DEBUG'),
@@ -159,8 +159,16 @@ class ConstantInfoTest extends TestCase
             declaringClass: null,
         );
 
-        $this->expectException(\AssertionError::class);
-        $globalConstant->getDeclaringClass();
+        // With assertions on (dev), assert() throws AssertionError. With them off
+        // (prod), assert() is a no-op and PHP's declared return type raises
+        // TypeError. Either shape enforces the same invariant.
+        try {
+            $globalConstant->getDeclaringClass();
+            self::fail('getDeclaringClass on a global constant should fail');
+        } catch (\AssertionError | \TypeError) {
+            // Expected: one of the two, depending on zend.assertions.
+            $this->addToAssertionCount(1);
+        }
     }
 
     protected function makeSubject(
