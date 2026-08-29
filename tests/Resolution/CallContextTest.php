@@ -40,9 +40,9 @@ final class CallContextTest extends TestCase
         self::assertSame([], $context->usedParameterNames);
     }
 
-    private function createResolvedCallable(): ResolvedFunction
+    private function createResolvedCallable(): FunctionInfo
     {
-        $functionInfo = new FunctionInfo(
+        return new FunctionInfo(
             name: 'testFunc',
             returnType: new PrimitiveType('void'),
             parameters: [
@@ -69,7 +69,5 @@ final class CallContextTest extends TestCase
             file: null,
             line: null,
         );
-
-        return new ResolvedFunction($functionInfo);
     }
 }

@@ -2,10 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Resolution;
-
-use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\Type;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * A resolved callable (function or method) with parameter information.

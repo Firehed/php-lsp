@@ -18,6 +18,9 @@ use PhpParser\Node\Expr;
  */
 final readonly class ConstantInfo implements Formattable, MemberInfo, SymbolInfo
 {
+    use HasSymbolLocation;
+
+
     public function __construct(
         public ConstantName $name,
         public Visibility $visibility,
@@ -85,6 +88,33 @@ final readonly class ConstantInfo implements Formattable, MemberInfo, SymbolInfo
             array_splice($parts, 1, 0, [$this->type->format()]);
         }
         return implode(' ', $parts);
+    }
+
+    /**
+     * A class constant's declaring class. Fails on a global constant, matching
+     * how the resolver hands one out only for the class-constant lookup path;
+     * the two shapes stay in one metadata type (§5.3), and the assertion is the
+     * type system's stand-in for the invariant the resolver enforces.
+     */
+    public function getDeclaringClass(): ClassName
+    {
+        assert($this->declaringClass !== null, 'getDeclaringClass() is only defined for class constants');
+        return $this->declaringClass;
+    }
+
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::Constant;
+    }
+
+    public function getName(): ConstantName
+    {
+        return $this->name;
+    }
+
+    public function getType(): ?Type
+    {
+        return $this->type;
     }
 
     public function getVisibility(): Visibility

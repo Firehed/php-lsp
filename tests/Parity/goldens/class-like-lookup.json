@@ -137,7 +137,7 @@
             "Fixtures\\Traits\\HasTimestamps"
         ],
         "methods": {
-            "__construct": "public function __construct(string $id, string $name, string $email, int $age, Fixtures\\Enum\\Status $status, ?Fixtures\\Domain\\User $manager, ?Fixtures\\Domain\\Team $team)",
+            "__construct": "public function __construct(string $id, string $name, string $email, int $age = 0, Fixtures\\Enum\\Status $status = \\Fixtures\\Enum\\Status::Active, ?Fixtures\\Domain\\User $manager = null, ?Fixtures\\Domain\\Team $team = null)",
             "activate": "public function activate(): void",
             "create": "public static function create(string $id, string $name, string $email): self",
             "deactivate": "public function deactivate(): void",
@@ -639,7 +639,7 @@
         "interfaces": [],
         "traits": [],
         "methods": {
-            "__construct": "public function __construct(string $name)",
+            "__construct": "public function __construct(string $name = '')",
             "overriddenMethod": "public function overriddenMethod(): void",
             "parentMethod": "public function parentMethod(): void",
             "privateMethod": "private function privateMethod(): void",
@@ -819,7 +819,7 @@
             "getUri": "public function getUri(): Psr\\Http\\Message\\UriInterface",
             "withMethod": "public function withMethod(string $method): Psr\\Http\\Message\\RequestInterface",
             "withRequestTarget": "public function withRequestTarget(string $requestTarget): Psr\\Http\\Message\\RequestInterface",
-            "withUri": "public function withUri(Psr\\Http\\Message\\UriInterface $uri, bool $preserveHost): Psr\\Http\\Message\\RequestInterface"
+            "withUri": "public function withUri(Psr\\Http\\Message\\UriInterface $uri, bool $preserveHost = false): Psr\\Http\\Message\\RequestInterface"
         },
         "properties": [],
         "constants": [],
@@ -840,7 +840,7 @@
         ],
         "traits": [],
         "methods": {
-            "getAttribute": "public function getAttribute(string $name, $default)",
+            "getAttribute": "public function getAttribute(string $name, $default = null)",
             "getAttributes": "public function getAttributes(): array",
             "getCookieParams": "public function getCookieParams(): array",
             "getParsedBody": "public function getParsedBody()",

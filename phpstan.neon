@@ -117,7 +117,7 @@ parameters:
             message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, TextFallbackHelper'
             allowIn:
                 - src/Completion/CompletionClassifier.php
-                - src/Utility/DocblockParser.php
+                - src/Domain/DocblockParser.php
                 - src/Resolution/TextFallbackHelper.php
                 - tests/*
         -

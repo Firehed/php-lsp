@@ -10,23 +10,22 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\NameContextFactory;
-use Firehed\PhpLsp\Resolution\ResolvedClass;
-use Firehed\PhpLsp\Resolution\ResolvedConstant;
-use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
-use Firehed\PhpLsp\Resolution\ResolvedFunction;
-use Firehed\PhpLsp\Resolution\ResolvedGlobalConstant;
-use Firehed\PhpLsp\Resolution\ResolvedMethod;
-use Firehed\PhpLsp\Resolution\ResolvedProperty;
+use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\MemberFilter;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
-use Firehed\PhpLsp\Resolution\ResolvedMember;
-use Firehed\PhpLsp\Resolution\ResolvedParameter;
+use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
@@ -100,7 +99,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedMethod::class, $result);
+        self::assertInstanceOf(MethodInfo::class, $result);
         self::assertStringContainsString('setName', $result->format());
     }
 
@@ -112,7 +111,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedMethod::class, $result);
+        self::assertInstanceOf(MethodInfo::class, $result);
         self::assertStringContainsString('setName', $result->format());
     }
 
@@ -124,7 +123,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedMethod::class, $result);
+        self::assertInstanceOf(MethodInfo::class, $result);
         self::assertStringContainsString('create', $result->format());
     }
 
@@ -137,7 +136,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedClass::class, $result);
+        self::assertInstanceOf(ClassInfo::class, $result);
         self::assertStringContainsString('User', $result->format());
     }
 
@@ -149,7 +148,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedFunction::class, $result);
+        self::assertInstanceOf(FunctionInfo::class, $result);
         self::assertStringContainsString('signatureHelpAdd', $result->format());
     }
 
@@ -162,7 +161,7 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertInstanceOf(
-            ResolvedFunction::class,
+            FunctionInfo::class,
             $result,
             'A use-function import should resolve via lookupFunction',
         );
@@ -197,7 +196,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedFunction::class, $result);
+        self::assertInstanceOf(FunctionInfo::class, $result);
         self::assertStringContainsString('strlen', $result->format());
     }
 
@@ -210,7 +209,7 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertInstanceOf(
-            ResolvedGlobalConstant::class,
+            ConstantInfo::class,
             $result,
             'built-in constants should resolve to ResolvedGlobalConstant',
         );
@@ -225,7 +224,7 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertInstanceOf(
-            ResolvedGlobalConstant::class,
+            ConstantInfo::class,
             $result,
             'user-defined constants from autoload.files should resolve to ResolvedGlobalConstant',
         );
@@ -240,7 +239,7 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertInstanceOf(
-            ResolvedGlobalConstant::class,
+            ConstantInfo::class,
             $result,
             'constants defined via define() should resolve to ResolvedGlobalConstant',
         );
@@ -274,7 +273,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedProperty::class, $result);
+        self::assertInstanceOf(PropertyInfo::class, $result);
         self::assertStringContainsString('manager', $result->format());
     }
 
@@ -286,7 +285,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedProperty::class, $result);
+        self::assertInstanceOf(PropertyInfo::class, $result);
         self::assertStringContainsString('manager', $result->format());
     }
 
@@ -299,7 +298,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedProperty::class, $result);
+        self::assertInstanceOf(PropertyInfo::class, $result);
         self::assertStringContainsString('staticProperty', $result->format());
     }
 
@@ -311,7 +310,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedConstant::class, $result);
+        self::assertInstanceOf(ConstantInfo::class, $result);
         self::assertStringContainsString('PARENT_CONST', $result->format());
     }
 
@@ -323,7 +322,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedEnumCase::class, $result);
+        self::assertInstanceOf(EnumCaseInfo::class, $result);
         self::assertStringContainsString('Active', $result->format());
     }
 
@@ -362,7 +361,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
 
-        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertInstanceOf(ParameterInfo::class, $result);
         self::assertStringContainsString('name', $result->format());
         self::assertSame('string', $result->getType()?->format());
     }
@@ -391,7 +390,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
 
-        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertInstanceOf(ParameterInfo::class, $result);
         self::assertStringContainsString('b', $result->format());
         self::assertSame('int', $result->getType()?->format());
     }
@@ -421,7 +420,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
 
-        self::assertInstanceOf(ResolvedClass::class, $result);
+        self::assertInstanceOf(ClassInfo::class, $result);
         self::assertStringContainsString('Route', $result->format());
     }
 
@@ -450,7 +449,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
 
-        self::assertInstanceOf(ResolvedParameter::class, $result);
+        self::assertInstanceOf(ParameterInfo::class, $result);
         self::assertStringContainsString('path', $result->format());
         self::assertSame('string', $result->getType()?->format());
     }
@@ -517,7 +516,7 @@ final class SymbolResolverTest extends TestCase
 
         $hasEnumCase = false;
         foreach ($members as $member) {
-            if ($member instanceof ResolvedEnumCase) {
+            if ($member instanceof EnumCaseInfo) {
                 $hasEnumCase = true;
                 break;
             }
@@ -713,7 +712,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ResolvedMethod::class, $result);
+        self::assertInstanceOf(MethodInfo::class, $result);
         self::assertStringContainsString('getName', $result->format());
     }
 
@@ -813,23 +812,23 @@ final class SymbolResolverTest extends TestCase
 
     /**
      * @codeCoverageIgnore
-     * @return iterable<string, array{string, string, class-string<ResolvedMember|ResolvedFunction>, string}>
+     * @return iterable<string, array{string, string, class-string<ResolvedMember|FunctionInfo>, string}>
      */
     public static function callContextResolveCases(): iterable
     {
         yield 'new expression' => [
-            'src/Domain/User.php', 'sig_new', ResolvedMethod::class, '__construct',
+            'src/Domain/User.php', 'sig_new', MethodInfo::class, '__construct',
         ];
         yield 'builtin function' => [
-            'src/Domain/User.php', 'sig_builtin_func', ResolvedFunction::class, 'strlen',
+            'src/Domain/User.php', 'sig_builtin_func', FunctionInfo::class, 'strlen',
         ];
         yield 'user defined function' => [
-            'SignatureHelp.php', 'first_param', ResolvedFunction::class, 'signatureHelpAdd',
+            'SignatureHelp.php', 'first_param', FunctionInfo::class, 'signatureHelpAdd',
         ];
     }
 
     /**
-     * @param class-string<ResolvedMember|ResolvedFunction> $expectedType
+     * @param class-string<ResolvedMember|FunctionInfo> $expectedType
      */
     #[DataProvider('callContextResolveCases')]
     public function testGetCallContextResolves(

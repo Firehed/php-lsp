@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\Type;
 
 /**
  * A resolved variable with its inferred type and, when known, the nearest

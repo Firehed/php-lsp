@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\Type;
 
 /**
  * A ResolvedSymbol that carries only a type — used when an expression's value

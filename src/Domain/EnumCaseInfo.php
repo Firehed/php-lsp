@@ -9,6 +9,9 @@ namespace Firehed\PhpLsp\Domain;
  */
 final readonly class EnumCaseInfo implements Formattable, MemberInfo
 {
+    use HasSymbolLocation;
+
+
     public function __construct(
         public EnumCaseName $name,
         public int|string|null $backingValue,
@@ -28,6 +31,30 @@ final readonly class EnumCaseInfo implements Formattable, MemberInfo
                 : ' = ' . $this->backingValue;
         }
         return $str;
+    }
+
+    public function getDeclaringClass(): ClassName
+    {
+        return $this->declaringClass;
+    }
+
+    public function getMemberKind(): MemberKind
+    {
+        return MemberKind::EnumCase;
+    }
+
+    public function getName(): EnumCaseName
+    {
+        return $this->name;
+    }
+
+    /**
+     * An enum case's value type is the enum itself: each case is a singleton
+     * instance of the declaring enum.
+     */
+    public function getType(): ClassName
+    {
+        return $this->declaringClass;
     }
 
     /**

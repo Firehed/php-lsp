@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\ResolvedConstant;
-use Firehed\PhpLsp\Resolution\ResolvedEnumCase;
-use Firehed\PhpLsp\Resolution\ResolvedMember;
-use Firehed\PhpLsp\Resolution\ResolvedMethod;
-use Firehed\PhpLsp\Resolution\ResolvedProperty;
 
 /**
  * Builds LSP completion items. Centralizing construction here keeps item shape,
@@ -39,19 +36,17 @@ final class CompletionItemFactory
      */
     public static function forResolvedMember(ResolvedMember $member, bool $snippetSupport = false): array
     {
-        $kind = match (true) {
-            $member instanceof ResolvedMethod => CompletionItemKind::Method,
-            $member instanceof ResolvedProperty => CompletionItemKind::Property,
-            $member instanceof ResolvedConstant => CompletionItemKind::Constant,
-            $member instanceof ResolvedEnumCase => CompletionItemKind::EnumMember,
-            // @codeCoverageIgnoreStart
-            default => throw new \LogicException('Unexpected ResolvedMember implementation'),
-            // @codeCoverageIgnoreEnd
+        $memberKind = $member->getMemberKind();
+        $itemKind = match ($memberKind) {
+            MemberKind::Method => CompletionItemKind::Method,
+            MemberKind::Property => CompletionItemKind::Property,
+            MemberKind::Constant => CompletionItemKind::Constant,
+            MemberKind::EnumCase => CompletionItemKind::EnumMember,
         };
 
         $item = [
             'label' => $member->getName()->name,
-            'kind' => $kind->value,
+            'kind' => $itemKind->value,
             'detail' => $member->format(),
         ];
 
@@ -60,7 +55,7 @@ final class CompletionItemFactory
             $item['documentation'] = $doc;
         }
 
-        if ($member instanceof ResolvedMethod) {
+        if ($memberKind === MemberKind::Method) {
             $item = self::withCallableSnippet($item, $snippetSupport);
         }
 

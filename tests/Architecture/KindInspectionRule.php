@@ -49,14 +49,13 @@ final class KindInspectionRule implements Rule
      * @var list<class-string>
      */
     private const array CONFINED_RESOLVED_IMPLS = [
-        \Firehed\PhpLsp\Resolution\ResolvedClass::class,
-        \Firehed\PhpLsp\Resolution\ResolvedConstant::class,
-        \Firehed\PhpLsp\Resolution\ResolvedEnumCase::class,
-        \Firehed\PhpLsp\Resolution\ResolvedFunction::class,
-        \Firehed\PhpLsp\Resolution\ResolvedGlobalConstant::class,
-        \Firehed\PhpLsp\Resolution\ResolvedMethod::class,
-        \Firehed\PhpLsp\Resolution\ResolvedParameter::class,
-        \Firehed\PhpLsp\Resolution\ResolvedProperty::class,
+        \Firehed\PhpLsp\Domain\ClassInfo::class,
+        \Firehed\PhpLsp\Domain\ConstantInfo::class,
+        \Firehed\PhpLsp\Domain\EnumCaseInfo::class,
+        \Firehed\PhpLsp\Domain\FunctionInfo::class,
+        \Firehed\PhpLsp\Domain\MethodInfo::class,
+        \Firehed\PhpLsp\Domain\ParameterInfo::class,
+        \Firehed\PhpLsp\Domain\PropertyInfo::class,
         \Firehed\PhpLsp\Resolution\ResolvedTypeOnly::class,
         \Firehed\PhpLsp\Resolution\ResolvedVariable::class,
     ];
@@ -74,8 +73,8 @@ final class KindInspectionRule implements Rule
         'src/Domain/PrimitiveType.php',
         'src/Domain/LateStaticType.php',
         'src/Repository/DefaultClassInfoFactory.php',
+        'src/Knowledge/CompositeSymbolSource.php',
         'src/Knowledge/ReflectionSymbolInfoFactory.php',
-        'src/Completion/CompletionItemFactory.php',
     ];
 
     public function getNodeType(): string

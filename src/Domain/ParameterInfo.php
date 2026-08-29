@@ -12,7 +12,7 @@ use ReflectionParameter;
 /**
  * Metadata about a method or function parameter.
  */
-final readonly class ParameterInfo implements Formattable
+final readonly class ParameterInfo implements Formattable, ResolvedSymbol
 {
     public function __construct(
         public string $name,
@@ -83,6 +83,25 @@ final readonly class ParameterInfo implements Formattable
             return '[]';
         }
         return var_export($value, true);
+    }
+
+    /**
+     * A parameter has no persistent definition location; it is declared inline
+     * in the function or method signature the caller already has.
+     */
+    public function getDefinitionLocation(): ?Location
+    {
+        return null;
+    }
+
+    public function getDocumentation(): ?string
+    {
+        return null;
+    }
+
+    public function getType(): ?Type
+    {
+        return $this->type;
     }
 
     public function format(bool $showDefault = false): string

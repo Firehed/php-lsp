@@ -2,15 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Resolution;
-
-use Firehed\PhpLsp\Domain\Type;
-use Firehed\PhpLsp\Domain\Location;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * A resolved symbol represents a code element that has been located and analyzed.
- * Implementations wrap domain objects (ClassInfo, MethodInfo, etc.) to provide
- * a uniform interface for handlers.
+ * The metadata objects (ClassInfo, MethodInfo, etc.) implement this directly so
+ * handlers do not branch on kind.
  */
 interface ResolvedSymbol
 {
