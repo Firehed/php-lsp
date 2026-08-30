@@ -81,7 +81,7 @@ parameters:
 		-
 			message: '#^new ClassName is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
-			count: 6
+			count: 5
 			path: src/Resolution/SymbolResolver.php
 
 		-

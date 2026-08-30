@@ -441,7 +441,13 @@ final class SymbolResolver implements CodeResolver
         }
 
         // New_ - resolve constructor
-        return $this->resolveNewCallable($call);
+        $className = $this->expressionResolver($document)->resolve($call, $ast)
+            ?->getType()
+            ?->getResolvableClassNames()[0] ?? null;
+        if ($className === null) {
+            return null;
+        }
+        return $this->resolveConstructorCallable($className);
     }
 
     /**
@@ -482,21 +488,6 @@ final class SymbolResolver implements CodeResolver
         }
 
         return $methodInfo;
-    }
-
-    private function resolveNewCallable(New_ $call): ?ResolvedCallable
-    {
-        $class = $call->class;
-        if (!$class instanceof Name) {
-            return null;
-        }
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        return $this->resolveConstructorCallable(new ClassName($classNameStr));
     }
 
     /**
