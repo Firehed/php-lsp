@@ -25,7 +25,6 @@ use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\Type;
-use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\VariableBindings;
@@ -695,16 +694,7 @@ final class SymbolResolver implements CodeResolver
             return $this->resolveParameter($parent);
         }
 
-        if ($name === 'this') {
-            $enclosing = ScopeFinder::findEnclosingClassName($node);
-            if ($enclosing === null) {
-                return new ResolvedVariable($name, null);
-            }
-            return new ResolvedVariable($name, TypeFactory::className($enclosing));
-        }
-
-        $scope = Scope::atOffset($ast, $node->getStartFilePos());
-        return $this->expressionResolver($document)->resolveVariable($name, $scope, $node->getStartFilePos(), $ast)
+        return $this->expressionResolver($document)->resolve($node, $ast)
             ?? new ResolvedVariable($name, null);
     }
 
