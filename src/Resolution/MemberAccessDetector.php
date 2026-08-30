@@ -6,21 +6,21 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PrimitiveType;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use LogicException;
 use PhpParser\Node;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\Error;
 use PhpParser\Node\Expr\MethodCall;
@@ -52,6 +52,7 @@ final class MemberAccessDetector
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TextFallbackHelper $textFallback,
+        private readonly ParserService $parser,
     ) {
         $this->nodeAtPosition = new NodeAtPosition();
     }
@@ -261,7 +262,7 @@ final class MemberAccessDetector
             if ($enclosingClass === null) {
                 return null;
             }
-            $type = $this->walkChain($match['chain'], $enclosingClass);
+            $type = $this->resolveChainReceiverType($match['chain'], $enclosingClass, $document, $ast);
             $target = $type?->getResolvableClassNames()[0] ?? null;
             if ($type === null || $target === null) {
                 return null;
@@ -483,61 +484,29 @@ final class MemberAccessDetector
     }
 
     /**
-     * Walk `$this->foo->bar()->...` against the type graph. The `$this->` prefix
-     * is trimmed; regex-splitting is delegated to TextFallbackHelper.
+     * Parse the text chain into an AST expression, seed the `$this` receiver
+     * with the enclosing class type, and let {@see ExpressionResolver::resolve}
+     * walk the chain. This is the same walker the AST-recovered path uses, so
+     * there is one chain typer for parsed and unparseable code alike (RFC 1 §4.5).
      *
-     * @param class-string $thisClass
+     * @param class-string $enclosingClass
+     * @param array<Stmt> $ast
      */
-    private function walkChain(string $chainExpr, string $thisClass): ?Type
-    {
-        if (!str_starts_with($chainExpr, '$this->')) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('walkChain called without $this-> prefix');
-            // @codeCoverageIgnoreEnd
-        }
-
-        $parts = $this->textFallback->splitChainParts(substr($chainExpr, 7));
-        $currentType = TypeFactory::className($thisClass);
-        $isFirstPart = true;
-
-        foreach ($parts as $part) {
-            $classNames = $currentType->getResolvableClassNames();
-            if ($classNames === []) {
-                return null;
-            }
-            $visibility = $isFirstPart ? Visibility::Private : Visibility::Public;
-            $isFirstPart = false;
-
-            if ($part['isMethodCall']) {
-                $method = $this->memberResolver->findMethod(
-                    $classNames[0],
-                    new MethodName($part['name']),
-                    $visibility,
-                );
-                if ($method === null) {
-                    return null;
-                }
-                $next = $method->returnType;
-            } else {
-                $property = $this->memberResolver->findProperty(
-                    $classNames[0],
-                    new PropertyName($part['name']),
-                    $visibility,
-                );
-                if ($property === null) {
-                    return null;
-                }
-                $next = $property->type;
-            }
-            if ($next === null) {
-                return null;
-            }
-            $currentType = $next;
-        }
-        return $currentType;
+    private function resolveChainReceiverType(
+        string $chainExpr,
+        string $enclosingClass,
+        TextDocument $document,
+        array $ast,
+    ): ?Type {
+        $expr = $this->parser->parseExpression($chainExpr);
+        assert($expr !== null, 'chain regex output is always parseable as an expression');
+        $receiver = self::findThisVariable($expr);
+        assert($receiver !== null, 'chain regex guarantees a $this receiver in the parsed fragment');
+        $receiver->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
+        return $this->expressionResolver($document)->resolve($expr, $ast)?->getType();
     }
 
-    private static function findThisVariable(Node\Expr $expr): ?Variable
+    private static function findThisVariable(Expr $expr): ?Variable
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
             return $expr;

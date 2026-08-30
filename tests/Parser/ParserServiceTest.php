@@ -6,6 +6,9 @@ namespace Firehed\PhpLsp\Tests\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\ParserService;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Function_;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -250,6 +253,47 @@ class ParserServiceTest extends TestCase
             intdiv($elapsedNs, 2),
             $recordedNs,
             'the metered span covers the parse and both visitor passes, not a sliver around them',
+        );
+    }
+
+    public function testParseExpressionReturnsExpressionNode(): void
+    {
+        $parser = new ParserService();
+
+        $expr = $parser->parseExpression('$this->foo->bar');
+
+        self::assertInstanceOf(PropertyFetch::class, $expr, 'the outer chain step is a property fetch');
+        $inner = $expr->var;
+        self::assertInstanceOf(PropertyFetch::class, $inner, 'the receiver is itself a chain step');
+        self::assertInstanceOf(Variable::class, $inner->var, 'the innermost receiver is a variable');
+    }
+
+    public function testParseExpressionRecognisesMethodCallChain(): void
+    {
+        $parser = new ParserService();
+
+        $expr = $parser->parseExpression('$this->getUser()->getName()');
+
+        self::assertInstanceOf(MethodCall::class, $expr, 'a trailing call yields a MethodCall');
+    }
+
+    public function testParseExpressionReturnsNullForMultipleStatements(): void
+    {
+        $parser = new ParserService();
+
+        self::assertNull(
+            $parser->parseExpression('$a; $b'),
+            'only a single expression statement resolves; anything else is rejected',
+        );
+    }
+
+    public function testParseExpressionReturnsNullForNonExpressionStatement(): void
+    {
+        $parser = new ParserService();
+
+        self::assertNull(
+            $parser->parseExpression('if (true) {}'),
+            'a control-flow statement is not an expression statement',
         );
     }
 

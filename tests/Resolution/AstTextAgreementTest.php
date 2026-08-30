@@ -67,6 +67,7 @@ final class AstTextAgreementTest extends TestCase
             $knowledge->source,
             $this->memberResolver,
             $this->textFallback,
+            $this->parser,
         );
     }
 

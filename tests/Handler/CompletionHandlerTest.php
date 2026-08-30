@@ -3028,6 +3028,32 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('getName', $labels);
     }
 
+    public function testChainCompletionMethodCallOnPrimitiveReceiverReturnsEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/ChainCompletion.php',
+            'method_call_after_primitive',
+        );
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result, 'a chain that walks through a primitive-returning method still returns a result');
+        self::assertSame([], $result['items'], 'no members can be offered when the receiver type is primitive');
+    }
+
+    public function testChainCompletionDynamicMethodReceiverReturnsEmpty(): void
+    {
+        $cursor = $this->openFixtureAtCursor(
+            'src/Completion/ChainCompletion.php',
+            'dynamic_method_chain',
+        );
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result, 'a chain that walks through a dynamic method call still returns a result');
+        self::assertSame([], $result['items'], 'no members can be offered when the receiver method has no static name');
+    }
+
     public function testChainCompletionNamespacedFunctionReturn(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/FunctionCompletion.php', 'function_return_chain');

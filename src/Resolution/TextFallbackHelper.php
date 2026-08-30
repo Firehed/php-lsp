@@ -291,39 +291,6 @@ final class TextFallbackHelper
     }
 
     /**
-     * Split a `$this->foo->bar()` chain into ordered `(name, isMethodCall)`
-     * parts. This is a text primitive: the caller walks the parts against
-     * a class hierarchy. The `$this->` prefix must be trimmed by the caller.
-     *
-     * @return list<array{name: string, isMethodCall: bool}>
-     */
-    public function splitChainParts(string $chainBody): array
-    {
-        $rawParts = preg_split('/\??->/', $chainBody);
-        if ($rawParts === false) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('preg_split with valid pattern cannot fail');
-            // @codeCoverageIgnoreEnd
-        }
-
-        $parts = [];
-        foreach ($rawParts as $part) {
-            if ($part === '') {
-                continue;
-            }
-            $isMethodCall = str_contains($part, '(');
-            $name = $isMethodCall ? strstr($part, '(', true) : $part;
-            if ($name === false || $name === '') {
-                // @codeCoverageIgnoreStart
-                throw new \LogicException('name extraction cannot fail after non-empty part check');
-                // @codeCoverageIgnoreEnd
-            }
-            $parts[] = ['name' => $name, 'isMethodCall' => $isMethodCall];
-        }
-        return $parts;
-    }
-
-    /**
      * Find enclosing class name by scanning document text.
      *
      * @return class-string|null
