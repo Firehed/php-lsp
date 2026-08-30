@@ -5,23 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
-use Firehed\PhpLsp\Domain\MemberFilter;
-use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\PrimitiveType;
-use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\ResolvedMember;
-use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use Firehed\PhpLsp\Domain\UnionType;
-use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Attribute;
@@ -45,9 +31,125 @@ use PhpParser\Node\Stmt;
  */
 final class TextFallbackHelper
 {
-    public function __construct(
-        private readonly MemberResolver $memberResolver,
-    ) {
+    /**
+     * Scan raw source text for class-like declarations and their bodies. The one
+     * regex home for the text-based `ClassInfo` producer (RFC 1 §5.3) — the extractor
+     * and factory that build the `ClassInfo` never touch preg themselves, so the
+     * text-pattern rim stays confined to this file.
+     *
+     * @return list<array{keyword: string, name: string, extends: ?string, body: string}>
+     */
+    public function findClassLikeDeclarations(string $content): array
+    {
+        $pattern = '/(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
+            . '(?:\s+extends\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*))?/';
+        if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($matches as $match) {
+            $extends = $match[3][0] ?? '';
+            $out[] = [
+                'keyword' => $match[1][0],
+                'name' => $match[2][0],
+                'extends' => $extends === '' ? null : $extends,
+                'body' => self::sliceClassBody($content, $match[0][1]),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Match method declarations in a class body's text. Values match the AST-based
+     * fields the `MethodInfo` factory consumes; modifiers, parameters, and return
+     * types are not reconstructed (text is a best-effort producer).
+     *
+     * @return list<array{visibility: string, isStatic: bool, name: string}>
+     */
+    public function matchMethodsInBody(string $body): array
+    {
+        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(/m';
+        if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER) === false) {
+            return [];
+        }
+        $out = [];
+        foreach ($matches as $match) {
+            $out[] = [
+                'visibility' => $match[1],
+                'isStatic' => $match[2] !== '',
+                'name' => $match[3],
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Match property declarations in a class body's text.
+     *
+     * @return list<array{visibility: string, isStatic: bool, isReadonly: bool, name: string}>
+     */
+    public function matchPropertiesInBody(string $body): array
+    {
+        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?(readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
+        if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER) === false) {
+            return [];
+        }
+        $out = [];
+        foreach ($matches as $match) {
+            $out[] = [
+                'visibility' => $match[1],
+                'isStatic' => $match[2] !== '',
+                'isReadonly' => $match[3] !== '',
+                'name' => $match[4],
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Match constant declarations in a class body's text. An empty visibility means
+     * the source omitted the modifier and PHP defaults it to public.
+     *
+     * @return list<array{visibility: string, name: string}>
+     */
+    public function matchConstantsInBody(string $body): array
+    {
+        $pattern = '/^\s*(public|protected|private)?\s*const\s+(?:[\w\\\\|?]+\s+)?(\w+)\s*=/m';
+        if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER) === false) {
+            return [];
+        }
+        $out = [];
+        foreach ($matches as $match) {
+            $out[] = [
+                'visibility' => $match[1],
+                'name' => $match[2],
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Slice a single class body, from its declaration through the matching
+     * closing brace, so member extraction cannot leak into sibling classes
+     * defined later in the same file. When the body has no closing brace
+     * (incomplete code), the slice runs to end-of-file.
+     */
+    private static function sliceClassBody(string $content, int $declOffset): string
+    {
+        $bracePos = strpos($content, '{', $declOffset);
+        if ($bracePos !== false) {
+            $depth = 0;
+            for ($i = $bracePos, $length = strlen($content); $i < $length; $i++) {
+                $char = $content[$i];
+                if ($char === '{') {
+                    $depth++;
+                } elseif ($char === '}' && --$depth === 0) {
+                    return substr($content, $declOffset, $i - $declOffset + 1);
+                }
+            }
+        }
+        return substr($content, $declOffset);
     }
 
     /**
@@ -489,265 +591,5 @@ final class TextFallbackHelper
             return ScopeFinder::getClassLikeName($classLike);
         }
         return $this->findEnclosingClassFromContent($content, $line);
-    }
-
-    /**
-     * Extract members from document text using regex.
-     *
-     * Also includes inherited members from parent classes when resolvable.
-     *
-     * @return list<ResolvedMember>
-     */
-    public function extractMembers(
-        TextDocument $document,
-        ClassName $className,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::Instance,
-    ): array {
-        $content = $document->getContent();
-        $members = [];
-        $includeStatic = $filter !== MemberFilter::Instance;
-
-        // Match class declaration with optional extends clause
-        $classPattern = '/(?:class|interface|trait|enum)\s+' . preg_quote($className->shortName(), '/') . '\b'
-            . '(?:\s+extends\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*))?/';
-        if (preg_match($classPattern, $content, $match, PREG_OFFSET_CAPTURE) !== 1) {
-            return [];
-        }
-        $classContent = $this->sliceClassBody($content, $match[0][1]);
-
-        // Extract members directly defined in this class
-        $this->extractMethods($classContent, $className, $minVisibility, $filter, $includeStatic, $members);
-        $this->extractProperties($classContent, $className, $minVisibility, $filter, $includeStatic, $members);
-        $this->extractConstants($classContent, $className, $minVisibility, $includeStatic, $members);
-
-        // Include inherited members from parent class if resolvable
-        if (isset($match[1]) && $match[1][0] !== '') {
-            $parentName = $match[1][0];
-            $parentMembers = $this->getInheritedMembers($document, $parentName, $minVisibility, $filter);
-            $members = $this->mergeUniqueMembers($members, $parentMembers);
-        }
-
-        return $members;
-    }
-
-    /**
-     * Merge inherited members into the members already collected, skipping any the
-     * subclass overrides (same member kind and name).
-     *
-     * @param list<ResolvedMember> $members
-     * @param list<ResolvedMember> $inherited
-     * @return list<ResolvedMember>
-     */
-    private function mergeUniqueMembers(array $members, array $inherited): array
-    {
-        $seen = [];
-        foreach ($members as $member) {
-            $seen[self::memberKey($member)] = true;
-        }
-        foreach ($inherited as $member) {
-            $key = self::memberKey($member);
-            if (!array_key_exists($key, $seen)) {
-                $seen[$key] = true;
-                $members[] = $member;
-            }
-        }
-        return $members;
-    }
-
-    private static function memberKey(ResolvedMember $member): string
-    {
-        return $member->getMemberKind()->keyFor($member->getName()->name);
-    }
-
-    /**
-     * Slice a single class body, from its declaration through the matching
-     * closing brace, so member extraction cannot leak into sibling classes
-     * defined later in the same file.
-     */
-    private function sliceClassBody(string $content, int $declOffset): string
-    {
-        $bracePos = strpos($content, '{', $declOffset);
-        if ($bracePos !== false) {
-            $depth = 0;
-            for ($i = $bracePos, $length = strlen($content); $i < $length; $i++) {
-                $char = $content[$i];
-                if ($char === '{') {
-                    $depth++;
-                } elseif ($char === '}' && --$depth === 0) {
-                    return substr($content, $declOffset, $i - $declOffset + 1);
-                }
-            }
-        }
-
-        // No opening brace or unbalanced braces (incomplete code): the class body
-        // runs to the end of the document.
-        return substr($content, $declOffset);
-    }
-
-    /**
-     * Get inherited members from a parent class.
-     *
-     * @return list<ResolvedMember>
-     */
-    private function getInheritedMembers(
-        TextDocument $document,
-        string $parentName,
-        Visibility $minVisibility,
-        MemberFilter $filter,
-    ): array {
-        $members = [];
-        $lines = explode("\n", $document->getContent());
-
-        // Resolve parent class name using use statements (no AST available here)
-        $context = NameContextFactory::fromText($lines, 0);
-        $fqn = $context->candidates($parentName, NameKind::ClassLike)[0];
-
-        // Get parent members via MemberResolver
-        // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
-        $parentClassName = new ClassName($fqn);
-
-        // A subclass cannot access its parent's private members, so never query the
-        // parent below Protected visibility (while still honoring an external Public
-        // access level).
-        $inheritedVisibility = Visibility::from(max($minVisibility->value, Visibility::Protected->value));
-
-        foreach ($this->memberResolver->getMethods($parentClassName, $inheritedVisibility, $filter) as $methodInfo) {
-            $members[] = $methodInfo;
-        }
-
-        if ($filter !== MemberFilter::Static) {
-            $properties = $this->memberResolver->getProperties($parentClassName, $inheritedVisibility, $filter);
-            foreach ($properties as $propertyInfo) {
-                $members[] = $propertyInfo;
-            }
-        }
-
-        if ($filter !== MemberFilter::Instance) {
-            foreach ($this->memberResolver->getConstants($parentClassName, $inheritedVisibility) as $constantInfo) {
-                $members[] = $constantInfo;
-            }
-        }
-
-        return $members;
-    }
-
-    /**
-     * @param list<ResolvedMember> $members
-     */
-    private function extractMethods(
-        string $classContent,
-        ClassName $className,
-        Visibility $minVisibility,
-        MemberFilter $filter,
-        bool $includeStatic,
-        array &$members,
-    ): void {
-        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(/m';
-        if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
-            foreach ($matches as $match) {
-                $visibility = Visibility::fromString($match[1]);
-                if (!$visibility->isAccessibleFrom($minVisibility)) {
-                    continue;
-                }
-                $isStatic = $match[2] !== '';
-                $includeThis = $filter === MemberFilter::All
-                    || ($isStatic && $includeStatic)
-                    || (!$isStatic && !$includeStatic);
-                if ($includeThis) {
-                    $members[] = new MethodInfo(
-                        name: new MethodName($match[3]),
-                        visibility: $visibility,
-                        isStatic: $isStatic,
-                        isAbstract: false,
-                        isFinal: false,
-                        parameters: [],
-                        returnType: null,
-                        declaringClass: $className,
-                        docblock: null,
-                        file: null,
-                        line: null,
-                    );
-                }
-            }
-        }
-    }
-
-    /**
-     * @param list<ResolvedMember> $members
-     */
-    private function extractProperties(
-        string $classContent,
-        ClassName $className,
-        Visibility $minVisibility,
-        MemberFilter $filter,
-        bool $includeStatic,
-        array &$members,
-    ): void {
-        if ($filter === MemberFilter::Static) {
-            return;
-        }
-
-        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?(readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
-        if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
-            foreach ($matches as $match) {
-                $visibility = Visibility::fromString($match[1]);
-                if (!$visibility->isAccessibleFrom($minVisibility)) {
-                    continue;
-                }
-                $isStatic = $match[2] !== '';
-                if (!$isStatic || $includeStatic) {
-                    $members[] = new PropertyInfo(
-                        name: new PropertyName($match[4]),
-                        visibility: $visibility,
-                        isStatic: $isStatic,
-                        isReadonly: $match[3] !== '',
-                        isPromoted: false,
-                        type: null,
-                        docblock: null,
-                        file: null,
-                        line: null,
-                        declaringClass: $className,
-                    );
-                }
-            }
-        }
-    }
-
-    /**
-     * @param list<ResolvedMember> $members
-     */
-    private function extractConstants(
-        string $classContent,
-        ClassName $className,
-        Visibility $minVisibility,
-        bool $includeStatic,
-        array &$members,
-    ): void {
-        if (!$includeStatic) {
-            return;
-        }
-
-        // Captures: 1=visibility (optional), 2=constant name
-        // Handles PHP 8.1+ typed constants: public const string NAME = ...
-        $pattern = '/^\s*(public|protected|private)?\s*const\s+(?:[\w\\\\|?]+\s+)?(\w+)\s*=/m';
-        if (preg_match_all($pattern, $classContent, $matches, PREG_SET_ORDER) > 0) {
-            foreach ($matches as $match) {
-                $visibility = ($match[1] !== '') ? Visibility::fromString($match[1]) : Visibility::Public;
-                if (!$visibility->isAccessibleFrom($minVisibility)) {
-                    continue;
-                }
-                $members[] = new ConstantInfo(
-                    name: new ConstantName($match[2]),
-                    visibility: $visibility,
-                    isFinal: false,
-                    type: null,
-                    docblock: null,
-                    file: null,
-                    line: null,
-                    declaringClass: $className,
-                );
-            }
-        }
     }
 }

@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
+use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -40,13 +41,15 @@ final class DocumentSymbolSinkTest extends TestCase
         $parser = new ParserService();
         $this->index = new SymbolIndex();
         $this->backend = new OpenDocumentBackend($this->index);
+        $classInfoFactory = new DefaultClassInfoFactory();
         $this->sink = new DocumentSymbolSink(
             $this->backend,
             new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
             $this->index,
-            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
+            new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
+            new DefaultTextSymbolExtractor(),
         );
     }
 
@@ -144,16 +147,21 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
-    public function testUpdatingAwayFromAFunctionDropsItsRegistration(): void
+    public function testUpdatingAwayFromAFunctionReplacesItWithTheNewDeclarations(): void
     {
         $uri = 'file:///helpers.php';
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nfunction helper(): void {}\n"));
 
-        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\n"));
+        // A version that names any declaration replaces the previous set wholesale.
+        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nfunction other(): void {}\n"));
 
         self::assertNull(
             self::functionIn($this->backend, 'helper'),
-            'a document that no longer declares the function must drop its registration',
+            'a version that names other declarations must drop the previous ones',
+        );
+        self::assertNotNull(
+            self::functionIn($this->backend, 'other'),
+            'the new declaration must be registered in the previous one\'s place',
         );
     }
 
@@ -226,30 +234,45 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sinkWithOnDiskBackends($onDisk)->closeDocument($uri);
     }
 
-    public function testUpdatingAwayFromAllClassesClearsTheBackendNotJustTheIndex(): void
+    public function testUpdatingToNoDeclarationsPreservesThePreviousRegistration(): void
     {
         $uri = 'file:///Doc.php';
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Widget {}\n"));
+
+        // A version that parses to no declarations keeps the previous registration
+        // (tier 2, RFC 1 §5.3) — a file broken mid-edit still resolves through its
+        // last-good state, so completion of $this-> keeps offering members.
+        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nclass Widget {"));
+
         self::assertNotNull(
             self::classLikeIn($this->backend, 'V\Widget'),
-            'the class is registered while the document declares it',
+            'a broken mid-edit must not drop the class the last-good parse registered',
         );
-
-        // The document is edited until it declares no class at all — the same state a
-        // parse failure yields (registerClasses falls back to an empty statement list).
-        // Both stores must drop the class in lockstep: the backend cannot keep a stale
-        // registration while the index clears (RFC 1 §4.3, the double write moving
-        // together). Skipping the write when nothing is found leaves the backend stale.
-        $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\n"));
-
-        self::assertNull(
-            self::classLikeIn($this->backend, 'V\Widget'),
-            'a document that no longer declares the class must drop its registration',
+        self::assertNotNull(
+            $this->index->findByFqn('V\Widget'),
+            'the index must retain the class too — both stores move together (RFC 1 §4.3)',
         );
-        self::assertSame(
-            [],
-            $this->indexedFqnsFor($uri),
-            'the index must clear too — both stores move together (RFC 1 §4.3)',
+    }
+
+    public function testFirstOpenOfABrokenFileRegistersFromTheTextExtractor(): void
+    {
+        // Parse fails completely on the fixture (no closing braces), yielding no
+        // declarations. No prior registration exists, so tier 3 (text extractor) runs
+        // and registers what the regex can see — enough for MemberResolver to answer
+        // $this-> completion.
+        $uri = 'file:///Broken.php';
+        $content = $this->loadFixture('src/IncompleteCode/VeryBroken.php');
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
+
+        $classInfo = self::classLikeIn($this->backend, 'Fixtures\\IncompleteCode\\VeryBroken');
+        self::assertNotNull(
+            $classInfo,
+            'a first open with no last-good state must fall through to the text extractor',
+        );
+        self::assertArrayHasKey(
+            'getName',
+            $classInfo->methods,
+            'the text extractor must reach the class body for member lookup',
         );
     }
 
@@ -323,14 +346,16 @@ final class DocumentSymbolSinkTest extends TestCase
     private function sinkWithOnDiskBackends(Invalidatable ...$onDiskBackends): DocumentSymbolSink
     {
         $parser = new ParserService();
+        $classInfoFactory = new DefaultClassInfoFactory();
 
         return new DocumentSymbolSink(
             $this->backend,
             new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
             $this->index,
-            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
+            new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
+            new DefaultTextSymbolExtractor(),
             array_values($onDiskBackends),
         );
     }

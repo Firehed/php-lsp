@@ -21,6 +21,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\TestCase;
@@ -204,6 +205,7 @@ final class CompletionParityTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $parser,
+            textExtractor: new DefaultTextSymbolExtractor(),
         );
         $memberResolver = new MemberResolver($knowledge->source);
         $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver);

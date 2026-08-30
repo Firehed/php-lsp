@@ -509,6 +509,10 @@
         {
             "label": "staticMethod",
             "kind": 2
+        },
+        {
+            "label": "staticProperty",
+            "kind": 10
         }
     ],
     "chained_in_if": [
