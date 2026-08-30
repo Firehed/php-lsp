@@ -23,6 +23,7 @@ use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CallContext;
+use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
@@ -67,6 +68,7 @@ final class SymbolResolverTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $this->parser,
+            textExtractor: new DefaultTextSymbolExtractor(),
         );
         $memberResolver = new MemberResolver($knowledge->source);
 
@@ -460,7 +462,6 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Domain\\User');
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
@@ -479,7 +480,6 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Domain\\User');
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
@@ -510,7 +510,6 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Enum\\Status');
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
@@ -532,10 +531,8 @@ final class SymbolResolverTest extends TestCase
         assert($document !== null);
 
         $type = new IntersectionType([
-            // @phpstan-ignore argument.type (test uses fixture class name)
-            new ClassName('Fixtures\\Domain\\Entity'),
-            // @phpstan-ignore argument.type (test uses fixture class name)
-            new ClassName('Fixtures\\Domain\\Person'),
+                new ClassName('Fixtures\\Domain\\Entity'),
+                new ClassName('Fixtures\\Domain\\Person'),
         ]);
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
@@ -1474,35 +1471,30 @@ final class SymbolResolverTest extends TestCase
     public function testIsInstantiableReturnsFalseForAbstractClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\AbstractBase')));
     }
 
     public function testIsInstantiableReturnsTrueForConcreteClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertTrue($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\SealedClass')));
     }
 
     public function testIsInstantiableReturnsFalseForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsInstantiableReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsInstantiableReturnsTrueForUnknownClass(): void
     {
         // Unknown classes are assumed instantiable (optimistic filtering)
-        /** @phpstan-ignore argument.type (intentionally non-existent) */
         self::assertTrue($this->resolver->isInstantiable(new ClassName('NonExistent\\Unknown')));
     }
 
@@ -1513,13 +1505,9 @@ final class SymbolResolverTest extends TestCase
         $this->openFixture('src/Traits/SingletonTrait.php');
         $this->openFixture('src/Enum/Status.php');
 
-        /** @phpstan-ignore argument.type (fixture class) */
         $class = new ClassName('Fixtures\\Domain\\User');
-        /** @phpstan-ignore argument.type (fixture class) */
         $interface = new ClassName('Fixtures\\Domain\\Entity');
-        /** @phpstan-ignore argument.type (fixture class) */
         $trait = new ClassName('Fixtures\\Traits\\SingletonTrait');
-        /** @phpstan-ignore argument.type (fixture class) */
         $enum = new ClassName('Fixtures\\Enum\\Status');
 
         self::assertTrue($this->resolver->isClassLike($class), 'a class is a class-like');
@@ -1533,7 +1521,6 @@ final class SymbolResolverTest extends TestCase
         // A catalog directory listing reports every .php file as a coarse
         // class-like without parsing it, so a functions.php arrives as a phantom
         // name that resolves to nothing. It must not be treated as a class-like.
-        /** @phpstan-ignore argument.type (intentionally non-existent) */
         $unknown = new ClassName('NonExistent\\Unknown');
         self::assertFalse(
             $this->resolver->isClassLike($unknown),
@@ -1544,62 +1531,53 @@ final class SymbolResolverTest extends TestCase
     public function testIsValidTypeHintReturnsTrueForClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Domain\\User')));
     }
 
     public function testIsValidTypeHintReturnsTrueForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsValidTypeHintReturnsTrueForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsValidTypeHintReturnsFalseForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsValidTypeHintReturnsTrueForUnknownClass(): void
     {
-        /** @phpstan-ignore argument.type (intentionally non-existent) */
         self::assertTrue($this->resolver->isValidTypeHint(new ClassName('NonExistent\\Unknown')));
     }
 
     public function testIsInterfaceReturnsTrueForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertTrue($this->resolver->isInterface(new ClassName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsInterfaceReturnsFalseForClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Domain\\User')));
     }
 
     public function testIsInterfaceReturnsFalseForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsInterfaceReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Enum\\Status')));
     }
 
@@ -1607,41 +1585,35 @@ final class SymbolResolverTest extends TestCase
     {
         // Unlike the optimistic predicates, an implements list must only offer
         // confirmed interfaces, so an unresolvable name is excluded.
-        /** @phpstan-ignore argument.type (intentionally non-existent) */
         self::assertFalse($this->resolver->isInterface(new ClassName('NonExistent\\Unknown')));
     }
 
     public function testIsTraitReturnsTrueForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertTrue($this->resolver->isTrait(new ClassName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsTraitReturnsFalseForClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Domain\\User')));
     }
 
     public function testIsTraitReturnsFalseForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsTraitReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsTraitReturnsFalseForUnknownClass(): void
     {
-        /** @phpstan-ignore argument.type (intentionally non-existent) */
         self::assertFalse($this->resolver->isTrait(new ClassName('NonExistent\\Unknown')));
     }
 
@@ -1651,7 +1623,6 @@ final class SymbolResolverTest extends TestCase
         if ($fixture !== null) {
             $this->openFixture($fixture);
         }
-        /** @phpstan-ignore argument.type (fixture / intentionally non-existent class) */
         self::assertSame($expected, $this->resolver->isExtendableClass(new ClassName($fqcn)), $message);
     }
 
@@ -1717,7 +1688,6 @@ final class SymbolResolverTest extends TestCase
         if ($fixture !== null) {
             $this->openFixture($fixture);
         }
-        /** @phpstan-ignore argument.type (fixture / intentionally non-existent class) */
         self::assertSame($expected, $this->resolver->isThrowable(new ClassName($fqcn)), $message);
     }
 
@@ -1792,35 +1762,30 @@ final class SymbolResolverTest extends TestCase
     public function testIsAttributeReturnsTrueForAttributeClass(): void
     {
         $this->openFixture('src/Attributes/Route.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertTrue($this->resolver->isAttribute(new ClassName('Fixtures\\Attributes\\Route')));
     }
 
     public function testIsAttributeReturnsFalseForPlainClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Domain\\User')));
     }
 
     public function testIsAttributeReturnsFalseForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsAttributeReturnsFalseForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsAttributeReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        /** @phpstan-ignore argument.type (fixture class) */
         self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Enum\\Status')));
     }
 
@@ -1828,7 +1793,6 @@ final class SymbolResolverTest extends TestCase
     {
         // Like isInterface, an attribute position must only offer confirmed
         // attributes, so an unresolvable name is excluded.
-        /** @phpstan-ignore argument.type (intentionally non-existent) */
         self::assertFalse($this->resolver->isAttribute(new ClassName('NonExistent\\Unknown')));
     }
 
@@ -2235,7 +2199,6 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        // @phpstan-ignore argument.type (test uses fixture class name)
         $type = new ClassName('Fixtures\\Repository\\ClassInfoPatterns');
 
         // When accessed from outside (Public visibility), only public constants should be visible

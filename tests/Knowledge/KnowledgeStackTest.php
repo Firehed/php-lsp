@@ -233,7 +233,6 @@ final class KnowledgeStackTest extends TestCase
 
     private static function className(string $fqn): ClassName
     {
-        /** @phpstan-ignore argument.type (fixture and virtual names are not analyzed) */
         return new ClassName($fqn);
     }
 }

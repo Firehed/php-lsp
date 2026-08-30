@@ -247,7 +247,6 @@ class ExternalFileChangeInvalidationTest extends TestCase
 
     private function classNameFor(string $shortName): ClassName
     {
-        /** @phpstan-ignore argument.type (temp fixture names are not analyzed) */
         return new ClassName('Temp\\' . $shortName);
     }
 }

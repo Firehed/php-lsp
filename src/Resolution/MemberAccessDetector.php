@@ -341,7 +341,6 @@ final class MemberAccessDetector
         $context = NameContextFactory::fromAstOrText($ast, $line, $lines);
         $fqn = $context->candidates($className, NameKind::ClassLike)[0];
 
-        // @phpstan-ignore argument.type (text-based resolution cannot guarantee class-string)
         $target = TypeFactory::className($fqn);
         $enclosingClass = $this->textFallback->findEnclosingClass($document, $line);
         $vantage = $enclosingClass !== null ? TypeFactory::className($enclosingClass) : null;
