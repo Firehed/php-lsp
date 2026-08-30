@@ -11,6 +11,7 @@ resolution; this covers the surfaces those steps move consumers onto:
 | prefix search | `SymbolIndex::findByPrefix()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
 | function completion | `FunctionCandidates::find()` | `goldens/function-surface.json` |
+| broken-file completion | `CompletionHandler::handle()` at cursors in broken fixtures | `goldens/completion-broken-first-open.json`, `goldens/completion-broken-mid-edit.json` |
 
 The function surface is frozen ahead of the step that changes it: Step 3b moves
 function completion off its direct `get_defined_functions()` call and onto
