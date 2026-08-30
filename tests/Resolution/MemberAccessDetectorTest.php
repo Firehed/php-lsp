@@ -42,6 +42,7 @@ class MemberAccessDetectorTest extends TestCase
             $emptySource,
             $emptyMemberResolver,
             new TextFallbackHelper(),
+            $this->parser,
         );
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
@@ -55,6 +56,7 @@ class MemberAccessDetectorTest extends TestCase
             $knowledge->source,
             $memberResolver,
             new TextFallbackHelper(),
+            $this->parser,
         );
     }
 

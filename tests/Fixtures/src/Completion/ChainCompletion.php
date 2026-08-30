@@ -64,4 +64,19 @@ class ChainCompletion
     {
         $this->user->manager?->/*|mixed_nullsafe_chain*/
     }
+
+    public function triggerMethodCallOnPrimitiveReceiverChain(): void
+    {
+        // The middle `->getName()` returns a primitive, so the outer `->trim()`
+        // has no class receiver; chain typing must return no members.
+        $this->getUser()->getName()->trim()->/*|method_call_after_primitive*/
+    }
+
+    public function triggerDynamicMethodChain(): void
+    {
+        $dyn = 'getName';
+        // The receiver method has a dynamic name, so chain typing cannot
+        // resolve the return type; completion must not offer members.
+        $this->{$dyn}()->/*|dynamic_method_chain*/
+    }
 }

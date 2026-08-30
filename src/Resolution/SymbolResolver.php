@@ -92,6 +92,7 @@ final class SymbolResolver implements CodeResolver
             $symbolSource,
             $memberResolver,
             $this->textFallback,
+            $parser,
         );
     }
 
