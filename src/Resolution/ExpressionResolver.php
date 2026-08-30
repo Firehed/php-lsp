@@ -165,9 +165,10 @@ final class ExpressionResolver
             $sourceNode = $scope->getSourceNode();
             assert($sourceNode !== null, 'allowsImplicitCapture() implies an ArrowFunction source node');
             $enclosingNode = ScopeFinder::findEnclosingScope($sourceNode);
-            $scope = $enclosingNode !== null
-                ? Scope::forNode($enclosingNode)
-                : Scope::atOffset($ast, $sourceNode->getStartFilePos());
+            if ($enclosingNode === null) {
+                return null;
+            }
+            $scope = Scope::forNode($enclosingNode);
             $offset = $sourceNode->getStartFilePos();
         }
     }
@@ -212,12 +213,12 @@ final class ExpressionResolver
         if ($parent instanceof Node\ClosureUse) {
             $closure = $parent->getAttribute('parent');
             assert($closure instanceof Node, 'ParentConnectingVisitor sets ClosureUse->parent');
-            $closureOffset = $closure->getStartFilePos();
             $enclosingNode = ScopeFinder::findEnclosingScope($closure);
-            $outerScope = $enclosingNode !== null
-                ? Scope::forNode($enclosingNode)
-                : Scope::atOffset($ast, $closureOffset);
-            return $this->resolveVariable($node->name, $outerScope, $closureOffset, $ast)?->getType();
+            if ($enclosingNode === null) {
+                return null;
+            }
+            $outerScope = Scope::forNode($enclosingNode);
+            return $this->resolveVariable($node->name, $outerScope, $closure->getStartFilePos(), $ast)?->getType();
         }
         assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
         return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
