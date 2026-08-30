@@ -423,7 +423,7 @@ final class SymbolResolver implements CodeResolver
         TextDocument $document,
     ): ?ResolvedCallable {
         if ($call instanceof FuncCall) {
-            return $this->resolveFuncCallCallable($call, $ast);
+            return $this->resolveFuncCallCallable($call, $ast, $document);
         }
 
         if ($call instanceof MethodCall || $call instanceof NullsafeMethodCall) {
@@ -447,14 +447,10 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveFuncCallCallable(FuncCall $call, array $ast): ?ResolvedCallable
+    private function resolveFuncCallCallable(FuncCall $call, array $ast, TextDocument $document): ?ResolvedCallable
     {
-        $name = $call->name;
-        if (!$name instanceof Name) {
-            return null;
-        }
-
-        return $this->resolveFunctionByName($name, $ast);
+        $symbol = $this->expressionResolver($document)->resolve($call, $ast);
+        return $symbol instanceof ResolvedCallable ? $symbol : null;
     }
 
     /**
@@ -538,7 +534,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         if ($node instanceof Name) {
-            return $this->resolveName($node, $ast);
+            return $this->resolveName($node, $ast, $document);
         }
 
         if ($node instanceof Variable) {
@@ -588,16 +584,12 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveName(Name $node, array $ast): ?ResolvedSymbol
+    private function resolveName(Name $node, array $ast, TextDocument $document): ?ResolvedSymbol
     {
         $parent = $node->getAttribute('parent');
 
-        if ($parent instanceof FuncCall) {
-            return $this->resolveFunctionCall($node, $ast);
-        }
-
-        if ($parent instanceof ConstFetch) {
-            return $this->resolveConstFetch($node);
+        if ($parent instanceof FuncCall || $parent instanceof ConstFetch) {
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Class reference (new, instanceof, static call, type hint, etc.)
@@ -609,44 +601,6 @@ final class SymbolResolver implements CodeResolver
         }
 
         return $classInfo;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveFunctionCall(Name $node, array $ast): ?FunctionInfo
-    {
-        return $this->resolveFunctionByName($node, $ast);
-    }
-
-    private function resolveConstFetch(Name $node): ?ConstantInfo
-    {
-        $name = ScopeFinder::resolveName($node);
-        $constantInfo = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($name));
-        if ($constantInfo === null) {
-            return null;
-        }
-
-        return $constantInfo;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveFunctionByName(Name $name, array $ast): ?FunctionInfo
-    {
-        $shortName = $name->toString();
-        $line = $name->getStartLine() - 1;
-        $context = NameContextFactory::fromAst($ast, $line);
-
-        foreach ($context->candidates($shortName, NameKind::Function_) as $candidate) {
-            $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
-            if ($funcInfo !== null) {
-                return $funcInfo;
-            }
-        }
-
-        return null;
     }
 
     /**
