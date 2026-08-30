@@ -431,7 +431,8 @@ final class SymbolResolver implements CodeResolver
         }
 
         if ($call instanceof StaticCall) {
-            return $this->resolveStaticCallCallable($call);
+            $symbol = $this->expressionResolver($document)->resolve($call, $ast);
+            return $symbol instanceof ResolvedCallable ? $symbol : null;
         }
 
         // An attribute usage `#[X(...)]` is a constructor call on the attribute class.
@@ -476,36 +477,6 @@ final class SymbolResolver implements CodeResolver
 
         $methodInfo = $this->memberResolver->findMethod(
             $className,
-            new MethodName($methodName->toString()),
-            Visibility::Private,
-        );
-
-        if ($methodInfo === null) {
-            return null;
-        }
-
-        return $methodInfo;
-    }
-
-    private function resolveStaticCallCallable(StaticCall $call): ?ResolvedCallable
-    {
-        $methodName = $call->name;
-        if (!$methodName instanceof Identifier) {
-            return null;
-        }
-
-        $class = $call->class;
-        if (!$class instanceof Name) {
-            return null;
-        }
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        $methodInfo = $this->memberResolver->findMethod(
-            new ClassName($classNameStr),
             new MethodName($methodName->toString()),
             Visibility::Private,
         );
@@ -592,7 +563,7 @@ final class SymbolResolver implements CodeResolver
 
         // Static method call: ClassName::method()
         if ($parent instanceof StaticCall) {
-            return $this->resolveStaticCallCallable($parent);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Property fetch: $obj->property or $obj?->property
