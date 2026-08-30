@@ -39,6 +39,7 @@ use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -83,6 +84,7 @@ class CompletionHandlerTest extends TestCase
             $fixturesRoot . '/vendor',
             $this->parser,
             $this->symbolIndex,
+            new DefaultTextSymbolExtractor(),
         );
         $this->symbolSource = $knowledge->source;
 

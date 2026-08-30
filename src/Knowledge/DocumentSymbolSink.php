@@ -38,6 +38,7 @@ final class DocumentSymbolSink implements SymbolSink
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly ParserService $parser,
         private readonly DeclarationScanner $scanner,
+        private readonly TextSymbolExtractor $textExtractor,
         private readonly array $onDiskBackends = [],
     ) {
     }
@@ -72,17 +73,30 @@ final class DocumentSymbolSink implements SymbolSink
 
     private function write(TextDocument $document): void
     {
-        // One parse feeds both stores (RFC 1 §4.3): the class-lookup registration and
-        // the symbol index are written transactionally from this single AST. A parse
-        // failure yields no statements, so both are cleared together.
+        // Three-tier producer selection (RFC 1 §5.3), cheapest first: AST when the
+        // parse yields declarations, preserved registration when the parse is empty
+        // and a prior one exists, text producer when neither. `MemberResolver` sees
+        // one consumer regardless of tier.
         $ast = $this->parser->parse($document) ?? [];
-
         $declarations = $this->scanner->scan($ast);
-        $symbols = $this->infoFactory->allIn($declarations, FileUri::toPath($document->uri));
-        $this->backend->updateDocument($document->uri, ...$symbols);
-        $this->indexer->indexParsed($document, $ast);
+        $filePath = FileUri::toPath($document->uri);
 
-        $this->assertStoresAgree($symbols);
+        if ($declarations->classLikes !== [] || $declarations->functions !== [] || $declarations->constants !== []) {
+            $symbols = $this->infoFactory->allIn($declarations, $filePath);
+            $this->backend->updateDocument($document->uri, ...$symbols);
+            $this->indexer->indexParsed($document, $ast);
+            $this->assertStoresAgree($symbols);
+            return;
+        }
+
+        if ($this->backend->hasRegistrationFor($document->uri)) {
+            return;
+        }
+
+        $textSymbols = $this->textExtractor->extract($document->getContent(), $filePath);
+        if ($textSymbols !== []) {
+            $this->backend->updateDocument($document->uri, ...$textSymbols);
+        }
     }
 
     /**

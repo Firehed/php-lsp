@@ -9,7 +9,10 @@ use PhpParser\Node\Stmt;
 use ReflectionClass;
 
 /**
- * Creates ClassInfo domain objects from AST nodes or Reflection.
+ * Creates ClassInfo domain objects from AST nodes or Reflection. The text case
+ * lives outside this factory ({@see \Firehed\PhpLsp\Knowledge\TextSymbolExtractor})
+ * so the regex confinement in the layer contract stays intact — Repository does
+ * not depend on Resolution, where the regex primitives live.
  */
 interface ClassInfoFactory
 {

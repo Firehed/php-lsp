@@ -16,8 +16,6 @@ use ReflectionUnionType;
 final class TypeFactory
 {
     /**
-     * @param class-string|null $selfContext
-     * @param class-string|null $parentContext
      * @param bool $preserveLateBinding If true, returns LateStaticType for static/self/parent
      */
     public static function fromNode(
@@ -45,7 +43,6 @@ final class TypeFactory
 
             if ($node instanceof Name) {
                 $resolvedName = $node->getAttribute('resolvedName');
-                /** @var class-string $fqn */
                 $fqn = $resolvedName instanceof Name
                     ? $resolvedName->toString()
                     : $name;
@@ -84,9 +81,6 @@ final class TypeFactory
         // @codeCoverageIgnoreEnd
     }
 
-    /**
-     * @param class-string $fqn
-     */
     public static function className(string $fqn): ClassName
     {
         return new ClassName($fqn);
@@ -123,7 +117,6 @@ final class TypeFactory
                 return $primitive;
             }
 
-            /** @var class-string $name */
             $className = new ClassName($name);
             if ($type->allowsNull()) {
                 return new UnionType([$className, new PrimitiveType('null')]);
@@ -150,10 +143,6 @@ final class TypeFactory
         // @codeCoverageIgnoreEnd
     }
 
-    /**
-     * @param class-string|null $selfContext
-     * @param class-string|null $parentContext
-     */
     private static function tryLateBindingType(
         string $name,
         ?string $selfContext,

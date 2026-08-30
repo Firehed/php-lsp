@@ -21,7 +21,7 @@ interface Type extends Formattable
      * to the declaring class. The `$declaringClassIsTrait` parameter allows
      * callers to distinguish these cases at resolution time.
      *
-     * @param class-string $callingClass The class the method was called on
+     * @param string $callingClass The class the method was called on
      * @param bool $declaringClassIsTrait Whether the method was declared in a trait
      */
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type;

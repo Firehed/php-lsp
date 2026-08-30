@@ -25,10 +25,6 @@ final readonly class ParameterInfo implements ResolvedSymbol
     ) {
     }
 
-    /**
-     * @param class-string|null $selfContext
-     * @param class-string|null $parentContext
-     */
     public static function fromNode(
         Param $param,
         int $position,

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * Type-safe wrapper for fully-qualified class names.
+ * A fully-qualified name intended to be a class-like. Not a `class-string`:
+ * text-derived names (RFC 1 §5.3), fixtures, and forward references all produce a
+ * `ClassName` before any lookup, so the runtime existence of the class is a
+ * separate question the resolution tier answers.
  */
 final readonly class ClassName implements Type
 {
     /**
-     * @param class-string $fqn
      * @param list<Type> $typeArguments
      */
     public function __construct(

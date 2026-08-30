@@ -227,7 +227,6 @@ final class ClassLikeLookupParityTest extends TestCase
      */
     private static function className(string $fqn): ClassName
     {
-        /** @phpstan-ignore argument.type (corpus names are not analyzed) */
         return new ClassName($fqn);
     }
 

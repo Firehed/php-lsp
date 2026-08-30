@@ -112,7 +112,6 @@ trait BuildsSymbolInfoTrait
      */
     private static function className(string $fqn): ClassName
     {
-        /** @phpstan-ignore argument.type (virtual names are not analyzed) */
         return new ClassName($fqn);
     }
 }
