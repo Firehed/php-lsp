@@ -74,7 +74,10 @@ final class CompletionParityTest extends TestCase
         'parent_incomplete' => ['src/IncompleteCode/ParentAccess.php', 'parent_incomplete'],
         'parent_no_extends' => ['src/IncompleteCode/ParentAccess.php', 'parent_no_extends'],
         'single_incomplete_this_in_if' => ['src/IncompleteCode/SingleIncomplete.php', 'this_in_if'],
-        'single_incomplete_sig_this_call' => ['src/IncompleteCode/SingleIncompleteSigHelp.php', 'sig_this_call'],
+        // SingleIncompleteSigHelp's sig_this_call cursor is expression-start inside
+        // a call's args; completion enumerates reflected built-in constants (AI_*,
+        // E_*, SIGKILL, …) whose set differs by PHP version and enabled extensions,
+        // so the row would fail the CI matrix by design. Kept out of the golden.
         'very_broken_this_arrow' => ['src/IncompleteCode/VeryBroken.php', 'this_in_if'],
         // TopLevel/ — force the text branch by design
         'toplevel_broken_self' => ['TopLevel/broken_self.php', 'broken_self_toplevel'],
