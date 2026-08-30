@@ -598,7 +598,7 @@ final class SymbolResolver implements CodeResolver
         // Property fetch: $obj->property or $obj?->property
         if (self::isPropertyFetch($parent)) {
             /** @var PropertyFetch|NullsafePropertyFetch $parent */
-            return $this->resolvePropertyFetch($parent, $ast, $document);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Class constant or enum case: ClassName::CONSTANT or Enum::Case
@@ -798,39 +798,6 @@ final class SymbolResolver implements CodeResolver
         }
 
         return $paramInfo;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolvePropertyFetch(
-        PropertyFetch|NullsafePropertyFetch $fetch,
-        array $ast,
-        TextDocument $document,
-    ): ?ResolvedSymbol {
-        $propertyName = $fetch->name;
-        // @codeCoverageIgnoreStart
-        if (!$propertyName instanceof Identifier) {
-            throw new LogicException('resolvePropertyFetch called with non-Identifier name');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $className = $this->memberAccessDetector->resolveInstanceAccessClassName($fetch, $ast, $document);
-        if ($className === null) {
-            return null;
-        }
-
-        $propertyInfo = $this->memberResolver->findProperty(
-            $className,
-            new PropertyName($propertyName->toString()),
-            Visibility::Private,
-        );
-
-        if ($propertyInfo === null) {
-            return null;
-        }
-
-        return $propertyInfo;
     }
 
     private function resolveClassConstFetch(ClassConstFetch $fetch): ?ResolvedSymbol
