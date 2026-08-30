@@ -719,8 +719,11 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveVarLikeIdentifier(VarLikeIdentifier $node, array $ast, TextDocument $document): ?ResolvedSymbol
-    {
+    private function resolveVarLikeIdentifier(
+        VarLikeIdentifier $node,
+        array $ast,
+        TextDocument $document,
+    ): ?ResolvedSymbol {
         $parent = $node->getAttribute('parent');
 
         // Static property fetch: ClassName::$property
