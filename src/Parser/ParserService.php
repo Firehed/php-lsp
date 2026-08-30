@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use PhpParser\ErrorHandler;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
@@ -68,6 +69,24 @@ final class ParserService
     public function getMetrics(): ParseMetrics
     {
         return $this->metrics;
+    }
+
+    /**
+     * Parse a PHP expression fragment (e.g. `$this->foo->bar`) into an {@see Expr}
+     * node. Returns null when the fragment does not parse as a single expression
+     * statement. Shares the content-keyed memo the whole-file parse uses.
+     */
+    public function parseExpression(string $expression): ?Expr
+    {
+        $ast = $this->parse(new TextDocument('fragment', 'php', 0, '<?php ' . $expression . ';'));
+        if ($ast === null || count($ast) !== 1) {
+            return null;
+        }
+        $stmt = $ast[0];
+        if (!$stmt instanceof Stmt\Expression) {
+            return null;
+        }
+        return $stmt->expr;
     }
 
     /**
