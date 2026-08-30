@@ -1,0 +1,16 @@
+{
+    "very_broken_this_arrow": [
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "name",
+            "kind": 10
+        },
+        {
+            "label": "test",
+            "kind": 2
+        }
+    ]
+}

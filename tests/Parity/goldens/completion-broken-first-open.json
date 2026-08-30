@@ -1,0 +1,2079 @@
+{
+    "aliased_imports_param": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "activate",
+            "kind": 2
+        },
+        {
+            "label": "deactivate",
+            "kind": 2
+        },
+        {
+            "label": "getAge",
+            "kind": 2
+        },
+        {
+            "label": "getCreatedAt",
+            "kind": 2
+        },
+        {
+            "label": "getEmail",
+            "kind": 2
+        },
+        {
+            "label": "getId",
+            "kind": 2
+        },
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getStatus",
+            "kind": 2
+        },
+        {
+            "label": "getTeam",
+            "kind": 2
+        },
+        {
+            "label": "getUpdatedAt",
+            "kind": 2
+        },
+        {
+            "label": "isActive",
+            "kind": 2
+        },
+        {
+            "label": "manager",
+            "kind": 10
+        },
+        {
+            "label": "markCreated",
+            "kind": 2
+        },
+        {
+            "label": "markUpdated",
+            "kind": 2
+        },
+        {
+            "label": "setName",
+            "kind": 2
+        },
+        {
+            "label": "team",
+            "kind": 10
+        },
+        {
+            "label": "triggerComputedClassStatic",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicFuncCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicStaticCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverBuiltinConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverDefineConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMultilineChain",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverTraitMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUndefinedConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUserConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverVariable",
+            "kind": 2
+        },
+        {
+            "label": "triggerLiteralHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerNestedVariables",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigBuiltinFunc",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNullsafe",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigSelf",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigThis",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyFromConsumer",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownClass",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerVariableVariable",
+            "kind": 2
+        },
+        {
+            "label": "withAge",
+            "kind": 2
+        },
+        {
+            "label": "withName",
+            "kind": 2
+        },
+        {
+            "label": "withStatus",
+            "kind": 2
+        }
+    ],
+    "aliased_imports_static": [
+        {
+            "label": "DEFAULT_ROLE",
+            "kind": 21
+        },
+        {
+            "label": "class",
+            "kind": 21
+        },
+        {
+            "label": "create",
+            "kind": 2
+        },
+        {
+            "label": "getInstanceCount",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefNullsafeViaAssignment",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefViaAssignment",
+            "kind": 2
+        }
+    ],
+    "aliased_imports_new": [
+        {
+            "label": "AliasedImports",
+            "kind": 7
+        },
+        {
+            "label": "AliasedUser",
+            "kind": 7
+        },
+        {
+            "label": "BrokenClassMembers",
+            "kind": 7
+        },
+        {
+            "label": "BrokenInheritance",
+            "kind": 7
+        },
+        {
+            "label": "ChainedAccess",
+            "kind": 7
+        },
+        {
+            "label": "CompleteInControl",
+            "kind": 7
+        },
+        {
+            "label": "GroupImports",
+            "kind": 7
+        },
+        {
+            "label": "InControlStructures",
+            "kind": 7
+        },
+        {
+            "label": "IncompleteAliasedParam",
+            "kind": 7
+        },
+        {
+            "label": "IncompleteAliasedStatic",
+            "kind": 7
+        },
+        {
+            "label": "IncompleteCollidingImport",
+            "kind": 7
+        },
+        {
+            "label": "IncompleteCollidingNew",
+            "kind": 7
+        },
+        {
+            "label": "MultibyteVarAccess",
+            "kind": 7
+        },
+        {
+            "label": "ParentAccess",
+            "kind": 7
+        },
+        {
+            "label": "SingleIncomplete",
+            "kind": 7
+        },
+        {
+            "label": "SingleIncompleteSigHelp",
+            "kind": 7
+        },
+        {
+            "label": "VeryBroken",
+            "kind": 7
+        },
+        {
+            "label": "Widget",
+            "kind": 7
+        },
+        {
+            "label": "array",
+            "kind": 14
+        },
+        {
+            "label": "bool",
+            "kind": 14
+        },
+        {
+            "label": "callable",
+            "kind": 14
+        },
+        {
+            "label": "false",
+            "kind": 14
+        },
+        {
+            "label": "float",
+            "kind": 14
+        },
+        {
+            "label": "int",
+            "kind": 14
+        },
+        {
+            "label": "iterable",
+            "kind": 14
+        },
+        {
+            "label": "mixed",
+            "kind": 14
+        },
+        {
+            "label": "null",
+            "kind": 14
+        },
+        {
+            "label": "object",
+            "kind": 14
+        },
+        {
+            "label": "parent",
+            "kind": 14
+        },
+        {
+            "label": "self",
+            "kind": 14
+        },
+        {
+            "label": "string",
+            "kind": 14
+        },
+        {
+            "label": "true",
+            "kind": 14
+        }
+    ],
+    "aliased_imports_colliding_static": [
+        {
+            "label": "class",
+            "kind": 21
+        }
+    ],
+    "broken_class_instance": [
+        {
+            "label": "name",
+            "kind": 10
+        },
+        {
+            "label": "test",
+            "kind": 2
+        }
+    ],
+    "broken_class_static": [
+        {
+            "label": "NAME",
+            "kind": 21
+        },
+        {
+            "label": "class",
+            "kind": 21
+        },
+        {
+            "label": "create",
+            "kind": 2
+        }
+    ],
+    "broken_inheritance_instance": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "childMethod",
+            "kind": 2
+        },
+        {
+            "label": "grandparentMethod",
+            "kind": 2
+        },
+        {
+            "label": "grandparentProperty",
+            "kind": 10
+        },
+        {
+            "label": "overriddenMethod",
+            "kind": 2
+        },
+        {
+            "label": "parentMethod",
+            "kind": 2
+        },
+        {
+            "label": "parentProperty",
+            "kind": 10
+        },
+        {
+            "label": "protectedGrandparentMethod",
+            "kind": 2
+        },
+        {
+            "label": "protectedMethod",
+            "kind": 2
+        },
+        {
+            "label": "protectedProperty",
+            "kind": 10
+        },
+        {
+            "label": "sharedProperty",
+            "kind": 10
+        },
+        {
+            "label": "triggerDefPrivateMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefProtectedMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverClassConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticProperty",
+            "kind": 2
+        }
+    ],
+    "broken_inheritance_static": [
+        {
+            "label": "CHILD_CONST",
+            "kind": 21
+        },
+        {
+            "label": "GRANDPARENT_CONST",
+            "kind": 21
+        },
+        {
+            "label": "PARENT_CONST",
+            "kind": 21
+        },
+        {
+            "label": "PROTECTED_CONST",
+            "kind": 21
+        },
+        {
+            "label": "class",
+            "kind": 21
+        },
+        {
+            "label": "grandparentStaticProtected",
+            "kind": 2
+        },
+        {
+            "label": "grandparentStaticPublic",
+            "kind": 2
+        },
+        {
+            "label": "protectedStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "staticMethod",
+            "kind": 2
+        }
+    ],
+    "chained_in_if": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "activate",
+            "kind": 2
+        },
+        {
+            "label": "deactivate",
+            "kind": 2
+        },
+        {
+            "label": "getAge",
+            "kind": 2
+        },
+        {
+            "label": "getCreatedAt",
+            "kind": 2
+        },
+        {
+            "label": "getEmail",
+            "kind": 2
+        },
+        {
+            "label": "getId",
+            "kind": 2
+        },
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getStatus",
+            "kind": 2
+        },
+        {
+            "label": "getTeam",
+            "kind": 2
+        },
+        {
+            "label": "getUpdatedAt",
+            "kind": 2
+        },
+        {
+            "label": "isActive",
+            "kind": 2
+        },
+        {
+            "label": "manager",
+            "kind": 10
+        },
+        {
+            "label": "markCreated",
+            "kind": 2
+        },
+        {
+            "label": "markUpdated",
+            "kind": 2
+        },
+        {
+            "label": "setName",
+            "kind": 2
+        },
+        {
+            "label": "team",
+            "kind": 10
+        },
+        {
+            "label": "triggerComputedClassStatic",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicFuncCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicStaticCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverBuiltinConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverDefineConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMultilineChain",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverTraitMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUndefinedConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUserConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverVariable",
+            "kind": 2
+        },
+        {
+            "label": "triggerLiteralHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerNestedVariables",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigBuiltinFunc",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNullsafe",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigSelf",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigThis",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyFromConsumer",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownClass",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerVariableVariable",
+            "kind": 2
+        },
+        {
+            "label": "withAge",
+            "kind": 2
+        },
+        {
+            "label": "withName",
+            "kind": 2
+        },
+        {
+            "label": "withStatus",
+            "kind": 2
+        }
+    ],
+    "chained_double_arrow": [],
+    "chained_nonexistent": [],
+    "chained_untyped": [],
+    "group_imports_aliased_static": [
+        {
+            "label": "Critical",
+            "kind": 20
+        },
+        {
+            "label": "High",
+            "kind": 20
+        },
+        {
+            "label": "Low",
+            "kind": 20
+        },
+        {
+            "label": "Medium",
+            "kind": 20
+        },
+        {
+            "label": "cases",
+            "kind": 2
+        },
+        {
+            "label": "class",
+            "kind": 21
+        },
+        {
+            "label": "from",
+            "kind": 2
+        },
+        {
+            "label": "fromScore",
+            "kind": 2
+        },
+        {
+            "label": "tryFrom",
+            "kind": 2
+        }
+    ],
+    "group_imports_static": [
+        {
+            "label": "DEFAULT_ROLE",
+            "kind": 21
+        },
+        {
+            "label": "class",
+            "kind": 21
+        },
+        {
+            "label": "create",
+            "kind": 2
+        },
+        {
+            "label": "getInstanceCount",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefNullsafeViaAssignment",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefViaAssignment",
+            "kind": 2
+        }
+    ],
+    "group_imports_param": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "activate",
+            "kind": 2
+        },
+        {
+            "label": "deactivate",
+            "kind": 2
+        },
+        {
+            "label": "getAge",
+            "kind": 2
+        },
+        {
+            "label": "getCreatedAt",
+            "kind": 2
+        },
+        {
+            "label": "getEmail",
+            "kind": 2
+        },
+        {
+            "label": "getId",
+            "kind": 2
+        },
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getStatus",
+            "kind": 2
+        },
+        {
+            "label": "getTeam",
+            "kind": 2
+        },
+        {
+            "label": "getUpdatedAt",
+            "kind": 2
+        },
+        {
+            "label": "isActive",
+            "kind": 2
+        },
+        {
+            "label": "manager",
+            "kind": 10
+        },
+        {
+            "label": "markCreated",
+            "kind": 2
+        },
+        {
+            "label": "markUpdated",
+            "kind": 2
+        },
+        {
+            "label": "setName",
+            "kind": 2
+        },
+        {
+            "label": "team",
+            "kind": 10
+        },
+        {
+            "label": "triggerComputedClassStatic",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicFuncCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicStaticCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverBuiltinConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverDefineConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMultilineChain",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverTraitMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUndefinedConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUserConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverVariable",
+            "kind": 2
+        },
+        {
+            "label": "triggerLiteralHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerNestedVariables",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigBuiltinFunc",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNullsafe",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigSelf",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigThis",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyFromConsumer",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownClass",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerVariableVariable",
+            "kind": 2
+        },
+        {
+            "label": "withAge",
+            "kind": 2
+        },
+        {
+            "label": "withName",
+            "kind": 2
+        },
+        {
+            "label": "withStatus",
+            "kind": 2
+        }
+    ],
+    "in_control_nullable_param": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "activate",
+            "kind": 2
+        },
+        {
+            "label": "deactivate",
+            "kind": 2
+        },
+        {
+            "label": "getAge",
+            "kind": 2
+        },
+        {
+            "label": "getCreatedAt",
+            "kind": 2
+        },
+        {
+            "label": "getEmail",
+            "kind": 2
+        },
+        {
+            "label": "getId",
+            "kind": 2
+        },
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getStatus",
+            "kind": 2
+        },
+        {
+            "label": "getTeam",
+            "kind": 2
+        },
+        {
+            "label": "getUpdatedAt",
+            "kind": 2
+        },
+        {
+            "label": "isActive",
+            "kind": 2
+        },
+        {
+            "label": "manager",
+            "kind": 10
+        },
+        {
+            "label": "markCreated",
+            "kind": 2
+        },
+        {
+            "label": "markUpdated",
+            "kind": 2
+        },
+        {
+            "label": "setName",
+            "kind": 2
+        },
+        {
+            "label": "team",
+            "kind": 10
+        },
+        {
+            "label": "triggerComputedClassStatic",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicFuncCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicStaticCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverBuiltinConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverDefineConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMultilineChain",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverTraitMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUndefinedConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUserConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverVariable",
+            "kind": 2
+        },
+        {
+            "label": "triggerLiteralHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerNestedVariables",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigBuiltinFunc",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNullsafe",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigSelf",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigThis",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyFromConsumer",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownClass",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerVariableVariable",
+            "kind": 2
+        },
+        {
+            "label": "withAge",
+            "kind": 2
+        },
+        {
+            "label": "withName",
+            "kind": 2
+        },
+        {
+            "label": "withStatus",
+            "kind": 2
+        }
+    ],
+    "in_control_primitive_param": [],
+    "in_control_this_prefix_if": [
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getUser",
+            "kind": 2
+        }
+    ],
+    "in_control_var_access_while": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "activate",
+            "kind": 2
+        },
+        {
+            "label": "deactivate",
+            "kind": 2
+        },
+        {
+            "label": "getAge",
+            "kind": 2
+        },
+        {
+            "label": "getCreatedAt",
+            "kind": 2
+        },
+        {
+            "label": "getEmail",
+            "kind": 2
+        },
+        {
+            "label": "getId",
+            "kind": 2
+        },
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getStatus",
+            "kind": 2
+        },
+        {
+            "label": "getTeam",
+            "kind": 2
+        },
+        {
+            "label": "getUpdatedAt",
+            "kind": 2
+        },
+        {
+            "label": "isActive",
+            "kind": 2
+        },
+        {
+            "label": "manager",
+            "kind": 10
+        },
+        {
+            "label": "markCreated",
+            "kind": 2
+        },
+        {
+            "label": "markUpdated",
+            "kind": 2
+        },
+        {
+            "label": "setName",
+            "kind": 2
+        },
+        {
+            "label": "team",
+            "kind": 10
+        },
+        {
+            "label": "triggerComputedClassStatic",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicFuncCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicStaticCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverBuiltinConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverDefineConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMultilineChain",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverTraitMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUndefinedConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUserConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverVariable",
+            "kind": 2
+        },
+        {
+            "label": "triggerLiteralHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerNestedVariables",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigBuiltinFunc",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNullsafe",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigSelf",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigThis",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyFromConsumer",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownClass",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerVariableVariable",
+            "kind": 2
+        },
+        {
+            "label": "withAge",
+            "kind": 2
+        },
+        {
+            "label": "withName",
+            "kind": 2
+        },
+        {
+            "label": "withStatus",
+            "kind": 2
+        }
+    ],
+    "parent_incomplete": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "grandparentMethod",
+            "kind": 2
+        },
+        {
+            "label": "grandparentStaticProtected",
+            "kind": 2
+        },
+        {
+            "label": "grandparentStaticPublic",
+            "kind": 2
+        },
+        {
+            "label": "overriddenMethod",
+            "kind": 2
+        },
+        {
+            "label": "parentMethod",
+            "kind": 2
+        },
+        {
+            "label": "protectedGrandparentMethod",
+            "kind": 2
+        },
+        {
+            "label": "protectedMethod",
+            "kind": 2
+        },
+        {
+            "label": "protectedStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "staticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefPrivateMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefProtectedMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverClassConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticProperty",
+            "kind": 2
+        }
+    ],
+    "parent_no_extends": [],
+    "single_incomplete_this_in_if": [
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "name",
+            "kind": 10
+        },
+        {
+            "label": "test",
+            "kind": 2
+        }
+    ],
+    "very_broken_this_arrow": [
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "name",
+            "kind": 10
+        },
+        {
+            "label": "test",
+            "kind": 2
+        }
+    ],
+    "toplevel_broken_self": [],
+    "toplevel_global_member_ns": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "activate",
+            "kind": 2
+        },
+        {
+            "label": "deactivate",
+            "kind": 2
+        },
+        {
+            "label": "getAge",
+            "kind": 2
+        },
+        {
+            "label": "getCreatedAt",
+            "kind": 2
+        },
+        {
+            "label": "getEmail",
+            "kind": 2
+        },
+        {
+            "label": "getId",
+            "kind": 2
+        },
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getStatus",
+            "kind": 2
+        },
+        {
+            "label": "getTeam",
+            "kind": 2
+        },
+        {
+            "label": "getUpdatedAt",
+            "kind": 2
+        },
+        {
+            "label": "isActive",
+            "kind": 2
+        },
+        {
+            "label": "manager",
+            "kind": 10
+        },
+        {
+            "label": "markCreated",
+            "kind": 2
+        },
+        {
+            "label": "markUpdated",
+            "kind": 2
+        },
+        {
+            "label": "setName",
+            "kind": 2
+        },
+        {
+            "label": "team",
+            "kind": 10
+        },
+        {
+            "label": "triggerComputedClassStatic",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicFuncCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicStaticCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverBuiltinConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverDefineConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMultilineChain",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverTraitMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUndefinedConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUserConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverVariable",
+            "kind": 2
+        },
+        {
+            "label": "triggerLiteralHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerNestedVariables",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigBuiltinFunc",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNullsafe",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigSelf",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigThis",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyFromConsumer",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownClass",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerVariableVariable",
+            "kind": 2
+        },
+        {
+            "label": "withAge",
+            "kind": 2
+        },
+        {
+            "label": "withName",
+            "kind": 2
+        },
+        {
+            "label": "withStatus",
+            "kind": 2
+        }
+    ],
+    "toplevel_global_member": [
+        {
+            "label": "__construct",
+            "kind": 2
+        },
+        {
+            "label": "activate",
+            "kind": 2
+        },
+        {
+            "label": "deactivate",
+            "kind": 2
+        },
+        {
+            "label": "getAge",
+            "kind": 2
+        },
+        {
+            "label": "getCreatedAt",
+            "kind": 2
+        },
+        {
+            "label": "getEmail",
+            "kind": 2
+        },
+        {
+            "label": "getId",
+            "kind": 2
+        },
+        {
+            "label": "getName",
+            "kind": 2
+        },
+        {
+            "label": "getStatus",
+            "kind": 2
+        },
+        {
+            "label": "getTeam",
+            "kind": 2
+        },
+        {
+            "label": "getUpdatedAt",
+            "kind": 2
+        },
+        {
+            "label": "isActive",
+            "kind": 2
+        },
+        {
+            "label": "manager",
+            "kind": 10
+        },
+        {
+            "label": "markCreated",
+            "kind": 2
+        },
+        {
+            "label": "markUpdated",
+            "kind": 2
+        },
+        {
+            "label": "setName",
+            "kind": 2
+        },
+        {
+            "label": "team",
+            "kind": 10
+        },
+        {
+            "label": "triggerComputedClassStatic",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicFuncCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerDynamicStaticCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverBuiltinConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverDefineConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverMultilineChain",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverNullsafeProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverTraitMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUndefinedConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverUserConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerHoverVariable",
+            "kind": 2
+        },
+        {
+            "label": "triggerLiteralHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerNestedVariables",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerNonexistentStaticMethod",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigBuiltinFunc",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNew",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigNullsafe",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigSelf",
+            "kind": 2
+        },
+        {
+            "label": "triggerSigThis",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyFromConsumer",
+            "kind": 2
+        },
+        {
+            "label": "triggerTraitPropertyHover",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownClass",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownConstant",
+            "kind": 2
+        },
+        {
+            "label": "triggerUnknownProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedMethodCall",
+            "kind": 2
+        },
+        {
+            "label": "triggerUntypedProperty",
+            "kind": 2
+        },
+        {
+            "label": "triggerVariableVariable",
+            "kind": 2
+        },
+        {
+            "label": "withAge",
+            "kind": 2
+        },
+        {
+            "label": "withName",
+            "kind": 2
+        },
+        {
+            "label": "withStatus",
+            "kind": 2
+        }
+    ],
+    "toplevel_global_nested": [],
+    "toplevel_global_var": [
+        {
+            "label": "$currentUser",
+            "kind": 6
+        }
+    ],
+    "toplevel_no_ast_static": [
+        {
+            "label": "class",
+            "kind": 21
+        }
+    ],
+    "toplevel_anon_class_static": [
+        {
+            "label": "DEFAULT_ROLE",
+            "kind": 21
+        },
+        {
+            "label": "class",
+            "kind": 21
+        },
+        {
+            "label": "create",
+            "kind": 2
+        },
+        {
+            "label": "getInstanceCount",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefNullsafeViaAssignment",
+            "kind": 2
+        },
+        {
+            "label": "triggerDefViaAssignment",
+            "kind": 2
+        }
+    ],
+    "toplevel_self": [],
+    "toplevel_static": [],
+    "toplevel_this_chained": [],
+    "toplevel_this": []
+}
