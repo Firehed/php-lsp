@@ -44,7 +44,9 @@ final class TextFallbackHelper
         $pattern = '/(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
             . '(?:\s+extends\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*))?/';
         if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
-            return [];
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('preg_match_all with valid pattern cannot fail');
+            // @codeCoverageIgnoreEnd
         }
 
         $out = [];
@@ -71,7 +73,9 @@ final class TextFallbackHelper
     {
         $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(/m';
         if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER) === false) {
-            return [];
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('preg_match_all with valid pattern cannot fail');
+            // @codeCoverageIgnoreEnd
         }
         $out = [];
         foreach ($matches as $match) {
@@ -93,7 +97,9 @@ final class TextFallbackHelper
     {
         $pattern = '/^\s*(public|protected|private)\s+(static\s+)?(readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
         if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER) === false) {
-            return [];
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('preg_match_all with valid pattern cannot fail');
+            // @codeCoverageIgnoreEnd
         }
         $out = [];
         foreach ($matches as $match) {
@@ -117,7 +123,9 @@ final class TextFallbackHelper
     {
         $pattern = '/^\s*(public|protected|private)?\s*const\s+(?:[\w\\\\|?]+\s+)?(\w+)\s*=/m';
         if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER) === false) {
-            return [];
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('preg_match_all with valid pattern cannot fail');
+            // @codeCoverageIgnoreEnd
         }
         $out = [];
         foreach ($matches as $match) {
