@@ -530,7 +530,7 @@ final class SymbolResolver implements CodeResolver
     {
         // VarLikeIdentifier extends Identifier, so check it first
         if ($node instanceof VarLikeIdentifier) {
-            return $this->resolveVarLikeIdentifier($node);
+            return $this->resolveVarLikeIdentifier($node, $ast, $document);
         }
 
         if ($node instanceof Identifier) {
@@ -574,7 +574,7 @@ final class SymbolResolver implements CodeResolver
 
         // Class constant or enum case: ClassName::CONSTANT or Enum::Case
         if ($parent instanceof ClassConstFetch) {
-            return $this->resolveClassConstFetch($parent);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Named argument: func(name: value) - cursor on 'name'
@@ -771,93 +771,19 @@ final class SymbolResolver implements CodeResolver
         return $paramInfo;
     }
 
-    private function resolveClassConstFetch(ClassConstFetch $fetch): ?ResolvedSymbol
-    {
-        $constName = $fetch->name;
-        // @codeCoverageIgnoreStart
-        if (!$constName instanceof Identifier) {
-            throw new LogicException('resolveClassConstFetch called with non-Identifier name');
-        }
-
-        $class = $fetch->class;
-        if (!$class instanceof Name) {
-            throw new LogicException('resolveClassConstFetch called with non-Name class');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        $className = new ClassName($classNameStr);
-
-        // Check if it's an enum case first
-        $enumCaseInfo = $this->memberResolver->findEnumCase(
-            $className,
-            new EnumCaseName($constName->toString()),
-        );
-
-        if ($enumCaseInfo !== null) {
-            return $enumCaseInfo;
-        }
-
-        // Otherwise it's a class constant
-        $constantInfo = $this->memberResolver->findConstant(
-            $className,
-            new ConstantName($constName->toString()),
-            Visibility::Private,
-        );
-
-        if ($constantInfo === null) {
-            return null;
-        }
-
-        return $constantInfo;
-    }
-
-    private function resolveVarLikeIdentifier(VarLikeIdentifier $node): ?ResolvedSymbol
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveVarLikeIdentifier(VarLikeIdentifier $node, array $ast, TextDocument $document): ?ResolvedSymbol
     {
         $parent = $node->getAttribute('parent');
 
         // Static property fetch: ClassName::$property
         if ($parent instanceof StaticPropertyFetch) {
-            return $this->resolveStaticPropertyFetch($parent);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         return null;
-    }
-
-    private function resolveStaticPropertyFetch(StaticPropertyFetch $fetch): ?ResolvedSymbol
-    {
-        $propertyName = $fetch->name;
-        // @codeCoverageIgnoreStart
-        if (!$propertyName instanceof VarLikeIdentifier) {
-            throw new LogicException('resolveStaticPropertyFetch called with non-VarLikeIdentifier name');
-        }
-
-        $class = $fetch->class;
-        if (!$class instanceof Name) {
-            throw new LogicException('resolveStaticPropertyFetch called with non-Name class');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        $propertyInfo = $this->memberResolver->findProperty(
-            new ClassName($classNameStr),
-            new PropertyName($propertyName->toString()),
-            Visibility::Private,
-        );
-
-        if ($propertyInfo === null) {
-            return null;
-        }
-
-        return $propertyInfo;
     }
 
     private static function isMethodCall(mixed $node): bool
