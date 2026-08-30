@@ -27,11 +27,12 @@ final class DefaultTextSymbolExtractorTest extends TestCase
         $this->extractor = new DefaultTextSymbolExtractor();
     }
 
-    public function testExtractsInterfaceTraitAndEnumInOneFile(): void
+    public function testExtractsEachClassLikeKeywordAsItsKind(): void
     {
         $content = <<<'PHP'
         <?php
         namespace V;
+        class Widget {}
         interface Iface {}
         trait Mixin {}
         enum Kind {}
@@ -45,6 +46,11 @@ final class DefaultTextSymbolExtractorTest extends TestCase
             $byName[$symbol->name->fullyQualifiedName()] = $info;
         }
 
+        self::assertSame(
+            ClassKind::Class_,
+            $byName['V\Widget']->kind,
+            'the class keyword must map to ClassKind::Class_',
+        );
         self::assertSame(ClassKind::Interface_, $byName['V\Iface']->kind);
         self::assertSame(ClassKind::Trait_, $byName['V\Mixin']->kind);
         self::assertSame(ClassKind::Enum_, $byName['V\Kind']->kind);
