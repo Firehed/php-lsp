@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -1379,6 +1380,115 @@ final class MemberResolverTest extends TestCase
         self::assertFalse($resolver->isTraitClass(new ClassName(self::fakeClass())));
     }
 
+    public function testAliasNamingAnUnknownMethodOnANamedTraitIsInvisible(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
+        $classInfo = $this->createClassInfo(
+            $className,
+            traits: [$traitName],
+            traitAliases: [new TraitAlias(
+                trait: $traitName,
+                method: 'missing',
+                newName: 'exposedName',
+                newVisibility: null,
+            )],
+        );
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertNull(
+            $resolver->findMethod($className, new MethodName('exposedName'), Visibility::Public),
+            'an alias whose source method is missing must not surface a method',
+        );
+        self::assertSame(
+            [],
+            $resolver->getMethods($className, Visibility::Public),
+            'the missing-source alias must not appear in the enumerated methods either',
+        );
+    }
+
+    public function testNamelessAliasResolvesThroughUsedTraits(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $sourceMethod = $this->createMethodInfo('helper', Visibility::Public, $traitName);
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            ClassKind::Trait_,
+            methods: ['helper' => $sourceMethod],
+        );
+        $classInfo = $this->createClassInfo(
+            $className,
+            traits: [$traitName],
+            traitAliases: [new TraitAlias(
+                trait: null,
+                method: 'helper',
+                newName: 'exposedName',
+                newVisibility: null,
+            )],
+        );
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $resolved = $resolver->findMethod($className, new MethodName('exposedName'), Visibility::Public);
+
+        self::assertNotNull($resolved, 'the alias with no explicit trait must resolve through the used-trait scan');
+        self::assertSame($traitName->fqn, $resolved->getDeclaringClass()->fqn);
+    }
+
+    public function testNamelessAliasWithNoOwningTraitIsInvisible(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
+        $classInfo = $this->createClassInfo(
+            $className,
+            traits: [$traitName],
+            traitAliases: [new TraitAlias(
+                trait: null,
+                method: 'missing',
+                newName: 'exposedName',
+                newVisibility: null,
+            )],
+        );
+
+        $repo = self::createStub(SymbolSource::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $name) => match ($name->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertNull(
+            $resolver->findMethod($className, new MethodName('exposedName'), Visibility::Public),
+            'a nameless alias whose method is in no used trait must not surface',
+        );
+    }
+
     /**
      * @return class-string
      */
@@ -1395,6 +1505,7 @@ final class MemberResolverTest extends TestCase
      * @param array<string, EnumCaseInfo> $enumCases
      * @param list<ClassName> $traits
      * @param list<ClassName> $interfaces
+     * @param list<\Firehed\PhpLsp\Domain\TraitAlias> $traitAliases
      */
     private function createClassInfo(
         ClassName $name,
@@ -1406,6 +1517,7 @@ final class MemberResolverTest extends TestCase
         array $enumCases = [],
         array $traits = [],
         array $interfaces = [],
+        array $traitAliases = [],
     ): ClassInfo {
         return new ClassInfo(
             name: $name,
@@ -1424,6 +1536,7 @@ final class MemberResolverTest extends TestCase
             docblock: null,
             file: null,
             line: null,
+            traitAliases: $traitAliases,
         );
     }
 
