@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Utility\NodeAtPosition;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;

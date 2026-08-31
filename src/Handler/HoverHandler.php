@@ -6,11 +6,11 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Protocol\MarkupContent;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
 /**

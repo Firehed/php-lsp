@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture;
 
-use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\Type;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
