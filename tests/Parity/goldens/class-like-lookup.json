@@ -216,7 +216,10 @@
         "isReadonly": false,
         "isAttribute": false,
         "parent": null,
-        "interfaces": [],
+        "interfaces": [
+            "BackedEnum",
+            "UnitEnum"
+        ],
         "traits": [],
         "methods": {
             "cases": "public static function cases(): array",
@@ -241,7 +244,10 @@
         "isReadonly": false,
         "isAttribute": false,
         "parent": null,
-        "interfaces": [],
+        "interfaces": [
+            "BackedEnum",
+            "UnitEnum"
+        ],
         "traits": [],
         "methods": {
             "cases": "public static function cases(): array",
@@ -270,7 +276,9 @@
         "isAttribute": false,
         "parent": null,
         "interfaces": [
-            "JsonSerializable"
+            "BackedEnum",
+            "JsonSerializable",
+            "UnitEnum"
         ],
         "traits": [],
         "methods": {
@@ -296,7 +304,9 @@
         "isReadonly": false,
         "isAttribute": false,
         "parent": null,
-        "interfaces": [],
+        "interfaces": [
+            "UnitEnum"
+        ],
         "traits": [],
         "methods": {
             "cases": "public static function cases(): array",

@@ -217,11 +217,24 @@ final class DefaultClassInfoFactoryTest extends TestCase
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertSame(ClassKind::Enum_, $info->kind);
-        self::assertCount(1, $info->interfaces);
-        self::assertSame('JsonSerializable', $info->interfaces[0]->fqn);
+        $fqns = array_map(fn($n) => $n->fqn, $info->interfaces);
+        self::assertContains('JsonSerializable', $fqns, 'the written interface is captured');
+        self::assertContains('UnitEnum', $fqns, 'every enum implicitly implements UnitEnum');
+        self::assertContains('BackedEnum', $fqns, 'a backed enum implicitly implements BackedEnum');
         self::assertCount(2, $info->enumCases);
         self::assertArrayHasKey('Active', $info->enumCases);
         self::assertSame('active', $info->enumCases['Active']->backingValue);
+    }
+
+    public function testFromAstNodeAddsImplicitUnitEnumInterfaceToPureEnum(): void
+    {
+        $node = $this->parseClassFromFixture('src/Enum/Status.php');
+
+        $info = $this->factory->fromAstNode($node, 'file:///test.php');
+
+        $fqns = array_map(fn($n) => $n->fqn, $info->interfaces);
+        self::assertContains('UnitEnum', $fqns);
+        self::assertNotContains('BackedEnum', $fqns, 'a pure enum does not implement BackedEnum');
     }
 
     public function testFromAstNodeExtractsIntBackedEnumCases(): void

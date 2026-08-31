@@ -182,6 +182,13 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             }
         }
 
+        if ($node instanceof Stmt\Enum_) {
+            $interfaces[] = TypeFactory::className(\UnitEnum::class);
+            if ($node->scalarType !== null) {
+                $interfaces[] = TypeFactory::className(\BackedEnum::class);
+            }
+        }
+
         return $interfaces;
     }
 
