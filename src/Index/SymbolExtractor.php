@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
@@ -33,6 +34,7 @@ final class SymbolExtractor
                 fullyQualifiedName: $fqn,
                 kind: self::kindOf($declaration->node),
                 location: self::locate($document, $declaration->node),
+                nameKind: NameKind::ClassLike,
             );
 
             foreach ($declaration->node->getMethods() as $method) {
@@ -53,6 +55,7 @@ final class SymbolExtractor
                 fullyQualifiedName: $declaration->name->fullyQualifiedName(),
                 kind: SymbolKind::Function_,
                 location: self::locate($document, $declaration->node),
+                nameKind: NameKind::Function_,
             );
         }
 
@@ -62,6 +65,7 @@ final class SymbolExtractor
                 fullyQualifiedName: $declaration->name->fullyQualifiedName(),
                 kind: SymbolKind::Constant,
                 location: self::locate($document, $declaration->node),
+                nameKind: NameKind::Constant,
             );
         }
 

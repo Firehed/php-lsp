@@ -733,6 +733,7 @@ class CompletionHandlerTest extends TestCase
                 $name,
                 SymbolKind::Class_,
                 new Location('file:///other.php', 0, 0, 0, 0),
+                nameKind: NameKind::ClassLike,
             ));
         }
         $this->openDocument('file:///flood.php', '<?php new FloodClass');
@@ -1219,6 +1220,7 @@ class CompletionHandlerTest extends TestCase
             'MyIndexedClass',
             SymbolKind::Class_,
             new Location('file:///other.php', 0, 0, 0, 0),
+            nameKind: NameKind::ClassLike,
         ));
 
         $code = '<?php $x = new MyIn';

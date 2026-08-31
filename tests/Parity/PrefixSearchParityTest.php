@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Parser\ParserService;
 use PHPUnit\Framework\TestCase;
 
@@ -66,24 +66,23 @@ final class PrefixSearchParityTest extends TestCase
             'get' => ['get', null],
             'Status' => ['Status', null],
             'noop' => ['noop', null],
-            'User|Class' => ['User', [SymbolKind::Class_]],
-            'get|Function' => ['get', [SymbolKind::Function_]],
+            'User|ClassLike' => ['User', NameKind::ClassLike],
+            'get|Function' => ['get', NameKind::Function_],
             'Zzz|none' => ['Zzz', null],
             // A lowercase prefix that matches differently-cased symbol names:
             // prefix matching is case-insensitive, so 'user' must still find
             // `User` and `UserRepository`. A case-sensitive regression would
             // return nothing here.
             'user|lowercase' => ['user', null],
-            // A multi-kind filter: matches must be admitted if their kind is any
-            // of the listed kinds, not merely the first. With Class_ and
-            // Interface_ both requested, the result spans both kinds — a filter
-            // that collapsed to a single kind would drop the interfaces.
-            'all|Class+Interface' => ['', [SymbolKind::Class_, SymbolKind::Interface_]],
+            // A class-like filter covers every flavour: classes, interfaces,
+            // traits, and enums. A regression that split those apart would drop
+            // interfaces (and everything but classes) here.
+            'all|ClassLike' => ['', NameKind::ClassLike],
         ];
 
         $captured = [];
-        foreach ($queries as $label => [$prefix, $kinds]) {
-            $results = $this->index->findByPrefix($prefix, $kinds);
+        foreach ($queries as $label => [$prefix, $kind]) {
+            $results = $this->index->findByPrefix($prefix, $kind);
             $captured[$label] = array_map($this->serialize(...), $results);
             usort(
                 $captured[$label],

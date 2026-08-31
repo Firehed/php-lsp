@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
 
 /**
@@ -27,15 +26,6 @@ use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
  */
 final class OpenDocumentBackend implements SymbolBackend
 {
-    /**
-     * @var array<string, list<SymbolKind>>
-     */
-    private const array KINDS_BY_NAME_KIND = [
-        'ClassLike' => [SymbolKind::Class_, SymbolKind::Enum_, SymbolKind::Interface_, SymbolKind::Trait_],
-        'Function_' => [SymbolKind::Function_],
-        'Constant' => [SymbolKind::Constant],
-    ];
-
     /** @var array<string, SymbolInfo> Normalized kind-qualified key -> metadata */
     private array $byKey = [];
 
@@ -65,7 +55,7 @@ final class OpenDocumentBackend implements SymbolBackend
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return $this->index->findByPrefix($prefix, self::KINDS_BY_NAME_KIND[$kind->name]);
+        return $this->index->findByPrefix($prefix, $kind);
     }
 
     /**

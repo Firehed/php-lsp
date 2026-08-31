@@ -105,13 +105,20 @@
             "uri": "tests/Fixtures/src/Catalog/functions.php"
         }
     ],
-    "User|Class": [
+    "User|ClassLike": [
         {
             "fqn": "Fixtures\\Domain\\User",
             "name": "User",
             "kind": "Class_",
             "containerName": null,
             "uri": "tests/Fixtures/src/Domain/User.php"
+        },
+        {
+            "fqn": "Fixtures\\Repository\\UserRepository",
+            "name": "UserRepository",
+            "kind": "Interface_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Repository/UserRepository.php"
         }
     ],
     "get|Function": [],
@@ -132,7 +139,7 @@
             "uri": "tests/Fixtures/src/Repository/UserRepository.php"
         }
     ],
-    "all|Class+Interface": [
+    "all|ClassLike": [
         {
             "fqn": "Fixtures\\Domain\\Entity",
             "name": "Entity",
@@ -148,11 +155,25 @@
             "uri": "tests/Fixtures/src/Domain/User.php"
         },
         {
+            "fqn": "Fixtures\\Enum\\Status",
+            "name": "Status",
+            "kind": "Enum_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Enum/Status.php"
+        },
+        {
             "fqn": "Fixtures\\Repository\\UserRepository",
             "name": "UserRepository",
             "kind": "Interface_",
             "containerName": null,
             "uri": "tests/Fixtures/src/Repository/UserRepository.php"
+        },
+        {
+            "fqn": "Fixtures\\Traits\\HasTimestamps",
+            "name": "HasTimestamps",
+            "kind": "Trait_",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Traits/HasTimestamps.php"
         }
     ]
 }

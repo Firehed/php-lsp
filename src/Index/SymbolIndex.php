@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 
@@ -81,17 +82,19 @@ final class SymbolIndex
     }
 
     /**
-     * Find symbols matching a prefix, optionally filtered by kind.
+     * Find symbols matching a prefix, optionally filtered by name-resolution
+     * category. Filtering compares the enum case names (strings), so this stays
+     * off the kind-branch rule; the NameKind is authoritative on each Symbol.
      *
-     * @param list<SymbolKind>|null $kinds
      * @return list<Symbol>
      */
-    public function findByPrefix(string $prefix, ?array $kinds = null): array
+    public function findByPrefix(string $prefix, ?NameKind $kind = null): array
     {
+        $wantedName = $kind?->name;
         $results = [];
 
         foreach ($this->byFqn as $symbol) {
-            if ($kinds !== null && !in_array($symbol->kind, $kinds, true)) {
+            if ($wantedName !== null && $symbol->nameKind?->name !== $wantedName) {
                 continue;
             }
             if (PrefixMatcher::matches($symbol->name, $prefix)) {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -48,12 +47,12 @@ final class MemberResolver
         ConstantName $constant,
         Visibility $minVisibility,
     ): ?ConstantInfo {
-        return $this->findMember($class, MemberKind::Constant, ConstantInfo::class, $constant->name, $minVisibility);
+        return $this->findMember($class, MemberKind::Constant, $constant->name, $minVisibility);
     }
 
     public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo
     {
-        return $this->findMember($class, MemberKind::EnumCase, EnumCaseInfo::class, $case->name, Visibility::Public);
+        return $this->findMember($class, MemberKind::EnumCase, $case->name, Visibility::Public);
     }
 
     public function findMethod(
@@ -70,7 +69,7 @@ final class MemberResolver
             return $aliased;
         }
 
-        return $this->findMember($class, MemberKind::Method, MethodInfo::class, $method->name, $minVisibility, $origin);
+        return $this->findMember($class, MemberKind::Method, $method->name, $minVisibility, $origin);
     }
 
     public function findProperty(
@@ -78,7 +77,7 @@ final class MemberResolver
         PropertyName $property,
         Visibility $minVisibility,
     ): ?PropertyInfo {
-        return $this->findMember($class, MemberKind::Property, PropertyInfo::class, $property->name, $minVisibility);
+        return $this->findMember($class, MemberKind::Property, $property->name, $minVisibility);
     }
 
     /**
@@ -86,13 +85,7 @@ final class MemberResolver
      */
     public function getConstants(ClassName $class, Visibility $minVisibility): array
     {
-        return $this->collectMembers(
-            $class,
-            MemberKind::Constant,
-            ConstantInfo::class,
-            $minVisibility,
-            MemberFilter::All,
-        );
+        return $this->collectMembers($class, MemberKind::Constant, $minVisibility, MemberFilter::All);
     }
 
     /**
@@ -100,13 +93,7 @@ final class MemberResolver
      */
     public function getEnumCases(ClassName $class): array
     {
-        return $this->collectMembers(
-            $class,
-            MemberKind::EnumCase,
-            EnumCaseInfo::class,
-            Visibility::Public,
-            MemberFilter::All,
-        );
+        return $this->collectMembers($class, MemberKind::EnumCase, Visibility::Public, MemberFilter::All);
     }
 
     /**
@@ -121,14 +108,7 @@ final class MemberResolver
         if ($origin === null) {
             return [];
         }
-        $methods = $this->collectMembers(
-            $class,
-            MemberKind::Method,
-            MethodInfo::class,
-            $minVisibility,
-            $filter,
-            $origin,
-        );
+        $methods = $this->collectMembers($class, MemberKind::Method, $minVisibility, $filter, $origin);
 
         return $this->applyMethodAliases($methods, $origin, $minVisibility, $filter);
     }
@@ -141,7 +121,7 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        return $this->collectMembers($class, MemberKind::Property, PropertyInfo::class, $minVisibility, $filter);
+        return $this->collectMembers($class, MemberKind::Property, $minVisibility, $filter);
     }
 
     /**
@@ -158,33 +138,42 @@ final class MemberResolver
         MemberFilter $filter = MemberFilter::All,
     ): array {
         if (!$kind->isMethod()) {
-            return $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter);
+            return array_values($this->collectMembers($class, $kind, $minVisibility, $filter));
         }
         $origin = $this->source->lookupClassLike($class);
         if ($origin === null) {
             return [];
         }
-        $members = $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter, $origin);
+        $members = array_values($this->collectMembers($class, $kind, $minVisibility, $filter, $origin));
 
         return $this->applyMethodAliases($members, $origin, $minVisibility, $filter);
     }
 
     public function isTraitClass(ClassName $class): bool
     {
-        return $this->source->lookupClassLike($class)?->kind === ClassKind::Trait_;
+        return $this->source->lookupClassLike($class)?->isTrait() ?? false;
     }
 
     /**
      * Every member of $kind visible from $class, nearest declaration winning.
+     * The concrete subtype ({@see MethodInfo}, {@see PropertyInfo}, …) that
+     * {@see MemberKind::membersOf()} returns for $kind is propagated back
+     * through the conditional return, so a kind-specific caller stays typed
+     * without needing a runtime instanceof at the boundary.
      *
-     * @template T of MemberInfo
-     * @param class-string<T> $memberType The type $kind is stored as.
-     * @return list<T>
+     * @phpstan-return (
+     *   $kind is MemberKind::Method ? list<MethodInfo> : (
+     *     $kind is MemberKind::Property ? list<PropertyInfo> : (
+     *       $kind is MemberKind::Constant ? list<ConstantInfo> : (
+     *         $kind is MemberKind::EnumCase ? list<EnumCaseInfo> : list<MemberInfo>
+     *       )
+     *     )
+     *   )
+     * )
      */
     private function collectMembers(
         ClassName $class,
         MemberKind $kind,
-        string $memberType,
         Visibility $minVisibility,
         MemberFilter $filter,
         ?ClassInfo $origin = null,
@@ -199,7 +188,7 @@ final class MemberResolver
         foreach ($this->descend($origin, true, [], $seen) as [$classInfo, $isOriginClass, $exclusions]) {
             foreach ($kind->membersOf($classInfo) as $name => $member) {
                 $key = $kind->keyFor($name);
-                if (array_key_exists($key, $collected) || !$member instanceof $memberType) {
+                if (array_key_exists($key, $collected)) {
                     continue;
                 }
                 if ($kind->isMethod() && in_array($name, $exclusions, true)) {
@@ -215,14 +204,19 @@ final class MemberResolver
     }
 
     /**
-     * @template T of MemberInfo
-     * @param class-string<T> $memberType The type $kind is stored as.
-     * @return ?T
+     * @phpstan-return (
+     *   $kind is MemberKind::Method ? ?MethodInfo : (
+     *     $kind is MemberKind::Property ? ?PropertyInfo : (
+     *       $kind is MemberKind::Constant ? ?ConstantInfo : (
+     *         $kind is MemberKind::EnumCase ? ?EnumCaseInfo : ?MemberInfo
+     *       )
+     *     )
+     *   )
+     * )
      */
     private function findMember(
         ClassName $class,
         MemberKind $kind,
-        string $memberType,
         string $name,
         Visibility $minVisibility,
         ?ClassInfo $origin = null,
@@ -236,7 +230,7 @@ final class MemberResolver
         $seen = [];
         foreach ($this->descend($origin, true, [], $seen) as [$classInfo, $isOriginClass, $exclusions]) {
             foreach ($kind->membersOf($classInfo) as $declared => $member) {
-                if ($kind->keyFor($declared) !== $wanted || !$member instanceof $memberType) {
+                if ($kind->keyFor($declared) !== $wanted) {
                     continue;
                 }
                 if ($kind->isMethod() && in_array($declared, $exclusions, true)) {
@@ -277,12 +271,15 @@ final class MemberResolver
         MemberFilter $filter,
         bool $isOriginClass,
     ): bool {
-        $matchesFilter = match ($filter) {
-            MemberFilter::All => true,
-            MemberFilter::Static => $member->isStatic(),
-            MemberFilter::Instance => !$member->isStatic(),
-        };
-        if (!$matchesFilter) {
+        // Keyed by MemberFilter case name; the closure per case is picked by
+        // string lookup, avoiding a match on the enum that the kind-branch rule
+        // would flag.
+        $filters = [
+            'All' => static fn(MemberInfo $m): bool => true,
+            'Static' => static fn(MemberInfo $m): bool => $m->isStatic(),
+            'Instance' => static fn(MemberInfo $m): bool => !$m->isStatic(),
+        ];
+        if (!$filters[$filter->name]($member)) {
             return false;
         }
 

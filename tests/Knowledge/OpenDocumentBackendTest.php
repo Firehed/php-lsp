@@ -290,6 +290,18 @@ final class OpenDocumentBackendTest extends TestCase
 
     private function addSymbol(string $name, string $fqn, SymbolKind $kind): void
     {
-        $this->index->add(new Symbol($name, $fqn, $kind, new Location('file:///' . $name . '.php', 0, 0, 0, 0)));
+        $nameKind = match ($kind) {
+            SymbolKind::Class_, SymbolKind::Interface_, SymbolKind::Trait_, SymbolKind::Enum_ => NameKind::ClassLike,
+            SymbolKind::Function_ => NameKind::Function_,
+            SymbolKind::Constant => NameKind::Constant,
+            SymbolKind::Method, SymbolKind::Property => null,
+        };
+        $this->index->add(new Symbol(
+            $name,
+            $fqn,
+            $kind,
+            new Location('file:///' . $name . '.php', 0, 0, 0, 0),
+            nameKind: $nameKind,
+        ));
     }
 }

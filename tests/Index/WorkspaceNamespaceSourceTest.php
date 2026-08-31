@@ -162,11 +162,18 @@ class WorkspaceNamespaceSourceTest extends TestCase
 
     private function add(string $name, string $fqn, SymbolKind $kind): void
     {
+        $nameKind = match ($kind) {
+            SymbolKind::Class_, SymbolKind::Interface_, SymbolKind::Trait_, SymbolKind::Enum_ => NameKind::ClassLike,
+            SymbolKind::Function_ => NameKind::Function_,
+            SymbolKind::Constant => NameKind::Constant,
+            SymbolKind::Method, SymbolKind::Property => null,
+        };
         $this->index->add(new Symbol(
             name: $name,
             fullyQualifiedName: $fqn,
             kind: $kind,
             location: new Location('file:///' . str_replace('\\', '/', $fqn) . '.php', 0, 0, 0, 1),
+            nameKind: $nameKind,
         ));
     }
 
