@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\MarkupKind;
-use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
-use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;

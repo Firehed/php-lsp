@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
-use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
@@ -26,7 +25,6 @@ use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Psr\SimpleCache\CacheInterface;
 use PHPUnit\Framework\TestCase;
 
 /**

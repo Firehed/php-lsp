@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Capability\SessionCapabilities;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use ReflectionParameter;
 
 /**
  * RFC 1 §5.4: "The absence of a client capability MUST resolve to a safe default
