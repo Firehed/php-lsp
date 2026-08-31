@@ -6,18 +6,10 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
-use Firehed\PhpLsp\Domain\EnumCaseName;
-use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodName;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Domain\ResolvedSymbol;
@@ -419,7 +411,7 @@ final class SymbolResolver implements CodeResolver
         TextDocument $document,
     ): ?ResolvedCallable {
         if ($call instanceof FuncCall) {
-            return $this->resolveFuncCallCallable($call, $ast);
+            return $this->resolveFuncCallCallable($call, $ast, $document);
         }
 
         if ($call instanceof MethodCall || $call instanceof NullsafeMethodCall) {
@@ -427,7 +419,8 @@ final class SymbolResolver implements CodeResolver
         }
 
         if ($call instanceof StaticCall) {
-            return $this->resolveStaticCallCallable($call);
+            $symbol = $this->expressionResolver($document)->resolve($call, $ast);
+            return $symbol instanceof ResolvedCallable ? $symbol : null;
         }
 
         // An attribute usage `#[X(...)]` is a constructor call on the attribute class.
@@ -436,20 +429,22 @@ final class SymbolResolver implements CodeResolver
         }
 
         // New_ - resolve constructor
-        return $this->resolveNewCallable($call);
+        $className = $this->expressionResolver($document)->resolve($call, $ast)
+            ?->getType()
+            ?->getResolvableClassNames()[0] ?? null;
+        if ($className === null) {
+            return null;
+        }
+        return $this->resolveConstructorCallable($className);
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveFuncCallCallable(FuncCall $call, array $ast): ?ResolvedCallable
+    private function resolveFuncCallCallable(FuncCall $call, array $ast, TextDocument $document): ?ResolvedCallable
     {
-        $name = $call->name;
-        if (!$name instanceof Name) {
-            return null;
-        }
-
-        return $this->resolveFunctionByName($name, $ast);
+        $symbol = $this->expressionResolver($document)->resolve($call, $ast);
+        return $symbol instanceof ResolvedCallable ? $symbol : null;
     }
 
     /**
@@ -483,51 +478,6 @@ final class SymbolResolver implements CodeResolver
         return $methodInfo;
     }
 
-    private function resolveStaticCallCallable(StaticCall $call): ?ResolvedCallable
-    {
-        $methodName = $call->name;
-        if (!$methodName instanceof Identifier) {
-            return null;
-        }
-
-        $class = $call->class;
-        if (!$class instanceof Name) {
-            return null;
-        }
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        $methodInfo = $this->memberResolver->findMethod(
-            new ClassName($classNameStr),
-            new MethodName($methodName->toString()),
-            Visibility::Private,
-        );
-
-        if ($methodInfo === null) {
-            return null;
-        }
-
-        return $methodInfo;
-    }
-
-    private function resolveNewCallable(New_ $call): ?ResolvedCallable
-    {
-        $class = $call->class;
-        if (!$class instanceof Name) {
-            return null;
-        }
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $call);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        return $this->resolveConstructorCallable(new ClassName($classNameStr));
-    }
-
     /**
      * Resolve a class's constructor to a callable. Shared by `new X(...)` and
      * attribute usages `#[X(...)]`, which are both constructor calls on the class.
@@ -555,7 +505,7 @@ final class SymbolResolver implements CodeResolver
     {
         // VarLikeIdentifier extends Identifier, so check it first
         if ($node instanceof VarLikeIdentifier) {
-            return $this->resolveVarLikeIdentifier($node);
+            return $this->resolveVarLikeIdentifier($node, $ast, $document);
         }
 
         if ($node instanceof Identifier) {
@@ -563,7 +513,7 @@ final class SymbolResolver implements CodeResolver
         }
 
         if ($node instanceof Name) {
-            return $this->resolveName($node, $ast);
+            return $this->resolveName($node, $ast, $document);
         }
 
         if ($node instanceof Variable) {
@@ -588,18 +538,18 @@ final class SymbolResolver implements CodeResolver
 
         // Static method call: ClassName::method()
         if ($parent instanceof StaticCall) {
-            return $this->resolveStaticCallCallable($parent);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Property fetch: $obj->property or $obj?->property
         if (self::isPropertyFetch($parent)) {
             /** @var PropertyFetch|NullsafePropertyFetch $parent */
-            return $this->resolvePropertyFetch($parent, $ast, $document);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Class constant or enum case: ClassName::CONSTANT or Enum::Case
         if ($parent instanceof ClassConstFetch) {
-            return $this->resolveClassConstFetch($parent);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Named argument: func(name: value) - cursor on 'name'
@@ -613,16 +563,12 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveName(Name $node, array $ast): ?ResolvedSymbol
+    private function resolveName(Name $node, array $ast, TextDocument $document): ?ResolvedSymbol
     {
         $parent = $node->getAttribute('parent');
 
-        if ($parent instanceof FuncCall) {
-            return $this->resolveFunctionCall($node, $ast);
-        }
-
-        if ($parent instanceof ConstFetch) {
-            return $this->resolveConstFetch($node);
+        if ($parent instanceof FuncCall || $parent instanceof ConstFetch) {
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Class reference (new, instanceof, static call, type hint, etc.)
@@ -634,44 +580,6 @@ final class SymbolResolver implements CodeResolver
         }
 
         return $classInfo;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveFunctionCall(Name $node, array $ast): ?FunctionInfo
-    {
-        return $this->resolveFunctionByName($node, $ast);
-    }
-
-    private function resolveConstFetch(Name $node): ?ConstantInfo
-    {
-        $name = ScopeFinder::resolveName($node);
-        $constantInfo = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($name));
-        if ($constantInfo === null) {
-            return null;
-        }
-
-        return $constantInfo;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveFunctionByName(Name $name, array $ast): ?FunctionInfo
-    {
-        $shortName = $name->toString();
-        $line = $name->getStartLine() - 1;
-        $context = NameContextFactory::fromAst($ast, $line);
-
-        foreach ($context->candidates($shortName, NameKind::Function_) as $candidate) {
-            $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
-            if ($funcInfo !== null) {
-                return $funcInfo;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -799,123 +707,19 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolvePropertyFetch(
-        PropertyFetch|NullsafePropertyFetch $fetch,
+    private function resolveVarLikeIdentifier(
+        VarLikeIdentifier $node,
         array $ast,
         TextDocument $document,
     ): ?ResolvedSymbol {
-        $propertyName = $fetch->name;
-        // @codeCoverageIgnoreStart
-        if (!$propertyName instanceof Identifier) {
-            throw new LogicException('resolvePropertyFetch called with non-Identifier name');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $className = $this->memberAccessDetector->resolveInstanceAccessClassName($fetch, $ast, $document);
-        if ($className === null) {
-            return null;
-        }
-
-        $propertyInfo = $this->memberResolver->findProperty(
-            $className,
-            new PropertyName($propertyName->toString()),
-            Visibility::Private,
-        );
-
-        if ($propertyInfo === null) {
-            return null;
-        }
-
-        return $propertyInfo;
-    }
-
-    private function resolveClassConstFetch(ClassConstFetch $fetch): ?ResolvedSymbol
-    {
-        $constName = $fetch->name;
-        // @codeCoverageIgnoreStart
-        if (!$constName instanceof Identifier) {
-            throw new LogicException('resolveClassConstFetch called with non-Identifier name');
-        }
-
-        $class = $fetch->class;
-        if (!$class instanceof Name) {
-            throw new LogicException('resolveClassConstFetch called with non-Name class');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        $className = new ClassName($classNameStr);
-
-        // Check if it's an enum case first
-        $enumCaseInfo = $this->memberResolver->findEnumCase(
-            $className,
-            new EnumCaseName($constName->toString()),
-        );
-
-        if ($enumCaseInfo !== null) {
-            return $enumCaseInfo;
-        }
-
-        // Otherwise it's a class constant
-        $constantInfo = $this->memberResolver->findConstant(
-            $className,
-            new ConstantName($constName->toString()),
-            Visibility::Private,
-        );
-
-        if ($constantInfo === null) {
-            return null;
-        }
-
-        return $constantInfo;
-    }
-
-    private function resolveVarLikeIdentifier(VarLikeIdentifier $node): ?ResolvedSymbol
-    {
         $parent = $node->getAttribute('parent');
 
         // Static property fetch: ClassName::$property
         if ($parent instanceof StaticPropertyFetch) {
-            return $this->resolveStaticPropertyFetch($parent);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         return null;
-    }
-
-    private function resolveStaticPropertyFetch(StaticPropertyFetch $fetch): ?ResolvedSymbol
-    {
-        $propertyName = $fetch->name;
-        // @codeCoverageIgnoreStart
-        if (!$propertyName instanceof VarLikeIdentifier) {
-            throw new LogicException('resolveStaticPropertyFetch called with non-VarLikeIdentifier name');
-        }
-
-        $class = $fetch->class;
-        if (!$class instanceof Name) {
-            throw new LogicException('resolveStaticPropertyFetch called with non-Name class');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $classNameStr = ScopeFinder::resolveClassNameInContext($class, $fetch);
-        if ($classNameStr === null) {
-            return null;
-        }
-
-        $propertyInfo = $this->memberResolver->findProperty(
-            new ClassName($classNameStr),
-            new PropertyName($propertyName->toString()),
-            Visibility::Private,
-        );
-
-        if ($propertyInfo === null) {
-            return null;
-        }
-
-        return $propertyInfo;
     }
 
     private static function isMethodCall(mixed $node): bool

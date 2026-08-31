@@ -20,3 +20,5 @@ class DynamicAccessClass
 
 $class = 'SomeClass';
 $class::method(); //hover:dynamic_class_name
+$class::$staticProp; //hover:dynamic_class_static_prop
+$class::CONST_NAME; //hover:dynamic_class_const
