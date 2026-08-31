@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -36,6 +37,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     {
         $className = $this->resolveClassName($node);
         $filePath = FileUri::toPath($uri);
+        $traitUse = $this->extractTraitUse($node);
 
         return new ClassInfo(
             name: $className,
@@ -46,7 +48,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isAttribute: $this->isAttributeNode($node),
             parent: $this->resolveParent($node),
             interfaces: $this->extractInterfaces($node),
-            traits: $this->extractTraits($node),
+            traits: $traitUse['traits'],
             methods: $this->extractMethods($node, $className, $filePath),
             properties: $this->extractProperties($node, $className, $filePath),
             constants: $this->extractConstants($node, $className, $filePath),
@@ -54,6 +56,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             docblock: $node->getDocComment()?->getText(),
             file: $filePath,
             line: $node->getStartLine(),
+            traitExclusions: $traitUse['exclusions'],
+            traitAliases: $traitUse['aliases'],
         );
     }
 
@@ -182,21 +186,45 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
-     * @return list<ClassName>
+     * @return array{traits: list<ClassName>, exclusions: array<string, list<string>>, aliases: list<TraitAlias>}
      */
-    private function extractTraits(Stmt\ClassLike $node): array
+    private function extractTraitUse(Stmt\ClassLike $node): array
     {
         $traits = [];
+        $exclusions = [];
+        $aliases = [];
 
         foreach ($node->stmts as $stmt) {
-            if ($stmt instanceof Stmt\TraitUse) {
-                foreach ($stmt->traits as $trait) {
-                    $traits[] = $this->resolveNameToClassName($trait);
+            if (!$stmt instanceof Stmt\TraitUse) {
+                continue;
+            }
+            foreach ($stmt->traits as $trait) {
+                $traits[] = $this->resolveNameToClassName($trait);
+            }
+            foreach ($stmt->adaptations as $adaptation) {
+                if ($adaptation instanceof Stmt\TraitUseAdaptation\Precedence) {
+                    $method = $adaptation->method->toString();
+                    foreach ($adaptation->insteadof as $loser) {
+                        $exclusions[$this->resolveNameToClassName($loser)->fqn][] = $method;
+                    }
+                    continue;
+                }
+                if ($adaptation instanceof Stmt\TraitUseAdaptation\Alias) {
+                    $aliases[] = new TraitAlias(
+                        trait: $adaptation->trait !== null
+                            ? $this->resolveNameToClassName($adaptation->trait)
+                            : null,
+                        method: $adaptation->method->toString(),
+                        newName: $adaptation->newName?->toString(),
+                        newVisibility: $adaptation->newModifier !== null
+                            ? $this->visibilityFromFlags($adaptation->newModifier)
+                            : null,
+                    );
                 }
             }
         }
 
-        return $traits;
+        return ['traits' => $traits, 'exclusions' => $exclusions, 'aliases' => $aliases];
     }
 
     private function resolveNameToClassName(\PhpParser\Node\Name $name): ClassName

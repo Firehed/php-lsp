@@ -18,6 +18,11 @@ final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
      * @param array<string, PropertyInfo> $properties Keyed by property name
      * @param array<string, ConstantInfo> $constants Keyed by constant name
      * @param array<string, EnumCaseInfo> $enumCases Keyed by case name
+     * @param array<string, list<string>> $traitExclusions Methods excluded from
+     *     a used trait by an `A::method insteadof B` clause, keyed by the
+     *     losing trait's FQN.
+     * @param list<TraitAlias> $traitAliases `as` clauses declared in this
+     *     class's `use TraitX { ... }` block.
      */
     public function __construct(
         public ClassName $name,
@@ -36,6 +41,8 @@ final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
+        public array $traitExclusions = [],
+        public array $traitAliases = [],
     ) {
     }
 
