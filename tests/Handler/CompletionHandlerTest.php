@@ -4213,11 +4213,12 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
-    public function testFilteredPositionNavigationOffersNoFunctionsOrConstants(): void
+    #[DataProvider('provideFilteredPositionMarkers')]
+    public function testFilteredPositionNavigationOffersNoFunctionsOrConstants(string $marker): void
     {
-        // Step-22: navigation in a filtered position (catch here) offers class-likes
-        // only — a function or constant leaf from the walked namespace must not leak.
-        $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', 'catch_nav');
+        // Step-22: navigation in a class-only position offers class-likes only —
+        // a function or constant leaf from the walked namespace must not leak.
+        $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', $marker);
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 
@@ -4226,12 +4227,25 @@ class CompletionHandlerTest extends TestCase
         self::assertNotContains(
             CompletionItemKind::Function->value,
             $kinds,
-            'Navigation from `catch (\\Ps` offers no function leaf',
+            "Navigation from the {$marker} position offers no function leaf",
         );
         self::assertNotContains(
             CompletionItemKind::Constant->value,
             $kinds,
-            'Navigation from `catch (\\Ps` offers no constant leaf',
+            "Navigation from the {$marker} position offers no constant leaf",
         );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string}>
+     */
+    public static function provideFilteredPositionMarkers(): iterable
+    {
+        yield 'catch clause' => ['catch_nav'];
+        yield 'extends clause' => ['extends_nav'];
+        yield 'implements clause' => ['implements_nav'];
+        yield 'trait use' => ['trait_use_nav'];
+        yield 'attribute' => ['attribute_nav'];
     }
 }

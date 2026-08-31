@@ -32,3 +32,21 @@ class AbsoluteNavigation
         new \Flood\/*|flood_nav*/
     }
 }
+
+class ExtendsAbsoluteNavigation extends \Ps/*|extends_nav*/
+{
+}
+
+class ImplementsAbsoluteNavigation implements \Ps/*|implements_nav*/
+{
+}
+
+class TraitUseAbsoluteNavigation
+{
+    use \Ps/*|trait_use_nav*/;
+}
+
+#[\Ps/*|attribute_nav*/]
+class AttributeAbsoluteNavigation
+{
+}
