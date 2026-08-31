@@ -16,11 +16,7 @@
       "Bash(grep *)",
       "Bash(php -d pcov.enabled=0 vendor/bin/phpunit --filter *)",
       "Bash(php ~/.claude/skills/coverage-gaps/scripts/parse-coverage.php *)",
-      "WebSearch",
-      "Bash(php -l *)",
-      "Bash(bin/check-baseline-shrink)",
-      "Bash(composer deptrac *)",
-      "Bash(XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-clover coverage.xml)"
+      "WebSearch"
     ]
   }
 }
