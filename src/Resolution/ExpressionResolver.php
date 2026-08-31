@@ -19,6 +19,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
@@ -329,6 +330,26 @@ final class ExpressionResolver
             return new ResolvedTypeOnly(TypeFactory::className($className));
         }
         return $classInfo;
+    }
+
+    /**
+     * The one entry point every callable-shaped node resolves through, so
+     * `SymbolResolver::resolveCallable` does not branch on node kind. `New_`
+     * and `Attribute` are constructor invocations and route to
+     * `resolveConstructor`; the other four are ordinary expressions whose
+     * resolved symbol is already a callable.
+     *
+     * @param array<Stmt> $ast
+     */
+    public function resolveCallable(
+        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
+        array $ast,
+    ): ?ResolvedCallable {
+        if ($call instanceof New_ || $call instanceof Attribute) {
+            return $this->resolveConstructor($call);
+        }
+        $symbol = $this->resolve($call, $ast);
+        return $symbol instanceof ResolvedCallable ? $symbol : null;
     }
 
     /**

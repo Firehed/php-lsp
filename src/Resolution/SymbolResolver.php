@@ -413,12 +413,7 @@ final class SymbolResolver implements CodeResolver
         array $ast,
         TextDocument $document,
     ): ?ResolvedCallable {
-        $expressionResolver = $this->expressionResolver($document);
-        if ($call instanceof New_ || $call instanceof Attribute) {
-            return $expressionResolver->resolveConstructor($call);
-        }
-        $symbol = $expressionResolver->resolve($call, $ast);
-        return $symbol instanceof ResolvedCallable ? $symbol : null;
+        return $this->expressionResolver($document)->resolveCallable($call, $ast);
     }
 
     /**
