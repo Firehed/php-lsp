@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
-use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\FileDeclarations;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\TestCase;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
 use ReflectionFunction;
 
 #[CoversClass(Declaration::class)]

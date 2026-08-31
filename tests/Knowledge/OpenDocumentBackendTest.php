@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
+use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;

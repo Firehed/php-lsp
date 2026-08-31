@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Repository;
 
-use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClassName;
@@ -12,15 +11,16 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Domain\TypeFactory;
 use PhpParser\Modifiers;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;

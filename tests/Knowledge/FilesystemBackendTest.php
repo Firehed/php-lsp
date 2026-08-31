@@ -6,19 +6,18 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\FileUri;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
-use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
-use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Index\PrefixSearchable;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolKind;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
-use Firehed\PhpLsp\Index\PrefixSearchable;
-use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
@@ -26,7 +25,6 @@ use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Psr\SimpleCache\CacheInterface;
 use PHPUnit\Framework\TestCase;
 
 /**

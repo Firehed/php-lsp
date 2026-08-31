@@ -22,9 +22,6 @@ final class ComposerAutoloadMap
 {
     private readonly ClassLoader $loader;
 
-    /** @var list<string> */
-    private readonly array $files;
-
     /**
      * @param array<string, list<string>> $psr4 Namespace prefix -> directories
      * @param array<string, list<string>> $psr0 Namespace prefix -> directories
@@ -35,7 +32,7 @@ final class ComposerAutoloadMap
         array $psr4 = [],
         array $psr0 = [],
         array $classMap = [],
-        array $files = [],
+        private readonly array $files = [],
     ) {
         $loader = new ClassLoader();
 
@@ -48,7 +45,6 @@ final class ComposerAutoloadMap
         $loader->addClassMap($classMap);
 
         $this->loader = $loader;
-        $this->files = $files;
     }
 
     public static function fromProjectRoot(string $projectRoot): self

@@ -7,10 +7,10 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 

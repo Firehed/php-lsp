@@ -6,13 +6,13 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
