@@ -77,7 +77,7 @@ final class TypeFactory
         }
 
         // @codeCoverageIgnoreStart
-        throw new LogicException('Unexpected node type: ' . $node::class);
+        throw new LogicException('Unexpected node type in type context');
         // @codeCoverageIgnoreEnd
     }
 
@@ -144,7 +144,7 @@ final class TypeFactory
         }
 
         // @codeCoverageIgnoreStart
-        throw new LogicException('Unexpected ReflectionType: ' . $type::class);
+        throw new LogicException('Unexpected ReflectionType kind');
         // @codeCoverageIgnoreEnd
     }
 

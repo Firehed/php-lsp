@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
@@ -136,7 +137,10 @@ final class SymbolResolver implements CodeResolver
         }
 
         $members = [];
-        $includeStatic = $filter !== MemberFilter::Instance;
+        // Keyed by MemberFilter case name so the choice reads as a lookup, not
+        // an enum comparison the kind-branch rule flags.
+        $includesStatic = ['All' => true, 'Static' => true, 'Instance' => false];
+        $includeStatic = $includesStatic[$filter->name];
 
         foreach ($classNames as $className) {
             foreach ($this->getMembersForClass($className, $minVisibility, $filter, $includeStatic) as $member) {
@@ -258,7 +262,7 @@ final class SymbolResolver implements CodeResolver
             return false;
         }
 
-        $throwable = new ClassName(Throwable::class);
+        $throwable = TypeFactory::className(Throwable::class);
         if ($classInfo->name->equals($throwable)) {
             return true;
         }
@@ -425,7 +429,8 @@ final class SymbolResolver implements CodeResolver
 
         // An attribute usage `#[X(...)]` is a constructor call on the attribute class.
         if ($call instanceof Attribute) {
-            return $this->resolveConstructorCallable(new ClassName(ScopeFinder::resolveClassName($call->name)));
+            $className = TypeFactory::className(ScopeFinder::resolveClassName($call->name));
+            return $this->resolveConstructorCallable($className);
         }
 
         // New_ - resolve constructor
@@ -574,7 +579,7 @@ final class SymbolResolver implements CodeResolver
         // Class reference (new, instanceof, static call, type hint, etc.)
         $classNameStr = ScopeFinder::resolveClassName($node);
 
-        $classInfo = $this->symbolSource->lookupClassLike(new ClassName($classNameStr));
+        $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($classNameStr));
         if ($classInfo === null) {
             return null;
         }
@@ -630,7 +635,7 @@ final class SymbolResolver implements CodeResolver
                 throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
-            $classInfo = $this->symbolSource->lookupClassLike(new ClassName($selfContext));
+            $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($selfContext));
             $parentContext = $classInfo?->parent?->fqn;
         }
 
@@ -691,7 +696,7 @@ final class SymbolResolver implements CodeResolver
     {
         $classNameStr = ScopeFinder::resolveClassName($attribute->name);
 
-        $callable = $this->resolveConstructorCallable(new ClassName($classNameStr));
+        $callable = $this->resolveConstructorCallable(TypeFactory::className($classNameStr));
         if ($callable === null) {
             return null;
         }

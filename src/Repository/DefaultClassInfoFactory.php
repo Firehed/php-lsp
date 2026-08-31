@@ -67,7 +67,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
      */
     public function fromReflection(ReflectionClass $class): ClassInfo
     {
-        $className = new ClassName($class->getName());
+        $className = TypeFactory::className($class->getName());
         $parentClass = $class->getParentClass();
 
         return new ClassInfo(
@@ -78,7 +78,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isReadonly: $class->isReadOnly(),
             isAttribute: $class->getAttributes(\Attribute::class) !== [],
             parent: $parentClass !== false
-                ? new ClassName($parentClass->getName())
+                ? TypeFactory::className($parentClass->getName())
                 : null,
             interfaces: $this->extractInterfacesFromReflection($class),
             traits: $this->extractTraitsFromReflection($class),
@@ -102,7 +102,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         $fqn = isset($node->namespacedName)
             ? $node->namespacedName->toString()
             : $node->name->toString();
-        return new ClassName($fqn);
+        return TypeFactory::className($fqn);
     }
 
     private function determineKind(Stmt\ClassLike $node): ClassKind
@@ -238,7 +238,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         $fqn = $resolved instanceof \PhpParser\Node\Name\FullyQualified
             ? $resolved->toString()
             : $name->toString();
-        return new ClassName($fqn);
+        return TypeFactory::className($fqn);
     }
 
     /**
@@ -459,7 +459,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         foreach ($class->getInterfaceNames() as $interfaceName) {
             // Only include directly implemented interfaces, not inherited ones
             if (!in_array($interfaceName, $parentInterfaces, true)) {
-                $interfaces[] = new ClassName($interfaceName);
+                $interfaces[] = TypeFactory::className($interfaceName);
             }
         }
 
@@ -476,7 +476,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         $traits = [];
 
         foreach ($class->getTraitNames() as $traitName) {
-            $traits[] = new ClassName($traitName);
+            $traits[] = TypeFactory::className($traitName);
         }
 
         return $traits;
