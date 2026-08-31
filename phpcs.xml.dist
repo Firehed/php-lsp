@@ -21,7 +21,6 @@
             <property name="spacesCountAroundEqualsSign" value="0"/>
         </properties>
     </rule>
-    <rule ref="SlevomatCodingStandard.Functions.UnusedParameter"/>
     <rule ref="SlevomatCodingStandard.Classes.RequireConstructorPropertyPromotion"/>
 
     <file>bin/</file>
