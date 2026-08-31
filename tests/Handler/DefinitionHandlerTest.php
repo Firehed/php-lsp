@@ -344,6 +344,24 @@ class DefinitionHandlerTest extends TestCase
         self::assertNull($result);
     }
 
+    public function testReturnsNullForStaticPropertyFetchWithDynamicClass(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_class_static_prop');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertNull($result, 'a static property on a variable class cannot be resolved');
+    }
+
+    public function testReturnsNullForClassConstFetchWithDynamicClass(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_class_const');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertNull($result, 'a class constant on a variable class cannot be resolved');
+    }
+
     public function testGoToSelfMethodDefinition(): void
     {
         $parentUri = $this->openFixture('src/Inheritance/ParentClass.php');

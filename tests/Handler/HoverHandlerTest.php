@@ -229,6 +229,84 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('getName', $result['contents']['value']);
     }
 
+    public function testHoverOnForeachVariableFromPropertyFetch(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_property_fetch');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'foreach over a typed property must resolve the element type');
+        self::assertStringContainsString('getName', $result['contents']['value']);
+    }
+
+    public function testHoverOnForeachVariableFromFunctionCall(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_func_call');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'foreach over a typed function call must resolve the element type');
+        self::assertStringContainsString('getName', $result['contents']['value']);
+    }
+
+    public function testHoverOnForeachVariableWithoutElementTypeReturnsNull(): void
+    {
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_no_element_type');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertNull($result, 'a foreach source docblock without an array element type has no member types');
+    }
+
+    public function testHoverOnForeachVariableFromFqnDocblock(): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_func_call_fqn');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray($result, 'a leading-backslash docblock element type is the fully qualified name');
+        self::assertStringContainsString('getName', $result['contents']['value']);
+    }
+
+    public function testHoverOnForeachVariableFromUnknownDocblockClassReturnsNull(): void
+    {
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_func_call_unknown');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertNull($result, 'a docblock element type that names no known class has no member types');
+    }
+
+    public function testHoverOnForeachVariableFromMethodCallOnUnresolvableReceiverReturnsNull(): void
+    {
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', 'foreach_method_call_unresolvable');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertNull($result, 'a foreach method-call source whose receiver has no class type has no docblock');
+    }
+
+    public function testHoverOnForeachVariableFromPropertyFetchOnUnresolvableReceiverReturnsNull(): void
+    {
+        $fixture = 'src/Hover/ForeachElement.php';
+        $this->openFixture($fixture);
+        $cursor = $this->openFixtureAtHoverMarker($fixture, 'foreach_property_fetch_unresolvable');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertNull($result, 'a foreach property-fetch source whose receiver has no class type has no docblock');
+    }
+
+
     public function testHoverOnTypedVariableMethodCall(): void
     {
         $this->openFixture('src/Domain/User.php');

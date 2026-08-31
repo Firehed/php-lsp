@@ -152,6 +152,29 @@ class VariableDefinitionTest extends TestCase
         );
     }
 
+    public function testTopLevelArrowImplicitCaptureHasNoEnclosingScope(): void
+    {
+        // A top-level arrow function has no enclosing function-like, so an
+        // implicit capture resolves to null — the file-scope assignment is
+        // not the arrow function's outer scope for capture purposes.
+        $cursor = $this->cursorOnVariable('TopLevel/top_level_closures.php', 'top_arrow_capture');
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertNull($result, 'a top-level arrow function has no enclosing function scope to capture from');
+    }
+
+    public function testTopLevelClosureUseBindingLandsOnTheUseClause(): void
+    {
+        // The `use ($closureOuter)` clause of a top-level closure binds the
+        // name, so variable JTD lands on the use clause itself. The binding's
+        // type is null (no enclosing function scope to derive from), but the
+        // binding location is still the use clause node.
+        $cursor = $this->cursorOnVariable('TopLevel/top_level_closures.php', 'top_closure_use_capture');
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray($result, 'a top-level closure use binding must land on the use clause');
+    }
+
     public function testThisIsNotAVariableDefinition(): void
     {
         $cursor = $this->cursorOnVariable('src/Definition/VariableBindings.php', 'this_usage');
