@@ -57,6 +57,9 @@ final class TypeGraphParityTest extends TestCase
             'PSR-7 server request' => ['Psr\Http\Message\ServerRequestInterface'],
             'trait insteadof and as adaptations' => ['Fixtures\Hierarchy\TraitAdaptationUser'],
             'trait insteadof with excluded trait walked first' => ['Fixtures\Hierarchy\TraitAdaptationReversedUser'],
+            'trait alias whose new name collides with an inherited method'
+                => ['Fixtures\Hierarchy\TraitAliasCollidingUser'],
+            'trait alias without an explicit source trait' => ['Fixtures\Hierarchy\TraitNamelessAliasUser'],
             'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
         ];
     }
@@ -213,6 +216,49 @@ final class TypeGraphParityTest extends TestCase
             $expectedTrait,
             $conflicting->getDeclaringClass()->fqn,
             'insteadof must pick the winning trait for enumerated members too',
+        );
+    }
+
+    public function testFindMethodResolvesAnAliasByItsNewName(): void
+    {
+        $resolved = $this->resolver->findMethod(
+            new ClassName('Fixtures\Hierarchy\TraitAdaptationUser'),
+            new \Firehed\PhpLsp\Domain\MethodName('conflictMethodFromB'),
+            Visibility::Public,
+        );
+
+        self::assertNotNull($resolved, 'an `as` alias must be reachable by findMethod');
+        self::assertSame(
+            'conflictMethodFromB',
+            $resolved->getName()->name,
+            'the returned method is exposed under the alias name',
+        );
+        self::assertSame(
+            'Fixtures\Hierarchy\ConflictingTraitB',
+            $resolved->getDeclaringClass()->fqn,
+            'the alias resolves to the source trait',
+        );
+    }
+
+    public function testAliasReplacesAnAlreadyWalkedInheritedMethod(): void
+    {
+        $methods = $this->resolver->getMethods(
+            new ClassName('Fixtures\Hierarchy\TraitAliasCollidingUser'),
+            Visibility::Public,
+        );
+        $collision = null;
+        foreach ($methods as $candidate) {
+            if ($candidate->name->name === 'inheritedMethod') {
+                $collision = $candidate;
+                break;
+            }
+        }
+
+        self::assertNotNull($collision, 'the aliased method must appear exactly once');
+        self::assertSame(
+            'Fixtures\Hierarchy\ConflictingTraitA',
+            $collision->getDeclaringClass()->fqn,
+            'the trait alias must replace the parent method the walk already collected',
         );
     }
 
