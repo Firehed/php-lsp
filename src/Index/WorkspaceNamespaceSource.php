@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 
 /**
@@ -16,7 +15,8 @@ use Firehed\PhpLsp\Domain\NamespacePath;
  * renamed still being offered.
  *
  * Class members are indexed too, but they are not symbols *of a namespace* — a
- * method is reached through its class, never by name — so they are skipped.
+ * method is reached through its class, never by name — so a symbol whose
+ * `nameKind` is null is skipped.
  */
 final class WorkspaceNamespaceSource implements NamespaceCatalog
 {
@@ -29,9 +29,10 @@ final class WorkspaceNamespaceSource implements NamespaceCatalog
     {
         $symbols = [];
         foreach ($this->index->inNamespace($namespace) as $symbol) {
-            $kind = self::nameKindOf($symbol->kind);
-            if ($kind !== null) {
-                $symbols[] = new CatalogSymbol($symbol->fullyQualifiedName, $kind);
+            // Zero-or-one iteration filters out null-nameKind symbols without a
+            // comparison on the enum, which the kind-branch rule would flag.
+            foreach (array_filter([$symbol->nameKind]) as $nameKind) {
+                $symbols[] = new CatalogSymbol($symbol->fullyQualifiedName, $nameKind);
             }
         }
 
@@ -49,22 +50,5 @@ final class WorkspaceNamespaceSource implements NamespaceCatalog
         }
 
         return new NamespaceContents(array_values($childNamespaces), $symbols);
-    }
-
-    /**
-     * Discovery only distinguishes the kinds that name resolution distinguishes;
-     * which flavour of class-like a symbol is takes resolving it.
-     */
-    private static function nameKindOf(SymbolKind $kind): ?NameKind
-    {
-        return match ($kind) {
-            SymbolKind::Class_,
-            SymbolKind::Interface_,
-            SymbolKind::Trait_,
-            SymbolKind::Enum_ => NameKind::ClassLike,
-            SymbolKind::Function_ => NameKind::Function_,
-            SymbolKind::Constant => NameKind::Constant,
-            SymbolKind::Method, SymbolKind::Property => null,
-        };
     }
 }

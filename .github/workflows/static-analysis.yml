@@ -25,14 +25,11 @@ jobs:
       - name: PHPStan
         run: composer phpstan -- --error-format=github
 
-  baseline-shrink:
+  baseline-retired:
     runs-on: ubuntu-latest
-    name: Baselines only shrink
+    name: Baselines stay retired
     steps:
       - uses: actions/checkout@v7
-
-      - name: Fetch comparison base
-        run: git fetch origin main --depth=1
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -40,7 +37,7 @@ jobs:
           php-version: ${{ matrix.php }}
 
       - name: Check baselines
-        run: php bin/check-baseline-shrink origin/main
+        run: php bin/check-baseline-shrink
 
   deptrac:
     runs-on: ubuntu-latest

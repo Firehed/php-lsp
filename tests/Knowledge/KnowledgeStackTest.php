@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -211,7 +212,13 @@ final class KnowledgeStackTest extends TestCase
     public function testAPrePopulatedIndexIsHonored(): void
     {
         $index = new SymbolIndex();
-        $index->add(new Symbol('Seeded', 'Seed\Seeded', SymbolKind::Class_, new Location('file:///s.php', 0, 0, 0, 0)));
+        $index->add(new Symbol(
+            'Seeded',
+            'Seed\Seeded',
+            SymbolKind::Class_,
+            new Location('file:///s.php', 0, 0, 0, 0),
+            nameKind: NameKind::ClassLike,
+        ));
 
         $stack = KnowledgeStack::forProject(
             new ComposerAutoloadMap(),

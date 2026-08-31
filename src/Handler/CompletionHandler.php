@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
-use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
@@ -90,15 +89,16 @@ final class CompletionHandler implements DocumentFeatureHandler
         // Get text before cursor to determine completion context
         $textBeforeCursor = $document->textBeforeCursor($line, $character);
 
-        $items = $this->getCompletionItems($textBeforeCursor, $document, $line, $character);
-
-        // In interpolated strings, only variable completions are valid
-        if ($context === CompletionContext::VariablesOnly) {
-            $items = array_values(array_filter(
-                $items,
-                static fn(array $item): bool => ($item['kind'] ?? 0) === CompletionItemKind::Variable->value,
-            ));
-        }
+        // In interpolated strings, only variables are valid — take the variable
+        // source alone rather than filter every source's output after the fact.
+        $items = $context === CompletionContext::VariablesOnly
+            ? $this->variableCandidates->find(
+                CompletionClassifier::variablePrefix($textBeforeCursor),
+                $document,
+                $line,
+                $character,
+            )
+            : $this->getCompletionItems($textBeforeCursor, $document, $line, $character);
 
         return $this->capped($items);
     }

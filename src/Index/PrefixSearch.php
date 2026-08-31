@@ -46,6 +46,7 @@ final class PrefixSearch
                     fullyQualifiedName: $catalogSymbol->fullyQualifiedName,
                     kind: $symbolKind,
                     location: $locationOf($catalogSymbol),
+                    nameKind: $kind,
                 );
             }
         }

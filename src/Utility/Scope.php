@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\TypeFactory;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -72,7 +73,7 @@ final class Scope
             : null;
 
         $thisType = ($node instanceof Stmt\ClassMethod && $selfContext !== null)
-            ? new ClassName($selfContext)
+            ? TypeFactory::className($selfContext)
             : null;
 
         // Arrow functions have an expression body, not a statement list; their

@@ -507,6 +507,19 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertSame(ClassKind::Class_, $info->kind);
     }
 
+    public function testFromReflectionCapturesParentClass(): void
+    {
+        $reflection = new ReflectionClass(\RuntimeException::class);
+
+        $info = $this->factory->fromReflection($reflection);
+
+        self::assertSame(
+            \Exception::class,
+            $info->parent?->fqn,
+            'Reflection-derived ClassInfo should carry the parent class',
+        );
+    }
+
     public function testFromReflectionExtractsInterface(): void
     {
         $reflection = new ReflectionClass(\Iterator::class);

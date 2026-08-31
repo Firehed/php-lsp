@@ -25,7 +25,7 @@ final class ComposerSymbolLocator implements SymbolLocator
 
     public function locate(QualifiedName $name, NameKind $kind): ?string
     {
-        if ($kind !== NameKind::ClassLike) {
+        if (!$kind->isClassLike()) {
             return null;
         }
 

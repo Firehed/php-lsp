@@ -1,7 +1,6 @@
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
     - vendor/spaze/phpstan-disallowed-calls/extension.neon
-    - phpstan-baseline.neon
 
 parameters:
     # Default-deny capability confinement: each mechanism below is usable only in
