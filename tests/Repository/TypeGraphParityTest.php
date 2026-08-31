@@ -143,7 +143,6 @@ final class TypeGraphParityTest extends TestCase
     private function skipKnownGaps(string $fqcn): void
     {
         $gaps = [
-            'Fixtures\Hierarchy\TraitAdaptationUser' => 'Trait adaptations (insteadof/as) not yet handled #73',
             'Fixtures\Hierarchy\EnumWithInterface' => 'Enum interface inheritance not yet handled #73',
         ];
         if (array_key_exists($fqcn, $gaps)) {

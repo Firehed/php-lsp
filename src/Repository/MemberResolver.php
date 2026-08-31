@@ -20,6 +20,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 
@@ -60,6 +61,19 @@ final class MemberResolver
         MethodName $method,
         Visibility $minVisibility,
     ): ?MethodInfo {
+        $origin = $this->source->lookupClassLike($class);
+        if ($origin !== null) {
+            $wanted = MemberKind::Method->keyFor($method->name);
+            foreach ($this->aliasedMethods($origin) as $aliasName => $aliased) {
+                if (MemberKind::Method->keyFor($aliasName) !== $wanted) {
+                    continue;
+                }
+                if ($this->isVisible($aliased, $minVisibility, MemberFilter::All, true)) {
+                    return $aliased;
+                }
+            }
+        }
+
         return $this->findMember($class, MemberKind::Method, MethodInfo::class, $method->name, $minVisibility);
     }
 
@@ -107,7 +121,10 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        return $this->collectMembers($class, MemberKind::Method, MethodInfo::class, $minVisibility, $filter);
+        $methods = $this->collectMembers($class, MemberKind::Method, MethodInfo::class, $minVisibility, $filter);
+        $origin = $this->source->lookupClassLike($class);
+
+        return $origin === null ? $methods : $this->mergeAliasedMethods($methods, $origin, $minVisibility, $filter);
     }
 
     /**
@@ -134,7 +151,13 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        return $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter);
+        $members = $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter);
+        if (!$kind->isMethod()) {
+            return $members;
+        }
+        $origin = $this->source->lookupClassLike($class);
+
+        return $origin === null ? $members : $this->mergeAliasedMethods($members, $origin, $minVisibility, $filter);
     }
 
     public function isTraitClass(ClassName $class): bool
@@ -144,6 +167,8 @@ final class MemberResolver
 
     /**
      * Every member of $kind visible from $class, nearest declaration winning.
+     * A class's `as` aliases contribute their aliased method after the walk,
+     * overriding any same-name conflict resolution the walk arrived at.
      *
      * @template T of MemberInfo
      * @param class-string<T> $memberType The type $kind is stored as.
@@ -156,11 +181,19 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter,
     ): array {
+        $origin = $this->source->lookupClassLike($class);
+        if ($origin === null) {
+            return [];
+        }
+
         $collected = [];
-        foreach ($this->hierarchy($class) as [$classInfo, $isOriginClass]) {
+        foreach ($this->hierarchyOf($origin) as [$classInfo, $isOriginClass, $exclusions]) {
             foreach ($kind->membersOf($classInfo) as $name => $member) {
                 $key = $kind->keyFor($name);
                 if (array_key_exists($key, $collected) || !$member instanceof $memberType) {
+                    continue;
+                }
+                if ($kind->isMethod() && in_array($name, $exclusions, true)) {
                     continue;
                 }
                 if ($this->isVisible($member, $minVisibility, $filter, $isOriginClass)) {
@@ -184,10 +217,19 @@ final class MemberResolver
         string $name,
         Visibility $minVisibility,
     ): ?MemberInfo {
+        $origin = $this->source->lookupClassLike($class);
+        if ($origin === null) {
+            return null;
+        }
+
         $wanted = $kind->keyFor($name);
-        foreach ($this->hierarchy($class) as [$classInfo, $isOriginClass]) {
+
+        foreach ($this->hierarchyOf($origin) as [$classInfo, $isOriginClass, $exclusions]) {
             foreach ($kind->membersOf($classInfo) as $declared => $member) {
                 if ($kind->keyFor($declared) !== $wanted || !$member instanceof $memberType) {
+                    continue;
+                }
+                if ($kind->isMethod() && in_array($declared, $exclusions, true)) {
                     continue;
                 }
                 if ($this->isVisible($member, $minVisibility, MemberFilter::All, $isOriginClass)) {
@@ -200,28 +242,26 @@ final class MemberResolver
     }
 
     /**
-     * $class and every type it inherits members from, in PHP's resolution order,
-     * each paired with its isOriginClass flag. A type reached by more than one
-     * edge is visited once; an unresolvable one is skipped.
+     * $origin and every type it inherits members from, in PHP's resolution order,
+     * each paired with its isOriginClass flag and the method names excluded from
+     * that classInfo's own members (from an `insteadof` clause on the edge). A
+     * type reached by more than one edge is visited once; an unresolvable one is
+     * skipped.
      *
-     * @return iterable<array{ClassInfo, bool}>
+     * @return iterable<array{ClassInfo, bool, list<string>}>
      */
-    private function hierarchy(ClassName $class): iterable
+    private function hierarchyOf(ClassInfo $origin): iterable
     {
-        $classInfo = $this->source->lookupClassLike($class);
-        if ($classInfo === null) {
-            return;
-        }
-
         $seen = [];
-        yield from $this->descend($classInfo, true, $seen);
+        yield from $this->descend($origin, true, [], $seen);
     }
 
     /**
+     * @param list<string> $exclusions
      * @param array<string, true> $seen
-     * @return iterable<array{ClassInfo, bool}>
+     * @return iterable<array{ClassInfo, bool, list<string>}>
      */
-    private function descend(ClassInfo $classInfo, bool $isOriginClass, array &$seen): iterable
+    private function descend(ClassInfo $classInfo, bool $isOriginClass, array $exclusions, array &$seen): iterable
     {
         $key = NameKind::ClassLike->normalize(QualifiedName::fromClassName($classInfo->name));
         if (array_key_exists($key, $seen)) {
@@ -229,10 +269,10 @@ final class MemberResolver
         }
         $seen[$key] = true;
 
-        yield [$classInfo, $isOriginClass];
+        yield [$classInfo, $isOriginClass, $exclusions];
 
-        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin]) {
-            yield from $this->descend($superInfo, $superIsOrigin, $seen);
+        foreach ($this->supertypes($classInfo) as [$superInfo, $superIsOrigin, $superExclusions]) {
+            yield from $this->descend($superInfo, $superIsOrigin, $superExclusions, $seen);
         }
     }
 
@@ -262,37 +302,118 @@ final class MemberResolver
 
     /**
      * The types to search after a class's own members, in PHP's resolution order:
-     * used traits, then the parent chain, then interfaces. Unresolvable types are
-     * skipped.
+     * used traits, then the parent chain, then interfaces. A trait edge may carry
+     * the method names excluded from that trait by an `insteadof` clause on this
+     * class. Unresolvable types are skipped.
      *
      * Every member lookup walks the type graph through this one method, so all
      * member kinds see the same hierarchy.
      *
-     * @return list<array{ClassInfo, bool}> Supertype paired with its isOriginClass
-     *         flag. A trait's members are flattened into the using class, so its
-     *         private members stay visible; a parent's or interface's do not.
+     * @return list<array{ClassInfo, bool, list<string>}> Supertype paired with
+     *         its isOriginClass flag and any excluded method names. A trait's
+     *         members are flattened into the using class, so its private members
+     *         stay visible; a parent's or interface's do not.
      */
     private function supertypes(ClassInfo $classInfo): array
     {
         $names = [];
         foreach ($classInfo->traits as $trait) {
-            $names[] = [$trait, true];
+            $names[] = [$trait, true, $classInfo->traitExclusions[$trait->fqn] ?? []];
         }
         if ($classInfo->parent !== null) {
-            $names[] = [$classInfo->parent, false];
+            $names[] = [$classInfo->parent, false, []];
         }
         foreach ($classInfo->interfaces as $interface) {
-            $names[] = [$interface, false];
+            $names[] = [$interface, false, []];
         }
 
         $supertypes = [];
-        foreach ($names as [$name, $isOriginClass]) {
+        foreach ($names as [$name, $isOriginClass, $exclusions]) {
             $info = $this->source->lookupClassLike($name);
             if ($info !== null) {
-                $supertypes[] = [$info, $isOriginClass];
+                $supertypes[] = [$info, $isOriginClass, $exclusions];
             }
         }
 
         return $supertypes;
+    }
+
+    /**
+     * @template T of MemberInfo
+     * @param list<T> $members
+     * @return list<T|MethodInfo>
+     */
+    private function mergeAliasedMethods(
+        array $members,
+        ClassInfo $origin,
+        Visibility $minVisibility,
+        MemberFilter $filter,
+    ): array {
+        $byKey = [];
+        foreach ($members as $index => $member) {
+            $byKey[MemberKind::Method->keyFor($member->getName()->name)] = $index;
+        }
+
+        foreach ($this->aliasedMethods($origin) as $aliasName => $aliased) {
+            if (!$this->isVisible($aliased, $minVisibility, $filter, true)) {
+                continue;
+            }
+            $key = MemberKind::Method->keyFor($aliasName);
+            if (array_key_exists($key, $byKey)) {
+                $members[$byKey[$key]] = $aliased;
+            } else {
+                $byKey[$key] = count($members);
+                $members[] = $aliased;
+            }
+        }
+
+        return array_values($members);
+    }
+
+    /**
+     * The methods that $origin's `as` clauses expose. Each alias resolves through
+     * the same one hierarchy walk that finds any other method — the trait the
+     * alias names when it names one, otherwise the whole graph — so aliases
+     * inherit conflict resolution rather than duplicating it.
+     *
+     * @return iterable<string, MethodInfo>
+     */
+    private function aliasedMethods(ClassInfo $origin): iterable
+    {
+        foreach ($origin->traitAliases as $alias) {
+            $source = $this->resolveAliasSource($origin, $alias);
+            if ($source === null) {
+                continue;
+            }
+            $newName = $alias->newName ?? $alias->method;
+            yield $newName => new MethodInfo(
+                name: new MethodName($newName),
+                visibility: $alias->newVisibility ?? $source->visibility,
+                isStatic: $source->isStatic,
+                isAbstract: $source->isAbstract,
+                isFinal: $source->isFinal,
+                parameters: $source->parameters,
+                returnType: $source->returnType,
+                docblock: $source->docblock,
+                file: $source->file,
+                line: $source->line,
+                declaringClass: $source->declaringClass,
+            );
+        }
+    }
+
+    private function resolveAliasSource(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
+    {
+        if ($alias->trait !== null) {
+            return $this->findMethod($alias->trait, new MethodName($alias->method), Visibility::Private);
+        }
+        foreach ($origin->traits as $trait) {
+            $method = $this->findMethod($trait, new MethodName($alias->method), Visibility::Private);
+            if ($method !== null) {
+                return $method;
+            }
+        }
+
+        return null;
     }
 }
