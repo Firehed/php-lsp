@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-
 /**
  * The queries every {@see SymbolBackend} answers, crossed with
  * {@see \Firehed\PhpLsp\Domain\NameKind} to form {@see SymbolCoverageGridTest}'s
