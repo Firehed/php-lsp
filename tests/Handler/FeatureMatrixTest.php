@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -111,7 +110,6 @@ final class FeatureMatrixTest extends TestCase
                 $documents,
                 $symbolResolver,
                 new SymbolCandidates($knowledge->source, $symbolResolver, $capabilities),
-                new NamespaceCandidates($knowledge->source, $symbolResolver, $capabilities),
                 new KeywordCandidates(),
                 new VariableCandidates($symbolResolver),
                 new MemberCandidates($symbolResolver, $capabilities),

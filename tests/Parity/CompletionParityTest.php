@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -218,7 +217,6 @@ final class CompletionParityTest extends TestCase
             $documents,
             $resolver,
             new SymbolCandidates($knowledge->source, $resolver, $capabilities),
-            new NamespaceCandidates($knowledge->source, $resolver, $capabilities),
             new KeywordCandidates(),
             new VariableCandidates($resolver),
             new MemberCandidates($resolver, $capabilities),
