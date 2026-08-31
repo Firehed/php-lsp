@@ -62,19 +62,15 @@ final class MemberResolver
         Visibility $minVisibility,
     ): ?MethodInfo {
         $origin = $this->source->lookupClassLike($class);
-        if ($origin !== null) {
-            $wanted = MemberKind::Method->keyFor($method->name);
-            foreach ($this->aliasedMethods($origin) as $aliasName => $aliased) {
-                if (MemberKind::Method->keyFor($aliasName) !== $wanted) {
-                    continue;
-                }
-                if ($this->isVisible($aliased, $minVisibility, MemberFilter::All, true)) {
-                    return $aliased;
-                }
-            }
+        if ($origin === null) {
+            return null;
+        }
+        $aliased = $this->findAliasedMethod($origin, $method->name, $minVisibility);
+        if ($aliased !== null) {
+            return $aliased;
         }
 
-        return $this->findMember($class, MemberKind::Method, MethodInfo::class, $method->name, $minVisibility);
+        return $this->findMember($class, MemberKind::Method, MethodInfo::class, $method->name, $minVisibility, $origin);
     }
 
     public function findProperty(
@@ -121,10 +117,20 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        $methods = $this->collectMembers($class, MemberKind::Method, MethodInfo::class, $minVisibility, $filter);
         $origin = $this->source->lookupClassLike($class);
+        if ($origin === null) {
+            return [];
+        }
+        $methods = $this->collectMembers(
+            $class,
+            MemberKind::Method,
+            MethodInfo::class,
+            $minVisibility,
+            $filter,
+            $origin,
+        );
 
-        return $origin === null ? $methods : $this->mergeAliasedMethods($methods, $origin, $minVisibility, $filter);
+        return $this->applyMethodAliases($methods, $origin, $minVisibility, $filter);
     }
 
     /**
@@ -151,13 +157,16 @@ final class MemberResolver
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
-        $members = $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter);
         if (!$kind->isMethod()) {
-            return $members;
+            return $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter);
         }
         $origin = $this->source->lookupClassLike($class);
+        if ($origin === null) {
+            return [];
+        }
+        $members = $this->collectMembers($class, $kind, MemberInfo::class, $minVisibility, $filter, $origin);
 
-        return $origin === null ? $members : $this->mergeAliasedMethods($members, $origin, $minVisibility, $filter);
+        return $this->applyMethodAliases($members, $origin, $minVisibility, $filter);
     }
 
     public function isTraitClass(ClassName $class): bool
@@ -167,8 +176,6 @@ final class MemberResolver
 
     /**
      * Every member of $kind visible from $class, nearest declaration winning.
-     * A class's `as` aliases contribute their aliased method after the walk,
-     * overriding any same-name conflict resolution the walk arrived at.
      *
      * @template T of MemberInfo
      * @param class-string<T> $memberType The type $kind is stored as.
@@ -180,14 +187,16 @@ final class MemberResolver
         string $memberType,
         Visibility $minVisibility,
         MemberFilter $filter,
+        ?ClassInfo $origin = null,
     ): array {
-        $origin = $this->source->lookupClassLike($class);
+        $origin ??= $this->source->lookupClassLike($class);
         if ($origin === null) {
             return [];
         }
 
         $collected = [];
-        foreach ($this->hierarchyOf($origin) as [$classInfo, $isOriginClass, $exclusions]) {
+        $seen = [];
+        foreach ($this->descend($origin, true, [], $seen) as [$classInfo, $isOriginClass, $exclusions]) {
             foreach ($kind->membersOf($classInfo) as $name => $member) {
                 $key = $kind->keyFor($name);
                 if (array_key_exists($key, $collected) || !$member instanceof $memberType) {
@@ -216,15 +225,16 @@ final class MemberResolver
         string $memberType,
         string $name,
         Visibility $minVisibility,
+        ?ClassInfo $origin = null,
     ): ?MemberInfo {
-        $origin = $this->source->lookupClassLike($class);
+        $origin ??= $this->source->lookupClassLike($class);
         if ($origin === null) {
             return null;
         }
 
         $wanted = $kind->keyFor($name);
-
-        foreach ($this->hierarchyOf($origin) as [$classInfo, $isOriginClass, $exclusions]) {
+        $seen = [];
+        foreach ($this->descend($origin, true, [], $seen) as [$classInfo, $isOriginClass, $exclusions]) {
             foreach ($kind->membersOf($classInfo) as $declared => $member) {
                 if ($kind->keyFor($declared) !== $wanted || !$member instanceof $memberType) {
                     continue;
@@ -239,21 +249,6 @@ final class MemberResolver
         }
 
         return null;
-    }
-
-    /**
-     * $origin and every type it inherits members from, in PHP's resolution order,
-     * each paired with its isOriginClass flag and the method names excluded from
-     * that classInfo's own members (from an `insteadof` clause on the edge). A
-     * type reached by more than one edge is visited once; an unresolvable one is
-     * skipped.
-     *
-     * @return iterable<array{ClassInfo, bool, list<string>}>
-     */
-    private function hierarchyOf(ClassInfo $origin): iterable
-    {
-        $seen = [];
-        yield from $this->descend($origin, true, [], $seen);
     }
 
     /**
@@ -339,26 +334,33 @@ final class MemberResolver
     }
 
     /**
+     * Merge $origin's `as` alias methods into $members, overriding same-name
+     * entries the walk produced. The alias is invisible if its resolved source
+     * cannot be found or fails the visibility gate.
+     *
      * @template T of MemberInfo
      * @param list<T> $members
      * @return list<T|MethodInfo>
      */
-    private function mergeAliasedMethods(
+    private function applyMethodAliases(
         array $members,
         ClassInfo $origin,
         Visibility $minVisibility,
         MemberFilter $filter,
     ): array {
+        if ($origin->traitAliases === []) {
+            return $members;
+        }
         $byKey = [];
         foreach ($members as $index => $member) {
             $byKey[MemberKind::Method->keyFor($member->getName()->name)] = $index;
         }
-
-        foreach ($this->aliasedMethods($origin) as $aliasName => $aliased) {
-            if (!$this->isVisible($aliased, $minVisibility, $filter, true)) {
+        foreach ($origin->traitAliases as $alias) {
+            $aliased = $this->resolveAlias($origin, $alias);
+            if ($aliased === null || !$this->isVisible($aliased, $minVisibility, $filter, true)) {
                 continue;
             }
-            $key = MemberKind::Method->keyFor($aliasName);
+            $key = MemberKind::Method->keyFor($aliased->getName()->name);
             if (array_key_exists($key, $byKey)) {
                 $members[$byKey[$key]] = $aliased;
             } else {
@@ -371,38 +373,61 @@ final class MemberResolver
     }
 
     /**
-     * The methods that $origin's `as` clauses expose. Each alias resolves through
-     * the same one hierarchy walk that finds any other method — the trait the
-     * alias names when it names one, otherwise the whole graph — so aliases
-     * inherit conflict resolution rather than duplicating it.
-     *
-     * @return iterable<string, MethodInfo>
+     * The visible alias-exposed method matching $name on $origin, if any.
+     * Filters aliases by their exposed name before resolving the source so a
+     * class with unrelated aliases costs no extra trait walks.
      */
-    private function aliasedMethods(ClassInfo $origin): iterable
-    {
+    private function findAliasedMethod(
+        ClassInfo $origin,
+        string $name,
+        Visibility $minVisibility,
+    ): ?MethodInfo {
+        $wanted = MemberKind::Method->keyFor($name);
         foreach ($origin->traitAliases as $alias) {
-            $source = $this->resolveAliasSource($origin, $alias);
-            if ($source === null) {
+            $aliasName = $alias->newName ?? $alias->method;
+            if (MemberKind::Method->keyFor($aliasName) !== $wanted) {
                 continue;
             }
-            $newName = $alias->newName ?? $alias->method;
-            yield $newName => new MethodInfo(
-                name: new MethodName($newName),
-                visibility: $alias->newVisibility ?? $source->visibility,
-                isStatic: $source->isStatic,
-                isAbstract: $source->isAbstract,
-                isFinal: $source->isFinal,
-                parameters: $source->parameters,
-                returnType: $source->returnType,
-                docblock: $source->docblock,
-                file: $source->file,
-                line: $source->line,
-                declaringClass: $source->declaringClass,
-            );
+            $aliased = $this->resolveAlias($origin, $alias);
+            if ($aliased !== null && $this->isVisible($aliased, $minVisibility, MemberFilter::All, true)) {
+                return $aliased;
+            }
         }
+
+        return null;
     }
 
-    private function resolveAliasSource(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
+    /**
+     * The method a trait `as` alias exposes on $origin. Resolves the source
+     * through the one hierarchy walk that finds any other method — the trait
+     * the alias names when it names one, otherwise the first trait on $origin
+     * that declares the method — so aliases inherit conflict resolution rather
+     * than duplicating it.
+     */
+    private function resolveAlias(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
+    {
+        $source = $this->findAliasSource($origin, $alias);
+        if ($source === null) {
+            return null;
+        }
+        $newName = $alias->newName ?? $alias->method;
+
+        return new MethodInfo(
+            name: new MethodName($newName),
+            visibility: $alias->newVisibility ?? $source->visibility,
+            isStatic: $source->isStatic,
+            isAbstract: $source->isAbstract,
+            isFinal: $source->isFinal,
+            parameters: $source->parameters,
+            returnType: $source->returnType,
+            docblock: $source->docblock,
+            file: $source->file,
+            line: $source->line,
+            declaringClass: $source->declaringClass,
+        );
+    }
+
+    private function findAliasSource(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
     {
         if ($alias->trait !== null) {
             return $this->findMethod($alias->trait, new MethodName($alias->method), Visibility::Private);
