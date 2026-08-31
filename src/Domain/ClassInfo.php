@@ -18,6 +18,11 @@ final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
      * @param array<string, PropertyInfo> $properties Keyed by property name
      * @param array<string, ConstantInfo> $constants Keyed by constant name
      * @param array<string, EnumCaseInfo> $enumCases Keyed by case name
+     * @param array<string, list<string>> $traitExclusions Methods excluded from
+     *     a used trait by an `A::method insteadof B` clause, keyed by the
+     *     losing trait's FQN.
+     * @param list<TraitAlias> $traitAliases `as` clauses declared in this
+     *     class's `use TraitX { ... }` block.
      */
     public function __construct(
         public ClassName $name,
@@ -36,6 +41,8 @@ final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
+        public array $traitExclusions = [],
+        public array $traitAliases = [],
     ) {
     }
 
@@ -88,10 +95,16 @@ final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
         if ($this->kind === ClassKind::Class_ && $this->parent !== null) {
             $sig .= ' extends ' . $this->parent->shortName();
         }
-        if ($this->kind === ClassKind::Interface_ && $this->interfaces !== []) {
-            $sig .= ' extends ' . implode(', ', array_map(fn($n) => $n->shortName(), $this->interfaces));
-        } elseif ($this->interfaces !== []) {
-            $sig .= ' implements ' . implode(', ', array_map(fn($n) => $n->shortName(), $this->interfaces));
+        $writtenInterfaces = $this->kind === ClassKind::Enum_
+            ? array_values(array_filter(
+                $this->interfaces,
+                fn($n) => !EnumImplicits::isImplicitInterface($n),
+            ))
+            : $this->interfaces;
+        if ($this->kind === ClassKind::Interface_ && $writtenInterfaces !== []) {
+            $sig .= ' extends ' . implode(', ', array_map(fn($n) => $n->shortName(), $writtenInterfaces));
+        } elseif ($writtenInterfaces !== []) {
+            $sig .= ' implements ' . implode(', ', array_map(fn($n) => $n->shortName(), $writtenInterfaces));
         }
 
         return $sig;

@@ -56,6 +56,10 @@ final class TypeGraphParityTest extends TestCase
             'PSR-7 request' => ['Psr\Http\Message\RequestInterface'],
             'PSR-7 server request' => ['Psr\Http\Message\ServerRequestInterface'],
             'trait insteadof and as adaptations' => ['Fixtures\Hierarchy\TraitAdaptationUser'],
+            'trait insteadof with excluded trait walked first' => ['Fixtures\Hierarchy\TraitAdaptationReversedUser'],
+            'trait alias whose new name collides with an inherited method'
+                => ['Fixtures\Hierarchy\TraitAliasCollidingUser'],
+            'trait alias without an explicit source trait' => ['Fixtures\Hierarchy\TraitNamelessAliasUser'],
             'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
         ];
     }
@@ -77,7 +81,6 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicMethodsMatchRuntime(string $fqcn): void
     {
-        $this->skipKnownGaps($fqcn);
         $resolved = array_map(
             fn ($method) => $method->name->name,
             $this->resolver->getMethods(new ClassName($fqcn), Visibility::Public),
@@ -96,7 +99,6 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicPropertiesMatchRuntime(string $fqcn): void
     {
-        $this->skipKnownGaps($fqcn);
         $expected = array_map(
             fn (ReflectionProperty $property) => $property->getName(),
             (new ReflectionClass($fqcn))->getProperties(ReflectionProperty::IS_PUBLIC),
@@ -120,7 +122,6 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicConstantsMatchRuntime(string $fqcn): void
     {
-        $this->skipKnownGaps($fqcn);
         $expected = [];
         foreach ((new ReflectionClass($fqcn))->getReflectionConstants() as $constant) {
             if ($constant->isPublic()) {
@@ -128,10 +129,17 @@ final class TypeGraphParityTest extends TestCase
             }
         }
 
+        // PHP's reflection treats an enum case as a public constant; the
+        // domain here splits ConstantInfo from EnumCaseInfo, so parity is
+        // asserted against the union of both.
         $resolved = array_map(
             fn ($constant) => $constant->name->name,
             $this->resolver->getConstants(new ClassName($fqcn), Visibility::Public),
         );
+        $resolved = array_merge($resolved, array_map(
+            fn ($case) => $case->name->name,
+            $this->resolver->getEnumCases(new ClassName($fqcn)),
+        ));
 
         self::assertSame(
             self::normalize($expected),
@@ -140,15 +148,118 @@ final class TypeGraphParityTest extends TestCase
         );
     }
 
-    private function skipKnownGaps(string $fqcn): void
+    /**
+     * @return array<string, array{class-string, string, string}>
+     * @codeCoverageIgnore
+     */
+    public static function insteadofResolutions(): array
     {
-        $gaps = [
-            'Fixtures\Hierarchy\TraitAdaptationUser' => 'Trait adaptations (insteadof/as) not yet handled #73',
-            'Fixtures\Hierarchy\EnumWithInterface' => 'Enum interface inheritance not yet handled #73',
+        // @phpstan-ignore return.type (fixture classes are not analyzed)
+        return [
+            'excluded trait walked first' => [
+                'Fixtures\Hierarchy\TraitAdaptationReversedUser',
+                'conflictMethod',
+                'Fixtures\Hierarchy\ConflictingTraitA',
+            ],
+            'excluded trait walked second' => [
+                'Fixtures\Hierarchy\TraitAdaptationUser',
+                'conflictMethod',
+                'Fixtures\Hierarchy\ConflictingTraitA',
+            ],
         ];
-        if (array_key_exists($fqcn, $gaps)) {
-            self::markTestSkipped($gaps[$fqcn]);
+    }
+
+    /**
+     * The winning trait's method is what the walk returns, even when the
+     * excluded trait is used first. Without the exclusion guard the array-key
+     * de-duplication lets the first-walked trait win regardless of `insteadof`.
+     *
+     * @param class-string $fqcn
+     */
+    #[DataProvider('insteadofResolutions')]
+    public function testInsteadofPicksTheWinningTraitOnFind(string $fqcn, string $method, string $expectedTrait): void
+    {
+        $resolved = $this->resolver->findMethod(
+            new ClassName($fqcn),
+            new \Firehed\PhpLsp\Domain\MethodName($method),
+            Visibility::Public,
+        );
+
+        self::assertNotNull($resolved, 'the conflict method should resolve');
+        self::assertSame(
+            $expectedTrait,
+            $resolved->getDeclaringClass()->fqn,
+            'insteadof must pick the winning trait, regardless of trait-use order',
+        );
+    }
+
+    /**
+     * @param class-string $fqcn
+     */
+    #[DataProvider('insteadofResolutions')]
+    public function testInsteadofPicksTheWinningTraitInCollectMembers(
+        string $fqcn,
+        string $method,
+        string $expectedTrait,
+    ): void {
+        $methods = $this->resolver->getMethods(new ClassName($fqcn), Visibility::Public);
+        $conflicting = null;
+        foreach ($methods as $candidate) {
+            if ($candidate->name->name === $method) {
+                $conflicting = $candidate;
+                break;
+            }
         }
+
+        self::assertNotNull($conflicting, 'the conflict method should appear in getMethods');
+        self::assertSame(
+            $expectedTrait,
+            $conflicting->getDeclaringClass()->fqn,
+            'insteadof must pick the winning trait for enumerated members too',
+        );
+    }
+
+    public function testFindMethodResolvesAnAliasByItsNewName(): void
+    {
+        $resolved = $this->resolver->findMethod(
+            new ClassName('Fixtures\Hierarchy\TraitAdaptationUser'),
+            new \Firehed\PhpLsp\Domain\MethodName('conflictMethodFromB'),
+            Visibility::Public,
+        );
+
+        self::assertNotNull($resolved, 'an `as` alias must be reachable by findMethod');
+        self::assertSame(
+            'conflictMethodFromB',
+            $resolved->getName()->name,
+            'the returned method is exposed under the alias name',
+        );
+        self::assertSame(
+            'Fixtures\Hierarchy\ConflictingTraitB',
+            $resolved->getDeclaringClass()->fqn,
+            'the alias resolves to the source trait',
+        );
+    }
+
+    public function testAliasReplacesAnAlreadyWalkedInheritedMethod(): void
+    {
+        $methods = $this->resolver->getMethods(
+            new ClassName('Fixtures\Hierarchy\TraitAliasCollidingUser'),
+            Visibility::Public,
+        );
+        $collision = null;
+        foreach ($methods as $candidate) {
+            if ($candidate->name->name === 'inheritedMethod') {
+                $collision = $candidate;
+                break;
+            }
+        }
+
+        self::assertNotNull($collision, 'the aliased method must appear exactly once');
+        self::assertSame(
+            'Fixtures\Hierarchy\ConflictingTraitA',
+            $collision->getDeclaringClass()->fqn,
+            'the trait alias must replace the parent method the walk already collected',
+        );
     }
 
     /**

@@ -43,18 +43,6 @@ parameters:
 			path: src/Repository/DefaultClassInfoFactory.php
 
 		-
-			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 3
-			path: src/Repository/DefaultClassInfoFactory.php
-
-		-
-			message: '#^new UnionType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Repository/DefaultClassInfoFactory.php
-
-		-
 			message: '#^\=\=\= on ClassKind branches per symbol kind; use predicates \(RFC 1 §4\.5\)\.$#'
 			identifier: phpLsp.kindInspection
 			count: 1

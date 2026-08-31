@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\EnumImplicits;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -18,8 +19,8 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use PhpParser\Modifiers;
 use PhpParser\Node\Expr\Variable;
@@ -36,6 +37,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     {
         $className = $this->resolveClassName($node);
         $filePath = FileUri::toPath($uri);
+        $traitUse = $this->extractTraitUse($node);
 
         return new ClassInfo(
             name: $className,
@@ -46,7 +48,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             isAttribute: $this->isAttributeNode($node),
             parent: $this->resolveParent($node),
             interfaces: $this->extractInterfaces($node),
-            traits: $this->extractTraits($node),
+            traits: $traitUse['traits'],
             methods: $this->extractMethods($node, $className, $filePath),
             properties: $this->extractProperties($node, $className, $filePath),
             constants: $this->extractConstants($node, $className, $filePath),
@@ -54,6 +56,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             docblock: $node->getDocComment()?->getText(),
             file: $filePath,
             line: $node->getStartLine(),
+            traitExclusions: $traitUse['exclusions'],
+            traitAliases: $traitUse['aliases'],
         );
     }
 
@@ -178,25 +182,53 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             }
         }
 
+        if ($node instanceof Stmt\Enum_) {
+            $interfaces = array_merge($interfaces, EnumImplicits::interfaces($node->scalarType !== null));
+        }
+
         return $interfaces;
     }
 
     /**
-     * @return list<ClassName>
+     * @return array{traits: list<ClassName>, exclusions: array<string, list<string>>, aliases: list<TraitAlias>}
      */
-    private function extractTraits(Stmt\ClassLike $node): array
+    private function extractTraitUse(Stmt\ClassLike $node): array
     {
         $traits = [];
+        $exclusions = [];
+        $aliases = [];
 
         foreach ($node->stmts as $stmt) {
-            if ($stmt instanceof Stmt\TraitUse) {
-                foreach ($stmt->traits as $trait) {
-                    $traits[] = $this->resolveNameToClassName($trait);
+            if (!$stmt instanceof Stmt\TraitUse) {
+                continue;
+            }
+            foreach ($stmt->traits as $trait) {
+                $traits[] = $this->resolveNameToClassName($trait);
+            }
+            foreach ($stmt->adaptations as $adaptation) {
+                if ($adaptation instanceof Stmt\TraitUseAdaptation\Precedence) {
+                    $method = $adaptation->method->toString();
+                    foreach ($adaptation->insteadof as $loser) {
+                        $exclusions[$this->resolveNameToClassName($loser)->fqn][] = $method;
+                    }
+                    continue;
+                }
+                if ($adaptation instanceof Stmt\TraitUseAdaptation\Alias) {
+                    $aliases[] = new TraitAlias(
+                        trait: $adaptation->trait !== null
+                            ? $this->resolveNameToClassName($adaptation->trait)
+                            : null,
+                        method: $adaptation->method->toString(),
+                        newName: $adaptation->newName?->toString(),
+                        newVisibility: $adaptation->newModifier !== null
+                            ? $this->visibilityFromFlags($adaptation->newModifier)
+                            : null,
+                    );
                 }
             }
         }
 
-        return $traits;
+        return ['traits' => $traits, 'exclusions' => $exclusions, 'aliases' => $aliases];
     }
 
     private function resolveNameToClassName(\PhpParser\Node\Name $name): ClassName
@@ -243,91 +275,20 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             );
         }
 
-        // Add built-in enum methods
         if ($node instanceof Stmt\Enum_) {
-            $methods = array_merge($methods, $this->getEnumBuiltinMethods($node, $className));
+            $methods = array_merge($methods, EnumImplicits::methods($className, $this->enumScalarType($node)));
         }
 
         return $methods;
     }
 
-    /**
-     * @return array<string, MethodInfo>
-     */
-    private function getEnumBuiltinMethods(Stmt\Enum_ $enum, ClassName $className): array
+    private function enumScalarType(Stmt\Enum_ $enum): ?PrimitiveType
     {
-        $methods = [];
-
-        // cases() is available on all enums
-        $methods['cases'] = new MethodInfo(
-            name: new MethodName('cases'),
-            visibility: Visibility::Public,
-            isStatic: true,
-            isAbstract: false,
-            isFinal: false,
-            parameters: [],
-            returnType: new PrimitiveType('array'),
-            docblock: null,
-            file: null,
-            line: null,
-            declaringClass: $className,
-        );
-
-        // from() and tryFrom() are only available on backed enums
-        if ($enum->scalarType !== null) {
-            $scalarType = $enum->scalarType->toString();
-            $scalarTypeInfo = new PrimitiveType($scalarType);
-
-            $methods['from'] = new MethodInfo(
-                name: new MethodName('from'),
-                visibility: Visibility::Public,
-                isStatic: true,
-                isAbstract: false,
-                isFinal: false,
-                parameters: [
-                    new ParameterInfo(
-                        name: 'value',
-                        type: $scalarTypeInfo,
-                        hasDefault: false,
-                        defaultValue: null,
-                        position: 0,
-                        isVariadic: false,
-                        isPassedByReference: false,
-                    ),
-                ],
-                returnType: $className,
-                docblock: null,
-                file: null,
-                line: null,
-                declaringClass: $className,
-            );
-
-            $methods['tryFrom'] = new MethodInfo(
-                name: new MethodName('tryFrom'),
-                visibility: Visibility::Public,
-                isStatic: true,
-                isAbstract: false,
-                isFinal: false,
-                parameters: [
-                    new ParameterInfo(
-                        name: 'value',
-                        type: $scalarTypeInfo,
-                        hasDefault: false,
-                        defaultValue: null,
-                        position: 0,
-                        isVariadic: false,
-                        isPassedByReference: false,
-                    ),
-                ],
-                returnType: new UnionType([$className, new PrimitiveType('null')]),
-                docblock: null,
-                file: null,
-                line: null,
-                declaringClass: $className,
-            );
+        if ($enum->scalarType === null) {
+            return null;
         }
 
-        return $methods;
+        return TypeFactory::primitive($enum->scalarType->toString());
     }
 
     /**
@@ -352,6 +313,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function extractProperties(Stmt\ClassLike $node, ClassName $className, string $filePath): array
     {
         $properties = [];
+
+        if ($node instanceof Stmt\Enum_) {
+            $properties = EnumImplicits::properties($className, $this->enumScalarType($node));
+        }
         $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
@@ -604,6 +569,9 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
         foreach ($class->getReflectionConstants() as $constant) {
             if ($constant->getDeclaringClass()->getName() !== $class->getName()) {
+                continue;
+            }
+            if ($constant->isEnumCase()) {
                 continue;
             }
 
