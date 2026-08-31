@@ -30,7 +30,7 @@ use ReflectionClass;
  * framework owns detection, so no spelling can slip past.
  *
  * That coupling is the one §4.2 forbids, and the one the Step 2 migration (Plan 0002
- * §5.5) removed from `NamespaceCandidates`, `SymbolResolver`, and
+ * §5.5) removed from `SymbolCandidates`, `SymbolResolver`, and
  * `TextDocumentSyncHandler`.
  */
 final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsageExtension

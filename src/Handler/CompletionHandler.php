@@ -15,7 +15,6 @@ use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
@@ -42,7 +41,6 @@ final class CompletionHandler implements DocumentFeatureHandler
         private readonly DocumentManager $documentManager,
         private readonly CodeResolver $codeResolver,
         private readonly SymbolCandidates $symbolCandidates,
-        private readonly NamespaceCandidates $namespaceCandidates,
         private readonly KeywordCandidates $keywordCandidates,
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
@@ -279,11 +277,9 @@ final class CompletionHandler implements DocumentFeatureHandler
     }
 
     /**
-     * Class-name candidates valid for a position, from the workspace index and
-     * imports, plus namespace navigation from the catalog. Every class position
-     * routes through here, so navigation is offered consistently and filtered by the
-     * same predicate everywhere. Name resolution (absolute vs import vs
-     * current-namespace) lives in {@see NamespaceCandidates::navigate()}, not here.
+     * Class-name candidates valid for a position: one call to
+     * {@see SymbolCandidates::find()}, whose $kinds restriction keeps navigation
+     * from offering a function or constant leaf where the position rejects one.
      *
      * @return list<CompletionItem>
      */
@@ -294,18 +290,9 @@ final class CompletionHandler implements DocumentFeatureHandler
         int $character,
         ClassCandidateFilter $filter,
     ): array {
-        $items = array_merge(
+        return $this->deduplicateCompletions(
             $this->symbolCandidates->find($prefix, $document, $line, $character, [NameKind::ClassLike], $filter),
-            $this->namespaceCandidates->navigate(
-                $prefix,
-                $this->codeResolver->getNameContext($document, $line),
-                $line,
-                $character,
-                $filter,
-            ),
         );
-
-        return $this->deduplicateCompletions($items);
     }
 
     /**
@@ -337,7 +324,7 @@ final class CompletionHandler implements DocumentFeatureHandler
             return $this->variableCandidates->find($prefix, $document, $line, $character);
         }
 
-        return $this->namespaceCandidates->useStatement(
+        return $this->symbolCandidates->forUseStatement(
             $prefix,
             $line,
             $character,

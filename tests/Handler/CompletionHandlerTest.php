@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\NamespaceCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -107,7 +106,6 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $this->symbolResolver,
             new SymbolCandidates($symbolSource, $this->symbolResolver, $capabilities),
-            new NamespaceCandidates($symbolSource, $this->symbolResolver, $capabilities),
             new KeywordCandidates(),
             new VariableCandidates($this->symbolResolver),
             new MemberCandidates($this->symbolResolver, $capabilities),
@@ -4180,5 +4178,74 @@ class CompletionHandlerTest extends TestCase
             $byLabel['User'] ?? null,
             'A class in the current namespace is offered even when never opened (issue #383)',
         );
+    }
+
+    public function testBackslashNavigationOffersGlobalFunctionsAtExpressionStart(): void
+    {
+        // Step-22: `\`-prefixed function completion works at expression start. The
+        // classifier keeps the leading `\`, so navigation walks the global namespace
+        // and offers reflected built-in functions matching the segment.
+        $this->openDocument('file:///expr.php', '<?php $x = \\strle');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///expr.php'],
+                'position' => ['line' => 0, 'character' => 17],
+            ],
+        ]);
+
+        $result = $this->handler->handle($request);
+
+        self::assertIsArray($result);
+        $functionLabels = [];
+        foreach ($result['items'] as $item) {
+            if (($item['kind'] ?? null) === CompletionItemKind::Function->value) {
+                $functionLabels[] = $item['label'];
+            }
+        }
+        self::assertContains(
+            'strlen',
+            $functionLabels,
+            'An absolute prefix at expression start navigates the global namespace and offers global functions',
+        );
+    }
+
+    #[DataProvider('provideFilteredPositionMarkers')]
+    public function testFilteredPositionNavigationOffersNoFunctionsOrConstants(string $marker): void
+    {
+        // Step-22: navigation in a class-only position offers class-likes only —
+        // a function or constant leaf from the walked namespace must not leak.
+        $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', $marker);
+
+        $result = $this->handler->handle($this->completionRequestAt($cursor));
+
+        self::assertIsArray($result);
+        $kinds = array_column($result['items'], 'kind');
+        self::assertNotContains(
+            CompletionItemKind::Function->value,
+            $kinds,
+            "Navigation from the {$marker} position offers no function leaf",
+        );
+        self::assertNotContains(
+            CompletionItemKind::Constant->value,
+            $kinds,
+            "Navigation from the {$marker} position offers no constant leaf",
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string}>
+     */
+    public static function provideFilteredPositionMarkers(): iterable
+    {
+        yield 'catch clause' => ['catch_nav'];
+        yield 'extends clause' => ['extends_nav'];
+        yield 'implements clause' => ['implements_nav'];
+        yield 'trait use' => ['trait_use_nav'];
+        yield 'attribute' => ['attribute_nav'];
     }
 }
