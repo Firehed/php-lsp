@@ -30,6 +30,7 @@ use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\VariableBinding;
 use Firehed\PhpLsp\Utility\VariableBindings;
 use PhpParser\Node;
+use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\Clone_;
@@ -328,6 +329,29 @@ final class ExpressionResolver
             return new ResolvedTypeOnly(TypeFactory::className($className));
         }
         return $classInfo;
+    }
+
+    /**
+     * Resolve the constructor callable a `new X(...)` or `#[X(...)]` invokes.
+     * Distinct from `resolve()` on the same node: `resolve(New_)` answers the
+     * *type* the expression produces, while this answers the callable that
+     * runs. Uses private visibility so promoted/private constructors are found.
+     */
+    public function resolveConstructor(New_|Attribute $call): ?MethodInfo
+    {
+        $classNameNode = $call instanceof New_ ? $call->class : $call->name;
+        if (!$classNameNode instanceof Name) {
+            return null;
+        }
+        $classNameStr = ScopeFinder::resolveClassNameInContext($classNameNode, $call);
+        if ($classNameStr === null) {
+            return null;
+        }
+        return $this->memberResolver->findMethod(
+            TypeFactory::className($classNameStr),
+            new MethodName('__construct'),
+            Visibility::Private,
+        );
     }
 
     /**
