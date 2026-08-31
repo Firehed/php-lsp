@@ -23,6 +23,7 @@
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^12.5.22",
+        "slevomat/coding-standard": "^8.31",
         "spaze/phpstan-disallowed-calls": "^4.14",
         "squizlabs/php_codesniffer": "^4.0"
     },
@@ -58,6 +59,9 @@
         "bin/php-lsp"
     ],
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": false
+        }
     }
 }
