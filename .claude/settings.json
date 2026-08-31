@@ -1,24 +1,26 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(bin/check-baseline-shrink)",
+      "Bash(composer deptrac *)",
+      "Bash(composer install:*)",
+      "Bash(composer phpcs:*)",
+      "Bash(composer phpstan:*)",
+      "Bash(composer test:*)",
+      "Bash(composer unit:*)",
+      "Bash(php -l *)",
+      "Bash(XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-clover coverage.xml)"
+    ],
     "ask": [
       "Edit(phpstan.neon)",
-      "Write(phpstan.neon)",
       "Edit(deptrac.yaml)",
-      "Write(deptrac.yaml)",
       "Edit(phpstan-baseline.neon)",
-      "Write(phpstan-baseline.neon)",
       "Edit(deptrac.baseline.yaml)",
-      "Write(deptrac.baseline.yaml)",
       "Edit(tests/Architecture/**)",
-      "Write(tests/Architecture/**)",
       "Edit(bin/**)",
-      "Write(bin/**)",
       "Edit(.github/**)",
-      "Write(.github/**)",
       "Edit(.claude/**)",
-      "Write(.claude/**)",
-      "Edit(docs/architecture/enforcement-edits.md)",
-      "Write(docs/architecture/enforcement-edits.md)"
+      "Edit(docs/architecture/enforcement-edits.md)"
     ]
   }
 }

@@ -2,11 +2,6 @@
   "permissions": {
     "allow": [
       "Bash(~/.claude/skills/link-issues/scripts/link-issues *)",
-      "Bash(composer install:*)",
-      "Bash(composer phpcs:*)",
-      "Bash(composer phpstan:*)",
-      "Bash(composer test:*)",
-      "Bash(composer unit:*)",
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",
       "Bash(gh pr diff:*)",
