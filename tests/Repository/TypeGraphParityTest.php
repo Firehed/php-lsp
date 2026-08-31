@@ -77,7 +77,6 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicMethodsMatchRuntime(string $fqcn): void
     {
-        $this->skipKnownGaps($fqcn);
         $resolved = array_map(
             fn ($method) => $method->name->name,
             $this->resolver->getMethods(new ClassName($fqcn), Visibility::Public),
@@ -96,7 +95,6 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicPropertiesMatchRuntime(string $fqcn): void
     {
-        $this->skipKnownGaps($fqcn);
         $expected = array_map(
             fn (ReflectionProperty $property) => $property->getName(),
             (new ReflectionClass($fqcn))->getProperties(ReflectionProperty::IS_PUBLIC),
@@ -120,7 +118,6 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicConstantsMatchRuntime(string $fqcn): void
     {
-        $this->skipKnownGaps($fqcn);
         $expected = [];
         foreach ((new ReflectionClass($fqcn))->getReflectionConstants() as $constant) {
             if ($constant->isPublic()) {
@@ -128,26 +125,23 @@ final class TypeGraphParityTest extends TestCase
             }
         }
 
+        // PHP's reflection treats an enum case as a public constant; the
+        // domain here splits ConstantInfo from EnumCaseInfo, so parity is
+        // asserted against the union of both.
         $resolved = array_map(
             fn ($constant) => $constant->name->name,
             $this->resolver->getConstants(new ClassName($fqcn), Visibility::Public),
         );
+        $resolved = array_merge($resolved, array_map(
+            fn ($case) => $case->name->name,
+            $this->resolver->getEnumCases(new ClassName($fqcn)),
+        ));
 
         self::assertSame(
             self::normalize($expected),
             self::normalize($resolved),
             'resolved public constants should match the constants available at runtime',
         );
-    }
-
-    private function skipKnownGaps(string $fqcn): void
-    {
-        $gaps = [
-            'Fixtures\Hierarchy\EnumWithInterface' => 'Enum interface inheritance not yet handled #73',
-        ];
-        if (array_key_exists($fqcn, $gaps)) {
-            self::markTestSkipped($gaps[$fqcn]);
-        }
     }
 
     /**

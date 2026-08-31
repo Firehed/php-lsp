@@ -86,6 +86,11 @@ final class TypeFactory
         return new ClassName($fqn);
     }
 
+    public static function primitive(string $name): PrimitiveType
+    {
+        return new PrimitiveType($name);
+    }
+
     /**
      * Build a union from resolved parts. A single-member "union" collapses to
      * that member, matching how PHP's type system treats it.

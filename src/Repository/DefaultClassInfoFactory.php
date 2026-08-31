@@ -287,6 +287,44 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     }
 
     /**
+     * @return array<string, PropertyInfo>
+     */
+    private function getEnumBuiltinProperties(Stmt\Enum_ $enum, ClassName $className): array
+    {
+        $properties = [
+            'name' => new PropertyInfo(
+                name: new PropertyName('name'),
+                visibility: Visibility::Public,
+                isStatic: false,
+                isReadonly: true,
+                isPromoted: false,
+                type: TypeFactory::primitive('string'),
+                docblock: null,
+                file: null,
+                line: null,
+                declaringClass: $className,
+            ),
+        ];
+
+        if ($enum->scalarType !== null) {
+            $properties['value'] = new PropertyInfo(
+                name: new PropertyName('value'),
+                visibility: Visibility::Public,
+                isStatic: false,
+                isReadonly: true,
+                isPromoted: false,
+                type: TypeFactory::primitive($enum->scalarType->toString()),
+                docblock: null,
+                file: null,
+                line: null,
+                declaringClass: $className,
+            );
+        }
+
+        return $properties;
+    }
+
+    /**
      * @return array<string, MethodInfo>
      */
     private function getEnumBuiltinMethods(Stmt\Enum_ $enum, ClassName $className): array
@@ -387,6 +425,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     private function extractProperties(Stmt\ClassLike $node, ClassName $className, string $filePath): array
     {
         $properties = [];
+
+        if ($node instanceof Stmt\Enum_) {
+            $properties = $this->getEnumBuiltinProperties($node, $className);
+        }
         $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
@@ -639,6 +681,9 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
         foreach ($class->getReflectionConstants() as $constant) {
             if ($constant->getDeclaringClass()->getName() !== $class->getName()) {
+                continue;
+            }
+            if ($constant->isEnumCase()) {
                 continue;
             }
 

@@ -226,7 +226,10 @@
             "from": "public static function from(string $value): Fixtures\\Enum\\Color",
             "tryFrom": "public static function tryFrom(string $value): ?Fixtures\\Enum\\Color"
         },
-        "properties": [],
+        "properties": {
+            "name": "public readonly string $name",
+            "value": "public readonly string $value"
+        },
         "constants": [],
         "enumCases": {
             "Blue": "case Blue = 'blue'",
@@ -256,7 +259,10 @@
             "getLabel": "public function getLabel(): string",
             "tryFrom": "public static function tryFrom(int $value): ?Fixtures\\Enum\\Priority"
         },
-        "properties": [],
+        "properties": {
+            "name": "public readonly string $name",
+            "value": "public readonly int $value"
+        },
         "constants": [],
         "enumCases": {
             "Critical": "case Critical = 100",
@@ -287,7 +293,10 @@
             "jsonSerialize": "public function jsonSerialize(): string",
             "tryFrom": "public static function tryFrom(string $value): ?Fixtures\\Enum\\SerializableStatus"
         },
-        "properties": [],
+        "properties": {
+            "name": "public readonly string $name",
+            "value": "public readonly string $value"
+        },
         "constants": [],
         "enumCases": {
             "Active": "case Active = 'active'",
@@ -315,7 +324,9 @@
             "triggerDefEnumMethod": "public function triggerDefEnumMethod(): string",
             "triggerEnumCase": "public function triggerEnumCase(): Fixtures\\Enum\\Status"
         },
-        "properties": [],
+        "properties": {
+            "name": "public readonly string $name"
+        },
         "constants": [],
         "enumCases": {
             "Active": "case Active",
