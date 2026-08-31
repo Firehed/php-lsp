@@ -181,7 +181,7 @@ final class MemberAccessDetector
         return $exprResolver->resolve($node->var, $ast)?->getType();
     }
 
-/**
+    /**
      * The one function that decides how visible a target class is to a vantage
      * class. Same class: private. Subclass (any depth): protected. Otherwise
      * (or no vantage): public. Every call site — instance, static, `$this`,
