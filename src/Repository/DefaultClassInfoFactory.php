@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\EnumImplicits;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -20,7 +21,6 @@ use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use PhpParser\Modifiers;
 use PhpParser\Node\Expr\Variable;
@@ -183,10 +183,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         }
 
         if ($node instanceof Stmt\Enum_) {
-            $interfaces[] = TypeFactory::className(\UnitEnum::class);
-            if ($node->scalarType !== null) {
-                $interfaces[] = TypeFactory::className(\BackedEnum::class);
-            }
+            $interfaces = array_merge($interfaces, EnumImplicits::interfaces($node->scalarType !== null));
         }
 
         return $interfaces;
@@ -278,129 +275,20 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             );
         }
 
-        // Add built-in enum methods
         if ($node instanceof Stmt\Enum_) {
-            $methods = array_merge($methods, $this->getEnumBuiltinMethods($node, $className));
+            $methods = array_merge($methods, EnumImplicits::methods($className, $this->enumScalarType($node)));
         }
 
         return $methods;
     }
 
-    /**
-     * @return array<string, PropertyInfo>
-     */
-    private function getEnumBuiltinProperties(Stmt\Enum_ $enum, ClassName $className): array
+    private function enumScalarType(Stmt\Enum_ $enum): ?PrimitiveType
     {
-        $properties = [
-            'name' => new PropertyInfo(
-                name: new PropertyName('name'),
-                visibility: Visibility::Public,
-                isStatic: false,
-                isReadonly: true,
-                isPromoted: false,
-                type: TypeFactory::primitive('string'),
-                docblock: null,
-                file: null,
-                line: null,
-                declaringClass: $className,
-            ),
-        ];
-
-        if ($enum->scalarType !== null) {
-            $properties['value'] = new PropertyInfo(
-                name: new PropertyName('value'),
-                visibility: Visibility::Public,
-                isStatic: false,
-                isReadonly: true,
-                isPromoted: false,
-                type: TypeFactory::primitive($enum->scalarType->toString()),
-                docblock: null,
-                file: null,
-                line: null,
-                declaringClass: $className,
-            );
+        if ($enum->scalarType === null) {
+            return null;
         }
 
-        return $properties;
-    }
-
-    /**
-     * @return array<string, MethodInfo>
-     */
-    private function getEnumBuiltinMethods(Stmt\Enum_ $enum, ClassName $className): array
-    {
-        $methods = [];
-
-        // cases() is available on all enums
-        $methods['cases'] = new MethodInfo(
-            name: new MethodName('cases'),
-            visibility: Visibility::Public,
-            isStatic: true,
-            isAbstract: false,
-            isFinal: false,
-            parameters: [],
-            returnType: new PrimitiveType('array'),
-            docblock: null,
-            file: null,
-            line: null,
-            declaringClass: $className,
-        );
-
-        // from() and tryFrom() are only available on backed enums
-        if ($enum->scalarType !== null) {
-            $scalarType = $enum->scalarType->toString();
-            $scalarTypeInfo = new PrimitiveType($scalarType);
-
-            $methods['from'] = new MethodInfo(
-                name: new MethodName('from'),
-                visibility: Visibility::Public,
-                isStatic: true,
-                isAbstract: false,
-                isFinal: false,
-                parameters: [
-                    new ParameterInfo(
-                        name: 'value',
-                        type: $scalarTypeInfo,
-                        hasDefault: false,
-                        defaultValue: null,
-                        position: 0,
-                        isVariadic: false,
-                        isPassedByReference: false,
-                    ),
-                ],
-                returnType: $className,
-                docblock: null,
-                file: null,
-                line: null,
-                declaringClass: $className,
-            );
-
-            $methods['tryFrom'] = new MethodInfo(
-                name: new MethodName('tryFrom'),
-                visibility: Visibility::Public,
-                isStatic: true,
-                isAbstract: false,
-                isFinal: false,
-                parameters: [
-                    new ParameterInfo(
-                        name: 'value',
-                        type: $scalarTypeInfo,
-                        hasDefault: false,
-                        defaultValue: null,
-                        position: 0,
-                        isVariadic: false,
-                        isPassedByReference: false,
-                    ),
-                ],
-                returnType: new UnionType([$className, new PrimitiveType('null')]),
-                docblock: null,
-                file: null,
-                line: null,
-                declaringClass: $className,
-            );
-        }
-
-        return $methods;
+        return TypeFactory::primitive($enum->scalarType->toString());
     }
 
     /**
@@ -427,7 +315,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
         $properties = [];
 
         if ($node instanceof Stmt\Enum_) {
-            $properties = $this->getEnumBuiltinProperties($node, $className);
+            $properties = EnumImplicits::properties($className, $this->enumScalarType($node));
         }
         $parentClass = $this->resolveParent($node);
 

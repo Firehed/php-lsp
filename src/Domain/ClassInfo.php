@@ -98,7 +98,7 @@ final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
         $writtenInterfaces = $this->kind === ClassKind::Enum_
             ? array_values(array_filter(
                 $this->interfaces,
-                fn($n) => $n->fqn !== \UnitEnum::class && $n->fqn !== \BackedEnum::class,
+                fn($n) => !EnumImplicits::isImplicitInterface($n),
             ))
             : $this->interfaces;
         if ($this->kind === ClassKind::Interface_ && $writtenInterfaces !== []) {
