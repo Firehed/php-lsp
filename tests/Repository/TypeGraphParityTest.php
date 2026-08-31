@@ -56,6 +56,7 @@ final class TypeGraphParityTest extends TestCase
             'PSR-7 request' => ['Psr\Http\Message\RequestInterface'],
             'PSR-7 server request' => ['Psr\Http\Message\ServerRequestInterface'],
             'trait insteadof and as adaptations' => ['Fixtures\Hierarchy\TraitAdaptationUser'],
+            'trait insteadof with excluded trait walked first' => ['Fixtures\Hierarchy\TraitAdaptationReversedUser'],
             'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
         ];
     }
@@ -141,6 +142,77 @@ final class TypeGraphParityTest extends TestCase
             self::normalize($expected),
             self::normalize($resolved),
             'resolved public constants should match the constants available at runtime',
+        );
+    }
+
+    /**
+     * @return array<string, array{class-string, string, string}>
+     * @codeCoverageIgnore
+     */
+    public static function insteadofResolutions(): array
+    {
+        // @phpstan-ignore return.type (fixture classes are not analyzed)
+        return [
+            'excluded trait walked first' => [
+                'Fixtures\Hierarchy\TraitAdaptationReversedUser',
+                'conflictMethod',
+                'Fixtures\Hierarchy\ConflictingTraitA',
+            ],
+            'excluded trait walked second' => [
+                'Fixtures\Hierarchy\TraitAdaptationUser',
+                'conflictMethod',
+                'Fixtures\Hierarchy\ConflictingTraitA',
+            ],
+        ];
+    }
+
+    /**
+     * The winning trait's method is what the walk returns, even when the
+     * excluded trait is used first. Without the exclusion guard the array-key
+     * de-duplication lets the first-walked trait win regardless of `insteadof`.
+     *
+     * @param class-string $fqcn
+     */
+    #[DataProvider('insteadofResolutions')]
+    public function testInsteadofPicksTheWinningTraitOnFind(string $fqcn, string $method, string $expectedTrait): void
+    {
+        $resolved = $this->resolver->findMethod(
+            new ClassName($fqcn),
+            new \Firehed\PhpLsp\Domain\MethodName($method),
+            Visibility::Public,
+        );
+
+        self::assertNotNull($resolved, 'the conflict method should resolve');
+        self::assertSame(
+            $expectedTrait,
+            $resolved->getDeclaringClass()->fqn,
+            'insteadof must pick the winning trait, regardless of trait-use order',
+        );
+    }
+
+    /**
+     * @param class-string $fqcn
+     */
+    #[DataProvider('insteadofResolutions')]
+    public function testInsteadofPicksTheWinningTraitInCollectMembers(
+        string $fqcn,
+        string $method,
+        string $expectedTrait,
+    ): void {
+        $methods = $this->resolver->getMethods(new ClassName($fqcn), Visibility::Public);
+        $conflicting = null;
+        foreach ($methods as $candidate) {
+            if ($candidate->name->name === $method) {
+                $conflicting = $candidate;
+                break;
+            }
+        }
+
+        self::assertNotNull($conflicting, 'the conflict method should appear in getMethods');
+        self::assertSame(
+            $expectedTrait,
+            $conflicting->getDeclaringClass()->fqn,
+            'insteadof must pick the winning trait for enumerated members too',
         );
     }
 
