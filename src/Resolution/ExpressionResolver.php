@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\MemberInfo;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -102,7 +103,7 @@ final class ExpressionResolver
         }
 
         if ($expr instanceof StaticCall) {
-            return $this->resolveStaticCall($expr);
+            return $this->resolveStaticCall($expr, $ast);
         }
 
         if ($expr instanceof FuncCall) {
@@ -114,7 +115,7 @@ final class ExpressionResolver
         }
 
         if ($expr instanceof StaticPropertyFetch) {
-            return $this->resolveStaticPropertyFetch($expr);
+            return $this->resolveStaticPropertyFetch($expr, $ast);
         }
 
         if ($expr instanceof ClassConstFetch) {
@@ -383,42 +384,18 @@ final class ExpressionResolver
         if (!$expr->name instanceof Identifier) {
             return null;
         }
-        $receiverType = $this->resolve($expr->var, $ast)?->getType();
-        $classNames = $receiverType?->getResolvableClassNames() ?? [];
-        if ($classNames === []) {
-            return null;
-        }
-        $className = $classNames[0];
-        $methodInfo = $this->memberResolver->findMethod(
-            $className,
-            new MethodName($expr->name->toString()),
-            Visibility::Private,
-        );
-        if ($methodInfo === null) {
-            return null;
-        }
-        return $this->resolveLateBoundReturn($methodInfo, $className);
+        return $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findMethod(...), $ast);
     }
 
-    private function resolveStaticCall(StaticCall $expr): ?MethodInfo
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveStaticCall(StaticCall $expr, array $ast): ?MethodInfo
     {
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
         }
-        $classNameStr = ScopeFinder::resolveClassNameInContext($expr->class, $expr);
-        if ($classNameStr === null) {
-            return null;
-        }
-        $className = TypeFactory::className($classNameStr);
-        $methodInfo = $this->memberResolver->findMethod(
-            $className,
-            new MethodName($expr->name->toString()),
-            Visibility::Private,
-        );
-        if ($methodInfo === null) {
-            return null;
-        }
-        return $this->resolveLateBoundReturn($methodInfo, $className);
+        return $this->resolveMember($expr->class, $expr, $expr->name->toString(), $this->findMethod(...), $ast);
     }
 
     /**
@@ -450,34 +427,68 @@ final class ExpressionResolver
         if (!$expr->name instanceof Identifier) {
             return null;
         }
-        $receiverType = $this->resolve($expr->var, $ast)?->getType();
-        $classNames = $receiverType?->getResolvableClassNames() ?? [];
-        if ($classNames === []) {
-            return null;
-        }
-        $info = $this->memberResolver->findProperty(
-            $classNames[0],
-            new PropertyName($expr->name->toString()),
-            Visibility::Private,
-        );
-        return $info;
+        return $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findProperty(...), $ast);
     }
 
-    private function resolveStaticPropertyFetch(StaticPropertyFetch $expr): ?PropertyInfo
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveStaticPropertyFetch(StaticPropertyFetch $expr, array $ast): ?PropertyInfo
     {
         if (!$expr->name instanceof VarLikeIdentifier || !$expr->class instanceof Name) {
             return null;
         }
-        $classNameStr = ScopeFinder::resolveClassNameInContext($expr->class, $expr);
-        if ($classNameStr === null) {
+        return $this->resolveMember($expr->class, $expr, $expr->name->toString(), $this->findProperty(...), $ast);
+    }
+
+    /**
+     * Access a member on the receiver, delegating the kind-specific lookup to
+     * `$find`. The receiver-to-ClassName dance — an instance expression that
+     * resolves through `resolve()`, versus a class-name `Name` that resolves
+     * through `ScopeFinder` — is here, so a new member-access node kind adds
+     * one call site rather than another copy of this dance.
+     *
+     * @template T of MemberInfo
+     * @param callable(ClassName, string): ?T $find
+     * @param array<Stmt> $ast
+     * @return ?T
+     */
+    private function resolveMember(
+        Expr|Name $receiver,
+        Node $context,
+        string $memberName,
+        callable $find,
+        array $ast,
+    ): ?MemberInfo {
+        if ($receiver instanceof Name) {
+            $classNameStr = ScopeFinder::resolveClassNameInContext($receiver, $context);
+            if ($classNameStr === null) {
+                return null;
+            }
+            $className = TypeFactory::className($classNameStr);
+        } else {
+            $receiverType = $this->resolve($receiver, $ast)?->getType();
+            $classNames = $receiverType?->getResolvableClassNames() ?? [];
+            if ($classNames === []) {
+                return null;
+            }
+            $className = $classNames[0];
+        }
+        return $find($className, $memberName);
+    }
+
+    private function findMethod(ClassName $className, string $name): ?MethodInfo
+    {
+        $info = $this->memberResolver->findMethod($className, new MethodName($name), Visibility::Private);
+        if ($info === null) {
             return null;
         }
-        $info = $this->memberResolver->findProperty(
-            TypeFactory::className($classNameStr),
-            new PropertyName($expr->name->toString()),
-            Visibility::Private,
-        );
-        return $info;
+        return $this->resolveLateBoundReturn($info, $className);
+    }
+
+    private function findProperty(ClassName $className, string $name): ?PropertyInfo
+    {
+        return $this->memberResolver->findProperty($className, new PropertyName($name), Visibility::Private);
     }
 
     private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbol
