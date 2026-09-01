@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PrimitiveType;
@@ -289,9 +290,25 @@ final class MemberAccessDetector
         int $line,
     ): ?MemberAccessContext {
         $className = $match['class'];
-        $lowerClassName = NameCase::Insensitive->normalize($className);
+        $keyword = LateBindingKeyword::tryFromName($className);
 
-        if ($lowerClassName === 'self' || $lowerClassName === 'static') {
+        if ($keyword === LateBindingKeyword::Parent) {
+            $offset = $document->offsetAt($line, 0);
+            $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
+            $parentClassName = $keyword->resolveIn($classLike);
+            $enclosingName = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
+            if ($parentClassName === null || $enclosingName === null) {
+                return null;
+            }
+            $target = TypeFactory::className($parentClassName);
+            return MemberAccessContext::forParent(
+                $target,
+                $this->visibilityBetween(TypeFactory::className($enclosingName), $target),
+                $match['prefix'],
+            );
+        }
+
+        if ($keyword !== null) {
             $enclosingClass = $this->textFallback->findEnclosingClass($document, $line);
             if ($enclosingClass === null) {
                 return null;
@@ -300,25 +317,6 @@ final class MemberAccessDetector
             return MemberAccessContext::forStatic(
                 $target,
                 $this->visibilityBetween($target, $target),
-                $match['prefix'],
-            );
-        }
-
-        if ($lowerClassName === 'parent') {
-            $offset = $document->offsetAt($line, 0);
-            $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
-            if (!$classLike instanceof Stmt\Class_) {
-                return null;
-            }
-            $parentClassName = ScopeFinder::resolveExtendsName($classLike);
-            $enclosingName = ScopeFinder::getClassLikeName($classLike);
-            if ($parentClassName === null || $enclosingName === null) {
-                return null;
-            }
-            $target = TypeFactory::className($parentClassName);
-            return MemberAccessContext::forParent(
-                $target,
-                $this->visibilityBetween(TypeFactory::className($enclosingName), $target),
                 $match['prefix'],
             );
         }
@@ -424,18 +422,18 @@ final class MemberAccessDetector
 
         $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
         $rawName = $class->toString();
+        $keyword = LateBindingKeyword::tryFromName($rawName);
         $enclosingClassLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
         $enclosingName = $enclosingClassLike !== null
             ? ScopeFinder::getClassLikeName($enclosingClassLike)
             : null;
         $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
 
-        if ($rawName === 'parent') {
-            if (!$enclosingClassLike instanceof Stmt\Class_ || $enclosingClassLike->extends === null) {
+        if ($keyword === LateBindingKeyword::Parent) {
+            $parentClassName = $keyword->resolveIn($enclosingClassLike);
+            if ($parentClassName === null) {
                 return null;
             }
-            $parentClassName = ScopeFinder::resolveExtendsName($enclosingClassLike);
-            assert($parentClassName !== null);
             $target = TypeFactory::className($parentClassName);
             return MemberAccessContext::forParent(
                 $target,
