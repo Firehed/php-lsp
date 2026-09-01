@@ -25,11 +25,13 @@ jobs:
       - name: PHPStan
         run: composer phpstan -- --error-format=github
 
-  baseline-retired:
+  baseline-shrink:
     runs-on: ubuntu-latest
-    name: Baselines stay retired
+    name: Baselines shrink or hold
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # bin/check-baseline-shrink reads origin/main via `git show`
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
