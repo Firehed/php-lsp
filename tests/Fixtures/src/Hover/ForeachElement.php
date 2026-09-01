@@ -167,7 +167,7 @@ class ForeachElement
 
     public function iterateConstFetch(): void
     {
-        foreach (FOREACH_USER_CONSTANT as $user) {
+        foreach (\Fixtures\Hover\FOREACH_USER_CONSTANT as $user) {
             $user->getName(); //hover:foreach_const_fetch
         }
     }
