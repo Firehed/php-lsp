@@ -277,6 +277,36 @@ class SignatureHelpHandlerTest extends TestCase
     // Incomplete code in control structures (#267/#243)
     // =========================================================================
 
+    public function testSignatureHelpOnNewSelfInsideClassResolvesConstructor(): void
+    {
+        $this->openFixture('src/LateBinding/PrivateCtor.php');
+        $cursor = $this->openFixtureAtCursor('src/LateBinding/PrivateCtor.php', 'sig_new_self_inside');
+
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
+
+        self::assertIsArray($result, '`new self(...)` inside a class must resolve the constructor');
+        self::assertStringContainsString(
+            'string $label',
+            $result['signatures'][0]['label'],
+            '`self` in `new self(...)` must resolve in-context to the enclosing class',
+        );
+    }
+
+    public function testSignatureHelpOnNewFindsPrivateConstructor(): void
+    {
+        $this->openFixture('src/LateBinding/PrivateCtor.php');
+        $cursor = $this->openFixtureAtCursor('src/LateBinding/PrivateCtorCaller.php', 'sig_new_private_ctor');
+
+        $result = $this->handler->handle($this->signatureHelpRequestAt($cursor));
+
+        self::assertIsArray($result, 'a private constructor must still be findable so its params can be displayed');
+        self::assertStringContainsString(
+            'string $label',
+            $result['signatures'][0]['label'],
+            'the params of a private constructor must be surfaced through signature help',
+        );
+    }
+
     public function testSignatureHelpInIncompleteCode(): void
     {
         $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncompleteSigHelp.php', 'sig_this_call');
