@@ -27,7 +27,7 @@ parameters:
 		-
 			message: '#^Calling Firehed\\PhpLsp\\Domain\\Type\:\:getResolvableClassNames\(\) is forbidden, union/intersection receivers\: member lookup must iterate every class, not index \[0\]\. Route through the shared member\-on\-any\-type helper \(build\-manifest step\-27\)\.$#'
 			identifier: disallowed.method
-			count: 4
+			count: 1
 			path: src/Resolution/ExpressionResolver.php
 
 		-
