@@ -19,6 +19,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
@@ -30,6 +31,7 @@ use Firehed\PhpLsp\Utility\ScopeFinder;
 use Firehed\PhpLsp\Utility\VariableBinding;
 use Firehed\PhpLsp\Utility\VariableBindings;
 use PhpParser\Node;
+use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\Clone_;
@@ -328,6 +330,49 @@ final class ExpressionResolver
             return new ResolvedTypeOnly(TypeFactory::className($className));
         }
         return $classInfo;
+    }
+
+    /**
+     * The one entry point every callable-shaped node resolves through, so
+     * `SymbolResolver::resolveCallable` does not branch on node kind. `New_`
+     * and `Attribute` are constructor invocations and route to
+     * `resolveConstructor`; the other four are ordinary expressions whose
+     * resolved symbol is already a callable.
+     *
+     * @param array<Stmt> $ast
+     */
+    public function resolveCallable(
+        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
+        array $ast,
+    ): ?ResolvedCallable {
+        if ($call instanceof New_ || $call instanceof Attribute) {
+            return $this->resolveConstructor($call);
+        }
+        $symbol = $this->resolve($call, $ast);
+        return $symbol instanceof ResolvedCallable ? $symbol : null;
+    }
+
+    /**
+     * Resolve the constructor callable a `new X(...)` or `#[X(...)]` invokes.
+     * Distinct from `resolve()` on the same node: `resolve(New_)` answers the
+     * *type* the expression produces, while this answers the callable that
+     * runs. Uses private visibility so promoted/private constructors are found.
+     */
+    public function resolveConstructor(New_|Attribute $call): ?MethodInfo
+    {
+        $classNameNode = $call instanceof New_ ? $call->class : $call->name;
+        if (!$classNameNode instanceof Name) {
+            return null;
+        }
+        $classNameStr = ScopeFinder::resolveClassNameInContext($classNameNode, $call);
+        if ($classNameStr === null) {
+            return null;
+        }
+        return $this->memberResolver->findMethod(
+            TypeFactory::className($classNameStr),
+            new MethodName('__construct'),
+            Visibility::Private,
+        );
     }
 
     /**

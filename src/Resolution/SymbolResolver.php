@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
-use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedMember;
@@ -414,93 +413,7 @@ final class SymbolResolver implements CodeResolver
         array $ast,
         TextDocument $document,
     ): ?ResolvedCallable {
-        if ($call instanceof FuncCall) {
-            return $this->resolveFuncCallCallable($call, $ast, $document);
-        }
-
-        if ($call instanceof MethodCall || $call instanceof NullsafeMethodCall) {
-            return $this->resolveMethodCallCallable($call, $ast, $document);
-        }
-
-        if ($call instanceof StaticCall) {
-            $symbol = $this->expressionResolver($document)->resolve($call, $ast);
-            return $symbol instanceof ResolvedCallable ? $symbol : null;
-        }
-
-        // An attribute usage `#[X(...)]` is a constructor call on the attribute class.
-        if ($call instanceof Attribute) {
-            $className = TypeFactory::className(ScopeFinder::resolveClassName($call->name));
-            return $this->resolveConstructorCallable($className);
-        }
-
-        // New_ - resolve constructor
-        $className = $this->expressionResolver($document)->resolve($call, $ast)
-            ?->getType()
-            ?->getResolvableClassNames()[0] ?? null;
-        if ($className === null) {
-            return null;
-        }
-        return $this->resolveConstructorCallable($className);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveFuncCallCallable(FuncCall $call, array $ast, TextDocument $document): ?ResolvedCallable
-    {
-        $symbol = $this->expressionResolver($document)->resolve($call, $ast);
-        return $symbol instanceof ResolvedCallable ? $symbol : null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveMethodCallCallable(
-        MethodCall|NullsafeMethodCall $call,
-        array $ast,
-        TextDocument $document,
-    ): ?ResolvedCallable {
-        $methodName = $call->name;
-        if (!$methodName instanceof Identifier) {
-            return null;
-        }
-
-        $className = $this->memberAccessDetector->resolveInstanceAccessClassName($call, $ast, $document);
-        if ($className === null) {
-            return null;
-        }
-
-        $methodInfo = $this->memberResolver->findMethod(
-            $className,
-            new MethodName($methodName->toString()),
-            Visibility::Private,
-        );
-
-        if ($methodInfo === null) {
-            return null;
-        }
-
-        return $methodInfo;
-    }
-
-    /**
-     * Resolve a class's constructor to a callable. Shared by `new X(...)` and
-     * attribute usages `#[X(...)]`, which are both constructor calls on the class.
-     * Uses private visibility so promoted/private constructors are found.
-     */
-    private function resolveConstructorCallable(ClassName $className): ?ResolvedCallable
-    {
-        $methodInfo = $this->memberResolver->findMethod(
-            $className,
-            new MethodName('__construct'),
-            Visibility::Private,
-        );
-
-        if ($methodInfo === null) {
-            return null;
-        }
-
-        return $methodInfo;
+        return $this->expressionResolver($document)->resolveCallable($call, $ast);
     }
 
     /**
@@ -538,7 +451,7 @@ final class SymbolResolver implements CodeResolver
         // Instance method call: $obj->method() or $obj?->method()
         if (self::isMethodCall($parent)) {
             /** @var MethodCall|NullsafeMethodCall $parent */
-            return $this->resolveMethodCallCallable($parent, $ast, $document);
+            return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
         // Static method call: ClassName::method()
@@ -662,11 +575,6 @@ final class SymbolResolver implements CodeResolver
         // Find the call this arg belongs to
         $call = $arg->getAttribute('parent');
 
-        // Handle attribute named arguments
-        if ($call instanceof Attribute) {
-            return $this->resolveAttributeNamedArgument($node, $call);
-        }
-
         // @codeCoverageIgnoreStart
         if (
             !$call instanceof FuncCall
@@ -674,29 +582,13 @@ final class SymbolResolver implements CodeResolver
             && !$call instanceof NullsafeMethodCall
             && !$call instanceof StaticCall
             && !$call instanceof New_
+            && !$call instanceof Attribute
         ) {
             throw new LogicException('Named arg parent must be a call or attribute');
         }
         // @codeCoverageIgnoreEnd
 
         $callable = $this->resolveCallable($call, $ast, $document);
-        if ($callable === null) {
-            return null;
-        }
-
-        $paramInfo = $callable->getParameterByName($node->toString());
-        if ($paramInfo === null) {
-            return null;
-        }
-
-        return $paramInfo;
-    }
-
-    private function resolveAttributeNamedArgument(Identifier $node, Attribute $attribute): ?ParameterInfo
-    {
-        $classNameStr = ScopeFinder::resolveClassName($attribute->name);
-
-        $callable = $this->resolveConstructorCallable(TypeFactory::className($classNameStr));
         if ($callable === null) {
             return null;
         }

@@ -182,21 +182,6 @@ final class MemberAccessDetector
     }
 
     /**
-     * Convenience for callers that need the first resolvable class of an
-     * instance access (method-call callable resolution).
-     *
-     * @param array<Stmt> $ast
-     */
-    public function resolveInstanceAccessClassName(
-        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
-        array $ast,
-        TextDocument $document,
-    ): ?ClassName {
-        $type = $this->resolveInstanceAccessType($node, $ast, $document);
-        return $type?->getResolvableClassNames()[0] ?? null;
-    }
-
-    /**
      * The one function that decides how visible a target class is to a vantage
      * class. Same class: private. Subclass (any depth): protected. Otherwise
      * (or no vantage): public. Every call site — instance, static, `$this`,
