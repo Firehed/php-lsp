@@ -235,7 +235,7 @@ final class ExpressionResolver
         if ($bindingVar === $foreach->keyVar) {
             return null;
         }
-        $docblock = $this->docblockForExpression($foreach->expr, $ast);
+        $docblock = $this->resolve($foreach->expr, $ast)?->getDocumentation();
         if ($docblock === null) {
             return null;
         }
@@ -244,41 +244,6 @@ final class ExpressionResolver
             return null;
         }
         return $this->resolveShortClassName($elemShort, $foreach->expr, $ast);
-    }
-
-    /**
-     * The raw docblock of the value the expression produces, or null. Reads
-     * the source info (MethodInfo / PropertyInfo / FunctionInfo) directly so
-     * `@tag` lines survive — the description-only accessor would strip them.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function docblockForExpression(Expr $expr, array $ast): ?string
-    {
-        if ($expr instanceof MethodCall || $expr instanceof NullsafeMethodCall) {
-            if (!$expr->name instanceof Identifier) {
-                return null;
-            }
-            $info = $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findMethod(...), $ast);
-            return $info?->docblock;
-        }
-        if ($expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch) {
-            if (!$expr->name instanceof Identifier) {
-                return null;
-            }
-            $info = $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findProperty(...), $ast);
-            return $info?->docblock;
-        }
-        if ($expr instanceof FuncCall && $expr->name instanceof Name) {
-            $context = NameContextFactory::fromAst($ast, $expr->name->getStartLine() - 1);
-            foreach ($context->candidates($expr->name->toString(), NameKind::Function_) as $candidate) {
-                $info = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
-                if ($info !== null) {
-                    return $info->docblock;
-                }
-            }
-        }
-        return null;
     }
 
     /**

@@ -19,6 +19,7 @@ use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ExpressionResolver::class)]
@@ -305,6 +306,46 @@ class HoverHandlerTest extends TestCase
         self::assertNull($result, 'a foreach property-fetch source whose receiver has no class type has no docblock');
     }
 
+    /**
+     * step-25: the foreach element type is read from the docblock of any
+     * expression `ExpressionResolver::resolve()` answers, so every callable-,
+     * member-, and constant-shaped node participates the same way `$this->items()`
+     * does. Each row here names one of those node kinds.
+     *
+     * @return iterable<string, array{marker: string}>
+     */
+    public static function foreachSourceNodeKinds(): iterable
+    {
+        yield 'FuncCall' => ['marker' => 'foreach_func_call'];
+        yield 'MethodCall' => ['marker' => 'foreach_member'];
+        yield 'NullsafeMethodCall' => ['marker' => 'foreach_nullsafe_method_call'];
+        yield 'StaticCall' => ['marker' => 'foreach_static_call'];
+        yield 'PropertyFetch' => ['marker' => 'foreach_property_fetch'];
+        yield 'NullsafePropertyFetch' => ['marker' => 'foreach_nullsafe_property_fetch'];
+        yield 'StaticPropertyFetch' => ['marker' => 'foreach_static_property_fetch'];
+        yield 'ClassConstFetch' => ['marker' => 'foreach_class_const_fetch'];
+        yield 'ConstFetch' => ['marker' => 'foreach_const_fetch'];
+    }
+
+    #[DataProvider('foreachSourceNodeKinds')]
+    public function testForeachElementTypeIsResolvedFromEveryNodeKind(string $marker): void
+    {
+        $this->openFixture('src/Domain/User.php');
+        $this->openFixture('src/Hover/ForeachElement.php');
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ForeachElement.php', $marker);
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray(
+            $result,
+            'a foreach source of this node kind must produce an element type from its docblock',
+        );
+        self::assertStringContainsString(
+            'getName',
+            $result['contents']['value'],
+            'the element type must expose User::getName through the resolved element',
+        );
+    }
 
     public function testHoverOnTypedVariableMethodCall(): void
     {

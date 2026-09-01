@@ -8,10 +8,27 @@ use Fixtures\Domain\User;
 
 class UserCollection
 {
+    /** @var User[] */
+    public array $users = [];
+
+    /** @var User[] */
+    public static array $shared = [];
+
+    /** @var User[] */
+    public const CONFIGURED_USERS = [];
+
     /**
      * @return User[]
      */
     public function all(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return User[]
+     */
+    public static function loadAll(): array
     {
         return [];
     }
@@ -22,6 +39,9 @@ function foreachUserProvider(): array
 {
     return [];
 }
+
+/** @var User[] */
+const FOREACH_USER_CONSTANT = [];
 
 /** @return \Fixtures\Domain\User[] */
 function foreachUserFqnProvider(): array
@@ -107,6 +127,48 @@ class ForeachElement
     {
         foreach ($this->iterateNoElementType() as $item) {
             $item->getName(); //hover:foreach_no_element_type
+        }
+    }
+
+    public function iterateStaticCall(): void
+    {
+        foreach (UserCollection::loadAll() as $user) {
+            $user->getName(); //hover:foreach_static_call
+        }
+    }
+
+    public function iterateNullsafeMethodCall(?UserCollection $collection): void
+    {
+        foreach ($collection?->all() as $user) {
+            $user->getName(); //hover:foreach_nullsafe_method_call
+        }
+    }
+
+    public function iterateStaticPropertyFetch(): void
+    {
+        foreach (UserCollection::$shared as $user) {
+            $user->getName(); //hover:foreach_static_property_fetch
+        }
+    }
+
+    public function iterateNullsafePropertyFetch(?UserCollection $collection): void
+    {
+        foreach ($collection?->users as $user) {
+            $user->getName(); //hover:foreach_nullsafe_property_fetch
+        }
+    }
+
+    public function iterateClassConstFetch(): void
+    {
+        foreach (UserCollection::CONFIGURED_USERS as $user) {
+            $user->getName(); //hover:foreach_class_const_fetch
+        }
+    }
+
+    public function iterateConstFetch(): void
+    {
+        foreach (\Fixtures\Hover\FOREACH_USER_CONSTANT as $user) {
+            $user->getName(); //hover:foreach_const_fetch
         }
     }
 }

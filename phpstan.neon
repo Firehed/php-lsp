@@ -361,6 +361,7 @@ parameters:
             method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::getDocumentation()'
             message: 'signature-plus-documentation assembly goes through ResolvedSymbolPresenter, so hover/signature-help/completion-detail surface new attributes uniformly (build-manifest step-30 adds the presenter and lists it here)'
             allowIn:
+                - src/Resolution/ExpressionResolver.php # foreach element-type inference reads the docblock (build-manifest step-25)
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Resolution\TextFallbackHelper::resolveEnclosingClassName()'
