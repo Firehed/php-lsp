@@ -327,6 +327,15 @@ parameters:
             allowIn:
                 - src/Index/DocumentIndexer.php
                 - tests/*
+        -
+            method:
+                - 'Firehed\PhpLsp\Repository\MemberResolver::findMethod()'
+                - 'Firehed\PhpLsp\Repository\MemberResolver::findProperty()'
+            message: 'member lookup on an expression goes through ExpressionResolver::resolveMember; the file''s two private find* finders are the only direct callers'
+            allowIn:
+                - src/Resolution/ExpressionResolver.php
+                - src/Repository/MemberResolver.php # internal self-calls in trait-alias resolution
+                - tests/*
 
     level: max
     paths:

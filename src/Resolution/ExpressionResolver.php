@@ -256,29 +256,17 @@ final class ExpressionResolver
     private function docblockForExpression(Expr $expr, array $ast): ?string
     {
         if ($expr instanceof MethodCall || $expr instanceof NullsafeMethodCall) {
-            $receiverType = $this->resolve($expr->var, $ast)?->getType();
-            $classNames = $receiverType?->getResolvableClassNames() ?? [];
-            if ($classNames === [] || !$expr->name instanceof Identifier) {
+            if (!$expr->name instanceof Identifier) {
                 return null;
             }
-            $info = $this->memberResolver->findMethod(
-                $classNames[0],
-                new MethodName($expr->name->toString()),
-                Visibility::Private,
-            );
+            $info = $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findMethod(...), $ast);
             return $info?->docblock;
         }
         if ($expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch) {
-            $receiverType = $this->resolve($expr->var, $ast)?->getType();
-            $classNames = $receiverType?->getResolvableClassNames() ?? [];
-            if ($classNames === [] || !$expr->name instanceof Identifier) {
+            if (!$expr->name instanceof Identifier) {
                 return null;
             }
-            $info = $this->memberResolver->findProperty(
-                $classNames[0],
-                new PropertyName($expr->name->toString()),
-                Visibility::Private,
-            );
+            $info = $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findProperty(...), $ast);
             return $info?->docblock;
         }
         if ($expr instanceof FuncCall && $expr->name instanceof Name) {
@@ -365,15 +353,7 @@ final class ExpressionResolver
         if (!$classNameNode instanceof Name) {
             return null;
         }
-        $classNameStr = ScopeFinder::resolveClassNameInContext($classNameNode, $call);
-        if ($classNameStr === null) {
-            return null;
-        }
-        return $this->memberResolver->findMethod(
-            TypeFactory::className($classNameStr),
-            new MethodName('__construct'),
-            Visibility::Private,
-        );
+        return $this->resolveMember($classNameNode, $call, '__construct', $this->findMethod(...), []);
     }
 
     /**
