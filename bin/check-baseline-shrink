@@ -3,24 +3,50 @@
 
 declare(strict_types=1);
 
-// Fails when either guardrail baseline file exists. Both baselines were
-// drained to zero by build-manifest step 21 and are gone for good; the
-// checker now enforces that they stay gone. A new violation must be routed
-// through its authority, never absorbed into a baseline.
+// Fails when a guardrail baseline grows relative to a base ref (default
+// origin/main). RFC 1 §8.1: baseline totals only shrink; relocating a frozen
+// violation is allowed, absorbing a new one is not.
+//
+// A baseline file may be absent (treated as zero) or present. The hard lock —
+// baselines must not exist at all — is deferred to build-manifest step-32
+// (retire); until then, tighten rules that surface pre-existing residuals need
+// somewhere to record them.
+
+$baseRef = $argv[1] ?? 'origin/main';
+
+$phpstanTotal = function (string $contents): int {
+    preg_match_all('/^\s*count:\s*(\d+)/m', $contents, $matches);
+    return (int) array_sum($matches[1]);
+};
+
+$deptracTotal = function (string $contents): int {
+    preg_match_all('/^\s+-\s+\S/m', $contents, $matches);
+    return count($matches[0]);
+};
+
+$contentsAt = function (string $ref, string $file): string {
+    $out = shell_exec('git show ' . escapeshellarg("$ref:$file") . ' 2>/dev/null');
+    return is_string($out) ? $out : '';
+};
 
 $files = [
-    'phpstan-baseline.neon',
-    'deptrac.baseline.yaml',
+    'phpstan-baseline.neon' => $phpstanTotal,
+    'deptrac.baseline.yaml' => $deptracTotal,
 ];
 
 $failed = false;
-foreach ($files as $file) {
-    if (is_file($file)) {
+foreach ($files as $file => $total) {
+    $base = $total($contentsAt($baseRef, $file));
+    $head = $total(is_file($file) ? (string) file_get_contents($file) : '');
+    printf("%s: %d -> %d\n", $file, $base, $head);
+    if ($head > $base) {
         fwrite(STDERR, sprintf(
-            "%s exists: baselines are permanently retired. Route the new" .
-            " violation through its authority; see" .
-            " docs/architecture/enforcement-edits.md.\n",
+            "%s grew (%d -> %d): baselines only shrink. Route the new" .
+            " violation through its authority. Growth is permitted only" .
+            " for a newly added check; see docs/architecture/enforcement-edits.md.\n",
             $file,
+            $base,
+            $head,
         ));
         $failed = true;
     }
