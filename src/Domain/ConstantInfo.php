@@ -50,11 +50,24 @@ final readonly class ConstantInfo implements MemberInfo, SymbolInfo
             visibility: Visibility::Public,
             isFinal: true,
             type: null,
-            docblock: $node->getDocComment()?->getText(),
+            docblock: self::docblockFor($node),
             file: $file,
             line: $node->getStartLine(),
             declaringClass: null,
         );
+    }
+
+    /**
+     * php-parser attaches a doc comment to the outer statement — `Stmt\Const_`
+     * for a `const` declarator, `Stmt\Expression` for a `define()` call — so a
+     * declarator or expression asked directly for its comment reads null.
+     * Consult the parent first, then the node itself.
+     */
+    private static function docblockFor(Node\Const_|Expr\FuncCall $node): ?string
+    {
+        $parent = $node->getAttribute('parent');
+        $doc = ($parent instanceof Node ? $parent->getDocComment() : null) ?? $node->getDocComment();
+        return $doc?->getText();
     }
 
     public function format(): string
