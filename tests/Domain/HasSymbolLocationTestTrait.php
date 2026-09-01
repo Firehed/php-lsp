@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Domain\ResolvedSymbol;
 
 /**
  * The four cases every Info implementing {@see \Firehed\PhpLsp\Domain\ResolvedSymbol}
- * shares: file/line -> Location round-trip, null file, docblock -> description,
+ * shares: file/line -> Location round-trip, null file, docblock -> raw text,
  * null docblock. Using classes supply {@see self::makeSubject()} once instead of
  * writing the same four tests per class.
  */
@@ -36,9 +36,14 @@ trait HasSymbolLocationTestTrait
 
     public function testGetDocumentation(): void
     {
-        $subject = $this->makeSubject(docblock: "/**\n * Test description\n */");
+        $raw = "/**\n * Test description\n * @return int the answer\n */";
+        $subject = $this->makeSubject(docblock: $raw);
 
-        self::assertSame('Test description', $subject->getDocumentation());
+        self::assertSame(
+            $raw,
+            $subject->getDocumentation(),
+            'getDocumentation returns the raw docblock so foreach inference can read @tag lines',
+        );
     }
 
     public function testGetDocumentationNullWhenNoDocblock(): void

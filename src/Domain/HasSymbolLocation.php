@@ -15,11 +15,12 @@ trait HasSymbolLocation
         return Location::fromFileLine($this->file, $this->line);
     }
 
+    /**
+     * The raw docblock text with `@tag` lines intact. Display consumers strip
+     * tags at render time; the step-30 presenter is where that lands.
+     */
     public function getDocumentation(): ?string
     {
-        if ($this->docblock === null) {
-            return null;
-        }
-        return DocblockParser::extractDescription($this->docblock);
+        return $this->docblock;
     }
 }
