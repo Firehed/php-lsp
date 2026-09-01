@@ -156,19 +156,6 @@ final class ScopeFinder
     }
 
     /**
-     * Resolve the parent class name from a class node's extends clause.
-     *
-     * @return ?class-string
-     */
-    public static function resolveExtendsName(Stmt\Class_ $class): ?string
-    {
-        if ($class->extends === null) {
-            return null;
-        }
-        return self::resolveClassName($class->extends);
-    }
-
-    /**
      * Find the namespace declaration containing a given zero-based line.
      *
      * Returns null when the line is outside any namespace block or the enclosing
