@@ -195,6 +195,9 @@ final class MemberAccessDetector
             if ($per->value > $visibility->value) {
                 $visibility = $per;
             }
+            if ($visibility === Visibility::Public) {
+                break;
+            }
         }
         return $visibility;
     }
