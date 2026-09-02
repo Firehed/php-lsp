@@ -105,15 +105,11 @@ final class MemberAccessDetector
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
             $type = $this->resolveInstanceAccessType($node, $ast, $document, $line);
-            $target = $type?->getResolvableClassNames()[0] ?? null;
-            if ($type !== null && $target !== null) {
-                $enclosingName = ScopeFinder::findEnclosingClassName($node);
-                $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
-                return MemberAccessContext::forInstance(
-                    $type,
-                    $this->visibilityBetween($vantage, $target),
-                    $prefix,
-                );
+            $enclosingName = ScopeFinder::findEnclosingClassName($node);
+            $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
+            $visibility = $this->visibilityForReceiver($vantage, $type);
+            if ($type !== null && $visibility !== null) {
+                return MemberAccessContext::forInstance($type, $visibility, $prefix);
             }
             return $this->fromText($document, $ast, $line, $character);
         }
@@ -183,6 +179,30 @@ final class MemberAccessDetector
     }
 
     /**
+     * Null when the receiver resolves to no classes; otherwise the most
+     * restrictive visibility across the constituents — a member must be
+     * visible on every possible runtime class to be safe to offer.
+     */
+    private function visibilityForReceiver(?ClassName $vantage, ?Type $type): ?Visibility
+    {
+        $classes = ExpressionResolver::receiverClassNames($type);
+        if ($classes === []) {
+            return null;
+        }
+        $visibility = Visibility::Private;
+        foreach ($classes as $target) {
+            $per = $this->visibilityBetween($vantage, $target);
+            if ($per->value > $visibility->value) {
+                $visibility = $per;
+            }
+            if ($visibility === Visibility::Public) {
+                break;
+            }
+        }
+        return $visibility;
+    }
+
+    /**
      * The one function that decides how visible a target class is to a vantage
      * class. Same class: private. Subclass (any depth): protected. Otherwise
      * (or no vantage): public. Every call site — instance, static, `$this`,
@@ -249,15 +269,11 @@ final class MemberAccessDetector
                 return null;
             }
             $type = $this->resolveChainReceiverType($match['chain'], $enclosingClass, $document, $ast);
-            $target = $type?->getResolvableClassNames()[0] ?? null;
-            if ($type === null || $target === null) {
+            $visibility = $this->visibilityForReceiver(TypeFactory::className($enclosingClass), $type);
+            if ($type === null || $visibility === null) {
                 return null;
             }
-            return MemberAccessContext::forInstance(
-                $type,
-                $this->visibilityBetween(TypeFactory::className($enclosingClass), $target),
-                $match['prefix'],
-            );
+            return MemberAccessContext::forInstance($type, $visibility, $match['prefix']);
         }
 
         if ($match['kind'] === 'instance') {
@@ -360,18 +376,13 @@ final class MemberAccessDetector
             return null;
         }
 
-        $target = $type->getResolvableClassNames()[0] ?? null;
-        if ($target === null) {
-            return null;
-        }
         $enclosingClassName = $scope->getSelfContext();
         $vantage = $enclosingClassName !== null ? TypeFactory::className($enclosingClassName) : null;
-
-        return MemberAccessContext::forInstance(
-            $type,
-            $this->visibilityBetween($vantage, $target),
-            $match['prefix'],
-        );
+        $visibility = $this->visibilityForReceiver($vantage, $type);
+        if ($visibility === null) {
+            return null;
+        }
+        return MemberAccessContext::forInstance($type, $visibility, $match['prefix']);
     }
 
     /**

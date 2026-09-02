@@ -345,9 +345,10 @@ parameters:
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Domain\Type::getResolvableClassNames()'
-            message: 'union/intersection receivers: member lookup must iterate every class, not index [0]. Route through the shared member-on-any-type helper (build-manifest step-27)'
+            message: 'union/intersection receivers: member lookup must iterate every class, not index [0]. Route through ExpressionResolver::receiverClassNames or SymbolResolver::getAccessibleMembers (build-manifest step-27)'
             allowIn:
                 - src/Resolution/SymbolResolver.php # getAccessibleMembers: the legitimate every-class iterator
+                - src/Resolution/ExpressionResolver.php # receiverClassNames: the shared helper for member-access receivers
                 - src/Domain/UnionType.php # recursive composition
                 - src/Domain/IntersectionType.php # recursive composition
                 - tests/*

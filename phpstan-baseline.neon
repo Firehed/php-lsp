@@ -25,22 +25,10 @@ parameters:
 			path: src/Handler/SignatureHelpHandler.php
 
 		-
-			message: '#^Calling Firehed\\PhpLsp\\Domain\\Type\:\:getResolvableClassNames\(\) is forbidden, union/intersection receivers\: member lookup must iterate every class, not index \[0\]\. Route through the shared member\-on\-any\-type helper \(build\-manifest step\-27\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: src/Resolution/ExpressionResolver.php
-
-		-
 			message: '#^Calling Firehed\\PhpLsp\\Knowledge\\SymbolSource\:\:lookupConstant\(\) is forbidden, constant lookup iterates NameContext\:\:candidates\(NameKind\:\:Constant\) inside its own helper \(build\-manifest step\-28 adds it and lists it here\); mirrors \#478 for findMethod/findProperty\.$#'
 			identifier: disallowed.method
 			count: 1
 			path: src/Resolution/ExpressionResolver.php
-
-		-
-			message: '#^Calling Firehed\\PhpLsp\\Domain\\Type\:\:getResolvableClassNames\(\) is forbidden, union/intersection receivers\: member lookup must iterate every class, not index \[0\]\. Route through the shared member\-on\-any\-type helper \(build\-manifest step\-27\)\.$#'
-			identifier: disallowed.method
-			count: 3
-			path: src/Resolution/MemberAccessDetector.php
 
 		-
 			message: '#^Calling Firehed\\PhpLsp\\Resolution\\TextFallbackHelper\:\:resolveEnclosingClassName\(\) is forbidden, enclosing\-class resolution goes through one helper that consults the text fallback when the parent chain is detached \(build\-manifest step\-31 adds the helper and lists it here\)\.$#'
