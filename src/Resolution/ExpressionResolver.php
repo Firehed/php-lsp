@@ -410,16 +410,29 @@ final class ExpressionResolver
             if ($classNameStr === null) {
                 return null;
             }
-            $className = TypeFactory::className($classNameStr);
-        } else {
-            $receiverType = $this->resolve($receiver, $ast)?->getType();
-            $classNames = $receiverType?->getResolvableClassNames() ?? [];
-            if ($classNames === []) {
-                return null;
-            }
-            $className = $classNames[0];
+            return $find(TypeFactory::className($classNameStr), $memberName);
         }
-        return $find($className, $memberName);
+        $receiverType = $this->resolve($receiver, $ast)?->getType();
+        foreach (self::receiverClassNames($receiverType) as $className) {
+            $member = $find($className, $memberName);
+            if ($member !== null) {
+                return $member;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The one place that reads {@see Type::getResolvableClassNames()} for a
+     * member-access receiver. Every consumer that needs to iterate the classes
+     * behind a union or intersection receiver calls this — direct access is
+     * denied by PHPStan so `[0]` cannot creep back in.
+     *
+     * @return list<ClassName>
+     */
+    public static function receiverClassNames(?Type $type): array
+    {
+        return $type?->getResolvableClassNames() ?? [];
     }
 
     private function findMethod(ClassName $className, string $name): ?MethodInfo
