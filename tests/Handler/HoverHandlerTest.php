@@ -902,6 +902,45 @@ class HoverHandlerTest extends TestCase
         self::assertStringContainsString('Defines a route', $result['contents']['value']);
     }
 
+    public function testHoverOnNamespacedConstant(): void
+    {
+        $fixture = 'src/Resolution/NamespacedConstant.php';
+        $this->openFixture($fixture);
+        $cursor = $this->openFixtureAtHoverMarker($fixture, 'namespaced_const_fetch');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray(
+            $result,
+            'the namespace-first candidate resolves an unqualified constant declared in the same namespace',
+        );
+        self::assertStringContainsString(
+            'NAMESPACED_CONSTANT',
+            $result['contents']['value'],
+            'the resolved constant surfaces its name in the hover signature',
+        );
+    }
+
+    public function testHoverOnGlobalConstantFromNamespacedFile(): void
+    {
+        $fixture = 'src/Resolution/NamespacedConstant.php';
+        $this->openFixture('AutoloadFiles/helpers.php');
+        $this->openFixture($fixture);
+        $cursor = $this->openFixtureAtHoverMarker($fixture, 'global_const_fetch');
+
+        $result = $this->handler->handle($this->hoverRequestAt($cursor));
+
+        self::assertIsArray(
+            $result,
+            'a global constant resolves via the global fallback when no namespaced candidate matches',
+        );
+        self::assertStringContainsString(
+            'FIXTURE_HELPER_DEFINED',
+            $result['contents']['value'],
+            'the fallback path surfaces the global constant in the hover signature',
+        );
+    }
+
     private function handlerFor(MarkupKind $hoverMarkupKind): HoverHandler
     {
         $capabilities = self::createStub(SessionCapabilitiesProvider::class);
