@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\EnumImplicits;
 use Firehed\PhpLsp\Domain\FileUri;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -94,14 +95,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
     private function resolveClassName(Stmt\ClassLike $node): ClassName
     {
-        if ($node->name === null) {
+        $fqn = LateBindingKeyword::Self->resolveIn($node);
+        if ($fqn === null) {
             throw new \InvalidArgumentException('Cannot create ClassInfo for anonymous class');
         }
-
-        /** @var class-string */
-        $fqn = isset($node->namespacedName)
-            ? $node->namespacedName->toString()
-            : $node->name->toString();
         return TypeFactory::className($fqn);
     }
 

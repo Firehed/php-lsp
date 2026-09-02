@@ -154,7 +154,7 @@ final class TypeFactory
         ?string $parentContext,
         bool $preserveLateBinding,
     ): ?Type {
-        $keyword = LateBindingKeyword::tryFrom($name);
+        $keyword = LateBindingKeyword::tryFromName($name);
         if ($keyword === null) {
             return null;
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Utility;
 
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -113,18 +114,9 @@ final class ScopeFinder
      */
     public static function resolveClassNameInContext(Name $name, Node $contextNode): ?string
     {
-        $rawName = $name->toString();
-
-        if ($rawName === 'self' || $rawName === 'static') {
-            return self::findEnclosingClassName($contextNode);
-        }
-
-        if ($rawName === 'parent') {
-            $enclosingClass = self::findEnclosingClassNode($contextNode);
-            if (!$enclosingClass instanceof Stmt\Class_) {
-                return null;
-            }
-            return self::resolveExtendsName($enclosingClass);
+        $keyword = LateBindingKeyword::tryFromName($name->toString());
+        if ($keyword !== null) {
+            return $keyword->resolveIn(self::findEnclosingClassNode($contextNode));
         }
 
         return self::resolveClassName($name);
@@ -137,13 +129,7 @@ final class ScopeFinder
      */
     public static function getClassLikeName(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): ?string
     {
-        if ($node->name === null) {
-            return null;
-        }
-        /** @var class-string */
-        return isset($node->namespacedName)
-            ? $node->namespacedName->toString()
-            : $node->name->toString();
+        return LateBindingKeyword::Self->resolveIn($node);
     }
 
     /**
@@ -156,24 +142,7 @@ final class ScopeFinder
      */
     public static function findEnclosingClassName(Node $node): ?string
     {
-        $classNode = self::findEnclosingClassNode($node);
-        if ($classNode === null) {
-            return null;
-        }
-        return self::getClassLikeName($classNode);
-    }
-
-    /**
-     * Resolve the parent class name from a class node's extends clause.
-     *
-     * @return ?class-string
-     */
-    public static function resolveExtendsName(Stmt\Class_ $class): ?string
-    {
-        if ($class->extends === null) {
-            return null;
-        }
-        return self::resolveClassName($class->extends);
+        return LateBindingKeyword::Self->resolveIn(self::findEnclosingClassNode($node));
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Utility;
 
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
@@ -64,13 +65,8 @@ final class Scope
     ): self {
         $enclosingClassLike ??= ScopeFinder::findEnclosingClassNode($node);
 
-        $selfContext = $enclosingClassLike !== null
-            ? ScopeFinder::getClassLikeName($enclosingClassLike)
-            : null;
-
-        $parentContext = ($enclosingClassLike instanceof Stmt\Class_)
-            ? ScopeFinder::resolveExtendsName($enclosingClassLike)
-            : null;
+        $selfContext = LateBindingKeyword::Self->resolveIn($enclosingClassLike);
+        $parentContext = LateBindingKeyword::Parent->resolveIn($enclosingClassLike);
 
         $thisType = ($node instanceof Stmt\ClassMethod && $selfContext !== null)
             ? TypeFactory::className($selfContext)
