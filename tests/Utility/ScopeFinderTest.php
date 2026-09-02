@@ -208,7 +208,7 @@ class ScopeFinderTest extends TestCase
         self::assertNull($className);
     }
 
-    public function testResolveNameReturnsRawNameWhenNoResolvedAttribute(): void
+    public function testResolveClassNameReturnsRawNameWhenNoResolvedAttribute(): void
     {
         $code = $this->loadFixture('src/Inheritance/ParentClass.php');
         $ast = self::parseWithParents($code);
@@ -218,23 +218,10 @@ class ScopeFinderTest extends TestCase
         self::assertNotNull($class);
         self::assertNotNull($class->extends);
 
-        self::assertSame('Fixtures\Inheritance\Grandparent', ScopeFinder::resolveName($class->extends));
+        self::assertSame('Fixtures\Inheritance\Grandparent', ScopeFinder::resolveClassName($class->extends));
     }
 
-    public function testResolveNameUsesResolvedNameWhenAvailable(): void
-    {
-        $code = $this->loadFixture('src/Utility/ImportedExtends.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
-        self::assertNotNull($class);
-        self::assertNotNull($class->extends);
-
-        self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveName($class->extends));
-    }
-
-    public function testResolveClassNameDelegatesToResolveName(): void
+    public function testResolveClassNameUsesResolvedNameWhenAvailable(): void
     {
         $code = $this->loadFixture('src/Utility/ImportedExtends.php');
         $ast = self::parseWithParents($code);
