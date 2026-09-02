@@ -296,7 +296,7 @@ final class MemberAccessDetector
             $offset = $document->offsetAt($line, 0);
             $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
             $parentClassName = $keyword->resolveIn($classLike);
-            $enclosingName = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
+            $enclosingName = LateBindingKeyword::Self->resolveIn($classLike);
             if ($parentClassName === null || $enclosingName === null) {
                 return null;
             }
@@ -424,9 +424,7 @@ final class MemberAccessDetector
         $rawName = $class->toString();
         $keyword = LateBindingKeyword::tryFromName($rawName);
         $enclosingClassLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
-        $enclosingName = $enclosingClassLike !== null
-            ? ScopeFinder::getClassLikeName($enclosingClassLike)
-            : null;
+        $enclosingName = LateBindingKeyword::Self->resolveIn($enclosingClassLike);
         $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
 
         if ($keyword === LateBindingKeyword::Parent) {

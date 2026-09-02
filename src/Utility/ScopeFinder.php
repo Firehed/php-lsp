@@ -129,13 +129,7 @@ final class ScopeFinder
      */
     public static function getClassLikeName(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): ?string
     {
-        if ($node->name === null) {
-            return null;
-        }
-        /** @var class-string */
-        return isset($node->namespacedName)
-            ? $node->namespacedName->toString()
-            : $node->name->toString();
+        return LateBindingKeyword::Self->resolveIn($node);
     }
 
     /**
@@ -148,11 +142,7 @@ final class ScopeFinder
      */
     public static function findEnclosingClassName(Node $node): ?string
     {
-        $classNode = self::findEnclosingClassNode($node);
-        if ($classNode === null) {
-            return null;
-        }
-        return self::getClassLikeName($classNode);
+        return LateBindingKeyword::Self->resolveIn(self::findEnclosingClassNode($node));
     }
 
     /**
