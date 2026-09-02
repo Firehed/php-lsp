@@ -646,4 +646,37 @@ class DefinitionHandlerTest extends TestCase
         // The declaration starts at its attribute group (`#[Attribute(...)]`, line 12; 0-indexed 11).
         self::assertSame(11, $result['range']['start']['line']);
     }
+
+    public function testGoToNamespacedConstantDefinition(): void
+    {
+        $fixture = 'src/Resolution/NamespacedConstant.php';
+        $uri = $this->openFixture($fixture);
+        $cursor = $this->openFixtureAtHoverMarker($fixture, 'namespaced_const_fetch');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray(
+            $result,
+            'unqualified constant in a namespace resolves via the namespace-first candidate',
+        );
+        self::assertSame($uri, $result['uri']);
+        self::assertSame(12, $result['range']['start']['line']);
+    }
+
+    public function testGoToGlobalConstantDefinitionFromNamespacedFile(): void
+    {
+        $fixture = 'src/Resolution/NamespacedConstant.php';
+        $helpersUri = $this->openFixture('AutoloadFiles/helpers.php');
+        $this->openFixture($fixture);
+        $cursor = $this->openFixtureAtHoverMarker($fixture, 'global_const_fetch');
+
+        $result = $this->handler->handle($this->definitionRequestAt($cursor));
+
+        self::assertIsArray(
+            $result,
+            'a global constant referenced from a namespace with no `use const` resolves via the global fallback',
+        );
+        self::assertSame($helpersUri, $result['uri']);
+        self::assertSame(18, $result['range']['start']['line']);
+    }
 }

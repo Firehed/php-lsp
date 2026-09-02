@@ -123,7 +123,7 @@ final class ExpressionResolver
         }
 
         if ($expr instanceof Expr\ConstFetch) {
-            return $this->resolveConstFetch($expr);
+            return $this->resolveConstFetch($expr, $ast);
         }
 
         if ($expr instanceof Clone_) {
@@ -466,11 +466,22 @@ final class ExpressionResolver
         return $constant;
     }
 
-    private function resolveConstFetch(Expr\ConstFetch $expr): ?ConstantInfo
+    /**
+     * @param array<Stmt> $ast
+     */
+    private function resolveConstFetch(Expr\ConstFetch $expr, array $ast): ?ConstantInfo
     {
-        $name = ScopeFinder::resolveName($expr->name);
-        $info = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($name));
-        return $info;
+        $shortName = $expr->name->toString();
+        $line = $expr->name->getStartLine() - 1;
+        $context = NameContextFactory::fromAst($ast, $line);
+
+        foreach ($context->candidates($shortName, NameKind::Constant) as $candidate) {
+            $info = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($candidate));
+            if ($info !== null) {
+                return $info;
+            }
+        }
+        return null;
     }
 
     private function resolveLateBoundReturn(MethodInfo $methodInfo, ClassName $callingClass): MethodInfo

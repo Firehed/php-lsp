@@ -354,8 +354,9 @@ parameters:
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Knowledge\SymbolSource::lookupConstant()'
-            message: 'constant lookup iterates NameContext::candidates(NameKind::Constant) inside its own helper (build-manifest step-28 adds it and lists it here); mirrors #478 for findMethod/findProperty'
+            message: 'constant lookup iterates NameContext::candidates(NameKind::Constant) inside ExpressionResolver::resolveConstFetch (build-manifest step-28); mirrors #478 for findMethod/findProperty'
             allowIn:
+                - src/Resolution/ExpressionResolver.php # resolveConstFetch: the candidate-loop caller
                 - src/Knowledge/CompositeSymbolSource.php # composite delegates to backends
                 - tests/*
         -
