@@ -40,9 +40,8 @@ enum LateBindingKeyword: string
      *
      * @return ?class-string
      */
-    public function resolveIn(
-        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosing,
-    ): ?string {
+    public function resolveIn(?Stmt\ClassLike $enclosing): ?string
+    {
         if ($enclosing === null) {
             return null;
         }
