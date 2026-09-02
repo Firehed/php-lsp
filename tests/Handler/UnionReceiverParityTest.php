@@ -41,6 +41,8 @@ class UnionReceiverParityTest extends TestCase
     private SignatureHelpHandler $signatureHelp;
     private CompletionHandler $completion;
     private TextDocumentSyncHandler $syncHandler;
+    private string $entityUri;
+    private string $personUri;
 
     protected function setUp(): void
     {
@@ -78,6 +80,9 @@ class UnionReceiverParityTest extends TestCase
             new BuiltinTypeCandidates(),
         );
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+
+        $this->entityUri = $this->openFixture('src/Domain/Entity.php');
+        $this->personUri = $this->openFixture('src/Domain/Person.php');
     }
 
     /**
@@ -106,8 +111,6 @@ class UnionReceiverParityTest extends TestCase
         string $memberName,
         string $declaringClass,
     ): void {
-        $this->openFixture('src/Domain/Entity.php');
-        $this->openFixture('src/Domain/Person.php');
         $cursor = $this->openFixtureAtHoverMarker($fixture, $marker);
 
         $result = $this->hover->handle($this->hoverRequestAt($cursor));
@@ -127,14 +130,12 @@ class UnionReceiverParityTest extends TestCase
         string $memberName,
         string $declaringClass,
     ): void {
-        $entityUri = $this->openFixture('src/Domain/Entity.php');
-        $personUri = $this->openFixture('src/Domain/Person.php');
         $cursor = $this->openFixtureAtHoverMarker($fixture, $marker);
 
         $result = $this->definition->handle($this->definitionRequestAt($cursor));
 
         self::assertIsArray($result, "definition must answer for {$memberName}() on the union");
-        $expected = $declaringClass === 'Fixtures\\Domain\\Person' ? $personUri : $entityUri;
+        $expected = $declaringClass === 'Fixtures\\Domain\\Person' ? $this->personUri : $this->entityUri;
         self::assertSame(
             $expected,
             $result['uri'],
@@ -144,8 +145,6 @@ class UnionReceiverParityTest extends TestCase
 
     public function testSignatureHelpResolvesMemberDeclaredOnlyOnSecondUnionConstituent(): void
     {
-        $this->openFixture('src/Domain/Entity.php');
-        $this->openFixture('src/Domain/Person.php');
         $cursor = $this->openFixtureAtCursor('src/Union/UnionReceiver.php', 'union_signature');
 
         $result = $this->signatureHelp->handle($this->signatureHelpRequestAt($cursor));
@@ -161,8 +160,6 @@ class UnionReceiverParityTest extends TestCase
 
     public function testCompletionOffersMembersFromEveryUnionConstituent(): void
     {
-        $this->openFixture('src/Domain/Entity.php');
-        $this->openFixture('src/Domain/Person.php');
         $cursor = $this->openFixtureAtCursor('src/Union/UnionReceiver.php', 'union_completion');
 
         $result = $this->completion->handle($this->completionRequestAt($cursor));
