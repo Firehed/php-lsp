@@ -31,7 +31,7 @@ use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(SymbolResolver::class)]
-class UnionReceiverParityTest extends TestCase
+class CompositeReceiverParityTest extends TestCase
 {
     use OpensDocumentsTrait;
 
@@ -88,24 +88,36 @@ class UnionReceiverParityTest extends TestCase
     /**
      * @return iterable<string, array{string, string, string, string}>
      */
-    public static function unionReceiverCases(): iterable
+    public static function compositeReceiverCases(): iterable
     {
-        yield 'method declared only on second constituent' => [
+        yield 'union: member on second constituent' => [
             'src/Union/UnionReceiver.php',
             'union_person_member',
             'getName',
             'Fixtures\\Domain\\Person',
         ];
-        yield 'method declared only on first constituent' => [
+        yield 'union: member on first constituent' => [
             'src/Union/UnionReceiver.php',
             'union_entity_member',
             'getId',
             'Fixtures\\Domain\\Entity',
         ];
+        yield 'intersection: member on second constituent' => [
+            'src/Intersection/IntersectionReceiver.php',
+            'intersection_person_member',
+            'getName',
+            'Fixtures\\Domain\\Person',
+        ];
+        yield 'intersection: member on first constituent' => [
+            'src/Intersection/IntersectionReceiver.php',
+            'intersection_entity_member',
+            'getId',
+            'Fixtures\\Domain\\Entity',
+        ];
     }
 
-    #[DataProvider('unionReceiverCases')]
-    public function testHoverResolvesMemberOnEitherUnionConstituent(
+    #[DataProvider('compositeReceiverCases')]
+    public function testHoverResolvesMemberOnEitherConstituent(
         string $fixture,
         string $marker,
         string $memberName,
@@ -115,7 +127,7 @@ class UnionReceiverParityTest extends TestCase
 
         $result = $this->hover->handle($this->hoverRequestAt($cursor));
 
-        self::assertIsArray($result, "hover must answer for {$memberName}() on the union");
+        self::assertIsArray($result, "hover must answer for {$memberName}() on the composite receiver");
         self::assertStringContainsString(
             $memberName,
             $result['contents']['value'],
@@ -123,8 +135,8 @@ class UnionReceiverParityTest extends TestCase
         );
     }
 
-    #[DataProvider('unionReceiverCases')]
-    public function testDefinitionResolvesMemberOnEitherUnionConstituent(
+    #[DataProvider('compositeReceiverCases')]
+    public function testDefinitionResolvesMemberOnEitherConstituent(
         string $fixture,
         string $marker,
         string $memberName,
@@ -134,7 +146,7 @@ class UnionReceiverParityTest extends TestCase
 
         $result = $this->definition->handle($this->definitionRequestAt($cursor));
 
-        self::assertIsArray($result, "definition must answer for {$memberName}() on the union");
+        self::assertIsArray($result, "definition must answer for {$memberName}() on the composite receiver");
         $expected = $declaringClass === 'Fixtures\\Domain\\Person' ? $this->personUri : $this->entityUri;
         self::assertSame(
             $expected,
@@ -143,13 +155,25 @@ class UnionReceiverParityTest extends TestCase
         );
     }
 
-    public function testSignatureHelpResolvesMemberDeclaredOnlyOnSecondUnionConstituent(): void
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function signatureHelpCases(): iterable
     {
-        $cursor = $this->openFixtureAtCursor('src/Union/UnionReceiver.php', 'union_signature');
+        yield 'union receiver' => ['src/Union/UnionReceiver.php', 'union_signature'];
+        yield 'intersection receiver' => ['src/Intersection/IntersectionReceiver.php', 'intersection_signature'];
+    }
+
+    #[DataProvider('signatureHelpCases')]
+    public function testSignatureHelpResolvesMemberDeclaredOnlySecondConstituent(
+        string $fixture,
+        string $marker,
+    ): void {
+        $cursor = $this->openFixtureAtCursor($fixture, $marker);
 
         $result = $this->signatureHelp->handle($this->signatureHelpRequestAt($cursor));
 
-        self::assertIsArray($result, 'signature help must answer for a union-receiver method call');
+        self::assertIsArray($result, 'signature help must answer for a composite-receiver method call');
         self::assertNotEmpty($result['signatures'], 'signature help must return at least one signature');
         self::assertStringContainsString(
             'getName',
@@ -158,15 +182,27 @@ class UnionReceiverParityTest extends TestCase
         );
     }
 
-    public function testCompletionOffersMembersFromEveryUnionConstituent(): void
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function completionCases(): iterable
     {
-        $cursor = $this->openFixtureAtCursor('src/Union/UnionReceiver.php', 'union_completion');
+        yield 'union receiver' => ['src/Union/UnionReceiver.php', 'union_completion'];
+        yield 'intersection receiver' => ['src/Intersection/IntersectionReceiver.php', 'intersection_completion'];
+    }
+
+    #[DataProvider('completionCases')]
+    public function testCompletionOffersMembersFromEveryConstituent(
+        string $fixture,
+        string $marker,
+    ): void {
+        $cursor = $this->openFixtureAtCursor($fixture, $marker);
 
         $result = $this->completion->handle($this->completionRequestAt($cursor));
 
         self::assertIsArray($result);
         $labels = array_column($result['items'], 'label');
-        self::assertContains('getId', $labels, 'Entity::getId must be offered on the union receiver');
-        self::assertContains('getName', $labels, 'Person::getName must be offered on the union receiver');
+        self::assertContains('getId', $labels, 'Entity::getId must be offered on the composite receiver');
+        self::assertContains('getName', $labels, 'Person::getName must be offered on the composite receiver');
     }
 }
