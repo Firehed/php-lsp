@@ -179,14 +179,9 @@ final class MemberAccessDetector
     }
 
     /**
-     * The one place instance-receiver visibility reads the receiver's classes.
-     * Routes through {@see ExpressionResolver::receiverClassNames}, so the
-     * `[0]`-indexing that lost members declared on a later union constituent
-     * cannot creep back in. Returns null when the receiver resolves to no
-     * classes (a caller can fall through to the text path); otherwise widens
-     * to the most restrictive visibility across the constituents — a union
-     * receiver may be any of them at runtime, so a member must be visible on
-     * every one to be safe to offer.
+     * Null when the receiver resolves to no classes; otherwise the most
+     * restrictive visibility across the constituents — a member must be
+     * visible on every possible runtime class to be safe to offer.
      */
     private function visibilityForReceiver(?ClassName $vantage, ?Type $type): ?Visibility
     {

@@ -423,11 +423,6 @@ final class ExpressionResolver
     }
 
     /**
-     * The one place that reads {@see Type::getResolvableClassNames()} for a
-     * member-access receiver. Every consumer that needs to iterate the classes
-     * behind a union or intersection receiver calls this — direct access is
-     * denied by PHPStan so `[0]` cannot creep back in.
-     *
      * @return list<ClassName>
      */
     public static function receiverClassNames(?Type $type): array

@@ -8,9 +8,9 @@ use Fixtures\Domain\Entity;
 use Fixtures\Domain\Person;
 
 /**
- * Member access on a union-typed receiver. Only Person declares getName();
- * only Entity declares getId(). Every positional handler and completion must
- * find each member regardless of the constituent order in the union.
+ * Union receiver where each constituent declares a distinct member:
+ * Entity contributes getId(), Person contributes getName(). Either member
+ * must resolve regardless of constituent order.
  */
 class UnionReceiver
 {

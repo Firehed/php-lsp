@@ -29,12 +29,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Every handler that reaches through {@see ExpressionResolver::resolveMember}
- * must find a member on any class in a union or intersection receiver, not
- * only the first. `$x->getName()` where `$x: Entity|Person` and only Person
- * declares `getName()` must answer everywhere completion offers it.
- */
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(SymbolResolver::class)]
 class UnionReceiverParityTest extends TestCase
