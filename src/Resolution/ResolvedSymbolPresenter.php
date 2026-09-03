@@ -18,18 +18,11 @@ final class ResolvedSymbolPresenter
 {
     public static function present(ResolvedSymbol $symbol): PresentedSymbol
     {
+        $docblock = $symbol->getDocumentation();
+        $description = $docblock === null ? '' : DocblockParser::extractDescription($docblock);
         return new PresentedSymbol(
             signature: $symbol->format(),
-            documentation: self::describe($symbol->getDocumentation()),
+            documentation: $description === '' ? null : $description,
         );
-    }
-
-    private static function describe(?string $docblock): ?string
-    {
-        if ($docblock === null) {
-            return null;
-        }
-        $description = DocblockParser::extractDescription($docblock);
-        return $description === '' ? null : $description;
     }
 }

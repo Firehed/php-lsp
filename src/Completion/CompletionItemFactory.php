@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Protocol\Range;
+use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
@@ -73,8 +74,7 @@ final class CompletionItemFactory
         Range $replaceRange,
         bool $snippetSupport = false,
         ?string $filterText = null,
-        ?string $detail = null,
-        ?string $documentation = null,
+        ?PresentedSymbol $presented = null,
     ): array {
         $itemKind = match ($kind) {
             NameKind::ClassLike => CompletionItemKind::Class_,
@@ -85,7 +85,7 @@ final class CompletionItemFactory
         $item = [
             'label' => $reference,
             'kind' => $itemKind->value,
-            'detail' => $detail ?? $fullyQualifiedName,
+            'detail' => $presented === null ? $fullyQualifiedName : $presented->signature,
             'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
@@ -93,8 +93,8 @@ final class CompletionItemFactory
             ],
         ];
 
-        if ($documentation !== null) {
-            $item['documentation'] = $documentation;
+        if ($presented?->documentation !== null) {
+            $item['documentation'] = $presented->documentation;
         }
 
         if ($kind->isFunction()) {
