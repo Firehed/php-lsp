@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -44,21 +45,61 @@ final class ThisTypingParityTest extends TestCase
         );
     }
 
-    public function testHoverAndCompletionAgreeOnThisReceiverType(): void
+    /**
+     * @return iterable<string, array{
+     *     relative: string,
+     *     hoverNeedle: string,
+     *     completionMarker: string,
+     *     expectedClass: string,
+     *     expectedVisibility: Visibility,
+     * }>
+     */
+    public static function parityCases(): iterable
     {
-        $relative = 'src/Resolution/ThisTypingParity.php';
+        yield 'well-formed class body' => [
+            'relative' => 'src/Resolution/ThisTypingParity.php',
+            'hoverNeedle' => '$this;',
+            'completionMarker' => 'this_member',
+            'expectedClass' => 'Fixtures\\Resolution\\ThisTypingParity',
+            // Vantage is the enclosing class, so `$this->` sees private members.
+            'expectedVisibility' => Visibility::Private,
+        ];
+
+        // File-scope `$this`: the AST places the Variable in the namespace's
+        // top-level statement list, not inside the Class_ body, so its parent
+        // chain never reaches a class-like. `EnclosingClassResolver` must fall
+        // back to text-scanning the document for the enclosing class. Both
+        // hover and completion agree on the fallback answer for the receiver
+        // type; vantage inference remains AST-driven, so completion sees only
+        // public members here.
+        yield 'detached parent chain via file-scope $this' => [
+            'relative' => 'src/Resolution/BrokenThisTypingParity.php',
+            'hoverNeedle' => '$this;',
+            'completionMarker' => 'broken_member',
+            'expectedClass' => 'Fixtures\\Resolution\\BrokenThisTypingParity',
+            'expectedVisibility' => Visibility::Public,
+        ];
+    }
+
+    #[DataProvider('parityCases')]
+    public function testHoverAndCompletionAgreeOnThisReceiverType(
+        string $relative,
+        string $hoverNeedle,
+        string $completionMarker,
+        string $expectedClass,
+        Visibility $expectedVisibility,
+    ): void {
         $content = $this->loadFixture($relative);
         $document = new TextDocument('file:///' . $relative, 'php', 1, $content);
 
-        // Hover position: on the `$this` expression inside hoverOnThis(). The
-        // marker syntax cannot land inside a variable token, so this position
-        // is derived from the fixture — any offset inside `$this` resolves the
-        // same symbol.
-        $hoverLine = self::lineOf($content, '        $this;');
-        $hover = $this->resolver->resolveAtPosition($document, $hoverLine, 8);
+        // Hover position: on the `$` of the `$this` expression the needle
+        // names. The marker syntax cannot land inside a variable token, so
+        // the position is derived from the fixture line and needle column.
+        ['line' => $hoverLine, 'column' => $hoverColumn] = self::hoverAt($content, $hoverNeedle);
+        $hover = $this->resolver->resolveAtPosition($document, $hoverLine, $hoverColumn);
         self::assertNotNull($hover, 'hover on $this should resolve to a symbol');
 
-        $completionCursor = $this->locateCursor($content, 'this_member');
+        $completionCursor = $this->locateCursor($content, $completionMarker);
         $access = $this->resolver->getMemberAccessContext(
             $document,
             $completionCursor['line'],
@@ -72,21 +113,28 @@ final class ThisTypingParityTest extends TestCase
             'hover on $this and completion on $this-> must resolve to the same enclosing class',
         );
         self::assertSame(
-            'Fixtures\Resolution\ThisTypingParity',
+            $expectedClass,
             $access->type->format(),
             'the shared helper resolves the enclosing class in the fixture',
         );
         self::assertSame(
-            Visibility::Private,
+            $expectedVisibility,
             $access->minVisibility,
-            'the vantage class equals the target class, so private members are visible',
+            'completion visibility must match the case expectation for this fixture',
         );
     }
 
-    private static function lineOf(string $content, string $needle): int
+    /**
+     * @return array{line: int, column: int}
+     */
+    private static function hoverAt(string $content, string $needle): array
     {
         $offset = strpos($content, $needle);
-        assert($offset !== false, "fixture is missing the line \"$needle\"");
-        return substr_count(substr($content, 0, $offset), "\n");
+        assert($offset !== false, "fixture is missing the needle \"$needle\"");
+        $before = substr($content, 0, $offset);
+        $line = substr_count($before, "\n");
+        $lastNewline = strrpos($before, "\n");
+        $column = $lastNewline === false ? $offset : $offset - $lastNewline - 1;
+        return ['line' => $line, 'column' => $column];
     }
 }
