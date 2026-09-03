@@ -110,7 +110,7 @@ final class MemberAccessDetector
             }
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
-            $type = $this->resolveInstanceAccessType($node, $ast, $document);
+            $type = $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
             $enclosingName = ScopeFinder::findEnclosingClassName($node);
             $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
             $visibility = $this->visibilityForReceiver($vantage, $type);
@@ -131,25 +131,6 @@ final class MemberAccessDetector
         }
 
         return $this->fromText($document, $ast, $line, $character);
-    }
-
-    /**
-     * Resolve the type of the object in an instance member access.
-     * `$this` typing (including the text-fallback for a detached parent chain)
-     * lives in {@see ExpressionResolver::resolve} through
-     * {@see EnclosingClassResolver}, so this method has no branch of its own.
-     *
-     * Public so callable resolution (method-call signature help / definition)
-     * can share it with completion.
-     *
-     * @param array<Stmt> $ast
-     */
-    public function resolveInstanceAccessType(
-        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
-        array $ast,
-        TextDocument $document,
-    ): ?Type {
-        return $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
     }
 
     /**
