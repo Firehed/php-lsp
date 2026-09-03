@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
+use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
@@ -67,6 +68,7 @@ final class AstTextAgreementTest extends TestCase
             $knowledge->source,
             $this->memberResolver,
             $this->textFallback,
+            new EnclosingClassResolver($this->textFallback),
             $this->parser,
         );
     }
