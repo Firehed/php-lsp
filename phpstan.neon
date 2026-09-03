@@ -374,9 +374,9 @@ parameters:
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Resolution\TextFallbackHelper::resolveEnclosingClassName()'
-            message: 'enclosing-class resolution goes through one helper that consults the text fallback when the parent chain is detached (build-manifest step-31 adds the helper and lists it here)'
+            message: 'enclosing-class resolution goes through EnclosingClassResolver: parent chain first, text fallback when the parent chain is detached (build-manifest step-31)'
             allowIn:
-                - src/Resolution/TextFallbackHelper.php # self-call inside the fallback
+                - src/Resolution/EnclosingClassResolver.php # the one shared helper
                 - tests/*
 
     level: max
