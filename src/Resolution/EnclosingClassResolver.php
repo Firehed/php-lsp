@@ -17,8 +17,8 @@ use PhpParser\Node\Stmt;
  * the chain is detached from any class-like — a parser-recovered AST that lost
  * its class scope, or a synthetic node built for chain-typing on broken code —
  * falls back to {@see TextFallbackHelper::resolveEnclosingClassName} using the
- * node's document position. The one caller allowed by
- * {@see phpstan.neon}'s disallow rule, so `$this` typing in
+ * node's document position. The one caller of that text fallback that
+ * `phpstan.neon`'s disallow rule permits, so `$this` typing in
  * {@see ExpressionResolver::resolve} cannot fork onto its own text-fallback
  * path.
  *
