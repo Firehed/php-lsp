@@ -18,7 +18,7 @@
                 },
                 "newText": "calculateSum"
             },
-            "documentation": "/**\n * Adds two numbers.\n */"
+            "documentation": "Adds two numbers."
         },
         {
             "label": "calculateProduct",
@@ -38,7 +38,7 @@
                 },
                 "newText": "calculateProduct"
             },
-            "documentation": "/**\n     * Multiplies two numbers.\n     */"
+            "documentation": "Multiplies two numbers."
         }
     ],
     "document|calc+snippet": [
@@ -60,7 +60,7 @@
                 },
                 "newText": "calculateSum"
             },
-            "documentation": "/**\n * Adds two numbers.\n */",
+            "documentation": "Adds two numbers.",
             "insertText": "calculateSum($0)",
             "insertTextFormat": 2
         },
@@ -82,7 +82,7 @@
                 },
                 "newText": "calculateProduct"
             },
-            "documentation": "/**\n     * Multiplies two numbers.\n     */",
+            "documentation": "Multiplies two numbers.",
             "insertText": "calculateProduct($0)",
             "insertTextFormat": 2
         }
@@ -106,7 +106,7 @@
                 },
                 "newText": "calculateSum"
             },
-            "documentation": "/**\n * Adds two numbers.\n */"
+            "documentation": "Adds two numbers."
         },
         {
             "label": "calculateProduct",
@@ -126,7 +126,7 @@
                 },
                 "newText": "calculateProduct"
             },
-            "documentation": "/**\n     * Multiplies two numbers.\n     */"
+            "documentation": "Multiplies two numbers."
         }
     ],
     "document|getConfig": [
