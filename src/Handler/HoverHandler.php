@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * @phpstan-import-type LspMarkupContent from MarkupContent
@@ -59,20 +60,19 @@ final class HoverHandler implements DocumentFeatureHandler
 
     private function formatHover(ResolvedSymbol $symbol, MarkupKind $kind): string
     {
+        $presented = ResolvedSymbolPresenter::present($symbol);
         $parts = [];
 
-        $doc = $symbol->getDocumentation();
-        if ($doc !== null) {
-            $parts[] = $doc;
+        if ($presented->documentation !== null) {
+            $parts[] = $presented->documentation;
         }
 
         // A markdown client renders the signature as a fenced PHP block; a
         // plaintext client would show the fences literally, so give it the bare
         // signature instead.
-        $signature = $symbol->format();
         $parts[] = $kind === MarkupKind::Markdown
-            ? '```php' . "\n" . $signature . "\n```"
-            : $signature;
+            ? '```php' . "\n" . $presented->signature . "\n```"
+            : $presented->signature;
 
         return implode("\n\n", $parts);
     }

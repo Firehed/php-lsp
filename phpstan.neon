@@ -273,9 +273,9 @@ parameters:
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Domain\DocblockParser::extractDescription()'
-            message: 'docblock description extraction goes through HasSymbolLocation::getDocumentation(), so a future normalisation (e.g. tag stripping) reaches every surface (build-manifest step-29)'
+            message: 'docblock description extraction goes through ResolvedSymbolPresenter, so tag-stripping reaches hover, signature-help, and completion-detail together (build-manifest step-30)'
             allowIn:
-                - src/Domain/HasSymbolLocation.php
+                - src/Resolution/ResolvedSymbolPresenter.php
                 - tests/*
 
     disallowedClasses:
@@ -360,10 +360,17 @@ parameters:
                 - src/Knowledge/CompositeSymbolSource.php # composite delegates to backends
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::getDocumentation()'
-            message: 'signature-plus-documentation assembly goes through ResolvedSymbolPresenter, so hover/signature-help/completion-detail surface new attributes uniformly (build-manifest step-30 adds the presenter and lists it here)'
+            method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::format()'
+            message: 'signature composition goes through ResolvedSymbolPresenter, so hover/signature-help/completion-detail surface signatures uniformly (build-manifest step-30)'
             allowIn:
-                - src/Resolution/ExpressionResolver.php # foreach element-type inference reads the docblock (build-manifest step-25)
+                - src/Resolution/ResolvedSymbolPresenter.php
+                - tests/*
+        -
+            method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::getDocumentation()'
+            message: 'documentation composition goes through ResolvedSymbolPresenter (build-manifest step-30); ExpressionResolver keeps direct access for foreach element-type inference on the raw docblock (build-manifest step-25)'
+            allowIn:
+                - src/Resolution/ExpressionResolver.php # foreach element-type inference reads the raw docblock (build-manifest step-25)
+                - src/Resolution/ResolvedSymbolPresenter.php
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Resolution\TextFallbackHelper::resolveEnclosingClassName()'

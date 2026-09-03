@@ -17,7 +17,9 @@ use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * The one source of symbol completions. For an unqualified prefix it does flat
@@ -436,9 +438,7 @@ final class SymbolCandidates
         bool $snippets,
         ?string $filterText = null,
     ): array {
-        [$detail, $documentation] = $kind->isFunction()
-            ? $this->functionDetail($fqn)
-            : [null, null];
+        $presented = $kind->isFunction() ? $this->presentFunction($fqn) : null;
 
         return CompletionItemFactory::forSymbol(
             $reference,
@@ -447,21 +447,14 @@ final class SymbolCandidates
             $range,
             $snippets,
             $filterText,
-            $detail,
-            $documentation,
+            $presented,
         );
     }
 
-    /**
-     * @return array{?string, ?string} [detail, documentation]
-     */
-    private function functionDetail(string $fqn): array
+    private function presentFunction(string $fqn): ?PresentedSymbol
     {
         $info = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($fqn));
-        if ($info === null) {
-            return [null, null];
-        }
-        return [$info->format(), $info->getDocumentation()];
+        return $info === null ? null : ResolvedSymbolPresenter::present($info);
     }
 
     private function acceptsClassLike(string $fqn, ClassCandidateFilter $filter): bool

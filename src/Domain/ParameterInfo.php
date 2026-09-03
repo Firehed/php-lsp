@@ -100,22 +100,33 @@ final readonly class ParameterInfo implements ResolvedSymbol
         return $this->type;
     }
 
-    public function format(bool $showDefault = false): string
+    /**
+     * The parameter's typed name, e.g. `int $count` or `string ...$tail`. A
+     * standalone method (not on any interface) so a caller composing a callable's
+     * signature does not go through {@see ResolvedSymbol::format()}, which the
+     * presenter owns.
+     */
+    public static function signature(self $parameter, bool $showDefault = false): string
     {
         $str = '';
-        if ($this->type !== null) {
-            $str .= $this->type->format() . ' ';
+        if ($parameter->type !== null) {
+            $str .= $parameter->type->format() . ' ';
         }
-        if ($this->isPassedByReference) {
+        if ($parameter->isPassedByReference) {
             $str .= '&';
         }
-        if ($this->isVariadic) {
+        if ($parameter->isVariadic) {
             $str .= '...';
         }
-        $str .= '$' . $this->name;
-        if ($showDefault && $this->hasDefault && !$this->isVariadic) {
-            $str .= ' = ' . ($this->defaultValue ?? '...');
+        $str .= '$' . $parameter->name;
+        if ($showDefault && $parameter->hasDefault && !$parameter->isVariadic) {
+            $str .= ' = ' . ($parameter->defaultValue ?? '...');
         }
         return $str;
+    }
+
+    public function format(bool $showDefault = false): string
+    {
+        return self::signature($this, $showDefault);
     }
 }

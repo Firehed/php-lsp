@@ -10,6 +10,8 @@ use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Protocol\Range;
+use Firehed\PhpLsp\Resolution\PresentedSymbol;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * Builds LSP completion items. Centralizing construction here keeps item shape,
@@ -44,15 +46,15 @@ final class CompletionItemFactory
             MemberKind::EnumCase => CompletionItemKind::EnumMember,
         };
 
+        $presented = ResolvedSymbolPresenter::present($member);
         $item = [
             'label' => $member->getName()->name,
             'kind' => $itemKind->value,
-            'detail' => $member->format(),
+            'detail' => $presented->signature,
         ];
 
-        $doc = $member->getDocumentation();
-        if ($doc !== null) {
-            $item['documentation'] = $doc;
+        if ($presented->documentation !== null) {
+            $item['documentation'] = $presented->documentation;
         }
 
         if ($memberKind === MemberKind::Method) {
@@ -72,8 +74,7 @@ final class CompletionItemFactory
         Range $replaceRange,
         bool $snippetSupport = false,
         ?string $filterText = null,
-        ?string $detail = null,
-        ?string $documentation = null,
+        ?PresentedSymbol $presented = null,
     ): array {
         $itemKind = match ($kind) {
             NameKind::ClassLike => CompletionItemKind::Class_,
@@ -84,7 +85,7 @@ final class CompletionItemFactory
         $item = [
             'label' => $reference,
             'kind' => $itemKind->value,
-            'detail' => $detail ?? $fullyQualifiedName,
+            'detail' => $presented === null ? $fullyQualifiedName : $presented->signature,
             'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
@@ -92,8 +93,8 @@ final class CompletionItemFactory
             ],
         ];
 
-        if ($documentation !== null) {
-            $item['documentation'] = $documentation;
+        if ($presented?->documentation !== null) {
+            $item['documentation'] = $presented->documentation;
         }
 
         if ($kind->isFunction()) {
@@ -176,7 +177,7 @@ final class CompletionItemFactory
         return [
             'label' => $label,
             'kind' => CompletionItemKind::Field->value,
-            'detail' => $parameter->format(),
+            'detail' => ParameterInfo::signature($parameter),
             // This promotes named args to the top of the list in case it gets
             // capped, since ! sorts alphabetically before the string
             'sortText' => '!' . $label,

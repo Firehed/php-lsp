@@ -72,7 +72,7 @@ final readonly class MethodInfo implements MemberInfo, ResolvedCallable
         }
         $parts[] = 'function';
 
-        $params = array_map(fn($p) => $p->format(showDefault: $showDefaults), $this->parameters);
+        $params = array_map(fn($p) => ParameterInfo::signature($p, showDefault: $showDefaults), $this->parameters);
         $parts[] = $this->name->name . '(' . implode(', ', $params) . ')';
 
         $sig = implode(' ', $parts);
