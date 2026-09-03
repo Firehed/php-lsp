@@ -39,8 +39,9 @@ final class EnclosingClassResolverTest extends TestCase
         PHP);
         $ast = $this->parser->parse($document);
         self::assertNotNull($ast);
-        $thisNode = (new NodeFinder())->findFirst($ast, fn (Node $n): bool =>
-            $n instanceof Variable && $n->name === 'this'
+        $thisNode = (new NodeFinder())->findFirst(
+            $ast,
+            fn (Node $n): bool => $n instanceof Variable && $n->name === 'this',
         );
         self::assertInstanceOf(Variable::class, $thisNode);
 
