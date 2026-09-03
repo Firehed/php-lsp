@@ -450,9 +450,7 @@ final class MemberAccessDetector
         assert($expr !== null, 'chain regex output is always parseable as an expression');
         $receiver = self::findThisVariable($expr);
         assert($receiver !== null, 'chain regex guarantees a $this receiver in the parsed fragment');
-        $offset = $document->offsetAt($line, 0);
-        $receiver->setAttribute('startLine', $line + 1);
-        $receiver->setAttribute('startFilePos', $offset);
+        EnclosingClassResolver::seedThisPosition($receiver, $line, $document->offsetAt($line, 0));
         return $this->expressionResolver($document)->resolve($expr, $ast)?->getType();
     }
 

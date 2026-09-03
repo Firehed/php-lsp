@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
+use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Stmt;
 
 /**
@@ -27,6 +28,20 @@ final class EnclosingClassResolver
 {
     public function __construct(private readonly TextFallbackHelper $textFallback)
     {
+    }
+
+    /**
+     * Stamp a synthetic `Variable('this')` with the position it would have
+     * carried if the parser had produced it, so {@see self::forNode}'s text
+     * fallback finds the enclosing class. Both consumers that build a `$this`
+     * receiver out of raw text ({@see MemberAccessDetector::resolveChainReceiverType}
+     * and {@see TextFallbackHelper::parseCallPattern}) call this so the attribute
+     * contract lives in one place.
+     */
+    public static function seedThisPosition(Variable $variable, int $line, int $offset): void
+    {
+        $variable->setAttribute('startLine', $line + 1);
+        $variable->setAttribute('startFilePos', $offset);
     }
 
     /**

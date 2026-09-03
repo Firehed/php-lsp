@@ -455,12 +455,7 @@ final class TextFallbackHelper
             $methodName = $m[3];
             $var = new Variable($varName);
             if ($varName === 'this') {
-                // Give the synthetic $this a real document position so
-                // EnclosingClassResolver's text fallback finds the enclosing
-                // class from the source content, without a resolvedType
-                // side-channel on this node.
-                $var->setAttribute('startLine', $line + 1);
-                $var->setAttribute('startFilePos', $offset);
+                EnclosingClassResolver::seedThisPosition($var, $line, $offset);
             }
             return $isNullsafe
                 ? new NullsafeMethodCall($var, new Identifier($methodName))
