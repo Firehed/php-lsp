@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedMember;
 use Firehed\PhpLsp\Protocol\Range;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * Builds LSP completion items. Centralizing construction here keeps item shape,
@@ -44,15 +45,15 @@ final class CompletionItemFactory
             MemberKind::EnumCase => CompletionItemKind::EnumMember,
         };
 
+        $presented = ResolvedSymbolPresenter::present($member);
         $item = [
             'label' => $member->getName()->name,
             'kind' => $itemKind->value,
-            'detail' => $member->format(),
+            'detail' => $presented->signature,
         ];
 
-        $doc = $member->getDocumentation();
-        if ($doc !== null) {
-            $item['documentation'] = $doc;
+        if ($presented->documentation !== null) {
+            $item['documentation'] = $presented->documentation;
         }
 
         if ($memberKind === MemberKind::Method) {
@@ -176,7 +177,7 @@ final class CompletionItemFactory
         return [
             'label' => $label,
             'kind' => CompletionItemKind::Field->value,
-            'detail' => $parameter->format(),
+            'detail' => ParameterInfo::signature($parameter),
             // This promotes named args to the top of the list in case it gets
             // capped, since ! sorts alphabetically before the string
             'sortText' => '!' . $label,

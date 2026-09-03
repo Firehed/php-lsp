@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * @phpstan-type ParameterInfoShape array{label: string}
@@ -62,19 +64,18 @@ final class SignatureHelpHandler implements DocumentFeatureHandler
     private function formatSignatureHelp(CallContext $context): array
     {
         $callable = $context->callable;
-        $params = $callable->getParameters();
+        $presented = ResolvedSymbolPresenter::present($callable);
 
         $signature = [
-            'label' => $callable->format(),
+            'label' => $presented->signature,
             'parameters' => array_map(
-                fn($p) => ['label' => $p->format()],
-                $params,
+                fn($p) => ['label' => ParameterInfo::signature($p)],
+                $callable->getParameters(),
             ),
         ];
 
-        $doc = $callable->getDocumentation();
-        if ($doc !== null) {
-            $signature['documentation'] = $doc;
+        if ($presented->documentation !== null) {
+            $signature['documentation'] = $presented->documentation;
         }
 
         return [

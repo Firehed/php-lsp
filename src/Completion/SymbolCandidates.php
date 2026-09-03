@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * The one source of symbol completions. For an unqualified prefix it does flat
@@ -461,7 +462,8 @@ final class SymbolCandidates
         if ($info === null) {
             return [null, null];
         }
-        return [$info->format(), $info->getDocumentation()];
+        $presented = ResolvedSymbolPresenter::present($info);
+        return [$presented->signature, $presented->documentation];
     }
 
     private function acceptsClassLike(string $fqn, ClassCandidateFilter $filter): bool
