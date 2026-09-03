@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
@@ -38,10 +39,12 @@ class MemberAccessDetectorTest extends TestCase
         $emptySource->method('lookupClassLike')->willReturn(null);
         $emptySource->method('isSubclassOf')->willReturn(false);
         $emptyMemberResolver = new MemberResolver($emptySource);
+        $emptyTextFallback = new TextFallbackHelper();
         $this->detector = new MemberAccessDetector(
             $emptySource,
             $emptyMemberResolver,
-            new TextFallbackHelper(),
+            $emptyTextFallback,
+            new EnclosingClassResolver($emptyTextFallback),
             $this->parser,
         );
 
@@ -52,10 +55,12 @@ class MemberAccessDetectorTest extends TestCase
             $this->parser,
         );
         $memberResolver = new MemberResolver($knowledge->source);
+        $reflectionTextFallback = new TextFallbackHelper();
         $this->detectorWithReflection = new MemberAccessDetector(
             $knowledge->source,
             $memberResolver,
-            new TextFallbackHelper(),
+            $reflectionTextFallback,
+            new EnclosingClassResolver($reflectionTextFallback),
             $this->parser,
         );
     }

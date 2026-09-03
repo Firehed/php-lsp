@@ -1,7 +1,2 @@
 parameters:
 	ignoreErrors:
-		-
-			message: '#^Calling Firehed\\PhpLsp\\Resolution\\TextFallbackHelper\:\:resolveEnclosingClassName\(\) is forbidden, enclosing\-class resolution goes through one helper that consults the text fallback when the parent chain is detached \(build\-manifest step\-31 adds the helper and lists it here\)\.$#'
-			identifier: disallowed.method
-			count: 1
-			path: src/Resolution/MemberAccessDetector.php

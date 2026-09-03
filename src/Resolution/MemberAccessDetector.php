@@ -53,6 +53,7 @@ final class MemberAccessDetector
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TextFallbackHelper $textFallback,
+        private readonly EnclosingClassResolver $enclosingClass,
         private readonly ParserService $parser,
     ) {
         $this->nodeAtPosition = new NodeAtPosition();
@@ -60,7 +61,12 @@ final class MemberAccessDetector
 
     private function expressionResolver(TextDocument $document): ExpressionResolver
     {
-        return new ExpressionResolver($this->memberResolver, $this->symbolSource, $document);
+        return new ExpressionResolver(
+            $this->memberResolver,
+            $this->symbolSource,
+            $document,
+            $this->enclosingClass,
+        );
     }
 
     /**
@@ -104,7 +110,7 @@ final class MemberAccessDetector
             }
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
-            $type = $this->resolveInstanceAccessType($node, $ast, $document, $line);
+            $type = $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
             $enclosingName = ScopeFinder::findEnclosingClassName($node);
             $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
             $visibility = $this->visibilityForReceiver($vantage, $type);
@@ -125,57 +131,6 @@ final class MemberAccessDetector
         }
 
         return $this->fromText($document, $ast, $line, $character);
-    }
-
-    /**
-     * Resolve the type of the object in an instance member access, using the
-     * AST first and falling back to the text-based enclosing class for `$this`
-     * when the AST parses the receiver but cannot resolve its type.
-     *
-     * Public so callable resolution (method-call signature help / definition)
-     * can share it with completion.
-     *
-     * @param array<Stmt> $ast
-     */
-    public function resolveInstanceAccessType(
-        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch $node,
-        array $ast,
-        TextDocument $document,
-        ?int $line = null,
-    ): ?Type {
-        $resolvedType = $node->var->getAttribute('resolvedType');
-        if ($resolvedType instanceof Type) {
-            return $resolvedType;
-        }
-
-        $exprResolver = $this->expressionResolver($document);
-        $type = $exprResolver->resolve($node->var, $ast)?->getType();
-        if ($type !== null) {
-            return $type;
-        }
-
-        if ($line === null) {
-            return null;
-        }
-
-        $thisVar = self::findThisVariable($node->var);
-        if ($thisVar === null) {
-            return null;
-        }
-
-        $offset = $document->offsetAt($line, 0);
-        $enclosingClass = $this->textFallback->resolveEnclosingClassName(
-            $ast,
-            $offset,
-            $document->getContent(),
-            $line,
-        );
-        if ($enclosingClass === null) {
-            return null;
-        }
-
-        $thisVar->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
-        return $exprResolver->resolve($node->var, $ast)?->getType();
     }
 
     /**
@@ -268,7 +223,7 @@ final class MemberAccessDetector
             if ($enclosingClass === null) {
                 return null;
             }
-            $type = $this->resolveChainReceiverType($match['chain'], $enclosingClass, $document, $ast);
+            $type = $this->resolveChainReceiverType($match['chain'], $document, $ast, $line);
             $visibility = $this->visibilityForReceiver(TypeFactory::className($enclosingClass), $type);
             if ($type === null || $visibility === null) {
                 return null;
@@ -476,25 +431,26 @@ final class MemberAccessDetector
     }
 
     /**
-     * Parse the text chain into an AST expression, seed the `$this` receiver
-     * with the enclosing class type, and let {@see ExpressionResolver::resolve}
-     * walk the chain. This is the same walker the AST-recovered path uses, so
-     * there is one chain typer for parsed and unparseable code alike (RFC 1 §4.5).
+     * Parse the text chain into an AST expression and let
+     * {@see ExpressionResolver::resolve} walk it — the same walker the
+     * AST-recovered path uses, so parsed and unparseable code share one chain
+     * typer (RFC 1 §4.5). The parsed `$this` gets the document's line as its
+     * position, so {@see EnclosingClassResolver}'s text fallback finds the
+     * enclosing class from the source content.
      *
-     * @param class-string $enclosingClass
      * @param array<Stmt> $ast
      */
     private function resolveChainReceiverType(
         string $chainExpr,
-        string $enclosingClass,
         TextDocument $document,
         array $ast,
+        int $line,
     ): ?Type {
         $expr = $this->parser->parseExpression($chainExpr);
         assert($expr !== null, 'chain regex output is always parseable as an expression');
         $receiver = self::findThisVariable($expr);
         assert($receiver !== null, 'chain regex guarantees a $this receiver in the parsed fragment');
-        $receiver->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
+        EnclosingClassResolver::seedThisPosition($receiver, $line, $document->offsetAt($line, 0));
         return $this->expressionResolver($document)->resolve($expr, $ast)?->getType();
     }
 

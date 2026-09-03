@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Attribute;
@@ -456,10 +455,7 @@ final class TextFallbackHelper
             $methodName = $m[3];
             $var = new Variable($varName);
             if ($varName === 'this') {
-                $enclosingClass = $this->resolveEnclosingClassName($ast, $offset, $content, $line);
-                if ($enclosingClass !== null) {
-                    $var->setAttribute('resolvedType', TypeFactory::className($enclosingClass));
-                }
+                EnclosingClassResolver::seedThisPosition($var, $line, $offset);
             }
             return $isNullsafe
                 ? new NullsafeMethodCall($var, new Identifier($methodName))
