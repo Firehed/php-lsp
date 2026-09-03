@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -23,6 +24,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SymbolResolver::class)]
 final class ThisTypingParityTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private SymbolResolver $resolver;
 
     protected function setUp(): void
@@ -43,12 +46,24 @@ final class ThisTypingParityTest extends TestCase
 
     public function testHoverAndCompletionAgreeOnThisReceiverType(): void
     {
-        $document = $this->loadFixture('src/Resolution/ThisTypingParity.php');
+        $relative = 'src/Resolution/ThisTypingParity.php';
+        $content = $this->loadFixture($relative);
+        $document = new TextDocument('file:///' . $relative, 'php', 1, $content);
 
-        $hover = $this->resolver->resolveAtPosition($document, line: 12, character: 8);
+        // Hover position: on the `$this` expression inside hoverOnThis(). The
+        // marker syntax cannot land inside a variable token, so this position
+        // is derived from the fixture — any offset inside `$this` resolves the
+        // same symbol.
+        $hoverLine = self::lineOf($content, '        $this;');
+        $hover = $this->resolver->resolveAtPosition($document, $hoverLine, 8);
         self::assertNotNull($hover, 'hover on $this should resolve to a symbol');
 
-        $access = $this->resolver->getMemberAccessContext($document, line: 17, character: 15);
+        $completionCursor = $this->locateCursor($content, 'this_member');
+        $access = $this->resolver->getMemberAccessContext(
+            $document,
+            $completionCursor['line'],
+            $completionCursor['character'],
+        );
         self::assertNotNull($access, 'completion on $this-> should detect a member-access context');
 
         self::assertSame(
@@ -68,11 +83,10 @@ final class ThisTypingParityTest extends TestCase
         );
     }
 
-    private function loadFixture(string $relative): TextDocument
+    private static function lineOf(string $content, string $needle): int
     {
-        $path = __DIR__ . '/../Fixtures/' . $relative;
-        $content = file_get_contents($path);
-        self::assertIsString($content, "unable to read fixture {$relative}");
-        return new TextDocument('file:///' . $relative, 'php', 1, $content);
+        $offset = strpos($content, $needle);
+        assert($offset !== false, "fixture is missing the line \"$needle\"");
+        return substr_count(substr($content, 0, $offset), "\n");
     }
 }
