@@ -7,7 +7,7 @@ parameters:
 			path: src/Completion/CompletionItemFactory.php
 
 		-
-			message: '#^Calling Firehed\\PhpLsp\\Domain\\DocblockParser\:\:extractDescription\(\) is forbidden, docblock description extraction goes through HasSymbolLocation\:\:getDocumentation\(\), so a future normalisation \(e\.g\. tag stripping\) reaches every surface \(build\-manifest step\-29\)\.$#'
+			message: '#^Calling Firehed\\PhpLsp\\Domain\\ResolvedSymbol\:\:getDocumentation\(\) \(as Firehed\\PhpLsp\\Domain\\FunctionInfo\:\:getDocumentation\(\)\) is forbidden, signature\-plus\-documentation assembly goes through ResolvedSymbolPresenter, so hover/signature\-help/completion\-detail surface new attributes uniformly \(build\-manifest step\-30 adds the presenter and lists it here\)\.$#'
 			identifier: disallowed.method
 			count: 1
 			path: src/Completion/SymbolCandidates.php

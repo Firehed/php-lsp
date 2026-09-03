@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
@@ -462,14 +461,7 @@ final class SymbolCandidates
         if ($info === null) {
             return [null, null];
         }
-        $doc = null;
-        if ($info->docblock !== null && $info->docblock !== '') {
-            $extracted = DocblockParser::extractDescription($info->docblock);
-            if ($extracted !== '') {
-                $doc = $extracted;
-            }
-        }
-        return [$info->format(), $doc];
+        return [$info->format(), $info->getDocumentation()];
     }
 
     private function acceptsClassLike(string $fqn, ClassCandidateFilter $filter): bool
