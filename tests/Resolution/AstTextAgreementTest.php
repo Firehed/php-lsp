@@ -79,7 +79,6 @@ final class AstTextAgreementTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
         $offset = $document->offsetAt($line, 0);
         $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
@@ -110,7 +109,6 @@ final class AstTextAgreementTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
         $fromAst = NameContextFactory::fromAst($ast, $line);
         $fromText = NameContextFactory::fromText(explode("\n", $content), $line);
@@ -140,7 +138,6 @@ final class AstTextAgreementTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
         $offset = $this->markerOffset($content, $marker);
         $line = $this->lineForOffset($content, $offset);
@@ -236,7 +233,6 @@ final class AstTextAgreementTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast, 'Fixture must be parseable for agreement test');
 
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
 

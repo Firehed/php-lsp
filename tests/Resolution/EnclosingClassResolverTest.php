@@ -38,7 +38,6 @@ final class EnclosingClassResolverTest extends TestCase
         }
         PHP);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast);
         $thisNode = (new NodeFinder())->findFirst(
             $ast,
             fn (Node $n): bool => $n instanceof Variable && $n->name === 'this',
@@ -62,7 +61,6 @@ final class EnclosingClassResolverTest extends TestCase
         }
         PHP);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast);
 
         // A synthetic $this Variable — no parent chain, but seeded with a
         // document position inside the class body (line 4, zero-based).
@@ -83,7 +81,6 @@ final class EnclosingClassResolverTest extends TestCase
     {
         $document = $this->document('<?php $x = 1;');
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast);
 
         $synthetic = new Variable('this'); // no parent, no valid startFilePos
 

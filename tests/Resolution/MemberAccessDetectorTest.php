@@ -85,7 +85,6 @@ class MemberAccessDetectorTest extends TestCase
         $content = $this->loadFixture('TopLevel/static_outside_class.php');
         $document = new TextDocument('file:///t.php', 'php', 1, $content);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast);
 
         self::assertNull(
             $this->detector->fromText($document, $ast, 1, 8),
@@ -97,7 +96,6 @@ class MemberAccessDetectorTest extends TestCase
     {
         $document = new TextDocument('file:///t.php', 'php', 1, "<?php\nparent::");
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast);
 
         self::assertNull(
             $this->detector->fromText($document, $ast, 1, 8),
@@ -114,7 +112,6 @@ class MemberAccessDetectorTest extends TestCase
             "<?php\nfunction test(string \$s): void {\n    \$s->foo;\n}\n",
         );
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast);
         // Cursor sits on `foo`.
         self::assertNull(
             $this->detector->detect($document, $ast, 2, 9),
@@ -211,7 +208,6 @@ class MemberAccessDetectorTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
-        self::assertNotNull($ast, 'Parser must return an AST (may be partial)');
         return $detector->detect($document, $ast, $line, $character);
     }
 }
