@@ -398,17 +398,17 @@ tree and a text-derived skeleton, an open document and a file on disk, a cache a
 it caches — the code has exactly one interface for it, and one shape around it:
 
 - Every implementation implements the interface, including the composite and any
-  decorator. The composite, always named `Composite<Interface>`, holds an ordered `list`
-  of the interface and answers by asking its members in order: a lookup returns the
+  decorator. The composite, always named `Composite<Interface>`, holds an ordered
+  `iterable` of the interface and answers by asking its members in order: a lookup returns the
   first non-null answer, an enumeration merges every answer with the earlier member
   winning a name clash, and it holds no other logic. A decorator such as a cache
   implements the interface and wraps one.
 - Syntax has one node model, php-parser's. `SyntaxSource` returns php-parser nodes, and
   an implementation built on another parser converts its tree into that model.
 - A consumer is typed on the interface, holds one of it, and never names an
-  implementation. Only the composition root (`Server::forProject`,
-  `KnowledgeStack::forProject`, or a `*s::production()` function in the fact's own
-  package) names one.
+  implementation. Only the composition roots (`Server::forProject` and
+  `KnowledgeStack::forProject`, the hand-written container) name one; a test that
+  needs production wiring gets it from a factory under `tests/`, never from `src/`.
 - The interface, its composite, and every implementation share one namespace named for
   the interface under the tier that owns it.
 
