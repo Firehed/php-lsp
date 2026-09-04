@@ -8,7 +8,7 @@ declare(strict_types=1);
 // violation is allowed, absorbing a new one is not.
 //
 // A baseline file may be absent (treated as zero) or present. The hard lock —
-// baselines must not exist at all — is deferred to build-manifest step-50
+// baselines must not exist at all — is deferred to build-manifest step-53
 // (retire); until then, tighten rules that surface pre-existing residuals need
 // somewhere to record them.
 
