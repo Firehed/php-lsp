@@ -160,8 +160,8 @@ dependencies declare, which are not the project's. A function in an unopened PSR
 has no name→file route at all: Composer's maps address class-likes only, which is
 RFC 1 §3's locate-only limitation, not a backend gap.
 
-Each `FilesystemBackend` finds its file through a **`CompositeSymbolLocator`** chaining
-two routes, cheapest first: `ComposerSymbolLocator` (PSR-4/PSR-0/classmap — arithmetic
+Each `FilesystemBackend` finds its file through a **`CompositeSymbolLocator`** over
+two locators, cheapest first: `ComposerSymbolLocator` (PSR-4/PSR-0/classmap — arithmetic
 on the name) and `AutoloadFilesLocator`. The latter exists because `autoload.files`
 entries are addressed by *no* name at all, so the only route is to parse the set and
 derive the map; it is built eagerly, covers all three symbol namespaces (a name-keyed
@@ -204,7 +204,7 @@ producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable
 `invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
 the next query re-reads disk. It fans out to the cached on-disk backends (also
 `Invalidatable`): `FilesystemBackend` evicts that file's class-likes and functions (a
-path→key reverse map), `CachedNamespaceCatalog` drops its listings, and the locator chain
+path→key reverse map), `CachedNamespaceCatalog` drops its listings, and the locator composite
 re-derives the `autoload.files` index if the changed file is in that set — evicting
 only the `ClassInfo` cache would leave the name→file map itself stale.
 Two triggers reach it:
@@ -347,7 +347,7 @@ diverge from the one that handles `initialize`/`shutdown`.
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
-- **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Use it consistently rather than calling `TypeResolverInterface` directly. Inside handlers, prefer `CodeResolver` (see Architecture Invariants) over calling this directly.
+- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbol` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolver` (see Architecture Invariants) over calling this directly.
 - **Handlers are formatters, not resolvers.** Handlers call `CodeResolver` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
 - **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 - **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
@@ -362,7 +362,7 @@ described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't
 Handlers do NOT:
 - Parse documents, find nodes at positions, or detect node types
 - Resolve types or look up members
-- Call `MemberResolver`, `SymbolSource`, or `TypeResolverInterface` directly
+- Call `MemberResolver`, `SymbolSource`, or `ExpressionResolver` directly
 
 Handlers DO:
 - Extract LSP message parameters
@@ -391,6 +391,36 @@ members PHP exposes at runtime (reflection is the oracle), across every shape �
 extends, implements, interface-extends-interface, trait-using-trait, and interfaces
 reached via a parent. A traversal that misses an edge fails it.
 
+**One route per fact.**
+
+Where a fact has, or could have, more than one complementary implementation — a parsed
+tree and a text-derived skeleton, an open document and a file on disk, a cache and what
+it caches — the code has exactly one interface for it, and one shape around it:
+
+- Every implementation implements the interface, including the composite and any
+  decorator. The composite, always named `Composite<Interface>`, holds an ordered
+  `iterable` of the interface and answers by asking its members in order: a lookup returns the
+  first non-null answer, an enumeration merges every answer with the earlier member
+  winning a name clash, and it holds no other logic. A decorator such as a cache
+  implements the interface and wraps one.
+- Syntax has one node model, php-parser's. `SyntaxSource` returns php-parser nodes, and
+  an implementation built on another parser converts its tree into that model.
+- A consumer is typed on the interface, holds one of it, and never names an
+  implementation. Only the composition roots (`Server::forProject` and
+  `KnowledgeStack::forProject`, the hand-written container) name one; a test that
+  needs production wiring gets it from a factory under `tests/`, never from `src/`.
+- The interface, its composite, and every implementation share one namespace named for
+  the interface under the tier that owns it.
+
+`NamespaceCatalog` with `CompositeNamespaceCatalog` and `CachedNamespaceCatalog` is the
+shape today. A consumer that names an implementation, calls a static method on one, or
+holds two routes to one fact has moved the problem, not removed it: that is how the
+parse-health M×N happened, with each positional question checking the tree and then
+calling the regex, and not all of them doing so. A null or empty check on one route
+before calling another is the pattern to refuse. `tests/Architecture/OneRoutePerFactTest.php`
+(build-manifest step-32) derives every implementation from its interface and fails when
+anything but the root names one; a new fact with more than one route is a new row there.
+
 **All client-capability reads go through `SessionCapabilities`.**
 
 The raw `initialize` parameters are read once, in `src/Capability/`. No other package
@@ -414,7 +444,6 @@ instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, 
 - `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names, finds functions
 - `Scope` — Value object modelling a lexical scope (params, statements, self/parent context, `$this`, closure captures). Function-like nodes and file-level/global code both map onto it via `Scope::atOffset()`/`forNode()`/`global()`, so type/variable resolution never branches on node type or handles a "no enclosing function" case.
 - `DocblockParser` — Extracts description from docblocks
-- `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
 
 Note: `MemberAccessResolver` was removed in #262 — instance/static member access now flows through `SymbolResolver`.
 

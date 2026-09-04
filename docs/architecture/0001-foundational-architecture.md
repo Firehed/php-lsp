@@ -350,8 +350,11 @@ maintained (Appendix B).
 ### 4.11. Parse-Health Collapse
 
 A live server answers positional questions on documents that may not currently parse.
-Each positional question MUST be answered through one component regardless of parse state; whether the answer derived from a full syntax tree, a recovered tree, or raw text MUST NOT be observable above the positional layer.
-Text-derived fallback logic MUST be confined to that layer's resilience rim, and MUST agree with the syntax-tree path on input that parses; that agreement MUST be held by test, not review.
+Parse state collapses below the positional layer behind one syntax interface, which answers the document's tree and the node at an offset.
+A composite implements it over an ordered list of implementations of the same interface: the parser with its own recovery first, a text-derived skeleton when the parser yields nothing, and a cursor-text reader that synthesizes the one node the parser cannot recover on a broken document, the syntax immediately before the cursor.
+Every positional question is typed on the interface and asks it; no component above the composite MAY branch on parse state, read text patterns, or name an implementation.
+The tree is php-parser's node model; an implementation built on another parser MUST convert its tree into that model, so the positional layer knows one.
+A text-derived implementation MUST agree with the parser on input that parses; that agreement MUST be held by test, not review.
 This is the same collapse Section 4.9 requires for encoding, applied to parse state: a dimension without a collapse point silently multiplies every question it touches.
 
 ## 5. Component Requirements
@@ -676,7 +679,7 @@ work.
     Target environment   environment parameter + backend      4.7
     Protocol capability  session capabilities + handler       4.8, 5.4
     Position/intent      completion source + intent mapping   7
-    Parse health         one positional facade + text rim     4.11
+    Parse health         SyntaxSource implementation          4.11
 
 Rows marked (target) name their intended single extension point ahead of it existing; issue #443 owns the work.
 
