@@ -36,7 +36,6 @@ class ParserServiceTest extends TestCase
 
         $result = $parser->parse($doc);
 
-        self::assertNotNull($result);
         self::assertCount(1, $result);
         self::assertInstanceOf(Function_::class, $result[0]);
     }
@@ -53,7 +52,6 @@ class ParserServiceTest extends TestCase
 
         $result = $parser->parse($doc);
 
-        self::assertNotNull($result);
         self::assertCount(1, $result);
         self::assertInstanceOf(Class_::class, $result[0]);
     }
@@ -70,11 +68,14 @@ class ParserServiceTest extends TestCase
 
         $result = $parser->parse($doc);
 
-        // With error recovery, we get partial results instead of null
-        self::assertIsArray($result);
+        self::assertSame(
+            [],
+            $result,
+            'a syntax error that stops recovery early yields the empty AST rather than throwing',
+        );
     }
 
-    public function testParseThrowsOnDuplicateUseAlias(): void
+    public function testParseYieldsEmptyOnNameResolverFailure(): void
     {
         $parser = new ParserService();
         $doc = new TextDocument(
@@ -84,9 +85,13 @@ class ParserServiceTest extends TestCase
             self::DUPLICATE_USE_ALIAS,
         );
 
-        // The parser recovers, but NameResolver throws: the null return is the
-        // only signal callers get that resolution failed.
-        self::assertNull($parser->parse($doc), 'a name-resolution failure yields null, not a partial AST');
+        // The parser recovers, but NameResolver throws: the empty array is what
+        // callers see, the same shape a file with no statements yields.
+        self::assertSame(
+            [],
+            $parser->parse($doc),
+            'a name-resolution failure yields no statements rather than a partial or null AST',
+        );
     }
 
     /**
@@ -297,6 +302,18 @@ class ParserServiceTest extends TestCase
         );
     }
 
+    public function testParseReturnTypeIsNonNullable(): void
+    {
+        $return = (new \ReflectionMethod(ParserService::class, 'parse'))->getReturnType();
+
+        self::assertInstanceOf(\ReflectionNamedType::class, $return);
+        self::assertFalse(
+            $return->allowsNull(),
+            'parse() must return array<Stmt> without null so no caller has to test or default it',
+        );
+        self::assertSame('array', $return->getName());
+    }
+
     public function testParseEmptyFile(): void
     {
         $parser = new ParserService();
@@ -309,7 +326,6 @@ class ParserServiceTest extends TestCase
 
         $result = $parser->parse($doc);
 
-        self::assertNotNull($result);
         self::assertCount(0, $result);
     }
 }

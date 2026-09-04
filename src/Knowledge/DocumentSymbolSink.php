@@ -77,7 +77,7 @@ final class DocumentSymbolSink implements SymbolSink
         // parse yields declarations, preserved registration when the parse is empty
         // and a prior one exists, text producer when neither. `MemberResolver` sees
         // one consumer regardless of tier.
-        $ast = $this->parser->parse($document) ?? [];
+        $ast = $this->parser->parse($document);
         $declarations = $this->scanner->scan($ast);
         $filePath = FileUri::toPath($document->uri);
 

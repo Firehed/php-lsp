@@ -47,7 +47,7 @@ final class DocumentIndexerTest extends TestCase
             'indexParsed must index the supplied AST, not a reparse of the document content',
         );
 
-        $this->indexer->indexParsed($document, $this->parser->parse($document) ?? []);
+        $this->indexer->indexParsed($document, $this->parser->parse($document));
         self::assertNotNull(
             $this->index->findByFqn('Fixtures\Domain\User'),
             'indexParsed must index the symbols in the AST it is given',

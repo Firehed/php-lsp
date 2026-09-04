@@ -40,7 +40,7 @@ final class ParserService
      * Keyed by content, so array-key: PHP casts an integer-like content string
      * to an int key, and the memo neither notices nor cares.
      *
-     * @var array<array-key, array<Stmt>|null>
+     * @var array<array-key, array<Stmt>>
      */
     private array $scopedParses = [];
 
@@ -79,7 +79,7 @@ final class ParserService
     public function parseExpression(string $expression): ?Expr
     {
         $ast = $this->parse(new TextDocument('fragment', 'php', 0, '<?php ' . $expression . ';'));
-        if ($ast === null || count($ast) !== 1) {
+        if (count($ast) !== 1) {
             return null;
         }
         $stmt = $ast[0];
@@ -90,9 +90,9 @@ final class ParserService
     }
 
     /**
-     * @return array<Stmt>|null
+     * @return array<Stmt>
      */
-    public function parse(TextDocument $document): ?array
+    public function parse(TextDocument $document): array
     {
         $content = $document->getContent();
 
@@ -131,9 +131,9 @@ final class ParserService
     }
 
     /**
-     * @return array<Stmt>|null
+     * @return array<Stmt>
      */
-    private function parseContent(string $content): ?array
+    private function parseContent(string $content): array
     {
         // Use error-collecting handler for partial/incomplete code
         $errorHandler = new ErrorHandler\Collecting();
@@ -148,7 +148,7 @@ final class ParserService
             /** @var array<Stmt> */
             return $this->traverser->traverse($ast);
         } catch (\PhpParser\Error) {
-            return null;
+            return [];
         } finally {
             $this->metrics->record(hrtime(true) - $startNs);
         }

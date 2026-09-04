@@ -32,7 +32,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('TypeInference/GlobalFunction.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $symbols = $this->extractor->extract($doc, $ast);
         $functions = array_filter($symbols, fn($s) => $s->kind === SymbolKind::Function_);
@@ -49,7 +48,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('NoNamespace.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $symbols = $this->extractor->extract($doc, $ast);
 
@@ -64,7 +62,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('src/Domain/User.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $symbols = $this->extractor->extract($doc, $ast);
         $classes = array_filter($symbols, fn($s) => $s->kind === SymbolKind::Class_);
@@ -81,7 +78,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('src/Domain/Entity.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $symbols = $this->extractor->extract($doc, $ast);
         $methods = array_filter($symbols, fn($s) => $s->kind === SymbolKind::Method);
@@ -99,7 +95,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('src/Domain/Entity.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $symbols = $this->extractor->extract($doc, $ast);
 
@@ -113,7 +108,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('src/Traits/HasTimestamps.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $symbols = $this->extractor->extract($doc, $ast);
 
@@ -127,7 +121,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('src/Enum/Status.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $symbols = $this->extractor->extract($doc, $ast);
 
@@ -141,7 +134,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('AutoloadFiles/helpers.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $constants = $this->constantsIn($this->extractor->extract($doc, $ast));
 
@@ -170,7 +162,6 @@ class SymbolExtractorTest extends TestCase
         $code = $this->loadFixture('AutoloadFiles/globals.php');
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
         $ast = $this->parser->parse($doc);
-        self::assertNotNull($ast);
 
         $extracted = array_keys($this->constantsIn($this->extractor->extract($doc, $ast)));
         $scanned = array_map(

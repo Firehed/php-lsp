@@ -19,7 +19,7 @@ final class DocumentIndexer
 
     public function index(TextDocument $document): void
     {
-        $this->indexParsed($document, $this->parser->parse($document) ?? []);
+        $this->indexParsed($document, $this->parser->parse($document));
     }
 
     /**

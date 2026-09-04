@@ -151,7 +151,6 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     {
         $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
         $ast = (new ParserService())->parse(new TextDocument('file:///dupes.php', 'php', 1, $content));
-        self::assertNotNull($ast, 'the fixture must parse');
 
         $names = [];
         foreach ($this->factory->allIn((new DeclarationScanner())->scan($ast), '/dupes.php') as $symbol) {

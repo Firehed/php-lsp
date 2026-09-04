@@ -106,11 +106,6 @@ final class SymbolResolver implements CodeResolver
         int $character,
     ): ?ResolvedSymbol {
         $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('Parser returned null with error-collecting handler');
-            // @codeCoverageIgnoreEnd
-        }
 
         $offset = $document->offsetAt($line, $character);
         $nodeFinder = new NodeAtPosition();
@@ -300,11 +295,6 @@ final class SymbolResolver implements CodeResolver
         int $character,
     ): ?MemberAccessContext {
         $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('Parser returned null');
-            // @codeCoverageIgnoreEnd
-        }
 
         return $this->memberAccessDetector->detect($document, $ast, $line, $character);
     }
@@ -321,11 +311,6 @@ final class SymbolResolver implements CodeResolver
         int $character,
     ): array {
         $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('Parser returned null');
-            // @codeCoverageIgnoreEnd
-        }
 
         $offset = $document->offsetAt($line, $character);
         $scope = Scope::atOffset($ast, $offset);
@@ -360,11 +345,6 @@ final class SymbolResolver implements CodeResolver
         int $character,
     ): ?CallContext {
         $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('Parser returned null');
-            // @codeCoverageIgnoreEnd
-        }
 
         $offset = $document->offsetAt($line, $character);
         $content = $document->getContent();
@@ -403,11 +383,6 @@ final class SymbolResolver implements CodeResolver
     public function getNameContext(TextDocument $document, int $line): NameContext
     {
         $ast = $this->parser->parse($document);
-        if ($ast === null) {
-            // @codeCoverageIgnoreStart
-            throw new LogicException('Parser returned null');
-            // @codeCoverageIgnoreEnd
-        }
 
         return NameContextFactory::fromAst($ast, $line);
     }

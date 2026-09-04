@@ -343,7 +343,6 @@ final class DeclarationScannerTest extends TestCase
         $content = $this->loadFixture($relativePath);
 
         $ast = $this->parser->parse(new TextDocument($uri, 'php', 0, $content));
-        self::assertNotNull($ast, "fixture should parse: {$relativePath}");
 
         return $this->scanner->scan($ast);
     }
