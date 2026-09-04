@@ -393,17 +393,29 @@ reached via a parent. A traversal that misses an edge fails it.
 
 **One route per fact.**
 
-Where two routes to one fact exist — a syntax tree and a regex, an open document
-and a file on disk, two stores, a native type and a docblock — they meet in exactly
-one class, which hands every consumer one shape. A consumer never holds both routes
-and never learns which one answered. `CompositeSymbolSource` is the model: a consumer
-receives a `SymbolInfo` and cannot tell which backend produced it.
+Where a fact has, or could have, more than one complementary implementation — a parsed
+tree and a text-derived skeleton, an open document and a file on disk, a cache and what
+it caches — the code has exactly one interface for it, and one shape around it:
 
-Holding both routes is how the parse-health M×N happened: each positional question
-checked the tree and then called the regex, and not all of them did. A null or empty
-check on one route before calling another is the pattern to refuse. Adding a route is
-a change to the one class that chains them; a new fact with two routes is a new row in
-the ledger, `tests/Architecture/OneRoutePerFactTest.php` (build-manifest step-32).
+- Every implementation implements the interface, including the chain, which is always
+  named `Composite<Interface>`, holds a `list` of the interface, and delegates to its
+  members in order (first answer wins, or answers merge). A decorator such as a cache
+  implements the interface and wraps one.
+- A consumer is typed on the interface, holds one of it, and never names an
+  implementation. Only the composition root (`Server::forProject`,
+  `KnowledgeStack::forProject`, or a `*s::production()` function in the fact's own
+  package) names one.
+- The interface, its composite, and every implementation share one namespace named for
+  the interface under the tier that owns it.
+
+`NamespaceCatalog` with `CompositeNamespaceCatalog` and `CachedNamespaceCatalog` is the
+shape today. A consumer that names an implementation, calls a static method on one, or
+holds two routes to one fact has moved the problem, not removed it: that is how the
+parse-health M×N happened, with each positional question checking the tree and then
+calling the regex, and not all of them doing so. A null or empty check on one route
+before calling another is the pattern to refuse. `tests/Architecture/OneRoutePerFactTest.php`
+(build-manifest step-32) derives every implementation from its interface and fails when
+anything but the root names one; a new fact with more than one route is a new row there.
 
 **All client-capability reads go through `SessionCapabilities`.**
 
