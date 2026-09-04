@@ -27,6 +27,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class LateBindingKeywordConfinementTest extends TestCase
 {
+    use ScansSourceFiles;
+
     /**
      * The one file allowed to name the three keyword literals as their own
      * strings; removing this loosens (human only) — every other file must
@@ -77,22 +79,6 @@ final class LateBindingKeywordConfinementTest extends TestCase
             $keywords,
             'the scanner must catch identity, equality, and their negations, plus match and switch arms',
         );
-    }
-
-    /**
-     * @return iterable<string>
-     */
-    private static function sourceFiles(): iterable
-    {
-        $root = self::root() . '/src';
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
-        );
-        foreach ($iterator as $entry) {
-            if ($entry instanceof \SplFileInfo && $entry->isFile() && $entry->getExtension() === 'php') {
-                yield $entry->getPathname();
-            }
-        }
     }
 
     /**
@@ -170,21 +156,5 @@ final class LateBindingKeywordConfinementTest extends TestCase
         foreach ($visitor->hits as [$line, $keyword]) {
             yield $line => $keyword;
         }
-    }
-
-    private static function relativePath(string $file): string
-    {
-        $root = self::root() . '/';
-        if (str_starts_with($file, $root)) {
-            return substr($file, strlen($root));
-        }
-        // @codeCoverageIgnoreStart
-        return $file;
-        // @codeCoverageIgnoreEnd
-    }
-
-    private static function root(): string
-    {
-        return dirname(__DIR__, 2);
     }
 }
