@@ -19,7 +19,7 @@ CI-enforced mechanisms confine where code may live; a rule firing on your change
 - **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbol`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
 - **Literal class references** (`DynamicClassReferenceRule`): a class is named literally. `new $c`, `$v instanceof $c`, `$v::class`, `$c::CONST` and `$c::m()` are denied, because every rule above reads a name to apply. Use `$v::class` nowhere; reach for a predicate instead.
 - **File inclusion** (`FileInclusionRule`): `include`/`require` read the disk, which no call list can name, so they are confined like the filesystem functions.
-- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`): every `Type` and `ResolvedSymbol` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, and every allowlisted path still exists.
+- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`, `OneRoutePerFactTest`): every `Type` and `ResolvedSymbol` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, every allowlisted path still exists, and every implementation of a one-route interface is named only by its composition root (see One route per fact under Architecture Invariants).
 
 When a rule fires on your change:
 
@@ -418,8 +418,12 @@ holds two routes to one fact has moved the problem, not removed it: that is how 
 parse-health M×N happened, with each positional question checking the tree and then
 calling the regex, and not all of them doing so. A null or empty check on one route
 before calling another is the pattern to refuse. `tests/Architecture/OneRoutePerFactTest.php`
-(build-manifest step-32) derives every implementation from its interface and fails when
-anything but the root names one; a new fact with more than one route is a new row there.
+derives every implementation from its interface, checks the composite's name and the
+family's namespace, and fails when anything but the root names an implementation. A
+route with no interface yet is a transitional row naming its concrete classes and
+holders. A condition that fails today is recorded on its row with the manifest step that
+clears it; the row asserts it still fails, then skips. Adding a pending entry is a Loosen
+edit; clearing one is the step's work. A new fact with more than one route is a new row.
 
 **All client-capability reads go through `SessionCapabilities`.**
 
