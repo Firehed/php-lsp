@@ -353,6 +353,7 @@ A live server answers positional questions on documents that may not currently p
 Parse state collapses below the positional layer behind one syntax interface, which answers the document's tree and the node at an offset.
 A composite implements it over an ordered list of implementations of the same interface: the parser with its own recovery first, a text-derived skeleton when the parser yields nothing, and a cursor-text reader that synthesizes the one node the parser cannot recover on a broken document, the syntax immediately before the cursor.
 Every positional question is typed on the interface and asks it; no component above the composite MAY branch on parse state, read text patterns, or name an implementation.
+The tree is php-parser's node model; an implementation built on another parser MUST convert its tree into that model, so the positional layer knows one.
 A text-derived implementation MUST agree with the parser on input that parses; that agreement MUST be held by test, not review.
 This is the same collapse Section 4.9 requires for encoding, applied to parse state: a dimension without a collapse point silently multiplies every question it touches.
 

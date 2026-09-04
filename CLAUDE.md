@@ -160,8 +160,8 @@ dependencies declare, which are not the project's. A function in an unopened PSR
 has no name→file route at all: Composer's maps address class-likes only, which is
 RFC 1 §3's locate-only limitation, not a backend gap.
 
-Each `FilesystemBackend` finds its file through a **`CompositeSymbolLocator`** chaining
-two routes, cheapest first: `ComposerSymbolLocator` (PSR-4/PSR-0/classmap — arithmetic
+Each `FilesystemBackend` finds its file through a **`CompositeSymbolLocator`** over
+two locators, cheapest first: `ComposerSymbolLocator` (PSR-4/PSR-0/classmap — arithmetic
 on the name) and `AutoloadFilesLocator`. The latter exists because `autoload.files`
 entries are addressed by *no* name at all, so the only route is to parse the set and
 derive the map; it is built eagerly, covers all three symbol namespaces (a name-keyed
@@ -204,7 +204,7 @@ producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable
 `invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
 the next query re-reads disk. It fans out to the cached on-disk backends (also
 `Invalidatable`): `FilesystemBackend` evicts that file's class-likes and functions (a
-path→key reverse map), `CachedNamespaceCatalog` drops its listings, and the locator chain
+path→key reverse map), `CachedNamespaceCatalog` drops its listings, and the locator composite
 re-derives the `autoload.files` index if the changed file is in that set — evicting
 only the `ClassInfo` cache would leave the name→file map itself stale.
 Two triggers reach it:
@@ -397,10 +397,14 @@ Where a fact has, or could have, more than one complementary implementation — 
 tree and a text-derived skeleton, an open document and a file on disk, a cache and what
 it caches — the code has exactly one interface for it, and one shape around it:
 
-- Every implementation implements the interface, including the chain, which is always
-  named `Composite<Interface>`, holds a `list` of the interface, and delegates to its
-  members in order (first answer wins, or answers merge). A decorator such as a cache
+- Every implementation implements the interface, including the composite and any
+  decorator. The composite, always named `Composite<Interface>`, holds an ordered `list`
+  of the interface and answers by asking its members in order: a lookup returns the
+  first non-null answer, an enumeration merges every answer with the earlier member
+  winning a name clash, and it holds no other logic. A decorator such as a cache
   implements the interface and wraps one.
+- Syntax has one node model, php-parser's. `SyntaxSource` returns php-parser nodes, and
+  an implementation built on another parser converts its tree into that model.
 - A consumer is typed on the interface, holds one of it, and never names an
   implementation. Only the composition root (`Server::forProject`,
   `KnowledgeStack::forProject`, or a `*s::production()` function in the fact's own
