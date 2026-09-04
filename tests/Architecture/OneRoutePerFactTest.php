@@ -84,7 +84,7 @@ final class OneRoutePerFactTest extends TestCase
                 name: 'symbol backend',
                 interface: SymbolBackend::class,
                 roots: [KnowledgeStack::class],
-                pending: ['src/Knowledge/DocumentSymbolSink.php' => 'step-46'],
+                pending: ['src/Knowledge/DocumentSymbolSink.php' => 'step-43'],
                 compositePending: 'step-51',
                 layoutPending: 'step-52',
             ),
@@ -271,17 +271,25 @@ final class OneRoutePerFactTest extends TestCase
     private function layoutCheck(Fact $fact, array $routes): array
     {
         assert($fact->interface !== null);
-        $family = $fact->interface . '';
+        // The family namespace is the interface's own namespace, and that namespace
+        // is named for the interface: Knowledge\SymbolLocator\SymbolLocator.
+        $family = self::namespaceOf($fact->interface);
         $misplaced = array_values(array_filter(
-            [$fact->interface, ...$routes],
+            $routes,
             static fn (string $class): bool => self::namespaceOf($class) !== $family,
         ));
+        $short = self::shortNameOf($fact->interface);
+        $target = $family;
+        if (self::shortNameOf($family) !== $short) {
+            $misplaced[] = $fact->interface;
+            $target = $family . '\\' . $short;
+        }
 
         if ($fact->layoutPending === null) {
             self::assertSame(
                 [],
                 $misplaced,
-                "fact '{$fact->name}': these classes are outside the family namespace {$family}",
+                "fact '{$fact->name}': these classes are outside the family namespace {$target}",
             );
             return [];
         }
@@ -290,7 +298,7 @@ final class OneRoutePerFactTest extends TestCase
             $misplaced,
             "fact '{$fact->name}': the family is already in its namespace; remove the row's layoutPending entry",
         );
-        return ["{$fact->layoutPending} moves the family into {$family}"];
+        return ["{$fact->layoutPending} moves the family into {$target}"];
     }
 
     /**
