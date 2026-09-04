@@ -19,6 +19,7 @@ A reviewer classifies every edit to the files above with this table before readi
 | Add a check, rule, or layer | Tighten | Frozen until both baselines are deleted; then the human only. |
 | Add a deny entry or rule together with its allowlist | Tighten, when every allowlist path is one file that uses the denied thing today (`tests/*` is the one directory glob). A directory glob, or a file with no use, is a Loosen hidden inside a Tighten. | Frozen until both baselines are deleted; then the human only. |
 | Rename a path in an allowlist or a baseline entry | Lateral | Anyone, only when the same PR moves that file (git reports a rename) and the entry count does not change. |
+| Move a file across layers | Lateral | Anyone, only when the ruleset already allows every dependency the moved class has and no edge or path is added; otherwise the move is a Loosen (the human only). |
 | Rename a rule identifier or message, with the baseline rewritten to match | Lateral | Anyone, only when the total for that rule does not change. |
 | Add a path to an allowlist | Loosen | The human only. |
 | Remove a function, class, enum, or implementation from a deny set or confined set | Loosen | The human only. |
