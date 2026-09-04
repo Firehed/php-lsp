@@ -350,8 +350,10 @@ maintained (Appendix B).
 ### 4.11. Parse-Health Collapse
 
 A live server answers positional questions on documents that may not currently parse.
-Each positional question MUST be answered through one component regardless of parse state; whether the answer derived from a full syntax tree, a recovered tree, or raw text MUST NOT be observable above the positional layer.
-Text-derived fallback logic MUST be confined to that layer's resilience rim, and MUST agree with the syntax-tree path on input that parses; that agreement MUST be held by test, not review.
+Parse state collapses below the positional layer: one composite produces one syntax tree per document from an ordered list of producers (the parser with its own recovery first, a text-derived skeleton when the parser yields nothing), and every positional question reads that tree.
+The one fact the tree cannot carry on a broken document is the syntax immediately before the cursor; one cursor reader turns that text into a tree node, and every consumer receives a node.
+No component above the composite and the cursor reader MAY branch on parse state or read text patterns.
+A text-derived producer MUST agree with the parser on input that parses; that agreement MUST be held by test, not review.
 This is the same collapse Section 4.9 requires for encoding, applied to parse state: a dimension without a collapse point silently multiplies every question it touches.
 
 ## 5. Component Requirements
@@ -676,7 +678,7 @@ work.
     Target environment   environment parameter + backend      4.7
     Protocol capability  session capabilities + handler       4.8, 5.4
     Position/intent      completion source + intent mapping   7
-    Parse health         one positional facade + text rim     4.11
+    Parse health         syntax producer + cursor reader      4.11
 
 Rows marked (target) name their intended single extension point ahead of it existing; issue #443 owns the work.
 
