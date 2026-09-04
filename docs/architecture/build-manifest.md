@@ -9,11 +9,12 @@ One signal: both baseline files are deleted, and the issues named below are clos
 - One step is one PR on branch `step/<n>`.
 - Steps run in order. Step n starts when step n-1 has merged.
 - The PR for a step ticks its own box. A ticked box means merged.
-- The rule set is frozen until both baselines are deleted (step-21): no new PHPStan rule, deny entry, deptrac edge, allowlist path, baseline entry, `@phpstan-ignore`, or RFC amendment. Removing any of those is always allowed. A gap found on the way becomes a GitHub issue.
+- The rule set is closed: no new PHPStan rule, deny entry, deptrac edge, allowlist path, baseline entry, `@phpstan-ignore`, or RFC amendment, except a Tighten or Lateral edit that the step's row names (that naming is the human's authorisation under `enforcement-edits.md`). Removing any of those is always allowed. A gap found on the way becomes a GitHub issue.
 - A step's `Done` clause is its whole acceptance. A reviewer checks that clause and nothing else.
 - Background reading is RFC 1 §4 (the invariants). Plan 0002 is history, not work.
-- Regex stays in the files `phpstan.neon` already allows it in. `TextFallbackHelper` is the text branch every positional question calls; it holds regex and nothing else.
-- When step-32 lands, this file and its two driver skills are gone, and work returns to plain issue flow: pick an issue, "do #xxx".
+- One route per fact. Where two routes to one fact exist (a tree and a regex, two stores, a native type and a docblock), they meet in exactly one class, which hands every consumer one shape. A consumer never holds two routes and never learns which one answered. `OneRoutePerFactTest` (step-32) lists each fact's ingredients and its one holder; a step that names an ingredient outside its holder, or adds a skipped row, is not done.
+- Regex stays in the files `phpstan.neon` allows it in.
+- When step-45 lands, this file and its two driver skills are gone, and work returns to plain issue flow: pick an issue, "do #xxx".
 
 ## Steps
 
