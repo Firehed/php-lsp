@@ -347,7 +347,7 @@ diverge from the one that handles `initialize`/`shutdown`.
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
-- **Use `ExpressionTypeResolver` for expression types.** It wraps `TypeResolverInterface` and handles special cases like `$this`. Use it consistently rather than calling `TypeResolverInterface` directly. Inside handlers, prefer `CodeResolver` (see Architecture Invariants) over calling this directly.
+- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbol` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolver` (see Architecture Invariants) over calling this directly.
 - **Handlers are formatters, not resolvers.** Handlers call `CodeResolver` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
 - **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 - **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
@@ -362,7 +362,7 @@ described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't
 Handlers do NOT:
 - Parse documents, find nodes at positions, or detect node types
 - Resolve types or look up members
-- Call `MemberResolver`, `SymbolSource`, or `TypeResolverInterface` directly
+- Call `MemberResolver`, `SymbolSource`, or `ExpressionResolver` directly
 
 Handlers DO:
 - Extract LSP message parameters
@@ -391,6 +391,20 @@ members PHP exposes at runtime (reflection is the oracle), across every shape �
 extends, implements, interface-extends-interface, trait-using-trait, and interfaces
 reached via a parent. A traversal that misses an edge fails it.
 
+**One route per fact.**
+
+Where two routes to one fact exist — a syntax tree and a regex, an open document
+and a file on disk, two stores, a native type and a docblock — they meet in exactly
+one class, which hands every consumer one shape. A consumer never holds both routes
+and never learns which one answered. `CompositeSymbolSource` is the model: a consumer
+receives a `SymbolInfo` and cannot tell which backend produced it.
+
+Holding both routes is how the parse-health M×N happened: each positional question
+checked the tree and then called the regex, and not all of them did. A null or empty
+check on one route before calling another is the pattern to refuse. Adding a route is
+a change to the one class that chains them; a new fact with two routes is a new row in
+the ledger, `tests/Architecture/OneRoutePerFactTest.php` (build-manifest step-32).
+
 **All client-capability reads go through `SessionCapabilities`.**
 
 The raw `initialize` parameters are read once, in `src/Capability/`. No other package
@@ -414,7 +428,6 @@ instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, 
 - `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names, finds functions
 - `Scope` — Value object modelling a lexical scope (params, statements, self/parent context, `$this`, closure captures). Function-like nodes and file-level/global code both map onto it via `Scope::atOffset()`/`forNode()`/`global()`, so type/variable resolution never branches on node type or handles a "no enclosing function" case.
 - `DocblockParser` — Extracts description from docblocks
-- `ExpressionTypeResolver` — Resolves expression types (wraps TypeResolverInterface, handles `$this`)
 
 Note: `MemberAccessResolver` was removed in #262 — instance/static member access now flows through `SymbolResolver`.
 
