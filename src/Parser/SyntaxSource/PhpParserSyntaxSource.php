@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\ErrorHandler;
+use PhpParser\Node;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
@@ -49,5 +51,13 @@ final class PhpParserSyntaxSource implements SyntaxSource
         } finally {
             $this->metrics->record(hrtime(true) - $startNs);
         }
+    }
+
+    /**
+     * @param array<\PhpParser\Node\Stmt> $tree
+     */
+    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    {
+        return (new NodeAtPosition())->find($tree, $offset);
     }
 }

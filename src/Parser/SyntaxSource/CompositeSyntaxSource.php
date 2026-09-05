@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use PhpParser\Node;
 
 /**
  * The one-route composite for {@see SyntaxSource}. Members are asked in order,
@@ -35,5 +36,19 @@ final class CompositeSyntaxSource implements SyntaxSource
             }
         }
         return [];
+    }
+
+    /**
+     * @param array<\PhpParser\Node\Stmt> $tree
+     */
+    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    {
+        foreach ($this->sources as $source) {
+            $node = $source->nodeAt($tree, $document, $offset);
+            if ($node !== null) {
+                return $node;
+            }
+        }
+        return null;
     }
 }
