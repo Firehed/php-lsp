@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\TestCase;
 
@@ -22,7 +23,7 @@ final class DocumentIndexerTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    private ParserService $parser;
+    private SyntaxSource $parser;
     private SymbolIndex $index;
     private DocumentIndexer $indexer;
 
