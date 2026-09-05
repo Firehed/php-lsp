@@ -6,8 +6,10 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
@@ -15,6 +17,7 @@ use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
+use Firehed\PhpLsp\Server;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
@@ -99,6 +102,19 @@ final class OneRoutePerFactTest extends TestCase
                 name: 'php-parser parser',
                 ingredients: [Parser::class, ParserFactory::class],
                 holders: [ParserService::class],
+            ),
+            // The SyntaxSource family has one implementation until step-36 supplies
+            // the composite and a second source; until then its one class is confined
+            // to the two parseFile() callers and the roots that build them.
+            Fact::confined(
+                name: 'parser service',
+                ingredients: [ParserService::class],
+                holders: [
+                    AutoloadFilesLocator::class,
+                    FilesystemBackend::class,
+                    KnowledgeStack::class,
+                ],
+                roots: [Server::class],
             ),
             // No holder: the routes collapse by deletion. steps 40 and 41 move the
             // cursor-local regexes into the cursor text source, step-42 deletes the
