@@ -399,9 +399,10 @@ it caches — the code has exactly one interface for it, and one shape around it
 
 - Every implementation implements the interface, including the composite and any
   decorator. The composite, always named `Composite<Interface>`, holds an ordered
-  `iterable` of the interface and answers by asking its members in order: a lookup returns the
-  first non-null answer, an enumeration merges every answer with the earlier member
-  winning a name clash, and it holds no other logic. A decorator such as a cache
+  `list` of the interface (not an `iterable`: a generator is read once, and the
+  composite walks its members on every call) and answers by asking its members in
+  order: a lookup returns the first non-null answer, an enumeration merges every answer
+  with the earlier member winning a name clash, and it holds no other logic. A decorator such as a cache
   implements the interface and wraps one.
 - Syntax has one node model, php-parser's. `SyntaxSource` returns php-parser nodes, and
   an implementation built on another parser converts its tree into that model.
