@@ -13,7 +13,8 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use PhpParser\Node;
 
 /**
@@ -74,7 +75,8 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Pre
 
     public function __construct(
         private readonly ComposerAutoloadMap $map,
-        private readonly ParserService $parser,
+        private readonly SyntaxSource $parser,
+        private readonly SourceFileReader $reader,
         private readonly DeclarationScanner $scanner,
     ) {
         $this->buildIndex();
@@ -138,12 +140,12 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Pre
         $this->namespaces = null;
 
         foreach ($this->map->autoloadFiles() as $path) {
-            $ast = $this->parser->parseFile($path);
-            if ($ast === null) {
+            $document = $this->reader->read($path);
+            if ($document === null) {
                 continue;
             }
 
-            $declarations = $this->scanner->scan($ast);
+            $declarations = $this->scanner->scan($this->parser->parse($document));
             $this->record(NameKind::ClassLike, $declarations->classLikes, $path);
             $this->record(NameKind::Function_, $declarations->functions, $path);
             $this->record(NameKind::Constant, $declarations->constants, $path);

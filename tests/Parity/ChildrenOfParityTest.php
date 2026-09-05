@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -82,7 +82,8 @@ final class ChildrenOfParityTest extends TestCase
     {
         $this->fixturesRoot = dirname(__DIR__) . '/Fixtures';
 
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $parser = $production->source;
         $index = new SymbolIndex();
         $indexer = new DocumentIndexer($parser, new SymbolExtractor(), $index);
         foreach (self::INDEXED_DOCUMENTS as $relative) {
@@ -114,6 +115,7 @@ final class ChildrenOfParityTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $parser,
+            $production->reader,
             $index,
         )->source;
     }

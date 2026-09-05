@@ -8,8 +8,9 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -18,12 +19,12 @@ class SymbolExtractorTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
     private SymbolExtractor $extractor;
 
     protected function setUp(): void
     {
-        $this->parser = new ParserService();
+        $this->parser = ProductionSyntaxSource::create()->source;
         $this->extractor = new SymbolExtractor();
     }
 

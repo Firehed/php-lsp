@@ -13,7 +13,8 @@ use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchable;
 use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 
 /**
  * A {@see SymbolBackend} over PHP files on disk, resolved through Composer's
@@ -49,7 +50,8 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     public function __construct(
         private readonly SymbolLocator $locator,
         private readonly NamespaceCatalog $namespaces,
-        private readonly ParserService $parser,
+        private readonly SyntaxSource $parser,
+        private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
@@ -108,8 +110,10 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
      */
     private function declarationsIn(string $filePath): FileDeclarations
     {
-        $ast = $this->parser->parseFile($filePath);
-
-        return $ast === null ? new FileDeclarations([], [], []) : $this->scanner->scan($ast);
+        $document = $this->reader->read($filePath);
+        if ($document === null) {
+            return new FileDeclarations([], [], []);
+        }
+        return $this->scanner->scan($this->parser->parse($document));
     }
 }

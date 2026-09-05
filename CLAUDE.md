@@ -44,7 +44,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
-- `src/Parser/` — `ParserService` (the only place an AST is produced; memoizes by content for the duration of one handled LSP message, discarded by `Server`'s message loop) and `ParseMetrics` (parse count/time, which every parse is metered through)
+- `src/Parser/` — the `SyntaxSource` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScoped` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `src/Capability/` — Protocol capability negotiation (see Capability Negotiation below)
@@ -371,7 +371,7 @@ Handlers DO:
 
 `CompletionHandler` is a coordinator: it classifies the position and delegates to
 completion *sources* (`src/Completion/*Candidates`), then merges and deduplicates.
-It no longer parses documents or touches `ParserService`/`SymbolIndex` directly —
+It no longer parses documents or touches `SyntaxSource`/`SymbolIndex` directly —
 sources own their lookups, and anything parser-derived (imports, file functions,
 members, variables, types) flows through `CodeResolver`. See Completion System.
 

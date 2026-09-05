@@ -13,9 +13,9 @@ use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FileDeclarations;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -39,9 +39,10 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         $this->factory = new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory());
         $this->path = $this->fixturePath(self::FIXTURE);
 
-        $ast = (new ParserService())->parseFile($this->path);
-        self::assertNotNull($ast, 'the fixture must parse so declarations can be scanned');
-        $this->declarations = (new DeclarationScanner())->scan($ast);
+        $production = ProductionSyntaxSource::create();
+        $document = $production->reader->read($this->path);
+        self::assertNotNull($document, 'the fixture must be readable so declarations can be scanned');
+        $this->declarations = (new DeclarationScanner())->scan($production->source->parse($document));
     }
 
     public function testBuildsClassInfoForAClassLikeDeclaration(): void
@@ -150,7 +151,8 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     public function testAllInKeepsTheFirstOfDuplicateDeclarations(): void
     {
         $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
-        $ast = (new ParserService())->parse(new TextDocument('file:///dupes.php', 'php', 1, $content));
+        $document = new TextDocument('file:///dupes.php', 'php', 1, $content);
+        $ast = ProductionSyntaxSource::create()->source->parse($document);
 
         $names = [];
         foreach ($this->factory->allIn((new DeclarationScanner())->scan($ast), '/dupes.php') as $symbol) {

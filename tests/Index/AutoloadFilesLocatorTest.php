@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -557,7 +557,8 @@ final class AutoloadFilesLocatorTest extends TestCase
 
     private static function locatorForMap(ComposerAutoloadMap $map): AutoloadFilesLocator
     {
-        return new AutoloadFilesLocator($map, new ParserService(), new DeclarationScanner());
+        $production = ProductionSyntaxSource::create();
+        return new AutoloadFilesLocator($map, $production->source, $production->reader, new DeclarationScanner());
     }
 
     /**

@@ -16,7 +16,10 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\ParseMetrics;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -29,12 +32,17 @@ use PHPUnit\Framework\TestCase;
 final class KnowledgeStackTest extends TestCase
 {
     private string $fixturesRoot;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
+    private SourceFileReader $reader;
+    private ParseMetrics $metrics;
 
     protected function setUp(): void
     {
         $this->fixturesRoot = dirname(__DIR__, 2) . '/tests/Fixtures';
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
+        $this->reader = $production->reader;
+        $this->metrics = $production->metrics;
     }
 
     public function testSourceResolvesAWorkspaceClassThroughTheBackends(): void
@@ -43,6 +51,7 @@ final class KnowledgeStackTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
         );
 
         self::assertNotNull(
@@ -75,6 +84,7 @@ final class KnowledgeStackTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
         );
 
         $info = $stack->source->lookupClassLike(self::className($fqn));
@@ -96,6 +106,7 @@ final class KnowledgeStackTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
         );
 
         self::assertNotNull(
@@ -127,6 +138,7 @@ final class KnowledgeStackTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
         );
 
         $children = $stack->source->childrenOf(new NamespaceName('Fixtures'))->childNamespaces;
@@ -154,15 +166,16 @@ final class KnowledgeStackTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
         );
-        $afterConstruction = $this->parser->getMetrics()->getParseCount();
+        $afterConstruction = $this->metrics->getParseCount();
 
         $stack->source->childrenOf(new NamespaceName('Fixtures\Helpers'));
         $stack->source->childrenOf(new NamespaceName('Fixtures'));
 
         self::assertSame(
             $afterConstruction,
-            $this->parser->getMetrics()->getParseCount(),
+            $this->metrics->getParseCount(),
             'enumeration reads the index built at construction rather than re-scanning the set',
         );
     }
@@ -179,11 +192,12 @@ final class KnowledgeStackTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
         );
 
         self::assertSame(
             2,
-            $this->parser->getMetrics()->getParseCount(),
+            $this->metrics->getParseCount(),
             'construction parses each autoload.files entry exactly once',
         );
     }
@@ -194,6 +208,7 @@ final class KnowledgeStackTest extends TestCase
             new ComposerAutoloadMap(),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
         );
 
         $stack->sink->openDocument(new TextDocument(
@@ -224,6 +239,7 @@ final class KnowledgeStackTest extends TestCase
             new ComposerAutoloadMap(),
             $this->fixturesRoot . '/vendor',
             $this->parser,
+            $this->reader,
             $index,
         );
 

@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -49,7 +49,11 @@ final class PrefixSearchParityTest extends TestCase
     {
         $this->projectRoot = dirname(__DIR__, 2);
         $this->index = new SymbolIndex();
-        $indexer = new DocumentIndexer(new ParserService(), new SymbolExtractor(), $this->index);
+        $indexer = new DocumentIndexer(
+            ProductionSyntaxSource::create()->source,
+            new SymbolExtractor(),
+            $this->index,
+        );
 
         foreach (self::INDEXED_DOCUMENTS as $relative) {
             $path = $this->projectRoot . '/tests/Fixtures/' . $relative;

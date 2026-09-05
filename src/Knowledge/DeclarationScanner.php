@@ -115,7 +115,7 @@ final class DeclarationScanner
             }
 
             /**
-             * ParserService always runs NameResolver, so `namespacedName` is set.
+             * TreeAnnotator always runs NameResolver, so `namespacedName` is set.
              * Falling back to the declared name keeps this total for an AST parsed
              * without it, where the two differ only under a namespace.
              */

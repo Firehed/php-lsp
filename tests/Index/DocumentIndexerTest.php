@@ -8,9 +8,9 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -29,7 +29,7 @@ final class DocumentIndexerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->parser = new ParserService();
+        $this->parser = ProductionSyntaxSource::create()->source;
         $this->index = new SymbolIndex();
         $this->indexer = new DocumentIndexer($this->parser, new SymbolExtractor(), $this->index);
     }

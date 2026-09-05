@@ -16,7 +16,8 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 
 /**
@@ -48,7 +49,8 @@ final readonly class KnowledgeStack
     public static function forProject(
         ComposerAutoloadMap $autoloadMap,
         string $vendorDirectory,
-        ParserService $parser,
+        SyntaxSource $parser,
+        SourceFileReader $reader,
         ?SymbolIndex $index = null,
         ?TextSymbolExtractor $textExtractor = null,
     ): self {
@@ -65,12 +67,14 @@ final readonly class KnowledgeStack
         [$workspace, $workspaceInvalidatables] = self::filesystemBackend(
             $workspaceMap,
             $parser,
+            $reader,
             $declarationInfoFactory,
             $scanner,
         );
         [$vendor, $vendorInvalidatables] = self::filesystemBackend(
             $vendorMap,
             $parser,
+            $reader,
             $declarationInfoFactory,
             $scanner,
         );
@@ -113,7 +117,8 @@ final readonly class KnowledgeStack
      */
     private static function filesystemBackend(
         ComposerAutoloadMap $map,
-        ParserService $parser,
+        SyntaxSource $parser,
+        SourceFileReader $reader,
         DeclarationSymbolInfoFactory $infoFactory,
         DeclarationScanner $scanner,
     ): array {
@@ -121,7 +126,7 @@ final readonly class KnowledgeStack
         // enumeration (composed into the catalog), and prefix search. All three
         // must be the same instance so coverage is identical (§4.2) and
         // invalidation propagates to search results.
-        $autoloadFiles = new AutoloadFilesLocator($map, $parser, $scanner);
+        $autoloadFiles = new AutoloadFilesLocator($map, $parser, $reader, $scanner);
         $cachedCatalog = new CachedNamespaceCatalog(
             new CompositeNamespaceCatalog([
                 new ComposerNamespaceSource($map),
@@ -137,6 +142,7 @@ final readonly class KnowledgeStack
             ]),
             $cachedCatalog,
             $parser,
+            $reader,
             $infoFactory,
             $scanner,
             new SymbolCache(CacheFactory::inMemory()),

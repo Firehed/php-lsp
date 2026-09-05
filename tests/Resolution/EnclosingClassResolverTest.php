@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\NodeFinder;
@@ -18,11 +19,11 @@ use PHPUnit\Framework\TestCase;
 final class EnclosingClassResolverTest extends TestCase
 {
     private EnclosingClassResolver $resolver;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
 
     protected function setUp(): void
     {
-        $this->parser = new ParserService();
+        $this->parser = ProductionSyntaxSource::create()->source;
         $this->resolver = new EnclosingClassResolver(new TextFallbackHelper());
     }
 

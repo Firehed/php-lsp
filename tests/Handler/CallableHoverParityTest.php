@@ -11,11 +11,12 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +28,7 @@ class CallableHoverParityTest extends TestCase
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
     private SymbolResolver $symbolResolver;
     private HoverHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
@@ -35,12 +36,14 @@ class CallableHoverParityTest extends TestCase
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
 
         $knowledge = KnowledgeStack::forProject(
             new ComposerAutoloadMap(),
             __DIR__ . '/../Fixtures/vendor',
             $this->parser,
+            $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
         $this->symbolResolver = new SymbolResolver(
