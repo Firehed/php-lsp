@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
@@ -36,7 +36,7 @@ final class DocumentSymbolSink implements SymbolSink
         private readonly DocumentIndexer $indexer,
         private readonly SymbolIndex $index,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
-        private readonly ParserService $parser,
+        private readonly SyntaxSource $parser,
         private readonly DeclarationScanner $scanner,
         private readonly TextSymbolExtractor $textExtractor,
         private readonly array $onDiskBackends = [],
