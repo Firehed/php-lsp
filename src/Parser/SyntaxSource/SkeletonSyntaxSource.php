@@ -209,6 +209,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
             ...$this->buildProperties($c['body'], $c['start']),
             ...$this->buildConstants($c['body'], $c['start']),
         ];
+        self::extendMemberSpans($members, $c['end']);
         $nameNode = new Identifier(
             $c['name'],
             self::positions($c['nameStart'], $c['nameStart'] + strlen($c['name'])),
@@ -406,6 +407,26 @@ final class SkeletonSyntaxSource implements SyntaxSource
             }
         }
         return new Stmt\GroupUse(new Name($prefix), $items, $type, self::positions($matchStart, $matchEnd));
+    }
+
+    /**
+     * The regexes pin each member to its declaration line; a method's body ends
+     * only at the next member (or the class body's end). Stretching the span
+     * to that boundary is what makes {@see \Firehed\PhpLsp\Utility\Scope::atOffset}
+     * find the enclosing method for a cursor sitting in the body — including a
+     * body php-parser could not close.
+     *
+     * @param list<Stmt> $members
+     */
+    private static function extendMemberSpans(array $members, int $classEnd): void
+    {
+        $sorted = $members;
+        usort($sorted, static fn (Stmt $a, Stmt $b): int => $a->getStartFilePos() - $b->getStartFilePos());
+        $lastIndex = count($sorted) - 1;
+        foreach ($sorted as $i => $member) {
+            $next = $i === $lastIndex ? $classEnd : $sorted[$i + 1]->getStartFilePos();
+            $member->setAttribute('endFilePos', max($member->getEndFilePos(), $next - 1));
+        }
     }
 
     private function isInsideBraces(string $content, int $offset): bool

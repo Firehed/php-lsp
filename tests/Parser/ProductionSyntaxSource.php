@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 
 /**
@@ -32,6 +33,7 @@ final readonly class ProductionSyntaxSource
         $this->source = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), $this->metrics),
+                new SkeletonSyntaxSource(new TreeAnnotator()),
             ]),
         );
         $this->reader = new SourceFileReader();

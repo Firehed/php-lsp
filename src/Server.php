@@ -28,6 +28,7 @@ use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScoped;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
@@ -80,6 +81,7 @@ final class Server
         SyntaxSource&MessageScoped $parser = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
+                new SkeletonSyntaxSource(new TreeAnnotator()),
             ]),
         ),
     ): self {
