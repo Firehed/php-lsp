@@ -68,34 +68,6 @@ class TextFallbackHelperTest extends TestCase
         self::assertSame('App\\Services', $result);
     }
 
-    public function testNameContextFromTextParsesGroupUseWithAndWithoutAlias(): void
-    {
-        $lines = [
-            '<?php',
-            'namespace App;',
-            'use Vendor\\Pkg\\{Plain, Nested\\Deep, Aliased as Alias};',
-            '',
-        ];
-        $context = TextFallbackHelper::nameContextFromText($lines, 3);
-
-        self::assertSame('App', $context->namespace);
-        self::assertSame('Vendor\\Pkg\\Plain', $context->classImports['Plain']);
-        self::assertSame('Vendor\\Pkg\\Nested\\Deep', $context->classImports['Deep']);
-        self::assertSame('Vendor\\Pkg\\Aliased', $context->classImports['Alias']);
-    }
-
-    public function testNameContextFromTextParsesSimpleUseWithAlias(): void
-    {
-        $lines = [
-            '<?php',
-            'use Vendor\\Pkg\\Something as Thing;',
-            '',
-        ];
-        $context = TextFallbackHelper::nameContextFromText($lines, 2);
-
-        self::assertSame('Vendor\\Pkg\\Something', $context->classImports['Thing']);
-    }
-
     public function testMatchParameterTypeAccumulatesMultilineSignature(): void
     {
         $content = $this->loadFixture('TopLevel/multiline_function.php');

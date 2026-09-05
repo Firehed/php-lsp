@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser;
 
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 
 /**
  * The test-facing wiring for the production SyntaxSource stack. Mirrors what
@@ -32,6 +37,7 @@ final readonly class ProductionSyntaxSource
         $this->source = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), $this->metrics),
+                new SkeletonSyntaxSource(),
             ]),
         );
         $this->reader = new SourceFileReader();
@@ -40,5 +46,18 @@ final readonly class ProductionSyntaxSource
     public static function create(): self
     {
         return new self();
+    }
+
+    /**
+     * The text-symbol extractor with production wiring — mirrors what
+     * {@see \Firehed\PhpLsp\Server::forProject} constructs.
+     */
+    public static function defaultTextSymbolExtractor(): DefaultTextSymbolExtractor
+    {
+        return new DefaultTextSymbolExtractor(
+            new SkeletonSyntaxSource(),
+            new DeclarationScanner(),
+            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
+        );
     }
 }

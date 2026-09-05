@@ -93,11 +93,13 @@ final class WritePathParityTest extends TestCase
         );
     }
 
-    public function testUnparseableDocumentIndexesNoSymbols(): void
+    public function testUnparseableDocumentIsRecoveredViaTheSkeleton(): void
     {
-        // The write path must survive a document that does not parse: it indexes
-        // nothing rather than crashing, so a mid-edit broken file leaves the index
-        // consistent (RFC 1 §9).
+        // The write path must survive a document that php-parser cannot make sense
+        // of, and the skeleton in the composite (step-37) now recovers the
+        // structural shape so completion still finds the class and its members
+        // (RFC 1 §5.3, §9). What is indexed is the shape the skeleton recognises;
+        // whether the file would actually run is a runtime question.
         $uri = 'file:///virtual/Broken.php';
         $broken = file_get_contents($this->projectRoot . '/tests/Fixtures/src/IncompleteCode/VeryBroken.php');
         self::assertNotFalse($broken, 'the broken fixture should be readable');
@@ -105,9 +107,13 @@ final class WritePathParityTest extends TestCase
         $this->indexer->index(new TextDocument($uri, 'php', 1, $broken));
 
         self::assertSame(
-            [],
+            [
+                'Fixtures\IncompleteCode\VeryBroken',
+                'Fixtures\IncompleteCode\VeryBroken::getName',
+                'Fixtures\IncompleteCode\VeryBroken::test',
+            ],
             $this->fqnsFor($uri),
-            'a document that does not parse must contribute no symbols',
+            'the skeleton must recover the class and its method names on a document php-parser drops',
         );
     }
 

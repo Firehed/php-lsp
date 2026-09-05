@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -13,6 +15,13 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NameContextFactory::class)]
 final class NameContextFactoryTest extends TestCase
 {
+    private SkeletonSyntaxSource $skeleton;
+
+    protected function setUp(): void
+    {
+        $this->skeleton = new SkeletonSyntaxSource();
+    }
+
     /**
      * @param array<string, string> $expectedClassImports
      */
@@ -24,8 +33,8 @@ final class NameContextFactoryTest extends TestCase
         array $expectedClassImports,
         string $message,
     ): void {
-        $lines = explode("\n", $source);
-        $context = NameContextFactory::fromText($lines, $line);
+        $document = new TextDocument('file:///t.php', 'php', 1, $source);
+        $context = NameContextFactory::fromText($document, $line, $this->skeleton);
 
         self::assertSame($expectedNamespace, $context->namespace, $message . ' (namespace)');
         self::assertSame($expectedClassImports, $context->classImports, $message . ' (class imports)');
@@ -160,12 +169,12 @@ final class NameContextFactoryTest extends TestCase
         $ast = $parser->parse($source);
         self::assertNotNull($ast);
 
-        $lines = explode("\n", $source);
+        $document = new TextDocument('file:///t.php', 'php', 1, $source);
         $line = 5;
 
-        $fromAstOrText = NameContextFactory::fromAstOrText($ast, $line, $lines);
+        $fromAstOrText = NameContextFactory::fromAstOrText($ast, $line, $document, $this->skeleton);
         $fromAst = NameContextFactory::fromAst($ast, $line);
-        $fromText = NameContextFactory::fromText($lines, $line);
+        $fromText = NameContextFactory::fromText($document, $line, $this->skeleton);
 
         self::assertSame(
             $fromAst->classImports,
@@ -176,6 +185,27 @@ final class NameContextFactoryTest extends TestCase
             $fromText->classImports,
             $fromAst->classImports,
             'Text and AST paths must disagree for this test to be meaningful',
+        );
+    }
+
+    public function testFromAstOrTextFallsBackToTheSkeletonWhenTheAstHasNoNamespaceOrUse(): void
+    {
+        // An AST whose php-parser recovery kept only a bare expression statement
+        // has no namespace or use node, so fromAstOrText falls through to the
+        // skeleton, which re-parses the document from text.
+        $source = "<?php\nnamespace App;\nuse Vendor\\Widget;\necho 1;\n";
+        $document = new TextDocument('file:///t.php', 'php', 1, $source);
+        $bareAst = [new \PhpParser\Node\Stmt\Expression(
+            new \PhpParser\Node\Scalar\Int_(1),
+        )];
+
+        $context = NameContextFactory::fromAstOrText($bareAst, 3, $document, $this->skeleton);
+
+        self::assertSame('App', $context->namespace, 'the skeleton recovers the namespace from text');
+        self::assertSame(
+            ['Widget' => 'Vendor\\Widget'],
+            $context->classImports,
+            'the skeleton recovers the import from text',
         );
     }
 }

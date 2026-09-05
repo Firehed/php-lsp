@@ -118,6 +118,7 @@ parameters:
             allowIn:
                 - src/Completion/CompletionClassifier.php
                 - src/Domain/DocblockParser.php
+                - src/Parser/SyntaxSource/SkeletonSyntaxSource.php
                 - src/Resolution/TextFallbackHelper.php
                 - tests/*
         -

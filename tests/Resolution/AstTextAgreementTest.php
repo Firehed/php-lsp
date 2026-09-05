@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
@@ -26,6 +29,7 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -113,8 +117,9 @@ final class AstTextAgreementTest extends TestCase
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
 
+        $skeleton = new SkeletonSyntaxSource();
         $fromAst = NameContextFactory::fromAst($ast, $line);
-        $fromText = NameContextFactory::fromText(explode("\n", $content), $line);
+        $fromText = NameContextFactory::fromText($document, $line, $skeleton);
 
         self::assertSame(
             $fromAst->namespace,
@@ -351,5 +356,198 @@ final class AstTextAgreementTest extends TestCase
             'group import with alias' => ['src/IncompleteCode/GroupImports.php', 38],
             'no imports' => ['src/Enum/Status.php', 10],
         ];
+    }
+
+    /**
+     * Producer agreement (step-37): the skeleton and the parsed tree describe
+     * the same file the same way, so a downstream reader that switches trees
+     * cannot see a name context or a class shape that disagrees with the
+     * parser. The corpus is every fixture the enclosing-class and name-context
+     * sections use, plus every Domain fixture; each is parseable, so both
+     * producers succeed on it.
+     */
+    #[DataProvider('producerAgreementFixtures')]
+    public function testProducerAgreement(string $fixture): void
+    {
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $parsed = $this->parser->parse($document);
+        $skeleton = (new SkeletonSyntaxSource())->parse($document);
+
+        $parsedShape = self::describe($parsed);
+        $skeletonShape = self::describe($skeleton);
+
+        self::assertSame(
+            $parsedShape,
+            $skeletonShape,
+            "the skeleton tree and the parsed tree must describe {$fixture} the same way",
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function producerAgreementFixtures(): array
+    {
+        $named = [
+            'User (enclosing class)' => ['src/Domain/User.php'],
+            'Entity (interface)' => ['src/Domain/Entity.php'],
+            'HasTimestamps (trait)' => ['src/Traits/HasTimestamps.php'],
+            'Status (enum)' => ['src/Enum/Status.php'],
+            'AliasedImports (name context)' => ['src/IncompleteCode/AliasedImports.php'],
+            'GroupImports (name context)' => ['src/IncompleteCode/GroupImports.php'],
+        ];
+
+        $domainDir = __DIR__ . '/../Fixtures/src/Domain';
+        $entries = scandir($domainDir);
+        foreach (($entries === false ? [] : $entries) as $entry) {
+            if (!str_ends_with($entry, '.php')) {
+                continue;
+            }
+            $key = 'Domain/' . $entry;
+            $named[$key] = ['src/Domain/' . $entry];
+        }
+
+        return $named;
+    }
+
+    /**
+     * The shape both producers must agree on: namespace, imports, class-like
+     * names and kinds, and every member declaration's name, visibility, and
+     * static-ness or readonly-ness — read through the same
+     * {@see DeclarationScanner} and {@see DefaultClassInfoFactory} both sides
+     * feed into. Line numbers and byte spans are producer-specific and
+     * deliberately not compared.
+     *
+     * @param array<Stmt> $tree
+     * @return array<string, mixed>
+     */
+    private static function describe(array $tree): array
+    {
+        $namespaces = [];
+        foreach ($tree as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                $namespaces[] = [
+                    'name' => $stmt->name?->toString() ?? '',
+                    'imports' => self::importsOf($stmt->stmts),
+                    'classLikes' => self::classLikesOf($stmt->stmts),
+                ];
+            }
+        }
+
+        $topImports = self::importsOf($tree);
+        $topClassLikes = self::classLikesOf($tree);
+
+        return [
+            'namespaces' => $namespaces,
+            'topLevelImports' => $topImports,
+            'topLevelClassLikes' => $topClassLikes,
+        ];
+    }
+
+    /**
+     * @param array<Stmt> $stmts
+     * @return list<array{type: string, name: string}>
+     */
+    private static function importsOf(array $stmts): array
+    {
+        $out = [];
+        foreach ($stmts as $stmt) {
+            if ($stmt instanceof Stmt\Use_) {
+                foreach ($stmt->uses as $use) {
+                    $out[] = ['type' => 'use', 'name' => $use->name->toString()];
+                }
+            } elseif ($stmt instanceof Stmt\GroupUse) {
+                $prefix = $stmt->prefix->toString();
+                foreach ($stmt->uses as $use) {
+                    $out[] = ['type' => 'group', 'name' => $prefix . '\\' . $use->name->toString()];
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * @param array<Stmt> $stmts
+     * @return list<array{
+     *   name: string,
+     *   kind: string,
+     *   methods: array<string, array<string, bool|string>>,
+     *   properties: array<string, array<string, bool|string>>,
+     *   constants: array<string, array<string, string>>,
+     * }>
+     */
+    private static function classLikesOf(array $stmts): array
+    {
+        $factory = new DefaultClassInfoFactory();
+        $out = [];
+        foreach ($stmts as $stmt) {
+            if (!$stmt instanceof Stmt\ClassLike || $stmt->name === null) {
+                continue;
+            }
+            $info = $factory->fromAstNode($stmt, 'file:///stub.php');
+            $out[] = [
+                'name' => $info->name->fqn,
+                'kind' => match ($info->kind) {
+                    ClassKind::Interface_ => 'interface',
+                    ClassKind::Trait_ => 'trait',
+                    ClassKind::Enum_ => 'enum',
+                    default => 'class',
+                },
+                'methods' => self::describeMethods($info->methods),
+                'properties' => self::describeProperties($info->properties),
+                'constants' => self::describeConstants($info->constants),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * @param array<string, \Firehed\PhpLsp\Domain\MethodInfo> $methods
+     * @return array<string, array<string, bool|string>>
+     */
+    private static function describeMethods(array $methods): array
+    {
+        $out = [];
+        foreach ($methods as $name => $method) {
+            $out[$name] = [
+                'visibility' => $method->visibility->name,
+                'isStatic' => $method->isStatic,
+            ];
+        }
+        ksort($out);
+        return $out;
+    }
+
+    /**
+     * @param array<string, \Firehed\PhpLsp\Domain\PropertyInfo> $properties
+     * @return array<string, array<string, bool|string>>
+     */
+    private static function describeProperties(array $properties): array
+    {
+        $out = [];
+        foreach ($properties as $name => $property) {
+            $out[$name] = [
+                'visibility' => $property->visibility->name,
+                'isStatic' => $property->isStatic,
+                'isReadonly' => $property->isReadonly,
+            ];
+        }
+        ksort($out);
+        return $out;
+    }
+
+    /**
+     * @param array<string, \Firehed\PhpLsp\Domain\ConstantInfo> $constants
+     * @return array<string, array<string, string>>
+     */
+    private static function describeConstants(array $constants): array
+    {
+        $out = [];
+        foreach ($constants as $name => $constant) {
+            $out[$name] = ['visibility' => $constant->visibility->name];
+        }
+        ksort($out);
+        return $out;
     }
 }

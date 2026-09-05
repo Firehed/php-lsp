@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolver;
-use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
@@ -102,8 +101,6 @@ final class ParseHealthGridTest extends TestCase
      */
     private const array EMPTY_STATE_SKIPS = [
         'resolveAtPosition' => 'step-40',
-        'getVariablesInScope' => 'step-37',
-        'getNameContext' => 'step-37',
     ];
 
     private DocumentManager $documents;
@@ -123,7 +120,7 @@ final class ParseHealthGridTest extends TestCase
             $fixturesRoot . '/vendor',
             $this->parser,
             $production->reader,
-            textExtractor: new DefaultTextSymbolExtractor(),
+            textExtractor: ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
         $this->resolver = new SymbolResolver(
             parser: $this->parser,

@@ -292,8 +292,7 @@ final class MemberAccessDetector
             );
         }
 
-        $lines = explode("\n", $document->getContent());
-        $context = NameContextFactory::fromAstOrText($ast, $line, $lines);
+        $context = NameContextFactory::fromAstOrText($ast, $line, $document, $this->parser);
         $fqn = $context->candidates($className, NameKind::ClassLike)[0];
 
         $target = TypeFactory::className($fqn);
@@ -355,7 +354,7 @@ final class MemberAccessDetector
             return null;
         }
 
-        $context = NameContextFactory::fromAstOrText($ast, $line, $lines);
+        $context = NameContextFactory::fromAstOrText($ast, $line, $document, $this->parser);
         $classTypes = [];
         foreach (explode('|', $rawType) as $part) {
             $part = ltrim($part, '?');

@@ -23,6 +23,8 @@ use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SourceFileReader;
@@ -30,12 +32,14 @@ use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScoped;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Protocol\ServerInfo;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -80,6 +84,7 @@ final class Server
         SyntaxSource&MessageScoped $parser = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
+                new SkeletonSyntaxSource(),
             ]),
         ),
     ): self {
@@ -106,7 +111,11 @@ final class Server
             rtrim($projectRoot, '/') . '/vendor',
             $parser,
             $reader,
-            textExtractor: new DefaultTextSymbolExtractor(),
+            textExtractor: new DefaultTextSymbolExtractor(
+                new SkeletonSyntaxSource(),
+                new DeclarationScanner(),
+                new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
+            ),
         );
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;

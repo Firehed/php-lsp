@@ -22,7 +22,6 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -64,7 +63,7 @@ class PresenterParityTest extends TestCase
             $parser,
             $production->reader,
             new SymbolIndex(),
-            new DefaultTextSymbolExtractor(),
+            ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
 
         $memberResolver = new MemberResolver($knowledge->source);

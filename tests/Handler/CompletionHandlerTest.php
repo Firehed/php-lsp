@@ -38,7 +38,6 @@ use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -88,7 +87,7 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
             $production->reader,
             $this->symbolIndex,
-            new DefaultTextSymbolExtractor(),
+            ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
         $this->symbolSource = $knowledge->source;
 
@@ -3634,15 +3633,24 @@ class CompletionHandlerTest extends TestCase
 
     public function testCompletionThisInVeryBrokenFile(): void
     {
-        // File with NO closing braces - parser fails completely
-        // This tests the pure text-based fallback for both class detection AND member extraction
+        // File with NO closing braces — php-parser alone yields nothing, so member
+        // completion depends on the skeleton in the composite (step-37) producing
+        // the class shape.
         $cursor = $this->openFixtureAtCursor('src/IncompleteCode/VeryBroken.php', 'this_in_if');
         $document = $this->documents->get($cursor['uri']);
         assert($document !== null);
 
-        // Verify parser fails
-        $ast = $this->parser->parse($document);
-        self::assertEmpty($ast, 'Parser should fail completely for very broken file');
+        // The precondition: php-parser alone yields nothing on this fixture —
+        // the same precondition the parse-health grid pins for its empty column.
+        $phpParserOnly = new \Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource(
+            new \Firehed\PhpLsp\Parser\TreeAnnotator(),
+            new ParseMetrics(),
+        );
+        self::assertSame(
+            [],
+            $phpParserOnly->parse($document),
+            'php-parser alone must yield nothing for a fixture with no closing braces',
+        );
 
         $result = $this->handler->handle($this->completionRequestAt($cursor));
 

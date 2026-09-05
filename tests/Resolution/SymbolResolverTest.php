@@ -25,7 +25,6 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
-use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
@@ -71,7 +70,7 @@ final class SymbolResolverTest extends TestCase
             $fixturesRoot . '/vendor',
             $this->parser,
             $production->reader,
-            textExtractor: new DefaultTextSymbolExtractor(),
+            textExtractor: ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
         $memberResolver = new MemberResolver($knowledge->source);
 
