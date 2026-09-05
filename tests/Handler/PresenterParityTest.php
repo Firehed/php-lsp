@@ -20,12 +20,12 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -54,13 +54,15 @@ class PresenterParityTest extends TestCase
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $parser = $production->source;
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $parser,
+            $production->reader,
             new SymbolIndex(),
             new DefaultTextSymbolExtractor(),
         );

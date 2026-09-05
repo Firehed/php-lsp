@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -77,10 +77,12 @@ final class ClassLikeLookupParityTest extends TestCase
     {
         $this->projectRoot = dirname(__DIR__, 2);
         $fixturesRoot = $this->projectRoot . '/tests/Fixtures';
+        $production = ProductionSyntaxSource::create();
         $this->knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
-            new ParserService(),
+            $production->source,
+            $production->reader,
         );
     }
 

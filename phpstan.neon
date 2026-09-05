@@ -19,17 +19,17 @@ parameters:
     disallowedNamespaces:
         -
             namespace: 'PhpParser\NodeTraverser'
-            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
-                - src/Parser/ParserService.php
+                - src/Parser/TreeAnnotator.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
         -
             namespace: 'PhpParser\NodeFinder'
-            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
-                - src/Parser/ParserService.php
+                - src/Parser/TreeAnnotator.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
@@ -51,15 +51,15 @@ parameters:
                 - 'PhpParser\Parser'
                 - 'PhpParser\Parser\*'
                 - 'PhpParser\Lexer*'
-            message: 'an AST is produced in one place: ParserService'
+            message: 'an AST is produced in one place: PhpParserSyntaxSource'
             allowIn:
-                - src/Parser/ParserService.php
+                - src/Parser/SyntaxSource/PhpParserSyntaxSource.php
                 - tests/*
         -
             namespace: 'PhpParser\NodeVisitor*'
-            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
-                - src/Parser/ParserService.php
+                - src/Parser/TreeAnnotator.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
@@ -257,9 +257,9 @@ parameters:
                 - 'disk_total_space()'
                 - 'parse_ini_file()'
                 - 'move_uploaded_file()'
-            message: 'filesystem access is confined: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
+            message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
             allowIn:
-                - src/Parser/ParserService.php
+                - src/Parser/SourceFileReader.php
                 - src/Index/ComposerAutoloadMap.php
                 - src/Index/ComposerNamespaceSource.php
                 - src/Transport/*
@@ -297,7 +297,7 @@ parameters:
                 - 'SplFileInfo'
                 - 'SplFileObject'
                 - 'SplTempFileObject'
-            message: 'filesystem access is confined, and its readers (ParserService, ComposerAutoloadMap, ComposerNamespaceSource, transport) reach the disk through functions rather than through a file object'
+            message: 'filesystem access is confined, and its readers (SourceFileReader, ComposerAutoloadMap, ComposerNamespaceSource, transport) reach the disk through functions rather than through a file object'
             allowIn:
                 - tests/*
 

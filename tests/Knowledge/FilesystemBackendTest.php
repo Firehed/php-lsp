@@ -23,8 +23,10 @@ use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -39,13 +41,16 @@ final class FilesystemBackendTest extends TestCase
     use LooksUpBackendSymbolsTrait;
 
     private string $fixturesRoot;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
+    private SourceFileReader $reader;
     private DeclarationSymbolInfoFactory $infoFactory;
 
     protected function setUp(): void
     {
         $this->fixturesRoot = dirname(__DIR__, 2) . '/tests/Fixtures';
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
+        $this->reader = $production->reader;
         $this->infoFactory = new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory());
     }
 
@@ -396,6 +401,7 @@ final class FilesystemBackendTest extends TestCase
             self::createStub(SymbolLocator::class),
             $catalog,
             $this->parser,
+            $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
@@ -429,7 +435,7 @@ final class FilesystemBackendTest extends TestCase
     private function backend(): FilesystemBackend
     {
         $map = ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot);
-        $autoloadFiles = new AutoloadFilesLocator($map, $this->parser, new DeclarationScanner());
+        $autoloadFiles = new AutoloadFilesLocator($map, $this->parser, $this->reader, new DeclarationScanner());
 
         return new FilesystemBackend(
             new CompositeSymbolLocator([
@@ -438,6 +444,7 @@ final class FilesystemBackendTest extends TestCase
             ]),
             new ComposerNamespaceSource($map),
             $this->parser,
+            $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
@@ -451,6 +458,7 @@ final class FilesystemBackendTest extends TestCase
             $locator,
             self::createStub(NamespaceCatalog::class),
             $this->parser,
+            $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),

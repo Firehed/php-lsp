@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use Firehed\PhpLsp\Utility\NodeAtPosition;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
@@ -16,11 +17,11 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NodeAtPosition::class)]
 class NodeAtPositionTest extends TestCase
 {
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
 
     protected function setUp(): void
     {
-        $this->parser = new ParserService();
+        $this->parser = ProductionSyntaxSource::create()->source;
     }
 
     public function testFindClassName(): void

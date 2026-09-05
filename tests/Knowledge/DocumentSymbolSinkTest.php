@@ -13,10 +13,10 @@ use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -38,7 +38,7 @@ final class DocumentSymbolSinkTest extends TestCase
 
     protected function setUp(): void
     {
-        $parser = new ParserService();
+        $parser = ProductionSyntaxSource::create()->source;
         $this->index = new SymbolIndex();
         $this->backend = new OpenDocumentBackend($this->index);
         $classInfoFactory = new DefaultClassInfoFactory();
@@ -345,7 +345,7 @@ final class DocumentSymbolSinkTest extends TestCase
 
     private function sinkWithOnDiskBackends(Invalidatable ...$onDiskBackends): DocumentSymbolSink
     {
-        $parser = new ParserService();
+        $parser = ProductionSyntaxSource::create()->source;
         $classInfoFactory = new DefaultClassInfoFactory();
 
         return new DocumentSymbolSink(

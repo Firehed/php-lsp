@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Attribute;
@@ -45,7 +46,7 @@ final class AstTextAgreementTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
     private MemberResolver $memberResolver;
     private TextFallbackHelper $textFallback;
     private CallContextDetector $callDetector;
@@ -53,13 +54,15 @@ final class AstTextAgreementTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $this->parser,
+            $production->reader,
         );
         $this->memberResolver = new MemberResolver($knowledge->source);
         $this->textFallback = new TextFallbackHelper();

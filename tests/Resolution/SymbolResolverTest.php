@@ -21,7 +21,6 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
@@ -37,6 +36,7 @@ use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -61,7 +61,8 @@ final class SymbolResolverTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
         $this->documents = new DocumentManager();
 
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
@@ -69,6 +70,7 @@ final class SymbolResolverTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $this->parser,
+            $production->reader,
             textExtractor: new DefaultTextSymbolExtractor(),
         );
         $memberResolver = new MemberResolver($knowledge->source);

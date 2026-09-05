@@ -15,9 +15,9 @@ use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSink;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -33,11 +33,13 @@ final class SymbolCandidatesTest extends TestCase
     {
         $this->fixturesRoot = dirname(__DIR__) . '/Fixtures';
 
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $parser = $production->source;
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
             $this->fixturesRoot . '/vendor',
             $parser,
+            $production->reader,
             new SymbolIndex(),
         );
 

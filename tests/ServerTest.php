@@ -10,11 +10,12 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Server;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\MessageReader;
@@ -283,7 +284,7 @@ class ServerTest extends TestCase
 
         $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$spy], new ParserService());
+        $server = new Server($transport, $lifecycle, [$spy], ProductionSyntaxSource::create()->source);
 
         $server->run();
 
@@ -382,16 +383,21 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
-        $atStartup = $parser->getMetrics()->getParseCount();
+        $server = Server::forProject(
+            $transport,
+            new ServerInfo('test', '1.0'),
+            __DIR__ . '/Fixtures',
+            $production->source,
+        );
+        $atStartup = $production->metrics->getParseCount();
 
         $server->run();
 
         self::assertSame(
             3,
-            $parser->getMetrics()->getParseCount() - $atStartup,
+            $production->metrics->getParseCount() - $atStartup,
             'three sync messages, one parse each',
         );
     }
@@ -430,16 +436,21 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), __DIR__ . '/Fixtures', $parser);
-        $atStartup = $parser->getMetrics()->getParseCount();
+        $server = Server::forProject(
+            $transport,
+            new ServerInfo('test', '1.0'),
+            __DIR__ . '/Fixtures',
+            $production->source,
+        );
+        $atStartup = $production->metrics->getParseCount();
 
         $server->run();
 
         self::assertSame(
             3,
-            $parser->getMetrics()->getParseCount() - $atStartup,
+            $production->metrics->getParseCount() - $atStartup,
             'one didOpen and two completion requests, one parse each',
         );
     }
@@ -455,12 +466,13 @@ class ServerTest extends TestCase
      */
     public function testParseMemoIsDiscardedWhenTheHandlerThrows(): void
     {
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $parser = $production->source;
         $document = new TextDocument('file:///probe.php', 'php', 1, '<?php class ScopedProbe {}');
 
         $handler = new class ($parser, $document) implements HandlerInterface {
             public function __construct(
-                private ParserService $parser,
+                private SyntaxSource $parser,
                 private TextDocument $document,
             ) {
             }
@@ -495,7 +507,7 @@ class ServerTest extends TestCase
 
         self::assertSame(
             2,
-            $parser->getMetrics()->getParseCount(),
+            $production->metrics->getParseCount(),
             'the memo is discarded on the throwing message, so the second call parses again',
         );
     }
@@ -553,7 +565,7 @@ class ServerTest extends TestCase
 
         $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$throwing], new ParserService());
+        $server = new Server($transport, $lifecycle, [$throwing], ProductionSyntaxSource::create()->source);
 
         $exitCode = $server->run();
 
@@ -616,7 +628,7 @@ class ServerTest extends TestCase
         // it and the session can still be driven to a clean exit.
         $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$throwing], new ParserService());
+        $server = new Server($transport, $lifecycle, [$throwing], ProductionSyntaxSource::create()->source);
 
         $exitCode = $server->run();
 
@@ -669,7 +681,7 @@ class ServerTest extends TestCase
 
         $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$unencodable], new ParserService());
+        $server = new Server($transport, $lifecycle, [$unencodable], ProductionSyntaxSource::create()->source);
 
         $exitCode = $server->run();
 

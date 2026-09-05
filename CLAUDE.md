@@ -44,7 +44,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Symbol indexing and workspace scanning
 - `src/Document/` — Open document management
-- `src/Parser/` — `ParserService` (the only place an AST is produced; memoizes by content for the duration of one handled LSP message, discarded by `Server`'s message loop) and `ParseMetrics` (parse count/time, which every parse is metered through)
+- `src/Parser/` — the `SyntaxSource` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScoped` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `src/Capability/` — Protocol capability negotiation (see Capability Negotiation below)
@@ -371,7 +371,7 @@ Handlers DO:
 
 `CompletionHandler` is a coordinator: it classifies the position and delegates to
 completion *sources* (`src/Completion/*Candidates`), then merges and deduplicates.
-It no longer parses documents or touches `ParserService`/`SymbolIndex` directly —
+It no longer parses documents or touches `SyntaxSource`/`SymbolIndex` directly —
 sources own their lookups, and anything parser-derived (imports, file functions,
 members, variables, types) flows through `CodeResolver`. See Completion System.
 
@@ -399,9 +399,10 @@ it caches — the code has exactly one interface for it, and one shape around it
 
 - Every implementation implements the interface, including the composite and any
   decorator. The composite, always named `Composite<Interface>`, holds an ordered
-  `iterable` of the interface and answers by asking its members in order: a lookup returns the
-  first non-null answer, an enumeration merges every answer with the earlier member
-  winning a name clash, and it holds no other logic. A decorator such as a cache
+  `list` of the interface (not an `iterable`: a generator is read once, and the
+  composite walks its members on every call) and answers by asking its members in
+  order: a lookup returns the first non-null answer, an enumeration merges every answer
+  with the earlier member winning a name clash, and it holds no other logic. A decorator such as a cache
   implements the interface and wraps one.
 - Syntax has one node model, php-parser's. `SyntaxSource` returns php-parser nodes, and
   an implementation built on another parser converts its tree into that model.

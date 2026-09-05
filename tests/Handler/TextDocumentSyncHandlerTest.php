@@ -10,9 +10,11 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\ParseMetrics;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -22,18 +24,22 @@ class TextDocumentSyncHandlerTest extends TestCase
     use LoadsFixturesTrait;
 
     private DocumentManager $manager;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
+    private ParseMetrics $metrics;
     private SymbolSource $source;
     private TextDocumentSyncHandler $handler;
 
     protected function setUp(): void
     {
         $this->manager = new DocumentManager();
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
+        $this->metrics = $production->metrics;
         $knowledge = KnowledgeStack::forProject(
             new ComposerAutoloadMap(),
             dirname(__DIR__) . '/Fixtures/vendor',
             $this->parser,
+            $production->reader,
         );
         $this->source = $knowledge->source;
         $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink);
@@ -93,7 +99,7 @@ class TextDocumentSyncHandlerTest extends TestCase
 
         self::assertSame(
             1,
-            $this->parser->getMetrics()->getParseCount(),
+            $this->metrics->getParseCount(),
             'registering classes and indexing symbols share one parse',
         );
     }

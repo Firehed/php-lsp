@@ -20,11 +20,11 @@ use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -47,13 +47,15 @@ class CompositeReceiverParityTest extends TestCase
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $parser = $production->source;
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $parser,
+            $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
         $symbolResolver = new SymbolResolver(

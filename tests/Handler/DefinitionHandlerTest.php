@@ -9,12 +9,13 @@ use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -26,14 +27,15 @@ class DefinitionHandlerTest extends TestCase
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
     private DefinitionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
 
         // No autoload map: classes referenced but not opened resolve through the
         // built-in reflection backend, as they did under the prior stub locator.
@@ -41,6 +43,7 @@ class DefinitionHandlerTest extends TestCase
             new ComposerAutoloadMap(),
             __DIR__ . '/../Fixtures/vendor',
             $this->parser,
+            $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
         $symbolResolver = new SymbolResolver(

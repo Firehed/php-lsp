@@ -34,13 +34,15 @@ use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\ParseMetrics;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -63,7 +65,8 @@ class CompletionHandlerTest extends TestCase
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
+    private ParseMetrics $metrics;
     private SymbolIndex $symbolIndex;
     private SymbolSource $symbolSource;
     private SymbolResolver $symbolResolver;
@@ -73,7 +76,9 @@ class CompletionHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
+        $this->metrics = $production->metrics;
         $this->symbolIndex = new SymbolIndex();
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
@@ -81,6 +86,7 @@ class CompletionHandlerTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $this->parser,
+            $production->reader,
             $this->symbolIndex,
             new DefaultTextSymbolExtractor(),
         );
@@ -1326,12 +1332,12 @@ class CompletionHandlerTest extends TestCase
         $cursor = $this->openFixtureAtCursor($fixture, $marker);
         // didOpen is a message of its own; the server discards its parses before
         // the completion request is handled.
-        $this->parser->discardScopedParses();
-        $before = $this->parser->getMetrics()->getParseCount();
+        $this->parser->endMessage();
+        $before = $this->metrics->getParseCount();
 
         $this->handler->handle($this->completionRequestAt($cursor));
 
-        $parsesForRequest = $this->parser->getMetrics()->getParseCount() - $before;
+        $parsesForRequest = $this->metrics->getParseCount() - $before;
         self::assertSame(1, $parsesForRequest, 'the whole request costs one parse');
     }
 

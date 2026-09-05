@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolver;
@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use LogicException;
 use PhpParser\ErrorHandler\Collecting;
 use PhpParser\ParserFactory;
@@ -106,13 +107,14 @@ final class ParseHealthGridTest extends TestCase
     ];
 
     private DocumentManager $documents;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
     private CodeResolver $resolver;
     private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
-        $this->parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
         $this->documents = new DocumentManager();
 
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
@@ -120,6 +122,7 @@ final class ParseHealthGridTest extends TestCase
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
             $this->parser,
+            $production->reader,
             textExtractor: new DefaultTextSymbolExtractor(),
         );
         $this->resolver = new SymbolResolver(

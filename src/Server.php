@@ -24,7 +24,14 @@ use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\ParseMetrics;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\MessageScoped;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
@@ -54,7 +61,7 @@ final class Server
         private readonly TransportInterface $transport,
         private readonly LifecycleHandler $lifecycleHandler,
         array $handlers,
-        private readonly ParserService $parser,
+        private readonly MessageScoped $messageScope,
     ) {
         $this->handlers = [$lifecycleHandler, ...$handlers];
     }
@@ -70,8 +77,13 @@ final class Server
         TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
-        ParserService $parser = new ParserService(),
+        SyntaxSource&MessageScoped $parser = new MemoizingSyntaxSource(
+            new CompositeSyntaxSource([
+                new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
+            ]),
+        ),
     ): self {
+        $reader = new SourceFileReader();
         if ($projectRoot === null) {
             $cwd = getcwd();
             if ($cwd === false) {
@@ -93,6 +105,7 @@ final class Server
             ComposerAutoloadMap::fromProjectRoot($projectRoot),
             rtrim($projectRoot, '/') . '/vendor',
             $parser,
+            $reader,
             textExtractor: new DefaultTextSymbolExtractor(),
         );
         $symbolSource = $knowledge->source;
@@ -168,50 +181,49 @@ final class Server
 
             $result = null;
 
-            // Lifecycle gate (RFC 1 §4.8): a message not permitted in the current
-            // state is answered with the lifecycle error and never dispatched. A
-            // gated notification has no id, so its error is simply dropped.
-            $error = $this->lifecycleHandler->lifecycleErrorFor($message);
+            try {
+                // Lifecycle gate (RFC 1 §4.8): a message not permitted in the current
+                // state is answered with the lifecycle error and never dispatched. A
+                // gated notification has no id, so its error is simply dropped.
+                $error = $this->lifecycleHandler->lifecycleErrorFor($message);
 
-            if ($error === null) {
-                try {
-                    // Inside the try because `supports()` is part of the
-                    // handler contract: a failure selecting a handler is a
-                    // handler failure, and must be answered rather than
-                    // crashing the read loop (RFC 1 §9).
-                    $handler = $this->findHandler($message->method);
+                if ($error === null) {
+                    try {
+                        // Inside the try because `supports()` is part of the
+                        // handler contract: a failure selecting a handler is a
+                        // handler failure, and must be answered rather than
+                        // crashing the read loop (RFC 1 §9).
+                        $handler = $this->findHandler($message->method);
 
-                    if ($handler !== null) {
-                        $result = $handler->handle($message);
-                    } elseif ($message instanceof RequestMessage) {
-                        $error = ResponseError::methodNotFound($message->method);
+                        if ($handler !== null) {
+                            $result = $handler->handle($message);
+                        } elseif ($message instanceof RequestMessage) {
+                            $error = ResponseError::methodNotFound($message->method);
+                        }
+                    } catch (\Throwable $e) {
+                        // A failing handler must not take the read loop down with it
+                        // (RFC 1 §9): an editor session that dies on one bad request
+                        // loses all unsaved server state. Notifications have no id to
+                        // answer, so their failure is contained and dropped.
+                        //
+                        // Forwarding the raw message crosses no trust boundary: the
+                        // client is the editor that spawned this process over its own
+                        // stdio pipe, and it already has the server's whole filesystem
+                        // view. Paths it may carry are the user's own, bound for the
+                        // user's own LSP log, which is what makes an unreproducible
+                        // crash diagnosable. `message` stays generic; per [LSP] "Base
+                        // Protocol", ResponseError.data is where detail belongs.
+                        $error = ResponseError::internalError($e->getMessage());
                     }
-                } catch (\Throwable $e) {
-                    // A failing handler must not take the read loop down with it
-                    // (RFC 1 §9): an editor session that dies on one bad request
-                    // loses all unsaved server state. Notifications have no id to
-                    // answer, so their failure is contained and dropped.
-                    //
-                    // Forwarding the raw message crosses no trust boundary: the
-                    // client is the editor that spawned this process over its own
-                    // stdio pipe, and it already has the server's whole filesystem
-                    // view. Paths it may carry are the user's own, bound for the
-                    // user's own LSP log, which is what makes an unreproducible
-                    // crash diagnosable. `message` stays generic; per [LSP] "Base
-                    // Protocol", ResponseError.data is where detail belongs.
-                    $error = ResponseError::internalError($e->getMessage());
-                } finally {
-                    // The parse memo is scoped to one handled message — this loop
-                    // is the only boundary that knows where that ends. Discarding
-                    // it here is what keeps it from becoming the standing cache the
-                    // Step 0 spike declined (0002-execution-plan.md, Section 8.5).
-                    //
-                    // In a finally so the scope closes on every exit from the
-                    // dispatch, not just the ones that return normally: a handler
-                    // that throws is caught just above and the loop keeps serving,
-                    // so a memo outliving its message would become standing.
-                    $this->parser->discardScopedParses();
                 }
+            } finally {
+                // Per-message state (the parse memo, and any later MessageScoped
+                // decorator) closes here — this loop is the only boundary that knows
+                // where the message ends. Clearing it through MessageScoped keeps
+                // Server from naming the decorator, and keeps the memo from becoming
+                // the standing cache the Step 0 spike declined
+                // (0002-execution-plan.md, Section 8.5).
+                $this->messageScope->endMessage();
             }
 
             // Send response for requests (not notifications)

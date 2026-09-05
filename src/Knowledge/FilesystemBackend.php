@@ -13,7 +13,8 @@ use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchable;
 use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 
 /**
  * A {@see SymbolBackend} over PHP files on disk, resolved through Composer's
@@ -49,7 +50,8 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     public function __construct(
         private readonly SymbolLocator $locator,
         private readonly NamespaceCatalog $namespaces,
-        private readonly ParserService $parser,
+        private readonly SyntaxSource $parser,
+        private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
@@ -70,7 +72,8 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
                 return null;
             }
 
-            $info = $this->infoFactory->fromDeclarations($this->declarationsIn($filePath), $name, $kind, $filePath);
+            $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
+            $info = $this->infoFactory->fromDeclarations($declarations, $name, $kind, $filePath);
             if ($info !== null) {
                 $this->symbolsByPath[$filePath][] = [$name, $kind];
             }
@@ -98,18 +101,5 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     public function search(string $prefix, NameKind $kind): array
     {
         return $this->prefixSearch->searchByPrefix($prefix, $kind);
-    }
-    /**
-     * A declaration at any depth counts, not just a top-level one: the shape most
-     * `autoload.files` entries take is a polyfill declared inside an
-     * `if (!function_exists(...))`, and that is a name the file validly declares.
-     * This is the scan that derived the name -> file map the lookup arrived through,
-     * so the two cannot disagree about what the file declares.
-     */
-    private function declarationsIn(string $filePath): FileDeclarations
-    {
-        $ast = $this->parser->parseFile($filePath);
-
-        return $ast === null ? new FileDeclarations([], [], []) : $this->scanner->scan($ast);
     }
 }

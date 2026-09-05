@@ -9,8 +9,9 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\FileDeclarations;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
@@ -42,12 +43,12 @@ final class DeclarationScannerTest extends TestCase
     ];
 
     private DeclarationScanner $scanner;
-    private ParserService $parser;
+    private MemoizingSyntaxSource $parser;
 
     protected function setUp(): void
     {
         $this->scanner = new DeclarationScanner();
-        $this->parser = new ParserService();
+        $this->parser = ProductionSyntaxSource::create()->source;
     }
 
     public function testNamespacedFunctionsAreReportedByFullyQualifiedName(): void

@@ -8,8 +8,8 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -67,10 +67,12 @@ final class TypeGraphParityTest extends TestCase
     protected function setUp(): void
     {
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
+        $production = ProductionSyntaxSource::create();
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
-            new ParserService(),
+            $production->source,
+            $production->reader,
         );
         $this->resolver = new MemberResolver($knowledge->source);
     }

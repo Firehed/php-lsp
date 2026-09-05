@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -106,10 +106,12 @@ final class SymbolCoverageGridTest extends TestCase
     protected function setUp(): void
     {
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
+        $production = ProductionSyntaxSource::create();
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
             $fixturesRoot . '/vendor',
-            new ParserService(),
+            $production->source,
+            $production->reader,
         );
         $knowledge->sink->openDocument(
             new TextDocument('file:///virtual/Grid.php', 'php', 1, self::OPEN_DOCUMENT),

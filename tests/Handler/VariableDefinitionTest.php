@@ -9,13 +9,13 @@ use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParserService;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use Firehed\PhpLsp\Utility\Scope;
 use Firehed\PhpLsp\Utility\VariableBinding;
 use Firehed\PhpLsp\Utility\VariableBindings;
@@ -51,11 +51,13 @@ class VariableDefinitionTest extends TestCase
     protected function setUp(): void
     {
         $this->documents = new DocumentManager();
-        $parser = new ParserService();
+        $production = ProductionSyntaxSource::create();
+        $parser = $production->source;
         $knowledge = KnowledgeStack::forProject(
             new ComposerAutoloadMap(),
             __DIR__ . '/../Fixtures/vendor',
             $parser,
+            $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
         $symbolResolver = new SymbolResolver($parser, $knowledge->source, $memberResolver);
