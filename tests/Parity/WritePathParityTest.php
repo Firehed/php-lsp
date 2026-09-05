@@ -9,6 +9,9 @@ use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Index\SymbolExtractor;
 use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Parser\ParseMetrics;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -103,8 +106,20 @@ final class WritePathParityTest extends TestCase
         $uri = 'file:///virtual/Broken.php';
         $broken = file_get_contents($this->projectRoot . '/tests/Fixtures/src/IncompleteCode/VeryBroken.php');
         self::assertNotFalse($broken, 'the broken fixture should be readable');
+        $document = new TextDocument($uri, 'php', 1, $broken);
 
-        $this->indexer->index(new TextDocument($uri, 'php', 1, $broken));
+        // Precondition: php-parser alone yields nothing on this fixture, so any
+        // symbol reaching the index below can only have come from the skeleton
+        // arm of the composite. Without pinning this, the test proves only that
+        // the composite recovered the shape, not that the skeleton did.
+        $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics());
+        self::assertSame(
+            [],
+            $phpParserOnly->parse($document),
+            'php-parser alone must yield nothing on this fixture, or the test proves nothing about the skeleton',
+        );
+
+        $this->indexer->index($document);
 
         self::assertSame(
             [

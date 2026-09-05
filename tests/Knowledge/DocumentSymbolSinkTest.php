@@ -13,6 +13,9 @@ use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
+use Firehed\PhpLsp\Parser\ParseMetrics;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -241,7 +244,20 @@ final class DocumentSymbolSinkTest extends TestCase
         // find its members.
         $uri = 'file:///Broken.php';
         $content = $this->loadFixture('src/IncompleteCode/VeryBroken.php');
-        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
+        $document = new TextDocument($uri, 'php', 1, $content);
+
+        // The precondition that separates the composite's two arms: php-parser
+        // alone yields nothing on this fixture, so a class registered after the
+        // write can only have come from the skeleton — the same precondition
+        // `CompletionHandlerTest::testCompletionThisInVeryBrokenFile` pins.
+        $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics());
+        self::assertSame(
+            [],
+            $phpParserOnly->parse($document),
+            'php-parser alone must yield nothing on this fixture, or the test proves nothing about the skeleton',
+        );
+
+        $this->sink->openDocument($document);
 
         $classInfo = self::classLikeIn($this->backend, 'Fixtures\\IncompleteCode\\VeryBroken');
         self::assertNotNull(
