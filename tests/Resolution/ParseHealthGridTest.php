@@ -102,8 +102,6 @@ final class ParseHealthGridTest extends TestCase
      */
     private const array EMPTY_STATE_SKIPS = [
         'resolveAtPosition' => 'step-40',
-        'getVariablesInScope' => 'step-37',
-        'getNameContext' => 'step-37',
     ];
 
     private DocumentManager $documents;
