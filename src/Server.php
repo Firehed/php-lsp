@@ -30,6 +30,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScoped;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -76,13 +77,12 @@ final class Server
         TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
-        ?MemoizingSyntaxSource $parser = null,
-    ): self {
-        $parser ??= new MemoizingSyntaxSource(
+        SyntaxSource&MessageScoped $parser = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
             ]),
-        );
+        ),
+    ): self {
         $reader = new SourceFileReader();
         if ($projectRoot === null) {
             $cwd = getcwd();
