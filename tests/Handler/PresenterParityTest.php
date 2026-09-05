@@ -63,7 +63,6 @@ class PresenterParityTest extends TestCase
             $parser,
             $production->reader,
             new SymbolIndex(),
-            ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
 
         $memberResolver = new MemberResolver($knowledge->source);

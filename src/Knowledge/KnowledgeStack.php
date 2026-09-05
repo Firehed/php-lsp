@@ -52,9 +52,7 @@ final readonly class KnowledgeStack
         SyntaxSource $parser,
         SourceFileReader $reader,
         ?SymbolIndex $index = null,
-        ?TextSymbolExtractor $textExtractor = null,
     ): self {
-        $textExtractor ??= new NullTextSymbolExtractor();
         $index ??= new SymbolIndex();
         $classInfoFactory = new DefaultClassInfoFactory();
         $declarationInfoFactory = new DeclarationSymbolInfoFactory($classInfoFactory);
@@ -101,7 +99,6 @@ final readonly class KnowledgeStack
             $declarationInfoFactory,
             $parser,
             $scanner,
-            $textExtractor,
             // External-change and close-after-edit invalidation drops the on-disk
             // cache for a file so the next query re-reads disk (RFC 1 §5.2, §5.3).
             // The open-document backend is authoritative and never cached, so it is

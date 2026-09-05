@@ -120,7 +120,6 @@ final class ParseHealthGridTest extends TestCase
             $fixturesRoot . '/vendor',
             $this->parser,
             $production->reader,
-            textExtractor: ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
         $this->resolver = new SymbolResolver(
             parser: $this->parser,

@@ -85,9 +85,4 @@ final class OpenDocumentBackend implements SymbolBackend
         }
         unset($this->keysByUri[$uri]);
     }
-
-    public function hasRegistrationFor(string $uri): bool
-    {
-        return array_key_exists($uri, $this->keysByUri);
-    }
 }

@@ -205,7 +205,6 @@ final class CompletionParityTest extends TestCase
             $fixturesRoot . '/vendor',
             $parser,
             $production->reader,
-            textExtractor: ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
         $memberResolver = new MemberResolver($knowledge->source);
         $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver);

@@ -21,8 +21,9 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
  * The two stores are distinct structures serving different consumers (Plan 0002
  * §5.5, Step 3a(iv)), but a document event drives both from **one parse**: the sink
  * parses once and feeds that AST to the class registration and to the index alike,
- * so neither reparses. A parse failure yields no statements, clearing both stores
- * together rather than leaving one stale (RFC 1 §5.2).
+ * so neither reparses. The skeleton source in the composite recovers the structural
+ * shape of a document php-parser drops, so a mid-edit still yields declarations
+ * (RFC 1 §5.3).
  */
 final class DocumentSymbolSink implements SymbolSink
 {
@@ -38,7 +39,6 @@ final class DocumentSymbolSink implements SymbolSink
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly SyntaxSource $parser,
         private readonly DeclarationScanner $scanner,
-        private readonly TextSymbolExtractor $textExtractor,
         private readonly array $onDiskBackends = [],
     ) {
     }
@@ -73,30 +73,14 @@ final class DocumentSymbolSink implements SymbolSink
 
     private function write(TextDocument $document): void
     {
-        // Three-tier producer selection (RFC 1 §5.3), cheapest first: AST when the
-        // parse yields declarations, preserved registration when the parse is empty
-        // and a prior one exists, text producer when neither. `MemberResolver` sees
-        // one consumer regardless of tier.
         $ast = $this->parser->parse($document);
         $declarations = $this->scanner->scan($ast);
         $filePath = FileUri::toPath($document->uri);
+        $symbols = $this->infoFactory->allIn($declarations, $filePath);
 
-        if ($declarations->classLikes !== [] || $declarations->functions !== [] || $declarations->constants !== []) {
-            $symbols = $this->infoFactory->allIn($declarations, $filePath);
-            $this->backend->updateDocument($document->uri, ...$symbols);
-            $this->indexer->indexParsed($document, $ast);
-            $this->assertStoresAgree($symbols);
-            return;
-        }
-
-        if ($this->backend->hasRegistrationFor($document->uri)) {
-            return;
-        }
-
-        $textSymbols = $this->textExtractor->extract($document->getContent(), $filePath);
-        if ($textSymbols !== []) {
-            $this->backend->updateDocument($document->uri, ...$textSymbols);
-        }
+        $this->backend->updateDocument($document->uri, ...$symbols);
+        $this->indexer->indexParsed($document, $ast);
+        $this->assertStoresAgree($symbols);
     }
 
     /**
