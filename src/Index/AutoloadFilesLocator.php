@@ -140,12 +140,7 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Pre
         $this->namespaces = null;
 
         foreach ($this->map->autoloadFiles() as $path) {
-            $document = $this->reader->read($path);
-            if ($document === null) {
-                continue;
-            }
-
-            $declarations = $this->scanner->scan($this->parser->parse($document));
+            $declarations = $this->scanner->scanFile($path, $this->reader, $this->parser);
             $this->record(NameKind::ClassLike, $declarations->classLikes, $path);
             $this->record(NameKind::Function_, $declarations->functions, $path);
             $this->record(NameKind::Constant, $declarations->constants, $path);

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Scalar;
@@ -30,6 +32,15 @@ use PhpParser\NodeVisitorAbstract;
  */
 final class DeclarationScanner
 {
+    public function scanFile(string $filePath, SourceFileReader $reader, SyntaxSource $parser): FileDeclarations
+    {
+        $document = $reader->read($filePath);
+        if ($document === null) {
+            return new FileDeclarations([], [], []);
+        }
+        return $this->scan($parser->parse($document));
+    }
+
     /**
      * @param array<Stmt> $ast
      */

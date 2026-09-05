@@ -72,7 +72,8 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
                 return null;
             }
 
-            $info = $this->infoFactory->fromDeclarations($this->declarationsIn($filePath), $name, $kind, $filePath);
+            $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
+            $info = $this->infoFactory->fromDeclarations($declarations, $name, $kind, $filePath);
             if ($info !== null) {
                 $this->symbolsByPath[$filePath][] = [$name, $kind];
             }
@@ -100,20 +101,5 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     public function search(string $prefix, NameKind $kind): array
     {
         return $this->prefixSearch->searchByPrefix($prefix, $kind);
-    }
-    /**
-     * A declaration at any depth counts, not just a top-level one: the shape most
-     * `autoload.files` entries take is a polyfill declared inside an
-     * `if (!function_exists(...))`, and that is a name the file validly declares.
-     * This is the scan that derived the name -> file map the lookup arrived through,
-     * so the two cannot disagree about what the file declares.
-     */
-    private function declarationsIn(string $filePath): FileDeclarations
-    {
-        $document = $this->reader->read($filePath);
-        if ($document === null) {
-            return new FileDeclarations([], [], []);
-        }
-        return $this->scanner->scan($this->parser->parse($document));
     }
 }
