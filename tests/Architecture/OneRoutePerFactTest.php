@@ -38,9 +38,10 @@ use PHPUnit\Framework\TestCase;
  * are derived from `src/`, so a new one is watched from the day it exists, and
  * only the composition roots may name one.
  *
- * A route that has no interface yet is a transitional row naming the concrete
- * classes and their holders; the manifest step that gives it an interface, or
- * deletes it, retires the row.
+ * A route with no interface — a vendor parser, a helper on its way out, a store
+ * with one home — is a confinement row naming the concrete classes and the holders
+ * that may name them. Some such rows are permanent; one that a manifest step
+ * gives an interface, or deletes, retires with that step.
  *
  * Every condition that fails today is recorded with the step that clears it. The
  * row asserts the condition still fails, then skips naming the step; a condition
@@ -58,6 +59,11 @@ final class OneRoutePerFactTest extends TestCase
      * @var array<string, array<string, string>> interface => [class => file]
      */
     private static array $implementations = [];
+
+    /**
+     * @var array<string, array<Node>> file => annotated tree
+     */
+    private static array $trees = [];
 
     /**
      * @return iterable<string, array{Fact}>
@@ -89,7 +95,7 @@ final class OneRoutePerFactTest extends TestCase
                 layoutPending: 'step-52',
             ),
             // step-36 moves the holder to PhpParserSyntaxSource.
-            Fact::transitional(
+            Fact::confined(
                 name: 'php-parser parser',
                 ingredients: [Parser::class, ParserFactory::class],
                 holders: [ParserService::class],
@@ -97,7 +103,7 @@ final class OneRoutePerFactTest extends TestCase
             // No holder: the routes collapse by deletion. steps 40 and 41 move the
             // cursor-local regexes into the cursor text source, step-42 deletes the
             // class and this row with it.
-            Fact::transitional(
+            Fact::confined(
                 name: 'text helper',
                 ingredients: [TextFallbackHelper::class],
                 holders: [],
@@ -110,7 +116,7 @@ final class OneRoutePerFactTest extends TestCase
                     'src/Resolution/SymbolResolver.php' => 'step-42',
                 ],
             ),
-            Fact::transitional(
+            Fact::confined(
                 name: 'symbol index',
                 ingredients: [SymbolIndex::class],
                 holders: [OpenDocumentBackend::class],
@@ -121,7 +127,7 @@ final class OneRoutePerFactTest extends TestCase
                     'src/Knowledge/DocumentSymbolSink.php' => 'step-46',
                 ],
             ),
-            Fact::transitional(
+            Fact::confined(
                 name: 'docblock types',
                 ingredients: [DocblockParser::class],
                 holders: [TypeFactory::class, ResolvedSymbolPresenter::class],
@@ -135,7 +141,7 @@ final class OneRoutePerFactTest extends TestCase
     }
 
     #[DataProvider('facts')]
-    public function testOnlyTheRootNamesAnImplementation(Fact $fact): void
+    public function testOnlyAPermittedFileNamesARoute(Fact $fact): void
     {
         $waitingOn = [];
 
@@ -148,33 +154,40 @@ final class OneRoutePerFactTest extends TestCase
                 "fact '{$fact->name}': an interface with one implementation is not a route; drop the row",
             );
             $routes = array_keys($implementations);
-            $ownFiles = array_values($implementations);
 
             $waitingOn = [...$waitingOn, ...$this->compositeCheck($fact, $routes)];
             $waitingOn = [...$waitingOn, ...$this->layoutCheck($fact, $routes)];
         } else {
             self::assertNotSame([], $fact->ingredients, "fact '{$fact->name}' registers no route");
             $routes = $fact->ingredients;
-            $ownFiles = array_map(self::pathOf(...), array_filter($routes, self::isProjectClass(...)));
         }
 
-        foreach ([...$routes, ...$fact->holders, ...$fact->roots] as $class) {
+        foreach ([...$fact->holders, ...$fact->roots] as $class) {
             self::assertTrue(
-                class_exists($class) || interface_exists($class),
+                class_exists($class),
                 "fact '{$fact->name}' names {$class}, which does not exist; update the row with the code",
             );
         }
 
-        $exempt = [...$ownFiles, ...array_map(self::pathOf(...), [...$fact->holders, ...$fact->roots])];
+        // A route class may name itself (`new self`, its own constants). It may not
+        // name a sibling: a composite that names a member has bound to it.
+        $ownClassByFile = [];
+        foreach (array_filter($routes, self::isProjectClass(...)) as $route) {
+            $ownClassByFile[self::pathOf($route)] = $route;
+        }
+        $permitted = array_map(self::pathOf(...), [...$fact->holders, ...$fact->roots]);
 
         $violators = [];
         $details = [];
         foreach (self::sourceFiles() as $file) {
             $relative = self::relativePath($file);
-            if (in_array($relative, $exempt, true)) {
+            if (in_array($relative, $permitted, true)) {
                 continue;
             }
-            foreach (self::linesNaming($file, $routes) as $line => $class) {
+            foreach (self::linesNaming($file, $routes) as [$line, $class]) {
+                if (($ownClassByFile[$relative] ?? null) === $class) {
+                    continue;
+                }
                 $violators[$relative] = true;
                 $details[] = "{$relative}:{$line} names {$class}";
             }
@@ -210,7 +223,7 @@ final class OneRoutePerFactTest extends TestCase
         $canary = self::root() . '/tests/Architecture/data/names-an-ingredient.php';
         $ingredient = 'Firehed\\PhpLsp\\Tests\\Architecture\\Data\\Routes\\Ingredient';
 
-        $lines = array_keys(iterator_to_array(self::linesNaming($canary, [$ingredient])));
+        $lines = array_map(static fn (array $hit): int => $hit[0], self::linesNaming($canary, [$ingredient]));
         sort($lines);
 
         self::assertSame(
@@ -322,6 +335,10 @@ final class OneRoutePerFactTest extends TestCase
     }
 
     /**
+     * Classes in `$file` that name `$interface` in their `implements` clause. Every
+     * class in `src/` is final, so an implementation inherited from a parent class
+     * does not arise; if one ever does, it is unwatched until this reads parents too.
+     *
      * @return list<string>
      */
     private static function classesImplementing(string $file, string $interface): array
@@ -343,12 +360,12 @@ final class OneRoutePerFactTest extends TestCase
     }
 
     /**
-     * Every line in `$file` that names one of `$classes`, mapped to the class named.
+     * Every reference in `$file` to one of `$classes`, as [line, class named].
      *
      * @param list<string> $classes
-     * @return iterable<int, string>
+     * @return list<array{int, string}>
      */
-    private static function linesNaming(string $file, array $classes): iterable
+    private static function linesNaming(string $file, array $classes): array
     {
         $wanted = array_combine(array_map(strtolower(...), $classes), $classes);
         $hits = [];
@@ -358,21 +375,26 @@ final class OneRoutePerFactTest extends TestCase
             }
             $named = $wanted[strtolower($name->toString())] ?? null;
             if ($named !== null) {
-                $hits[$name->getStartLine()] = $named;
+                $hits[] = [$name->getStartLine(), $named];
             }
         }
-        yield from $hits;
+        return $hits;
     }
 
     /**
      * The file's tree with every name fully qualified, so an aliased or relative
      * reference compares like a literal one, and the namespace declaration's own
-     * name marked so it is not read as a class reference.
+     * name marked so it is not read as a class reference. Parsed once per file: every
+     * row scans every file.
      *
      * @return array<Node>
      */
     private static function tree(string $file): array
     {
+        if (array_key_exists($file, self::$trees)) {
+            return self::$trees[$file];
+        }
+
         $content = file_get_contents($file);
         self::assertIsString($content, "unable to read {$file}");
 
@@ -391,7 +413,7 @@ final class OneRoutePerFactTest extends TestCase
             }
         });
 
-        return $traverser->traverse($ast);
+        return self::$trees[$file] = $traverser->traverse($ast);
     }
 
     private static function isProjectClass(string $class): bool

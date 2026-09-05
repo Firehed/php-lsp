@@ -8,22 +8,23 @@ namespace Firehed\PhpLsp\Tests\Architecture;
  * One row of the one-route ledger.
  *
  * A family row names an interface; its implementations are derived from `src/`,
- * the composite among them must be named `Composite<Interface>`, and the whole family
- * must share one namespace named for the interface. A transitional row names
- * concrete route classes that have no interface yet, and the holders that may
- * name them.
+ * the composite among them must be named `Composite<Interface>`, and the whole
+ * family must share one namespace named for the interface. A confinement row
+ * names concrete classes — a vendor parser, a helper, a store — and the holders
+ * that may name them; it is the shape for a route that has no interface, whether
+ * for one more step or for good.
  *
- * For either shape, a file that is neither a root nor the named class itself must
- * not name an implementation or route class. Every `*Pending` field records a
- * condition that fails today together with the manifest step that clears it; the
- * row asserts the condition really does fail, then skips, so the entry leaves with
- * the fix and a condition that clears early fails the test.
+ * For either shape, a file that is neither a root nor a holder must not name a
+ * route class other than itself. Every `*Pending` field records a condition that
+ * fails today together with the manifest step that clears it; the row asserts the
+ * condition really does fail, then skips, so the entry leaves with the fix and a
+ * condition that clears early fails the test.
  */
 final class Fact
 {
     /**
      * @param ?class-string $interface
-     * @param list<class-string> $ingredients Route classes of a transitional row.
+     * @param list<class-string> $ingredients Route classes of a confinement row.
      * @param list<class-string> $holders Classes that may name the route classes.
      * @param list<class-string> $roots Composition roots that may name any of them.
      * @param array<string, string> $pending Repo-relative file path => step.
@@ -64,7 +65,7 @@ final class Fact
      * @param list<class-string> $roots
      * @param array<string, string> $pending
      */
-    public static function transitional(
+    public static function confined(
         string $name,
         array $ingredients,
         array $holders,
