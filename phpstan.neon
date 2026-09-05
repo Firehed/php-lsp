@@ -260,9 +260,10 @@ parameters:
                 - 'disk_total_space()'
                 - 'parse_ini_file()'
                 - 'move_uploaded_file()'
-            message: 'filesystem access is confined: ParserService reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
+            message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
             allowIn:
                 - src/Parser/ParserService.php
+                - src/Parser/SourceFileReader.php
                 - src/Index/ComposerAutoloadMap.php
                 - src/Index/ComposerNamespaceSource.php
                 - src/Transport/*
