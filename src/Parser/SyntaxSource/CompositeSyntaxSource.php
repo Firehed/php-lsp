@@ -16,10 +16,10 @@ use Firehed\PhpLsp\Document\TextDocument;
 final class CompositeSyntaxSource implements SyntaxSource
 {
     /**
-     * @param list<SyntaxSource> $sources
+     * @param iterable<SyntaxSource> $sources
      */
     public function __construct(
-        private readonly array $sources,
+        private readonly iterable $sources,
     ) {
     }
 
