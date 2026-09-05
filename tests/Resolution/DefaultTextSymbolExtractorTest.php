@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -24,7 +25,7 @@ final class DefaultTextSymbolExtractorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->extractor = new DefaultTextSymbolExtractor();
+        $this->extractor = ProductionSyntaxSource::defaultTextSymbolExtractor();
     }
 
     public function testExtractsEachClassLikeKeywordAsItsKind(): void

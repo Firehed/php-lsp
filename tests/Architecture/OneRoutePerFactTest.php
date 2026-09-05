@@ -115,10 +115,8 @@ final class OneRoutePerFactTest extends TestCase
                 holders: [],
                 pending: [
                     'src/Resolution/CallContextDetector.php' => 'step-41',
-                    'src/Resolution/DefaultTextSymbolExtractor.php' => 'step-38',
                     'src/Resolution/EnclosingClassResolver.php' => 'step-42',
                     'src/Resolution/MemberAccessDetector.php' => 'step-40',
-                    'src/Resolution/NameContextFactory.php' => 'step-42',
                     'src/Resolution/SymbolResolver.php' => 'step-42',
                 ],
             ),

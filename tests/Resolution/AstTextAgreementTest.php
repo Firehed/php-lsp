@@ -9,6 +9,8 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
@@ -113,8 +115,9 @@ final class AstTextAgreementTest extends TestCase
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
 
+        $skeleton = new SkeletonSyntaxSource(new TreeAnnotator());
         $fromAst = NameContextFactory::fromAst($ast, $line);
-        $fromText = NameContextFactory::fromText(explode("\n", $content), $line);
+        $fromText = NameContextFactory::fromText($document, $line, $skeleton);
 
         self::assertSame(
             $fromAst->namespace,

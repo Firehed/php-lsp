@@ -88,7 +88,7 @@ class CompletionHandlerTest extends TestCase
             $this->parser,
             $production->reader,
             $this->symbolIndex,
-            new DefaultTextSymbolExtractor(),
+            ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
         $this->symbolSource = $knowledge->source;
 

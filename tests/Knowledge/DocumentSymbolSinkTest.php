@@ -54,7 +54,7 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
-            new DefaultTextSymbolExtractor(),
+            ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
     }
 
@@ -384,7 +384,7 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
-            new DefaultTextSymbolExtractor(),
+            ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
     }
 
@@ -400,7 +400,7 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
-            new DefaultTextSymbolExtractor(),
+            ProductionSyntaxSource::defaultTextSymbolExtractor(),
             array_values($onDiskBackends),
         );
     }

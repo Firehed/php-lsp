@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -13,6 +16,13 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NameContextFactory::class)]
 final class NameContextFactoryTest extends TestCase
 {
+    private SkeletonSyntaxSource $skeleton;
+
+    protected function setUp(): void
+    {
+        $this->skeleton = new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true));
+    }
+
     /**
      * @param array<string, string> $expectedClassImports
      */
@@ -24,8 +34,8 @@ final class NameContextFactoryTest extends TestCase
         array $expectedClassImports,
         string $message,
     ): void {
-        $lines = explode("\n", $source);
-        $context = NameContextFactory::fromText($lines, $line);
+        $document = new TextDocument('file:///t.php', 'php', 1, $source);
+        $context = NameContextFactory::fromText($document, $line, $this->skeleton);
 
         self::assertSame($expectedNamespace, $context->namespace, $message . ' (namespace)');
         self::assertSame($expectedClassImports, $context->classImports, $message . ' (class imports)');
@@ -160,12 +170,12 @@ final class NameContextFactoryTest extends TestCase
         $ast = $parser->parse($source);
         self::assertNotNull($ast);
 
-        $lines = explode("\n", $source);
+        $document = new TextDocument('file:///t.php', 'php', 1, $source);
         $line = 5;
 
-        $fromAstOrText = NameContextFactory::fromAstOrText($ast, $line, $lines);
+        $fromAstOrText = NameContextFactory::fromAstOrText($ast, $line, $document, $this->skeleton);
         $fromAst = NameContextFactory::fromAst($ast, $line);
-        $fromText = NameContextFactory::fromText($lines, $line);
+        $fromText = NameContextFactory::fromText($document, $line, $this->skeleton);
 
         self::assertSame(
             $fromAst->classImports,

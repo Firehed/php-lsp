@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
@@ -71,33 +73,37 @@ final class NameContextFactory
     }
 
     /**
-     * Build a NameContext preferring the AST, falling back to text regex
-     * when the AST holds no namespace or use node.
+     * Build a NameContext preferring the AST, parsing the document through the
+     * skeleton {@see SyntaxSource} only when the AST holds no namespace or use
+     * node — the composite the skeleton sits in (step-37) already covers most
+     * total-parse-failure inputs, but a php-parser recovery that drops the
+     * namespace still lands here.
      *
      * @param array<Stmt> $ast
      * @param int $line Zero-based
-     * @param list<string> $lines Source lines for the text fallback
      */
-    public static function fromAstOrText(array $ast, int $line, array $lines): NameContext
-    {
+    public static function fromAstOrText(
+        array $ast,
+        int $line,
+        TextDocument $document,
+        SyntaxSource $skeleton,
+    ): NameContext {
         if (self::hasNamespaceOrUse($ast)) {
             return self::fromAst($ast, $line);
         }
-        return self::fromText($lines, $line);
+        return self::fromText($document, $line, $skeleton);
     }
 
     /**
-     * Build a NameContext from raw source lines when the AST holds no
-     * namespace or use node (total parse failure).
+     * Build a NameContext by re-parsing the document through the skeleton so it
+     * has the namespace and use nodes {@see self::fromAst} reads. The skeleton
+     * carries the one regex home for those tokens (step-37).
      *
-     * The regex extraction lives in TextFallbackHelper (confinement rule).
-     *
-     * @param list<string> $lines
      * @param int $line Zero-based
      */
-    public static function fromText(array $lines, int $line): NameContext
+    public static function fromText(TextDocument $document, int $line, SyntaxSource $skeleton): NameContext
     {
-        return TextFallbackHelper::nameContextFromText($lines, $line);
+        return self::fromAst($skeleton->parse($document), $line);
     }
 
     /**

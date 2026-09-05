@@ -63,7 +63,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
             return [];
         }
 
-        $globalUses = $this->buildUseStmts($content, 0, strlen($content), globalOnly: true);
+        $globalUses = $this->buildUseStmts($content, 0, strlen($content), 0);
 
         if ($namespaces === []) {
             return [...$globalUses, ...$this->classNodes($classes, $content)];
@@ -73,11 +73,13 @@ final class SkeletonSyntaxSource implements SyntaxSource
         foreach ($namespaces as $i => $ns) {
             $end = $namespaces[$i + 1]['start'] ?? strlen($content);
             $bodyStart = $ns['bodyStart'];
-            $bodyEnd = $ns['kind'] === Stmt\Namespace_::KIND_BRACED
+            $isBraced = $ns['kind'] === Stmt\Namespace_::KIND_BRACED;
+            $bodyEnd = $isBraced
                 ? $this->findMatchingBrace($content, $bodyStart - 1)
                 : $end;
 
-            $uses = $this->buildUseStmts($content, $bodyStart, $bodyEnd, globalOnly: false);
+            $baseDepth = $isBraced ? $this->braceDepthAt($content, $bodyStart) : 0;
+            $uses = $this->buildUseStmts($content, $bodyStart, $bodyEnd, $baseDepth);
             $nsClasses = array_values(array_filter(
                 $classes,
                 static fn (array $c): bool => $c['start'] >= $bodyStart && $c['start'] < $bodyEnd,
@@ -345,7 +347,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
     /**
      * @return list<Stmt>
      */
-    private function buildUseStmts(string $content, int $rangeStart, int $rangeEnd, bool $globalOnly): array
+    private function buildUseStmts(string $content, int $rangeStart, int $rangeEnd, int $baseDepth): array
     {
         $slice = substr($content, $rangeStart, $rangeEnd - $rangeStart);
         $pattern = '/\buse\s+((?:function|const)\s+)?(' . self::NAME_PATTERN . ')'
@@ -363,9 +365,9 @@ final class SkeletonSyntaxSource implements SyntaxSource
             $matchStart = $rangeStart + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
 
-            // Skip statements outside class bodies etc. — we take everything
-            // regex-matched here, and rely on positional context.
-            if ($globalOnly && $this->isInsideBraces($content, $matchStart)) {
+            // A trait `use` inside a class body sits at a deeper brace depth than
+            // an import at the namespace scope; only same-depth `use`s are imports.
+            if ($this->braceDepthAt($content, $matchStart) !== $baseDepth) {
                 continue;
             }
 
@@ -429,7 +431,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
         }
     }
 
-    private function isInsideBraces(string $content, int $offset): bool
+    private function braceDepthAt(string $content, int $offset): int
     {
         $depth = 0;
         for ($i = 0; $i < $offset; $i++) {
@@ -440,7 +442,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
                 $depth--;
             }
         }
-        return $depth > 0;
+        return $depth;
     }
 
     private function findMatchingBrace(string $content, int $braceOffset): int

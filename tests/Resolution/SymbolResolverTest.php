@@ -71,7 +71,7 @@ final class SymbolResolverTest extends TestCase
             $fixturesRoot . '/vendor',
             $this->parser,
             $production->reader,
-            textExtractor: new DefaultTextSymbolExtractor(),
+            textExtractor: ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
         $memberResolver = new MemberResolver($knowledge->source);
 
