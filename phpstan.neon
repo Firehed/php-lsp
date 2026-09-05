@@ -19,17 +19,19 @@ parameters:
     disallowedNamespaces:
         -
             namespace: 'PhpParser\NodeTraverser'
-            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/ParserService.php
+                - src/Parser/TreeAnnotator.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
         -
             namespace: 'PhpParser\NodeFinder'
-            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/ParserService.php
+                - src/Parser/TreeAnnotator.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
@@ -57,9 +59,10 @@ parameters:
                 - tests/*
         -
             namespace: 'PhpParser\NodeVisitor*'
-            message: 'AST traversal is confined: parser pipeline (ParserService), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/ParserService.php
+                - src/Parser/TreeAnnotator.php
                 - src/Utility/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
