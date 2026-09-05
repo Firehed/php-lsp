@@ -13,10 +13,6 @@ use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
-use Firehed\PhpLsp\Parser\ParseMetrics;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -52,7 +48,6 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
-            ProductionSyntaxSource::defaultTextSymbolExtractor(),
         );
     }
 
@@ -237,53 +232,26 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->sinkWithOnDiskBackends($onDisk)->closeDocument($uri);
     }
 
-    public function testUpdatingToNoDeclarationsPreservesThePreviousRegistration(): void
+    public function testOpeningABrokenFileRegistersTheShapeTheSkeletonRecovers(): void
     {
-        // The preserved-registration tier (tier 2, RFC 1 §5.3) is only reachable
-        // when the parse yields nothing at all. With the skeleton in the
-        // production composite, a broken mid-edit no longer parses empty, so this
-        // case builds a sink over php-parser alone to reach the tier it pins;
-        // step-38 removes the tier altogether (build-manifest).
-        $sink = $this->sinkWithoutSkeleton();
-        $uri = 'file:///Doc.php';
-        $sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Widget {}\n"));
-
-        // A version that parses to no declarations keeps the previous registration
-        // — a file broken mid-edit still resolves through its last-good state, so
-        // completion of $this-> keeps offering members.
-        $sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nclass Widget {"));
-
-        self::assertNotNull(
-            self::classLikeIn($this->backend, 'V\Widget'),
-            'a broken mid-edit must not drop the class the last-good parse registered',
-        );
-        self::assertNotNull(
-            $this->index->findByFqn('V\Widget'),
-            'the index must retain the class too — both stores move together (RFC 1 §4.3)',
-        );
-    }
-
-    public function testFirstOpenOfABrokenFileRegistersFromTheTextExtractor(): void
-    {
-        // Tier 3 (text extractor) is only reachable when the parse yields nothing
-        // and no prior registration exists. Same reasoning as
-        // {@see self::testUpdatingToNoDeclarationsPreservesThePreviousRegistration}:
-        // build the sink over php-parser alone so tier 3 runs at all; step-38
-        // removes the tier altogether.
-        $sink = $this->sinkWithoutSkeleton();
+        // The skeleton source in the composite (step-37) recovers a mid-edit
+        // document's structural shape, so the write path feeds `DeclarationScanner`
+        // a tree even when php-parser alone would produce none (RFC 1 §5.3).
+        // Completion of `$this->` on a class the user is still typing must still
+        // find its members.
         $uri = 'file:///Broken.php';
         $content = $this->loadFixture('src/IncompleteCode/VeryBroken.php');
-        $sink->openDocument(new TextDocument($uri, 'php', 1, $content));
+        $this->sink->openDocument(new TextDocument($uri, 'php', 1, $content));
 
         $classInfo = self::classLikeIn($this->backend, 'Fixtures\\IncompleteCode\\VeryBroken');
         self::assertNotNull(
             $classInfo,
-            'a first open with no last-good state must fall through to the text extractor',
+            'the skeleton must recover the class so member lookup still answers',
         );
         self::assertArrayHasKey(
             'getName',
             $classInfo->methods,
-            'the text extractor must reach the class body for member lookup',
+            'the skeleton must reach the class body for member lookup',
         );
     }
 
@@ -323,69 +291,6 @@ final class DocumentSymbolSinkTest extends TestCase
         ];
     }
 
-    public function testWriteSurvivesAMalformedDocument(): void
-    {
-        // Same reasoning as the two tier-2/tier-3 cases above: with the skeleton
-        // in the composite the fixture no longer parses empty, so this pins the
-        // "malformed and yields nothing" contract over php-parser alone. Once
-        // step-38 lands, tier 3 is gone and this case reduces to a smoke test
-        // that the write path does not crash on a malformed document.
-        $sink = $this->sinkWithoutSkeleton();
-        $uri = 'file:///Broken.php';
-        $broken = file_get_contents(dirname(__DIR__) . '/Fixtures/src/IncompleteCode/VeryBroken.php');
-        self::assertNotFalse($broken, 'the broken fixture should be readable');
-
-        $sink->openDocument(new TextDocument($uri, 'php', 1, $broken));
-
-        self::assertSame(
-            [],
-            $this->indexedFqnsFor($uri),
-            'a malformed document must contribute no indexed symbols and must not crash',
-        );
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function indexedFqnsFor(string $uri): array
-    {
-        $fqns = [];
-        foreach ($this->index->findByPrefix('') as $symbol) {
-            if ($symbol->location->uri === $uri) {
-                $fqns[] = $symbol->fullyQualifiedName;
-            }
-        }
-        sort($fqns);
-
-        return $fqns;
-    }
-
-    /**
-     * A sink whose composite holds php-parser alone — no skeleton. The three
-     * cases above test tiers 2 and 3 of the write path (RFC 1 §5.3): they are
-     * only reachable when the parse yields nothing, which the skeleton no
-     * longer allows on any input where its regexes see a class-like or a
-     * namespace declaration.
-     */
-    private function sinkWithoutSkeleton(): DocumentSymbolSink
-    {
-        return $this->buildSinkFor(new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()));
-    }
-
-    private function buildSinkFor(SyntaxSource $parser): DocumentSymbolSink
-    {
-        $classInfoFactory = new DefaultClassInfoFactory();
-        return new DocumentSymbolSink(
-            $this->backend,
-            new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
-            $this->index,
-            new DeclarationSymbolInfoFactory($classInfoFactory),
-            $parser,
-            new DeclarationScanner(),
-            ProductionSyntaxSource::defaultTextSymbolExtractor(),
-        );
-    }
-
     private function sinkWithOnDiskBackends(Invalidatable ...$onDiskBackends): DocumentSymbolSink
     {
         $parser = ProductionSyntaxSource::create()->source;
@@ -398,7 +303,6 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
-            ProductionSyntaxSource::defaultTextSymbolExtractor(),
             array_values($onDiskBackends),
         );
     }
