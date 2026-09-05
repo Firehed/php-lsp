@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use LogicException;
@@ -45,8 +44,6 @@ use PhpParser\Node\Stmt;
  */
 final class MemberAccessDetector
 {
-    private readonly NodeAtPosition $nodeAtPosition;
-
     public function __construct(
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
@@ -54,7 +51,6 @@ final class MemberAccessDetector
         private readonly EnclosingClassResolver $enclosingClass,
         private readonly SyntaxSource $parser,
     ) {
-        $this->nodeAtPosition = new NodeAtPosition();
     }
 
     private function expressionResolver(TextDocument $document): ExpressionResolver
@@ -78,7 +74,7 @@ final class MemberAccessDetector
     ): ?MemberAccessContext {
         $offset = $document->offsetAt($line, $character);
 
-        $node = $this->nodeAtPosition->find($ast, $offset > 0 ? $offset - 1 : 0);
+        $node = $this->parser->nodeAt($ast, $document, $offset > 0 ? $offset - 1 : 0);
 
         if ($node === null) {
             return $this->fromText($document, $ast, $line, $character);

@@ -70,7 +70,7 @@ final class AstTextAgreementTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($knowledge->source);
         $this->textFallback = new TextFallbackHelper();
-        $this->callDetector = new CallContextDetector($this->textFallback);
+        $this->callDetector = new CallContextDetector($this->textFallback, $this->parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $knowledge->source,
             $this->memberResolver,
@@ -150,7 +150,7 @@ final class AstTextAgreementTest extends TestCase
         $offset = $this->markerOffset($content, $marker);
         $line = $this->lineForOffset($content, $offset);
 
-        $astResult = $this->callDetector->fromAst($ast, $offset);
+        $astResult = $this->callDetector->fromAst($ast, $document, $offset);
         $textResult = $this->callDetector->fromText($ast, $offset, $content, $line);
 
         self::assertNotNull($astResult, 'AST path must detect the call');
