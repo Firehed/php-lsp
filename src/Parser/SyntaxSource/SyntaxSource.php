@@ -10,9 +10,9 @@ use PhpParser\Node\Stmt;
 /**
  * The syntax read seam: a document in, its top-level statements out.
  *
- * One method, one shape (build-manifest step-35). Consumers hold this interface
- * so a second producer (step-36's composite over a php-parser source and a
- * skeleton source) drops in without touching them.
+ * One method, one shape. Consumers hold this interface and never an
+ * implementation, so a composite over several sources drops in behind them
+ * without touching them (RFC 1 §4.11).
  */
 interface SyntaxSource
 {
