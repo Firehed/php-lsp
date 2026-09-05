@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Stmt;

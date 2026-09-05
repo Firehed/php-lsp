@@ -22,7 +22,7 @@ parameters:
             message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/TreeAnnotator.php
-                - src/Utility/NodeAtPosition.php
+                - src/Parser/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
         -
@@ -30,7 +30,7 @@ parameters:
             message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/TreeAnnotator.php
-                - src/Utility/NodeAtPosition.php
+                - src/Parser/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
         -
@@ -60,7 +60,7 @@ parameters:
             message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/TreeAnnotator.php
-                - src/Utility/NodeAtPosition.php
+                - src/Parser/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
 

@@ -18,10 +18,6 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Utility\NodeAtPosition;
-use Firehed\PhpLsp\Utility\Scope;
-use Firehed\PhpLsp\Utility\ScopeFinder;
-use Firehed\PhpLsp\Utility\VariableBindings;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
@@ -76,7 +72,7 @@ final class SymbolResolver implements CodeResolver
     ) {
         $this->textFallback = new TextFallbackHelper();
         $this->enclosingClass = new EnclosingClassResolver($this->textFallback);
-        $this->callDetector = new CallContextDetector($this->textFallback);
+        $this->callDetector = new CallContextDetector($this->textFallback, $parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
@@ -108,8 +104,7 @@ final class SymbolResolver implements CodeResolver
         $ast = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
-        $nodeFinder = new NodeAtPosition();
-        $node = $nodeFinder->find($ast, $offset);
+        $node = $this->parser->nodeAt($ast, $document, $offset);
 
         if ($node === null) {
             return null;
@@ -349,7 +344,7 @@ final class SymbolResolver implements CodeResolver
         $offset = $document->offsetAt($line, $character);
         $content = $document->getContent();
 
-        $callInfo = $this->callDetector->fromAst($ast, $offset);
+        $callInfo = $this->callDetector->fromAst($ast, $document, $offset);
         $callable = null;
         $activeParameter = 0;
         $usedNames = [];

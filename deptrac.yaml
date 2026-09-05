@@ -51,9 +51,6 @@ deptrac:
     - name: Transport
       collectors:
         - { type: directory, value: src/Transport/.* }
-    - name: Utility
-      collectors:
-        - { type: directory, value: src/Utility/.* }
   ruleset:
     Root:
       - Cache
@@ -85,7 +82,6 @@ deptrac:
       - Knowledge
       - Protocol
       - Resolution
-      - Utility
     Resolution:
       - Document
       - Domain
@@ -93,7 +89,6 @@ deptrac:
       - Knowledge
       - Parser
       - Repository
-      - Utility
     Knowledge:
       - Cache
       - Document
@@ -105,16 +100,12 @@ deptrac:
       - Document # FileUri, the path/URI conversion authority
       - Domain
       - Knowledge
-      - Utility
     Index:
       - Cache
       - Document
       - Domain
       - Knowledge
       - Parser
-      - Utility
-    Utility:
-      - Domain
     Parser:
       - Document
     Document:

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Utility;
+namespace Firehed\PhpLsp\Resolution;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr\Assign;

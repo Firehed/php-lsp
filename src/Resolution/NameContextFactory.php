@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
-use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 

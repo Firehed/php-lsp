@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Utility;
+namespace Firehed\PhpLsp\Parser;
 
 use PhpParser\Node;
 use PhpParser\NodeTraverser;

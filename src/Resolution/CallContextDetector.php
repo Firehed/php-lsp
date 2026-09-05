@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Utility\NodeAtPosition;
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -18,7 +19,7 @@ use PhpParser\Node\Stmt;
 /**
  * Detects call context (function/method/constructor calls) at a cursor position.
  *
- * Combines the AST path (NodeAtPosition walk) and the text path
+ * Combines the AST path (a nodeAt lookup plus a parent walk) and the text path
  * (TextFallbackHelper regex) in one class.
  *
  * @phpstan-type RawDetection array{
@@ -34,6 +35,7 @@ final class CallContextDetector
 {
     public function __construct(
         private readonly TextFallbackHelper $textFallback,
+        private readonly SyntaxSource $parser,
     ) {
     }
 
@@ -43,28 +45,17 @@ final class CallContextDetector
      * @param array<Stmt> $ast
      * @return RawDetection|null
      */
-    public function fromAst(array $ast, int $offset): ?array
+    public function fromAst(array $ast, TextDocument $document, int $offset): ?array
     {
-        $nodeFinder = new NodeAtPosition();
-        $node = $nodeFinder->find(
-            $ast,
-            $offset,
-            fn (Node $n) => $n instanceof FuncCall
-                || $n instanceof MethodCall
-                || $n instanceof NullsafeMethodCall
-                || $n instanceof StaticCall
-                || $n instanceof New_
-                || $n instanceof Attribute,
-        );
+        $node = $this->parser->nodeAt($ast, $document, $offset);
+        // Walk parents until an enclosing call is found. The tree annotator sets
+        // the parent attribute, so this is a pointer walk, not a traversal.
+        while ($node !== null && !self::isCallLike($node)) {
+            $parent = $node->getAttribute('parent');
+            $node = $parent instanceof Node ? $parent : null;
+        }
 
-        if (
-            !$node instanceof FuncCall
-            && !$node instanceof MethodCall
-            && !$node instanceof NullsafeMethodCall
-            && !$node instanceof StaticCall
-            && !$node instanceof New_
-            && !$node instanceof Attribute
-        ) {
+        if (!self::isCallLike($node)) {
             return null;
         }
 
@@ -100,5 +91,18 @@ final class CallContextDetector
     public function fromText(array $ast, int $offset, string $content, int $line): ?array
     {
         return $this->textFallback->detectCallFromText($ast, $offset, $content, $line);
+    }
+
+    /**
+     * @phpstan-assert-if-true FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $node
+     */
+    private static function isCallLike(?Node $node): bool
+    {
+        return $node instanceof FuncCall
+            || $node instanceof MethodCall
+            || $node instanceof NullsafeMethodCall
+            || $node instanceof StaticCall
+            || $node instanceof New_
+            || $node instanceof Attribute;
     }
 }

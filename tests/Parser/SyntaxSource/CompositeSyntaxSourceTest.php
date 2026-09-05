@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\Nop;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -56,6 +57,14 @@ final class CompositeSyntaxSourceTest extends TestCase
                 $this->called = true;
                 return [];
             }
+
+            /**
+             * @param array<Stmt> $tree
+             */
+            public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+            {
+                return null;
+            }
         };
 
         (new CompositeSyntaxSource([$winner, $later]))->parse(self::doc('<?php'));
@@ -91,6 +100,14 @@ final class CompositeSyntaxSourceTest extends TestCase
             public function parse(TextDocument $document): array
             {
                 return $this->tree;
+            }
+
+            /**
+             * @param array<Stmt> $tree
+             */
+            public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+            {
+                return null;
             }
         };
     }

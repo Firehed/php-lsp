@@ -18,11 +18,11 @@ use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
+use Firehed\PhpLsp\Resolution\Scope;
+use Firehed\PhpLsp\Resolution\ScopeFinder;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
-use Firehed\PhpLsp\Utility\Scope;
-use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -70,7 +70,7 @@ final class AstTextAgreementTest extends TestCase
         );
         $this->memberResolver = new MemberResolver($knowledge->source);
         $this->textFallback = new TextFallbackHelper();
-        $this->callDetector = new CallContextDetector($this->textFallback);
+        $this->callDetector = new CallContextDetector($this->textFallback, $this->parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $knowledge->source,
             $this->memberResolver,
@@ -150,7 +150,7 @@ final class AstTextAgreementTest extends TestCase
         $offset = $this->markerOffset($content, $marker);
         $line = $this->lineForOffset($content, $offset);
 
-        $astResult = $this->callDetector->fromAst($ast, $offset);
+        $astResult = $this->callDetector->fromAst($ast, $document, $offset);
         $textResult = $this->callDetector->fromText($ast, $offset, $content, $line);
 
         self::assertNotNull($astResult, 'AST path must detect the call');

@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Utility;
+namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Parser\NodeAtPosition;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;

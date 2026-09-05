@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use PhpParser\Node;
 use PhpParser\Node\Stmt;
 
 /**
@@ -30,5 +31,13 @@ final class CountingSyntaxSource implements SyntaxSource
     {
         $this->parseCount++;
         return $this->tree;
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     */
+    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    {
+        return null;
     }
 }

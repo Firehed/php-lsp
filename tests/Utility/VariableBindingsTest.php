@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Utility;
 
+use Firehed\PhpLsp\Resolution\Scope;
+use Firehed\PhpLsp\Resolution\VariableBinding;
+use Firehed\PhpLsp\Resolution\VariableBindings;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use Firehed\PhpLsp\Utility\Scope;
-use Firehed\PhpLsp\Utility\VariableBinding;
-use Firehed\PhpLsp\Utility\VariableBindings;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
