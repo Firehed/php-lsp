@@ -84,7 +84,7 @@ final class Server
         SyntaxSource&MessageScoped $parser = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
-                new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true)),
+                new SkeletonSyntaxSource(),
             ]),
         ),
     ): self {
@@ -112,7 +112,7 @@ final class Server
             $parser,
             $reader,
             textExtractor: new DefaultTextSymbolExtractor(
-                new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true)),
+                new SkeletonSyntaxSource(),
                 new DeclarationScanner(),
                 new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
             ),

@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
@@ -118,7 +117,7 @@ final class AstTextAgreementTest extends TestCase
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
 
-        $skeleton = new SkeletonSyntaxSource(new TreeAnnotator());
+        $skeleton = new SkeletonSyntaxSource();
         $fromAst = NameContextFactory::fromAst($ast, $line);
         $fromText = NameContextFactory::fromText($document, $line, $skeleton);
 
@@ -373,7 +372,7 @@ final class AstTextAgreementTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $parsed = $this->parser->parse($document);
-        $skeleton = (new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true)))->parse($document);
+        $skeleton = (new SkeletonSyntaxSource())->parse($document);
 
         $parsedShape = self::describe($parsed);
         $skeletonShape = self::describe($skeleton);

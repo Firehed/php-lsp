@@ -36,7 +36,7 @@ final class IncompleteCodeNamespacePresenceTest extends TestCase
     {
         $this->composite = new CompositeSyntaxSource([
             new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
-            new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true)),
+            new SkeletonSyntaxSource(),
         ]);
     }
 

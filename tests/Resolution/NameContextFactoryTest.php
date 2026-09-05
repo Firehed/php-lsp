@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -20,7 +19,7 @@ final class NameContextFactoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->skeleton = new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true));
+        $this->skeleton = new SkeletonSyntaxSource();
     }
 
     /**

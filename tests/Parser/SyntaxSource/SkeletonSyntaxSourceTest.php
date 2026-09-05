@@ -6,10 +6,10 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(SkeletonSyntaxSource::class)]
@@ -19,7 +19,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->source = new SkeletonSyntaxSource(new TreeAnnotator());
+        $this->source = new SkeletonSyntaxSource();
     }
 
     public function testEmptyContentYieldsNoStatements(): void
@@ -141,40 +141,32 @@ final class SkeletonSyntaxSourceTest extends TestCase
         ));
     }
 
-    public function testAnInterfaceIsRecognisedAsAnInterfaceStmt(): void
+    /**
+     * @param class-string<Stmt\ClassLike> $expected
+     */
+    #[DataProvider('classLikeKinds')]
+    public function testEachClassLikeKeywordMapsToItsStmt(string $keyword, string $name, string $expected): void
     {
         $ast = $this->source->parse(new TextDocument(
             'file:///a.php',
             'php',
             1,
-            "<?php\nnamespace App;\ninterface Openable {}\n",
+            "<?php\nnamespace App;\n{$keyword} {$name} {}\n",
         ));
 
-        self::assertCount(1, (new NodeFinder())->findInstanceOf($ast, Stmt\Interface_::class));
+        self::assertCount(1, (new NodeFinder())->findInstanceOf($ast, $expected));
     }
 
-    public function testATraitIsRecognisedAsATraitStmt(): void
+    /**
+     * @return array<string, array{string, string, class-string<Stmt\ClassLike>}>
+     */
+    public static function classLikeKinds(): array
     {
-        $ast = $this->source->parse(new TextDocument(
-            'file:///a.php',
-            'php',
-            1,
-            "<?php\nnamespace App;\ntrait HasTimestamps {}\n",
-        ));
-
-        self::assertCount(1, (new NodeFinder())->findInstanceOf($ast, Stmt\Trait_::class));
-    }
-
-    public function testAnEnumIsRecognisedAsAnEnumStmt(): void
-    {
-        $ast = $this->source->parse(new TextDocument(
-            'file:///a.php',
-            'php',
-            1,
-            "<?php\nnamespace App;\nenum Status {}\n",
-        ));
-
-        self::assertCount(1, (new NodeFinder())->findInstanceOf($ast, Stmt\Enum_::class));
+        return [
+            'interface' => ['interface', 'Openable', Stmt\Interface_::class],
+            'trait' => ['trait', 'HasTimestamps', Stmt\Trait_::class],
+            'enum' => ['enum', 'Status', Stmt\Enum_::class],
+        ];
     }
 
     public function testTopLevelClassesAreEmittedWithoutANamespace(): void
@@ -271,6 +263,22 @@ final class SkeletonSyntaxSourceTest extends TestCase
             (new NodeFinder())->findInstanceOf($ast, Stmt\Class_::class),
             'the class inside an unclosed braced namespace still lands in the tree',
         );
+    }
+
+    public function testAClassLikeWithNoOpeningBraceSpansToEndOfFile(): void
+    {
+        // A truncated declaration with no `{` anywhere after it still yields the
+        // class-like; the body slice runs to end-of-file.
+        $ast = $this->source->parse(new TextDocument(
+            'file:///a.php',
+            'php',
+            1,
+            "<?php\nnamespace App;\nclass Truncated",
+        ));
+
+        $classes = (new NodeFinder())->findInstanceOf($ast, Stmt\Class_::class);
+        self::assertCount(1, $classes, 'a brace-less declaration still yields the class-like');
+        self::assertSame('Truncated', $classes[0]->name?->toString());
     }
 
     public function testAGroupUseWithATrailingCommaSkipsTheEmptyItem(): void

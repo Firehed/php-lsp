@@ -28,6 +28,13 @@ use PhpParser\Node\UseItem;
  * enclosing-class and name-context questions and for member enumeration on
  * `$this->` — is reconstructed.
  *
+ * @phpstan-type NamespaceMatch array{
+ *   start: int,
+ *   name: string,
+ *   nameStart: int,
+ *   kind: int,
+ *   bodyStart: int,
+ * }
  * @phpstan-type ClassLikeMatch array{
  *   start: int,
  *   kind: string,
@@ -36,18 +43,29 @@ use PhpParser\Node\UseItem;
  *   extends: ?string,
  *   implements: list<string>,
  *   body: string,
- *   bodyStart: int,
  *   end: int,
+ * }
+ * @phpstan-type PositionMap array{
+ *   lineStarts: list<int>,
+ *   bracePositions: list<int>,
+ *   braceDepths: list<int>,
  * }
  */
 final class SkeletonSyntaxSource implements SyntaxSource
 {
     private const string NAME_PATTERN = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
     private const string SIMPLE_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_]*';
+    private const string GROUP_USE_ITEM_ALIAS_PATTERN
+        = '/^(' . self::NAME_PATTERN . ')\s+as\s+(' . self::SIMPLE_NAME_PATTERN . ')$/';
 
-    public function __construct(
-        private readonly TreeAnnotator $annotator,
-    ) {
+    private readonly TreeAnnotator $annotator;
+
+    public function __construct()
+    {
+        // A regex-recovered tree can carry duplicate `use` aliases or names the
+        // file does not resolve; the tolerant annotator swallows those failures
+        // so the tree still reaches downstream readers.
+        $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
     /**
@@ -56,7 +74,8 @@ final class SkeletonSyntaxSource implements SyntaxSource
     public function parse(TextDocument $document): array
     {
         $content = $document->getContent();
-        $tree = $this->buildTree($content);
+        $positions = self::indexContent($content);
+        $tree = $this->buildTree($content, $positions);
         if ($tree === []) {
             return [];
         }
@@ -64,49 +83,59 @@ final class SkeletonSyntaxSource implements SyntaxSource
     }
 
     /**
+     * @param PositionMap $positions
      * @return array<Stmt>
      */
-    private function buildTree(string $content): array
+    private function buildTree(string $content, array $positions): array
     {
-        $namespaces = $this->findNamespaces($content);
-        $classes = $this->findClassLikes($content);
+        $namespaces = self::findNamespaces($content);
+        $classes = self::findClassLikes($content);
 
         if ($namespaces === [] && $classes === []) {
             return [];
         }
 
-        $globalUses = $this->buildUseStmts($content, 0, strlen($content), 0);
-
         if ($namespaces === []) {
-            return [...$globalUses, ...$this->classNodes($classes, $content)];
+            $globalUses = $this->buildUseStmts($content, $positions, 0, strlen($content), 0);
+            return [...$globalUses, ...$this->buildClassLikes($classes, $positions)];
         }
 
+        // Classes and namespaces both arrive from preg_match_all in position
+        // order, so a single sweep suffices — no per-namespace filter over
+        // classes needed.
+        $classCursor = 0;
+        $classCount = count($classes);
         $stmts = [];
         foreach ($namespaces as $i => $ns) {
-            $end = $namespaces[$i + 1]['start'] ?? strlen($content);
-            $bodyStart = $ns['bodyStart'];
             $isBraced = $ns['kind'] === Stmt\Namespace_::KIND_BRACED;
             $bodyEnd = $isBraced
-                ? $this->findMatchingBrace($content, $bodyStart - 1)
-                : $end;
+                ? self::findMatchingBrace($content, $ns['bodyStart'] - 1)
+                : ($namespaces[$i + 1]['start'] ?? strlen($content));
+            $baseDepth = $isBraced ? self::depthAt($positions, $ns['bodyStart']) : 0;
 
-            $baseDepth = $isBraced ? $this->braceDepthAt($content, $bodyStart) : 0;
-            $uses = $this->buildUseStmts($content, $bodyStart, $bodyEnd, $baseDepth);
-            $nsClasses = array_values(array_filter(
-                $classes,
-                static fn (array $c): bool => $c['start'] >= $bodyStart && $c['start'] < $bodyEnd,
-            ));
-            $nsBody = [...$uses, ...$this->classNodes($nsClasses, $content)];
+            $nsClasses = [];
+            while ($classCursor < $classCount && $classes[$classCursor]['start'] < $bodyEnd) {
+                if ($classes[$classCursor]['start'] >= $ns['bodyStart']) {
+                    $nsClasses[] = $classes[$classCursor];
+                }
+                $classCursor++;
+            }
+
+            $uses = $this->buildUseStmts($content, $positions, $ns['bodyStart'], $bodyEnd, $baseDepth);
+            $nsBody = [...$uses, ...$this->buildClassLikes($nsClasses, $positions)];
 
             $nameNode = $ns['name'] === ''
                 ? null
-                : new Name($ns['name'], self::positions($ns['nameStart'], $ns['nameStart'] + strlen($ns['name'])));
+                : new Name(
+                    $ns['name'],
+                    self::positions($positions, $ns['nameStart'], $ns['nameStart'] + strlen($ns['name'])),
+                );
 
             $stmts[] = new Stmt\Namespace_(
                 $nameNode,
                 $nsBody,
                 [
-                    ...self::positions($ns['start'], $bodyEnd),
+                    ...self::positions($positions, $ns['start'], $bodyEnd),
                     'kind' => $ns['kind'],
                 ],
             );
@@ -116,26 +145,14 @@ final class SkeletonSyntaxSource implements SyntaxSource
     }
 
     /**
-     * @return list<array{start: int, end: int, name: string, nameStart: int, kind: int, bodyStart: int}>
+     * @return list<NamespaceMatch>
      */
-    private function findNamespaces(string $content): array
+    private static function findNamespaces(string $content): array
     {
         // Anchor at line start so a "namespace" token inside a docblock does
         // not read as a declaration.
         $pattern = '/^\s*namespace(?:\s+(' . self::NAME_PATTERN . '))?\s*([;{])/m';
-        $matches = [];
-        if (
-            preg_match_all(
-                $pattern,
-                $content,
-                $matches,
-                PREG_SET_ORDER | PREG_OFFSET_CAPTURE,
-            ) === false
-        ) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('preg_match_all with valid pattern cannot fail');
-            // @codeCoverageIgnoreEnd
-        }
+        $matches = self::matchAll($pattern, $content);
 
         $out = [];
         foreach ($matches as $m) {
@@ -146,14 +163,12 @@ final class SkeletonSyntaxSource implements SyntaxSource
             $name = $m[1][0];
             $nameStart = $m[1][1] === -1 ? $start : $m[1][1];
             $kind = $m[2][0] === '{' ? Stmt\Namespace_::KIND_BRACED : Stmt\Namespace_::KIND_SEMICOLON;
-            $bodyStart = $m[2][1] + 1;
             $out[] = [
                 'start' => $start,
-                'end' => $start,
                 'name' => $name,
                 'nameStart' => $nameStart,
                 'kind' => $kind,
-                'bodyStart' => $bodyStart,
+                'bodyStart' => $m[2][1] + 1,
             ];
         }
         return $out;
@@ -162,34 +177,24 @@ final class SkeletonSyntaxSource implements SyntaxSource
     /**
      * @return list<ClassLikeMatch>
      */
-    private function findClassLikes(string $content): array
+    private static function findClassLikes(string $content): array
     {
         // Anchor at the start of a line so a "class" or "interface" word that
         // appears inside a docblock or a string does not read as a declaration.
         $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
             . '(?:\s+extends\s+((?:' . self::NAME_PATTERN . ')(?:\s*,\s*' . self::NAME_PATTERN . ')*))?'
             . '(?:\s+implements\s+(' . self::NAME_PATTERN . '(?:\s*,\s*' . self::NAME_PATTERN . ')*))?/m';
-
-        $matches = [];
-        if (
-            preg_match_all(
-                $pattern,
-                $content,
-                $matches,
-                PREG_SET_ORDER | PREG_OFFSET_CAPTURE,
-            ) === false
-        ) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('preg_match_all with valid pattern cannot fail');
-            // @codeCoverageIgnoreEnd
-        }
+        $matches = self::matchAll($pattern, $content);
 
         $out = [];
         foreach ($matches as $m) {
             $start = $m[0][1];
+            // A trailing optional group that did not participate in the match
+            // may be omitted from `$m` (older PHP) rather than returned as
+            // ["", -1]; the coalesce covers both.
             $extends = $m[3][0] ?? '';
             $implements = $m[4][0] ?? '';
-            $body = $this->sliceClassBody($content, $start);
+            $body = self::sliceClassBody($content, $start);
             $out[] = [
                 'start' => $start,
                 'kind' => $m[1][0],
@@ -200,7 +205,6 @@ final class SkeletonSyntaxSource implements SyntaxSource
                     ? []
                     : array_map(trim(...), explode(',', $implements)),
                 'body' => $body,
-                'bodyStart' => $start,
                 'end' => $start + strlen($body),
             ];
         }
@@ -209,55 +213,48 @@ final class SkeletonSyntaxSource implements SyntaxSource
 
     /**
      * @param list<ClassLikeMatch> $classes
+     * @param PositionMap $positions
      * @return list<Stmt\ClassLike>
      */
-    private function classNodes(array $classes, string $content): array
+    private function buildClassLikes(array $classes, array $positions): array
     {
-        $out = [];
-        foreach ($classes as $c) {
-            $out[] = $this->buildClassLike($c, $content);
-        }
-        return $out;
+        return array_map(fn (array $c): Stmt\ClassLike => $this->buildClassLike($c, $positions), $classes);
     }
 
     /**
      * @param ClassLikeMatch $c
+     * @param PositionMap $positions
      */
-    private function buildClassLike(array $c, string $content): Stmt\ClassLike
+    private function buildClassLike(array $c, array $positions): Stmt\ClassLike
     {
         $members = [
-            ...$this->buildMethods($c['body'], $c['start']),
-            ...$this->buildProperties($c['body'], $c['start']),
-            ...$this->buildConstants($c['body'], $c['start']),
+            ...$this->buildMethods($c['body'], $c['start'], $positions),
+            ...$this->buildProperties($c['body'], $c['start'], $positions),
+            ...$this->buildConstants($c['body'], $c['start'], $positions),
         ];
         self::extendMemberSpans($members, $c['end']);
         $nameNode = new Identifier(
             $c['name'],
-            self::positions($c['nameStart'], $c['nameStart'] + strlen($c['name'])),
+            self::positions($positions, $c['nameStart'], $c['nameStart'] + strlen($c['name'])),
         );
-        $attributes = self::positions($c['start'], $c['end']);
+        $attributes = self::positions($positions, $c['start'], $c['end']);
+        $mkName = fn (string $n): Name => self::name($n, $c['start'], $positions);
 
         return match ($c['kind']) {
             'interface' => new Stmt\Interface_(
                 $nameNode,
                 [
-                    'extends' => $c['extends'] === null
-                        ? []
-                        : [self::name($c['extends'], $c['start'])],
+                    'extends' => $c['extends'] === null ? [] : [$mkName($c['extends'])],
                     'stmts' => $members,
                 ],
                 $attributes,
             ),
-            'trait' => new Stmt\Trait_(
-                $nameNode,
-                ['stmts' => $members],
-                $attributes,
-            ),
+            'trait' => new Stmt\Trait_($nameNode, ['stmts' => $members], $attributes),
             'enum' => new Stmt\Enum_(
                 $nameNode,
                 [
                     'scalarType' => null,
-                    'implements' => array_map(fn (string $n): Name => self::name($n, $c['start']), $c['implements']),
+                    'implements' => array_map($mkName, $c['implements']),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -266,8 +263,8 @@ final class SkeletonSyntaxSource implements SyntaxSource
                 $nameNode,
                 [
                     'flags' => 0,
-                    'extends' => $c['extends'] === null ? null : self::name($c['extends'], $c['start']),
-                    'implements' => array_map(fn (string $n): Name => self::name($n, $c['start']), $c['implements']),
+                    'extends' => $c['extends'] === null ? null : $mkName($c['extends']),
+                    'implements' => array_map($mkName, $c['implements']),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -276,52 +273,40 @@ final class SkeletonSyntaxSource implements SyntaxSource
     }
 
     /**
+     * @param PositionMap $positions
      * @return list<Stmt\ClassMethod>
      */
-    private function buildMethods(string $body, int $baseOffset): array
+    private function buildMethods(string $body, int $baseOffset, array $positions): array
     {
         $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(/m';
-        $matches = [];
-        if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('preg_match_all with valid pattern cannot fail');
-            // @codeCoverageIgnoreEnd
-        }
         $out = [];
-        foreach ($matches as $m) {
+        foreach (self::matchAll($pattern, $body) as $m) {
             $flags = self::visibilityFlag($m[1][0])
                 | ($m[2][0] !== '' ? Modifiers::STATIC : 0);
             $matchStart = $baseOffset + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
             $nameStart = $baseOffset + $m[3][1];
             $out[] = new Stmt\ClassMethod(
-                new Identifier($m[3][0], self::positions($nameStart, $nameStart + strlen($m[3][0]))),
-                [
-                    'flags' => $flags,
-                    'params' => [],
-                    'returnType' => null,
-                    'stmts' => [],
-                ],
-                self::positions($matchStart, $matchEnd),
+                new Identifier(
+                    $m[3][0],
+                    self::positions($positions, $nameStart, $nameStart + strlen($m[3][0])),
+                ),
+                ['flags' => $flags, 'params' => [], 'returnType' => null, 'stmts' => []],
+                self::positions($positions, $matchStart, $matchEnd),
             );
         }
         return $out;
     }
 
     /**
+     * @param PositionMap $positions
      * @return list<Stmt\Property>
      */
-    private function buildProperties(string $body, int $baseOffset): array
+    private function buildProperties(string $body, int $baseOffset, array $positions): array
     {
         $pattern = '/^\s*(public|protected|private)\s+(static\s+)?(readonly\s+)?(?:[\w\\\\|?]+\s+)?\$(\w+)/m';
-        $matches = [];
-        if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('preg_match_all with valid pattern cannot fail');
-            // @codeCoverageIgnoreEnd
-        }
         $out = [];
-        foreach ($matches as $m) {
+        foreach (self::matchAll($pattern, $body) as $m) {
             $flags = self::visibilityFlag($m[1][0])
                 | ($m[2][0] !== '' ? Modifiers::STATIC : 0)
                 | ($m[3][0] !== '' ? Modifiers::READONLY : 0);
@@ -330,117 +315,110 @@ final class SkeletonSyntaxSource implements SyntaxSource
             $out[] = new Stmt\Property(
                 $flags,
                 [new Node\PropertyItem($m[4][0])],
-                self::positions($matchStart, $matchEnd),
+                self::positions($positions, $matchStart, $matchEnd),
             );
         }
         return $out;
     }
 
     /**
+     * @param PositionMap $positions
      * @return list<Stmt\ClassConst>
      */
-    private function buildConstants(string $body, int $baseOffset): array
+    private function buildConstants(string $body, int $baseOffset, array $positions): array
     {
         $pattern = '/^\s*(public|protected|private)?\s*const\s+(?:[\w\\\\|?]+\s+)?(\w+)\s*=/m';
-        $matches = [];
-        if (preg_match_all($pattern, $body, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('preg_match_all with valid pattern cannot fail');
-            // @codeCoverageIgnoreEnd
-        }
         $out = [];
-        foreach ($matches as $m) {
+        foreach (self::matchAll($pattern, $body) as $m) {
             $visibility = $m[1][0] === '' ? 'public' : $m[1][0];
-            $flags = self::visibilityFlag($visibility);
             $matchStart = $baseOffset + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
             $out[] = new Stmt\ClassConst(
                 [new Const_($m[2][0], new Node\Scalar\String_(''))],
-                $flags,
-                self::positions($matchStart, $matchEnd),
+                self::visibilityFlag($visibility),
+                self::positions($positions, $matchStart, $matchEnd),
             );
         }
         return $out;
     }
 
     /**
+     * @param PositionMap $positions
      * @return list<Stmt>
      */
-    private function buildUseStmts(string $content, int $rangeStart, int $rangeEnd, int $baseDepth): array
-    {
+    private function buildUseStmts(
+        string $content,
+        array $positions,
+        int $rangeStart,
+        int $rangeEnd,
+        int $baseDepth,
+    ): array {
         $slice = substr($content, $rangeStart, $rangeEnd - $rangeStart);
         // Anchor at line start so a "use" that appears in a docblock or string
         // is not read as an import.
         $pattern = '/^\s*use\s+((?:function|const)\s+)?(' . self::NAME_PATTERN . ')'
             . '(?:\s+as\s+(' . self::SIMPLE_NAME_PATTERN . '))?\s*;'
             . '|^\s*use\s+((?:function|const)\s+)?(' . self::NAME_PATTERN . ')\s*\\\\?\s*\{([^}]+)\}\s*;/m';
-        $matches = [];
-        if (preg_match_all($pattern, $slice, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
-            // @codeCoverageIgnoreStart
-            throw new \LogicException('preg_match_all with valid pattern cannot fail');
-            // @codeCoverageIgnoreEnd
-        }
 
         $out = [];
-        foreach ($matches as $m) {
+        foreach (self::matchAll($pattern, $slice) as $m) {
             $matchStart = $rangeStart + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
 
             // A trait `use` inside a class body sits at a deeper brace depth than
             // an import at the namespace scope; only same-depth `use`s are imports.
-            if ($this->braceDepthAt($content, $matchStart) !== $baseDepth) {
+            if (self::depthAt($positions, $matchStart) !== $baseDepth) {
                 continue;
             }
 
             // Groups 4-6 belong to the group-use alternative; when one is set,
             // the other alternative did not match, so groups 1-3 are absent.
             if (isset($m[5])) {
-                $out[] = $this->buildGroupUse($m, $matchStart, $matchEnd);
+                $out[] = $this->buildGroupUse($m, $positions, $matchStart, $matchEnd);
                 continue;
             }
 
-            if (!isset($m[2])) {
-                // @codeCoverageIgnoreStart
-                // Exactly one alternative of the regex matches; the group-use
-                // branch was rejected above, so group 2 of the simple branch
-                // must be present.
-                continue;
-                // @codeCoverageIgnoreEnd
-            }
-            $type = self::useType($m[1][0] ?? '');
-            $fqn = $m[2][0];
-            $alias = ($m[3][0] ?? '') === '' ? null : $m[3][0];
+            $alias = $m[3][0] ?? '';
             $useItem = new UseItem(
-                new Name($fqn),
-                $alias === null ? null : new Identifier($alias),
+                new Name($m[2][0]),
+                $alias === '' ? null : new Identifier($alias),
             );
-            $out[] = new Stmt\Use_([$useItem], $type, self::positions($matchStart, $matchEnd));
+            $out[] = new Stmt\Use_(
+                [$useItem],
+                self::useType($m[1][0] ?? ''),
+                self::positions($positions, $matchStart, $matchEnd),
+            );
         }
         return $out;
     }
 
     /**
      * @param array<int, array{0: string, 1: int}> $m
+     * @param PositionMap $positions
      */
-    private function buildGroupUse(array $m, int $matchStart, int $matchEnd): Stmt\GroupUse
+    private function buildGroupUse(array $m, array $positions, int $matchStart, int $matchEnd): Stmt\GroupUse
     {
-        $type = self::useType($m[4][0] ?? '');
-        $prefix = rtrim($m[5][0], '\\');
-        $itemsText = $m[6][0];
+        // Called only when the group-use alternative matched, so groups 4-6 are
+        // present; coalesce their reads because PHPStan cannot follow the caller
+        // narrowing.
         $items = [];
-        foreach (explode(',', $itemsText) as $item) {
-            $item = trim($item);
+        foreach (explode(',', $m[6][0] ?? '') as $rawItem) {
+            $item = trim($rawItem);
             if ($item === '') {
                 continue;
             }
-            $aliasPattern = '/^(' . self::NAME_PATTERN . ')\s+as\s+(' . self::SIMPLE_NAME_PATTERN . ')$/';
-            if (preg_match($aliasPattern, $item, $im) === 1) {
+            if (preg_match(self::GROUP_USE_ITEM_ALIAS_PATTERN, $item, $im) === 1) {
                 $items[] = new UseItem(new Name($im[1]), new Identifier($im[2]));
             } else {
                 $items[] = new UseItem(new Name($item), null);
             }
         }
-        return new Stmt\GroupUse(new Name($prefix), $items, $type, self::positions($matchStart, $matchEnd));
+        return new Stmt\GroupUse(
+            new Name(rtrim($m[5][0] ?? '', '\\')),
+            $items,
+            self::useType($m[4][0] ?? ''),
+            self::positions($positions, $matchStart, $matchEnd),
+        );
     }
 
     /**
@@ -454,30 +432,120 @@ final class SkeletonSyntaxSource implements SyntaxSource
      */
     private static function extendMemberSpans(array $members, int $classEnd): void
     {
-        $sorted = $members;
-        usort($sorted, static fn (Stmt $a, Stmt $b): int => $a->getStartFilePos() - $b->getStartFilePos());
-        $lastIndex = count($sorted) - 1;
-        foreach ($sorted as $i => $member) {
-            $next = $i === $lastIndex ? $classEnd : $sorted[$i + 1]->getStartFilePos();
+        usort($members, static fn (Stmt $a, Stmt $b): int => $a->getStartFilePos() - $b->getStartFilePos());
+        $lastIndex = count($members) - 1;
+        foreach ($members as $i => $member) {
+            $next = $i === $lastIndex ? $classEnd : $members[$i + 1]->getStartFilePos();
             $member->setAttribute('endFilePos', max($member->getEndFilePos(), $next - 1));
         }
     }
 
-    private function braceDepthAt(string $content, int $offset): int
+    /**
+     * One linear scan over the content builds both maps:
+     *   - `lineStarts[i]` is the offset of the first character of line i+1;
+     *   - `bracePositions[k]` and `braceDepths[k]` list every `{` or `}` in
+     *     order, and the brace depth right AFTER that character.
+     *
+     * Callers look up a line or a brace depth by binary-searching these arrays.
+     * One pass, plus O(log N) per lookup, replaces a per-lookup scan from zero.
+     *
+     * @return PositionMap
+     */
+    private static function indexContent(string $content): array
     {
+        $lineStarts = [0];
+        $bracePositions = [];
+        $braceDepths = [];
         $depth = 0;
-        for ($i = 0; $i < $offset; $i++) {
+        $length = strlen($content);
+        for ($i = 0; $i < $length; $i++) {
             $c = $content[$i];
+            if ($c === "\n") {
+                $lineStarts[] = $i + 1;
+                continue;
+            }
             if ($c === '{') {
                 $depth++;
             } elseif ($c === '}') {
                 $depth--;
+            } else {
+                continue;
             }
+            $bracePositions[] = $i;
+            $braceDepths[] = $depth;
         }
-        return $depth;
+        return [
+            'lineStarts' => $lineStarts,
+            'bracePositions' => $bracePositions,
+            'braceDepths' => $braceDepths,
+        ];
     }
 
-    private function findMatchingBrace(string $content, int $braceOffset): int
+    /**
+     * The brace depth immediately before `$offset`.
+     *
+     * @param PositionMap $positions
+     */
+    private static function depthAt(array $positions, int $offset): int
+    {
+        $bracePositions = $positions['bracePositions'];
+        $lo = 0;
+        $hi = count($bracePositions);
+        while ($lo < $hi) {
+            $mid = ($lo + $hi) >> 1;
+            if ($bracePositions[$mid] < $offset) {
+                $lo = $mid + 1;
+            } else {
+                $hi = $mid;
+            }
+        }
+        return $lo === 0 ? 0 : $positions['braceDepths'][$lo - 1];
+    }
+
+    /**
+     * The one-based line number containing `$offset`.
+     *
+     * @param PositionMap $positions
+     */
+    private static function lineAt(array $positions, int $offset): int
+    {
+        $lineStarts = $positions['lineStarts'];
+        $lo = 0;
+        $hi = count($lineStarts);
+        while ($lo < $hi) {
+            $mid = ($lo + $hi) >> 1;
+            if ($lineStarts[$mid] <= $offset) {
+                $lo = $mid + 1;
+            } else {
+                $hi = $mid;
+            }
+        }
+        return $lo;
+    }
+
+    /**
+     * A brace-matched slice starting at `$declOffset`, running to the matching
+     * `}` of the next `{`, or to end-of-file when the body has no closing brace.
+     * An empty class body (`class C {}`) still returns the declaration through
+     * its `}` — the matcher runs from the byte before the brace so the initial
+     * increment reaches depth 1 immediately.
+     */
+    private static function sliceClassBody(string $content, int $declOffset): string
+    {
+        $bracePos = strpos($content, '{', $declOffset);
+        $end = $bracePos === false
+            ? strlen($content)
+            : self::findMatchingBrace($content, $bracePos - 1);
+        return substr($content, $declOffset, $end - $declOffset);
+    }
+
+    /**
+     * The offset one past the `}` that matches the next `{` at or after
+     * `$braceOffset + 1`, or `strlen($content)` when the brace is unclosed.
+     * The caller is expected to have located that brace, so the loop starts
+     * one byte earlier and lets the initial increment do the depth bookkeeping.
+     */
+    private static function findMatchingBrace(string $content, int $braceOffset): int
     {
         $depth = 0;
         $length = strlen($content);
@@ -492,43 +560,41 @@ final class SkeletonSyntaxSource implements SyntaxSource
         return $length;
     }
 
-    private function sliceClassBody(string $content, int $declOffset): string
+    /**
+     * @param PositionMap $positions
+     */
+    private static function name(string $short, int $anchor, array $positions): Name
     {
-        $bracePos = strpos($content, '{', $declOffset);
-        if ($bracePos !== false) {
-            $depth = 0;
-            for ($i = $bracePos, $length = strlen($content); $i < $length; $i++) {
-                $c = $content[$i];
-                if ($c === '{') {
-                    $depth++;
-                } elseif ($c === '}' && --$depth === 0) {
-                    return substr($content, $declOffset, $i - $declOffset + 1);
-                }
-            }
-        }
-        return substr($content, $declOffset);
-    }
-
-    private static function name(string $short, int $anchor): Name
-    {
-        return new Name(ltrim($short, '\\'), self::positions($anchor, $anchor));
+        return new Name(ltrim($short, '\\'), self::positions($positions, $anchor, $anchor));
     }
 
     /**
+     * @param PositionMap $positions
      * @return array{startFilePos: int, endFilePos: int, startLine: int, endLine: int}
      */
-    private static function positions(int $start, int $end): array
+    private static function positions(array $positions, int $start, int $end): array
     {
-        // Lines are not derivable from an offset in isolation without the full
-        // content; NodeAtPosition and Scope::atOffset read startFilePos/endFilePos
-        // for span containment, which is what the skeleton needs. Lines exist so
-        // php-parser accessors that read them do not crash.
         return [
             'startFilePos' => $start,
             'endFilePos' => max($start, $end - 1),
-            'startLine' => 1,
-            'endLine' => 1,
+            'startLine' => self::lineAt($positions, $start),
+            'endLine' => self::lineAt($positions, max($start, $end - 1)),
         ];
+    }
+
+    /**
+     * @return list<array<int, array{0: string, 1: int}>>
+     */
+    private static function matchAll(string $pattern, string $subject): array
+    {
+        $matches = [];
+        if (preg_match_all($pattern, $subject, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
+            // @codeCoverageIgnoreStart
+            throw new \LogicException('preg_match_all with valid pattern cannot fail');
+            // @codeCoverageIgnoreEnd
+        }
+        /** @var list<array<int, array{0: string, 1: int}>> */
+        return $matches;
     }
 
     private static function visibilityFlag(string $keyword): int

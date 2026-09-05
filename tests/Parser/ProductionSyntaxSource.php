@@ -37,7 +37,7 @@ final readonly class ProductionSyntaxSource
         $this->source = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), $this->metrics),
-                new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true)),
+                new SkeletonSyntaxSource(),
             ]),
         );
         $this->reader = new SourceFileReader();
@@ -55,7 +55,7 @@ final readonly class ProductionSyntaxSource
     public static function defaultTextSymbolExtractor(): DefaultTextSymbolExtractor
     {
         return new DefaultTextSymbolExtractor(
-            new SkeletonSyntaxSource(new TreeAnnotator(tolerant: true)),
+            new SkeletonSyntaxSource(),
             new DeclarationScanner(),
             new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
         );
