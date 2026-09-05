@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Server;
@@ -101,7 +102,7 @@ final class OneRoutePerFactTest extends TestCase
             Fact::confined(
                 name: 'php-parser parser',
                 ingredients: [Parser::class, ParserFactory::class],
-                holders: [ParserService::class],
+                holders: [ParserService::class, PhpParserSyntaxSource::class],
             ),
             // The SyntaxSource family has one implementation until step-36 supplies
             // the composite and a second source; until then its one class is confined

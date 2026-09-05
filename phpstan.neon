@@ -53,9 +53,10 @@ parameters:
                 - 'PhpParser\Parser'
                 - 'PhpParser\Parser\*'
                 - 'PhpParser\Lexer*'
-            message: 'an AST is produced in one place: ParserService'
+            message: 'an AST is produced in one place: PhpParserSyntaxSource'
             allowIn:
                 - src/Parser/ParserService.php
+                - src/Parser/SyntaxSource/PhpParserSyntaxSource.php
                 - tests/*
         -
             namespace: 'PhpParser\NodeVisitor*'
