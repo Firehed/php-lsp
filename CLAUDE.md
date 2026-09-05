@@ -420,8 +420,8 @@ calling the regex, and not all of them doing so. A null or empty check on one ro
 before calling another is the pattern to refuse. `tests/Architecture/OneRoutePerFactTest.php`
 derives every implementation from its interface, checks the composite's name and the
 family's namespace, and fails when anything but the root names an implementation. A
-route with no interface yet is a transitional row naming its concrete classes and
-holders. A condition that fails today is recorded on its row with the manifest step that
+route with no interface, for a step or for good, is a confinement row naming its
+concrete classes and holders. A condition that fails today is recorded on its row with the manifest step that
 clears it; the row asserts it still fails, then skips. Adding a pending entry is a Loosen
 edit; clearing one is the step's work. A new fact with more than one route is a new row.
 
