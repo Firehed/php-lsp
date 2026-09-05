@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Utility;
 
+use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use Firehed\PhpLsp\Utility\Scope;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;

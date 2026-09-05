@@ -7,8 +7,6 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameCase;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Utility\Scope;
-use Firehed\PhpLsp\Utility\ScopeFinder;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;

@@ -18,7 +18,7 @@ use PhpParser\Node\UseItem;
  * The regex-based {@see SyntaxSource}. Reads the structural shape of PHP source
  * — namespace, imports, class-likes with `extends`/`implements`, and their
  * top-level members — from the text alone, so a document php-parser cannot make
- * sense of still yields a tree that {@see \Firehed\PhpLsp\Utility\Scope},
+ * sense of still yields a tree that {@see \Firehed\PhpLsp\Resolution\Scope},
  * {@see \Firehed\PhpLsp\Knowledge\DeclarationScanner}, and
  * {@see \Firehed\PhpLsp\Repository\DefaultClassInfoFactory} read the same way
  * they read a php-parser tree (RFC 1 §5.3, build-manifest step-37).
@@ -424,7 +424,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
     /**
      * The regexes pin each member to its declaration line; a method's body ends
      * only at the next member (or the class body's end). Stretching the span
-     * to that boundary is what makes {@see \Firehed\PhpLsp\Utility\Scope::atOffset}
+     * to that boundary is what makes {@see \Firehed\PhpLsp\Resolution\Scope::atOffset}
      * find the enclosing method for a cursor sitting in the body — including a
      * body php-parser could not close.
      *
