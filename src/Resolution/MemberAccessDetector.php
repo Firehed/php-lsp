@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Utility\Scope;
@@ -54,7 +54,7 @@ final class MemberAccessDetector
         private readonly MemberResolver $memberResolver,
         private readonly TextFallbackHelper $textFallback,
         private readonly EnclosingClassResolver $enclosingClass,
-        private readonly ParserService $parser,
+        private readonly SyntaxSource $parser,
     ) {
         $this->nodeAtPosition = new NodeAtPosition();
     }
@@ -446,8 +446,12 @@ final class MemberAccessDetector
         array $ast,
         int $line,
     ): ?Type {
-        $expr = $this->parser->parseExpression($chainExpr);
-        assert($expr !== null, 'chain regex output is always parseable as an expression');
+        $fragment = new TextDocument('fragment', 'php', 0, '<?php ' . $chainExpr . ';');
+        $parsed = $this->parser->parse($fragment);
+        assert(count($parsed) === 1, 'chain regex output is always parseable as a single statement');
+        $stmt = $parsed[0];
+        assert($stmt instanceof Stmt\Expression, 'chain regex output is always an expression statement');
+        $expr = $stmt->expr;
         $receiver = self::findThisVariable($expr);
         assert($receiver !== null, 'chain regex guarantees a $this receiver in the parsed fragment');
         EnclosingClassResolver::seedThisPosition($receiver, $line, $document->offsetAt($line, 0));

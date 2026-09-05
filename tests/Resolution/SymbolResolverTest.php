@@ -22,6 +22,7 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
@@ -54,7 +55,7 @@ final class SymbolResolverTest extends TestCase
     use OpensDocumentsTrait;
 
     private SymbolResolver $resolver;
-    private ParserService $parser;
+    private SyntaxSource $parser;
     private DocumentManager $documents;
     private TextDocumentSyncHandler $syncHandler;
 

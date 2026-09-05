@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Utility\NodeAtPosition;
 use Firehed\PhpLsp\Utility\Scope;
@@ -70,7 +70,7 @@ final class SymbolResolver implements CodeResolver
     private readonly MemberAccessDetector $memberAccessDetector;
 
     public function __construct(
-        private readonly ParserService $parser,
+        private readonly SyntaxSource $parser,
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
     ) {

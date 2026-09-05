@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use PhpParser\ErrorHandler;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
@@ -29,7 +30,7 @@ use PhpParser\ParserFactory;
  * stale answer impossible rather than merely unlikely: content that differs at
  * all is a different key, so no invalidation rule has to be got right.
  */
-final class ParserService
+final class ParserService implements SyntaxSource
 {
     private ParseMetrics $metrics;
     private Parser $parser;

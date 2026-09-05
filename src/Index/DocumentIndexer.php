@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\ParserService;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use PhpParser\Node\Stmt;
 
 final class DocumentIndexer
 {
     public function __construct(
-        private readonly ParserService $parser,
+        private readonly SyntaxSource $parser,
         private readonly SymbolExtractor $extractor,
         private readonly SymbolIndex $index,
     ) {
