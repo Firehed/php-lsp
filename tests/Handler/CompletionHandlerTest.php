@@ -38,7 +38,6 @@ use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;

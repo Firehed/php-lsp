@@ -19,7 +19,6 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;

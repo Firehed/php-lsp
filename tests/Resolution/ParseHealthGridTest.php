@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolver;
-use Firehed\PhpLsp\Resolution\DefaultTextSymbolExtractor;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;

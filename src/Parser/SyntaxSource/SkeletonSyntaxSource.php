@@ -27,6 +27,18 @@ use PhpParser\Node\UseItem;
  * absent. Only the structural shape a positional query needs — enough for
  * enclosing-class and name-context questions and for member enumeration on
  * `$this->` — is reconstructed.
+ *
+ * @phpstan-type ClassLikeMatch array{
+ *   start: int,
+ *   kind: string,
+ *   name: string,
+ *   nameStart: int,
+ *   extends: ?string,
+ *   implements: list<string>,
+ *   body: string,
+ *   bodyStart: int,
+ *   end: int,
+ * }
  */
 final class SkeletonSyntaxSource implements SyntaxSource
 {
@@ -108,7 +120,9 @@ final class SkeletonSyntaxSource implements SyntaxSource
      */
     private function findNamespaces(string $content): array
     {
-        $pattern = '/\bnamespace(?:\s+(' . self::NAME_PATTERN . '))?\s*([;{])/';
+        // Anchor at line start so a "namespace" token inside a docblock does
+        // not read as a declaration.
+        $pattern = '/^\s*namespace(?:\s+(' . self::NAME_PATTERN . '))?\s*([;{])/m';
         $matches = [];
         if (
             preg_match_all(
@@ -126,8 +140,11 @@ final class SkeletonSyntaxSource implements SyntaxSource
         $out = [];
         foreach ($matches as $m) {
             $start = $m[0][1];
-            $name = $m[1][0] ?? '';
-            $nameStart = $m[1][1] ?? $start;
+            // With PREG_OFFSET_CAPTURE, an unmatched optional group returns
+            // ["", -1]. An empty-name namespace declaration is invalid PHP;
+            // the anchor position is only used as a fallback.
+            $name = $m[1][0];
+            $nameStart = $m[1][1] === -1 ? $start : $m[1][1];
             $kind = $m[2][0] === '{' ? Stmt\Namespace_::KIND_BRACED : Stmt\Namespace_::KIND_SEMICOLON;
             $bodyStart = $m[2][1] + 1;
             $out[] = [
@@ -143,13 +160,15 @@ final class SkeletonSyntaxSource implements SyntaxSource
     }
 
     /**
-     * @return list<array{start: int, kind: string, name: string, nameStart: int, extends: ?string, implements: list<string>, body: string, bodyStart: int, end: int}>
+     * @return list<ClassLikeMatch>
      */
     private function findClassLikes(string $content): array
     {
-        $pattern = '/(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
+        // Anchor at the start of a line so a "class" or "interface" word that
+        // appears inside a docblock or a string does not read as a declaration.
+        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
             . '(?:\s+extends\s+((?:' . self::NAME_PATTERN . ')(?:\s*,\s*' . self::NAME_PATTERN . ')*))?'
-            . '(?:\s+implements\s+(' . self::NAME_PATTERN . '(?:\s*,\s*' . self::NAME_PATTERN . ')*))?/';
+            . '(?:\s+implements\s+(' . self::NAME_PATTERN . '(?:\s*,\s*' . self::NAME_PATTERN . ')*))?/m';
 
         $matches = [];
         if (
@@ -189,7 +208,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
     }
 
     /**
-     * @param list<array{start: int, kind: string, name: string, nameStart: int, extends: ?string, implements: list<string>, body: string, bodyStart: int, end: int}> $classes
+     * @param list<ClassLikeMatch> $classes
      * @return list<Stmt\ClassLike>
      */
     private function classNodes(array $classes, string $content): array
@@ -202,7 +221,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
     }
 
     /**
-     * @param array{start: int, kind: string, name: string, nameStart: int, extends: ?string, implements: list<string>, body: string, bodyStart: int, end: int} $c
+     * @param ClassLikeMatch $c
      */
     private function buildClassLike(array $c, string $content): Stmt\ClassLike
     {
@@ -350,9 +369,11 @@ final class SkeletonSyntaxSource implements SyntaxSource
     private function buildUseStmts(string $content, int $rangeStart, int $rangeEnd, int $baseDepth): array
     {
         $slice = substr($content, $rangeStart, $rangeEnd - $rangeStart);
-        $pattern = '/\buse\s+((?:function|const)\s+)?(' . self::NAME_PATTERN . ')'
+        // Anchor at line start so a "use" that appears in a docblock or string
+        // is not read as an import.
+        $pattern = '/^\s*use\s+((?:function|const)\s+)?(' . self::NAME_PATTERN . ')'
             . '(?:\s+as\s+(' . self::SIMPLE_NAME_PATTERN . '))?\s*;'
-            . '|\buse\s+((?:function|const)\s+)?(' . self::NAME_PATTERN . ')\s*\\\\?\s*\{([^}]+)\}\s*;/';
+            . '|^\s*use\s+((?:function|const)\s+)?(' . self::NAME_PATTERN . ')\s*\\\\?\s*\{([^}]+)\}\s*;/m';
         $matches = [];
         if (preg_match_all($pattern, $slice, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) {
             // @codeCoverageIgnoreStart
@@ -371,11 +392,21 @@ final class SkeletonSyntaxSource implements SyntaxSource
                 continue;
             }
 
-            if (($m[4][0] ?? '') !== '' || ($m[5][0] ?? '') !== '') {
+            // Groups 4-6 belong to the group-use alternative; when one is set,
+            // the other alternative did not match, so groups 1-3 are absent.
+            if (isset($m[5])) {
                 $out[] = $this->buildGroupUse($m, $matchStart, $matchEnd);
                 continue;
             }
 
+            if (!isset($m[2])) {
+                // @codeCoverageIgnoreStart
+                // Exactly one alternative of the regex matches; the group-use
+                // branch was rejected above, so group 2 of the simple branch
+                // must be present.
+                continue;
+                // @codeCoverageIgnoreEnd
+            }
             $type = self::useType($m[1][0] ?? '');
             $fqn = $m[2][0];
             $alias = ($m[3][0] ?? '') === '' ? null : $m[3][0];
@@ -402,7 +433,8 @@ final class SkeletonSyntaxSource implements SyntaxSource
             if ($item === '') {
                 continue;
             }
-            if (preg_match('/^(' . self::NAME_PATTERN . ')\s+as\s+(' . self::SIMPLE_NAME_PATTERN . ')$/', $item, $im) === 1) {
+            $aliasPattern = '/^(' . self::NAME_PATTERN . ')\s+as\s+(' . self::SIMPLE_NAME_PATTERN . ')$/';
+            if (preg_match($aliasPattern, $item, $im) === 1) {
                 $items[] = new UseItem(new Name($im[1]), new Identifier($im[2]));
             } else {
                 $items[] = new UseItem(new Name($item), null);
