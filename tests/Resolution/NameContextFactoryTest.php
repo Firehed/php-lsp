@@ -188,4 +188,25 @@ final class NameContextFactoryTest extends TestCase
             'Text and AST paths must disagree for this test to be meaningful',
         );
     }
+
+    public function testFromAstOrTextFallsBackToTheSkeletonWhenTheAstHasNoNamespaceOrUse(): void
+    {
+        // An AST whose php-parser recovery kept only a bare expression statement
+        // has no namespace or use node, so fromAstOrText falls through to the
+        // skeleton, which re-parses the document from text.
+        $source = "<?php\nnamespace App;\nuse Vendor\\Widget;\necho 1;\n";
+        $document = new TextDocument('file:///t.php', 'php', 1, $source);
+        $bareAst = [new \PhpParser\Node\Stmt\Expression(
+            new \PhpParser\Node\Scalar\Int_(1),
+        )];
+
+        $context = NameContextFactory::fromAstOrText($bareAst, 3, $document, $this->skeleton);
+
+        self::assertSame('App', $context->namespace, 'the skeleton recovers the namespace from text');
+        self::assertSame(
+            ['Widget' => 'Vendor\\Widget'],
+            $context->classImports,
+            'the skeleton recovers the import from text',
+        );
+    }
 }
