@@ -64,7 +64,6 @@ final class ExpressionResolver
         private readonly MemberResolver $memberResolver,
         private readonly SymbolSource $symbolSource,
         private readonly TextDocument $document,
-        private readonly EnclosingClassResolver $enclosingClass,
     ) {
     }
 
@@ -74,7 +73,15 @@ final class ExpressionResolver
     public function resolve(Expr $expr, array $ast): ?ResolvedSymbol
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
-            $enclosing = $this->enclosingClass->forNode($expr, $ast, $this->document);
+            $classLike = Scope::atOffset($ast, $expr->getStartFilePos())->getEnclosingClassLike();
+            if ($classLike === null) {
+                // A `$this` recovered outside any class-like scope — the parser
+                // dropped or truncated the body it belonged in. Fall back to
+                // the last class-like declared before the expression; the tree
+                // still names it, so no text scan is needed.
+                $classLike = self::lastClassLikeBefore($ast, $expr->getStartFilePos());
+            }
+            $enclosing = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
             if ($enclosing === null) {
                 return null;
             }
@@ -508,5 +515,45 @@ final class ExpressionResolver
             $start['line'],
             $start['character'],
         );
+    }
+
+    /**
+     * The last class-like declared before `$offset` in the tree, if any.
+     *
+     * @param array<Stmt> $ast
+     */
+    private static function lastClassLikeBefore(
+        array $ast,
+        int $offset,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        $found = null;
+        foreach ($ast as $stmt) {
+            $found = self::lastClassLikeIn($stmt, $offset, $found);
+        }
+        return $found;
+    }
+
+    private static function lastClassLikeIn(
+        Node $node,
+        int $offset,
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        if ($node->getStartFilePos() > $offset) {
+            return $found;
+        }
+        if (
+            $node instanceof Stmt\Class_
+            || $node instanceof Stmt\Interface_
+            || $node instanceof Stmt\Trait_
+            || $node instanceof Stmt\Enum_
+        ) {
+            $found = $node;
+        }
+        if ($node instanceof Stmt\Namespace_) {
+            foreach ($node->stmts as $child) {
+                $found = self::lastClassLikeIn($child, $offset, $found);
+            }
+        }
+        return $found;
     }
 }

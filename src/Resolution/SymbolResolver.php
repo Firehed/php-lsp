@@ -61,7 +61,6 @@ use Throwable;
 final class SymbolResolver implements CodeResolver
 {
     private readonly TextFallbackHelper $textFallback;
-    private readonly EnclosingClassResolver $enclosingClass;
     private readonly CallContextDetector $callDetector;
     private readonly MemberAccessDetector $memberAccessDetector;
 
@@ -71,13 +70,10 @@ final class SymbolResolver implements CodeResolver
         private readonly MemberResolver $memberResolver,
     ) {
         $this->textFallback = new TextFallbackHelper();
-        $this->enclosingClass = new EnclosingClassResolver($this->textFallback);
         $this->callDetector = new CallContextDetector($this->textFallback, $parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
-            $this->textFallback,
-            $this->enclosingClass,
             $parser,
         );
     }
@@ -88,7 +84,6 @@ final class SymbolResolver implements CodeResolver
             $this->memberResolver,
             $this->symbolSource,
             $document,
-            $this->enclosingClass,
         );
     }
 
