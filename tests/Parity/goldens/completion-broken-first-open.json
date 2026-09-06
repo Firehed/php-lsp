@@ -457,6 +457,14 @@
             "kind": 10
         },
         {
+            "label": "testInstance",
+            "kind": 2
+        },
+        {
+            "label": "testStatic",
+            "kind": 2
+        },
+        {
             "label": "triggerDefPrivateMethod",
             "kind": 2
         },
