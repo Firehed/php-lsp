@@ -25,32 +25,17 @@ use PhpParser\Node\Stmt;
 use PhpParser\Node\VarLikeIdentifier;
 
 /**
- * The text-only {@see SyntaxSource} for the position at the cursor. `parse()`
- * yields nothing — the source has no tree of its own — and `nodeAt()` ignores
- * the tree it is handed and synthesizes a member-access or call node from the
- * document text at the cursor. Placed last in the composite, it answers only
- * when every earlier member has answered null (RFC 1 §4.11, build-manifest
- * step-40 and step-41).
+ * Synthesizes the member-access or call node at the cursor from the document
+ * text. `parse()` yields nothing; `nodeAt()` ignores the tree it is handed.
+ * Placed last in the composite, so it answers only when every earlier member
+ * has answered null (RFC 1 §4.11).
  *
- * A `$var->prefix` at the cursor becomes a {@see PropertyFetch} with a
- * {@see Variable} receiver; a `ClassName::prefix` becomes a
- * {@see StaticPropertyFetch} with a {@see Name} receiver; the name is
- * {@see Error} when no identifier follows the arrow or the colons. Where the
- * cursor sits inside an unclosed call, the same synthesized member-access node
- * is wrapped as one of the call's {@see Arg}s so a downstream consumer walking
- * parents reaches either the member access or the enclosing call from the same
- * synthesized tree. Synthesized nodes carry `startFilePos`, `endFilePos`, and
- * `startLine` from the match offsets and carry no `parent` attribute at the
- * outer node, so a downstream reader that needs the enclosing class-like reads
- * it from the node's position rather than the parent chain.
+ * The outer node has no `parent` attribute set, so a downstream reader that
+ * needs the enclosing class-like reads it from the node's position rather
+ * than the parent chain.
  */
 final class CursorTextSyntaxSource implements SyntaxSource
 {
-    /**
-     * A case-insensitive regex over the PHP keywords that read as `word(` but
-     * are not function calls. Case folding is via `preg_match`'s own `i` flag,
-     * so the Domain layer's case helper is not reached from this layer.
-     */
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
@@ -143,19 +128,10 @@ final class CursorTextSyntaxSource implements SyntaxSource
     }
 
     /**
-     * The unclosed call at the cursor, if any. Scans back from `$offset` for an
-     * unmatched `(`; then reads the text just before it to classify the call
-     * kind — attribute, static call, method call, `new`, or function — and
-     * builds the corresponding node with `startFilePos`, `endFilePos`, and
-     * `startLine` set. When `$memberInside` matches an inner member-access at
-     * the cursor, it becomes the value of the trailing {@see Arg}, so a walk
-     * up from the member-access reaches the enclosing call through the same
-     * tree (build-manifest step-41).
-     *
-     * The `Name` on a class-like receiver carries only the raw text and its
-     * position — no import resolution. A downstream reader in the Resolution
-     * layer keys the FQN off `NameContext`, which is not reachable from this
-     * layer without breaking the tier's dependency contract.
+     * `$memberInside` becomes the value of the trailing {@see Arg} so a walk
+     * up from the member-access still reaches the enclosing call. Class-like
+     * receivers get no `resolvedName`: `NameContext` sits in the Resolution
+     * layer, out of reach; a downstream reader fills it in.
      */
     private static function synthesizeCall(
         string $content,
@@ -187,11 +163,6 @@ final class CursorTextSyntaxSource implements SyntaxSource
         return $callNode;
     }
 
-    /**
-     * The offset of the innermost unclosed `(` before `$offset`. A `;`, `{`,
-     * or `}` at depth zero ends the scan: a call cannot cross a statement or
-     * block boundary. Moved from `TextFallbackHelper` (build-manifest step-41).
-     */
     private static function findUnclosedParen(string $content, int $offset): ?int
     {
         $depth = 0;
@@ -211,13 +182,6 @@ final class CursorTextSyntaxSource implements SyntaxSource
         return null;
     }
 
-    /**
-     * Classifies the call kind from the text just before the unclosed `(` and
-     * builds the outer node, unpopulated args. Each branch reads the offsets
-     * `preg_match` captured so the synthesized nodes span the source they were
-     * matched from. Moved from `TextFallbackHelper::parseCallPattern`
-     * (build-manifest step-41).
-     */
     private static function buildCallFrame(
         string $textBeforeParen,
         int $parenPos,
@@ -338,12 +302,8 @@ final class CursorTextSyntaxSource implements SyntaxSource
     }
 
     /**
-     * A {@see Name} for a class-like reference — raw text and position, no
-     * import resolution. Php-parser drops the leading `\` on a fully-qualified
-     * name; the same is done here so a downstream reader sees the same shape.
-     * Setting `resolvedName` from imports lives in the Resolution layer:
-     * {@see \Firehed\PhpLsp\Resolution\SynthesizedNameResolver} carries it out
-     * before the synthesized call reaches `ExpressionResolver`.
+     * Php-parser drops the leading `\` on a fully-qualified name; the same is
+     * done here so a downstream reader sees one shape.
      */
     private static function classLikeName(string $short, int $startFilePos, int $line): Name
     {
@@ -355,14 +315,6 @@ final class CursorTextSyntaxSource implements SyntaxSource
     }
 
     /**
-     * The args between the unclosed `(` and the cursor, as {@see Arg} nodes
-     * with `startFilePos`/`endFilePos` set from the split. Every comma at
-     * depth zero closes an arg. The trailing (still-open) segment is included
-     * only when it carries a named-argument prefix or holds `$memberInside` —
-     * that keeps `CallContextDetector` reading argument names and cursor-local
-     * expressions from the same node while never manufacturing a phantom
-     * positional arg.
-     *
      * @return list<Arg>
      */
     private static function parseArgs(
@@ -398,10 +350,8 @@ final class CursorTextSyntaxSource implements SyntaxSource
         $lastEnd = $offset;
         $trimmed = trim($lastSegment);
         $hasNamed = $trimmed !== '' && preg_match('/^(\w+)\s*:/', $trimmed) === 1;
-        // A member access whose start lives inside the trailing arg becomes the
-        // arg's value even when its own end is past the current query offset
-        // (a downstream nodeAt at an earlier position inside `$var` still needs
-        // to descend into it).
+        // Deliberately no end-position check: a nodeAt at an earlier offset
+        // inside `$var` still needs to descend into the member access.
         $memberFalls = $memberInside !== null
             && $memberInside->getStartFilePos() >= $lastStart;
 
@@ -417,13 +367,8 @@ final class CursorTextSyntaxSource implements SyntaxSource
     }
 
     /**
-     * One {@see Arg} for a comma-delimited segment of the args text. A
-     * `name:` prefix becomes the arg's {@see Identifier} name; the value is
-     * `$memberInside` when it falls in the segment, otherwise a placeholder
-     * {@see Variable} carrying the segment's positions so consumers reading
-     * `getEndFilePos()` on the arg still see the segment span. Whitespace-only
-     * segments (a trailing comma before the cursor with nothing typed) return
-     * null so a phantom positional arg is not manufactured.
+     * Null when the segment has no name, no expression, and no cursor content:
+     * a bare `,` before the cursor must not become a phantom positional arg.
      */
     private static function buildArg(
         string $segment,

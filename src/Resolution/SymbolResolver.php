@@ -352,11 +352,9 @@ final class SymbolResolver implements CodeResolver
     }
 
     /**
-     * Set `resolvedName` on the class-like `Name` of a call node when it was
-     * synthesized by the cursor-text source (which cannot reach `NameContext`
-     * from the Parser layer). Runs on every call for uniformity; a call whose
-     * name already carries `resolvedName` (php-parser's own name-resolver pass
-     * ran on it) is untouched.
+     * A call node synthesized by the cursor-text source carries a class-like
+     * `Name` without `resolvedName` (the Parser layer cannot reach
+     * `NameContext`). Fill it in.
      *
      * @param array<Stmt> $ast
      */
@@ -371,16 +369,11 @@ final class SymbolResolver implements CodeResolver
         if (!$classNameNode instanceof Name || $classNameNode->hasAttribute('resolvedName')) {
             return;
         }
-        $raw = $classNameNode->toString();
-        // A FullyQualified name resolves to itself; only leave it alone.
         if ($classNameNode instanceof Name\FullyQualified) {
             return;
         }
         $context = NameContextFactory::fromAst($ast, $line);
-        $candidates = $context->candidates($raw, \Firehed\PhpLsp\Domain\NameKind::ClassLike);
-        if ($candidates === []) {
-            return;
-        }
+        $candidates = $context->candidates($classNameNode->toString(), \Firehed\PhpLsp\Domain\NameKind::ClassLike);
         $classNameNode->setAttribute('resolvedName', new Name\FullyQualified($candidates[0]));
     }
 

@@ -18,9 +18,7 @@ use PhpParser\Node\Stmt;
 
 /**
  * Detects call context (function/method/constructor calls) at a cursor
- * position. One `nodeAt` lookup through the {@see SyntaxSource} composite plus
- * a parent walk: the cursor-text source synthesizes the call frame for a
- * broken parse (build-manifest step-41), so no separate text path is needed.
+ * position through one `nodeAt` lookup and a parent walk.
  *
  * @phpstan-type RawDetection array{
  *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
