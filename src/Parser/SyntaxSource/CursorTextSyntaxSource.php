@@ -7,8 +7,15 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use PhpParser\Node;
+use PhpParser\Node\Arg;
+use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\Error;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
@@ -20,21 +27,33 @@ use PhpParser\Node\VarLikeIdentifier;
 /**
  * The text-only {@see SyntaxSource} for the position at the cursor. `parse()`
  * yields nothing — the source has no tree of its own — and `nodeAt()` ignores
- * the tree it is handed and synthesizes a member-access node from the document
- * text at the cursor. Placed last in the composite, it answers only when every
- * earlier member has answered null (RFC 1 §4.11, build-manifest step-40).
+ * the tree it is handed and synthesizes a member-access or call node from the
+ * document text at the cursor. Placed last in the composite, it answers only
+ * when every earlier member has answered null (RFC 1 §4.11, build-manifest
+ * step-40 and step-41).
  *
  * A `$var->prefix` at the cursor becomes a {@see PropertyFetch} with a
  * {@see Variable} receiver; a `ClassName::prefix` becomes a
  * {@see StaticPropertyFetch} with a {@see Name} receiver; the name is
- * {@see Error} when no identifier follows the arrow or the colons. Synthesized
- * nodes carry `startFilePos`, `endFilePos`, and `startLine` from the match
- * offsets and carry no `parent` attribute, so a downstream reader that needs
- * the enclosing class-like reads it from the node's position rather than the
- * parent chain.
+ * {@see Error} when no identifier follows the arrow or the colons. Where the
+ * cursor sits inside an unclosed call, the same synthesized member-access node
+ * is wrapped as one of the call's {@see Arg}s so a downstream consumer walking
+ * parents reaches either the member access or the enclosing call from the same
+ * synthesized tree. Synthesized nodes carry `startFilePos`, `endFilePos`, and
+ * `startLine` from the match offsets and carry no `parent` attribute at the
+ * outer node, so a downstream reader that needs the enclosing class-like reads
+ * it from the node's position rather than the parent chain.
  */
 final class CursorTextSyntaxSource implements SyntaxSource
 {
+    /**
+     * A case-insensitive regex over the PHP keywords that read as `word(` but
+     * are not function calls. Case folding is via `preg_match`'s own `i` flag,
+     * so the Domain layer's case helper is not reached from this layer.
+     */
+    private const string NON_FUNCTION_KEYWORD_PATTERN
+        = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
+
     private readonly NodeAtPosition $nodeAtPosition;
 
     public function __construct()
@@ -62,12 +81,16 @@ final class CursorTextSyntaxSource implements SyntaxSource
         $line = $document->positionAt($offset)['line'];
         $lineStart = $document->offsetAt($line, 0);
         $lineText = $document->getLine($line);
+        $content = $document->getContent();
 
-        $stmt = self::synthesize($lineText, $lineStart, $offset, $line);
-        if ($stmt === null) {
+        $memberNode = self::synthesizeMemberAccess($lineText, $lineStart, $offset, $line);
+        $callNode = self::synthesizeCall($content, $offset, $line, $memberNode);
+
+        $root = $callNode ?? $memberNode;
+        if ($root === null) {
             return null;
         }
-        return $this->nodeAtPosition->find([$stmt], $offset);
+        return $this->nodeAtPosition->find([$root], $offset);
     }
 
     /**
@@ -76,7 +99,7 @@ final class CursorTextSyntaxSource implements SyntaxSource
      * (`$this->x->y->prefix`) reuses the instance path on the leaf `$var->`
      * segment: the source is a cursor-position primitive, not a chain typer.
      */
-    private static function synthesize(string $lineText, int $lineStart, int $offset, int $line): ?Node
+    private static function synthesizeMemberAccess(string $lineText, int $lineStart, int $offset, int $line): ?Node
     {
         // Static: ClassName::prefix, excluding $var::.
         if (
@@ -117,6 +140,328 @@ final class CursorTextSyntaxSource implements SyntaxSource
         }
 
         return null;
+    }
+
+    /**
+     * The unclosed call at the cursor, if any. Scans back from `$offset` for an
+     * unmatched `(`; then reads the text just before it to classify the call
+     * kind — attribute, static call, method call, `new`, or function — and
+     * builds the corresponding node with `startFilePos`, `endFilePos`, and
+     * `startLine` set. When `$memberInside` matches an inner member-access at
+     * the cursor, it becomes the value of the trailing {@see Arg}, so a walk
+     * up from the member-access reaches the enclosing call through the same
+     * tree (build-manifest step-41).
+     *
+     * The `Name` on a class-like receiver carries only the raw text and its
+     * position — no import resolution. A downstream reader in the Resolution
+     * layer keys the FQN off `NameContext`, which is not reachable from this
+     * layer without breaking the tier's dependency contract.
+     */
+    private static function synthesizeCall(
+        string $content,
+        int $offset,
+        int $line,
+        ?Node $memberInside,
+    ): ?Node {
+        $parenPos = self::findUnclosedParen($content, $offset);
+        if ($parenPos === null) {
+            return null;
+        }
+
+        $textBeforeParen = substr($content, 0, $parenPos);
+        $callNode = self::buildCallFrame($textBeforeParen, $parenPos, $line);
+        if ($callNode === null) {
+            return null;
+        }
+
+        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
+        $args = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
+        $callNode->args = $args;
+        foreach ($args as $arg) {
+            $arg->setAttribute('parent', $callNode);
+        }
+
+        $callStart = $callNode->getStartFilePos();
+        $callNode->setAttribute('endFilePos', max($callStart, $offset));
+
+        return $callNode;
+    }
+
+    /**
+     * The offset of the innermost unclosed `(` before `$offset`. A `;`, `{`,
+     * or `}` at depth zero ends the scan: a call cannot cross a statement or
+     * block boundary. Moved from `TextFallbackHelper` (build-manifest step-41).
+     */
+    private static function findUnclosedParen(string $content, int $offset): ?int
+    {
+        $depth = 0;
+        for ($i = $offset - 1; $i >= 0; $i--) {
+            $char = $content[$i];
+            if ($char === ')') {
+                $depth++;
+            } elseif ($char === '(') {
+                if ($depth === 0) {
+                    return $i;
+                }
+                $depth--;
+            } elseif ($char === ';' || $char === '{' || $char === '}') {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Classifies the call kind from the text just before the unclosed `(` and
+     * builds the outer node, unpopulated args. Each branch reads the offsets
+     * `preg_match` captured so the synthesized nodes span the source they were
+     * matched from. Moved from `TextFallbackHelper::parseCallPattern`
+     * (build-manifest step-41).
+     */
+    private static function buildCallFrame(
+        string $textBeforeParen,
+        int $parenPos,
+        int $line,
+    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
+        $text = rtrim($textBeforeParen);
+        $lastByte = $parenPos - 1;
+
+        if (
+            preg_match(
+                '/#\[\s*(?:[\w\\\\]+\s*,\s*)*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/',
+                $text,
+                $m,
+                PREG_OFFSET_CAPTURE,
+            ) === 1
+        ) {
+            $nameText = $m[1][0];
+            $nameStart = $m[1][1];
+            $name = self::classLikeName($nameText, $nameStart, $line);
+            $attr = new Attribute($name, [], self::posAttrs($nameStart, $lastByte, $line));
+            $name->setAttribute('parent', $attr);
+            return $attr;
+        }
+
+        if (
+            preg_match(
+                '/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/',
+                $text,
+                $m,
+                PREG_OFFSET_CAPTURE,
+            ) === 1
+        ) {
+            $classText = $m[1][0];
+            $classStart = $m[1][1];
+            $methodText = $m[2][0];
+            $methodStart = $m[2][1];
+            $class = self::classLikeName($classText, $classStart, $line);
+            $method = new Identifier(
+                $methodText,
+                self::posAttrs($methodStart, $methodStart + strlen($methodText) - 1, $line),
+            );
+            $call = new StaticCall($class, $method, [], self::posAttrs($classStart, $lastByte, $line));
+            $class->setAttribute('parent', $call);
+            $method->setAttribute('parent', $call);
+            return $call;
+        }
+
+        if (
+            preg_match(
+                '/\$(\w+)(\?)?->(\w+)\s*$/',
+                $text,
+                $m,
+                PREG_OFFSET_CAPTURE,
+            ) === 1
+        ) {
+            $varName = $m[1][0];
+            $varNameStart = $m[1][1];
+            $varStart = $varNameStart - 1;
+            $isNullsafe = $m[2][0] === '?';
+            $methodName = $m[3][0];
+            $methodStart = $m[3][1];
+            $var = new Variable(
+                $varName,
+                self::posAttrs($varStart, $varNameStart + strlen($varName) - 1, $line),
+            );
+            $method = new Identifier(
+                $methodName,
+                self::posAttrs($methodStart, $methodStart + strlen($methodName) - 1, $line),
+            );
+            $call = $isNullsafe
+                ? new NullsafeMethodCall($var, $method, [], self::posAttrs($varStart, $lastByte, $line))
+                : new MethodCall($var, $method, [], self::posAttrs($varStart, $lastByte, $line));
+            $var->setAttribute('parent', $call);
+            $method->setAttribute('parent', $call);
+            return $call;
+        }
+
+        if (
+            preg_match(
+                '/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/',
+                $text,
+                $m,
+                PREG_OFFSET_CAPTURE,
+            ) === 1
+        ) {
+            $nameText = $m[1][0];
+            $nameStart = $m[1][1];
+            $newStart = $m[0][1];
+            $name = self::classLikeName($nameText, $nameStart, $line);
+            $new = new New_($name, [], self::posAttrs($newStart, $lastByte, $line));
+            $name->setAttribute('parent', $new);
+            return $new;
+        }
+
+        if (
+            preg_match(
+                '/\b(\w+)\s*$/',
+                $text,
+                $m,
+                PREG_OFFSET_CAPTURE,
+            ) === 1
+        ) {
+            $funcName = $m[1][0];
+            $funcStart = $m[1][1];
+            if (preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1) {
+                return null;
+            }
+            $name = new Name(
+                $funcName,
+                self::posAttrs($funcStart, $funcStart + strlen($funcName) - 1, $line),
+            );
+            $call = new FuncCall($name, [], self::posAttrs($funcStart, $lastByte, $line));
+            $name->setAttribute('parent', $call);
+            return $call;
+        }
+
+        return null;
+    }
+
+    /**
+     * A {@see Name} for a class-like reference — raw text and position, no
+     * import resolution. Php-parser drops the leading `\` on a fully-qualified
+     * name; the same is done here so a downstream reader sees the same shape.
+     * Setting `resolvedName` from imports lives in the Resolution layer:
+     * {@see \Firehed\PhpLsp\Resolution\SynthesizedNameResolver} carries it out
+     * before the synthesized call reaches `ExpressionResolver`.
+     */
+    private static function classLikeName(string $short, int $startFilePos, int $line): Name
+    {
+        $normalized = ltrim($short, '\\');
+        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($short) - 1, $line);
+        return $short !== $normalized
+            ? new FullyQualified($normalized, $attrs)
+            : new Name($normalized, $attrs);
+    }
+
+    /**
+     * The args between the unclosed `(` and the cursor, as {@see Arg} nodes
+     * with `startFilePos`/`endFilePos` set from the split. Every comma at
+     * depth zero closes an arg. The trailing (still-open) segment is included
+     * only when it carries a named-argument prefix or holds `$memberInside` —
+     * that keeps `CallContextDetector` reading argument names and cursor-local
+     * expressions from the same node while never manufacturing a phantom
+     * positional arg.
+     *
+     * @return list<Arg>
+     */
+    private static function parseArgs(
+        string $argsText,
+        int $argsStart,
+        int $offset,
+        int $line,
+        ?Node $memberInside,
+    ): array {
+        $args = [];
+        $depth = 0;
+        $currentStart = 0;
+        for ($i = 0; $i < strlen($argsText); $i++) {
+            $char = $argsText[$i];
+            if ($char === '(' || $char === '[' || $char === '{') {
+                $depth++;
+            } elseif ($char === ')' || $char === ']' || $char === '}') {
+                $depth--;
+            } elseif ($char === ',' && $depth === 0) {
+                $segment = substr($argsText, $currentStart, $i - $currentStart);
+                $segStart = $argsStart + $currentStart;
+                $segEnd = $argsStart + $i - 1;
+                $arg = self::buildArg($segment, $segStart, $segEnd, $line, null);
+                if ($arg !== null) {
+                    $args[] = $arg;
+                }
+                $currentStart = $i + 1;
+            }
+        }
+
+        $lastSegment = substr($argsText, $currentStart);
+        $lastStart = $argsStart + $currentStart;
+        $lastEnd = $offset;
+        $trimmed = trim($lastSegment);
+        $hasNamed = $trimmed !== '' && preg_match('/^(\w+)\s*:/', $trimmed) === 1;
+        // A member access whose start lives inside the trailing arg becomes the
+        // arg's value even when its own end is past the current query offset
+        // (a downstream nodeAt at an earlier position inside `$var` still needs
+        // to descend into it).
+        $memberFalls = $memberInside !== null
+            && $memberInside->getStartFilePos() >= $lastStart;
+
+        if ($hasNamed || $memberFalls) {
+            $inner = $memberFalls ? $memberInside : null;
+            $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
+            if ($arg !== null) {
+                $args[] = $arg;
+            }
+        }
+
+        return $args;
+    }
+
+    /**
+     * One {@see Arg} for a comma-delimited segment of the args text. A
+     * `name:` prefix becomes the arg's {@see Identifier} name; the value is
+     * `$memberInside` when it falls in the segment, otherwise a placeholder
+     * {@see Variable} carrying the segment's positions so consumers reading
+     * `getEndFilePos()` on the arg still see the segment span. Whitespace-only
+     * segments (a trailing comma before the cursor with nothing typed) return
+     * null so a phantom positional arg is not manufactured.
+     */
+    private static function buildArg(
+        string $segment,
+        int $segStart,
+        int $segEnd,
+        int $line,
+        ?Node $memberInside,
+    ): ?Arg {
+        $trimmed = trim($segment);
+        $named = null;
+        if ($trimmed !== '' && preg_match('/^(\w+)\s*:/', $trimmed, $m) === 1) {
+            $nameOffsetInSegment = strpos($segment, $m[1]);
+            $nameStart = $segStart + ($nameOffsetInSegment === false ? 0 : $nameOffsetInSegment);
+            $named = new Identifier(
+                $m[1],
+                self::posAttrs($nameStart, $nameStart + strlen($m[1]) - 1, $line),
+            );
+        }
+
+        if ($named === null && $trimmed === '' && $memberInside === null) {
+            return null;
+        }
+
+        $value = $memberInside instanceof \PhpParser\Node\Expr
+            ? $memberInside
+            : new Variable('_', self::posAttrs($segStart, $segEnd, $line));
+
+        $arg = new Arg(
+            $value,
+            false,
+            false,
+            self::posAttrs($segStart, $segEnd, $line),
+            $named,
+        );
+        $named?->setAttribute('parent', $arg);
+        $value->setAttribute('parent', $arg);
+
+        return $arg;
     }
 
     /**
