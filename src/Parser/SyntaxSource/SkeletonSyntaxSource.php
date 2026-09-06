@@ -290,7 +290,7 @@ final class SkeletonSyntaxSource implements SyntaxSource
      */
     private function buildMethods(string $body, int $baseOffset, array $positions): array
     {
-        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(/m';
+        $pattern = '/^\s*(public|protected|private)\s+(static\s+)?function\s+(\w+)\s*\(([^)]*)\)/m';
         $out = [];
         foreach (self::matchAll($pattern, $body) as $m) {
             $flags = self::visibilityFlag($m[1][0])
@@ -298,17 +298,109 @@ final class SkeletonSyntaxSource implements SyntaxSource
             $matchStart = $baseOffset + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
             $nameStart = $baseOffset + $m[3][1];
+            $paramsText = $m[4][0];
+            $paramsAnchor = $baseOffset + $m[4][1];
+            $params = self::buildParams($paramsText, $paramsAnchor, $positions);
             $out[] = new Stmt\ClassMethod(
                 new Identifier(
                     $m[3][0],
                     self::positions($positions, $nameStart, $nameStart + strlen($m[3][0])),
                 ),
-                ['flags' => $flags, 'params' => [], 'returnType' => null, 'stmts' => []],
+                ['flags' => $flags, 'params' => $params, 'returnType' => null, 'stmts' => []],
                 self::positions($positions, $matchStart, $matchEnd),
             );
         }
         return $out;
     }
+
+    /**
+     * A one-line parameter parser: it reads `type $name` pairs separated by
+     * commas, mirroring what {@see \Firehed\PhpLsp\Resolution\ExpressionResolver}
+     * needs from the skeleton to type a `$var` receiver in a broken method.
+     * Default values, variadics, and nested parens are dropped — the type text
+     * is the shape a positional receiver query reads.
+     *
+     * @param PositionMap $positions
+     * @return list<Node\Param>
+     */
+    private static function buildParams(string $paramsText, int $anchor, array $positions): array
+    {
+        $out = [];
+        // Each element: `?TypeRef\Name $name` or `Type $name = default`.
+        $pattern = '/(?:^|,)\s*((?:\?[?\w\\\\|]+)|[\w\\\\|]+)?\s*\$(\w+)/';
+        if (preg_match_all($pattern, $paramsText, $matches, PREG_OFFSET_CAPTURE | PREG_SET_ORDER) === false) {
+            // @codeCoverageIgnoreStart
+            return [];
+            // @codeCoverageIgnoreEnd
+        }
+        foreach ($matches as $m) {
+            $typeText = $m[1][0];
+            $typeOffset = $m[1][1];
+            $name = $m[2][0];
+            $nameOffsetInParams = $m[2][1];
+            $nameStart = $anchor + $nameOffsetInParams;
+            $nameEnd = $nameStart + strlen($name);
+            $var = new Node\Expr\Variable(
+                $name,
+                self::positions($positions, $nameStart, $nameEnd),
+            );
+            $type = self::parseTypeText($typeText, $anchor + $typeOffset, $positions);
+            $out[] = new Node\Param(
+                $var,
+                default: null,
+                type: $type,
+                attributes: self::positions($positions, $nameStart, $nameEnd),
+            );
+        }
+        return $out;
+    }
+
+    /**
+     * @param PositionMap $positions
+     */
+    private static function parseTypeText(
+        string $text,
+        int $anchor,
+        array $positions,
+    ): Node\Identifier|Node\Name|Node\NullableType|null {
+        $text = trim($text);
+        if ($text === '') {
+            return null;
+        }
+        $nullable = false;
+        if (str_starts_with($text, '?')) {
+            $nullable = true;
+            $text = substr($text, 1);
+        }
+        if ($text === '') {
+            return null;
+        }
+        // Union types: A|B. Intersection is not attempted; the receiver query
+        // reads the first constituent to type the variable, which is enough for
+        // completion inside a broken method.
+        $parts = explode('|', $text);
+        $first = trim($parts[0]);
+        if ($first === '') {
+            return null;
+        }
+        $anchor = max(0, $anchor);
+        $attrs = self::positions($positions, $anchor, $anchor + strlen($first));
+        // Primitive type names are compared verbatim: parameter types in PHP
+        // source are conventionally lowercase, and the fallback path — treating
+        // an unrecognised token as a class name — is safe when the file's
+        // actual type resolution rejects it downstream.
+        if (in_array($first, self::PRIMITIVE_TYPES, true)) {
+            return new Node\Identifier($first, $attrs);
+        }
+        $node = new Node\Name($first, $attrs);
+        return $nullable ? new Node\NullableType($node, $attrs) : $node;
+    }
+
+    private const array PRIMITIVE_TYPES = [
+        'int', 'float', 'string', 'bool', 'void', 'mixed', 'array',
+        'object', 'callable', 'iterable', 'self', 'static', 'never',
+        'false', 'true', 'null',
+    ];
 
     /**
      * @param PositionMap $positions
@@ -541,14 +633,62 @@ final class SkeletonSyntaxSource implements SyntaxSource
      * An empty class body (`class C {}`) still returns the declaration through
      * its `}` — the matcher runs from the byte before the brace so the initial
      * increment reaches depth 1 immediately.
+     *
+     * When the class has no opening brace at all (a truncated declaration such
+     * as `class Foo extends Bar` followed by member-looking lines), the next
+     * `{` in the file belongs to a member's body and would misplace the class.
+     * In that case the slice runs to the next class-like declaration or to
+     * end-of-file, so the truncated class still holds its members.
      */
     private static function sliceClassBody(string $content, int $declOffset): string
     {
         $bracePos = strpos($content, '{', $declOffset);
-        $end = $bracePos === false
-            ? strlen($content)
-            : self::findMatchingBrace($content, $bracePos - 1);
-        return substr($content, $declOffset, $end - $declOffset);
+        $nextDeclPos = self::nextClassLikeDeclPos($content, $declOffset);
+        if (
+            $bracePos !== false
+            && $bracePos < $nextDeclPos
+            && self::braceOpensClassBody($content, $declOffset, $bracePos)
+        ) {
+            $end = self::findMatchingBrace($content, $bracePos - 1);
+            return substr($content, $declOffset, $end - $declOffset);
+        }
+        return substr($content, $declOffset, $nextDeclPos - $declOffset);
+    }
+
+    /**
+     * True when the first `{` after the class declaration is its own body's
+     * opener, false when it belongs to a member (a `class Foo` declaration
+     * without its own opening brace ended up latching onto a method's body).
+     */
+    private static function braceOpensClassBody(string $content, int $declOffset, int $bracePos): bool
+    {
+        $between = substr($content, $declOffset, $bracePos - $declOffset);
+        return preg_match(
+            '/\n\s*(?:public|protected|private|static|readonly|abstract|final|const|function)\b/',
+            $between,
+        ) !== 1;
+    }
+
+    /**
+     * The offset of the next class-like declaration at line start after
+     * `$fromOffset`, or the file length when none follows. `$fromOffset` sits
+     * on the current class's own declaration, so scan for the same pattern
+     * twice — the first match is this class, the second is the one that bounds
+     * its body.
+     */
+    private static function nextClassLikeDeclPos(string $content, int $fromOffset): int
+    {
+        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
+        if (preg_match($pattern, $content, $first, PREG_OFFSET_CAPTURE, $fromOffset) !== 1) {
+            // @codeCoverageIgnoreStart
+            return strlen($content);
+            // @codeCoverageIgnoreEnd
+        }
+        $skipTo = $first[0][1] + strlen($first[0][0]);
+        if (preg_match($pattern, $content, $second, PREG_OFFSET_CAPTURE, $skipTo) === 1) {
+            return $second[0][1];
+        }
+        return strlen($content);
     }
 
     /**
