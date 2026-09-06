@@ -245,6 +245,17 @@ final class Scope
         return $found;
     }
 
+    /**
+     * @phpstan-assert-if-true Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node
+     */
+    private static function isClassLikeStmt(Node $node): bool
+    {
+        return $node instanceof Stmt\Class_
+            || $node instanceof Stmt\Interface_
+            || $node instanceof Stmt\Trait_
+            || $node instanceof Stmt\Enum_;
+    }
+
     private static function lastClassLikeIn(
         Node $node,
         int $offset,
@@ -253,18 +264,14 @@ final class Scope
         if ($node->getStartFilePos() > $offset) {
             return $found;
         }
-        if (
-            $node instanceof Stmt\Class_
-            || $node instanceof Stmt\Interface_
-            || $node instanceof Stmt\Trait_
-            || $node instanceof Stmt\Enum_
-        ) {
-            $found = $node;
+        if (self::isClassLikeStmt($node)) {
+            return $node;
         }
-        if ($node instanceof Stmt\Namespace_) {
-            foreach ($node->stmts as $child) {
-                $found = self::lastClassLikeIn($child, $offset, $found);
-            }
+        if (!$node instanceof Stmt\Namespace_) {
+            return $found;
+        }
+        foreach ($node->stmts as $child) {
+            $found = self::lastClassLikeIn($child, $offset, $found);
         }
         return $found;
     }

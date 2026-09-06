@@ -364,22 +364,17 @@ final class SkeletonSyntaxSource implements SyntaxSource
         array $positions,
     ): Node\Identifier|Node\Name|Node\NullableType|null {
         $text = trim($text);
-        if ($text === '') {
-            return null;
-        }
-        $nullable = false;
-        if (str_starts_with($text, '?')) {
-            $nullable = true;
+        $nullable = str_starts_with($text, '?');
+        if ($nullable) {
             $text = substr($text, 1);
-        }
-        if ($text === '') {
-            return null;
         }
         // Union types: A|B. Intersection is not attempted; the receiver query
         // reads the first constituent to type the variable, which is enough for
-        // completion inside a broken method.
-        $parts = explode('|', $text);
-        $first = trim($parts[0]);
+        // completion inside a broken method. `explode` on an empty string still
+        // yields one element, so this one check catches every empty-input shape
+        // the buildParams regex admits (no annotation, and pathological input
+        // that captures only pipes).
+        $first = trim(explode('|', $text)[0]);
         if ($first === '') {
             return null;
         }

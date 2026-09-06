@@ -224,6 +224,34 @@ class ScopeTest extends TestCase
         self::assertNotEmpty($hasFunction, 'Namespace-level statements should be exposed for global scope');
     }
 
+    public function testClassLikeForThisAtWalksBackAcrossANamespace(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/FileScopeThisAfterClass.php'));
+        $thisNode = self::findVariableNode('this', $ast);
+        self::assertNotNull($thisNode);
+
+        $classLike = Scope::classLikeForThisAt($ast, $thisNode->getStartFilePos());
+
+        self::assertInstanceOf(
+            Stmt\Class_::class,
+            $classLike,
+            'file-scope $this should walk back to the class declared above',
+        );
+        self::assertSame('FileScopeThisAfterClass', $classLike->name?->toString());
+    }
+
+    public function testClassLikeForThisAtReturnsNullWhenNoClassLikeDeclared(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_outside_class.php'));
+        $thisNode = self::findVariableNode('this', $ast);
+        self::assertNotNull($thisNode);
+
+        self::assertNull(
+            Scope::classLikeForThisAt($ast, $thisNode->getStartFilePos()),
+            'no class-like in the file means $this binds to nothing',
+        );
+    }
+
     public function testAtOffsetInFilelessNamespaceUsesAstRoot(): void
     {
         $ast = self::parseWithParents($this->loadFixture('TopLevel/global_scope_hover.php'));
