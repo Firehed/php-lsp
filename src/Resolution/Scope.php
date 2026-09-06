@@ -182,6 +182,28 @@ final class Scope
     }
 
     /**
+     * The class-like `$this` at `$offset` refers to: the enclosing class-like
+     * when the tree carries one, else the last class-like declared before the
+     * offset. The second case covers a `$this` the parser recovered as a
+     * top-level statement — its enclosing class body was truncated, or its
+     * span does not reach the expression — where the tree still names the
+     * class-like above.
+     *
+     * This is the receiver-typing route only. Scope construction and
+     * completion vantage inference stay on {@see self::findEnclosingClassLike},
+     * which does not walk back.
+     *
+     * @param array<Stmt> $ast
+     */
+    public static function classLikeForThisAt(
+        array $ast,
+        int $offset,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        return self::findEnclosingClassLike($ast, $offset)
+            ?? self::lastClassLikeBefore($ast, $offset);
+    }
+
+    /**
      * @param array<Stmt> $ast
      */
     private static function findEnclosingClassLike(
@@ -207,6 +229,44 @@ final class Scope
         );
 
         return $node;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function lastClassLikeBefore(
+        array $ast,
+        int $offset,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        $found = null;
+        foreach ($ast as $stmt) {
+            $found = self::lastClassLikeIn($stmt, $offset, $found);
+        }
+        return $found;
+    }
+
+    private static function lastClassLikeIn(
+        Node $node,
+        int $offset,
+        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $found,
+    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
+        if ($node->getStartFilePos() > $offset) {
+            return $found;
+        }
+        if (
+            $node instanceof Stmt\Class_
+            || $node instanceof Stmt\Interface_
+            || $node instanceof Stmt\Trait_
+            || $node instanceof Stmt\Enum_
+        ) {
+            $found = $node;
+        }
+        if ($node instanceof Stmt\Namespace_) {
+            foreach ($node->stmts as $child) {
+                $found = self::lastClassLikeIn($child, $offset, $found);
+            }
+        }
+        return $found;
     }
 
     /**
