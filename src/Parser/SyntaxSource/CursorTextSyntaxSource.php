@@ -13,6 +13,7 @@ use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\VarLikeIdentifier;
 
@@ -34,6 +35,13 @@ use PhpParser\Node\VarLikeIdentifier;
  */
 final class CursorTextSyntaxSource implements SyntaxSource
 {
+    private readonly NodeAtPosition $nodeAtPosition;
+
+    public function __construct()
+    {
+        $this->nodeAtPosition = new NodeAtPosition();
+    }
+
     /**
      * @return array<Stmt>
      */
@@ -47,22 +55,19 @@ final class CursorTextSyntaxSource implements SyntaxSource
      */
     public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
     {
-        $content = $document->getContent();
-        $length = strlen($content);
-        if ($offset < 0 || $offset > $length) {
+        if ($offset < 0 || $offset > strlen($document->getContent())) {
             return null;
         }
 
-        $lineStart = self::lineStart($content, $offset);
-        $lineEnd = self::lineEnd($content, $offset);
-        $lineText = substr($content, $lineStart, $lineEnd - $lineStart);
-        $line = substr_count($content, "\n", 0, $lineStart);
+        $line = $document->positionAt($offset)['line'];
+        $lineStart = $document->offsetAt($line, 0);
+        $lineText = $document->getLine($line);
 
         $stmt = self::synthesize($lineText, $lineStart, $offset, $line);
         if ($stmt === null) {
             return null;
         }
-        return (new NodeAtPosition())->find([$stmt], $offset);
+        return $this->nodeAtPosition->find([$stmt], $offset);
     }
 
     /**
@@ -164,6 +169,10 @@ final class CursorTextSyntaxSource implements SyntaxSource
             }
         }
 
+        // Absolute file offsets of the arrow (`->` or `?->`) and the identifier
+        // prefix after it. Regex offsets are line-relative; `$lineStart` shifts
+        // them to file coordinates. `endFilePos` is inclusive; `max(0, ...)`
+        // keeps an empty prefix from stepping past its start.
         $arrowStart = $lineStart + $m[3][1];
         $arrowEnd = $arrowStart + strlen($arrowText) - 1;
         $prefixStart = $lineStart + $m[4][1];
@@ -193,6 +202,12 @@ final class CursorTextSyntaxSource implements SyntaxSource
      */
     private static function buildStatic(array $m, int $matchStart, int $line, int $lineStart): StaticPropertyFetch
     {
+        // The regex captured `ClassName::prefix`. Each `*Start`/`*End` names the
+        // absolute file offset of one segment: the class name, the `::` pair,
+        // and the (possibly empty) identifier prefix after it. `endFilePos` in
+        // php-parser is inclusive — the offset of the last byte — so the `- 1`
+        // and `max(0, ...)` guards handle empty captures without walking past
+        // the start.
         $rawClass = $m[1][0];
         $prefix = $m[3][0];
         $classStart = $matchStart;
@@ -206,16 +221,10 @@ final class CursorTextSyntaxSource implements SyntaxSource
         // Php-parser drops the leading separator on a fully qualified name and
         // records the fully qualified flag; keep the same shape here.
         $className = ltrim($rawClass, '\\');
-        $classNode = new Name(
-            $className,
-            self::posAttrs($classStart, $classEnd, $line),
-        );
-        if ($rawClass !== $className) {
-            $classNode = new \PhpParser\Node\Name\FullyQualified(
-                $className,
-                self::posAttrs($classStart, $classEnd, $line),
-            );
-        }
+        $classAttrs = self::posAttrs($classStart, $classEnd, $line);
+        $classNode = $rawClass !== $className
+            ? new FullyQualified($className, $classAttrs)
+            : new Name($className, $classAttrs);
         $name = $prefix === ''
             ? new Error(self::posAttrs($colonsEnd + 1, $colonsEnd + 1, $line))
             : new VarLikeIdentifier($prefix, self::posAttrs($prefixStart, $prefixEnd, $line));
@@ -240,18 +249,5 @@ final class CursorTextSyntaxSource implements SyntaxSource
             'endFilePos' => $end,
             'startLine' => $line + 1,
         ];
-    }
-
-    private static function lineStart(string $content, int $offset): int
-    {
-        $before = substr($content, 0, $offset);
-        $newline = strrpos($before, "\n");
-        return $newline === false ? 0 : $newline + 1;
-    }
-
-    private static function lineEnd(string $content, int $offset): int
-    {
-        $newline = strpos($content, "\n", $offset);
-        return $newline === false ? strlen($content) : $newline;
     }
 }

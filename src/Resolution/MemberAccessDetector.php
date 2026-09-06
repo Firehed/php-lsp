@@ -115,7 +115,9 @@ final class MemberAccessDetector
     /**
      * The enclosing class-like of the access site — read from the parent chain
      * for a parsed AST, or from the node's file position for a synthesized one
-     * that carries no parent attribute (build-manifest step-40).
+     * that carries no parent attribute (build-manifest step-40). The parent
+     * chain remains load-bearing when a truncated class span does not enclose
+     * the access offset.
      *
      * @param array<Stmt> $ast
      */
