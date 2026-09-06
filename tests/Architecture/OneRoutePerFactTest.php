@@ -106,17 +106,15 @@ final class OneRoutePerFactTest extends TestCase
                 interface: SyntaxSource::class,
                 roots: [Server::class],
             ),
-            // No holder: the routes collapse by deletion. steps 40 and 41 move the
-            // cursor-local regexes into the cursor text source, step-42 deletes the
-            // class and this row with it.
+            // No holder: the routes collapse by deletion. Step-41 moves the
+            // cursor-local call regexes into the cursor text source; step-42
+            // deletes the class and this row with it.
             Fact::confined(
                 name: 'text helper',
                 ingredients: [TextFallbackHelper::class],
                 holders: [],
                 pending: [
                     'src/Resolution/CallContextDetector.php' => 'step-41',
-                    'src/Resolution/EnclosingClassResolver.php' => 'step-42',
-                    'src/Resolution/MemberAccessDetector.php' => 'step-40',
                     'src/Resolution/SymbolResolver.php' => 'step-42',
                 ],
             ),

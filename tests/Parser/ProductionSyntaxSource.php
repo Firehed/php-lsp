@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parser;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
@@ -34,6 +35,7 @@ final readonly class ProductionSyntaxSource
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), $this->metrics),
                 new SkeletonSyntaxSource(),
+                new CursorTextSyntaxSource(),
             ]),
         );
         $this->reader = new SourceFileReader();

@@ -64,7 +64,6 @@ final class ExpressionResolver
         private readonly MemberResolver $memberResolver,
         private readonly SymbolSource $symbolSource,
         private readonly TextDocument $document,
-        private readonly EnclosingClassResolver $enclosingClass,
     ) {
     }
 
@@ -74,7 +73,8 @@ final class ExpressionResolver
     public function resolve(Expr $expr, array $ast): ?ResolvedSymbol
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
-            $enclosing = $this->enclosingClass->forNode($expr, $ast, $this->document);
+            $classLike = Scope::classLikeForThisAt($ast, $expr->getStartFilePos());
+            $enclosing = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
             if ($enclosing === null) {
                 return null;
             }

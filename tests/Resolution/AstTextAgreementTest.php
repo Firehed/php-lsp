@@ -6,29 +6,26 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassKind;
-use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
-use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
-use Firehed\PhpLsp\Resolution\MemberAccessDetector;
-use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\ScopeFinder;
 use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -51,33 +48,17 @@ final class AstTextAgreementTest extends TestCase
     use LoadsFixturesTrait;
 
     private MemoizingSyntaxSource $parser;
-    private MemberResolver $memberResolver;
     private TextFallbackHelper $textFallback;
     private CallContextDetector $callDetector;
-    private MemberAccessDetector $memberAccessDetector;
+    private CursorTextSyntaxSource $cursorText;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
-
-        $fixturesRoot = __DIR__ . '/../Fixtures';
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $this->parser,
-            $production->reader,
-        );
-        $this->memberResolver = new MemberResolver($knowledge->source);
         $this->textFallback = new TextFallbackHelper();
         $this->callDetector = new CallContextDetector($this->textFallback, $this->parser);
-        $this->memberAccessDetector = new MemberAccessDetector(
-            $knowledge->source,
-            $this->memberResolver,
-            $this->textFallback,
-            new EnclosingClassResolver($this->textFallback),
-            $this->parser,
-        );
+        $this->cursorText = new CursorTextSyntaxSource();
     }
 
     #[DataProvider('enclosingClassFixtures')]
@@ -230,58 +211,72 @@ final class AstTextAgreementTest extends TestCase
         ];
     }
 
+    /**
+     * On every fixture that parses, the composite (php-parser wins) and the
+     * cursor-text source alone must land on a node of the same class carrying
+     * the same receiver and name at the cursor. Diverging shapes at the cursor
+     * would mean the empty-parse path and the parsed-tree path resolve a member
+     * against different receivers — the M×N the cursor-text source exists to
+     * prevent (build-manifest step-40, RFC 1 §4.11).
+     */
     #[DataProvider('memberAccessFixtures')]
-    public function testMemberAccessAgreement(
+    public function testMemberAccessCursorAgreement(
         string $fixture,
         string $marker,
-        MemberAccessKind $expectedKind,
-        string $expectedTypeFormat,
-        Visibility $expectedMinVisibility,
+        string $expectedReceiverKind,
+        string $expectedReceiverName,
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
 
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
+        $offset = $document->offsetAt($line, $character);
+        // Match MemberAccessDetector's cursor semantic: probe the last char
+        // before the cursor, so we land on the arrow rather than on the marker.
+        $probe = $offset > 0 ? $offset - 1 : 0;
 
-        $astResult = $this->memberAccessDetector->detect($document, $ast, $line, $character);
-        $textResult = $this->memberAccessDetector->fromText($document, $ast, $line, $character);
+        $compositeNode = $this->parser->nodeAt($ast, $document, $probe);
+        $cursorNode = $this->cursorText->nodeAt([], $document, $probe);
 
-        self::assertNotNull($astResult, 'AST path must detect member access');
-        self::assertNotNull($textResult, 'Text path must detect member access');
+        self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
+        self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
 
-        self::assertSame($expectedKind, $astResult->kind, 'AST kind must match expected');
-        self::assertSame($astResult->kind, $textResult->kind, 'Access kind must agree');
+        $compositeAccess = self::resolveToAccessNode($compositeNode);
+        $cursorAccess = self::resolveToAccessNode($cursorNode);
+
+        self::assertNotNull($compositeAccess, 'composite node must be inside a member-access expression');
+        self::assertNotNull($cursorAccess, 'cursor-text node must be inside a member-access expression');
+
         self::assertSame(
-            $expectedTypeFormat,
-            $astResult->type->format(),
-            'AST target type must match expected',
+            $expectedReceiverKind,
+            self::receiverKind($cursorAccess),
+            'cursor-text receiver kind must match expected',
         );
         self::assertSame(
-            $astResult->type->format(),
-            $textResult->type->format(),
-            'Target type must agree between AST and text paths',
+            self::receiverKind($compositeAccess),
+            self::receiverKind($cursorAccess),
+            'receiver kind must agree between composite and cursor-text source',
         );
         self::assertSame(
-            $expectedMinVisibility,
-            $astResult->minVisibility,
-            'AST minVisibility must match expected — a consistent flip in '
-                . 'visibilityBetween would otherwise pass the agreement check below',
+            $expectedReceiverName,
+            self::receiverName($cursorAccess),
+            'cursor-text receiver name must match expected',
         );
         self::assertSame(
-            $astResult->minVisibility,
-            $textResult->minVisibility,
-            'Visibility must agree between AST and text paths',
+            self::receiverName($compositeAccess),
+            self::receiverName($cursorAccess),
+            'receiver name must agree between composite and cursor-text source',
         );
         self::assertSame(
-            $astResult->prefix,
-            $textResult->prefix,
-            'Member prefix must agree between AST and text paths',
+            self::prefixName($compositeAccess),
+            self::prefixName($cursorAccess),
+            'member name/prefix must agree between composite and cursor-text source',
         );
     }
 
     /**
-     * @return array<string, array{string, string, MemberAccessKind, string, Visibility}>
+     * @return array<string, array{string, string, string, string}>
      */
     public static function memberAccessFixtures(): array
     {
@@ -290,46 +285,140 @@ final class AstTextAgreementTest extends TestCase
             '$this->method' => [
                 $fixture,
                 'this_method',
-                MemberAccessKind::Instance,
-                'Fixtures\\Resolution\\MemberAccessAgreement',
-                Visibility::Private,
+                'Variable',
+                'this',
             ],
             '$this->property' => [
                 $fixture,
                 'this_property',
-                MemberAccessKind::Instance,
-                'Fixtures\\Resolution\\MemberAccessAgreement',
-                Visibility::Private,
+                'Variable',
+                'this',
             ],
             'self::method' => [
                 $fixture,
                 'self_static',
-                MemberAccessKind::Static,
-                'Fixtures\\Resolution\\MemberAccessAgreement',
-                Visibility::Private,
+                'Name',
+                'self',
             ],
             'parent::method' => [
                 $fixture,
                 'parent_static',
-                MemberAccessKind::Parent,
-                'Fixtures\\Inheritance\\ChildClass',
-                Visibility::Protected,
+                'Name',
+                'parent',
             ],
             'imported class ::method' => [
                 $fixture,
                 'class_static',
-                MemberAccessKind::Static,
-                'Fixtures\\Domain\\User',
-                Visibility::Public,
+                'Name',
+                'User',
             ],
             'fully qualified class ::method' => [
                 $fixture,
                 'fq_static',
-                MemberAccessKind::Static,
-                'Fixtures\\Domain\\User',
-                Visibility::Public,
+                'Name',
+                'User',
             ],
         ];
+    }
+
+    private static function resolveToAccessNode(Node $node): ?Node
+    {
+        while (
+            !($node instanceof MethodCall)
+            && !($node instanceof NullsafeMethodCall)
+            && !($node instanceof PropertyFetch)
+            && !($node instanceof StaticCall)
+            && !($node instanceof StaticPropertyFetch)
+            && !($node instanceof \PhpParser\Node\Expr\ClassConstFetch)
+        ) {
+            $parent = $node->getAttribute('parent');
+            if (!$parent instanceof Node) {
+                return null;
+            }
+            $node = $parent;
+        }
+        return $node;
+    }
+
+    private static function receiverKind(Node $access): string
+    {
+        $receiver = self::receiverOf($access);
+        if ($receiver === null) {
+            return '';
+        }
+        // FullyQualified is a Name subtype the name resolver may swap in for an
+        // imported short name; treat it as Name so a same-family receiver reads
+        // the same regardless of which side of the resolver produced it.
+        if ($receiver instanceof \PhpParser\Node\Name) {
+            return 'Name';
+        }
+        return self::shortClass($receiver);
+    }
+
+    private static function receiverName(Node $access): string
+    {
+        $receiver = self::receiverOf($access);
+        if ($receiver instanceof \PhpParser\Node\Expr\Variable && is_string($receiver->name)) {
+            return $receiver->name;
+        }
+        if ($receiver instanceof \PhpParser\Node\Name) {
+            // Php-parser's name resolver rewrites an imported name in place, so
+            // an alias reads as its FQN on the composite side and as the short
+            // form from the cursor-text source; compare the short tail, which
+            // agrees on both sides.
+            return $receiver->getLast();
+        }
+        return '';
+    }
+
+    private static function prefixName(Node $access): string
+    {
+        $name = self::nameOf($access);
+        if ($name instanceof \PhpParser\Node\Identifier) {
+            return $name->toString();
+        }
+        return '';
+    }
+
+    private static function receiverOf(Node $access): ?Node
+    {
+        if (
+            $access instanceof MethodCall
+            || $access instanceof NullsafeMethodCall
+            || $access instanceof PropertyFetch
+        ) {
+            return $access->var;
+        }
+        if (
+            $access instanceof StaticCall
+            || $access instanceof StaticPropertyFetch
+            || $access instanceof \PhpParser\Node\Expr\ClassConstFetch
+        ) {
+            return $access->class;
+        }
+        return null;
+    }
+
+    private static function nameOf(Node $access): ?Node
+    {
+        if (
+            $access instanceof MethodCall
+            || $access instanceof NullsafeMethodCall
+            || $access instanceof PropertyFetch
+            || $access instanceof StaticCall
+            || $access instanceof StaticPropertyFetch
+            || $access instanceof \PhpParser\Node\Expr\ClassConstFetch
+        ) {
+            return $access->name;
+        }
+        return null;
+    }
+
+    private static function shortClass(Node $node): string
+    {
+        $class = $node::class;
+        $pos = strrpos($class, '\\');
+        return $pos === false ? $class : substr($class, $pos + 1);
     }
 
     private function markerOffset(string $content, string $marker): int

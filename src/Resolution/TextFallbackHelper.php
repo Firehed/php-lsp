@@ -29,39 +29,6 @@ use PhpParser\Node\Stmt;
 final class TextFallbackHelper
 {
     /**
-     * Match the member-access pattern that ends the given text (typically the
-     * source line before the cursor). Returns a typed match struct describing
-     * the receiver kind, or null if no member-access pattern is at the tail.
-     *
-     * This is a text primitive: it holds the regex and nothing else. Resolving
-     * the match to a {@see MemberAccessContext} is the caller's job.
-     *
-     * @return array{kind: 'chain', chain: string, prefix: string}
-     *      | array{kind: 'instance', var: string, prefix: string}
-     *      | array{kind: 'static', class: string, prefix: string}
-     *      | null
-     */
-    public function matchMemberAccessAt(string $textBeforeCursor): ?array
-    {
-        // Chained instance access: $this->member->prefix or $this?->member->prefix
-        if (preg_match('/(\$this(?:\??->[\w]+(?:\([^)]*\))?)+)\??->([\w]*)$/', $textBeforeCursor, $m) === 1) {
-            return ['kind' => 'chain', 'chain' => $m[1], 'prefix' => $m[2]];
-        }
-
-        // Simple instance access: $var->prefix or $var?->prefix
-        if (preg_match('/\$(\w+)(\?)?->([\w]*)$/', $textBeforeCursor, $m) === 1) {
-            return ['kind' => 'instance', 'var' => $m[1], 'prefix' => $m[3]];
-        }
-
-        // Static access: ClassName::prefix (excluding $var::)
-        if (preg_match('/(?<!\$)([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::([\w]*)$/', $textBeforeCursor, $m) === 1) {
-            return ['kind' => 'static', 'class' => $m[1], 'prefix' => $m[2]];
-        }
-
-        return null;
-    }
-
-    /**
      * Find enclosing class name by scanning document text.
      *
      * @return class-string|null

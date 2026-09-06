@@ -97,11 +97,12 @@ final class ParseHealthGridTest extends TestCase
      * it. A cell listed here runs and is skipped only when it fails; a listed cell
      * that passes fails the test so the entry is removed with the fix.
      *
-     * @var array<string, string>
+     * @return array<string, string>
      */
-    private const array EMPTY_STATE_SKIPS = [
-        'resolveAtPosition' => 'step-40',
-    ];
+    private static function emptyStateSkips(): array
+    {
+        return [];
+    }
 
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
@@ -190,7 +191,7 @@ final class ParseHealthGridTest extends TestCase
         $document = $this->documents->get($cursor['uri']);
         self::assertNotNull($document, 'fixture must be open');
 
-        $step = $state === 'empty' ? self::EMPTY_STATE_SKIPS[$method] ?? null : null;
+        $step = $state === 'empty' ? self::emptyStateSkips()[$method] ?? null : null;
 
         try {
             match ($method) {
@@ -213,7 +214,7 @@ final class ParseHealthGridTest extends TestCase
 
         self::assertNull(
             $step,
-            "empty-state {$method} cell passes; remove its entry from EMPTY_STATE_SKIPS",
+            "empty-state {$method} cell passes; remove its entry from emptyStateSkips()",
         );
     }
 

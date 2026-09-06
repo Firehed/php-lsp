@@ -295,6 +295,29 @@ final class SkeletonSyntaxSourceTest extends TestCase
         self::assertCount(2, $groups[0]->uses, 'an empty item between commas contributes no UseItem');
     }
 
+    public function testAnUntypedParameterCarriesANullTypeNode(): void
+    {
+        $content = <<<'PHP'
+        <?php
+        namespace App;
+
+        class Widget
+        {
+            public function open($handle) {}
+        }
+        PHP;
+
+        $ast = $this->source->parse(new TextDocument('file:///w.php', 'php', 1, $content));
+
+        $methods = (new NodeFinder())->findInstanceOf($ast, Stmt\ClassMethod::class);
+        self::assertCount(1, $methods);
+        self::assertCount(1, $methods[0]->params);
+        self::assertNull(
+            $methods[0]->params[0]->type,
+            'parseTypeText returns null for a parameter that carries no type annotation',
+        );
+    }
+
     public function testImportsBecomeUseStmts(): void
     {
         $content = <<<'PHP'

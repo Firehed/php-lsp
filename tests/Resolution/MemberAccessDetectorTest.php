@@ -10,12 +10,10 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\EnclosingClassResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
-use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -41,12 +39,9 @@ class MemberAccessDetectorTest extends TestCase
         $emptySource->method('lookupClassLike')->willReturn(null);
         $emptySource->method('isSubclassOf')->willReturn(false);
         $emptyMemberResolver = new MemberResolver($emptySource);
-        $emptyTextFallback = new TextFallbackHelper();
         $this->detector = new MemberAccessDetector(
             $emptySource,
             $emptyMemberResolver,
-            $emptyTextFallback,
-            new EnclosingClassResolver($emptyTextFallback),
             $this->parser,
         );
 
@@ -58,12 +53,9 @@ class MemberAccessDetectorTest extends TestCase
             $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $reflectionTextFallback = new TextFallbackHelper();
         $this->detectorWithReflection = new MemberAccessDetector(
             $knowledge->source,
             $memberResolver,
-            $reflectionTextFallback,
-            new EnclosingClassResolver($reflectionTextFallback),
             $this->parser,
         );
     }
@@ -81,29 +73,6 @@ class MemberAccessDetectorTest extends TestCase
     public function testDetectReturnsNullForParentOutsideClass(): void
     {
         self::assertNull($this->detect('TopLevel/parent_outside_class.php', 1, 8));
-    }
-
-    public function testFromTextReturnsNullForStaticOutsideClass(): void
-    {
-        $content = $this->loadFixture('TopLevel/static_outside_class.php');
-        $document = new TextDocument('file:///t.php', 'php', 1, $content);
-        $ast = $this->parser->parse($document);
-
-        self::assertNull(
-            $this->detector->fromText($document, $ast, 1, 8),
-            'The text path must decline self::/static:: when the surrounding source has no enclosing class',
-        );
-    }
-
-    public function testFromTextReturnsNullForParentOutsideClass(): void
-    {
-        $document = new TextDocument('file:///t.php', 'php', 1, "<?php\nparent::");
-        $ast = $this->parser->parse($document);
-
-        self::assertNull(
-            $this->detector->fromText($document, $ast, 1, 8),
-            'The text path must decline parent:: when no enclosing class extends anything',
-        );
     }
 
     public function testDetectReturnsNullForMemberAccessOnPrimitiveParameter(): void
