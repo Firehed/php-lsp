@@ -1347,9 +1347,9 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve nullable parameter type');
         self::assertSame(
-            'Fixtures\\Domain\\User',
+            '?Fixtures\\Domain\\User',
             $context->type->format(),
-            'Should resolve underlying type from nullable parameter',
+            'Should resolve underlying type from nullable parameter (nullable preserved after step-40)',
         );
     }
 
