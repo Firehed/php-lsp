@@ -113,21 +113,16 @@ final class MemberAccessDetector
     }
 
     /**
-     * The enclosing class-like of the access site — read from the parent chain
-     * for a parsed AST, or from the node's file position for a synthesized one
-     * that carries no parent attribute (build-manifest step-40). The parent
-     * chain remains load-bearing when a truncated class span does not enclose
-     * the access offset.
+     * The enclosing class-like of the access site, read from the node's file
+     * position through {@see Scope::atOffset}. One route works for both parsed
+     * and synthesized nodes (build-manifest step-40).
      *
      * @param array<Stmt> $ast
      */
     private static function vantageFor(Node $node, array $ast): ?ClassName
     {
-        $enclosingName = ScopeFinder::findEnclosingClassName($node);
-        if ($enclosingName === null) {
-            $classLike = Scope::atOffset($ast, $node->getStartFilePos())->getEnclosingClassLike();
-            $enclosingName = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
-        }
+        $classLike = Scope::atOffset($ast, $node->getStartFilePos())->getEnclosingClassLike();
+        $enclosingName = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
         return $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
     }
 
