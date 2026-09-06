@@ -17,10 +17,10 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Stmt;
 
 /**
- * Detects call context (function/method/constructor calls) at a cursor position.
- *
- * Combines the AST path (a nodeAt lookup plus a parent walk) and the text path
- * (TextFallbackHelper regex) in one class.
+ * Detects call context (function/method/constructor calls) at a cursor
+ * position. One `nodeAt` lookup through the {@see SyntaxSource} composite plus
+ * a parent walk: the cursor-text source synthesizes the call frame for a
+ * broken parse (build-manifest step-41), so no separate text path is needed.
  *
  * @phpstan-type RawDetection array{
  *   0: FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute,
@@ -34,18 +34,15 @@ use PhpParser\Node\Stmt;
 final class CallContextDetector
 {
     public function __construct(
-        private readonly TextFallbackHelper $textFallback,
         private readonly SyntaxSource $parser,
     ) {
     }
 
     /**
-     * Detect a call from the AST at the given offset.
-     *
      * @param array<Stmt> $ast
      * @return RawDetection|null
      */
-    public function fromAst(array $ast, TextDocument $document, int $offset): ?array
+    public function detect(array $ast, TextDocument $document, int $offset): ?array
     {
         $node = $this->parser->nodeAt($ast, $document, $offset);
         // Walk parents until an enclosing call is found. The tree annotator sets
@@ -80,17 +77,6 @@ final class CallContextDetector
         }
 
         return [$node, $activeParam, $usedNames, $positionalCount];
-    }
-
-    /**
-     * Detect a call from text when AST detection fails.
-     *
-     * @param array<Stmt> $ast
-     * @return RawDetection|null
-     */
-    public function fromText(array $ast, int $offset, string $content, int $line): ?array
-    {
-        return $this->textFallback->detectCallFromText($ast, $offset, $content, $line);
     }
 
     /**

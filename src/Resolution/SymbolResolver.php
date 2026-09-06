@@ -60,7 +60,6 @@ use Throwable;
  */
 final class SymbolResolver implements CodeResolver
 {
-    private readonly TextFallbackHelper $textFallback;
     private readonly CallContextDetector $callDetector;
     private readonly MemberAccessDetector $memberAccessDetector;
 
@@ -69,8 +68,7 @@ final class SymbolResolver implements CodeResolver
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
     ) {
-        $this->textFallback = new TextFallbackHelper();
-        $this->callDetector = new CallContextDetector($this->textFallback, $parser);
+        $this->callDetector = new CallContextDetector($parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
@@ -337,37 +335,53 @@ final class SymbolResolver implements CodeResolver
         $ast = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
-        $content = $document->getContent();
 
-        $callInfo = $this->callDetector->fromAst($ast, $document, $offset);
-        $callable = null;
-        $activeParameter = 0;
-        $usedNames = [];
-        $positionalCount = 0;
-
-        if ($callInfo !== null) {
-            [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-            $callable = $this->resolveCallable($callNode, $ast, $document);
-            if ($callable === null) {
-                $textCallInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
-                if ($textCallInfo !== null) {
-                    [$callNode, $activeParameter, $usedNames, $positionalCount] = $textCallInfo;
-                    $callable = $this->resolveCallable($callNode, $ast, $document);
-                }
-            }
-        } else {
-            $callInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
-            if ($callInfo !== null) {
-                [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-                $callable = $this->resolveCallable($callNode, $ast, $document);
-            }
+        $callInfo = $this->callDetector->detect($ast, $document, $offset);
+        if ($callInfo === null) {
+            return null;
         }
 
+        [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
+        self::resolveClassNameOnSynthesizedCall($callNode, $ast, $line);
+        $callable = $this->resolveCallable($callNode, $ast, $document);
         if ($callable === null) {
             return null;
         }
 
         return new CallContext($callable, $activeParameter, $usedNames, $positionalCount);
+    }
+
+    /**
+     * Set `resolvedName` on the class-like `Name` of a call node when it was
+     * synthesized by the cursor-text source (which cannot reach `NameContext`
+     * from the Parser layer). Runs on every call for uniformity; a call whose
+     * name already carries `resolvedName` (php-parser's own name-resolver pass
+     * ran on it) is untouched.
+     *
+     * @param array<Stmt> $ast
+     */
+    private static function resolveClassNameOnSynthesizedCall(Node $callNode, array $ast, int $line): void
+    {
+        $classNameNode = match (true) {
+            $callNode instanceof New_ => $callNode->class,
+            $callNode instanceof StaticCall => $callNode->class,
+            $callNode instanceof Attribute => $callNode->name,
+            default => null,
+        };
+        if (!$classNameNode instanceof Name || $classNameNode->hasAttribute('resolvedName')) {
+            return;
+        }
+        $raw = $classNameNode->toString();
+        // A FullyQualified name resolves to itself; only leave it alone.
+        if ($classNameNode instanceof Name\FullyQualified) {
+            return;
+        }
+        $context = NameContextFactory::fromAst($ast, $line);
+        $candidates = $context->candidates($raw, \Firehed\PhpLsp\Domain\NameKind::ClassLike);
+        if ($candidates === []) {
+            return;
+        }
+        $classNameNode->setAttribute('resolvedName', new Name\FullyQualified($candidates[0]));
     }
 
     public function getNameContext(TextDocument $document, int $line): NameContext
