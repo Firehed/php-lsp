@@ -85,8 +85,9 @@ All symbol resolution flows through the `CodeResolver` interface (implemented by
 - `ResolvedFunction` implements `ResolvedCallable`
 - `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbol`
 
-Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver` via
-`TextFallbackHelper`, so handlers do not need their own fallbacks.
+Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver`:
+the `SyntaxSource` composite falls through to `CursorTextSyntaxSource`, which
+synthesizes the node at the cursor, so handlers do not need their own fallbacks.
 
 **Future (workspace queries):** references, implementations, sub/supertypes, call
 hierarchy, and batch resolution. These require an index and will be added to
@@ -471,7 +472,8 @@ Architecture (`CompletionHandler` is a coordinator, not a resolver):
 1. **Coarse gate** — `ContextDetector` (token-based) classifies the broad context
    (None / VariablesOnly / Full); token analysis survives unparseable code.
 2. **Member/static/call** — detected via `CodeResolver` (`MemberCandidates`,
-   `getCallContext`), which is AST-first with a text fallback (`TextFallbackHelper`).
+   `getCallContext`), which reads the tree the `SyntaxSource` composite produces
+   (php-parser first, cursor-text synthesis when nothing parses).
 3. **Everything else** — `CompletionClassifier` maps the text before the cursor to a
    typed `CompletionKind`; the handler dispatches to a source per kind.
 
