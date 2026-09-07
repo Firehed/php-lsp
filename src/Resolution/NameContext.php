@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespacePath;
 use PhpParser\ErrorHandler\Collecting;
 use PhpParser\NameContext as PhpParserNameContext;
 use PhpParser\Node\Name;
@@ -74,7 +75,7 @@ final readonly class NameContext
         // Rule 7: an unqualified function or constant in a namespace tries the
         // namespaced spelling first, then falls back to global — php-parser
         // reports the ambiguity as a null and leaves the choice to the caller.
-        return [$this->namespace . '\\' . $short, $short];
+        return [NamespacePath::join($this->namespace, $short), $short];
     }
 
     /**
