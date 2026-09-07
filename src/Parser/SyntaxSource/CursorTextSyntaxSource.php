@@ -327,7 +327,8 @@ final class CursorTextSyntaxSource implements SyntaxSource
         $args = [];
         $depth = 0;
         $currentStart = 0;
-        for ($i = 0; $i < strlen($argsText); $i++) {
+        $length = strlen($argsText);
+        for ($i = 0; $i < $length; $i++) {
             $char = $argsText[$i];
             if ($char === '(' || $char === '[' || $char === '{') {
                 $depth++;
@@ -352,11 +353,11 @@ final class CursorTextSyntaxSource implements SyntaxSource
         $hasNamed = $trimmed !== '' && preg_match('/^(\w+)\s*:/', $trimmed) === 1;
         // Deliberately no end-position check: a nodeAt at an earlier offset
         // inside `$var` still needs to descend into the member access.
-        $memberFalls = $memberInside !== null
-            && $memberInside->getStartFilePos() >= $lastStart;
+        $inner = ($memberInside !== null && $memberInside->getStartFilePos() >= $lastStart)
+            ? $memberInside
+            : null;
 
-        if ($hasNamed || $memberFalls) {
-            $inner = $memberFalls ? $memberInside : null;
+        if ($hasNamed || $inner !== null) {
             $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
             if ($arg !== null) {
                 $args[] = $arg;
@@ -428,35 +429,29 @@ final class CursorTextSyntaxSource implements SyntaxSource
             self::posAttrs($varStart, $varEnd, $line),
         );
         $currentReceiver = $receiver;
-        if ($chainText !== '') {
-            $chainAnchor = $lineStart + $chainOffsetInLine;
-            $chainSegments = [];
-            if (
-                preg_match_all(
-                    '/(\??->)(\w+)/',
-                    $chainText,
-                    $chainSegments,
-                    PREG_OFFSET_CAPTURE | PREG_SET_ORDER,
-                ) > 0
-            ) {
-                foreach ($chainSegments as $seg) {
-                    $segName = $seg[2][0];
-                    $segNameStart = $chainAnchor + $seg[2][1];
-                    $segNameEnd = $segNameStart + strlen($segName) - 1;
-                    $segIdent = new Identifier(
-                        $segName,
-                        self::posAttrs($segNameStart, $segNameEnd, $line),
-                    );
-                    $inner = new PropertyFetch(
-                        $currentReceiver,
-                        $segIdent,
-                        self::posAttrs($varStart, $segNameEnd, $line),
-                    );
-                    $currentReceiver->setAttribute('parent', $inner);
-                    $segIdent->setAttribute('parent', $inner);
-                    $currentReceiver = $inner;
-                }
-            }
+        $chainAnchor = $lineStart + $chainOffsetInLine;
+        preg_match_all(
+            '/(\??->)(\w+)/',
+            $chainText,
+            $chainSegments,
+            PREG_OFFSET_CAPTURE | PREG_SET_ORDER,
+        );
+        foreach ($chainSegments as $seg) {
+            $segName = $seg[2][0];
+            $segNameStart = $chainAnchor + $seg[2][1];
+            $segNameEnd = $segNameStart + strlen($segName) - 1;
+            $segIdent = new Identifier(
+                $segName,
+                self::posAttrs($segNameStart, $segNameEnd, $line),
+            );
+            $inner = new PropertyFetch(
+                $currentReceiver,
+                $segIdent,
+                self::posAttrs($varStart, $segNameEnd, $line),
+            );
+            $currentReceiver->setAttribute('parent', $inner);
+            $segIdent->setAttribute('parent', $inner);
+            $currentReceiver = $inner;
         }
 
         // Absolute file offsets of the arrow (`->` or `?->`) and the identifier
@@ -501,20 +496,13 @@ final class CursorTextSyntaxSource implements SyntaxSource
         $rawClass = $m[1][0];
         $prefix = $m[3][0];
         $classStart = $matchStart;
-        $classEnd = $classStart + strlen($rawClass) - 1;
         $colonsStart = $lineStart + $m[2][1];
         $colonsEnd = $colonsStart + 1;
         $prefixStart = $lineStart + $m[3][1];
         $prefixEnd = $prefixStart + max(0, strlen($prefix) - 1);
         $matchEnd = $prefix === '' ? $colonsEnd : $prefixEnd;
 
-        // Php-parser drops the leading separator on a fully qualified name and
-        // records the fully qualified flag; keep the same shape here.
-        $className = ltrim($rawClass, '\\');
-        $classAttrs = self::posAttrs($classStart, $classEnd, $line);
-        $classNode = $rawClass !== $className
-            ? new FullyQualified($className, $classAttrs)
-            : new Name($className, $classAttrs);
+        $classNode = self::classLikeName($rawClass, $classStart, $line);
         $name = $prefix === ''
             ? new Error(self::posAttrs($colonsEnd + 1, $colonsEnd + 1, $line))
             : new VarLikeIdentifier($prefix, self::posAttrs($prefixStart, $prefixEnd, $line));

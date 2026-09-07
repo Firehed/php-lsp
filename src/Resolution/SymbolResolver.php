@@ -366,10 +366,11 @@ final class SymbolResolver implements CodeResolver
             $callNode instanceof Attribute => $callNode->name,
             default => null,
         };
-        if (!$classNameNode instanceof Name || $classNameNode->hasAttribute('resolvedName')) {
-            return;
-        }
-        if ($classNameNode instanceof Name\FullyQualified) {
+        if (
+            !$classNameNode instanceof Name
+            || $classNameNode instanceof Name\FullyQualified
+            || $classNameNode->hasAttribute('resolvedName')
+        ) {
             return;
         }
         $context = NameContextFactory::fromAst($ast, $line);
