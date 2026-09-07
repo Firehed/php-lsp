@@ -14,8 +14,11 @@ use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Resolution\NameContext as ResolutionNameContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Server;
+use PhpParser\NameContext as PhpParserNameContext;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
@@ -120,6 +123,14 @@ final class OneRoutePerFactTest extends TestCase
                 ingredients: [DocblockParser::class],
                 holders: [TypeFactory::class, ResolvedSymbolPresenter::class],
                 pending: ['src/Resolution/ExpressionResolver.php' => 'step-49'],
+            ),
+            // step-44 delegated Resolution\NameContext's resolution rules to
+            // php-parser's engine; the same NameResolver visitor annotates the
+            // trees TreeAnnotator produces.
+            Fact::confined(
+                name: 'php-parser name resolution',
+                ingredients: [PhpParserNameContext::class, NameResolver::class],
+                holders: [TreeAnnotator::class, ResolutionNameContext::class],
             ),
         ];
 
