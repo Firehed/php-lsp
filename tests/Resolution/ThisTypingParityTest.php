@@ -19,8 +19,8 @@ use PHPUnit\Framework\TestCase;
 /**
  * Both hover on `$this` and completion on `$this->` route through
  * `ExpressionResolver::resolve(Variable('this'))`, which reads the enclosing
- * class through `EnclosingClassResolver`. The two features must agree on the
- * receiver type for the same source input (build-manifest step-31 done clause).
+ * class from the node's position via `Scope::atOffset` (build-manifest step-40).
+ * The two features must agree on the receiver type for the same source input.
  */
 #[CoversClass(SymbolResolver::class)]
 final class ThisTypingParityTest extends TestCase
@@ -68,12 +68,11 @@ final class ThisTypingParityTest extends TestCase
         ];
 
         // File-scope `$this`: the AST places the Variable in the namespace's
-        // top-level statement list, not inside the Class_ body, so its parent
-        // chain never reaches a class-like. `EnclosingClassResolver` must fall
-        // back to text-scanning the document for the enclosing class. Both
-        // hover and completion agree on the fallback answer for the receiver
-        // type; vantage inference remains AST-driven, so completion sees only
-        // public members here.
+        // top-level statement list, not inside the Class_ body. Both hover and
+        // completion read the enclosing class from the node's position via
+        // `Scope::atOffset`, so they agree on the receiver type; vantage
+        // inference remains AST-driven, so completion sees only public members
+        // here.
         yield 'detached parent chain via file-scope $this' => [
             'relative' => 'src/Resolution/BrokenThisTypingParity.php',
             'hoverNeedle' => '$this;',
