@@ -24,7 +24,7 @@ use Firehed\PhpLsp\Index\WorkspaceNamespaceSource;
  * enumeration and prefix search from the {@see SymbolIndex} it also populates. Both
  * stores come from one parse ({@see DocumentSymbolSink}, Plan 0002 §5.5 Step 3a(iv)).
  */
-final class OpenDocumentBackend implements SymbolBackend
+final class OpenDocumentBackend implements SymbolBackend, DocumentSymbolStore
 {
     /** @var array<string, SymbolInfo> Normalized kind-qualified key -> metadata */
     private array $byKey = [];

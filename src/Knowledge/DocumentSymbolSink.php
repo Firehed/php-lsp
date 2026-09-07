@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
- * lifecycle events register class metadata with the {@see OpenDocumentBackend} for
+ * lifecycle events register class metadata with the {@see DocumentSymbolStore} for
  * lookup and index the document's symbols for enumeration and search, in one place.
  *
  * The two stores are distinct structures serving different consumers (Plan 0002
@@ -33,7 +33,7 @@ final class DocumentSymbolSink implements SymbolSink
      *        file changes on disk or is closed after being edited (RFC 1 §5.2, §5.3)
      */
     public function __construct(
-        private readonly OpenDocumentBackend $backend,
+        private readonly DocumentSymbolStore $store,
         private readonly DocumentIndexer $indexer,
         private readonly SymbolIndex $index,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
@@ -46,7 +46,7 @@ final class DocumentSymbolSink implements SymbolSink
     public function closeDocument(string $uri): void
     {
         $this->indexer->remove($uri);
-        $this->backend->removeDocument($uri);
+        $this->store->removeDocument($uri);
 
         // Closing a file that was edited in the editor must re-read from disk on
         // the next query rather than restore the pre-edit cached value (RFC 1 §5.3):
@@ -78,7 +78,7 @@ final class DocumentSymbolSink implements SymbolSink
         $filePath = FileUri::toPath($document->uri);
         $symbols = $this->infoFactory->allIn($declarations, $filePath);
 
-        $this->backend->updateDocument($document->uri, ...$symbols);
+        $this->store->updateDocument($document->uri, ...$symbols);
         $this->indexer->indexParsed($document, $ast);
         $this->assertStoresAgree($symbols);
     }
