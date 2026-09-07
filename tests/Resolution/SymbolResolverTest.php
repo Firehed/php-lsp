@@ -33,7 +33,6 @@ use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -48,7 +47,6 @@ use TypeError;
 #[CoversClass(NameContextFactory::class)]
 #[CoversClass(ResolvedTypeOnly::class)]
 #[CoversClass(SymbolResolver::class)]
-#[CoversClass(TextFallbackHelper::class)]
 final class SymbolResolverTest extends TestCase
 {
     use OpensDocumentsTrait;

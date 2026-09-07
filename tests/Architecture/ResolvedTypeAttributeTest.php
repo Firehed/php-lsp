@@ -7,12 +7,12 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 use PHPUnit\Framework\TestCase;
 
 /**
- * `$this` typing goes through {@see \Firehed\PhpLsp\Resolution\EnclosingClassResolver}
- * (build-manifest step-31): {@see \Firehed\PhpLsp\Resolution\ExpressionResolver}
- * reads the enclosing class from the shared helper, so no file may stash a type
- * on an AST node through a `resolvedType` attribute side-channel. A future
- * `setAttribute('resolvedType', ...)` would fork chain typing and $this typing
- * onto their own paths again; this test fails when one appears.
+ * `$this` typing reads the enclosing class from a node's position through
+ * {@see \Firehed\PhpLsp\Resolution\Scope::atOffset} (build-manifest step-40), so no
+ * file may stash a type on an AST node through a `resolvedType` attribute
+ * side-channel. A future `setAttribute('resolvedType', ...)` would fork chain
+ * typing and $this typing onto their own paths again; this test fails when one
+ * appears.
  */
 final class ResolvedTypeAttributeTest extends TestCase
 {
@@ -31,7 +31,7 @@ final class ResolvedTypeAttributeTest extends TestCase
         self::assertSame(
             [],
             $violations,
-            'route $this typing through EnclosingClassResolver instead of a resolvedType attribute',
+            'route $this typing through Scope::atOffset instead of a resolvedType attribute',
         );
     }
 

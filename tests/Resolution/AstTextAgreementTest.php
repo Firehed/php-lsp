@@ -10,10 +10,6 @@ use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Resolution\NameContextFactory;
-use Firehed\PhpLsp\Resolution\Scope;
-use Firehed\PhpLsp\Resolution\ScopeFinder;
-use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node;
@@ -31,15 +27,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 1 §4.11: Text-derived fallback logic MUST agree with the syntax-tree path
- * on input that parses; that agreement MUST be held by test, not review.
+ * RFC 1 §4.11: on input that parses, the cursor-text source and the parsed-tree
+ * path must land on nodes of the same class carrying the same receiver and name,
+ * so signature help and member resolution never resolve against a different
+ * callable or receiver in the empty-parse path than in the parsed path.
  *
- * These tests verify that on parseable code, the AST-based resolution and the
- * text-based fallback produce identical results for every positional question
- * both paths answer.
- *
- * Known divergences are marked skipped with their owning slice; each skip is
- * removed when that slice lands and the paths agree.
+ * Producer agreement (skeleton vs php-parser) is pinned by the second suite
+ * below, so a downstream reader that switches trees cannot see a name context or
+ * class shape that disagrees with the parser.
  */
 #[CoversNothing]
 final class AstTextAgreementTest extends TestCase
@@ -47,68 +42,13 @@ final class AstTextAgreementTest extends TestCase
     use LoadsFixturesTrait;
 
     private MemoizingSyntaxSource $parser;
-    private TextFallbackHelper $textFallback;
     private CursorTextSyntaxSource $cursorText;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
-        $this->textFallback = new TextFallbackHelper();
         $this->cursorText = new CursorTextSyntaxSource();
-    }
-
-    #[DataProvider('enclosingClassFixtures')]
-    public function testEnclosingClassAgreement(string $fixture, int $line, ?string $expected): void
-    {
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
-
-        $offset = $document->offsetAt($line, 0);
-        $classLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
-        $astResult = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
-        $textResult = $this->textFallback->findEnclosingClassFromContent($content, $line);
-
-        self::assertSame($expected, $astResult, 'AST path must match expected');
-        self::assertSame($expected, $textResult, 'Text path must agree with AST path');
-    }
-
-    /**
-     * @return array<string, array{string, int, ?string}>
-     */
-    public static function enclosingClassFixtures(): array
-    {
-        return [
-            'inside class method' => ['src/Domain/User.php', 50, 'Fixtures\Domain\User'],
-            'outside any class' => ['src/Domain/User.php', 3, null],
-            'inside trait method' => ['src/Traits/HasTimestamps.php', 15, 'Fixtures\Traits\HasTimestamps'],
-            'inside interface' => ['src/Domain/Entity.php', 10, 'Fixtures\Domain\Entity'],
-            'inside enum' => ['src/Enum/Status.php', 15, 'Fixtures\Enum\Status'],
-        ];
-    }
-
-    #[DataProvider('nameContextFixtures')]
-    public function testNameContextAgreement(string $fixture, int $line): void
-    {
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
-
-        $skeleton = new SkeletonSyntaxSource();
-        $fromAst = NameContextFactory::fromAst($ast, $line);
-        $fromText = NameContextFactory::fromText($document, $line, $skeleton);
-
-        self::assertSame(
-            $fromAst->namespace,
-            $fromText->namespace,
-            'Namespace must agree between AST and text paths',
-        );
-        self::assertSame(
-            $fromAst->classImports,
-            $fromText->classImports,
-            'Class imports must agree between AST and text paths',
-        );
     }
 
     /**
@@ -433,20 +373,6 @@ final class AstTextAgreementTest extends TestCase
         $pos = strpos($content, '/*|' . $marker . '*/');
         self::assertNotFalse($pos, "Marker {$marker} not found");
         return $pos;
-    }
-
-    /**
-     * @return array<string, array{string, int}>
-     */
-    public static function nameContextFixtures(): array
-    {
-        return [
-            'simple namespace + imports' => ['src/Domain/User.php', 10],
-            'aliased import' => ['src/IncompleteCode/AliasedImports.php', 14],
-            'group import' => ['src/IncompleteCode/GroupImports.php', 12],
-            'group import with alias' => ['src/IncompleteCode/GroupImports.php', 38],
-            'no imports' => ['src/Enum/Status.php', 10],
-        ];
     }
 
     /**

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 
@@ -69,57 +67,6 @@ final class NameContextFactory
         }
 
         return $namespace->stmts;
-    }
-
-    /**
-     * Build a NameContext preferring the AST, parsing the document through the
-     * skeleton {@see SyntaxSource} only when the AST holds no namespace or use
-     * node — the composite the skeleton sits in (step-37) already covers most
-     * total-parse-failure inputs, but a php-parser recovery that drops the
-     * namespace still lands here.
-     *
-     * @param array<Stmt> $ast
-     * @param int $line Zero-based
-     */
-    public static function fromAstOrText(
-        array $ast,
-        int $line,
-        TextDocument $document,
-        SyntaxSource $skeleton,
-    ): NameContext {
-        if (self::hasNamespaceOrUse($ast)) {
-            return self::fromAst($ast, $line);
-        }
-        return self::fromText($document, $line, $skeleton);
-    }
-
-    /**
-     * Build a NameContext by re-parsing the document through the skeleton so it
-     * has the namespace and use nodes {@see self::fromAst} reads. The skeleton
-     * carries the one regex home for those tokens (step-37).
-     *
-     * @param int $line Zero-based
-     */
-    public static function fromText(TextDocument $document, int $line, SyntaxSource $skeleton): NameContext
-    {
-        return self::fromAst($skeleton->parse($document), $line);
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private static function hasNamespaceOrUse(array $ast): bool
-    {
-        foreach ($ast as $stmt) {
-            if (
-                $stmt instanceof Stmt\Namespace_
-                || $stmt instanceof Stmt\Use_
-                || $stmt instanceof Stmt\GroupUse
-            ) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
