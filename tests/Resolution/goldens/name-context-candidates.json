@@ -1,0 +1,153 @@
+{
+    "fq class": {
+        "namespace": "App\\Models",
+        "classImports": [],
+        "functionImports": [],
+        "constantImports": [],
+        "short": "\\App\\Models\\User",
+        "kind": "ClassLike",
+        "candidates": [
+            "App\\Models\\User"
+        ]
+    },
+    "imported class": {
+        "namespace": "App\\Controllers",
+        "classImports": {
+            "User": "App\\Models\\User",
+            "DB": "Illuminate\\Database\\DB"
+        },
+        "functionImports": {
+            "dump": "Symfony\\VarDumper\\dump"
+        },
+        "constantImports": {
+            "PHP_INT_MAX": "PHP_INT_MAX"
+        },
+        "short": "User",
+        "kind": "ClassLike",
+        "candidates": [
+            "App\\Models\\User"
+        ]
+    },
+    "unimported class with namespace": {
+        "namespace": "App\\Models",
+        "classImports": [],
+        "functionImports": [],
+        "constantImports": [],
+        "short": "Order",
+        "kind": "ClassLike",
+        "candidates": [
+            "App\\Models\\Order"
+        ]
+    },
+    "unimported class global": {
+        "namespace": "",
+        "classImports": [],
+        "functionImports": [],
+        "constantImports": [],
+        "short": "stdClass",
+        "kind": "ClassLike",
+        "candidates": [
+            "stdClass"
+        ]
+    },
+    "imported function": {
+        "namespace": "App\\Controllers",
+        "classImports": {
+            "User": "App\\Models\\User",
+            "DB": "Illuminate\\Database\\DB"
+        },
+        "functionImports": {
+            "dump": "Symfony\\VarDumper\\dump"
+        },
+        "constantImports": {
+            "PHP_INT_MAX": "PHP_INT_MAX"
+        },
+        "short": "dump",
+        "kind": "Function_",
+        "candidates": [
+            "Symfony\\VarDumper\\dump"
+        ]
+    },
+    "unimported function with namespace": {
+        "namespace": "App\\Models",
+        "classImports": [],
+        "functionImports": [],
+        "constantImports": [],
+        "short": "array_map",
+        "kind": "Function_",
+        "candidates": [
+            "App\\Models\\array_map",
+            "array_map"
+        ]
+    },
+    "unimported function global": {
+        "namespace": "",
+        "classImports": [],
+        "functionImports": [],
+        "constantImports": [],
+        "short": "array_map",
+        "kind": "Function_",
+        "candidates": [
+            "array_map"
+        ]
+    },
+    "unimported constant with namespace": {
+        "namespace": "App\\Models",
+        "classImports": [],
+        "functionImports": [],
+        "constantImports": [],
+        "short": "FOO",
+        "kind": "Constant",
+        "candidates": [
+            "App\\Models\\FOO",
+            "FOO"
+        ]
+    },
+    "partially qualified imported": {
+        "namespace": "App\\Controllers",
+        "classImports": {
+            "User": "App\\Models\\User",
+            "DB": "Illuminate\\Database\\DB"
+        },
+        "functionImports": {
+            "dump": "Symfony\\VarDumper\\dump"
+        },
+        "constantImports": {
+            "PHP_INT_MAX": "PHP_INT_MAX"
+        },
+        "short": "DB\\Query",
+        "kind": "ClassLike",
+        "candidates": [
+            "Illuminate\\Database\\DB\\Query"
+        ]
+    },
+    "partially qualified unimported": {
+        "namespace": "App\\Models",
+        "classImports": [],
+        "functionImports": [],
+        "constantImports": [],
+        "short": "Sub\\Thing",
+        "kind": "ClassLike",
+        "candidates": [
+            "App\\Models\\Sub\\Thing"
+        ]
+    },
+    "imported constant": {
+        "namespace": "App\\Controllers",
+        "classImports": {
+            "User": "App\\Models\\User",
+            "DB": "Illuminate\\Database\\DB"
+        },
+        "functionImports": {
+            "dump": "Symfony\\VarDumper\\dump"
+        },
+        "constantImports": {
+            "PHP_INT_MAX": "PHP_INT_MAX"
+        },
+        "short": "PHP_INT_MAX",
+        "kind": "Constant",
+        "candidates": [
+            "PHP_INT_MAX"
+        ]
+    }
+}
