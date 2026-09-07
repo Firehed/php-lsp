@@ -380,7 +380,7 @@ final class SymbolCandidates
 
         $items = [];
         foreach ($contents->childNamespaces as $grandchild) {
-            $reference = $segment . '\\' . NamespacePath::shortNameOf($grandchild);
+            $reference = NamespacePath::join($segment, NamespacePath::shortNameOf($grandchild));
             $item = CompletionItemFactory::forNamespace($reference, $grandchild, $range);
             $item['sortText'] = '1_' . $item['label'];
             $items[] = $item;
@@ -389,7 +389,7 @@ final class SymbolCandidates
             if (!$this->kindAllowed($symbol->kind, $kinds)) {
                 continue;
             }
-            $reference = $segment . '\\' . $symbol->shortName();
+            $reference = NamespacePath::join($segment, $symbol->shortName());
             $item = $this->offerLeaf($symbol, $reference, $reference, $classFilter, $range, $snippets);
             if ($item !== null) {
                 $items[] = $item;
