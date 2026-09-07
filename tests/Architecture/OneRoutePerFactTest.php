@@ -91,7 +91,6 @@ final class OneRoutePerFactTest extends TestCase
                 name: 'symbol backend',
                 interface: SymbolBackend::class,
                 roots: [KnowledgeStack::class],
-                pending: ['src/Knowledge/DocumentSymbolSink.php' => 'step-43'],
                 compositePending: 'step-51',
                 layoutPending: 'step-52',
             ),
