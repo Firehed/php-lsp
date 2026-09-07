@@ -114,13 +114,12 @@ parameters:
                 - 'mb_ereg_replace_callback()'
                 - 'mb_ereg_search()'
                 - 'mb_split()'
-            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, TextFallbackHelper'
+            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, and the cursor-text and skeleton syntax sources'
             allowIn:
                 - src/Completion/CompletionClassifier.php
                 - src/Domain/DocblockParser.php
                 - src/Parser/SyntaxSource/CursorTextSyntaxSource.php
                 - src/Parser/SyntaxSource/SkeletonSyntaxSource.php
-                - src/Resolution/TextFallbackHelper.php
                 - tests/*
         -
             function:
@@ -373,12 +372,6 @@ parameters:
             allowIn:
                 - src/Resolution/ExpressionResolver.php # foreach element-type inference reads the raw docblock (build-manifest step-25)
                 - src/Resolution/ResolvedSymbolPresenter.php
-                - tests/*
-        -
-            method: 'Firehed\PhpLsp\Resolution\TextFallbackHelper::resolveEnclosingClassName()'
-            message: 'enclosing-class resolution goes through EnclosingClassResolver: parent chain first, text fallback when the parent chain is detached (build-manifest step-31)'
-            allowIn:
-                - src/Resolution/EnclosingClassResolver.php # the one shared helper
                 - tests/*
 
     level: max

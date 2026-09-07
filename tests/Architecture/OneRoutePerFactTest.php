@@ -15,7 +15,6 @@ use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
-use Firehed\PhpLsp\Resolution\TextFallbackHelper;
 use Firehed\PhpLsp\Server;
 use PhpParser\Node;
 use PhpParser\Node\Name;
@@ -105,14 +104,6 @@ final class OneRoutePerFactTest extends TestCase
                 name: 'syntax source',
                 interface: SyntaxSource::class,
                 roots: [Server::class],
-            ),
-            // No holder: the routes collapse by deletion. Step-42 deletes the
-            // class and this row with it.
-            Fact::confined(
-                name: 'text helper',
-                ingredients: [TextFallbackHelper::class],
-                holders: [],
-                pending: [],
             ),
             Fact::confined(
                 name: 'symbol index',
