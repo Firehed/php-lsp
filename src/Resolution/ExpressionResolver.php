@@ -343,7 +343,11 @@ final class ExpressionResolver
         if (!$expr->name instanceof Name) {
             return null;
         }
-        $shortName = $expr->name->toString();
+        // `toCodeString()` preserves the leading `\` for a fully-qualified name,
+        // which the php-parser NameResolver may have produced when resolving an
+        // imported function; `NameContext::candidates` reads that as the caller
+        // meaning exactly this FQN, no namespace prepend.
+        $shortName = $expr->name->toCodeString();
         $line = $expr->name->getStartLine() - 1;
         $context = NameContextFactory::fromAst($ast, $line);
 
@@ -463,7 +467,10 @@ final class ExpressionResolver
      */
     private function resolveConstFetch(Expr\ConstFetch $expr, array $ast): ?ConstantInfo
     {
-        $shortName = $expr->name->toString();
+        // See resolveFuncCall for why toCodeString(): the same NameResolver may
+        // have already turned `\Foo\BAR` or an imported constant into a
+        // FullyQualified name.
+        $shortName = $expr->name->toCodeString();
         $line = $expr->name->getStartLine() - 1;
         $context = NameContextFactory::fromAst($ast, $line);
 
