@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\NameKind;
+use PhpParser\ErrorHandler\Collecting;
+use PhpParser\NameContext as PhpParserNameContext;
+use PhpParser\Node\Name;
+use PhpParser\Node\Stmt\Use_;
 
 /**
  * The name-resolution context at a cursor: the enclosing namespace and the
@@ -17,6 +21,14 @@ use Firehed\PhpLsp\Domain\NameKind;
  *
  * Each table maps the short name (or alias) to the fully qualified name it
  * binds, without a leading separator.
+ *
+ * The resolution rules themselves — namespace prefixing, alias lookup, and
+ * the function/constant global fallback (PHP manual, name resolution rules
+ * 5–7) — are delegated to php-parser's own {@see PhpParserNameContext}
+ * (build-manifest step-44). The tables above stay public because
+ * {@see \Firehed\PhpLsp\Completion\SymbolCandidates} and
+ * {@see ReferenceResolver} enumerate them, which php-parser's engine does not
+ * expose.
  */
 final readonly class NameContext
 {
@@ -44,37 +56,25 @@ final readonly class NameContext
      */
     public function candidates(string $short, NameKind $kind): array
     {
-        if (str_starts_with($short, '\\')) {
-            return [ltrim($short, '\\')];
-        }
-
-        $imports = $this->importsFor($kind);
-
-        $parts = explode('\\', $short);
-        $firstPart = $parts[0];
-
-        if (isset($imports[$short])) {
-            return [$imports[$short]];
-        }
-
-        if (count($parts) > 1 && isset($imports[$firstPart])) {
-            $remainder = implode('\\', array_slice($parts, 1));
-            return [$imports[$firstPart] . '\\' . $remainder];
-        }
-
-        $namespaced = $this->namespace !== ''
-            ? $this->namespace . '\\' . $short
-            : $short;
+        $engine = $this->engine();
+        $name = str_starts_with($short, '\\')
+            ? new Name\FullyQualified(ltrim($short, '\\'))
+            : new Name($short);
 
         if ($kind === NameKind::ClassLike) {
-            return [$namespaced];
+            return [$engine->getResolvedClassName($name)->toString()];
         }
 
-        if ($this->namespace !== '') {
-            return [$namespaced, $short];
+        $type = $kind === NameKind::Constant ? Use_::TYPE_CONSTANT : Use_::TYPE_FUNCTION;
+        $resolved = $engine->getResolvedName($name, $type);
+        if ($resolved !== null) {
+            return [$resolved->toString()];
         }
 
-        return [$short];
+        // Rule 7: an unqualified function or constant in a namespace tries the
+        // namespaced spelling first, then falls back to global — php-parser
+        // reports the ambiguity as a null and leaves the choice to the caller.
+        return [$this->namespace . '\\' . $short, $short];
     }
 
     /**
@@ -91,5 +91,23 @@ final readonly class NameContext
             NameKind::Constant => $this->constantImports,
             NameKind::Function_ => $this->functionImports,
         };
+    }
+
+    private function engine(): PhpParserNameContext
+    {
+        $engine = new PhpParserNameContext(new Collecting());
+        $engine->startNamespace($this->namespace !== '' ? new Name($this->namespace) : null);
+
+        foreach ($this->classImports as $alias => $fqn) {
+            $engine->addAlias(new Name($fqn), $alias, Use_::TYPE_NORMAL);
+        }
+        foreach ($this->functionImports as $alias => $fqn) {
+            $engine->addAlias(new Name($fqn), $alias, Use_::TYPE_FUNCTION);
+        }
+        foreach ($this->constantImports as $alias => $fqn) {
+            $engine->addAlias(new Name($fqn), $alias, Use_::TYPE_CONSTANT);
+        }
+
+        return $engine;
     }
 }
