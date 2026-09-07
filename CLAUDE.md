@@ -42,7 +42,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 - `src/Resolution/` — `CodeResolver`/`SymbolResolver` and the `Resolved*` symbol hierarchy (see Architecture below)
 - `src/Repository/` — Class and member resolution (see Architecture below)
 - `src/Domain/` — Domain objects representing code constructs
-- `src/Index/` — Symbol indexing and workspace scanning
+- `src/Index/` — Composer autoload maps, namespace catalogs, symbol locators
 - `src/Document/` — Open document management
 - `src/Parser/` — the `SyntaxSource` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScoped` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, DocblockParser)
@@ -100,8 +100,9 @@ also needs *enumeration* ("what is inside `Psr\Log`?"), which is what the
 `NamespaceCatalog` (`src/Index/`) provides: the child namespaces of a namespace, plus
 the symbols declared directly in it.
 
-- **WorkspaceNamespaceSource** — from `SymbolIndex`. The only source that must NOT be
-  cached: the workspace changes with every keystroke.
+- **OpenDocumentBackend** — from the one map of `DeclaredSymbol`s the sink registers per
+  document. The only source that must NOT be cached: an open document changes with every
+  keystroke.
 - **ComposerNamespaceSource** — from Composer's autoload maps (`ComposerAutoloadMap`).
   PSR-4/PSR-0 map a namespace to a directory, so a namespace's contents are a directory
   listing, not a parse. `vendor/` is never pre-indexed; only namespaces actually visited
@@ -115,7 +116,7 @@ the symbols declared directly in it.
 Each source is wrapped as a `SymbolBackend` (see Symbol Backends below): the
 `CompositeSymbolSource` merges and deduplicates their `childrenOf` results, and
 **CachedNamespaceCatalog** wraps the stable sources (workspace-on-disk, vendor,
-built-in) — the open-document `WorkspaceNamespaceSource` is never cached.
+built-in) — the `OpenDocumentBackend` is never cached.
 
 Discovery reports a coarse `NameKind` (class-like / function / constant), not which
 flavour of class-like: a PSR-4 listing cannot know without parsing. Deciding whether a
@@ -170,35 +171,33 @@ route cannot know which kind a file declares), and applies PHP's per-kind case r
 `NameKind::normalize()`. A test pins the parse *count* at construction, which is
 not a cost measurement; the set is explicit and usually tiny.
 
-**"Which node declares this name" is answered by `Index\DeclarationScanner`**, which
+**"Which node declares this name" is answered by `Knowledge\DeclarationScanner`**, which
 reports every class-like, function and constant an AST declares — at any depth, paired
-with its declaring node (`Declaration`). Every consumer but one (tracked below) reads
-it: on-disk and open-document lookup, the write path's lookup half, the
-`autoload.files` index, and completion's file-function query, so none can disagree
-about what a file declares. Hand-written
+with its declaring node (`Declaration`). Every consumer reads it: on-disk and
+open-document lookup, the write path, the `autoload.files` index, and completion's
+file-function query, so none can disagree about what a file declares. Hand-written
 traversals are how a `function_exists`-guarded polyfill came to resolve on hover while
 being invisible to completion, and how its `class_exists` twin dropped out of
 open-document lookup. Do NOT write a new one; a rule about what counts as a declaration
 is a change to the scanner.
 
-One traversal survives it, tracked: `Index\SymbolExtractor` rebuilds FQNs by hand rather
-than reading `namespacedName`. That is not licence for a second.
-
-The same derived index also answers the backend's `childrenOf`, merged with the
-directory listing by `CompositeNamespaceCatalog`. Enumeration is not optional: §4.2
-requires lookup and enumeration to draw on the same backends, so a name that resolved
-on hover while being invisible to completion is the split this tier exists to prevent.
+The same map of registered `DeclaredSymbol`s also answers the backend's `childrenOf`,
+merged with the directory listing by `CompositeNamespaceCatalog`. Enumeration is not
+optional: §4.2 requires lookup and enumeration to draw on the same backends, so a name
+that resolved on hover while being invisible to completion is the split this tier
+exists to prevent.
 
 The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers a document's
-symbols and indexes them. Registration is kind-parameterized like lookup: the sink hands
-`OpenDocumentBackend` `DeclaredSymbol`s built by `DeclarationSymbolInfoFactory`, the same
-factory the on-disk read path uses, so a new kind is a case there rather than another
-parameter on the backend. A declaration at any depth is registered, not just a top-level
-one — a class or function guarded by `class_exists`/`function_exists` is a name the file
-validly declares, and the on-disk backends resolve one, so opening the file must not make
-it disappear.
+declared symbols with `OpenDocumentBackend` — the one store `lookup`, `childrenOf`, and
+`search` all derive from. Registration is kind-parameterized like lookup: the sink hands
+the backend `DeclaredSymbol`s built by `DeclarationSymbolInfoFactory`, the same factory
+the on-disk read path uses, so a new kind is a case there rather than another parameter
+on the backend. A declaration at any depth is registered, not just a top-level one — a
+class or function guarded by `class_exists`/`function_exists` is a name the file validly
+declares, and the on-disk backends resolve one, so opening the file must not make it
+disappear.
 **`KnowledgeStack::forProject`** assembles the read composite and the write sink,
-sharing one open-document backend and symbol index.
+sharing one open-document backend.
 
 **External-file-change invalidation** (RFC 1 §5.2, §5.3) is a third write-path
 producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable`, so
@@ -372,7 +371,7 @@ Handlers DO:
 
 `CompletionHandler` is a coordinator: it classifies the position and delegates to
 completion *sources* (`src/Completion/*Candidates`), then merges and deduplicates.
-It no longer parses documents or touches `SyntaxSource`/`SymbolIndex` directly —
+It no longer parses documents or touches `SyntaxSource` directly —
 sources own their lookups, and anything parser-derived (imports, file functions,
 members, variables, types) flows through `CodeResolver`. See Completion System.
 

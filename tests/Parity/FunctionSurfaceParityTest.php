@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSink;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
@@ -76,7 +75,6 @@ final class FunctionSurfaceParityTest extends TestCase
             $this->fixturesRoot . '/vendor',
             $parser,
             $production->reader,
-            new SymbolIndex(),
         );
 
         $this->symbolSource = $knowledge->source;

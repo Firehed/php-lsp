@@ -22,15 +22,11 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
@@ -66,11 +62,11 @@ class CompletionHandlerTest extends TestCase
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
     private ParseMetrics $metrics;
-    private SymbolIndex $symbolIndex;
     private SymbolSource $symbolSource;
     private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
+    private \Firehed\PhpLsp\Knowledge\SymbolSink $sink;
 
     protected function setUp(): void
     {
@@ -78,7 +74,6 @@ class CompletionHandlerTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
         $this->metrics = $production->metrics;
-        $this->symbolIndex = new SymbolIndex();
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
         $knowledge = KnowledgeStack::forProject(
@@ -86,7 +81,6 @@ class CompletionHandlerTest extends TestCase
             $fixturesRoot . '/vendor',
             $this->parser,
             $production->reader,
-            $this->symbolIndex,
         );
         $this->symbolSource = $knowledge->source;
 
@@ -97,7 +91,22 @@ class CompletionHandlerTest extends TestCase
             $memberResolver,
         );
         $this->handler = $this->makeHandler($this->symbolSource);
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->sink = $knowledge->sink;
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $this->sink);
+    }
+
+    private function seedClass(string $fqn): void
+    {
+        $lastBackslash = strrpos($fqn, '\\');
+        if ($lastBackslash === false) {
+            $source = "<?php\nclass {$fqn} {}\n";
+        } else {
+            $namespace = substr($fqn, 0, $lastBackslash);
+            $short = substr($fqn, $lastBackslash + 1);
+            $source = "<?php\nnamespace {$namespace};\nclass {$short} {}\n";
+        }
+        $uri = 'file:///seed/' . str_replace('\\', '_', $fqn) . '.php';
+        $this->sink->openDocument(new \Firehed\PhpLsp\Document\TextDocument($uri, 'php', 1, $source));
     }
 
     private function makeHandler(SymbolSource $symbolSource, bool $snippetSupport = false): CompletionHandler
@@ -729,14 +738,7 @@ class CompletionHandlerTest extends TestCase
         // and flagged incomplete — the cap is a response-level limit, not one
         // special to navigation — via the sentinel that sorts unranked items last.
         foreach (range(0, 100) as $i) {
-            $name = sprintf('FloodClass%03d', $i);
-            $this->symbolIndex->add(new Symbol(
-                $name,
-                $name,
-                SymbolKind::Class_,
-                new Location('file:///other.php', 0, 0, 0, 0),
-                nameKind: NameKind::ClassLike,
-            ));
+            $this->seedClass(sprintf('FloodClass%03d', $i));
         }
         $this->openDocument('file:///flood.php', '<?php new FloodClass');
 
@@ -1216,14 +1218,8 @@ class CompletionHandlerTest extends TestCase
 
     public function testNewCompletionIncludesIndexedClasses(): void
     {
-        // Add a class to the index
-        $this->symbolIndex->add(new Symbol(
-            'MyIndexedClass',
-            'MyIndexedClass',
-            SymbolKind::Class_,
-            new Location('file:///other.php', 0, 0, 0, 0),
-            nameKind: NameKind::ClassLike,
-        ));
+        // Add a class to the workspace via the sink
+        $this->seedClass('MyIndexedClass');
 
         $code = '<?php $x = new MyIn';
         $this->openDocument('file:///test.php', $code);

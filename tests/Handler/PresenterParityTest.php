@@ -18,7 +18,6 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -62,7 +61,6 @@ class PresenterParityTest extends TestCase
             $fixturesRoot . '/vendor',
             $parser,
             $production->reader,
-            new SymbolIndex(),
         );
 
         $memberResolver = new MemberResolver($knowledge->source);

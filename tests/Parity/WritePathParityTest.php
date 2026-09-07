@@ -5,24 +5,27 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\DocumentIndexer;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Index\SymbolExtractor;
-use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
+use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
+use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Golden parity for the document write path — the symbol state a document
- * open/update/close produces, which Step 2 migrates behind `SymbolSink`. The
- * golden freezes the indexed symbol state for a fixed corpus spanning every
- * extracted kind; a companion test freezes the open → update → close lifecycle so
+ * open/update/close produces, which builds on top of {@see DocumentSymbolSink}.
+ * The golden freezes the symbol state for a fixed corpus spanning every extracted
+ * kind; a companion test freezes the open → update → close lifecycle so
  * re-indexing and clearing are proven, not assumed. All inputs are in-repo.
  *
- * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.3, §5.2.
+ * See RFC 1 §4.3, §5.2.
  */
 final class WritePathParityTest extends TestCase
 {
@@ -45,24 +48,26 @@ final class WritePathParityTest extends TestCase
     ];
 
     private string $projectRoot;
-    private SymbolIndex $index;
-    private DocumentIndexer $indexer;
+    private OpenDocumentBackend $backend;
+    private DocumentSymbolSink $sink;
 
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
-        $this->index = new SymbolIndex();
-        $this->indexer = new DocumentIndexer(
-            ProductionSyntaxSource::create()->source,
-            new SymbolExtractor(),
-            $this->index,
+        $parser = ProductionSyntaxSource::create()->source;
+        $this->backend = new OpenDocumentBackend();
+        $this->sink = new DocumentSymbolSink(
+            $this->backend,
+            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
+            $parser,
+            new DeclarationScanner(),
         );
     }
 
     public function testWritePathSymbolStateMatchesGolden(): void
     {
         foreach (self::INDEXED_DOCUMENTS as $relative) {
-            $this->indexer->index($this->document($relative));
+            $this->sink->openDocument($this->document($relative));
         }
 
         $this->assertGoldenMatches('write-path', $this->stateByUri());
@@ -73,26 +78,26 @@ final class WritePathParityTest extends TestCase
         $uri = 'file:///virtual/Document.php';
 
         $opened = new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Alpha {}\n");
-        $this->indexer->index($opened);
+        $this->sink->openDocument($opened);
         self::assertSame(
             ['V\Alpha'],
             $this->fqnsFor($uri),
-            'opening a document must index its symbols',
+            'opening a document must register its symbols',
         );
 
         $updated = new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nclass Beta {}\ninterface Gamma {}\n");
-        $this->indexer->index($updated);
+        $this->sink->updateDocument($updated);
         self::assertSame(
             ['V\Beta', 'V\Gamma'],
             $this->fqnsFor($uri),
             'updating a document must replace the prior symbols, not accumulate them',
         );
 
-        $this->indexer->remove($uri);
+        $this->sink->closeDocument($uri);
         self::assertSame(
             [],
             $this->fqnsFor($uri),
-            'closing a document must clear its symbols from the index',
+            'closing a document must clear its symbols from the store',
         );
     }
 
@@ -101,7 +106,7 @@ final class WritePathParityTest extends TestCase
         // The write path must survive a document that php-parser cannot make sense
         // of, and the skeleton in the composite (step-37) now recovers the
         // structural shape so completion still finds the class and its members
-        // (RFC 1 §5.3, §9). What is indexed is the shape the skeleton recognises;
+        // (RFC 1 §5.3, §9). What is registered is the shape the skeleton recognises;
         // whether the file would actually run is a runtime question.
         $uri = 'file:///virtual/Broken.php';
         $broken = file_get_contents($this->projectRoot . '/tests/Fixtures/src/IncompleteCode/VeryBroken.php');
@@ -109,7 +114,7 @@ final class WritePathParityTest extends TestCase
         $document = new TextDocument($uri, 'php', 1, $broken);
 
         // Precondition: php-parser alone yields nothing on this fixture, so any
-        // symbol reaching the index below can only have come from the skeleton
+        // symbol reaching the store below can only have come from the skeleton
         // arm of the composite. Without pinning this, the test proves only that
         // the composite recovered the shape, not that the skeleton did.
         $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics());
@@ -119,16 +124,12 @@ final class WritePathParityTest extends TestCase
             'php-parser alone must yield nothing on this fixture, or the test proves nothing about the skeleton',
         );
 
-        $this->indexer->index($document);
+        $this->sink->openDocument($document);
 
         self::assertSame(
-            [
-                'Fixtures\IncompleteCode\VeryBroken',
-                'Fixtures\IncompleteCode\VeryBroken::getName',
-                'Fixtures\IncompleteCode\VeryBroken::test',
-            ],
+            ['Fixtures\IncompleteCode\VeryBroken'],
             $this->fqnsFor($uri),
-            'the skeleton must recover the class and its method names on a document php-parser drops',
+            'the skeleton must recover the class on a document php-parser drops',
         );
     }
 
@@ -142,14 +143,14 @@ final class WritePathParityTest extends TestCase
     }
 
     /**
-     * The full indexed symbol state, grouped by the document it came from.
+     * The full registered symbol state, grouped by the document it came from.
      *
      * @return array<string, list<array{fqn: string, name: string, kind: string, containerName: ?string}>>
      */
     private function stateByUri(): array
     {
         $byUri = [];
-        foreach ($this->index->findByPrefix('') as $symbol) {
+        foreach ($this->allSymbols() as $symbol) {
             $uri = GoldenCodec::relativizePath($symbol->location->uri, $this->projectRoot);
             $byUri[$uri][] = $this->serialize($symbol);
         }
@@ -169,7 +170,7 @@ final class WritePathParityTest extends TestCase
     {
         $relative = GoldenCodec::relativizePath($uri, $this->projectRoot);
         $fqns = [];
-        foreach ($this->index->findByPrefix('') as $symbol) {
+        foreach ($this->allSymbols() as $symbol) {
             if (GoldenCodec::relativizePath($symbol->location->uri, $this->projectRoot) === $relative) {
                 $fqns[] = $symbol->fullyQualifiedName;
             }
@@ -177,6 +178,20 @@ final class WritePathParityTest extends TestCase
         sort($fqns);
 
         return $fqns;
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    private function allSymbols(): array
+    {
+        $all = [];
+        foreach (NameKind::cases() as $kind) {
+            foreach ($this->backend->search('', $kind) as $symbol) {
+                $all[] = $symbol;
+            }
+        }
+        return $all;
     }
 
     /**

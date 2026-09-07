@@ -253,7 +253,7 @@ class ServerTest extends TestCase
      * `initialize` notifications be dropped). Asserting the response code alone
      * cannot tell enforcement from theatre: a server that dispatches the
      * message and then overwrites the result with the gate error emits byte-
-     * identical output, while having mutated DocumentManager and SymbolIndex.
+     * identical output, while having mutated DocumentManager and the open-document store.
      *
      * @param list<string> $preamble
      */

@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use PHPStan\Analyser\Scope;
 use PHPStan\Reflection\ClassReflection;
 use PHPStan\Rules\ClassNameUsageLocation;
@@ -50,7 +49,6 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
     private const array CONFINED_COLLABORATORS = [
         ComposerAutoloadMap::class,
         NamespaceCatalog::class,
-        SymbolIndex::class,
         ReflectionClass::class,
     ];
 

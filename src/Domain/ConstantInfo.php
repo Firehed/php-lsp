@@ -141,4 +141,9 @@ final readonly class ConstantInfo implements MemberInfo, SymbolInfo
     {
         return true;
     }
+
+    public function symbolKind(): SymbolKind
+    {
+        return SymbolKind::Constant;
+    }
 }

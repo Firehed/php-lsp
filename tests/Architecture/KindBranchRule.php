@@ -46,7 +46,7 @@ final class KindBranchRule implements Rule
         \Firehed\PhpLsp\Domain\MemberFilter::class,
         \Firehed\PhpLsp\Domain\MemberKind::class,
         \Firehed\PhpLsp\Domain\NameKind::class,
-        \Firehed\PhpLsp\Index\SymbolKind::class,
+        \Firehed\PhpLsp\Domain\SymbolKind::class,
         \Firehed\PhpLsp\Resolution\MemberAccessKind::class,
     ];
 

@@ -54,6 +54,16 @@ final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
         return $this->name;
     }
 
+    public function symbolKind(): SymbolKind
+    {
+        return match ($this->kind) {
+            ClassKind::Class_ => SymbolKind::Class_,
+            ClassKind::Interface_ => SymbolKind::Interface_,
+            ClassKind::Trait_ => SymbolKind::Trait_,
+            ClassKind::Enum_ => SymbolKind::Enum_,
+        };
+    }
+
     public function isClass(): bool
     {
         return $this->kind === ClassKind::Class_;

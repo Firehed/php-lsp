@@ -6,21 +6,22 @@ namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Index\DocumentIndexer;
 use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Index\SymbolExtractor;
-use Firehed\PhpLsp\Index\SymbolIndex;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
+use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
+use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Golden parity for the prefix-search surface — `SymbolIndex::findByPrefix()`,
- * which `SymbolSource::search` serves per kind. A fixed set of
- * workspace documents is indexed, then a curated set of prefix queries (with and
- * without a kind filter, matching and not) is frozen. All inputs are in-repo, so
- * the golden is deterministic.
+ * Golden parity for the prefix-search surface — {@see OpenDocumentBackend::search()},
+ * per kind. A fixed set of workspace documents is registered, then a curated set
+ * of per-kind prefix queries is frozen. All inputs are in-repo, so the golden is
+ * deterministic.
  *
- * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.2, §5.1.
+ * See RFC 1 §4.2, §5.1.
  */
 final class PrefixSearchParityTest extends TestCase
 {
@@ -28,8 +29,7 @@ final class PrefixSearchParityTest extends TestCase
 
     /**
      * The documents whose symbols make up the searchable index. The set spans
-     * every extracted kind: classes, an interface, a trait, an enum, functions,
-     * and the methods those declare.
+     * every extracted kind: classes, an interface, a trait, an enum, and functions.
      *
      * @var list<string>
      */
@@ -43,42 +43,44 @@ final class PrefixSearchParityTest extends TestCase
     ];
 
     private string $projectRoot;
-    private SymbolIndex $index;
+    private OpenDocumentBackend $backend;
+    private DocumentSymbolSink $sink;
 
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
-        $this->index = new SymbolIndex();
-        $indexer = new DocumentIndexer(
-            ProductionSyntaxSource::create()->source,
-            new SymbolExtractor(),
-            $this->index,
+        $parser = ProductionSyntaxSource::create()->source;
+        $this->backend = new OpenDocumentBackend();
+        $this->sink = new DocumentSymbolSink(
+            $this->backend,
+            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
+            $parser,
+            new DeclarationScanner(),
         );
 
         foreach (self::INDEXED_DOCUMENTS as $relative) {
             $path = $this->projectRoot . '/tests/Fixtures/' . $relative;
             $content = file_get_contents($path);
             self::assertNotFalse($content, "fixture document should be readable: {$relative}");
-            $indexer->index(new TextDocument('file://' . $path, 'php', 0, $content));
+            $this->sink->openDocument(new TextDocument('file://' . $path, 'php', 0, $content));
         }
     }
 
     public function testPrefixSearchMatchesGolden(): void
     {
         $queries = [
-            'User' => ['User', null],
-            'get' => ['get', null],
-            'Status' => ['Status', null],
-            'noop' => ['noop', null],
             'User|ClassLike' => ['User', NameKind::ClassLike],
             'get|Function' => ['get', NameKind::Function_],
-            'Zzz|none' => ['Zzz', null],
+            'Status|ClassLike' => ['Status', NameKind::ClassLike],
+            'noop|Function' => ['noop', NameKind::Function_],
+            // A prefix nothing matches.
+            'Zzz|none' => ['Zzz', NameKind::ClassLike],
             // A lowercase prefix that matches differently-cased symbol names:
             // prefix matching is case-insensitive, so 'user' must still find
             // `User` and `UserRepository`. A case-sensitive regression would
             // return nothing here.
-            'user|lowercase' => ['user', null],
-            // A class-like filter covers every flavour: classes, interfaces,
+            'user|lowercase' => ['user', NameKind::ClassLike],
+            // An empty prefix pulls every class-like: classes, interfaces,
             // traits, and enums. A regression that split those apart would drop
             // interfaces (and everything but classes) here.
             'all|ClassLike' => ['', NameKind::ClassLike],
@@ -86,7 +88,7 @@ final class PrefixSearchParityTest extends TestCase
 
         $captured = [];
         foreach ($queries as $label => [$prefix, $kind]) {
-            $results = $this->index->findByPrefix($prefix, $kind);
+            $results = $this->backend->search($prefix, $kind);
             $captured[$label] = array_map($this->serialize(...), $results);
             usort(
                 $captured[$label],
@@ -97,34 +99,7 @@ final class PrefixSearchParityTest extends TestCase
         $this->assertGoldenMatches('prefix-search', $captured);
     }
 
-    public function testExactLookupsByFqnAndName(): void
-    {
-        // The index's exact-match queries back go-to-definition and reference
-        // resolution; the prefix surface owns the index, so its parity covers them.
-        $byFqn = $this->index->findByFqn('Fixtures\Domain\User');
-        self::assertNotNull($byFqn, 'an indexed symbol must be found by its FQN');
-        self::assertSame('User', $byFqn->name, 'findByFqn must return the matching symbol');
-        self::assertNull(
-            $this->index->findByFqn('Fixtures\Domain\Absent'),
-            'an unindexed FQN must return null',
-        );
-
-        $byName = array_map(
-            static fn(Symbol $symbol): string => $symbol->fullyQualifiedName,
-            $this->index->findByName('User'),
-        );
-        self::assertSame(
-            ['Fixtures\Domain\User'],
-            $byName,
-            'findByName must return every symbol with that short name',
-        );
-    }
-
     /**
-     * The `uri` is captured (which file a match lives in), but not the line/column
-     * offsets: those shift on any edit above the symbol, which is churn unrelated
-     * to what the prefix-search surface returns.
-     *
      * @return array{fqn: string, name: string, kind: string, containerName: ?string, uri: string}
      */
     private function serialize(Symbol $symbol): array
