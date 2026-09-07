@@ -60,7 +60,6 @@ use Throwable;
  */
 final class SymbolResolver implements CodeResolver
 {
-    private readonly TextFallbackHelper $textFallback;
     private readonly CallContextDetector $callDetector;
     private readonly MemberAccessDetector $memberAccessDetector;
 
@@ -69,8 +68,7 @@ final class SymbolResolver implements CodeResolver
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
     ) {
-        $this->textFallback = new TextFallbackHelper();
-        $this->callDetector = new CallContextDetector($this->textFallback, $parser);
+        $this->callDetector = new CallContextDetector($parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
@@ -337,37 +335,47 @@ final class SymbolResolver implements CodeResolver
         $ast = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
-        $content = $document->getContent();
 
-        $callInfo = $this->callDetector->fromAst($ast, $document, $offset);
-        $callable = null;
-        $activeParameter = 0;
-        $usedNames = [];
-        $positionalCount = 0;
-
-        if ($callInfo !== null) {
-            [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-            $callable = $this->resolveCallable($callNode, $ast, $document);
-            if ($callable === null) {
-                $textCallInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
-                if ($textCallInfo !== null) {
-                    [$callNode, $activeParameter, $usedNames, $positionalCount] = $textCallInfo;
-                    $callable = $this->resolveCallable($callNode, $ast, $document);
-                }
-            }
-        } else {
-            $callInfo = $this->callDetector->fromText($ast, $offset, $content, $line);
-            if ($callInfo !== null) {
-                [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-                $callable = $this->resolveCallable($callNode, $ast, $document);
-            }
+        $callInfo = $this->callDetector->detect($ast, $document, $offset);
+        if ($callInfo === null) {
+            return null;
         }
 
+        [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
+        self::resolveClassNameOnSynthesizedCall($callNode, $ast, $line);
+        $callable = $this->resolveCallable($callNode, $ast, $document);
         if ($callable === null) {
             return null;
         }
 
         return new CallContext($callable, $activeParameter, $usedNames, $positionalCount);
+    }
+
+    /**
+     * A call node synthesized by the cursor-text source carries a class-like
+     * `Name` without `resolvedName` (the Parser layer cannot reach
+     * `NameContext`). Fill it in.
+     *
+     * @param array<Stmt> $ast
+     */
+    private static function resolveClassNameOnSynthesizedCall(Node $callNode, array $ast, int $line): void
+    {
+        $classNameNode = match (true) {
+            $callNode instanceof New_ => $callNode->class,
+            $callNode instanceof StaticCall => $callNode->class,
+            $callNode instanceof Attribute => $callNode->name,
+            default => null,
+        };
+        if (
+            !$classNameNode instanceof Name
+            || $classNameNode instanceof Name\FullyQualified
+            || $classNameNode->hasAttribute('resolvedName')
+        ) {
+            return;
+        }
+        $context = NameContextFactory::fromAst($ast, $line);
+        $candidates = $context->candidates($classNameNode->toString(), \Firehed\PhpLsp\Domain\NameKind::ClassLike);
+        $classNameNode->setAttribute('resolvedName', new Name\FullyQualified($candidates[0]));
     }
 
     public function getNameContext(TextDocument $document, int $line): NameContext

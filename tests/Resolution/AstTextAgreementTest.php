@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
-use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\ScopeFinder;
@@ -49,7 +48,6 @@ final class AstTextAgreementTest extends TestCase
 
     private MemoizingSyntaxSource $parser;
     private TextFallbackHelper $textFallback;
-    private CallContextDetector $callDetector;
     private CursorTextSyntaxSource $cursorText;
 
     protected function setUp(): void
@@ -57,7 +55,6 @@ final class AstTextAgreementTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
         $this->textFallback = new TextFallbackHelper();
-        $this->callDetector = new CallContextDetector($this->textFallback, $this->parser);
         $this->cursorText = new CursorTextSyntaxSource();
     }
 
@@ -115,100 +112,110 @@ final class AstTextAgreementTest extends TestCase
     }
 
     /**
+     * On every fixture that parses, the composite (php-parser wins) and the
+     * cursor-text source alone must land on a call node of the same class at
+     * the cursor. Diverging call classes would mean the empty-parse path and
+     * the parsed-tree path resolve signature help against different callables
+     * — the M×N the cursor-text source exists to prevent (build-manifest
+     * step-41, RFC 1 §4.11).
+     *
      * @param class-string<FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute> $expectedNodeClass
      */
     #[DataProvider('callContextFixtures')]
-    public function testCallContextAgreement(
+    public function testCallContextCursorAgreement(
         string $fixture,
         string $marker,
         string $expectedNodeClass,
-        int $expectedActiveParam,
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
 
         $offset = $this->markerOffset($content, $marker);
-        $line = $this->lineForOffset($content, $offset);
 
-        $astResult = $this->callDetector->fromAst($ast, $document, $offset);
-        $textResult = $this->callDetector->fromText($ast, $offset, $content, $line);
+        $compositeNode = $this->parser->nodeAt($ast, $document, $offset);
+        $cursorNode = $this->cursorText->nodeAt([], $document, $offset);
 
-        self::assertNotNull($astResult, 'AST path must detect the call');
-        self::assertNotNull($textResult, 'Text path must detect the call');
+        self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
+        self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
+
+        $compositeCall = self::resolveToCallNode($compositeNode);
+        $cursorCall = self::resolveToCallNode($cursorNode);
+
+        self::assertNotNull($compositeCall, 'composite node must be inside a call expression');
+        self::assertNotNull($cursorCall, 'cursor-text node must be inside a call expression');
 
         self::assertInstanceOf(
             $expectedNodeClass,
-            $astResult[0],
-            'AST path must find the expected node type',
+            $compositeCall,
+            'composite call must be the expected node type',
         );
         self::assertSame(
-            $astResult[0]::class,
-            $textResult[0]::class,
-            'Call node type must agree between AST and text paths',
-        );
-        self::assertSame(
-            $expectedActiveParam,
-            $astResult[1],
-            'AST active parameter must match expected',
-        );
-        self::assertSame(
-            $astResult[1],
-            $textResult[1],
-            'Active parameter must agree between AST and text paths',
-        );
-        self::assertSame(
-            $astResult[2],
-            $textResult[2],
-            'Used parameter names must agree between AST and text paths',
-        );
-        self::assertSame(
-            $astResult[3],
-            $textResult[3],
-            'Positional count must agree between AST and text paths',
+            $compositeCall::class,
+            $cursorCall::class,
+            'call node class must agree between composite and cursor-text source',
         );
     }
 
     /**
-     * @return array<string, array{string, string, class-string, int}>
+     * @return array<string, array{string, string, class-string}>
      */
     public static function callContextFixtures(): array
     {
         return [
             'function call first arg' => [
-                'SignatureHelp.php', 'first_param', FuncCall::class, 0,
+                'SignatureHelp.php', 'first_param', FuncCall::class,
             ],
             'function call second arg' => [
-                'SignatureHelp.php', 'second_param', FuncCall::class, 1,
+                'SignatureHelp.php', 'second_param', FuncCall::class,
             ],
             'constructor' => [
-                'SignatureHelp.php', 'constructor', New_::class, 0,
+                'SignatureHelp.php', 'constructor', New_::class,
             ],
             'static call' => [
-                'SignatureHelp.php', 'static_call', StaticCall::class, 0,
+                'SignatureHelp.php', 'static_call', StaticCall::class,
             ],
             'builtin function' => [
-                'SignatureHelp.php', 'builtin', FuncCall::class, 0,
+                'SignatureHelp.php', 'builtin', FuncCall::class,
             ],
             '$this method call' => [
-                'src/Domain/User.php', 'sig_this_call', MethodCall::class, 0,
+                'src/Domain/User.php', 'sig_this_call', MethodCall::class,
             ],
             'new expression' => [
-                'src/Domain/User.php', 'sig_new', New_::class, 0,
+                'src/Domain/User.php', 'sig_new', New_::class,
             ],
             'builtin strlen' => [
-                'src/Domain/User.php', 'sig_builtin_func', FuncCall::class, 0,
+                'src/Domain/User.php', 'sig_builtin_func', FuncCall::class,
             ],
             'named args' => [
-                'SignatureHelp.php', 'named_arg', FuncCall::class, 1,
+                'SignatureHelp.php', 'named_arg', FuncCall::class,
             ],
             'typed param method call' => [
-                'SignatureHelp.php', 'typed_param', MethodCall::class, 0,
+                'SignatureHelp.php', 'typed_param', MethodCall::class,
             ],
             'nullsafe method call' => [
-                'SignatureHelp.php', 'nullsafe_param', NullsafeMethodCall::class, 0,
+                'SignatureHelp.php', 'nullsafe_param', NullsafeMethodCall::class,
             ],
         ];
+    }
+
+    private static function resolveToCallNode(Node $node): ?Node
+    {
+        while (
+            !($node instanceof FuncCall)
+            && !($node instanceof MethodCall)
+            && !($node instanceof NullsafeMethodCall)
+            && !($node instanceof StaticCall)
+            && !($node instanceof New_)
+            && !($node instanceof Attribute)
+        ) {
+            $parent = $node->getAttribute('parent');
+            if (!$parent instanceof Node) {
+                return null;
+            }
+            $node = $parent;
+        }
+        return $node;
     }
 
     /**
@@ -426,11 +433,6 @@ final class AstTextAgreementTest extends TestCase
         $pos = strpos($content, '/*|' . $marker . '*/');
         self::assertNotFalse($pos, "Marker {$marker} not found");
         return $pos;
-    }
-
-    private function lineForOffset(string $content, int $offset): int
-    {
-        return substr_count($content, "\n", 0, $offset);
     }
 
     /**
