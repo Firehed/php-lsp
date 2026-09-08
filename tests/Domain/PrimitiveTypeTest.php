@@ -52,4 +52,32 @@ class PrimitiveTypeTest extends TestCase
         $type = new PrimitiveType('array', [$value]);
         self::assertSame($value, $type->valueType());
     }
+
+    public function testEqualsSameNameAndArgs(): void
+    {
+        $a = new PrimitiveType('array', [new ClassName(\stdClass::class)]);
+        $b = new PrimitiveType('array', [new ClassName(\stdClass::class)]);
+        self::assertTrue($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenNameDiffers(): void
+    {
+        $a = new PrimitiveType('string');
+        $b = new PrimitiveType('int');
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenTypeArgumentsDiffer(): void
+    {
+        $a = new PrimitiveType('array', [new ClassName(\stdClass::class)]);
+        $b = new PrimitiveType('array', [new ClassName(\Iterator::class)]);
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseAgainstDifferentTypeKind(): void
+    {
+        $a = new PrimitiveType('object');
+        $b = new ClassName(\stdClass::class);
+        self::assertFalse($a->equals($b));
+    }
 }

@@ -46,4 +46,11 @@ final class LateStaticType implements Type
     {
         return null;
     }
+
+    public function equals(Type $other): bool
+    {
+        return $other instanceof self
+            && $this->keyword === $other->keyword
+            && $this->declaringClass->equals($other->declaringClass);
+    }
 }

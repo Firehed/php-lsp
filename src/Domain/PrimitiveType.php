@@ -64,4 +64,23 @@ final readonly class PrimitiveType implements Type
     {
         return $this->typeArguments[0] ?? null;
     }
+
+    public function equals(Type $other): bool
+    {
+        if (!$other instanceof self) {
+            return false;
+        }
+        if ($this->name !== $other->name) {
+            return false;
+        }
+        if (count($this->typeArguments) !== count($other->typeArguments)) {
+            return false;
+        }
+        foreach ($this->typeArguments as $i => $arg) {
+            if (!$arg->equals($other->typeArguments[$i])) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

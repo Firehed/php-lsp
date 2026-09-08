@@ -27,4 +27,6 @@ interface Type extends Formattable
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type;
 
     public function valueType(): ?Type;
+
+    public function equals(Type $other): bool;
 }

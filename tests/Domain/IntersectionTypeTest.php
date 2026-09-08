@@ -71,6 +71,34 @@ class IntersectionTypeTest extends TestCase
         self::assertNull($type->valueType());
     }
 
+    public function testEqualsSameMembersInOrder(): void
+    {
+        $a = new IntersectionType([new ClassName(\Iterator::class), new ClassName(\Countable::class)]);
+        $b = new IntersectionType([new ClassName(\Iterator::class), new ClassName(\Countable::class)]);
+        self::assertTrue($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenMemberOrderDiffers(): void
+    {
+        $a = new IntersectionType([new ClassName(\Iterator::class), new ClassName(\Countable::class)]);
+        $b = new IntersectionType([new ClassName(\Countable::class), new ClassName(\Iterator::class)]);
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenMemberCountDiffers(): void
+    {
+        $a = new IntersectionType([new ClassName(\Iterator::class), new ClassName(\Countable::class)]);
+        $b = new IntersectionType([new ClassName(\Iterator::class)]);
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseAgainstDifferentTypeKind(): void
+    {
+        $a = new IntersectionType([new ClassName(\Iterator::class), new ClassName(\Countable::class)]);
+        $b = new UnionType([new ClassName(\Iterator::class), new ClassName(\Countable::class)]);
+        self::assertFalse($a->equals($b));
+    }
+
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new IntersectionType([

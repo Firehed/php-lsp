@@ -8,6 +8,7 @@ use ArrayIterator;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Traversable;
@@ -82,5 +83,33 @@ class LateStaticTypeTest extends TestCase
         $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
 
         self::assertNull($type->valueType());
+    }
+
+    public function testEqualsSameKeywordAndDeclaringClass(): void
+    {
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $b = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        self::assertTrue($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenKeywordDiffers(): void
+    {
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $b = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenDeclaringClassDiffers(): void
+    {
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $b = new LateStaticType(LateBindingKeyword::Static, new ClassName(ArrayIterator::class));
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseAgainstDifferentTypeKind(): void
+    {
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $b = new PrimitiveType('object');
+        self::assertFalse($a->equals($b));
     }
 }

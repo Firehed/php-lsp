@@ -51,10 +51,25 @@ final readonly class ClassName implements Type
         return $namespace === '' ? null : $namespace;
     }
 
-    public function equals(self $other): bool
+    public function equals(Type $other): bool
     {
-        return NameKind::ClassLike->normalize(QualifiedName::fromClassName($this))
+        if (!$other instanceof self) {
+            return false;
+        }
+        $sameFqn = NameKind::ClassLike->normalize(QualifiedName::fromClassName($this))
             === NameKind::ClassLike->normalize(QualifiedName::fromClassName($other));
+        if (!$sameFqn) {
+            return false;
+        }
+        if (count($this->typeArguments) !== count($other->typeArguments)) {
+            return false;
+        }
+        foreach ($this->typeArguments as $i => $arg) {
+            if (!$arg->equals($other->typeArguments[$i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type

@@ -58,10 +58,26 @@ final readonly class IntersectionType implements Type
                 $shared = $memberValue;
                 continue;
             }
-            if (serialize($shared) !== serialize($memberValue)) {
+            if (!$shared->equals($memberValue)) {
                 return null;
             }
         }
         return $shared;
+    }
+
+    public function equals(Type $other): bool
+    {
+        if (!$other instanceof self) {
+            return false;
+        }
+        if (count($this->members) !== count($other->members)) {
+            return false;
+        }
+        foreach ($this->members as $i => $member) {
+            if (!$member->equals($other->members[$i])) {
+                return false;
+            }
+        }
+        return true;
     }
 }
