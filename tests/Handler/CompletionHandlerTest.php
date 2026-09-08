@@ -23,6 +23,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -66,7 +67,6 @@ class CompletionHandlerTest extends TestCase
     private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
-    private \Firehed\PhpLsp\Knowledge\SymbolSink $sink;
 
     protected function setUp(): void
     {
@@ -91,22 +91,18 @@ class CompletionHandlerTest extends TestCase
             $memberResolver,
         );
         $this->handler = $this->makeHandler($this->symbolSource);
-        $this->sink = $knowledge->sink;
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $this->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }
 
     private function seedClass(string $fqn): void
     {
-        $lastBackslash = strrpos($fqn, '\\');
-        if ($lastBackslash === false) {
-            $source = "<?php\nclass {$fqn} {}\n";
-        } else {
-            $namespace = substr($fqn, 0, $lastBackslash);
-            $short = substr($fqn, $lastBackslash + 1);
-            $source = "<?php\nnamespace {$namespace};\nclass {$short} {}\n";
-        }
+        $namespace = NamespacePath::namespaceOf($fqn);
+        $short = NamespacePath::shortNameOf($fqn);
+        $source = $namespace === ''
+            ? "<?php\nclass {$short} {}\n"
+            : "<?php\nnamespace {$namespace};\nclass {$short} {}\n";
         $uri = 'file:///seed/' . str_replace('\\', '_', $fqn) . '.php';
-        $this->sink->openDocument(new \Firehed\PhpLsp\Document\TextDocument($uri, 'php', 1, $source));
+        $this->openDocument($uri, $source);
     }
 
     private function makeHandler(SymbolSource $symbolSource, bool $snippetSupport = false): CompletionHandler
