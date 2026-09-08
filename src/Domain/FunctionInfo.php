@@ -84,6 +84,11 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
         return $this->returnType;
     }
 
+    public function symbolKind(): SymbolKind
+    {
+        return SymbolKind::Function_;
+    }
+
     public function format(): string
     {
         $params = array_map(fn($p) => ParameterInfo::signature($p), $this->parameters);

@@ -6,24 +6,16 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
- * lifecycle events register class metadata with the {@see DocumentSymbolStore} for
- * lookup and index the document's symbols for enumeration and search, in one place.
- *
- * The two stores are distinct structures serving different consumers (Plan 0002
- * §5.5, Step 3a(iv)), but a document event drives both from **one parse**: the sink
- * parses once and feeds that AST to the class registration and to the index alike,
- * so neither reparses. The skeleton source in the composite recovers the structural
- * shape of a document php-parser drops, so a mid-edit still yields declarations
- * (RFC 1 §5.3).
+ * lifecycle events register the document's declared symbols with the
+ * {@see DocumentSymbolStore}, so lookup, enumeration and prefix search all draw
+ * from one map (build-manifest step-46). The skeleton source in the composite
+ * recovers the structural shape of a document php-parser drops, so a mid-edit
+ * still yields declarations (RFC 1 §5.3).
  */
 final class DocumentSymbolSink implements SymbolSink
 {
@@ -34,8 +26,6 @@ final class DocumentSymbolSink implements SymbolSink
      */
     public function __construct(
         private readonly DocumentSymbolStore $store,
-        private readonly DocumentIndexer $indexer,
-        private readonly SymbolIndex $index,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly SyntaxSource $parser,
         private readonly DeclarationScanner $scanner,
@@ -45,7 +35,6 @@ final class DocumentSymbolSink implements SymbolSink
 
     public function closeDocument(string $uri): void
     {
-        $this->indexer->remove($uri);
         $this->store->removeDocument($uri);
 
         // Closing a file that was edited in the editor must re-read from disk on
@@ -79,49 +68,5 @@ final class DocumentSymbolSink implements SymbolSink
         $symbols = $this->infoFactory->allIn($declarations, $filePath);
 
         $this->store->updateDocument($document->uri, ...$symbols);
-        $this->indexer->indexParsed($document, $ast);
-        $this->assertStoresAgree($symbols);
-    }
-
-    /**
-     * The lookup store and the symbol index are separate structures, so the Step P
-     * parity harness — which compares only observable outputs — could stay green
-     * while they diverged internally (Plan 0002 §5.5, Step 3a(iv)). This guards the
-     * invariant directly: every name registered for lookup MUST also be indexed
-     * (RFC 1 §4.3). The check is one-directional because the index is a superset —
-     * it also records members, which are not registered for lookup.
-     *
-     * It earns its place because the two stores qualify a name by different routes —
-     * the parser's `namespacedName` here, a hand-tracked enclosing namespace in
-     * {@see \Firehed\PhpLsp\Index\SymbolExtractor} — so agreement is a property of two
-     * implementations rather than of one.
-     *
-     * @param list<DeclaredSymbol> $symbols
-     */
-    private function assertStoresAgree(array $symbols): void
-    {
-        foreach ($symbols as $symbol) {
-            $this->assertIndexed($symbol->kind, $symbol->name->fullyQualifiedName());
-        }
-    }
-
-    private function assertIndexed(NameKind $kind, string $fqn): void
-    {
-        if ($this->index->findByFqn($fqn) !== null) {
-            return;
-        }
-
-        // Unreachable: both stores derive their symbols from the one AST parsed
-        // above, so a name registered for lookup is always indexed. The guard fails
-        // loudly if that ever ceases to hold.
-        // @codeCoverageIgnoreStart
-        throw new \LogicException(sprintf(
-            'Write-path divergence: %s %s is registered for lookup but absent from the '
-            . 'symbol index; the two stores are written from one parse and must agree '
-            . '(RFC 1 §4.3).',
-            $kind->name,
-            $fqn,
-        ));
-        // @codeCoverageIgnoreEnd
     }
 }

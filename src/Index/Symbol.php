@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\SymbolKind;
 
 final readonly class Symbol
 {

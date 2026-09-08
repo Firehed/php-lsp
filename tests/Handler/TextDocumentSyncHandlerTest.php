@@ -77,8 +77,8 @@ class TextDocumentSyncHandlerTest extends TestCase
 
     /**
      * Step 0 acceptance: one parse per handled message. The sync path parsed
-     * twice — once here to register the document's classes, then again inside
-     * DocumentIndexer — for every keystroke the client sent.
+     * twice — once here to register the document's classes, and again to index
+     * its symbols — for every keystroke the client sent.
      */
     public function testSyncParsesTheDocumentOnce(): void
     {

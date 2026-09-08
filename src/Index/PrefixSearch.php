@@ -8,6 +8,7 @@ use Closure;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
+use Firehed\PhpLsp\Domain\SymbolKind;
 
 /**
  * Shared filter-and-map for {@see PrefixSearchable} implementations: given a

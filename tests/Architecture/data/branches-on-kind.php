@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Index\SymbolKind;
+use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Resolution\MemberAccessKind;
 
 /**

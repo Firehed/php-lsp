@@ -6,14 +6,9 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\Location;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Parser\ParseMetrics;
@@ -221,36 +216,6 @@ final class KnowledgeStackTest extends TestCase
         self::assertNotNull(
             $stack->source->lookupClassLike(self::className('V\Widget')),
             'the read source and the write sink share one open-document backend',
-        );
-    }
-
-    public function testAPrePopulatedIndexIsHonored(): void
-    {
-        $index = new SymbolIndex();
-        $index->add(new Symbol(
-            'Seeded',
-            'Seed\Seeded',
-            SymbolKind::Class_,
-            new Location('file:///s.php', 0, 0, 0, 0),
-            nameKind: NameKind::ClassLike,
-        ));
-
-        $stack = KnowledgeStack::forProject(
-            new ComposerAutoloadMap(),
-            $this->fixturesRoot . '/vendor',
-            $this->parser,
-            $this->reader,
-            $index,
-        );
-
-        $symbolFqns = array_map(
-            static fn($symbol): string => $symbol->fullyQualifiedName,
-            $stack->source->childrenOf(new NamespaceName('Seed'))->symbols,
-        );
-        self::assertContains(
-            'Seed\Seeded',
-            $symbolFqns,
-            'a supplied index pre-populates the open-document backend the source reads',
         );
     }
 

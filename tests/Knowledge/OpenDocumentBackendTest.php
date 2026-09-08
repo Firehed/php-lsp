@@ -5,36 +5,33 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Index\SymbolIndex;
-use Firehed\PhpLsp\Index\SymbolKind;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The open-document backend is the highest-precedence source (RFC 1 §5.3): lookup
- * is served from the class metadata the write path registers per document, while
- * enumeration and prefix search read the live symbol index. These prove each query
- * and that a document's registration is replaced on update and dropped on close.
+ * The open-document backend is the highest-precedence source (RFC 1 §5.3): the
+ * lookup store, namespace enumeration and prefix search all answer from one map
+ * of {@see DeclaredSymbol}s per document (build-manifest step-46). These prove
+ * each query and that a document's registration is replaced on update and dropped
+ * on close.
  */
 final class OpenDocumentBackendTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
     use LooksUpBackendSymbolsTrait;
 
-    private SymbolIndex $index;
     private OpenDocumentBackend $backend;
 
     protected function setUp(): void
     {
-        $this->index = new SymbolIndex();
-        $this->backend = new OpenDocumentBackend($this->index);
+        $this->backend = new OpenDocumentBackend();
     }
 
     public function testLookupClassLikeReturnsARegisteredClass(): void
@@ -138,6 +135,10 @@ final class OpenDocumentBackendTest extends TestCase
         // this backend has never heard of round-trips, so adding one is a change to
         // the info factories alone (Plan 0002 §5.6).
         $info = new class implements SymbolInfo {
+            public function symbolKind(): SymbolKind
+            {
+                return SymbolKind::Constant;
+            }
         };
         $name = QualifiedName::fromFullyQualified('V\LIMIT');
 
@@ -215,20 +216,23 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testSearchClassLikeFiltersByPrefixAndToClassLikeKindsOnly(): void
     {
-        $this->addSymbol('User', 'App\User', SymbolKind::Class_);
-        $this->addSymbol('UserEnum', 'App\UserEnum', SymbolKind::Enum_);
-        $this->addSymbol('UserInterface', 'App\UserInterface', SymbolKind::Interface_);
-        $this->addSymbol('UserTrait', 'App\UserTrait', SymbolKind::Trait_);
-        $this->addSymbol('Entity', 'App\Entity', SymbolKind::Class_);
-        $this->addSymbol('Userland', 'App\Userland', SymbolKind::Function_);
+        $this->backend->updateDocument(
+            'file:///doc.php',
+            self::declaredClass('App\User'),
+            self::declaredClass('App\UserEnum'),
+            self::declaredClass('App\UserInterface'),
+            self::declaredClass('App\UserTrait'),
+            self::declaredClass('App\Entity'),
+            self::declaredFunction('App\Userland'),
+        );
 
         $results = $this->backend->search('User', NameKind::ClassLike);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
-        self::assertContains('App\User', $fqns, 'a class must be found');
-        self::assertContains('App\UserEnum', $fqns, 'an enum must be found');
-        self::assertContains('App\UserInterface', $fqns, 'an interface must be found');
-        self::assertContains('App\UserTrait', $fqns, 'a trait must be found');
+        self::assertContains('App\User', $fqns, 'a class-like matching the prefix must be found');
+        self::assertContains('App\UserEnum', $fqns, 'another class-like matching the prefix must be found');
+        self::assertContains('App\UserInterface', $fqns, 'a third class-like matching the prefix must be found');
+        self::assertContains('App\UserTrait', $fqns, 'a fourth class-like matching the prefix must be found');
         self::assertNotContains('App\Entity', $fqns, 'a class-like not matching the prefix must be excluded');
         self::assertNotContains(
             'App\Userland',
@@ -239,8 +243,11 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testSearchFunctionFiltersByPrefixAndToFunctionKindOnly(): void
     {
-        $this->addSymbol('format', 'App\format', SymbolKind::Function_);
-        $this->addSymbol('Formatter', 'App\Formatter', SymbolKind::Class_);
+        $this->backend->updateDocument(
+            'file:///doc.php',
+            self::declaredFunction('App\format'),
+            self::declaredClass('App\Formatter'),
+        );
 
         $results = $this->backend->search('format', NameKind::Function_);
 
@@ -255,8 +262,11 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testSearchConstantFiltersByPrefixAndToConstantKindOnly(): void
     {
-        $this->addSymbol('DEBUG', 'App\DEBUG', SymbolKind::Constant);
-        $this->addSymbol('Debugger', 'App\Debugger', SymbolKind::Class_);
+        $this->backend->updateDocument(
+            'file:///doc.php',
+            self::declaredConstant('App\DEBUG'),
+            self::declaredClass('App\Debugger'),
+        );
 
         $results = $this->backend->search('D', NameKind::Constant);
 
@@ -271,8 +281,8 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testChildrenOfEnumeratesTheOpenDocumentNamespace(): void
     {
-        $this->addSymbol('User', 'App\User', SymbolKind::Class_);
-        $this->addSymbol('Thing', 'App\Sub\Thing', SymbolKind::Class_);
+        $this->backend->updateDocument('file:///User.php', self::declaredClass('App\User'));
+        $this->backend->updateDocument('file:///Thing.php', self::declaredClass('App\Sub\Thing'));
 
         $contents = $this->backend->childrenOf(new NamespaceName('App'));
 
@@ -286,22 +296,5 @@ final class OpenDocumentBackendTest extends TestCase
             $contents->childNamespaces,
             'a namespace with a deeper declaration must be listed as a child',
         );
-    }
-
-    private function addSymbol(string $name, string $fqn, SymbolKind $kind): void
-    {
-        $nameKind = match ($kind) {
-            SymbolKind::Class_, SymbolKind::Interface_, SymbolKind::Trait_, SymbolKind::Enum_ => NameKind::ClassLike,
-            SymbolKind::Function_ => NameKind::Function_,
-            SymbolKind::Constant => NameKind::Constant,
-            SymbolKind::Method, SymbolKind::Property => null,
-        };
-        $this->index->add(new Symbol(
-            $name,
-            $fqn,
-            $kind,
-            new Location('file:///' . $name . '.php', 0, 0, 0, 0),
-            nameKind: $nameKind,
-        ));
     }
 }

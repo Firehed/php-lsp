@@ -7,9 +7,7 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -79,7 +77,6 @@ final class OneRoutePerFactTest extends TestCase
                 name: 'namespace catalog',
                 interface: NamespaceCatalog::class,
                 roots: [KnowledgeStack::class],
-                pending: ['src/Knowledge/OpenDocumentBackend.php' => 'step-46'],
                 layoutPending: 'step-52',
             ),
             Fact::family(
@@ -106,17 +103,6 @@ final class OneRoutePerFactTest extends TestCase
                 name: 'syntax source',
                 interface: SyntaxSource::class,
                 roots: [Server::class],
-            ),
-            Fact::confined(
-                name: 'symbol index',
-                ingredients: [SymbolIndex::class],
-                holders: [OpenDocumentBackend::class],
-                roots: [KnowledgeStack::class],
-                pending: [
-                    'src/Index/DocumentIndexer.php' => 'step-46',
-                    'src/Index/WorkspaceNamespaceSource.php' => 'step-46',
-                    'src/Knowledge/DocumentSymbolSink.php' => 'step-46',
-                ],
             ),
             Fact::confined(
                 name: 'docblock types',

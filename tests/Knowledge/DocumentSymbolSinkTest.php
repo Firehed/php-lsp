@@ -6,9 +6,6 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\Invalidatable;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\DocumentIndexer;
-use Firehed\PhpLsp\Index\SymbolExtractor;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
@@ -23,38 +20,34 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The single write path (RFC 1 §4.3, §5.2): a document event must register class
- * metadata with the open-document backend for lookup and index its symbols for
- * enumeration and search — the double write, driven from one document. These prove
- * both stores move together on open, update, and close, and that a malformed
- * document contributes nothing rather than crashing (RFC 1 §9).
+ * The single write path (RFC 1 §4.3, §5.2): a document event registers the
+ * document's declared symbols with the one open-document store (build-manifest
+ * step-46). These prove the store moves with the document on open, update, and
+ * close, and that a malformed document contributes nothing rather than crashing
+ * (RFC 1 §9).
  */
 final class DocumentSymbolSinkTest extends TestCase
 {
     use LoadsFixturesTrait;
     use LooksUpBackendSymbolsTrait;
 
-    private SymbolIndex $index;
     private OpenDocumentBackend $backend;
     private DocumentSymbolSink $sink;
 
     protected function setUp(): void
     {
         $parser = ProductionSyntaxSource::create()->source;
-        $this->index = new SymbolIndex();
-        $this->backend = new OpenDocumentBackend($this->index);
+        $this->backend = new OpenDocumentBackend();
         $classInfoFactory = new DefaultClassInfoFactory();
         $this->sink = new DocumentSymbolSink(
             $this->backend,
-            new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
-            $this->index,
             new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),
         );
     }
 
-    public function testOpenDocumentRegistersClassesAndIndexesSymbols(): void
+    public function testOpenDocumentRegistersDocumentSymbols(): void
     {
         // A non-class statement alongside the class exercises the class-like filter.
         $content = "<?php\nnamespace V;\nfunction helper(): void {}\nfinal class Widget {}\n";
@@ -66,8 +59,8 @@ final class DocumentSymbolSinkTest extends TestCase
             'openDocument must register the class for lookup',
         );
         self::assertNotNull(
-            $this->index->findByFqn('V\Widget'),
-            'openDocument must also index the document — the second of the double write',
+            self::functionIn($this->backend, 'V\helper'),
+            'openDocument must register the function too',
         );
     }
 
@@ -179,14 +172,12 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
-    public function testUpdateDocumentReplacesThePriorSymbolsInBothStores(): void
+    public function testUpdateDocumentReplacesThePriorSymbols(): void
     {
         $uri = 'file:///Doc.php';
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Alpha {}\n"));
         $this->sink->updateDocument(new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nclass Beta {}\n"));
 
-        self::assertNull($this->index->findByFqn('V\Alpha'), 'update must clear the prior symbols from the index');
-        self::assertNotNull($this->index->findByFqn('V\Beta'), 'update must index the new symbols');
         self::assertNotNull(
             self::classLikeIn($this->backend, 'V\Beta'),
             'update must register the new class for lookup',
@@ -197,14 +188,13 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
-    public function testCloseDocumentClearsBothStores(): void
+    public function testCloseDocumentClearsTheStore(): void
     {
         $uri = 'file:///Ephemeral.php';
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Ephemeral {}\n"));
 
         $this->sink->closeDocument($uri);
 
-        self::assertNull($this->index->findByFqn('V\Ephemeral'), 'close must clear the indexed symbols');
         self::assertNull(
             self::classLikeIn($this->backend, 'V\Ephemeral'),
             'close must drop the registered class from lookup',
@@ -272,22 +262,16 @@ final class DocumentSymbolSinkTest extends TestCase
     }
 
     #[DataProvider('classLikeFixtures')]
-    public function testEveryRegisteredClassLikeIsAlsoIndexed(string $fixture, string $fqn): void
+    public function testEveryClassLikeKindIsRegistered(string $fixture, string $fqn): void
     {
-        // The lookup store and the symbol index are separate structures fed from one
-        // parse; the write path keeps them consistent (RFC 1 §4.3). A name registered
-        // for lookup must also be indexed — never resolvable through one surface yet
-        // invisible to the other — across every class-like kind.
+        // The one store answers for every class-like kind; a name registered for
+        // lookup must be reachable for every consumer.
         $uri = 'file:///' . $fixture;
         $this->sink->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture($fixture)));
 
         self::assertNotNull(
             self::classLikeIn($this->backend, $fqn),
             "{$fqn} must be registered for lookup",
-        );
-        self::assertNotNull(
-            $this->index->findByFqn($fqn),
-            "{$fqn} is registered for lookup so it must also be indexed (RFC 1 §4.3)",
         );
     }
 
@@ -314,8 +298,6 @@ final class DocumentSymbolSinkTest extends TestCase
 
         return new DocumentSymbolSink(
             $this->backend,
-            new DocumentIndexer($parser, new SymbolExtractor(), $this->index),
-            $this->index,
             new DeclarationSymbolInfoFactory($classInfoFactory),
             $parser,
             new DeclarationScanner(),

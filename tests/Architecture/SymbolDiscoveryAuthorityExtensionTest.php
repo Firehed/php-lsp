@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
-use Firehed\PhpLsp\Index\SymbolIndex;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\ClassNameUsageLocation;
 use PHPStan\Testing\PHPStanTestCase;
@@ -85,9 +84,8 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
     {
         yield 'autoload map from a consumer' => [ComposerAutoloadMap::class, 'Firehed\PhpLsp\Completion'];
         yield 'namespace catalog from a consumer' => [NamespaceCatalog::class, 'Firehed\PhpLsp\Completion'];
-        yield 'symbol index from a consumer' => [SymbolIndex::class, 'Firehed\PhpLsp\Handler'];
         yield 'reflection from a consumer' => [ReflectionClass::class, 'Firehed\PhpLsp\Completion'];
-        yield 'symbol index from the global namespace' => [SymbolIndex::class, null];
+        yield 'autoload map from the global namespace' => [ComposerAutoloadMap::class, null];
     }
 
     /**
@@ -100,11 +98,11 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
      */
     public static function provideAllowedReferences(): iterable
     {
-        yield 'symbol index from the Index backend' => [SymbolIndex::class, 'Firehed\PhpLsp\Index'];
-        yield 'symbol index from a nested Index backend' => [SymbolIndex::class, 'Firehed\PhpLsp\Index\Sub'];
-        yield 'symbol index from the Knowledge backend' => [SymbolIndex::class, 'Firehed\PhpLsp\Knowledge'];
+        yield 'namespace catalog from the Index backend' => [NamespaceCatalog::class, 'Firehed\PhpLsp\Index'];
+        yield 'namespace catalog from a nested Index backend' => [NamespaceCatalog::class, 'Firehed\PhpLsp\Index\Sub'];
+        yield 'namespace catalog from the Knowledge backend' => [NamespaceCatalog::class, 'Firehed\PhpLsp\Knowledge'];
         yield 'reflection from the Repository backend' => [ReflectionClass::class, 'Firehed\PhpLsp\Repository'];
-        yield 'symbol index from the composition root' => [SymbolIndex::class, 'Firehed\PhpLsp'];
+        yield 'namespace catalog from the composition root' => [NamespaceCatalog::class, 'Firehed\PhpLsp'];
         yield 'reflection from the test namespace' => [ReflectionClass::class, 'Firehed\PhpLsp\Tests\Example'];
         yield 'non-confined class from a consumer' => [TextDocument::class, 'Firehed\PhpLsp\Completion'];
     }
