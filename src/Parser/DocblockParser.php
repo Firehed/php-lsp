@@ -4,47 +4,33 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser;
 
+use PHPStan\PhpDocParser\Ast\AbstractNodeVisitor;
+use PHPStan\PhpDocParser\Ast\Node;
+use PHPStan\PhpDocParser\Ast\NodeTraverser;
+use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode;
+use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTextNode;
+use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\IntersectionTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\TypeNode;
+use PHPStan\PhpDocParser\Ast\Type\UnionTypeNode;
+use PHPStan\PhpDocParser\Lexer\Lexer;
+use PHPStan\PhpDocParser\Parser\ConstExprParser;
+use PHPStan\PhpDocParser\Parser\PhpDocParser;
+use PHPStan\PhpDocParser\Parser\TokenIterator;
+use PHPStan\PhpDocParser\Parser\TypeParser;
+use PHPStan\PhpDocParser\ParserConfig;
+
+/**
+ * Thin wrapper over `phpstan/phpdoc-parser`. This is the one place a docblock
+ * is parsed, so the choice of parser is confined to this file.
+ */
 final class DocblockParser
 {
-    private static function extractTagType(string $docblock, string $tag): ?string
-    {
-        $pattern = '/' . preg_quote($tag, '/') . '\s+([^\n@]+)/';
-        if (preg_match($pattern, $docblock, $m) !== 1) {
-            return null;
-        }
-        return self::firstTypeToken(trim($m[1]));
-    }
-
     /**
-     * Take the first well-formed type from a tag tail. Whitespace at depth 0
-     * ends the token, so `list<User> element` stops at `list<User>` and
-     * `array<int, string>` stays intact (the space is inside `<>`).
-     */
-    private static function firstTypeToken(string $tail): string
-    {
-        $depth = 0;
-        $end = strlen($tail);
-        for ($i = 0; $i < $end; $i++) {
-            $ch = $tail[$i];
-            if ($ch === '<' || $ch === '{') {
-                $depth++;
-                continue;
-            }
-            if ($ch === '>' || $ch === '}') {
-                $depth--;
-                continue;
-            }
-            if ($depth === 0 && ($ch === ' ' || $ch === "\t")) {
-                return substr($tail, 0, $i);
-            }
-        }
-        return $tail;
-    }
-
-    /**
-     * Every non-class-like identifier that may appear in a docblock type
-     * string, so the resolver skips them. Includes native primitives,
-     * PHPStan/Psalm pseudo-types, generic hints, and late-binding keywords.
+     * Every non-class-like identifier that may appear as an
+     * {@see IdentifierTypeNode} in a docblock type, so the resolver skips
+     * them. Includes native primitives, PHPStan/Psalm pseudo-types, generic
+     * hints, and late-binding keywords.
      *
      * @var array<string, true>
      */
@@ -75,95 +61,120 @@ final class DocblockParser
      */
     public static function extractResolvedTypedTags(string $docblock, \Closure $resolveClassName): array
     {
+        $doc = self::parse($docblock);
         $tags = [];
-        foreach (['@var', '@psalm-var', '@phpstan-var'] as $tag) {
-            $raw = self::extractTagType($docblock, $tag);
-            if ($raw !== null) {
-                $tags['var'] = self::resolveNamesInType($raw, $resolveClassName);
+
+        foreach (['@var', '@psalm-var', '@phpstan-var'] as $tagName) {
+            foreach ($doc->getVarTagValues($tagName) as $node) {
+                $tags['var'] = self::renderResolved($node->type, $resolveClassName);
             }
         }
-        foreach (['@return', '@psalm-return', '@phpstan-return'] as $tag) {
-            $raw = self::extractTagType($docblock, $tag);
-            if ($raw !== null) {
-                $tags['return'] = self::resolveNamesInType($raw, $resolveClassName);
+
+        foreach (['@return', '@psalm-return', '@phpstan-return'] as $tagName) {
+            foreach ($doc->getReturnTagValues($tagName) as $node) {
+                $tags['return'] = self::renderResolved($node->type, $resolveClassName);
             }
         }
+
         $params = [];
-        foreach (['@param', '@psalm-param', '@phpstan-param'] as $tag) {
-            foreach (self::extractParamTags($docblock, $tag) as $name => $raw) {
-                $params[$name] = self::resolveNamesInType($raw, $resolveClassName);
+        foreach (['@param', '@psalm-param', '@phpstan-param'] as $tagName) {
+            foreach ($doc->getParamTagValues($tagName) as $node) {
+                $params[ltrim($node->parameterName, '$')] = self::renderResolved(
+                    $node->type,
+                    $resolveClassName,
+                );
             }
         }
         if ($params !== []) {
             $tags['params'] = $params;
         }
+
         return $tags;
     }
 
     /**
-     * @param \Closure(string): string $resolveClassName
-     */
-    private static function resolveNamesInType(string $type, \Closure $resolveClassName): string
-    {
-        return preg_replace_callback(
-            '/[A-Za-z_\\\\$][A-Za-z0-9_\\\\-]*/',
-            static function (array $m) use ($resolveClassName): string {
-                $token = $m[0];
-                if (array_key_exists($token, self::TYPE_KEYWORDS)) {
-                    return $token;
-                }
-                if (str_starts_with($token, '\\')) {
-                    return ltrim($token, '\\');
-                }
-                return $resolveClassName($token);
-            },
-            $type,
-        ) ?? $type;
-    }
-
-    /**
-     * @return iterable<string, string>
-     */
-    private static function extractParamTags(string $docblock, string $tag): iterable
-    {
-        $pattern = '/' . preg_quote($tag, '/') . '\s+([^\n]+)/';
-        if (preg_match_all($pattern, $docblock, $matches, PREG_SET_ORDER) === false) {
-            return;
-        }
-        foreach ($matches as $match) {
-            $tail = trim($match[1]);
-            $type = self::firstTypeToken($tail);
-            $rest = ltrim(substr($tail, strlen($type)));
-            if (preg_match('/^&?(?:\.\.\.)?\$(\w+)/', $rest, $nameMatch) === 1) {
-                yield $nameMatch[1] => $type;
-            }
-        }
-    }
-
-    /**
-     * Extract the prose description from a docblock, stopping at @tags.
+     * Extract the prose description from a docblock, stopping at the first
+     * `@tag`. `PhpDocNode->children` is text nodes then tag nodes in source
+     * order, so the description is every {@see PhpDocTextNode} before the
+     * first {@see \PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode}.
      */
     public static function extractDescription(string $docblock): string
     {
-        $lines = explode("\n", $docblock);
-        $cleaned = [];
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            $line = preg_replace('/^\/\*\*\s*/', '', $line) ?? '';
-            $line = preg_replace('/^\*\/\s*$/', '', $line) ?? '';
-            $line = preg_replace('/^\*\s?/', '', $line) ?? '';
-
-            // Stop at @param, @return, etc.
-            if (str_starts_with($line, '@')) {
+        $lines = [];
+        foreach (self::parse($docblock)->children as $child) {
+            if (!$child instanceof PhpDocTextNode) {
                 break;
             }
-
-            if ($line !== '') {
-                $cleaned[] = $line;
+            $text = trim($child->text);
+            if ($text !== '') {
+                $lines[] = $text;
             }
         }
+        return implode("\n", $lines);
+    }
 
-        return implode("\n", $cleaned);
+    private static function parse(string $docblock): PhpDocNode
+    {
+        $config = new ParserConfig([]);
+        $constExprParser = new ConstExprParser($config);
+        $typeParser = new TypeParser($config, $constExprParser);
+        $phpDocParser = new PhpDocParser($config, $typeParser, $constExprParser);
+        $tokens = new TokenIterator((new Lexer($config))->tokenize($docblock));
+        return $phpDocParser->parse($tokens);
+    }
+
+    /**
+     * Walk the type tree, replace every class-like {@see IdentifierTypeNode}
+     * with its fully-qualified form (either stripping a leading `\` or
+     * routing through `$resolveClassName`), and print the result.
+     *
+     * @param \Closure(string): string $resolveClassName
+     */
+    private static function renderResolved(TypeNode $type, \Closure $resolveClassName): string
+    {
+        $visitor = new class ($resolveClassName) extends AbstractNodeVisitor {
+            /**
+             * @param \Closure(string): string $resolveClassName
+             */
+            public function __construct(private readonly \Closure $resolveClassName)
+            {
+            }
+
+            public function enterNode(Node $node)
+            {
+                if (!$node instanceof IdentifierTypeNode) {
+                    return null;
+                }
+                if (array_key_exists($node->name, DocblockParser::keywords())) {
+                    return null;
+                }
+                if (str_starts_with($node->name, '\\')) {
+                    $node->name = ltrim($node->name, '\\');
+                    return null;
+                }
+                $node->name = ($this->resolveClassName)($node->name);
+                return null;
+            }
+        };
+        (new NodeTraverser([$visitor]))->traverse([$type]);
+        $rendered = (string) $type;
+        if ($type instanceof UnionTypeNode || $type instanceof IntersectionTypeNode) {
+            // UnionTypeNode/IntersectionTypeNode always wrap themselves in
+            // parentheses; drop them at the top level so a plain `A|B` reads as
+            // itself and a nested (A&B)|C keeps its inner grouping.
+            $rendered = substr($rendered, 1, -1);
+        }
+        return $rendered;
+    }
+
+    /**
+     * The private keyword set, published so the anonymous visitor inside
+     * {@see renderResolved()} can consult it.
+     *
+     * @return array<string, true>
+     */
+    public static function keywords(): array
+    {
+        return self::TYPE_KEYWORDS;
     }
 }

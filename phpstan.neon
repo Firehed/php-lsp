@@ -56,6 +56,11 @@ parameters:
                 - src/Parser/SyntaxSource/PhpParserSyntaxSource.php
                 - tests/*
         -
+            namespace: 'PHPStan\PhpDocParser*'
+            message: 'docblock parsing is confined to DocblockParser; every other reader of a docblock consumes its output'
+            allowIn:
+                - src/Parser/DocblockParser.php
+        -
             namespace: 'PhpParser\NodeVisitor*'
             message: 'AST traversal is confined: parser pipeline (TreeAnnotator, DocblockTypeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
@@ -115,10 +120,9 @@ parameters:
                 - 'mb_ereg_replace_callback()'
                 - 'mb_ereg_search()'
                 - 'mb_split()'
-            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, and the cursor-text and skeleton syntax sources'
+            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier and the cursor-text and skeleton syntax sources (DocblockParser has moved to phpstan/phpdoc-parser)'
             allowIn:
                 - src/Completion/CompletionClassifier.php
-                - src/Parser/DocblockParser.php
                 - src/Parser/SyntaxSource/CursorTextSyntaxSource.php
                 - src/Parser/SyntaxSource/SkeletonSyntaxSource.php
                 - tests/*
