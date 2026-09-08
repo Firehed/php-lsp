@@ -20,7 +20,7 @@ use PhpParser\NodeVisitorAbstract;
  *
  * The resolved tag map is stored on the node as the `resolvedDocblockTypes`
  * attribute, a shape of:
- * `array{return?: string, var?: string, params?: array<string, string>}`.
+ * `array{return?: Type, var?: Type, params?: array<string, Type>}`.
  *
  * Docblock class names are resolved against the same {@see \PhpParser\NameContext}
  * `NameResolver` populated, so an aliased or relative name resolves the same

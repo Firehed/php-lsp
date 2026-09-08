@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser;
 
+use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Parser\DocblockTypeAnnotator;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node\Stmt;
@@ -21,13 +22,9 @@ final class DocblockTypeAnnotatorTest extends TestCase
             . 'class Repo { /** @return list<User> */ public function all() {} }';
         $method = $this->annotateMethod($source);
 
-        $tags = $method->getAttribute('resolvedDocblockTypes');
-        self::assertIsArray($tags, 'annotator must attach the resolved tag map');
-        self::assertSame(
-            'list<App\\Models\\User>',
-            $tags['return'] ?? null,
-            'aliased class name in @return must be fully qualified',
-        );
+        $return = $this->returnType($method);
+        self::assertSame('array', $return->format(), '@return list<T> becomes array');
+        self::assertSame('App\\Models\\User', $return->valueType()?->format(), 'element type is fully qualified');
     }
 
     public function testParamTagIsResolvedThroughImports(): void
@@ -36,13 +33,9 @@ final class DocblockTypeAnnotatorTest extends TestCase
             . 'class Repo { /** @param User $u */ public function save($u) {} }';
         $method = $this->annotateMethod($source);
 
-        $tags = $method->getAttribute('resolvedDocblockTypes');
-        self::assertIsArray($tags);
-        self::assertSame(
-            ['u' => 'App\\Models\\User'],
-            $tags['params'] ?? null,
-            'aliased class name in @param must be fully qualified',
-        );
+        $params = $this->paramTypes($method);
+        self::assertArrayHasKey('u', $params);
+        self::assertSame('App\\Models\\User', $params['u']->format(), 'aliased short name is fully qualified');
     }
 
     public function testVarTagOnPropertyIsResolved(): void
@@ -54,9 +47,8 @@ final class DocblockTypeAnnotatorTest extends TestCase
         $property = (new NodeFinder())->findFirstInstanceOf($annotated, Stmt\Property::class);
         self::assertNotNull($property);
 
-        $tags = $property->getAttribute('resolvedDocblockTypes');
-        self::assertIsArray($tags);
-        self::assertSame('App\\Models\\User', $tags['var'] ?? null, '@var must resolve aliased short names');
+        $var = $this->tagType($property, 'var');
+        self::assertSame('App\\Models\\User', $var->format(), '@var must resolve aliased short names');
     }
 
     public function testFullyQualifiedNameKeepsItsForm(): void
@@ -65,9 +57,8 @@ final class DocblockTypeAnnotatorTest extends TestCase
             . 'class Repo { /** @return \\App\\Models\\User */ public function one() {} }';
         $method = $this->annotateMethod($source);
 
-        $tags = $method->getAttribute('resolvedDocblockTypes');
-        self::assertIsArray($tags);
-        self::assertSame('App\\Models\\User', $tags['return'] ?? null, 'leading-backslash form drops the backslash');
+        $return = $this->returnType($method);
+        self::assertSame('App\\Models\\User', $return->format(), 'leading-backslash form drops the backslash');
     }
 
     public function testPrimitivesArePassedThrough(): void
@@ -76,13 +67,9 @@ final class DocblockTypeAnnotatorTest extends TestCase
             '<?php class C { /** @return array<int, string> */ public function m() {} }',
         );
 
-        $tags = $method->getAttribute('resolvedDocblockTypes');
-        self::assertIsArray($tags);
-        self::assertSame(
-            'array<int, string>',
-            $tags['return'] ?? null,
-            'array and int and string are keywords, not classes',
-        );
+        $return = $this->returnType($method);
+        self::assertSame('array', $return->format(), 'array container preserved');
+        self::assertSame('string', $return->valueType()?->format(), 'value type is the last generic argument');
     }
 
     public function testMethodWithoutTagsGetsNoAttribute(): void
@@ -106,13 +93,41 @@ final class DocblockTypeAnnotatorTest extends TestCase
             }',
         );
 
-        $tags = $method->getAttribute('resolvedDocblockTypes');
-        self::assertIsArray($tags);
+        $return = $this->returnType($method);
         self::assertSame(
-            'non-empty-list<App\\Models\\User>',
-            $tags['return'] ?? null,
+            'non-empty-list',
+            $return->format(),
             'phpstan-return wins over @return',
         );
+        self::assertSame('App\\Models\\User', $return->valueType()?->format(), 'value type carried');
+    }
+
+    private function returnType(Stmt\ClassMethod $method): Type
+    {
+        return $this->tagType($method, 'return');
+    }
+
+    private function tagType(\PhpParser\Node $node, string $key): Type
+    {
+        $tags = $node->getAttribute('resolvedDocblockTypes');
+        self::assertIsArray($tags, 'annotator must attach the resolved tag map');
+        self::assertArrayHasKey($key, $tags, "tag @$key must be present");
+        self::assertInstanceOf(Type::class, $tags[$key]);
+        return $tags[$key];
+    }
+
+    /**
+     * @return array<string, Type>
+     */
+    private function paramTypes(\PhpParser\Node $node): array
+    {
+        $tags = $node->getAttribute('resolvedDocblockTypes');
+        self::assertIsArray($tags);
+        self::assertArrayHasKey('params', $tags);
+        $params = $tags['params'];
+        self::assertIsArray($params);
+        /** @var array<string, Type> $params */
+        return $params;
     }
 
     private function annotateMethod(string $source): Stmt\ClassMethod

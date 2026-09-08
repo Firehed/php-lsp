@@ -81,14 +81,20 @@ final class TypeFactory
         // @codeCoverageIgnoreEnd
     }
 
-    public static function className(string $fqn): ClassName
+    /**
+     * @param list<Type> $typeArgs
+     */
+    public static function className(string $fqn, array $typeArgs = []): ClassName
     {
-        return new ClassName($fqn);
+        return new ClassName($fqn, $typeArgs);
     }
 
-    public static function primitive(string $name): PrimitiveType
+    /**
+     * @param list<Type> $typeArgs
+     */
+    public static function primitive(string $name, array $typeArgs = []): PrimitiveType
     {
-        return new PrimitiveType($name);
+        return new PrimitiveType($name, $typeArgs);
     }
 
     /**
@@ -106,57 +112,16 @@ final class TypeFactory
     }
 
     /**
-     * Parse a docblock type whose class names are already fully qualified into a
-     * {@see Type}. Handles `T[]`, `array<T>`, `list<T>`, `iterable<T>`, `?T`,
-     * unions of them, and generics on a class-like (`Collection<User>`). Name
-     * resolution happens upstream in {@see \Firehed\PhpLsp\Parser\DocblockTypeAnnotator}.
+     * @param non-empty-list<Type> $members
      */
-    public static function fromDocblockType(string $resolved): ?Type
+    public static function intersection(array $members): IntersectionType
     {
-        $trimmed = trim($resolved);
-        if ($trimmed === '') {
-            return null;
-        }
+        return new IntersectionType($members);
+    }
 
-        $unionParts = self::splitTopLevel($trimmed, '|');
-        if (count($unionParts) > 1) {
-            $members = [];
-            foreach ($unionParts as $part) {
-                $member = self::fromDocblockType($part);
-                if ($member !== null) {
-                    $members[] = $member;
-                }
-            }
-            return count($members) === 1 ? $members[0] : new UnionType($members);
-        }
-
-        if (str_starts_with($trimmed, '?')) {
-            $inner = self::fromDocblockType(substr($trimmed, 1));
-            if ($inner === null) {
-                return null;
-            }
-            return new UnionType([$inner, new PrimitiveType('null')]);
-        }
-
-        if (str_ends_with($trimmed, '[]')) {
-            $inner = self::fromDocblockType(substr($trimmed, 0, -2));
-            $args = $inner !== null ? [$inner] : [];
-            return new PrimitiveType('array', $args);
-        }
-
-        if (str_ends_with($trimmed, '>')) {
-            $open = strpos($trimmed, '<');
-            if ($open !== false) {
-                $base = substr($trimmed, 0, $open);
-                $argsText = substr($trimmed, $open + 1, -1);
-                $argParts = self::splitTopLevel($argsText, ',');
-                $lastArg = self::fromDocblockType(end($argParts));
-                $typeArgs = $lastArg !== null ? [$lastArg] : [];
-                return self::containerFromBase($base, $typeArgs);
-            }
-        }
-
-        return self::containerFromBase($trimmed, []);
+    public static function nullable(Type $inner): UnionType
+    {
+        return new UnionType([$inner, new PrimitiveType('null')]);
     }
 
     /**
@@ -165,7 +130,7 @@ final class TypeFactory
      */
     public static function docblockVarType(Node $node): ?Type
     {
-        return self::docblockTypeAt($node, 'var');
+        return self::resolvedDocblockTypes($node)['var'] ?? null;
     }
 
     /**
@@ -174,7 +139,7 @@ final class TypeFactory
      */
     public static function docblockReturnType(Node $node): ?Type
     {
-        return self::docblockTypeAt($node, 'return');
+        return self::resolvedDocblockTypes($node)['return'] ?? null;
     }
 
     /**
@@ -183,23 +148,15 @@ final class TypeFactory
      */
     public static function docblockParamType(Node $node, string $paramName): ?Type
     {
-        $paramTypes = self::resolvedDocblockTypes($node)['params'] ?? [];
-        return isset($paramTypes[$paramName]) ? self::fromDocblockType($paramTypes[$paramName]) : null;
-    }
-
-    private static function docblockTypeAt(Node $node, string $key): ?Type
-    {
-        $tags = self::resolvedDocblockTypes($node);
-        $value = $tags[$key] ?? null;
-        return is_string($value) ? self::fromDocblockType($value) : null;
+        return self::resolvedDocblockTypes($node)['params'][$paramName] ?? null;
     }
 
     /**
-     * @return array{return?: string, var?: string, params?: array<string, string>}
+     * @return array{return?: Type, var?: Type, params?: array<string, Type>}
      */
     private static function resolvedDocblockTypes(Node $node): array
     {
-        /** @var array{return?: string, var?: string, params?: array<string, string>} */
+        /** @var array{return?: Type, var?: Type, params?: array<string, Type>} */
         return $node->getAttribute('resolvedDocblockTypes', []);
     }
 
@@ -273,47 +230,6 @@ final class TypeFactory
         // @codeCoverageIgnoreStart
         throw new LogicException('Unexpected ReflectionType kind');
         // @codeCoverageIgnoreEnd
-    }
-
-    /**
-     * @param list<Type> $typeArgs
-     */
-    private static function containerFromBase(string $base, array $typeArgs): Type
-    {
-        if ($base === 'list') {
-            return new PrimitiveType('array', $typeArgs);
-        }
-        if (in_array($base, PrimitiveType::NAMES, true)) {
-            return new PrimitiveType($base, $typeArgs);
-        }
-        return new ClassName($base, $typeArgs);
-    }
-
-    /**
-     * Split at top-level `$delim` characters, respecting `<...>` depth.
-     *
-     * @return non-empty-list<string>
-     */
-    private static function splitTopLevel(string $input, string $delim): array
-    {
-        $parts = [];
-        $depth = 0;
-        $current = '';
-        for ($i = 0, $length = strlen($input); $i < $length; $i++) {
-            $ch = $input[$i];
-            if ($ch === '<') {
-                $depth++;
-            } elseif ($ch === '>') {
-                $depth--;
-            } elseif ($ch === $delim && $depth === 0) {
-                $parts[] = $current;
-                $current = '';
-                continue;
-            }
-            $current .= $ch;
-        }
-        $parts[] = $current;
-        return $parts;
     }
 
     private static function tryLateBindingType(
