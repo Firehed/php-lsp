@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Parser\DocblockParser;
 
 /**
  * The one place `ResolvedSymbol::format()` and `ResolvedSymbol::getDocumentation()`

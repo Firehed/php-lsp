@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture;
 
-use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Parser\DocblockParser;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Domain;
+namespace Firehed\PhpLsp\Tests\Parser;
 
-use Firehed\PhpLsp\Domain\DocblockParser;
+use Firehed\PhpLsp\Parser\DocblockParser;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
