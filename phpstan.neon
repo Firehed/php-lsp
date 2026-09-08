@@ -57,9 +57,10 @@ parameters:
                 - tests/*
         -
             namespace: 'PhpParser\NodeVisitor*'
-            message: 'AST traversal is confined: parser pipeline (TreeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
+            message: 'AST traversal is confined: parser pipeline (TreeAnnotator, DocblockTypeAnnotator), positional finders (NodeAtPosition, Scope, ScopeFinder), and DeclarationScanner'
             allowIn:
                 - src/Parser/TreeAnnotator.php
+                - src/Parser/DocblockTypeAnnotator.php
                 - src/Parser/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
