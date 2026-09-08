@@ -36,18 +36,28 @@ final class OpenDocumentBackend implements SymbolBackend, DocumentSymbolStore
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
-        $catalog = [];
-        foreach ($this->symbolsByUri as $symbols) {
-            foreach ($symbols as $symbol) {
-                $catalog[] = new CatalogSymbol(
-                    $symbol->name->fullyQualifiedName(),
-                    $symbol->kind,
-                );
+        $targetKey = NamespacePath::normalize($namespace->path);
+        $childNamespaces = [];
+        $symbols = [];
+
+        foreach ($this->symbolsByUri as $uriSymbols) {
+            foreach ($uriSymbols as $symbol) {
+                $fqn = $symbol->name->fullyQualifiedName();
+                $ns = NamespacePath::namespaceOf($fqn);
+                if (NamespacePath::normalize($ns) === $targetKey) {
+                    $symbols[] = new CatalogSymbol($fqn, $symbol->kind);
+                    continue;
+                }
+                $below = NamespacePath::relativeTo($ns, $namespace->path);
+                if ($below === null) {
+                    continue;
+                }
+                $child = NamespacePath::join($namespace->path, NamespacePath::firstSegment($below));
+                $childNamespaces[NamespacePath::normalize($child)] ??= $child;
             }
         }
-        $byNamespace = NamespaceContents::indexByNamespace($catalog);
 
-        return $byNamespace[NamespacePath::normalize($namespace->path)] ?? new NamespaceContents();
+        return new NamespaceContents(array_values($childNamespaces), $symbols);
     }
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
