@@ -91,4 +91,17 @@ class ClassNameTest extends TestCase
         $cn = new ClassName(\stdClass::class);
         self::assertSame($cn, $cn->resolveLateBound(\ArrayIterator::class));
     }
+
+    public function testValueTypeIsNullWhenNoTypeArguments(): void
+    {
+        $cn = new ClassName(\stdClass::class);
+        self::assertNull($cn->valueType());
+    }
+
+    public function testValueTypeIsFirstTypeArgument(): void
+    {
+        $value = new ClassName(\stdClass::class);
+        $cn = new ClassName(\ArrayIterator::class, [$value]);
+        self::assertSame($value, $cn->valueType());
+    }
 }

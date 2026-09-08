@@ -17,7 +17,6 @@ final readonly class ClassName implements Type
      */
     public function __construct(
         public string $fqn,
-        /** @phpstan-ignore property.onlyWritten (for future generics support) */
         private array $typeArguments = [],
     ) {
     }
@@ -61,5 +60,10 @@ final readonly class ClassName implements Type
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
     {
         return $this;
+    }
+
+    public function valueType(): ?Type
+    {
+        return $this->typeArguments[0] ?? null;
     }
 }

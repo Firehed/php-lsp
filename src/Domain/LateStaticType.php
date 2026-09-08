@@ -41,4 +41,9 @@ final class LateStaticType implements Type
             LateBindingKeyword::Parent => $this->declaringClass,
         };
     }
+
+    public function valueType(): ?Type
+    {
+        return null;
+    }
 }

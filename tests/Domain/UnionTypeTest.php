@@ -96,6 +96,36 @@ class UnionTypeTest extends TestCase
         self::assertFalse($type->isNullable());
     }
 
+    public function testValueTypeAgreesWhenMembersAgree(): void
+    {
+        $value = new ClassName(\stdClass::class);
+        $type = new UnionType([
+            new ClassName(\ArrayIterator::class, [$value]),
+            new PrimitiveType('array', [$value]),
+        ]);
+        $valueType = $type->valueType();
+        self::assertInstanceOf(ClassName::class, $valueType);
+        self::assertSame(\stdClass::class, $valueType->fqn);
+    }
+
+    public function testValueTypeIsNullWhenMembersDisagree(): void
+    {
+        $type = new UnionType([
+            new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]),
+            new PrimitiveType('array', [new PrimitiveType('int')]),
+        ]);
+        self::assertNull($type->valueType());
+    }
+
+    public function testValueTypeIsNullWhenAnyMemberHasNone(): void
+    {
+        $type = new UnionType([
+            new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]),
+            new PrimitiveType('array'),
+        ]);
+        self::assertNull($type->valueType());
+    }
+
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new UnionType([

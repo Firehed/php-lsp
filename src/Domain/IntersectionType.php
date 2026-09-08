@@ -45,4 +45,23 @@ final readonly class IntersectionType implements Type
         );
         return new self($resolved);
     }
+
+    public function valueType(): ?Type
+    {
+        $shared = null;
+        foreach ($this->members as $member) {
+            $memberValue = $member->valueType();
+            if ($memberValue === null) {
+                return null;
+            }
+            if ($shared === null) {
+                $shared = $memberValue;
+                continue;
+            }
+            if (serialize($shared) !== serialize($memberValue)) {
+                return null;
+            }
+        }
+        return $shared;
+    }
 }

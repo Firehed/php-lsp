@@ -39,4 +39,17 @@ class PrimitiveTypeTest extends TestCase
         $type = new PrimitiveType('string');
         self::assertSame($type, $type->resolveLateBound(\ArrayIterator::class));
     }
+
+    public function testValueTypeIsNullWhenNoTypeArguments(): void
+    {
+        $type = new PrimitiveType('array');
+        self::assertNull($type->valueType());
+    }
+
+    public function testValueTypeIsFirstTypeArgument(): void
+    {
+        $value = new ClassName(\stdClass::class);
+        $type = new PrimitiveType('array', [$value]);
+        self::assertSame($value, $type->valueType());
+    }
 }

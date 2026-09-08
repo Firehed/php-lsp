@@ -25,4 +25,6 @@ interface Type extends Formattable
      * @param bool $declaringClassIsTrait Whether the method was declared in a trait
      */
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type;
+
+    public function valueType(): ?Type;
 }
