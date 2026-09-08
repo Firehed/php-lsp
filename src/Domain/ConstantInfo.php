@@ -49,7 +49,7 @@ final readonly class ConstantInfo implements MemberInfo, SymbolInfo
             name: new ConstantName($shortName),
             visibility: Visibility::Public,
             isFinal: true,
-            type: null,
+            type: self::docblockTypeFor($node),
             docblock: self::docblockFor($node),
             file: $file,
             line: $node->getStartLine(),
@@ -68,6 +68,22 @@ final readonly class ConstantInfo implements MemberInfo, SymbolInfo
         $parent = $node->getAttribute('parent');
         $doc = ($parent instanceof Node ? $parent->getDocComment() : null) ?? $node->getDocComment();
         return $doc?->getText();
+    }
+
+    /**
+     * Read the `@var` tag the annotator attached to the outer `Stmt\Const_` and
+     * turn it into a {@see Type}. `define()` calls carry no such annotation
+     * today.
+     */
+    private static function docblockTypeFor(Node\Const_|Expr\FuncCall $node): ?Type
+    {
+        $parent = $node->getAttribute('parent');
+        if (!$parent instanceof Node) {
+            return null;
+        }
+        /** @var array{return?: string, var?: string, params?: array<string, string>} $tags */
+        $tags = $parent->getAttribute('resolvedDocblockTypes', []);
+        return isset($tags['var']) ? TypeFactory::fromDocblockType($tags['var']) : null;
     }
 
     public function format(): string

@@ -39,6 +39,7 @@ final class DocblockTypeAnnotator extends NodeVisitorAbstract
             && !$node instanceof Stmt\Property
             && !$node instanceof Stmt\ClassConst
             && !$node instanceof Stmt\Function_
+            && !$node instanceof Stmt\Const_
         ) {
             return null;
         }

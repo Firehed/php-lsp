@@ -357,9 +357,8 @@ parameters:
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::getDocumentation()'
-            message: 'documentation composition goes through ResolvedSymbolPresenter (build-manifest step-30); ExpressionResolver keeps direct access for foreach element-type inference on the raw docblock (build-manifest step-25)'
+            message: 'documentation composition goes through ResolvedSymbolPresenter (build-manifest step-30); foreach element-type inference now reads Type::valueType() (build-manifest step-49)'
             allowIn:
-                - src/Resolution/ExpressionResolver.php # foreach element-type inference reads the raw docblock (build-manifest step-25)
                 - src/Resolution/ResolvedSymbolPresenter.php
                 - tests/*
 

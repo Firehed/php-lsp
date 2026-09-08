@@ -25,7 +25,6 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\DocblockParser;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
@@ -227,39 +226,7 @@ final class ExpressionResolver
         if ($bindingVar === $foreach->keyVar) {
             return null;
         }
-        $docblock = $this->resolve($foreach->expr, $ast)?->getDocumentation();
-        if ($docblock === null) {
-            return null;
-        }
-        $elemShort = DocblockParser::arrayElementType($docblock);
-        if ($elemShort === null) {
-            return null;
-        }
-        return $this->resolveShortClassName($elemShort, $foreach->expr, $ast);
-    }
-
-    /**
-     * Resolve a short name in the context of the calling file. Uses the file's
-     * name context (namespace + imports) at the expression's line.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveShortClassName(string $shortOrFqn, Node $atNode, array $ast): ?Type
-    {
-        if (str_starts_with($shortOrFqn, '\\')) {
-            $fqn = ltrim($shortOrFqn, '\\');
-            /** @var class-string $fqn */
-            return TypeFactory::className($fqn);
-        }
-        $context = NameContextFactory::fromAst($ast, $atNode->getStartLine() - 1);
-        $candidates = $context->candidates($shortOrFqn, NameKind::ClassLike);
-        foreach ($candidates as $candidate) {
-            /** @var class-string $candidate */
-            if ($this->symbolSource->lookupClassLike(TypeFactory::className($candidate)) !== null) {
-                return TypeFactory::className($candidate);
-            }
-        }
-        return null;
+        return $this->resolve($foreach->expr, $ast)?->getType()?->valueType();
     }
 
     private function resolveNew(New_ $expr): ?ResolvedSymbol

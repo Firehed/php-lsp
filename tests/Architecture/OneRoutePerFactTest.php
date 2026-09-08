@@ -109,7 +109,6 @@ final class OneRoutePerFactTest extends TestCase
                 name: 'docblock types',
                 ingredients: [DocblockParser::class],
                 holders: [TypeFactory::class, ResolvedSymbolPresenter::class, DocblockTypeAnnotator::class],
-                pending: ['src/Resolution/ExpressionResolver.php' => 'step-49'],
             ),
             // step-44 delegated Resolution\NameContext's resolution rules to
             // php-parser's engine; the same NameResolver visitor annotates the
