@@ -251,20 +251,30 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                 continue;
             }
 
+            $docblockTypes = self::resolvedDocblockTypes($stmt);
             $name = $stmt->name->toString();
+            $native = TypeFactory::fromNode(
+                $stmt->returnType,
+                $className->fqn,
+                $parentClass?->fqn,
+                preserveLateBinding: true,
+            );
+            $docblockReturn = isset($docblockTypes['return'])
+                ? TypeFactory::fromDocblockType($docblockTypes['return'])
+                : null;
             $methods[$name] = new MethodInfo(
                 name: new MethodName($name),
                 visibility: $this->visibilityFromFlags($stmt->flags),
                 isStatic: $stmt->isStatic(),
                 isAbstract: $stmt->isAbstract(),
                 isFinal: $stmt->isFinal(),
-                parameters: $this->extractParameters($stmt->params, $className, $parentClass),
-                returnType: TypeFactory::fromNode(
-                    $stmt->returnType,
-                    $className->fqn,
-                    $parentClass?->fqn,
-                    preserveLateBinding: true,
+                parameters: $this->extractParameters(
+                    $stmt->params,
+                    $className,
+                    $parentClass,
+                    $docblockTypes['params'] ?? [],
                 ),
+                returnType: TypeFactory::merge($native, $docblockReturn),
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
                 line: $stmt->getStartLine(),
@@ -290,18 +300,44 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
     /**
      * @param array<Param> $params
+     * @param array<string, string> $docblockParamTypes
      * @return list<ParameterInfo>
      */
-    private function extractParameters(array $params, ClassName $className, ?ClassName $parentClass): array
-    {
+    private function extractParameters(
+        array $params,
+        ClassName $className,
+        ?ClassName $parentClass,
+        array $docblockParamTypes = [],
+    ): array {
         $result = [];
         foreach ($params as $position => $param) {
-            $info = ParameterInfo::fromNode($param, $position, $className->fqn, $parentClass?->fqn);
+            $paramName = $param->var instanceof Variable && is_string($param->var->name)
+                ? $param->var->name
+                : null;
+            $docblockType = $paramName !== null && isset($docblockParamTypes[$paramName])
+                ? TypeFactory::fromDocblockType($docblockParamTypes[$paramName])
+                : null;
+            $info = ParameterInfo::fromNode(
+                $param,
+                $position,
+                $className->fqn,
+                $parentClass?->fqn,
+                $docblockType,
+            );
             if ($info !== null) {
                 $result[] = $info;
             }
         }
         return $result;
+    }
+
+    /**
+     * @return array{return?: string, var?: string, params?: array<string, string>}
+     */
+    private static function resolvedDocblockTypes(\PhpParser\Node $node): array
+    {
+        /** @var array{return?: string, var?: string, params?: array<string, string>} */
+        return $node->getAttribute('resolvedDocblockTypes', []);
     }
 
     /**
@@ -318,15 +354,20 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
         foreach ($node->stmts as $stmt) {
             if ($stmt instanceof Stmt\Property) {
+                $propertyDocblock = self::resolvedDocblockTypes($stmt);
+                $docblockType = isset($propertyDocblock['var'])
+                    ? TypeFactory::fromDocblockType($propertyDocblock['var'])
+                    : null;
                 foreach ($stmt->props as $prop) {
                     $name = $prop->name->toString();
+                    $native = TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn);
                     $properties[$name] = new PropertyInfo(
                         name: new PropertyName($name),
                         visibility: $this->visibilityFromFlags($stmt->flags),
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
-                        type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::merge($native, $docblockType),
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
                         line: $stmt->getStartLine(),
@@ -336,6 +377,8 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             }
 
             if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toLowerString() === '__construct') {
+                $constructorDocblock = self::resolvedDocblockTypes($stmt);
+                $paramTypes = $constructorDocblock['params'] ?? [];
                 foreach ($stmt->params as $param) {
                     if (!$this->isPromotedProperty($param)) {
                         continue;
@@ -345,13 +388,17 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                     }
 
                     $name = $param->var->name;
+                    $native = TypeFactory::fromNode($param->type, $className->fqn, $parentClass?->fqn);
+                    $docblockType = isset($paramTypes[$name])
+                        ? TypeFactory::fromDocblockType($paramTypes[$name])
+                        : null;
                     $properties[$name] = new PropertyInfo(
                         name: new PropertyName($name),
                         visibility: $this->visibilityFromFlags($param->flags),
                         isStatic: false,
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
                         isPromoted: true,
-                        type: TypeFactory::fromNode($param->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::merge($native, $docblockType),
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
                         line: $param->getStartLine(),
@@ -382,13 +429,18 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                 continue;
             }
 
+            $constantDocblock = self::resolvedDocblockTypes($stmt);
+            $docblockType = isset($constantDocblock['var'])
+                ? TypeFactory::fromDocblockType($constantDocblock['var'])
+                : null;
             foreach ($stmt->consts as $const) {
                 $name = $const->name->toString();
+                $native = TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn);
                 $constants[$name] = new ConstantInfo(
                     name: new ConstantName($name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                    type: TypeFactory::merge($native, $docblockType),
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),

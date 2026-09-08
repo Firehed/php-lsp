@@ -497,6 +497,53 @@ final class DefaultClassInfoFactoryTest extends TestCase
         $this->factory->fromAstNode($node, 'file:///test.php');
     }
 
+    public function testDocblockReturnFillsValueTypeOnNativeArray(): void
+    {
+        $source = <<<'PHP'
+            <?php
+            namespace App;
+            use App\Models\User;
+            class Repo {
+                /** @return list<User> */
+                public function all(): array { return []; }
+            }
+            PHP;
+        $tree = (new ParserFactory())->createForNewestSupportedVersion()->parse($source) ?? [];
+        $annotated = (new \Firehed\PhpLsp\Parser\TreeAnnotator())->annotate($tree);
+        $node = $this->firstClassLike($annotated);
+
+        $info = $this->factory->fromAstNode($node, 'file:///Repo.php');
+        $returnType = $info->methods['all']->returnType;
+
+        self::assertNotNull($returnType);
+        self::assertSame('array', $returnType->format(), 'native array preserved');
+        self::assertSame(
+            'App\\Models\\User',
+            $returnType->valueType()?->format(),
+            'docblock supplied the fully qualified value type',
+        );
+    }
+
+    /**
+     * @param array<\PhpParser\Node> $ast
+     */
+    private function firstClassLike(array $ast): Stmt\ClassLike
+    {
+        foreach ($ast as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $nsStmt) {
+                    if ($nsStmt instanceof Stmt\ClassLike) {
+                        return $nsStmt;
+                    }
+                }
+            }
+            if ($stmt instanceof Stmt\ClassLike) {
+                return $stmt;
+            }
+        }
+        self::fail('source contained no class-like');
+    }
+
     public function testFromReflectionExtractsBasicInfo(): void
     {
         $reflection = new ReflectionClass(\stdClass::class);

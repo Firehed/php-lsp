@@ -30,6 +30,7 @@ final readonly class ParameterInfo implements ResolvedSymbol
         int $position,
         ?string $selfContext = null,
         ?string $parentContext = null,
+        ?Type $docblockType = null,
     ): ?self {
         if (!$param->var instanceof Variable || !is_string($param->var->name)) {
             return null;
@@ -41,9 +42,10 @@ final readonly class ParameterInfo implements ResolvedSymbol
             $defaultValue = $printer->prettyPrintExpr($param->default);
         }
 
+        $native = TypeFactory::fromNode($param->type, $selfContext, $parentContext);
         return new self(
             name: $param->var->name,
-            type: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
+            type: TypeFactory::merge($native, $docblockType),
             hasDefault: $param->default !== null,
             defaultValue: $defaultValue,
             position: $position,

@@ -35,18 +35,33 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
      */
     public static function fromNode(Stmt\Function_ $node, ?string $file = null): self
     {
+        /** @var array{return?: string, var?: string, params?: array<string, string>} $docblockTypes */
+        $docblockTypes = $node->getAttribute('resolvedDocblockTypes', []);
+        $paramTypes = $docblockTypes['params'] ?? [];
+
         $params = [];
         foreach ($node->params as $position => $param) {
-            $paramInfo = ParameterInfo::fromNode($param, $position);
+            $paramName = $param->var instanceof \PhpParser\Node\Expr\Variable && is_string($param->var->name)
+                ? $param->var->name
+                : null;
+            $docblockType = $paramName !== null && isset($paramTypes[$paramName])
+                ? TypeFactory::fromDocblockType($paramTypes[$paramName])
+                : null;
+            $paramInfo = ParameterInfo::fromNode($param, $position, docblockType: $docblockType);
             if ($paramInfo !== null) {
                 $params[] = $paramInfo;
             }
         }
 
+        $native = TypeFactory::fromNode($node->returnType);
+        $docblockReturn = isset($docblockTypes['return'])
+            ? TypeFactory::fromDocblockType($docblockTypes['return'])
+            : null;
+
         return new self(
             name: $node->name->toString(),
             parameters: $params,
-            returnType: TypeFactory::fromNode($node->returnType),
+            returnType: TypeFactory::merge($native, $docblockReturn),
             docblock: $node->getDocComment()?->getText(),
             file: $file,
             line: $node->getStartLine(),
