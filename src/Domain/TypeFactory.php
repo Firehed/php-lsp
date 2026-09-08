@@ -160,6 +160,50 @@ final class TypeFactory
     }
 
     /**
+     * Docblock type attached to the node's `@var` tag by
+     * {@see \Firehed\PhpLsp\Parser\DocblockTypeAnnotator}, or null when absent.
+     */
+    public static function docblockVarType(Node $node): ?Type
+    {
+        return self::docblockTypeAt($node, 'var');
+    }
+
+    /**
+     * Docblock type attached to the node's `@return` tag by
+     * {@see \Firehed\PhpLsp\Parser\DocblockTypeAnnotator}, or null when absent.
+     */
+    public static function docblockReturnType(Node $node): ?Type
+    {
+        return self::docblockTypeAt($node, 'return');
+    }
+
+    /**
+     * Docblock type attached to the node's `@param $name` tag by
+     * {@see \Firehed\PhpLsp\Parser\DocblockTypeAnnotator}, or null when absent.
+     */
+    public static function docblockParamType(Node $node, string $paramName): ?Type
+    {
+        $paramTypes = self::resolvedDocblockTypes($node)['params'] ?? [];
+        return isset($paramTypes[$paramName]) ? self::fromDocblockType($paramTypes[$paramName]) : null;
+    }
+
+    private static function docblockTypeAt(Node $node, string $key): ?Type
+    {
+        $tags = self::resolvedDocblockTypes($node);
+        $value = $tags[$key] ?? null;
+        return is_string($value) ? self::fromDocblockType($value) : null;
+    }
+
+    /**
+     * @return array{return?: string, var?: string, params?: array<string, string>}
+     */
+    private static function resolvedDocblockTypes(Node $node): array
+    {
+        /** @var array{return?: string, var?: string, params?: array<string, string>} */
+        return $node->getAttribute('resolvedDocblockTypes', []);
+    }
+
+    /**
      * Combine a native type with a docblock type. Native wins on conflict; a
      * docblock supplies the value type for a native `array`, `iterable`, or
      * class-like that has none.

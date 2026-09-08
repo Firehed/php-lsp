@@ -78,12 +78,7 @@ final readonly class ConstantInfo implements MemberInfo, SymbolInfo
     private static function docblockTypeFor(Node\Const_|Expr\FuncCall $node): ?Type
     {
         $parent = $node->getAttribute('parent');
-        if (!$parent instanceof Node) {
-            return null;
-        }
-        /** @var array{return?: string, var?: string, params?: array<string, string>} $tags */
-        $tags = $parent->getAttribute('resolvedDocblockTypes', []);
-        return isset($tags['var']) ? TypeFactory::fromDocblockType($tags['var']) : null;
+        return $parent instanceof Node ? TypeFactory::docblockVarType($parent) : null;
     }
 
     public function format(): string
