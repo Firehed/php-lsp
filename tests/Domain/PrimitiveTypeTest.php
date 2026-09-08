@@ -74,6 +74,13 @@ class PrimitiveTypeTest extends TestCase
         self::assertFalse($a->equals($b));
     }
 
+    public function testEqualsFalseWhenTypeArgumentCountsDiffer(): void
+    {
+        $a = new PrimitiveType('array', [new ClassName(\stdClass::class)]);
+        $b = new PrimitiveType('array');
+        self::assertFalse($a->equals($b));
+    }
+
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
         $a = new PrimitiveType('object');
