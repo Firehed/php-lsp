@@ -105,6 +105,89 @@ final class TypeFactory
         return new UnionType($members);
     }
 
+    /**
+     * Parse a docblock type whose class names are already fully qualified into a
+     * {@see Type}. Handles `T[]`, `array<T>`, `list<T>`, `iterable<T>`, `?T`,
+     * unions of them, and generics on a class-like (`Collection<User>`). Name
+     * resolution happens upstream in {@see \Firehed\PhpLsp\Parser\DocblockTypeAnnotator}.
+     */
+    public static function fromDocblockType(string $resolved): ?Type
+    {
+        $trimmed = trim($resolved);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $unionParts = self::splitTopLevel($trimmed, '|');
+        if (count($unionParts) > 1) {
+            $members = [];
+            foreach ($unionParts as $part) {
+                $member = self::fromDocblockType($part);
+                if ($member !== null) {
+                    $members[] = $member;
+                }
+            }
+            return count($members) === 1 ? $members[0] : new UnionType($members);
+        }
+
+        if (str_starts_with($trimmed, '?')) {
+            $inner = self::fromDocblockType(substr($trimmed, 1));
+            if ($inner === null) {
+                return null;
+            }
+            return new UnionType([$inner, new PrimitiveType('null')]);
+        }
+
+        if (str_ends_with($trimmed, '[]')) {
+            $inner = self::fromDocblockType(substr($trimmed, 0, -2));
+            $args = $inner !== null ? [$inner] : [];
+            return new PrimitiveType('array', $args);
+        }
+
+        if (str_ends_with($trimmed, '>')) {
+            $open = strpos($trimmed, '<');
+            if ($open !== false) {
+                $base = substr($trimmed, 0, $open);
+                $argsText = substr($trimmed, $open + 1, -1);
+                $argParts = self::splitTopLevel($argsText, ',');
+                $lastArg = self::fromDocblockType(end($argParts));
+                $typeArgs = $lastArg !== null ? [$lastArg] : [];
+                return self::containerFromBase($base, $typeArgs);
+            }
+        }
+
+        return self::containerFromBase($trimmed, []);
+    }
+
+    /**
+     * Combine a native type with a docblock type. Native wins on conflict; a
+     * docblock supplies the value type for a native `array`, `iterable`, or
+     * class-like that has none.
+     */
+    public static function merge(?Type $native, ?Type $docblock): ?Type
+    {
+        if ($native === null) {
+            return $docblock;
+        }
+        if ($docblock === null) {
+            return $native;
+        }
+        if ($native->valueType() !== null) {
+            return $native;
+        }
+        $value = $docblock->valueType();
+        if ($value === null) {
+            return $native;
+        }
+        if ($native instanceof PrimitiveType && ($native->name === 'array' || $native->name === 'iterable')) {
+            return new PrimitiveType($native->name, [$value]);
+        }
+        if ($native instanceof ClassName) {
+            return new ClassName($native->fqn, [$value]);
+        }
+        return $native;
+    }
+
     public static function fromReflection(?ReflectionType $type): ?Type
     {
         if ($type === null) {
@@ -146,6 +229,47 @@ final class TypeFactory
         // @codeCoverageIgnoreStart
         throw new LogicException('Unexpected ReflectionType kind');
         // @codeCoverageIgnoreEnd
+    }
+
+    /**
+     * @param list<Type> $typeArgs
+     */
+    private static function containerFromBase(string $base, array $typeArgs): Type
+    {
+        if ($base === 'list') {
+            return new PrimitiveType('array', $typeArgs);
+        }
+        if (in_array($base, PrimitiveType::NAMES, true)) {
+            return new PrimitiveType($base, $typeArgs);
+        }
+        return new ClassName($base, $typeArgs);
+    }
+
+    /**
+     * Split at top-level `$delim` characters, respecting `<...>` depth.
+     *
+     * @return non-empty-list<string>
+     */
+    private static function splitTopLevel(string $input, string $delim): array
+    {
+        $parts = [];
+        $depth = 0;
+        $current = '';
+        for ($i = 0, $length = strlen($input); $i < $length; $i++) {
+            $ch = $input[$i];
+            if ($ch === '<') {
+                $depth++;
+            } elseif ($ch === '>') {
+                $depth--;
+            } elseif ($ch === $delim && $depth === 0) {
+                $parts[] = $current;
+                $current = '';
+                continue;
+            }
+            $current .= $ch;
+        }
+        $parts[] = $current;
+        return $parts;
     }
 
     private static function tryLateBindingType(

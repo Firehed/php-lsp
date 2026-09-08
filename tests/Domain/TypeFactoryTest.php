@@ -376,6 +376,110 @@ class TypeFactoryTest extends TestCase
         self::assertSame('null', $type->format());
     }
 
+    /**
+     * @return iterable<string, array{string, string, ?string}>
+     */
+    public static function docblockTypeProvider(): iterable
+    {
+        yield 'plain class' => ['App\\Models\\User', 'App\\Models\\User', null];
+        yield 'primitive' => ['string', 'string', null];
+        yield 'null' => ['null', 'null', null];
+        yield 'nullable class' => ['?App\\Models\\User', '?App\\Models\\User', null];
+        yield 'nullable primitive' => ['?int', '?int', null];
+        yield 'union' => ['App\\A|App\\B', 'App\\A|App\\B', null];
+        yield 'union with null' => ['App\\A|null', '?App\\A', null];
+        yield 'array short' => ['App\\User[]', 'array', 'App\\User'];
+        yield 'nullable array short' => ['?App\\User[]', '?array', null];
+        yield 'array generic' => ['array<App\\User>', 'array', 'App\\User'];
+        yield 'array key-value' => ['array<int, App\\User>', 'array', 'App\\User'];
+        yield 'list generic' => ['list<App\\User>', 'array', 'App\\User'];
+        yield 'iterable generic' => ['iterable<App\\User>', 'iterable', 'App\\User'];
+        yield 'iterable key-value' => ['iterable<string, App\\User>', 'iterable', 'App\\User'];
+        yield 'class with type arg' => ['App\\Collection<App\\User>', 'App\\Collection', 'App\\User'];
+    }
+
+    #[DataProvider('docblockTypeProvider')]
+    public function testFromDocblockType(string $input, string $format, ?string $valueTypeFormat): void
+    {
+        $type = TypeFactory::fromDocblockType($input);
+        self::assertNotNull($type, 'the input is representable');
+        self::assertSame($format, $type->format(), 'outer format matches');
+        $valueType = $type->valueType();
+        if ($valueTypeFormat === null) {
+            self::assertNull($valueType, 'no value type expected');
+        } else {
+            self::assertNotNull($valueType, 'value type populated');
+            self::assertSame($valueTypeFormat, $valueType->format(), 'value type matches');
+        }
+    }
+
+    public function testFromDocblockTypeReturnsNullOnEmpty(): void
+    {
+        self::assertNull(TypeFactory::fromDocblockType(''), 'empty input has no type');
+    }
+
+    public function testMergeReturnsNullWhenBothNull(): void
+    {
+        self::assertNull(TypeFactory::merge(null, null), 'nothing to merge');
+    }
+
+    public function testMergeReturnsDocblockWhenNativeNull(): void
+    {
+        $docblock = TypeFactory::className(\stdClass::class);
+        self::assertSame($docblock, TypeFactory::merge(null, $docblock), 'docblock stands in for missing native');
+    }
+
+    public function testMergeReturnsNativeWhenDocblockNull(): void
+    {
+        $native = TypeFactory::className(\stdClass::class);
+        self::assertSame($native, TypeFactory::merge($native, null), 'native alone survives');
+    }
+
+    public function testMergeNativeArrayGainsDocblockValueType(): void
+    {
+        $native = TypeFactory::primitive('array');
+        $docblock = TypeFactory::fromDocblockType('list<App\\Models\\User>');
+        $merged = TypeFactory::merge($native, $docblock);
+        self::assertNotNull($merged);
+        self::assertSame('array', $merged->format(), 'array container preserved');
+        self::assertSame('App\\Models\\User', $merged->valueType()?->format(), 'value type filled from docblock');
+    }
+
+    public function testMergeNativeIterableGainsDocblockValueType(): void
+    {
+        $native = TypeFactory::primitive('iterable');
+        $docblock = TypeFactory::fromDocblockType('iterable<App\\Models\\User>');
+        $merged = TypeFactory::merge($native, $docblock);
+        self::assertNotNull($merged);
+        self::assertSame('iterable', $merged->format());
+        self::assertSame('App\\Models\\User', $merged->valueType()?->format(), 'value type filled from docblock');
+    }
+
+    public function testMergeNativeClassGainsDocblockValueType(): void
+    {
+        $native = TypeFactory::className('App\\Collection');
+        $docblock = TypeFactory::fromDocblockType('App\\Collection<App\\Models\\User>');
+        $merged = TypeFactory::merge($native, $docblock);
+        self::assertNotNull($merged);
+        self::assertSame('App\\Collection', $merged->format());
+        self::assertSame('App\\Models\\User', $merged->valueType()?->format(), 'generic argument carried over');
+    }
+
+    public function testMergeNativeWinsOnConflict(): void
+    {
+        $native = TypeFactory::primitive('int');
+        $docblock = TypeFactory::className(\stdClass::class);
+        self::assertSame($native, TypeFactory::merge($native, $docblock), 'native beats an unrelated docblock');
+    }
+
+    public function testMergeNativeWithExistingValueTypeIsUnchanged(): void
+    {
+        $native = TypeFactory::fromDocblockType('array<App\\A>');
+        $docblock = TypeFactory::fromDocblockType('array<App\\B>');
+        $merged = TypeFactory::merge($native, $docblock);
+        self::assertSame($native, $merged, 'native already has typeArguments; docblock does not override');
+    }
+
     public function testUnionCollapsesToSingleMember(): void
     {
         $type = TypeFactory::className(\DateTime::class);
