@@ -179,8 +179,8 @@ final class TypeFactory
         if ($value === null) {
             return $native;
         }
-        if ($native instanceof PrimitiveType && ($native->name === 'array' || $native->name === 'iterable')) {
-            return new PrimitiveType($native->name, [$value]);
+        if ($native instanceof PrimitiveType && $native->acceptsValueType()) {
+            return $native->withValueType($value);
         }
         if ($native instanceof ClassName) {
             return new ClassName($native->fqn, [$value]);

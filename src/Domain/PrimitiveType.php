@@ -32,7 +32,7 @@ final readonly class PrimitiveType implements Type
      * @param list<Type> $typeArguments
      */
     public function __construct(
-        public string $name,
+        private string $name,
         private array $typeArguments = [],
     ) {
     }
@@ -63,6 +63,16 @@ final readonly class PrimitiveType implements Type
     public function valueType(): ?Type
     {
         return $this->typeArguments[0] ?? null;
+    }
+
+    public function acceptsValueType(): bool
+    {
+        return $this->name === 'array' || $this->name === 'iterable';
+    }
+
+    public function withValueType(Type $value): self
+    {
+        return new self($this->name, [$value]);
     }
 
     public function equals(Type $other): bool
