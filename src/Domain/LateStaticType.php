@@ -41,4 +41,16 @@ final class LateStaticType implements Type
             LateBindingKeyword::Parent => $this->declaringClass,
         };
     }
+
+    public function valueType(): ?Type
+    {
+        return null;
+    }
+
+    public function equals(Type $other): bool
+    {
+        return $other instanceof self
+            && $this->keyword === $other->keyword
+            && $this->declaringClass->equals($other->declaringClass);
+    }
 }

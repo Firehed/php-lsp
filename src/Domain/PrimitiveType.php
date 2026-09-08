@@ -33,7 +33,6 @@ final readonly class PrimitiveType implements Type
      */
     public function __construct(
         private string $name,
-        /** @phpstan-ignore property.onlyWritten (for future generics support) */
         private array $typeArguments = [],
     ) {
     }
@@ -59,5 +58,29 @@ final readonly class PrimitiveType implements Type
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
     {
         return $this;
+    }
+
+    public function valueType(): ?Type
+    {
+        return $this->typeArguments[0] ?? null;
+    }
+
+    public function equals(Type $other): bool
+    {
+        if (!$other instanceof self) {
+            return false;
+        }
+        if ($this->name !== $other->name) {
+            return false;
+        }
+        if (count($this->typeArguments) !== count($other->typeArguments)) {
+            return false;
+        }
+        foreach ($this->typeArguments as $i => $arg) {
+            if (!$arg->equals($other->typeArguments[$i])) {
+                return false;
+            }
+        }
+        return true;
     }
 }

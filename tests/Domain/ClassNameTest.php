@@ -66,6 +66,34 @@ class ClassNameTest extends TestCase
         self::assertTrue($a->equals($b), 'A leading separator is spelling, not identity');
     }
 
+    public function testEqualsFalseAgainstDifferentTypeKind(): void
+    {
+        $a = new ClassName(\stdClass::class);
+        $b = new PrimitiveType('object');
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsComparesTypeArguments(): void
+    {
+        $a = new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]);
+        $b = new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]);
+        self::assertTrue($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenTypeArgumentsDiffer(): void
+    {
+        $a = new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]);
+        $b = new ClassName(\ArrayIterator::class, [new ClassName(\Iterator::class)]);
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenTypeArgumentCountsDiffer(): void
+    {
+        $a = new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]);
+        $b = new ClassName(\ArrayIterator::class);
+        self::assertFalse($a->equals($b));
+    }
+
     public function testFormatReturnsFqn(): void
     {
         $cn = new ClassName(ClassName::class);
@@ -90,5 +118,18 @@ class ClassNameTest extends TestCase
     {
         $cn = new ClassName(\stdClass::class);
         self::assertSame($cn, $cn->resolveLateBound(\ArrayIterator::class));
+    }
+
+    public function testValueTypeIsNullWhenNoTypeArguments(): void
+    {
+        $cn = new ClassName(\stdClass::class);
+        self::assertNull($cn->valueType());
+    }
+
+    public function testValueTypeIsFirstTypeArgument(): void
+    {
+        $value = new ClassName(\stdClass::class);
+        $cn = new ClassName(\ArrayIterator::class, [$value]);
+        self::assertSame($value, $cn->valueType());
     }
 }

@@ -96,6 +96,64 @@ class UnionTypeTest extends TestCase
         self::assertFalse($type->isNullable());
     }
 
+    public function testValueTypeAgreesWhenMembersAgree(): void
+    {
+        $value = new ClassName(\stdClass::class);
+        $type = new UnionType([
+            new ClassName(\ArrayIterator::class, [$value]),
+            new PrimitiveType('array', [$value]),
+        ]);
+        $valueType = $type->valueType();
+        self::assertInstanceOf(ClassName::class, $valueType);
+        self::assertSame(\stdClass::class, $valueType->fqn);
+    }
+
+    public function testValueTypeIsNullWhenMembersDisagree(): void
+    {
+        $type = new UnionType([
+            new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]),
+            new PrimitiveType('array', [new PrimitiveType('int')]),
+        ]);
+        self::assertNull($type->valueType());
+    }
+
+    public function testValueTypeIsNullWhenAnyMemberHasNone(): void
+    {
+        $type = new UnionType([
+            new ClassName(\ArrayIterator::class, [new ClassName(\stdClass::class)]),
+            new PrimitiveType('array'),
+        ]);
+        self::assertNull($type->valueType());
+    }
+
+    public function testEqualsSameMembersInOrder(): void
+    {
+        $a = new UnionType([new ClassName(\stdClass::class), new PrimitiveType('null')]);
+        $b = new UnionType([new ClassName(\stdClass::class), new PrimitiveType('null')]);
+        self::assertTrue($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenMemberOrderDiffers(): void
+    {
+        $a = new UnionType([new ClassName(\stdClass::class), new PrimitiveType('null')]);
+        $b = new UnionType([new PrimitiveType('null'), new ClassName(\stdClass::class)]);
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseWhenMemberCountDiffers(): void
+    {
+        $a = new UnionType([new ClassName(\stdClass::class), new PrimitiveType('null')]);
+        $b = new UnionType([new ClassName(\stdClass::class)]);
+        self::assertFalse($a->equals($b));
+    }
+
+    public function testEqualsFalseAgainstDifferentTypeKind(): void
+    {
+        $a = new UnionType([new ClassName(\stdClass::class), new PrimitiveType('null')]);
+        $b = new IntersectionType([new ClassName(\stdClass::class), new PrimitiveType('null')]);
+        self::assertFalse($a->equals($b));
+    }
+
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new UnionType([

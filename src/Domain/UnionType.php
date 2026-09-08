@@ -61,4 +61,39 @@ final readonly class UnionType implements Type
         );
         return new self($resolved);
     }
+
+    public function valueType(): ?Type
+    {
+        $shared = null;
+        foreach ($this->members as $member) {
+            $memberValue = $member->valueType();
+            if ($memberValue === null) {
+                return null;
+            }
+            if ($shared === null) {
+                $shared = $memberValue;
+                continue;
+            }
+            if (!$shared->equals($memberValue)) {
+                return null;
+            }
+        }
+        return $shared;
+    }
+
+    public function equals(Type $other): bool
+    {
+        if (!$other instanceof self) {
+            return false;
+        }
+        if (count($this->members) !== count($other->members)) {
+            return false;
+        }
+        foreach ($this->members as $i => $member) {
+            if (!$member->equals($other->members[$i])) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
