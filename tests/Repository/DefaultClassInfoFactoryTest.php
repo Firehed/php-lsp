@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node\Stmt;
@@ -637,10 +640,59 @@ final class DefaultClassInfoFactoryTest extends TestCase
         self::assertSame(TestTrait::class, $info->traits[0]->fqn);
     }
 
+    public function testMethodReturnListOfUserResolvesValueTypeToFullyQualifiedUser(): void
+    {
+        $node = $this->parseClassFromFixtureAnnotated('src/Repository/UserRepository.php');
+
+        $info = $this->factory->fromAstNode($node, 'file:///UserRepository.php');
+        $findAll = $info->methods['findAll'] ?? null;
+        self::assertNotNull($findAll, 'findAll must be extracted');
+
+        $returnType = $findAll->returnType;
+        self::assertEquals(
+            new PrimitiveType('array', [new ClassName('Fixtures\\Domain\\User')]),
+            $returnType,
+            'a @return list<User> method exposes its value type as the fully qualified User',
+        );
+        $valueType = $returnType?->valueType();
+        self::assertEquals(
+            new ClassName('Fixtures\\Domain\\User'),
+            $valueType,
+            'valueType() must return the fully qualified User (build-manifest step-48 Done)',
+        );
+    }
+
     private function parseClassFromFixture(string $fixturePath, ?string $className = null): Stmt\ClassLike
     {
         $code = $this->loadFixture($fixturePath);
         return $this->parseClassInternal($code, $className, useNameResolver: true);
+    }
+
+    /**
+     * Parse a fixture through the production {@see TreeAnnotator} — every step in
+     * the annotation pipeline runs, including DocblockTypeAnnotator, so the tree
+     * carries the same attributes production code reads.
+     */
+    private function parseClassFromFixtureAnnotated(string $fixturePath, ?string $className = null): Stmt\ClassLike
+    {
+        $code = $this->loadFixture($fixturePath);
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $ast = $parser->parse($code);
+        assert($ast !== null);
+        $annotated = (new TreeAnnotator())->annotate($ast);
+        foreach ($annotated as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_) {
+                foreach ($stmt->stmts as $nsStmt) {
+                    if (!$nsStmt instanceof Stmt\ClassLike) {
+                        continue;
+                    }
+                    if ($className === null || $nsStmt->name?->toString() === $className) {
+                        return $nsStmt;
+                    }
+                }
+            }
+        }
+        throw new \RuntimeException('No class found in code');
     }
 
     private function parseClassWithoutNameResolverFromFixture(
