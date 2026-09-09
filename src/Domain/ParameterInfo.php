@@ -25,6 +25,10 @@ final readonly class ParameterInfo implements ResolvedSymbol
     ) {
     }
 
+    /**
+     * @deprecated sweep: source-context factory
+     */
+    #[\Deprecated('sweep: source-context factory')]
     public static function fromNode(
         Param $param,
         int $position,
@@ -52,6 +56,10 @@ final readonly class ParameterInfo implements ResolvedSymbol
         );
     }
 
+    /**
+     * @deprecated sweep: source-context factory
+     */
+    #[\Deprecated('sweep: source-context factory')]
     public static function fromReflection(ReflectionParameter $param): self
     {
         $defaultValue = null;
