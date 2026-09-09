@@ -529,4 +529,100 @@ class TypeFactoryTest extends TestCase
             'unsupported shapes yield null so callers keep the native type',
         );
     }
+
+    public function testMergeReturnsDocblockWhenNativeIsNull(): void
+    {
+        $docblock = new ClassName('App\\User');
+        self::assertSame(
+            $docblock,
+            TypeFactory::merge(null, $docblock),
+            'a missing native declaration cannot override the docblock',
+        );
+    }
+
+    public function testMergeReturnsNativeWhenDocblockIsNull(): void
+    {
+        $native = new ClassName('App\\User');
+        self::assertSame($native, TypeFactory::merge($native, null));
+    }
+
+    public function testMergeReturnsNullWhenBothAreNull(): void
+    {
+        self::assertNull(TypeFactory::merge(null, null));
+    }
+
+    public function testMergeArrayGainsValueTypeFromDocblock(): void
+    {
+        $native = new PrimitiveType('array');
+        $docblock = new PrimitiveType('array', [new ClassName('App\\User')]);
+        self::assertEquals(
+            new PrimitiveType('array', [new ClassName('App\\User')]),
+            TypeFactory::merge($native, $docblock),
+            'a docblock @return list<User> refines a native array return',
+        );
+    }
+
+    public function testMergeIterableGainsValueTypeFromDocblock(): void
+    {
+        $native = new PrimitiveType('iterable');
+        $docblock = new PrimitiveType('iterable', [new ClassName('App\\User')]);
+        self::assertEquals(
+            new PrimitiveType('iterable', [new ClassName('App\\User')]),
+            TypeFactory::merge($native, $docblock),
+        );
+    }
+
+    public function testMergeSameClassGainsGenericArgFromDocblock(): void
+    {
+        $native = new ClassName('App\\Collection');
+        $docblock = new ClassName('App\\Collection', [new ClassName('App\\User')]);
+        self::assertEquals(
+            new ClassName('App\\Collection', [new ClassName('App\\User')]),
+            TypeFactory::merge($native, $docblock),
+        );
+    }
+
+    public function testMergeNativeWinsOnConflictingOuter(): void
+    {
+        $native = new PrimitiveType('string');
+        $docblock = new ClassName('App\\User');
+        self::assertSame(
+            $native,
+            TypeFactory::merge($native, $docblock),
+            'native declaration is authoritative; docblock cannot widen it',
+        );
+    }
+
+    public function testMergeNativeWinsWhenAlreadyGeneric(): void
+    {
+        $native = new PrimitiveType('array', [new ClassName('App\\Admin')]);
+        $docblock = new PrimitiveType('array', [new ClassName('App\\User')]);
+        self::assertSame(
+            $native,
+            TypeFactory::merge($native, $docblock),
+            'a native type that already carries a value type is untouched',
+        );
+    }
+
+    public function testMergeNativeWinsWhenDocblockLacksValueType(): void
+    {
+        $native = new PrimitiveType('array');
+        $docblock = new PrimitiveType('array');
+        self::assertSame(
+            $native,
+            TypeFactory::merge($native, $docblock),
+            'no valueType from either side means nothing to splice',
+        );
+    }
+
+    public function testMergeDifferentClassKeepsNative(): void
+    {
+        $native = new ClassName('App\\Collection');
+        $docblock = new ClassName('App\\OtherCollection', [new ClassName('App\\User')]);
+        self::assertSame(
+            $native,
+            TypeFactory::merge($native, $docblock),
+            'a docblock naming a different class cannot rewrite the native class',
+        );
+    }
 }

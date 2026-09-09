@@ -161,6 +161,40 @@ final class TypeFactory
         return null;
     }
 
+    /**
+     * Reconcile a native type declaration with a docblock's refinement of it.
+     * The native declaration wins on the outer shape; a docblock only fills in
+     * the value type when the native says `array` or `iterable` or names the
+     * same class without generics of its own. Every caller reads one `Type`
+     * with no awareness of where each part came from.
+     */
+    public static function merge(?Type $native, ?Type $docblock): ?Type
+    {
+        if ($native === null) {
+            return $docblock;
+        }
+        if ($docblock === null) {
+            return $native;
+        }
+        if ($native->valueType() !== null) {
+            return $native;
+        }
+        $docblockValue = $docblock->valueType();
+        if ($docblockValue === null) {
+            return $native;
+        }
+        if ($native instanceof PrimitiveType) {
+            if ($native->name === 'array' || $native->name === 'iterable') {
+                return new PrimitiveType($native->name, [$docblockValue]);
+            }
+            return $native;
+        }
+        if ($native instanceof ClassName && $docblock instanceof ClassName && $native->fqn === $docblock->fqn) {
+            return new ClassName($native->fqn, [$docblockValue]);
+        }
+        return $native;
+    }
+
     public static function fromReflection(?ReflectionType $type): ?Type
     {
         if ($type === null) {
