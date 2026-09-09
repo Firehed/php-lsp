@@ -32,7 +32,7 @@ final readonly class PrimitiveType implements Type
      * @param list<Type> $typeArguments
      */
     public function __construct(
-        private string $name,
+        public string $name,
         private array $typeArguments = [],
     ) {
     }

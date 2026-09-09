@@ -8,6 +8,13 @@ use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use PHPStan\PhpDocParser\Ast\Type\ArrayTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\IntersectionTypeNode as DocIntersectionTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\NullableTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\TypeNode;
+use PHPStan\PhpDocParser\Ast\Type\UnionTypeNode;
 use ReflectionIntersectionType;
 use ReflectionNamedType;
 use ReflectionType;
@@ -105,6 +112,55 @@ final class TypeFactory
         return new UnionType($members);
     }
 
+    /**
+     * Convert a resolved phpstan/phpdoc-parser `TypeNode` into a Domain `Type`.
+     * Every identifier in the tree must already be either a `PrimitiveType`
+     * name or a fully qualified class name — name resolution belongs to
+     * `DocblockTypeAnnotator`, not here. Returns `null` for shapes the Domain
+     * layer does not model yet (callables, conditionals, array shapes).
+     */
+    public static function fromDocblockType(TypeNode $node): ?Type
+    {
+        if ($node instanceof IdentifierTypeNode) {
+            $name = $node->name;
+            if (in_array($name, PrimitiveType::NAMES, true)) {
+                return new PrimitiveType($name);
+            }
+            return new ClassName($name);
+        }
+
+        if ($node instanceof ArrayTypeNode) {
+            $inner = self::fromDocblockType($node->type);
+            return $inner === null
+                ? new PrimitiveType('array')
+                : new PrimitiveType('array', [$inner]);
+        }
+
+        if ($node instanceof NullableTypeNode) {
+            $inner = self::fromDocblockType($node->type);
+            if ($inner === null) {
+                return null;
+            }
+            return new UnionType([$inner, new PrimitiveType('null')]);
+        }
+
+        if ($node instanceof GenericTypeNode) {
+            return self::fromDocblockGeneric($node);
+        }
+
+        if ($node instanceof UnionTypeNode) {
+            $members = self::mapTypeNodes($node->types);
+            return $members === null ? null : new UnionType($members);
+        }
+
+        if ($node instanceof DocIntersectionTypeNode) {
+            $members = self::mapTypeNodes($node->types);
+            return $members === null ? null : new IntersectionType($members);
+        }
+
+        return null;
+    }
+
     public static function fromReflection(?ReflectionType $type): ?Type
     {
         if ($type === null) {
@@ -146,6 +202,51 @@ final class TypeFactory
         // @codeCoverageIgnoreStart
         throw new LogicException('Unexpected ReflectionType kind');
         // @codeCoverageIgnoreEnd
+    }
+
+    private static function fromDocblockGeneric(GenericTypeNode $node): Type
+    {
+        $outer = $node->type->name;
+        $args = $node->genericTypes;
+        // For array<K,V>, iterable<K,V>, and list<K,V> the value is the last arg;
+        // for the single-arg form the value is that arg. Non-generic containers
+        // hold no useful key/value shape here.
+        $lastArg = $args[count($args) - 1] ?? null;
+        $valueType = $lastArg === null ? null : self::fromDocblockType($lastArg);
+
+        if ($outer === 'array' || $outer === 'list' || $outer === 'non-empty-list' || $outer === 'non-empty-array') {
+            return $valueType === null
+                ? new PrimitiveType('array')
+                : new PrimitiveType('array', [$valueType]);
+        }
+        if ($outer === 'iterable') {
+            return $valueType === null
+                ? new PrimitiveType('iterable')
+                : new PrimitiveType('iterable', [$valueType]);
+        }
+        if (in_array($outer, PrimitiveType::NAMES, true)) {
+            return new PrimitiveType($outer);
+        }
+        return $valueType === null
+            ? new ClassName($outer)
+            : new ClassName($outer, [$valueType]);
+    }
+
+    /**
+     * @param array<TypeNode> $nodes
+     * @return ?list<Type>
+     */
+    private static function mapTypeNodes(array $nodes): ?array
+    {
+        $out = [];
+        foreach ($nodes as $inner) {
+            $mapped = self::fromDocblockType($inner);
+            if ($mapped === null) {
+                return null;
+            }
+            $out[] = $mapped;
+        }
+        return $out;
     }
 
     private static function tryLateBindingType(

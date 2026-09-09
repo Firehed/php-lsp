@@ -63,6 +63,12 @@ parameters:
                 - src/Parser/NodeAtPosition.php
                 - src/Knowledge/DeclarationScanner.php
                 - tests/*
+        -
+            namespace: 'PHPStan\PhpDocParser\*'
+            message: 'docblock type parsing is confined: DocblockTypeAnnotator resolves names into TypeNodes, TypeFactory converts them into Domain\Type'
+            allowIn:
+                - src/Domain/TypeFactory.php
+                - tests/*
 
     disallowedFunctionCalls:
         -

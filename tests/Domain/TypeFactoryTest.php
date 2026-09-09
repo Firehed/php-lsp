@@ -16,6 +16,13 @@ use PhpParser\Node\IntersectionType as AstIntersectionType;
 use PhpParser\Node\Name;
 use PhpParser\Node\NullableType;
 use PhpParser\Node\UnionType as AstUnionType;
+use PHPStan\PhpDocParser\Ast\Type\ArrayTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\CallableTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\IntersectionTypeNode as DocIntersectionTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\NullableTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\UnionTypeNode;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -389,5 +396,137 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::union([$a, $b]);
         self::assertInstanceOf(UnionType::class, $type);
         self::assertSame('DateTime|DateTimeImmutable', $type->format());
+    }
+
+    public function testFromDocblockTypeIdentifierOfPrimitiveBuildsPrimitiveType(): void
+    {
+        $type = TypeFactory::fromDocblockType(new IdentifierTypeNode('int'));
+        self::assertEquals(new PrimitiveType('int'), $type);
+    }
+
+    public function testFromDocblockTypeIdentifierOfClassBuildsClassName(): void
+    {
+        $type = TypeFactory::fromDocblockType(new IdentifierTypeNode('App\\User'));
+        self::assertEquals(new ClassName('App\\User'), $type);
+    }
+
+    public function testFromDocblockTypeArrayShorthandCarriesValueType(): void
+    {
+        $node = new ArrayTypeNode(new IdentifierTypeNode('App\\User'));
+        $type = TypeFactory::fromDocblockType($node);
+        self::assertEquals(
+            new PrimitiveType('array', [new ClassName('App\\User')]),
+            $type,
+            'T[] must resolve to array with T as the value type',
+        );
+    }
+
+    public function testFromDocblockTypeNullableWrapsInUnionWithNull(): void
+    {
+        $node = new NullableTypeNode(new IdentifierTypeNode('App\\User'));
+        $type = TypeFactory::fromDocblockType($node);
+        self::assertEquals(
+            new UnionType([new ClassName('App\\User'), new PrimitiveType('null')]),
+            $type,
+            '?T formats via UnionType with null so isNullable() answers correctly',
+        );
+    }
+
+    public function testFromDocblockTypeGenericArraySingleArgUsesValue(): void
+    {
+        $node = new GenericTypeNode(
+            new IdentifierTypeNode('array'),
+            [new IdentifierTypeNode('App\\User')],
+        );
+        self::assertEquals(
+            new PrimitiveType('array', [new ClassName('App\\User')]),
+            TypeFactory::fromDocblockType($node),
+        );
+    }
+
+    public function testFromDocblockTypeGenericArrayKeyValueUsesValue(): void
+    {
+        $node = new GenericTypeNode(
+            new IdentifierTypeNode('array'),
+            [new IdentifierTypeNode('int'), new IdentifierTypeNode('App\\User')],
+        );
+        self::assertEquals(
+            new PrimitiveType('array', [new ClassName('App\\User')]),
+            TypeFactory::fromDocblockType($node),
+            'array<K, V> discards the key type; only the value type surfaces on Domain\\Type',
+        );
+    }
+
+    public function testFromDocblockTypeListMapsToArray(): void
+    {
+        $node = new GenericTypeNode(
+            new IdentifierTypeNode('list'),
+            [new IdentifierTypeNode('App\\User')],
+        );
+        self::assertEquals(
+            new PrimitiveType('array', [new ClassName('App\\User')]),
+            TypeFactory::fromDocblockType($node),
+            'list<T> maps to array so downstream code holds one array kind',
+        );
+    }
+
+    public function testFromDocblockTypeIterablePreservesIterable(): void
+    {
+        $node = new GenericTypeNode(
+            new IdentifierTypeNode('iterable'),
+            [new IdentifierTypeNode('App\\User')],
+        );
+        self::assertEquals(
+            new PrimitiveType('iterable', [new ClassName('App\\User')]),
+            TypeFactory::fromDocblockType($node),
+        );
+    }
+
+    public function testFromDocblockTypeGenericClassNamePreservesClassAndValue(): void
+    {
+        $node = new GenericTypeNode(
+            new IdentifierTypeNode('App\\Collection'),
+            [new IdentifierTypeNode('App\\User')],
+        );
+        self::assertEquals(
+            new ClassName('App\\Collection', [new ClassName('App\\User')]),
+            TypeFactory::fromDocblockType($node),
+        );
+    }
+
+    public function testFromDocblockTypeUnionMapsMembers(): void
+    {
+        $node = new UnionTypeNode([
+            new IdentifierTypeNode('int'),
+            new IdentifierTypeNode('App\\User'),
+        ]);
+        self::assertEquals(
+            new UnionType([new PrimitiveType('int'), new ClassName('App\\User')]),
+            TypeFactory::fromDocblockType($node),
+        );
+    }
+
+    public function testFromDocblockTypeIntersectionMapsMembers(): void
+    {
+        $node = new DocIntersectionTypeNode([
+            new IdentifierTypeNode('App\\Readable'),
+            new IdentifierTypeNode('App\\Writable'),
+        ]);
+        self::assertEquals(
+            new IntersectionType([
+                new ClassName('App\\Readable'),
+                new ClassName('App\\Writable'),
+            ]),
+            TypeFactory::fromDocblockType($node),
+        );
+    }
+
+    public function testFromDocblockTypeUnsupportedShapeReturnsNull(): void
+    {
+        $node = new CallableTypeNode(new IdentifierTypeNode('callable'), [], new IdentifierTypeNode('void'), []);
+        self::assertNull(
+            TypeFactory::fromDocblockType($node),
+            'unsupported shapes yield null so callers keep the native type',
+        );
     }
 }
