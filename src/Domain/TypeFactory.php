@@ -162,6 +162,23 @@ final class TypeFactory
     }
 
     /**
+     * Read one entry from a `resolvedDocblockTypes` node attribute and turn it
+     * into a `Type`. Every consumer that reads the attribute goes through this
+     * so the shape of the stored value stays inside the Domain layer.
+     */
+    public static function fromDocblockAttribute(mixed $attribute, string $key): ?Type
+    {
+        if (!is_array($attribute)) {
+            return null;
+        }
+        $typeNode = $attribute[$key] ?? null;
+        if (!$typeNode instanceof TypeNode) {
+            return null;
+        }
+        return self::fromDocblockType($typeNode);
+    }
+
+    /**
      * Reconcile a native type declaration with a docblock's refinement of it.
      * The native declaration wins on the outer shape; a docblock only fills in
      * the value type when the native says `array` or `iterable` or names the

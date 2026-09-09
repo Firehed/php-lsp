@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
+use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use ReflectionFunction;
 
@@ -35,9 +36,11 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
      */
     public static function fromNode(Stmt\Function_ $node, ?string $file = null): self
     {
+        $docblockTypes = $node->getAttribute('resolvedDocblockTypes');
         $params = [];
         foreach ($node->params as $position => $param) {
-            $paramInfo = ParameterInfo::fromNode($param, $position);
+            $docblockType = self::docblockTypeForParam($docblockTypes, $param);
+            $paramInfo = ParameterInfo::fromNode($param, $position, docblockType: $docblockType);
             if ($paramInfo !== null) {
                 $params[] = $paramInfo;
             }
@@ -46,11 +49,22 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
         return new self(
             name: $node->name->toString(),
             parameters: $params,
-            returnType: TypeFactory::fromNode($node->returnType),
+            returnType: TypeFactory::merge(
+                TypeFactory::fromNode($node->returnType),
+                TypeFactory::fromDocblockAttribute($docblockTypes, 'return'),
+            ),
             docblock: $node->getDocComment()?->getText(),
             file: $file,
             line: $node->getStartLine(),
         );
+    }
+
+    private static function docblockTypeForParam(mixed $docblockTypes, Node\Param $param): ?Type
+    {
+        if (!$param->var instanceof Node\Expr\Variable || !is_string($param->var->name)) {
+            return null;
+        }
+        return TypeFactory::fromDocblockAttribute($docblockTypes, 'param:' . $param->var->name);
     }
 
     public static function fromReflection(ReflectionFunction $func): self
