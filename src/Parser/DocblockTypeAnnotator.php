@@ -12,20 +12,14 @@ use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Function_;
 use PhpParser\Node\Stmt\Property;
 use PhpParser\NodeVisitorAbstract;
+use PHPStan\PhpDocParser\Ast\AbstractNodeVisitor;
+use PHPStan\PhpDocParser\Ast\Node as PhpDocParserNode;
+use PHPStan\PhpDocParser\Ast\NodeTraverser as PhpDocNodeTraverser;
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode;
-use PHPStan\PhpDocParser\Ast\Type\ArrayShapeNode;
-use PHPStan\PhpDocParser\Ast\Type\ArrayTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\CallableTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\ConditionalTypeForParameterNode;
-use PHPStan\PhpDocParser\Ast\Type\ConditionalTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\ArrayShapeItemNode;
 use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\IntersectionTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\NullableTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\ObjectShapeNode;
-use PHPStan\PhpDocParser\Ast\Type\OffsetAccessTypeNode;
+use PHPStan\PhpDocParser\Ast\Type\ObjectShapeItemNode;
 use PHPStan\PhpDocParser\Ast\Type\TypeNode;
-use PHPStan\PhpDocParser\Ast\Type\UnionTypeNode;
 use PHPStan\PhpDocParser\Lexer\Lexer;
 use PHPStan\PhpDocParser\Parser\ConstExprParser;
 use PHPStan\PhpDocParser\Parser\PhpDocParser;
@@ -41,7 +35,7 @@ use PHPStan\PhpDocParser\ParserConfig;
  * on the node as a `resolvedDocblockTypes` attribute keyed by tag.
  *
  * The stored value is a `map<string, TypeNode>` with keys `'return'`, `'var'`,
- * or `'param:name'`. {@see \Firehed\PhpLsp\Domain\TypeFactory::fromDocblockType}
+ * or `'param:name'`. {@see \Firehed\PhpLsp\Domain\TypeFactory::fromDocblockNode}
  * turns each `TypeNode` into a `Domain\Type` at read time.
  */
 final class DocblockTypeAnnotator extends NodeVisitorAbstract
@@ -105,6 +99,24 @@ final class DocblockTypeAnnotator extends NodeVisitorAbstract
         return null;
     }
 
+    /**
+     * Resolves a single identifier to its fully qualified form, or leaves it as
+     * a docblock primitive keyword. Public so the anonymous visitor used by
+     * {@see resolveNames} can call it through a first-class callable without
+     * needing access to private state.
+     */
+    public function resolveIdentifier(string $name): string
+    {
+        // Docblock primitive keywords are conventionally lowercase in every codebase
+        // this server sees, so a case-sensitive match is enough. A stray `Int` would
+        // route through name resolution and produce a global-namespaced class name,
+        // which resolves to nothing and is dropped by TypeFactory::fromDocblockType.
+        if (in_array($name, self::PRIMITIVE_KEYWORDS, true)) {
+            return $name;
+        }
+        return $this->nameContext->getResolvedClassName(new PhpParserName($name))->toString();
+    }
+
     private function parseDocblock(string $text): PhpDocNode
     {
         $tokens = new TokenIterator($this->lexer->tokenize($text));
@@ -136,81 +148,48 @@ final class DocblockTypeAnnotator extends NodeVisitorAbstract
         return $out;
     }
 
+    /**
+     * Walk the TypeNode tree through phpdoc-parser's own NodeTraverser so
+     * descent is driven by the library's generic reflection over public
+     * properties. Only `IdentifierTypeNode` occurrences are rewritten, and
+     * shape-item key positions are excluded because they name shape keys, not
+     * class-like symbols. A new `TypeNode` subclass added by the library gains
+     * name resolution automatically, without a change here.
+     */
     private function resolveNames(TypeNode $node): void
     {
-        if ($node instanceof IdentifierTypeNode) {
-            $node->name = $this->resolveIdentifier($node->name);
-            return;
-        }
-        if ($node instanceof ArrayTypeNode) {
-            $this->resolveNames($node->type);
-            return;
-        }
-        if ($node instanceof NullableTypeNode) {
-            $this->resolveNames($node->type);
-            return;
-        }
-        if ($node instanceof GenericTypeNode) {
-            $this->resolveNames($node->type);
-            foreach ($node->genericTypes as $inner) {
-                $this->resolveNames($inner);
-            }
-            return;
-        }
-        if ($node instanceof UnionTypeNode || $node instanceof IntersectionTypeNode) {
-            foreach ($node->types as $inner) {
-                $this->resolveNames($inner);
-            }
-            return;
-        }
-        if ($node instanceof CallableTypeNode) {
-            $this->resolveNames($node->identifier);
-            foreach ($node->parameters as $parameter) {
-                $this->resolveNames($parameter->type);
-            }
-            $this->resolveNames($node->returnType);
-            return;
-        }
-        if ($node instanceof ArrayShapeNode) {
-            foreach ($node->items as $item) {
-                $this->resolveNames($item->valueType);
-            }
-            return;
-        }
-        if ($node instanceof ObjectShapeNode) {
-            foreach ($node->items as $item) {
-                $this->resolveNames($item->valueType);
-            }
-            return;
-        }
-        if ($node instanceof OffsetAccessTypeNode) {
-            $this->resolveNames($node->type);
-            $this->resolveNames($node->offset);
-            return;
-        }
-        if ($node instanceof ConditionalTypeNode) {
-            $this->resolveNames($node->subjectType);
-            $this->resolveNames($node->targetType);
-            $this->resolveNames($node->if);
-            $this->resolveNames($node->else);
-            return;
-        }
-        if ($node instanceof ConditionalTypeForParameterNode) {
-            $this->resolveNames($node->targetType);
-            $this->resolveNames($node->if);
-            $this->resolveNames($node->else);
-        }
+        (new PhpDocNodeTraverser([$this->identifierResolvingVisitor()]))->traverse([$node]);
     }
 
-    private function resolveIdentifier(string $name): string
+    private function identifierResolvingVisitor(): AbstractNodeVisitor
     {
-        // Docblock primitive keywords are conventionally lowercase in every codebase
-        // this server sees, so a case-sensitive match is enough. A stray `Int` would
-        // route through name resolution and produce a global-namespaced class name,
-        // which resolves to nothing and is dropped by TypeFactory::fromDocblockType.
-        if (in_array($name, self::PRIMITIVE_KEYWORDS, true)) {
-            return $name;
-        }
-        return $this->nameContext->getResolvedClassName(new PhpParserName($name))->toString();
+        $resolve = $this->resolveIdentifier(...);
+        return new class ($resolve) extends AbstractNodeVisitor {
+            /** @var callable(string): string */
+            private $resolve;
+
+            /**
+             * @param callable(string): string $resolve
+             */
+            public function __construct(callable $resolve)
+            {
+                $this->resolve = $resolve;
+            }
+
+            public function enterNode(PhpDocParserNode $node): ?int
+            {
+                if ($node instanceof ArrayShapeItemNode || $node instanceof ObjectShapeItemNode) {
+                    // Shape-item `keyName` may itself be an IdentifierTypeNode
+                    // but names a shape key, not a class-like symbol. Descend
+                    // only into the value type so the key stays as written.
+                    (new PhpDocNodeTraverser([$this]))->traverse([$node->valueType]);
+                    return PhpDocNodeTraverser::DONT_TRAVERSE_CHILDREN;
+                }
+                if ($node instanceof IdentifierTypeNode) {
+                    $node->name = ($this->resolve)($node->name);
+                }
+                return null;
+            }
+        };
     }
 }
