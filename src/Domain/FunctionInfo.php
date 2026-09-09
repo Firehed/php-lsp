@@ -32,7 +32,9 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
      * @param ?string $file the declaring file, which the node does not carry;
      *        supplied when the function was resolved from a known file rather than
      *        from the document already being read
+     * @deprecated sweep: source-context factory
      */
+    #[\Deprecated('sweep: source-context factory')]
     public static function fromNode(Stmt\Function_ $node, ?string $file = null): self
     {
         $params = [];
@@ -53,6 +55,10 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
         );
     }
 
+    /**
+     * @deprecated sweep: source-context factory
+     */
+    #[\Deprecated('sweep: source-context factory')]
     public static function fromReflection(ReflectionFunction $func): self
     {
         return new self(

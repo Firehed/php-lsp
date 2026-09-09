@@ -19,12 +19,16 @@ interface ClassInfoFactory
     /**
      * @param Stmt\ClassLike $node The AST node for the class/interface/trait/enum
      * @param string $uri The file URI where this class is defined
+     * @deprecated sweep: source-context factory
      */
+    #[\Deprecated('sweep: source-context factory')]
     public function fromAstNode(Stmt\ClassLike $node, string $uri): ClassInfo;
 
     /**
      * @template T of object
      * @param ReflectionClass<T> $class
+     * @deprecated sweep: source-context factory
      */
+    #[\Deprecated('sweep: source-context factory')]
     public function fromReflection(ReflectionClass $class): ClassInfo;
 }

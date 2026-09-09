@@ -21,6 +21,7 @@
     "require-dev": {
         "deptrac/deptrac": "^4.7",
         "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^12.5.22",
         "slevomat/coding-standard": "^8.31",

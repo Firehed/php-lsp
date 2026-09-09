@@ -40,6 +40,10 @@ final readonly class ConstantInfo implements MemberInfo, SymbolInfo
      * @param string $shortName the constant's short name (already extracted by
      *        the scanner, so the factory does not re-derive it)
      */
+    /**
+     * @deprecated sweep: source-context factory
+     */
+    #[\Deprecated('sweep: source-context factory')]
     public static function fromGlobalDeclaration(
         Node\Const_|Expr\FuncCall $node,
         string $shortName,
