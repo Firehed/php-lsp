@@ -252,18 +252,22 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             }
 
             $name = $stmt->name->toString();
+            $docblockTypes = $stmt->getAttribute('resolvedDocblockTypes');
             $methods[$name] = new MethodInfo(
                 name: new MethodName($name),
                 visibility: $this->visibilityFromFlags($stmt->flags),
                 isStatic: $stmt->isStatic(),
                 isAbstract: $stmt->isAbstract(),
                 isFinal: $stmt->isFinal(),
-                parameters: $this->extractParameters($stmt->params, $className, $parentClass),
-                returnType: TypeFactory::fromNode(
-                    $stmt->returnType,
-                    $className->fqn,
-                    $parentClass?->fqn,
-                    preserveLateBinding: true,
+                parameters: $this->extractParameters($stmt->params, $className, $parentClass, $docblockTypes),
+                returnType: TypeFactory::merge(
+                    TypeFactory::fromNode(
+                        $stmt->returnType,
+                        $className->fqn,
+                        $parentClass?->fqn,
+                        preserveLateBinding: true,
+                    ),
+                    TypeFactory::fromDocblockAttribute($docblockTypes, 'return'),
                 ),
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
@@ -292,11 +296,25 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
      * @param array<Param> $params
      * @return list<ParameterInfo>
      */
-    private function extractParameters(array $params, ClassName $className, ?ClassName $parentClass): array
-    {
+    private function extractParameters(
+        array $params,
+        ClassName $className,
+        ?ClassName $parentClass,
+        mixed $docblockTypes = null,
+    ): array {
         $result = [];
         foreach ($params as $position => $param) {
-            $info = ParameterInfo::fromNode($param, $position, $className->fqn, $parentClass?->fqn);
+            $docblockType = null;
+            if ($param->var instanceof Variable && is_string($param->var->name)) {
+                $docblockType = TypeFactory::fromDocblockAttribute($docblockTypes, 'param:' . $param->var->name);
+            }
+            $info = ParameterInfo::fromNode(
+                $param,
+                $position,
+                $className->fqn,
+                $parentClass?->fqn,
+                $docblockType,
+            );
             if ($info !== null) {
                 $result[] = $info;
             }
@@ -318,6 +336,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
 
         foreach ($node->stmts as $stmt) {
             if ($stmt instanceof Stmt\Property) {
+                $docblockType = TypeFactory::fromDocblockAttribute(
+                    $stmt->getAttribute('resolvedDocblockTypes'),
+                    'var',
+                );
                 foreach ($stmt->props as $prop) {
                     $name = $prop->name->toString();
                     $properties[$name] = new PropertyInfo(
@@ -326,7 +348,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
-                        type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::merge(
+                            TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                            $docblockType,
+                        ),
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
                         line: $stmt->getStartLine(),
@@ -336,6 +361,7 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
             }
 
             if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toLowerString() === '__construct') {
+                $ctorDocblockTypes = $stmt->getAttribute('resolvedDocblockTypes');
                 foreach ($stmt->params as $param) {
                     if (!$this->isPromotedProperty($param)) {
                         continue;
@@ -351,7 +377,10 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                         isStatic: false,
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
                         isPromoted: true,
-                        type: TypeFactory::fromNode($param->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::merge(
+                            TypeFactory::fromNode($param->type, $className->fqn, $parentClass?->fqn),
+                            TypeFactory::fromDocblockAttribute($ctorDocblockTypes, 'param:' . $name),
+                        ),
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
                         line: $param->getStartLine(),
@@ -382,13 +411,20 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
                 continue;
             }
 
+            $docblockType = TypeFactory::fromDocblockAttribute(
+                $stmt->getAttribute('resolvedDocblockTypes'),
+                'var',
+            );
             foreach ($stmt->consts as $const) {
                 $name = $const->name->toString();
                 $constants[$name] = new ConstantInfo(
                     name: new ConstantName($name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                    type: TypeFactory::merge(
+                        TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                        $docblockType,
+                    ),
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),
