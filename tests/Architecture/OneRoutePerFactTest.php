@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture;
 
-use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\DocblockParser;
+use Firehed\PhpLsp\Parser\DocblockTypeAnnotator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -107,16 +107,17 @@ final class OneRoutePerFactTest extends TestCase
             Fact::confined(
                 name: 'docblock types',
                 ingredients: [DocblockParser::class],
-                holders: [TypeFactory::class, ResolvedSymbolPresenter::class],
+                holders: [DocblockTypeAnnotator::class, ResolvedSymbolPresenter::class],
                 pending: ['src/Resolution/ExpressionResolver.php' => 'step-49'],
             ),
             // step-44 delegated Resolution\NameContext's resolution rules to
             // php-parser's engine; the same NameResolver visitor annotates the
-            // trees TreeAnnotator produces.
+            // trees TreeAnnotator produces. step-48 wired DocblockTypeAnnotator
+            // to the same NameContext for docblock-type resolution.
             Fact::confined(
                 name: 'php-parser name resolution',
                 ingredients: [PhpParserNameContext::class, NameResolver::class],
-                holders: [TreeAnnotator::class, ResolutionNameContext::class],
+                holders: [TreeAnnotator::class, ResolutionNameContext::class, DocblockTypeAnnotator::class],
             ),
         ];
 
