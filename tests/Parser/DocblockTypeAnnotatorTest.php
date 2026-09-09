@@ -95,11 +95,15 @@ final class DocblockTypeAnnotatorTest extends TestCase
 
         $return = $this->returnType($method);
         self::assertSame(
-            'non-empty-list',
+            'array',
             $return->format(),
-            'phpstan-return wins over @return',
+            'non-empty-list normalizes to array (its type-resolver parent)',
         );
-        self::assertSame('App\\Models\\User', $return->valueType()?->format(), 'value type carried');
+        self::assertSame(
+            'App\\Models\\User',
+            $return->valueType()?->format(),
+            'phpstan-return wins over @return; value type carried',
+        );
     }
 
     private function returnType(Stmt\ClassMethod $method): Type

@@ -5,35 +5,42 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser;
 
 use PhpParser\Node;
-use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitorAbstract;
 
 /**
- * Runs alongside {@see NameResolver} to resolve the class names in the
- * `@var`, `@return`, and `@param` (plus `psalm-`/`phpstan-`) tags of every
- * `ClassMethod`, `Property`, `ClassConst`, and `Function_`, so downstream
- * factories build parameter, return, and property types through
- * {@see \Firehed\PhpLsp\Domain\TypeFactory::merge()} without reaching for the
- * raw docblock again.
- *
- * The resolved tag map is stored on the node as the `resolvedDocblockTypes`
- * attribute, a shape of:
+ * For every `ClassMethod`, `Property`, `ClassConst`, `Function_`, and `Const_`
+ * that carries a docblock, hands the doc text plus the current namespace and
+ * class-import table to {@see DocblockParser}. The resolved tag map is stored
+ * on the node as the `resolvedDocblockTypes` attribute, a shape of
  * `array{return?: Type, var?: Type, params?: array<string, Type>}`.
  *
- * Docblock class names are resolved against the same {@see \PhpParser\NameContext}
- * `NameResolver` populated, so an aliased or relative name resolves the same
- * way in the docblock and in the signature.
+ * Tracks namespace and `use` state itself while traversing (alongside
+ * php-parser's `NameResolver`), so it can hand the docblock parser a plain
+ * namespace + alias map without reaching into `NameResolver` internals.
  */
 final class DocblockTypeAnnotator extends NodeVisitorAbstract
 {
-    public function __construct(private readonly NameResolver $nameResolver)
-    {
-    }
+    private string $namespace = '';
+
+    /** @var array<string, string> alias => fully-qualified name */
+    private array $aliases = [];
 
     public function enterNode(Node $node): ?int
     {
+        if ($node instanceof Stmt\Namespace_) {
+            $this->namespace = $node->name?->toString() ?? '';
+            $this->aliases = [];
+            return null;
+        }
+        if ($node instanceof Stmt\Use_) {
+            $this->recordUses($node->type, '', $node->uses);
+            return null;
+        }
+        if ($node instanceof Stmt\GroupUse) {
+            $this->recordUses($node->type, $node->prefix->toString() . '\\', $node->uses);
+            return null;
+        }
         if (
             !$node instanceof Stmt\ClassMethod
             && !$node instanceof Stmt\Property
@@ -47,14 +54,25 @@ final class DocblockTypeAnnotator extends NodeVisitorAbstract
         if ($doc === null) {
             return null;
         }
-        $context = $this->nameResolver->getNameContext();
-        $resolver = static function (string $token) use ($context): string {
-            return $context->getResolvedClassName(new Name($token))->toString();
-        };
-        $resolved = DocblockParser::extractResolvedTypedTags($doc, $resolver);
+        $resolved = DocblockParser::extractResolvedTypedTags($doc, $this->namespace, $this->aliases);
         if ($resolved !== []) {
             $node->setAttribute('resolvedDocblockTypes', $resolved);
         }
         return null;
+    }
+
+    /**
+     * @param array<Stmt\UseUse> $uses
+     */
+    private function recordUses(int $groupType, string $prefix, array $uses): void
+    {
+        foreach ($uses as $use) {
+            $itemType = $use->type;
+            $effectiveType = $itemType === Stmt\Use_::TYPE_UNKNOWN ? $groupType : $itemType;
+            if ($effectiveType !== Stmt\Use_::TYPE_NORMAL && $effectiveType !== Stmt\Use_::TYPE_UNKNOWN) {
+                continue;
+            }
+            $this->aliases[$use->getAlias()->toString()] = $prefix . $use->name->toString();
+        }
     }
 }

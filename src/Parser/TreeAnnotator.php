@@ -41,7 +41,7 @@ final class TreeAnnotator
         $this->traverser = new NodeTraverser();
         $this->traverser->addVisitor(new ParentConnectingVisitor());
         $this->traverser->addVisitor($nameResolver);
-        $this->traverser->addVisitor(new DocblockTypeAnnotator($nameResolver));
+        $this->traverser->addVisitor(new DocblockTypeAnnotator());
     }
 
     /**

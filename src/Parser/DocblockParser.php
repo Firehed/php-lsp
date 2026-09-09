@@ -4,95 +4,85 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser;
 
-use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode;
-use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTextNode;
-use PHPStan\PhpDocParser\Ast\Type\ArrayTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\IntersectionTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\NullableTypeNode;
-use PHPStan\PhpDocParser\Ast\Type\TypeNode;
-use PHPStan\PhpDocParser\Ast\Type\UnionTypeNode;
-use PHPStan\PhpDocParser\Lexer\Lexer;
-use PHPStan\PhpDocParser\Parser\ConstExprParser;
-use PHPStan\PhpDocParser\Parser\PhpDocParser;
-use PHPStan\PhpDocParser\Parser\TokenIterator;
-use PHPStan\PhpDocParser\Parser\TypeParser;
-use PHPStan\PhpDocParser\ParserConfig;
+use phpDocumentor\Reflection\DocBlock\Tags\Param;
+use phpDocumentor\Reflection\DocBlock\Tags\Return_;
+use phpDocumentor\Reflection\DocBlock\Tags\Var_;
+use phpDocumentor\Reflection\DocBlockFactory;
+use phpDocumentor\Reflection\DocBlockFactoryInterface;
+use phpDocumentor\Reflection\Type as PhpDocType;
+use phpDocumentor\Reflection\Types\AggregatedType;
+use phpDocumentor\Reflection\Types\Array_;
+use phpDocumentor\Reflection\Types\Boolean;
+use phpDocumentor\Reflection\Types\Callable_;
+use phpDocumentor\Reflection\Types\Compound;
+use phpDocumentor\Reflection\Types\Context;
+use phpDocumentor\Reflection\Types\Float_;
+use phpDocumentor\Reflection\Types\Integer;
+use phpDocumentor\Reflection\Types\Intersection;
+use phpDocumentor\Reflection\Types\Iterable_;
+use phpDocumentor\Reflection\Types\Mixed_;
+use phpDocumentor\Reflection\Types\Never_;
+use phpDocumentor\Reflection\Types\Null_;
+use phpDocumentor\Reflection\Types\Nullable;
+use phpDocumentor\Reflection\Types\Object_;
+use phpDocumentor\Reflection\Types\Parent_;
+use phpDocumentor\Reflection\Types\Self_;
+use phpDocumentor\Reflection\Types\Static_;
+use phpDocumentor\Reflection\Types\String_;
+use phpDocumentor\Reflection\Types\This;
+use phpDocumentor\Reflection\Types\Void_;
 
 /**
- * Thin wrapper over `phpstan/phpdoc-parser`. This is the one place a docblock
- * is parsed, so the choice of parser is confined to this file. The wrapper
- * converts the library's type AST into the project's {@see Type} model, so
- * consumers never see a `TypeNode`.
+ * The one place docblocks are parsed. Wraps
+ * `phpdocumentor/reflection-docblock`, which handles the tag walking, the
+ * psalm-/phpstan- syntax extensions, and the class-name resolution against a
+ * namespace + import context. All this wrapper adds is the bridge from
+ * phpDocumentor's Type hierarchy to the project's own {@see Type}.
  */
 final class DocblockParser
 {
-    /**
-     * Identifiers that are not class-like names and therefore must not be
-     * routed through the class-name resolver — native primitives, PHPStan/Psalm
-     * pseudo-types, generic hints, and late-binding keywords.
-     *
-     * @var array<string, true>
-     */
-    private const array TYPE_KEYWORDS = [
-        'array' => true, 'bool' => true, 'callable' => true, 'false' => true,
-        'float' => true, 'int' => true, 'iterable' => true, 'list' => true,
-        'mixed' => true, 'never' => true, 'null' => true, 'object' => true,
-        'parent' => true, 'resource' => true, 'scalar' => true, 'self' => true,
-        'static' => true, 'string' => true, 'true' => true, 'void' => true,
-        'array-key' => true, 'class-string' => true, 'callable-string' => true,
-        'literal-string' => true, 'non-empty-string' => true,
-        'non-empty-array' => true, 'non-empty-list' => true,
-        'numeric-string' => true, 'positive-int' => true, 'negative-int' => true,
-        'non-negative-int' => true, 'non-positive-int' => true, 'numeric' => true,
-        'key-of' => true, 'value-of' => true, 'this' => true, '$this' => true,
-    ];
+    private static ?DocBlockFactoryInterface $factory = null;
 
     /**
-     * Extract typed docblock tags — `@var`, `@return`, `@param` (native +
-     * `psalm-`/`phpstan-` spellings) — as domain {@see Type} values with every
-     * class-like name fully qualified through `$resolveClassName`. `phpstan-`
-     * overrides `psalm-` overrides the native tag.
+     * Resolved `@var`, `@return`, and `@param` tags (native +
+     * `psalm-`/`phpstan-` spellings; the library folds them itself) with every
+     * class name already fully qualified.
      *
-     * @param \Closure(string): string $resolveClassName Resolves an
-     *        unqualified or relative class name (as it appears in the
-     *        docblock) to a fully-qualified name without a leading `\`.
+     * @param array<string, string> $aliases short-alias => fully-qualified name
      * @return array{return?: Type, var?: Type, params?: array<string, Type>}
      */
-    public static function extractResolvedTypedTags(string $docblock, \Closure $resolveClassName): array
+    public static function extractResolvedTypedTags(string $docblock, string $namespace, array $aliases): array
     {
-        $doc = self::parse($docblock);
+        $doc = self::factory()->create($docblock, new Context($namespace, $aliases));
         $tags = [];
 
-        foreach (['@var', '@psalm-var', '@phpstan-var'] as $tagName) {
-            foreach ($doc->getVarTagValues($tagName) as $node) {
-                $type = self::convert($node->type, $resolveClassName);
+        foreach ($doc->getTagsByName('var') as $tag) {
+            if ($tag instanceof Var_) {
+                $type = self::toType($tag->getType());
                 if ($type !== null) {
                     $tags['var'] = $type;
                 }
             }
         }
-
-        foreach (['@return', '@psalm-return', '@phpstan-return'] as $tagName) {
-            foreach ($doc->getReturnTagValues($tagName) as $node) {
-                $type = self::convert($node->type, $resolveClassName);
+        foreach ($doc->getTagsByName('return') as $tag) {
+            if ($tag instanceof Return_) {
+                $type = self::toType($tag->getType());
                 if ($type !== null) {
                     $tags['return'] = $type;
                 }
             }
         }
-
         $params = [];
-        foreach (['@param', '@psalm-param', '@phpstan-param'] as $tagName) {
-            foreach ($doc->getParamTagValues($tagName) as $node) {
-                $type = self::convert($node->type, $resolveClassName);
-                if ($type !== null) {
-                    $params[ltrim($node->parameterName, '$')] = $type;
-                }
+        foreach ($doc->getTagsByName('param') as $tag) {
+            if (!$tag instanceof Param) {
+                continue;
+            }
+            $name = $tag->getVariableName();
+            $type = self::toType($tag->getType());
+            if ($name !== null && $type !== null) {
+                $params[$name] = $type;
             }
         }
         if ($params !== []) {
@@ -102,104 +92,82 @@ final class DocblockParser
         return $tags;
     }
 
-    /**
-     * Extract the prose description from a docblock, stopping at the first
-     * `@tag`. `PhpDocNode->children` is text nodes then tag nodes in source
-     * order, so the description is every {@see PhpDocTextNode} before the
-     * first {@see PhpDocTagNode}.
-     */
     public static function extractDescription(string $docblock): string
     {
-        $lines = [];
-        foreach (self::parse($docblock)->children as $child) {
-            if (!$child instanceof PhpDocTextNode) {
-                break;
-            }
-            $text = trim($child->text);
-            if ($text !== '') {
-                $lines[] = $text;
-            }
+        $doc = self::factory()->create($docblock);
+        $summary = $doc->getSummary();
+        $body = (string) $doc->getDescription();
+        if ($summary === '') {
+            return $body;
         }
-        return implode("\n", $lines);
+        return $body === '' ? $summary : $summary . "\n" . $body;
     }
 
-    private static function parse(string $docblock): PhpDocNode
+    private static function factory(): DocBlockFactoryInterface
     {
-        $config = new ParserConfig([]);
-        $constExprParser = new ConstExprParser($config);
-        $typeParser = new TypeParser($config, $constExprParser);
-        $phpDocParser = new PhpDocParser($config, $typeParser, $constExprParser);
-        $tokens = new TokenIterator((new Lexer($config))->tokenize($docblock));
-        return $phpDocParser->parse($tokens);
+        return self::$factory ??= DocBlockFactory::createInstance();
     }
 
-    /**
-     * @param \Closure(string): string $resolveClassName
-     */
-    private static function convert(TypeNode $node, \Closure $resolveClassName): ?Type
+    private static function toType(?PhpDocType $type): ?Type
     {
-        if ($node instanceof UnionTypeNode) {
-            $members = self::convertAll($node->types, $resolveClassName);
-            return $members === [] ? null : TypeFactory::union($members);
+        if ($type === null) {
+            return null;
         }
-        if ($node instanceof IntersectionTypeNode) {
-            $members = self::convertAll($node->types, $resolveClassName);
-            return $members === [] ? null : TypeFactory::intersection($members);
-        }
-        if ($node instanceof NullableTypeNode) {
-            $inner = self::convert($node->type, $resolveClassName);
+        if ($type instanceof Nullable) {
+            $inner = self::toType($type->getActualType());
             return $inner === null ? null : TypeFactory::nullable($inner);
         }
-        if ($node instanceof ArrayTypeNode) {
-            $inner = self::convert($node->type, $resolveClassName);
-            return TypeFactory::primitive('array', $inner !== null ? [$inner] : []);
+        if ($type instanceof Intersection) {
+            $members = self::aggregateMembers($type);
+            return $members === [] ? null : TypeFactory::intersection($members);
         }
-        if ($node instanceof GenericTypeNode) {
-            $args = self::convertAll($node->genericTypes, $resolveClassName);
-            $lastArg = $args === [] ? [] : [$args[count($args) - 1]];
-            return self::identifierType($node->type->name, $lastArg, $resolveClassName);
+        if ($type instanceof Compound) {
+            $members = self::aggregateMembers($type);
+            return $members === [] ? null : TypeFactory::union($members);
         }
-        if ($node instanceof IdentifierTypeNode) {
-            return self::identifierType($node->name, [], $resolveClassName);
+        if ($type instanceof Array_) {
+            $value = self::toType($type->getValueType());
+            return TypeFactory::primitive('array', $value !== null ? [$value] : []);
         }
-        return null;
+        if ($type instanceof Iterable_) {
+            $value = self::toType($type->getValueType());
+            return TypeFactory::primitive('iterable', $value !== null ? [$value] : []);
+        }
+        if ($type instanceof Object_) {
+            $fqsen = $type->getFqsen();
+            return $fqsen === null
+                ? TypeFactory::primitive('object')
+                : TypeFactory::className(ltrim((string) $fqsen, '\\'));
+        }
+        return match (true) {
+            $type instanceof Integer => TypeFactory::primitive('int'),
+            $type instanceof String_ => TypeFactory::primitive('string'),
+            $type instanceof Boolean => TypeFactory::primitive('bool'),
+            $type instanceof Float_ => TypeFactory::primitive('float'),
+            $type instanceof Null_ => TypeFactory::primitive('null'),
+            $type instanceof Mixed_ => TypeFactory::primitive('mixed'),
+            $type instanceof Void_ => TypeFactory::primitive('void'),
+            $type instanceof Never_ => TypeFactory::primitive('never'),
+            $type instanceof Callable_ => TypeFactory::primitive('callable'),
+            $type instanceof Self_, $type instanceof This => TypeFactory::primitive('self'),
+            $type instanceof Static_ => TypeFactory::primitive('static'),
+            $type instanceof Parent_ => TypeFactory::primitive('parent'),
+            default => null,
+        };
     }
 
     /**
-     * @param array<TypeNode> $nodes
-     * @param \Closure(string): string $resolveClassName
      * @return list<Type>
      */
-    private static function convertAll(array $nodes, \Closure $resolveClassName): array
+    private static function aggregateMembers(AggregatedType $type): array
     {
-        $out = [];
-        foreach ($nodes as $node) {
-            $type = self::convert($node, $resolveClassName);
-            if ($type !== null) {
-                $out[] = $type;
+        $members = [];
+        foreach ($type as $member) {
+            $converted = self::toType($member);
+            if ($converted !== null) {
+                $members[] = $converted;
             }
         }
-        return $out;
-    }
-
-    /**
-     * @param list<Type> $typeArgs
-     * @param \Closure(string): string $resolveClassName
-     */
-    private static function identifierType(string $name, array $typeArgs, \Closure $resolveClassName): Type
-    {
-        if ($name === 'list') {
-            return TypeFactory::primitive('array', $typeArgs);
-        }
-        if (in_array($name, PrimitiveType::NAMES, true)) {
-            return TypeFactory::primitive($name, $typeArgs);
-        }
-        if (array_key_exists($name, self::TYPE_KEYWORDS)) {
-            return TypeFactory::className($name, $typeArgs);
-        }
-        if (str_starts_with($name, '\\')) {
-            return TypeFactory::className(ltrim($name, '\\'), $typeArgs);
-        }
-        return TypeFactory::className($resolveClassName($name), $typeArgs);
+        return $members;
     }
 }

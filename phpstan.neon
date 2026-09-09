@@ -56,8 +56,8 @@ parameters:
                 - src/Parser/SyntaxSource/PhpParserSyntaxSource.php
                 - tests/*
         -
-            namespace: 'PHPStan\PhpDocParser*'
-            message: 'docblock parsing is confined to DocblockParser; every other reader of a docblock consumes its output'
+            namespace: 'phpDocumentor\Reflection*'
+            message: 'docblock parsing is confined to DocblockParser; every consumer receives already-converted Domain\Type values'
             allowIn:
                 - src/Parser/DocblockParser.php
         -
