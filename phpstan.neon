@@ -117,7 +117,7 @@ parameters:
             message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, and the cursor-text and skeleton syntax sources'
             allowIn:
                 - src/Completion/CompletionClassifier.php
-                - src/Domain/DocblockParser.php
+                - src/Parser/DocblockParser.php
                 - src/Parser/SyntaxSource/CursorTextSyntaxSource.php
                 - src/Parser/SyntaxSource/SkeletonSyntaxSource.php
                 - tests/*
@@ -273,7 +273,7 @@ parameters:
             allowIn:
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\DocblockParser::extractDescription()'
+            method: 'Firehed\PhpLsp\Parser\DocblockParser::extractDescription()'
             message: 'docblock description extraction goes through ResolvedSymbolPresenter, so tag-stripping reaches hover, signature-help, and completion-detail together (build-manifest step-30)'
             allowIn:
                 - src/Resolution/ResolvedSymbolPresenter.php

@@ -45,7 +45,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 - `src/Index/` — Composer autoload maps, namespace catalogs, symbol locators
 - `src/Document/` — Open document management
 - `src/Parser/` — the `SyntaxSource` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScoped` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
-- `src/Utility/` — AST helpers (ScopeFinder, Scope, DocblockParser)
+- `src/Utility/` — AST helpers (ScopeFinder, Scope)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `src/Capability/` — Protocol capability negotiation (see Capability Negotiation below)
 - `docs/features/` — Feature status documentation
@@ -448,7 +448,7 @@ instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, 
 
 - `ScopeFinder` — Finds enclosing class/method scope in AST, resolves names, finds functions
 - `Scope` — Value object modelling a lexical scope (params, statements, self/parent context, `$this`, closure captures). Function-like nodes and file-level/global code both map onto it via `Scope::atOffset()`/`forNode()`/`global()`, so type/variable resolution never branches on node type or handles a "no enclosing function" case.
-- `DocblockParser` — Extracts description from docblocks
+Note: `DocblockParser` lives in `src/Parser/` — it extracts the description text from a docblock.
 
 Note: `MemberAccessResolver` was removed in #262 — instance/static member access now flows through `SymbolResolver`.
 

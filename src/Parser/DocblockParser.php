@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Domain;
+namespace Firehed\PhpLsp\Parser;
 
 final class DocblockParser
 {
