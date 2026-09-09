@@ -162,12 +162,14 @@ final class TypeFactory
     }
 
     /**
-     * Read one entry from a `resolvedDocblockTypes` node attribute and turn it
-     * into a `Type`. Every consumer that reads the attribute goes through this
-     * so the shape of the stored value stays inside the Domain layer.
+     * Read one entry from the `resolvedDocblockTypes` attribute
+     * {@see \Firehed\PhpLsp\Parser\DocblockTypeAnnotator} sets, and turn it
+     * into a `Type`. Every consumer takes a typed `Node` and this factory
+     * owns the `mixed`-shape boundary the raw attribute API exposes.
      */
-    public static function fromDocblockAttribute(mixed $attribute, string $key): ?Type
+    public static function fromDocblockNode(Node $node, string $key): ?Type
     {
+        $attribute = $node->getAttribute('resolvedDocblockTypes');
         if (!is_array($attribute)) {
             return null;
         }

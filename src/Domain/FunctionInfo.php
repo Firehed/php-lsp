@@ -36,10 +36,9 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
      */
     public static function fromNode(Stmt\Function_ $node, ?string $file = null): self
     {
-        $docblockTypes = $node->getAttribute('resolvedDocblockTypes');
         $params = [];
         foreach ($node->params as $position => $param) {
-            $docblockType = self::docblockTypeForParam($docblockTypes, $param);
+            $docblockType = self::docblockTypeForParam($node, $param);
             $paramInfo = ParameterInfo::fromNode($param, $position, docblockType: $docblockType);
             if ($paramInfo !== null) {
                 $params[] = $paramInfo;
@@ -51,7 +50,7 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
             parameters: $params,
             returnType: TypeFactory::merge(
                 TypeFactory::fromNode($node->returnType),
-                TypeFactory::fromDocblockAttribute($docblockTypes, 'return'),
+                TypeFactory::fromDocblockNode($node, 'return'),
             ),
             docblock: $node->getDocComment()?->getText(),
             file: $file,
@@ -59,12 +58,12 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
         );
     }
 
-    private static function docblockTypeForParam(mixed $docblockTypes, Node\Param $param): ?Type
+    private static function docblockTypeForParam(Stmt\Function_ $function, Node\Param $param): ?Type
     {
         if (!$param->var instanceof Node\Expr\Variable || !is_string($param->var->name)) {
             return null;
         }
-        return TypeFactory::fromDocblockAttribute($docblockTypes, 'param:' . $param->var->name);
+        return TypeFactory::fromDocblockNode($function, 'param:' . $param->var->name);
     }
 
     public static function fromReflection(ReflectionFunction $func): self
