@@ -27,10 +27,6 @@ use PhpParser\Modifiers;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
-use ReflectionClass;
-use ReflectionClassConstant;
-use ReflectionMethod;
-use ReflectionProperty;
 
 final class DefaultClassInfoFactory
 {
@@ -66,39 +62,6 @@ final class DefaultClassInfoFactory
         );
     }
 
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @deprecated sweep: source-context factory
-     */
-    #[\Deprecated('sweep: source-context factory')]
-    public function fromReflection(ReflectionClass $class): ClassInfo
-    {
-        $className = TypeFactory::className($class->getName());
-        $parentClass = $class->getParentClass();
-
-        return new ClassInfo(
-            name: $className,
-            kind: $this->determineKindFromReflection($class),
-            isAbstract: $class->isAbstract() && !$class->isInterface(),
-            isFinal: $class->isFinal(),
-            isReadonly: $class->isReadOnly(),
-            isAttribute: $class->getAttributes(\Attribute::class) !== [],
-            parent: $parentClass !== false
-                ? TypeFactory::className($parentClass->getName())
-                : null,
-            interfaces: $this->extractInterfacesFromReflection($class),
-            traits: $this->extractTraitsFromReflection($class),
-            methods: $this->extractMethodsFromReflection($class, $className),
-            properties: $this->extractPropertiesFromReflection($class, $className),
-            constants: $this->extractConstantsFromReflection($class, $className),
-            enumCases: $this->extractEnumCasesFromReflection($class, $className),
-            docblock: $class->getDocComment() !== false ? $class->getDocComment() : null,
-            file: $class->getFileName() !== false ? $class->getFileName() : null,
-            line: $class->getStartLine() !== false ? $class->getStartLine() : null,
-        );
-    }
-
     private function resolveClassName(Stmt\ClassLike $node): ClassName
     {
         $fqn = LateBindingKeyword::Self->resolveIn($node);
@@ -116,24 +79,6 @@ final class DefaultClassInfoFactory
             $node instanceof Stmt\Enum_ => ClassKind::Enum_,
             default => ClassKind::Class_,
         };
-    }
-
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     */
-    private function determineKindFromReflection(ReflectionClass $class): ClassKind
-    {
-        if ($class->isInterface()) {
-            return ClassKind::Interface_;
-        }
-        if ($class->isTrait()) {
-            return ClassKind::Trait_;
-        }
-        if ($class->isEnum()) {
-            return ClassKind::Enum_;
-        }
-        return ClassKind::Class_;
     }
 
     /**
@@ -448,226 +393,12 @@ final class DefaultClassInfoFactory
         return null;
     }
 
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @return list<ClassName>
-     */
-    private function extractInterfacesFromReflection(ReflectionClass $class): array
-    {
-        $interfaces = [];
-        $parent = $class->getParentClass();
-        $parentInterfaces = $parent !== false ? $parent->getInterfaceNames() : [];
-
-        foreach ($class->getInterfaceNames() as $interfaceName) {
-            // Only include directly implemented interfaces, not inherited ones
-            if (!in_array($interfaceName, $parentInterfaces, true)) {
-                $interfaces[] = TypeFactory::className($interfaceName);
-            }
-        }
-
-        return $interfaces;
-    }
-
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @return list<ClassName>
-     */
-    private function extractTraitsFromReflection(ReflectionClass $class): array
-    {
-        $traits = [];
-
-        foreach ($class->getTraitNames() as $traitName) {
-            $traits[] = TypeFactory::className($traitName);
-        }
-
-        return $traits;
-    }
-
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @return array<string, MethodInfo>
-     */
-    private function extractMethodsFromReflection(ReflectionClass $class, ClassName $className): array
-    {
-        $methods = [];
-
-        foreach ($class->getMethods() as $method) {
-            if ($method->getDeclaringClass()->getName() !== $class->getName()) {
-                continue;
-            }
-
-            $name = $method->getName();
-            $methods[$name] = new MethodInfo(
-                name: new MethodName($name),
-                visibility: $this->visibilityFromReflectionMethod($method),
-                isStatic: $method->isStatic(),
-                isAbstract: $method->isAbstract(),
-                isFinal: $method->isFinal(),
-                parameters: $this->extractParametersFromReflection($method),
-                returnType: TypeFactory::fromReflection($method->getReturnType()),
-                docblock: $method->getDocComment() !== false ? $method->getDocComment() : null,
-                file: $method->getFileName() !== false ? $method->getFileName() : null,
-                line: $method->getStartLine() !== false ? $method->getStartLine() : null,
-                declaringClass: $className,
-            );
-        }
-
-        return $methods;
-    }
-
-    /**
-     * @return list<ParameterInfo>
-     */
-    private function extractParametersFromReflection(ReflectionMethod $method): array
-    {
-        return array_map(
-            ParameterInfo::fromReflection(...),
-            $method->getParameters(),
-        );
-    }
-
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @return array<string, PropertyInfo>
-     */
-    private function extractPropertiesFromReflection(ReflectionClass $class, ClassName $className): array
-    {
-        $properties = [];
-
-        foreach ($class->getProperties() as $property) {
-            if ($property->getDeclaringClass()->getName() !== $class->getName()) {
-                continue;
-            }
-
-            $name = $property->getName();
-            $properties[$name] = new PropertyInfo(
-                name: new PropertyName($name),
-                visibility: $this->visibilityFromReflectionProperty($property),
-                isStatic: $property->isStatic(),
-                isReadonly: $property->isReadOnly(),
-                isPromoted: $property->isPromoted(),
-                type: TypeFactory::fromReflection($property->getType()),
-                docblock: $property->getDocComment() !== false ? $property->getDocComment() : null,
-                file: $class->getFileName() !== false ? $class->getFileName() : null,
-                line: null,
-                declaringClass: $className,
-            );
-        }
-
-        return $properties;
-    }
-
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @return array<string, ConstantInfo>
-     */
-    private function extractConstantsFromReflection(ReflectionClass $class, ClassName $className): array
-    {
-        $constants = [];
-
-        foreach ($class->getReflectionConstants() as $constant) {
-            if ($constant->getDeclaringClass()->getName() !== $class->getName()) {
-                continue;
-            }
-            if ($constant->isEnumCase()) {
-                continue;
-            }
-
-            $name = $constant->getName();
-            $constants[$name] = new ConstantInfo(
-                name: new ConstantName($name),
-                visibility: $this->visibilityFromReflectionConstant($constant),
-                isFinal: $constant->isFinal(),
-                type: TypeFactory::fromReflection($constant->getType()),
-                docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
-                file: $class->getFileName() !== false ? $class->getFileName() : null,
-                line: null,
-                declaringClass: $className,
-            );
-        }
-
-        return $constants;
-    }
-
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @return array<string, EnumCaseInfo>
-     */
-    private function extractEnumCasesFromReflection(ReflectionClass $class, ClassName $className): array
-    {
-        if (!$class->isEnum()) {
-            return [];
-        }
-
-        $cases = [];
-
-        foreach ($class->getReflectionConstants() as $constant) {
-            if (!$constant->isEnumCase()) {
-                continue;
-            }
-
-            $name = $constant->getName();
-            $enumCase = $constant->getValue();
-            $backingValue = $enumCase instanceof \BackedEnum ? $enumCase->value : null;
-
-            $cases[$name] = new EnumCaseInfo(
-                name: new EnumCaseName($name),
-                backingValue: $backingValue,
-                docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
-                file: $class->getFileName() !== false ? $class->getFileName() : null,
-                line: null,
-                declaringClass: $className,
-            );
-        }
-
-        return $cases;
-    }
-
     private function visibilityFromFlags(int $flags): Visibility
     {
         if (($flags & Modifiers::PRIVATE) !== 0) {
             return Visibility::Private;
         }
         if (($flags & Modifiers::PROTECTED) !== 0) {
-            return Visibility::Protected;
-        }
-        return Visibility::Public;
-    }
-
-    private function visibilityFromReflectionMethod(ReflectionMethod $method): Visibility
-    {
-        if ($method->isPrivate()) {
-            return Visibility::Private;
-        }
-        if ($method->isProtected()) {
-            return Visibility::Protected;
-        }
-        return Visibility::Public;
-    }
-
-    private function visibilityFromReflectionProperty(ReflectionProperty $property): Visibility
-    {
-        if ($property->isPrivate()) {
-            return Visibility::Private;
-        }
-        if ($property->isProtected()) {
-            return Visibility::Protected;
-        }
-        return Visibility::Public;
-    }
-
-    private function visibilityFromReflectionConstant(ReflectionClassConstant $constant): Visibility
-    {
-        if ($constant->isPrivate()) {
-            return Visibility::Private;
-        }
-        if ($constant->isProtected()) {
             return Visibility::Protected;
         }
         return Visibility::Public;

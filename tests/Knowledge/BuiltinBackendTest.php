@@ -16,7 +16,6 @@ use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ReflectionSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\SymbolCache;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -32,7 +31,7 @@ final class BuiltinBackendTest extends TestCase
     private function backend(NamespaceCatalog $namespaces): BuiltinBackend
     {
         return new BuiltinBackend(
-            new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory()),
+            new ReflectionSymbolInfoFactory(),
             $namespaces,
             new SymbolCache(CacheFactory::inMemory()),
             self::createStub(PrefixSearchable::class),
@@ -43,7 +42,7 @@ final class BuiltinBackendTest extends TestCase
     {
         $reflectionSource = new ReflectionNamespaceSource();
         return new BuiltinBackend(
-            new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory()),
+            new ReflectionSymbolInfoFactory(),
             $reflectionSource,
             new SymbolCache(CacheFactory::inMemory()),
             $reflectionSource,

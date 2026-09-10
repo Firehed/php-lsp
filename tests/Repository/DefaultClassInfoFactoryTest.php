@@ -12,7 +12,6 @@ use PhpParser\Node\Stmt;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
 
 #[CoversClass(DefaultClassInfoFactory::class)]
 final class DefaultClassInfoFactoryTest extends TestCase
@@ -168,24 +167,6 @@ final class DefaultClassInfoFactoryTest extends TestCase
         $info = $this->factory->fromAstNode($node, 'file:///test.php');
 
         self::assertFalse($info->isAttribute, 'An enum cannot be an attribute');
-    }
-
-    public function testFromReflectionDetectsAttributeClass(): void
-    {
-        $reflection = new ReflectionClass(\Attribute::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertTrue($info->isAttribute, 'The built-in Attribute class is itself an attribute');
-    }
-
-    public function testFromReflectionMarksPlainClassAsNotAttribute(): void
-    {
-        $reflection = new ReflectionClass(\stdClass::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertFalse($info->isAttribute, 'A class without #[Attribute] is not an attribute');
     }
 
     public function testFromAstNodeExtractsInterfaces(): void
@@ -495,146 +476,6 @@ final class DefaultClassInfoFactoryTest extends TestCase
         $this->expectExceptionMessage('anonymous class');
 
         $this->factory->fromAstNode($node, 'file:///test.php');
-    }
-
-    public function testFromReflectionExtractsBasicInfo(): void
-    {
-        $reflection = new ReflectionClass(\stdClass::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertSame(\stdClass::class, $info->name->fqn);
-        self::assertSame(ClassKind::Class_, $info->kind);
-    }
-
-    public function testFromReflectionCapturesParentClass(): void
-    {
-        $reflection = new ReflectionClass(\RuntimeException::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertSame(
-            \Exception::class,
-            $info->parent?->fqn,
-            'Reflection-derived ClassInfo should carry the parent class',
-        );
-    }
-
-    public function testFromReflectionExtractsInterface(): void
-    {
-        $reflection = new ReflectionClass(\Iterator::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertSame(ClassKind::Interface_, $info->kind);
-    }
-
-    public function testFromReflectionExtractsTrait(): void
-    {
-        $reflection = new ReflectionClass(TestTrait::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertSame(ClassKind::Trait_, $info->kind);
-    }
-
-    public function testFromReflectionExtractsEnum(): void
-    {
-        $reflection = new ReflectionClass(TestEnum::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertSame(ClassKind::Enum_, $info->kind);
-        self::assertCount(2, $info->enumCases);
-        self::assertArrayHasKey('Foo', $info->enumCases);
-        self::assertArrayHasKey('Bar', $info->enumCases);
-        self::assertNull($info->enumCases['Foo']->backingValue);
-    }
-
-    public function testFromReflectionExtractsBackedEnum(): void
-    {
-        $reflection = new ReflectionClass(TestBackedEnum::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertSame(ClassKind::Enum_, $info->kind);
-        self::assertCount(2, $info->enumCases);
-        self::assertSame(1, $info->enumCases['Low']->backingValue);
-        self::assertSame(10, $info->enumCases['High']->backingValue);
-    }
-
-    public function testFromReflectionExtractsEnumBuiltinMethods(): void
-    {
-        $reflection = new ReflectionClass(TestBackedEnum::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertArrayHasKey('cases', $info->methods);
-        self::assertArrayHasKey('from', $info->methods);
-        self::assertArrayHasKey('tryFrom', $info->methods);
-        self::assertTrue($info->methods['cases']->isStatic);
-    }
-
-    public function testFromReflectionExtractsMethods(): void
-    {
-        $reflection = new ReflectionClass(TestClass::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertArrayHasKey('publicMethod', $info->methods);
-        self::assertSame(Visibility::Public, $info->methods['publicMethod']->visibility);
-        self::assertSame('void', $info->methods['publicMethod']->returnType?->format());
-    }
-
-    public function testFromReflectionExtractsProperties(): void
-    {
-        $reflection = new ReflectionClass(TestClass::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertArrayHasKey('publicProp', $info->properties);
-        self::assertSame(Visibility::Public, $info->properties['publicProp']->visibility);
-        self::assertSame('string', $info->properties['publicProp']->type?->format());
-    }
-
-    public function testFromReflectionExtractsConstants(): void
-    {
-        $reflection = new ReflectionClass(TestClass::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertArrayHasKey('TEST_CONST', $info->constants);
-        self::assertSame(Visibility::Public, $info->constants['TEST_CONST']->visibility);
-    }
-
-    public function testFromReflectionExtractsTypedConstants(): void
-    {
-        $reflection = new ReflectionClass(TestClass::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertArrayHasKey('TYPED_CONST', $info->constants);
-        self::assertSame('string', $info->constants['TYPED_CONST']->type?->format());
-    }
-
-    public function testFromReflectionExtractsInterfaces(): void
-    {
-        $reflection = new ReflectionClass(ClassWithInterface::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertCount(1, $info->interfaces);
-        self::assertSame(\Countable::class, $info->interfaces[0]->fqn);
-    }
-
-    public function testFromReflectionExtractsTraits(): void
-    {
-        $reflection = new ReflectionClass(TestClass::class);
-
-        $info = $this->factory->fromReflection($reflection);
-
-        self::assertCount(1, $info->traits);
-        self::assertSame(TestTrait::class, $info->traits[0]->fqn);
     }
 
     private function parseClassFromFixture(string $fixturePath, ?string $className = null): Stmt\ClassLike

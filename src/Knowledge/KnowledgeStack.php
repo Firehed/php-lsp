@@ -77,7 +77,7 @@ final readonly class KnowledgeStack
             $workspace,
             $vendor,
             new BuiltinBackend(
-                new ReflectionSymbolInfoFactory($classInfoFactory),
+                new ReflectionSymbolInfoFactory(),
                 new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
                 new SymbolCache(CacheFactory::inMemory()),
                 $reflectionSource,

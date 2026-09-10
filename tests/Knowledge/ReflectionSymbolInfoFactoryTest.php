@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Knowledge\ReflectionSymbolInfoFactory;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -24,7 +24,7 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->factory = new ReflectionSymbolInfoFactory(new DefaultClassInfoFactory());
+        $this->factory = new ReflectionSymbolInfoFactory();
     }
 
     /**
@@ -119,6 +119,73 @@ final class ReflectionSymbolInfoFactoryTest extends TestCase
             $this->build('TEST_USER_CONSTANT', NameKind::Constant),
             'a user-defined constant is not a built-in, so reflection must not resolve it',
         );
+    }
+
+    public function testClassInfoCarriesBasicMetadataForAPlainClass(): void
+    {
+        $info = $this->build(\stdClass::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(\stdClass::class, $info->name->fqn);
+        self::assertSame(ClassKind::Class_, $info->kind);
+    }
+
+    public function testClassInfoCapturesTheParentClass(): void
+    {
+        $info = $this->build(\RuntimeException::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(\Exception::class, $info->parent?->fqn);
+    }
+
+    public function testClassInfoReportsInterfaceKindForABuiltinInterface(): void
+    {
+        $info = $this->build(\Iterator::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(ClassKind::Interface_, $info->kind);
+    }
+
+    public function testClassInfoReportsEnumKindAndEnumCases(): void
+    {
+        $info = $this->build(\Random\IntervalBoundary::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(ClassKind::Enum_, $info->kind);
+        self::assertNotEmpty($info->enumCases, 'built-in enum cases must be extracted');
+    }
+
+    public function testClassInfoDetectsTheBuiltinAttributeClass(): void
+    {
+        $info = $this->build(\Attribute::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertTrue($info->isAttribute, 'the built-in Attribute class is itself an attribute');
+    }
+
+    public function testPlainClassIsNotMarkedAsAttribute(): void
+    {
+        $info = $this->build(\stdClass::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertFalse($info->isAttribute);
+    }
+
+    public function testClassInfoCarriesMethodsPropertiesAndInterfaces(): void
+    {
+        $info = $this->build(\ArrayObject::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertNotEmpty($info->methods, 'a built-in class must report its methods');
+        self::assertNotEmpty($info->interfaces, 'ArrayObject implements several built-in interfaces');
+    }
+
+    public function testClassInfoCarriesConstants(): void
+    {
+        $info = $this->build(\ArrayObject::class, NameKind::ClassLike);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertArrayHasKey('STD_PROP_LIST', $info->constants);
     }
 
     private function build(string $fqn, NameKind $kind): ?SymbolInfo
