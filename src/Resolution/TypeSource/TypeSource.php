@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Domain\TypeSource;
+namespace Firehed\PhpLsp\Resolution\TypeSource;
 
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantName;
