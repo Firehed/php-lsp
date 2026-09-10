@@ -32,8 +32,12 @@ use ReflectionClassConstant;
 use ReflectionMethod;
 use ReflectionProperty;
 
-final class DefaultClassInfoFactory implements ClassInfoFactory
+final class DefaultClassInfoFactory
 {
+    /**
+     * @deprecated sweep: source-context factory
+     */
+    #[\Deprecated('sweep: source-context factory')]
     public function fromAstNode(Stmt\ClassLike $node, string $uri): ClassInfo
     {
         $className = $this->resolveClassName($node);
@@ -65,7 +69,9 @@ final class DefaultClassInfoFactory implements ClassInfoFactory
     /**
      * @template T of object
      * @param ReflectionClass<T> $class
+     * @deprecated sweep: source-context factory
      */
+    #[\Deprecated('sweep: source-context factory')]
     public function fromReflection(ReflectionClass $class): ClassInfo
     {
         $className = TypeFactory::className($class->getName());

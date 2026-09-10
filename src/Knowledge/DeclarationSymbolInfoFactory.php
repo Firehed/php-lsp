@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 
 /**
  * The one place a {@see NameKind} picks a declaration list and a builder, which is
@@ -26,7 +26,7 @@ use Firehed\PhpLsp\Repository\ClassInfoFactory;
 final readonly class DeclarationSymbolInfoFactory
 {
     public function __construct(
-        private ClassInfoFactory $classes,
+        private DefaultClassInfoFactory $classes,
     ) {
     }
 

@@ -42,7 +42,7 @@ parameters:
 
 		-
 			message: '''
-				#^Call to deprecated method fromAstNode\(\) of interface Firehed\\PhpLsp\\Repository\\ClassInfoFactory\:
+				#^Call to deprecated method fromAstNode\(\) of class Firehed\\PhpLsp\\Repository\\DefaultClassInfoFactory\:
 				sweep\: source\-context factory$#
 			'''
 			identifier: method.deprecated
@@ -78,7 +78,7 @@ parameters:
 
 		-
 			message: '''
-				#^Call to deprecated method fromReflection\(\) of interface Firehed\\PhpLsp\\Repository\\ClassInfoFactory\:
+				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Repository\\DefaultClassInfoFactory\:
 				sweep\: source\-context factory$#
 			'''
 			identifier: method.deprecated

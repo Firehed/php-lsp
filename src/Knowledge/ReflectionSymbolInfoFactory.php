@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\InternalConstantSet;
-use Firehed\PhpLsp\Repository\ClassInfoFactory;
+use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
@@ -25,7 +25,7 @@ use ReflectionFunction;
 final readonly class ReflectionSymbolInfoFactory
 {
     public function __construct(
-        private ClassInfoFactory $classes,
+        private DefaultClassInfoFactory $classes,
         private InternalConstantSet $constants = new InternalConstantSet(),
     ) {
     }
