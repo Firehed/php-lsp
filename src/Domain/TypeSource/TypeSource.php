@@ -18,7 +18,11 @@ use Firehed\PhpLsp\Domain\Type;
  */
 interface TypeSource
 {
-    public function forConstant(ClassName $class, ConstantName $constant): ?Type;
+    /**
+     * If $class is null, this is for a global-scoped constant; when non-null,
+     * it's the constant defined on $class.
+     */
+    public function forConstant(ConstantName $constant, ?ClassName $class): ?Type;
 
     public function forFunctionReturn(FunctionName $function): ?Type;
 
