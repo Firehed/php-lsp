@@ -369,6 +369,32 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('string', $result->getType()?->format());
     }
 
+    public function testResolvesParameterDeclarationWithDefault(): void
+    {
+        $uri = $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'private int $age = 0')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$age');
+                assert($pos !== false);
+                $character = $pos + 2;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ParameterInfo::class, $result);
+        self::assertSame('0', $result->defaultValue, 'default is pretty-printed from the AST');
+    }
+
     public function testResolvesFunctionParameterDeclaration(): void
     {
         $uri = $this->openFixture('AutoloadFiles/helpers.php');
