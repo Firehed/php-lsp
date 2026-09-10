@@ -525,7 +525,10 @@ final class SymbolResolver implements CodeResolver
             }
         }
 
-        assert($param->var instanceof Node\Expr\Variable && is_string($param->var->name), 'Param->var is a named Variable');
+        assert(
+            $param->var instanceof Node\Expr\Variable && is_string($param->var->name),
+            'Param->var is a named Variable',
+        );
         $name = $param->var->name;
 
         $defaultValue = null;

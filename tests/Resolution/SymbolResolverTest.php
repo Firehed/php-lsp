@@ -369,6 +369,61 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('string', $result->getType()?->format());
     }
 
+    public function testResolvesFunctionParameterDeclaration(): void
+    {
+        $uri = $this->openFixture('AutoloadFiles/helpers.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'function helperFormat(string $value)')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$value');
+                assert($pos !== false);
+                $character = $pos + 2;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ParameterInfo::class, $result);
+        self::assertSame('string', $result->getType()?->format(), 'function-scope param routes through TypeSource');
+    }
+
+    public function testResolvesClosureParameterDeclarationHasNoType(): void
+    {
+        $uri = $this->openFixture('src/Resolution/ClosureParameter.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'function (string $captured)')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$captured');
+                assert($pos !== false);
+                $character = $pos + 2;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ParameterInfo::class, $result);
+        self::assertNull(
+            $result->getType(),
+            'closure param has no source-blind identity; TypeSource cannot address it',
+        );
+    }
+
     public function testResolvesNamedArgument(): void
     {
         $uri = $this->openFixture('SignatureHelp.php');

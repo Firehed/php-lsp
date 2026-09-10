@@ -139,6 +139,17 @@ final class NativeTypeSourceTest extends TestCase
         self::assertNull($type, 'unknown parameter name yields no type');
     }
 
+    public function testMethodParameterUnknownMethod(): void
+    {
+        $type = $this->source->forMethodParameter(
+            new ClassName('Fixtures\\Domain\\User'),
+            new MethodName('nonexistent'),
+            'anything',
+        );
+
+        self::assertNull($type, 'unknown method short-circuits before the parameter loop');
+    }
+
     public function testPropertyPromoted(): void
     {
         $type = $this->source->forProperty(
@@ -261,5 +272,15 @@ final class NativeTypeSourceTest extends TestCase
         );
 
         self::assertNull($type, 'unknown parameter on a known function yields no type');
+    }
+
+    public function testFunctionParameterUnknownFunction(): void
+    {
+        $type = $this->source->forFunctionParameter(
+            FunctionName::fromFullyQualified('nothing_defines_this'),
+            'anything',
+        );
+
+        self::assertNull($type, 'unknown function short-circuits before the parameter loop');
     }
 }
