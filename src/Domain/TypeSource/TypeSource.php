@@ -28,11 +28,9 @@ interface TypeSource
 
     public function forMethodReturn(ClassName $class, MethodName $method): ?Type;
 
-    public function forParameter(
-        ClassName|FunctionName $owner,
-        ?MethodName $method,
-        string $parameter,
-    ): ?Type;
+    public function forFunctionParameter(FunctionName $function, string $parameter): ?Type;
+
+    public function forMethodParameter(ClassName $class, MethodName $method, string $parameter): ?Type;
 
     public function forProperty(ClassName $class, PropertyName $property): ?Type;
 }
