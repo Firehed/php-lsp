@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -51,10 +52,12 @@ class HoverHandlerTest extends TestCase
             $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
+        $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
+            $typeSource,
         );
         // The default markup kind is plaintext (the pre-initialize default a
         // minimal client is served); the fenced-markdown path is exercised

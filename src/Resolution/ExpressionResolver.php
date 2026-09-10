@@ -27,6 +27,7 @@ use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr;
@@ -63,6 +64,7 @@ final class ExpressionResolver
     public function __construct(
         private readonly MemberResolver $memberResolver,
         private readonly SymbolSource $symbolSource,
+        private readonly TypeSource $typeSource,
         private readonly TextDocument $document,
     ) {
     }
@@ -485,9 +487,10 @@ final class ExpressionResolver
 
     private function resolveLateBoundReturn(MethodInfo $methodInfo, ClassName $callingClass): MethodInfo
     {
+        $declaredReturn = $this->typeSource->forMethodReturn($methodInfo->declaringClass, $methodInfo->name);
         $isFromTrait = $this->memberResolver->isTraitClass($methodInfo->declaringClass);
-        $return = $methodInfo->returnType?->resolveLateBound($callingClass->fqn, $isFromTrait);
-        if ($return === $methodInfo->returnType) {
+        $return = $declaredReturn?->resolveLateBound($callingClass->fqn, $isFromTrait);
+        if ($return === $declaredReturn) {
             return $methodInfo;
         }
         return new MethodInfo(

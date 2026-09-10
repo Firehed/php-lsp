@@ -40,6 +40,7 @@ use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\TransportInterface;
@@ -114,11 +115,13 @@ final class Server
         $symbolSink = $knowledge->sink;
 
         $memberResolver = new MemberResolver($symbolSource);
+        $typeSource = new NativeTypeSource($symbolSource, $memberResolver);
 
         $symbolResolver = new SymbolResolver(
             $parser,
             $symbolSource,
             $memberResolver,
+            $typeSource,
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);

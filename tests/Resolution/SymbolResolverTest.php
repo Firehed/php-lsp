@@ -33,6 +33,7 @@ use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -75,6 +76,7 @@ final class SymbolResolverTest extends TestCase
             parser: $this->parser,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
+            typeSource: new NativeTypeSource($knowledge->source, $memberResolver),
         );
 
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);

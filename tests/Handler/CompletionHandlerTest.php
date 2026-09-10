@@ -38,6 +38,7 @@ use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -85,10 +86,12 @@ class CompletionHandlerTest extends TestCase
         $this->symbolSource = $knowledge->source;
 
         $memberResolver = new MemberResolver($knowledge->source);
+        $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $this->symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
+            $typeSource,
         );
         $this->handler = $this->makeHandler($this->symbolSource);
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);

@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
@@ -67,11 +68,13 @@ final class SymbolResolver implements CodeResolver
         private readonly SyntaxSource $parser,
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
+        private readonly TypeSource $typeSource,
     ) {
         $this->callDetector = new CallContextDetector($parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
+            $typeSource,
             $parser,
         );
     }
@@ -81,6 +84,7 @@ final class SymbolResolver implements CodeResolver
         return new ExpressionResolver(
             $this->memberResolver,
             $this->symbolSource,
+            $this->typeSource,
             $document,
         );
     }

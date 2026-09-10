@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -39,9 +40,11 @@ class MemberAccessDetectorTest extends TestCase
         $emptySource->method('lookupClassLike')->willReturn(null);
         $emptySource->method('isSubclassOf')->willReturn(false);
         $emptyMemberResolver = new MemberResolver($emptySource);
+        $emptyTypeSource = new NativeTypeSource($emptySource, $emptyMemberResolver);
         $this->detector = new MemberAccessDetector(
             $emptySource,
             $emptyMemberResolver,
+            $emptyTypeSource,
             $this->parser,
         );
 
@@ -53,9 +56,11 @@ class MemberAccessDetectorTest extends TestCase
             $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
+        $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $this->detectorWithReflection = new MemberAccessDetector(
             $knowledge->source,
             $memberResolver,
+            $typeSource,
             $this->parser,
         );
     }

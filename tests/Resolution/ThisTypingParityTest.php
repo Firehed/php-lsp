@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -40,10 +41,12 @@ final class ThisTypingParityTest extends TestCase
             $parser,
             $production->reader,
         );
+        $memberResolver = new MemberResolver($knowledge->source);
         $this->resolver = new SymbolResolver(
             $parser,
             $knowledge->source,
-            new MemberResolver($knowledge->source),
+            $memberResolver,
+            new NativeTypeSource($knowledge->source, $memberResolver),
         );
     }
 

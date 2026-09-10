@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use LogicException;
@@ -122,10 +123,12 @@ final class ParseHealthGridTest extends TestCase
             $this->parser,
             $production->reader,
         );
+        $memberResolver = new MemberResolver($knowledge->source);
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
             symbolSource: $knowledge->source,
-            memberResolver: new MemberResolver($knowledge->source),
+            memberResolver: $memberResolver,
+            typeSource: new NativeTypeSource($knowledge->source, $memberResolver),
         );
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }

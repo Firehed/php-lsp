@@ -20,6 +20,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
@@ -207,7 +208,8 @@ final class CompletionParityTest extends TestCase
             $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver);
+        $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
+        $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
 
         $capabilities = self::createStub(SessionCapabilitiesProvider::class);
         $capabilities->method('getSessionCapabilities')
