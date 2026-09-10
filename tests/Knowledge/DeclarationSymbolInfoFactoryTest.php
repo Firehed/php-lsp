@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FileDeclarations;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -36,7 +35,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->factory = new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory());
+        $this->factory = new DeclarationSymbolInfoFactory();
         $this->path = $this->fixturePath(self::FIXTURE);
 
         $production = ProductionSyntaxSource::create();

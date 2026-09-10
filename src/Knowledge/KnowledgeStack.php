@@ -15,7 +15,6 @@ use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 
 /**
  * Assembles the symbol-knowledge tier: the {@see SymbolSource} read composite over
@@ -46,8 +45,7 @@ final readonly class KnowledgeStack
         SyntaxSource $parser,
         SourceFileReader $reader,
     ): self {
-        $classInfoFactory = new DefaultClassInfoFactory();
-        $declarationInfoFactory = new DeclarationSymbolInfoFactory($classInfoFactory);
+        $declarationInfoFactory = new DeclarationSymbolInfoFactory();
 
         [$workspaceMap, $vendorMap] = $autoloadMap->partitionByVendorDirectory($vendorDirectory);
 

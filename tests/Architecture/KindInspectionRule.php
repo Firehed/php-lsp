@@ -21,7 +21,7 @@ use PHPStan\Rules\RuleErrorBuilder;
  * Allowed locations:
  * - Type implementations (internal operations)
  * - TypeFactory (construction)
- * - Metadata factories (DefaultClassInfoFactory, ReflectionSymbolInfoFactory)
+ * - Metadata factories (DeclarationSymbolInfoFactory, ReflectionSymbolInfoFactory)
  * - Classifiers (CompletionItemFactory - maps symbol to LSP kind)
  * - Tests
  *
@@ -72,7 +72,6 @@ final class KindInspectionRule implements Rule
         'src/Domain/IntersectionType.php',
         'src/Domain/PrimitiveType.php',
         'src/Domain/LateStaticType.php',
-        'src/Repository/DefaultClassInfoFactory.php',
         'src/Knowledge/CompositeSymbolSource.php',
         'src/Knowledge/ReflectionSymbolInfoFactory.php',
     ];

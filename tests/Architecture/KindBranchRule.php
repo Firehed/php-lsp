@@ -60,7 +60,6 @@ final class KindBranchRule implements Rule
         'src/Domain/MemberKind.php',
         'src/Domain/ClassInfo.php',
         'src/Resolution/NameContext.php',
-        'src/Repository/DefaultClassInfoFactory.php',
         'src/Knowledge/ReflectionSymbolInfoFactory.php',
         'src/Knowledge/DeclarationSymbolInfoFactory.php',
         'src/Completion/CompletionItemFactory.php',

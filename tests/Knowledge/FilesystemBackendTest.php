@@ -25,7 +25,6 @@ use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -51,7 +50,7 @@ final class FilesystemBackendTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
         $this->reader = $production->reader;
-        $this->infoFactory = new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory());
+        $this->infoFactory = new DeclarationSymbolInfoFactory();
     }
 
     public function testLookupClassLikeResolvesAndParsesAFixtureClass(): void

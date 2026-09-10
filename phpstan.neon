@@ -40,7 +40,6 @@ parameters:
             allowIn:
                 - src/Knowledge/ReflectionSymbolInfoFactory.php
                 - src/Index/ReflectionNamespaceSource.php
-                - src/Repository/DefaultClassInfoFactory.php
                 - src/Domain/TypeFactory.php
                 - src/Domain/FunctionInfo.php
                 - src/Domain/ParameterInfo.php
