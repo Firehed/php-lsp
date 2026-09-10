@@ -6,8 +6,10 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedMember;
@@ -523,9 +525,31 @@ final class SymbolResolver implements CodeResolver
             }
         }
 
-        $selfContext = null;
-        $parentContext = null;
+        assert($param->var instanceof Node\Expr\Variable && is_string($param->var->name), 'Param->var is a named Variable');
+        $name = $param->var->name;
 
+        $defaultValue = null;
+        if ($param->default !== null) {
+            $printer = new \PhpParser\PrettyPrinter\Standard();
+            $defaultValue = $printer->prettyPrintExpr($param->default);
+        }
+
+        return new ParameterInfo(
+            name: $name,
+            type: $this->parameterType($param, $name, $enclosingScope),
+            hasDefault: $param->default !== null,
+            defaultValue: $defaultValue,
+            position: $position,
+            isVariadic: $param->variadic,
+            isPassedByReference: $param->byRef,
+        );
+    }
+
+    private function parameterType(
+        Node\Param $param,
+        string $name,
+        Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $enclosingScope,
+    ): ?Type {
         if ($enclosingScope instanceof Stmt\ClassMethod) {
             $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
             // @codeCoverageIgnoreStart
@@ -533,17 +557,24 @@ final class SymbolResolver implements CodeResolver
                 throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
-            $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($selfContext));
-            $parentContext = $classInfo?->parent?->fqn;
+            return $this->typeSource->forMethodParameter(
+                TypeFactory::className($selfContext),
+                new MethodName($enclosingScope->name->toString()),
+                $name,
+            );
         }
-
-        $paramInfo = \Firehed\PhpLsp\Domain\ParameterInfo::fromNode($param, $position, $selfContext, $parentContext);
-        // @codeCoverageIgnoreStart
-        if ($paramInfo === null) {
-            throw new LogicException('ParameterInfo::fromNode should not return null for valid Param');
+        if ($enclosingScope instanceof Stmt\Function_) {
+            $fqn = $enclosingScope->namespacedName?->toString() ?? $enclosingScope->name->toString();
+            return $this->typeSource->forFunctionParameter(
+                FunctionName::fromFullyQualified($fqn),
+                $name,
+            );
         }
-        // @codeCoverageIgnoreEnd
-        return $paramInfo;
+        // Closure and ArrowFunction params have no source-blind identity;
+        // TypeSource cannot address them. A null return here shows as an
+        // untyped parameter on hover/definition until the variable-typing
+        // seam lands (issue #517 deferral note).
+        return null;
     }
 
     /**

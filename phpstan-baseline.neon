@@ -195,15 +195,6 @@ parameters:
 
 		-
 			message: '''
-				#^Call to deprecated method fromNode\(\) of class Firehed\\PhpLsp\\Domain\\ParameterInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Resolution/SymbolResolver.php
-
-		-
-			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSource, construction primitives will migrate elsewhere$#
