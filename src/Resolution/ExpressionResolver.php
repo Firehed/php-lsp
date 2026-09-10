@@ -218,7 +218,33 @@ final class ExpressionResolver
             return $this->resolveVariable($node->name, $outerScope, $closure->getStartFilePos(), $ast)?->getType();
         }
         assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
-        return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
+        return $this->typeOfParameterBinding($parent, $node->name, $scope);
+    }
+
+    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?Type
+    {
+        $source = $scope->getSourceNode();
+        if ($source instanceof Stmt\ClassMethod) {
+            $enclosing = $scope->getThisType();
+            if ($enclosing !== null) {
+                return $this->typeSource->forMethodParameter(
+                    $enclosing,
+                    new MethodName($source->name->toString()),
+                    $name,
+                );
+            }
+        }
+        if ($source instanceof Stmt\Function_) {
+            $fqn = $source->namespacedName?->toString() ?? $source->name->toString();
+            return $this->typeSource->forFunctionParameter(
+                FunctionName::fromFullyQualified($fqn),
+                $name,
+            );
+        }
+        // Closure and ArrowFunction params have no source-blind identity; TypeSource
+        // cannot answer for them. Awaiting the variable-typing seam (issue #517
+        // "variable type-following. Not scope here").
+        return TypeFactory::fromNode($param->type, $scope->getSelfContext(), $scope->getParentContext());
     }
 
     /**
