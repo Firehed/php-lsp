@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-use PhpParser\Node;
-use PhpParser\Node\Expr;
-
 /**
  * Metadata about a constant — either a class constant (when declaringClass is
  * set) or a global constant (when declaringClass is null).
@@ -30,48 +27,6 @@ final readonly class ConstantInfo implements MemberInfo, SymbolInfo
         public ?int $line,
         public ?ClassName $declaringClass = null,
     ) {
-    }
-
-    /**
-     * Build from a global constant declaration: a `const` declarator or a
-     * literal-name `define()` call.
-     *
-     * @param Node\Const_|Expr\FuncCall $node the declaring node
-     * @param string $shortName the constant's short name (already extracted by
-     *        the scanner, so the factory does not re-derive it)
-     */
-    /**
-     * @deprecated sweep: source-context factory
-     */
-    #[\Deprecated('sweep: source-context factory')]
-    public static function fromGlobalDeclaration(
-        Node\Const_|Expr\FuncCall $node,
-        string $shortName,
-        ?string $file = null,
-    ): self {
-        return new self(
-            name: new ConstantName($shortName),
-            visibility: Visibility::Public,
-            isFinal: true,
-            type: null,
-            docblock: self::docblockFor($node),
-            file: $file,
-            line: $node->getStartLine(),
-            declaringClass: null,
-        );
-    }
-
-    /**
-     * php-parser attaches a doc comment to the outer statement — `Stmt\Const_`
-     * for a `const` declarator, `Stmt\Expression` for a `define()` call — so a
-     * declarator or expression asked directly for its comment reads null.
-     * Consult the parent first, then the node itself.
-     */
-    private static function docblockFor(Node\Const_|Expr\FuncCall $node): ?string
-    {
-        $parent = $node->getAttribute('parent');
-        $doc = ($parent instanceof Node ? $parent->getDocComment() : null) ?? $node->getDocComment();
-        return $doc?->getText();
     }
 
     public function format(): string

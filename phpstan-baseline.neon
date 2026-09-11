@@ -162,24 +162,6 @@ parameters:
 
 		-
 			message: '''
-				#^Call to deprecated method fromNode\(\) of class Firehed\\PhpLsp\\Domain\\ParameterInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 8
-			path: tests/Domain/ParameterInfoTest.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Domain\\ParameterInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 13
-			path: tests/Domain/ParameterInfoTest.php
-
-		-
-			message: '''
 				#^Access to constant on deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSource, construction primitives will migrate elsewhere$#
