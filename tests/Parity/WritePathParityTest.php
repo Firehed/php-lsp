@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
-use Firehed\PhpLsp\Repository\DefaultClassInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -58,7 +57,7 @@ final class WritePathParityTest extends TestCase
         $this->backend = new OpenDocumentBackend();
         $this->sink = new DocumentSymbolSink(
             $this->backend,
-            new DeclarationSymbolInfoFactory(new DefaultClassInfoFactory()),
+            new DeclarationSymbolInfoFactory(),
             $parser,
             new DeclarationScanner(),
         );

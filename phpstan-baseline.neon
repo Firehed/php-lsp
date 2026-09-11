@@ -42,66 +42,12 @@ parameters:
 
 		-
 			message: '''
-				#^Call to deprecated method fromAstNode\(\) of interface Firehed\\PhpLsp\\Repository\\ClassInfoFactory\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: method.deprecated
-			count: 1
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromGlobalDeclaration\(\) of class Firehed\\PhpLsp\\Domain\\ConstantInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromNode\(\) of class Firehed\\PhpLsp\\Domain\\FunctionInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
-			message: '''
 				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Domain\\FunctionInfo\:
 				sweep\: source\-context factory$#
 			'''
 			identifier: staticMethod.deprecated
 			count: 1
-			path: src/Knowledge/ReflectionSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromReflection\(\) of interface Firehed\\PhpLsp\\Repository\\ClassInfoFactory\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: method.deprecated
-			count: 1
-			path: src/Knowledge/ReflectionSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromNode\(\) of class Firehed\\PhpLsp\\Domain\\ParameterInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Repository/DefaultClassInfoFactory.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Domain\\ParameterInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Repository/DefaultClassInfoFactory.php
+			path: src/Knowledge/BuiltinBackend.php
 
 		-
 			message: '''
@@ -110,18 +56,8 @@ parameters:
 				TypeSource, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 4
-			path: src/Repository/DefaultClassInfoFactory.php
-
-		-
-			message: '''
-				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 4
-			path: src/Repository/DefaultClassInfoFactory.php
+			count: 3
+			path: src/Knowledge/BuiltinBackend.php
 
 		-
 			message: '''
@@ -130,8 +66,28 @@ parameters:
 				TypeSource, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 3
-			path: src/Repository/DefaultClassInfoFactory.php
+			count: 4
+			path: src/Knowledge/BuiltinBackend.php
+
+		-
+			message: '''
+				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSource, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 2
+			path: src/Knowledge/DeclarationSymbolInfoFactory.php
+
+		-
+			message: '''
+				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSource, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 6
+			path: src/Knowledge/DeclarationSymbolInfoFactory.php
 
 		-
 			message: '''
@@ -141,7 +97,7 @@ parameters:
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
-			path: src/Repository/DefaultClassInfoFactory.php
+			path: src/Knowledge/DeclarationSymbolInfoFactory.php
 
 		-
 			message: '''
@@ -152,16 +108,6 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 9
 			path: src/Resolution/ExpressionResolver.php
-
-		-
-			message: '''
-				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 1
-			path: src/Resolution/ParameterTyping.php
 
 		-
 			message: '''
@@ -182,6 +128,16 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 5
 			path: src/Resolution/MemberAccessDetector.php
+
+		-
+			message: '''
+				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSource, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 1
+			path: src/Resolution/ParameterTyping.php
 
 		-
 			message: '''
@@ -298,33 +254,6 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 2
 			path: tests/Domain/TypeFactoryTest.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromAstNode\(\) of class Firehed\\PhpLsp\\Repository\\DefaultClassInfoFactory\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: method.deprecated
-			count: 37
-			path: tests/Repository/DefaultClassInfoFactoryTest.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Repository\\DefaultClassInfoFactory\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: method.deprecated
-			count: 15
-			path: tests/Repository/DefaultClassInfoFactoryTest.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromAstNode\(\) of class Firehed\\PhpLsp\\Repository\\DefaultClassInfoFactory\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: method.deprecated
-			count: 1
-			path: tests/Resolution/AstTextAgreementTest.php
 
 		-
 			message: '''
