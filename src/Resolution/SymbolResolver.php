@@ -6,10 +6,8 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
-use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedMember;
@@ -553,6 +551,9 @@ final class SymbolResolver implements CodeResolver
         string $name,
         Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $enclosingScope,
     ): ?Type {
+        $enclosingClass = null;
+        $selfContext = null;
+        $parentContext = null;
         if ($enclosingScope instanceof Stmt\ClassMethod) {
             $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
             // @codeCoverageIgnoreStart
@@ -560,24 +561,19 @@ final class SymbolResolver implements CodeResolver
                 throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
-            return $this->typeSource->forMethodParameter(
-                TypeFactory::className($selfContext),
-                new MethodName($enclosingScope->name->toString()),
-                $name,
-            );
+            $enclosingClass = TypeFactory::className($selfContext);
+            $classInfo = $this->symbolSource->lookupClassLike($enclosingClass);
+            $parentContext = $classInfo?->parent?->fqn;
         }
-        if ($enclosingScope instanceof Stmt\Function_) {
-            $fqn = $enclosingScope->namespacedName?->toString() ?? $enclosingScope->name->toString();
-            return $this->typeSource->forFunctionParameter(
-                FunctionName::fromFullyQualified($fqn),
-                $name,
-            );
-        }
-        // Closure and ArrowFunction params have no source-blind identity;
-        // TypeSource cannot address them. A null return here shows as an
-        // untyped parameter on hover/definition until the variable-typing
-        // seam lands (issue #517 deferral note).
-        return null;
+        return ParameterTyping::resolve(
+            $this->typeSource,
+            $param,
+            $name,
+            $enclosingScope,
+            $enclosingClass,
+            $selfContext,
+            $parentContext,
+        );
     }
 
     /**

@@ -161,7 +161,7 @@ parameters:
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
-			path: src/Resolution/ExpressionResolver.php
+			path: src/Resolution/ParameterTyping.php
 
 		-
 			message: '''

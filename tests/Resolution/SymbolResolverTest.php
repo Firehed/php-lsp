@@ -421,7 +421,7 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('string', $result->getType()?->format(), 'function-scope param routes through TypeSource');
     }
 
-    public function testResolvesClosureParameterDeclarationHasNoType(): void
+    public function testResolvesClosureParameterDeclaration(): void
     {
         $uri = $this->openFixture('src/Resolution/ClosureParameter.php');
         $document = $this->documents->get($uri);
@@ -444,9 +444,10 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
 
         self::assertInstanceOf(ParameterInfo::class, $result);
-        self::assertNull(
-            $result->getType(),
-            'closure param has no source-blind identity; TypeSource cannot address it',
+        self::assertSame(
+            'string',
+            $result->getType()?->format(),
+            'closure param falls through the shared helper to TypeFactory::fromNode, same as typeOfBinding does',
         );
     }
 
