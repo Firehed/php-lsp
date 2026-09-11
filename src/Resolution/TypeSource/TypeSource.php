@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Resolution\TypeSource;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
@@ -18,11 +19,9 @@ use Firehed\PhpLsp\Domain\Type;
  */
 interface TypeSource
 {
-    /**
-     * If $class is null, this is for a global-scoped constant; when non-null,
-     * it's the constant defined on $class.
-     */
-    public function forConstant(ConstantName $constant, ?ClassName $class): ?Type;
+    public function forClassConstant(ClassName $class, ConstantName $constant): ?Type;
+
+    public function forGlobalConstant(GlobalConstantName $constant): ?Type;
 
     public function forFunctionReturn(FunctionName $function): ?Type;
 

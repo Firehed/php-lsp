@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
@@ -33,13 +32,14 @@ final readonly class NativeTypeSource implements TypeSource
     ) {
     }
 
-    public function forConstant(ConstantName $constant, ?ClassName $class): ?Type
+    public function forClassConstant(ClassName $class, ConstantName $constant): ?Type
     {
-        if ($class === null) {
-            $global = new GlobalConstantName(QualifiedName::fromFullyQualified($constant->name));
-            return $this->symbols->lookupConstant($global)?->type;
-        }
         return $this->members->findConstant($class, $constant, Visibility::Private)?->type;
+    }
+
+    public function forGlobalConstant(GlobalConstantName $constant): ?Type
+    {
+        return $this->symbols->lookupConstant($constant)?->type;
     }
 
     public function forFunctionParameter(FunctionName $function, string $parameter): ?Type
