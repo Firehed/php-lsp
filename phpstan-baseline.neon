@@ -42,15 +42,6 @@ parameters:
 
 		-
 			message: '''
-				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Domain\\FunctionInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Knowledge/BuiltinBackend.php
-
-		-
-			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSource, construction primitives will migrate elsewhere$#
@@ -66,7 +57,7 @@ parameters:
 				TypeSource, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 4
+			count: 5
 			path: src/Knowledge/BuiltinBackend.php
 
 		-
@@ -168,24 +159,6 @@ parameters:
 			identifier: classConstant.deprecatedClass
 			count: 1
 			path: tests/Architecture/OneRoutePerFactTest.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromNode\(\) of class Firehed\\PhpLsp\\Domain\\FunctionInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 5
-			path: tests/Domain/FunctionInfoTest.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Domain\\FunctionInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 5
-			path: tests/Domain/FunctionInfoTest.php
 
 		-
 			message: '''
