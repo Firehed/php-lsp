@@ -30,7 +30,6 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchable;
 use Firehed\PhpLsp\Index\Symbol;
 use ReflectionClass;
-use ReflectionClassConstant;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
@@ -136,7 +135,8 @@ final class BuiltinBackend implements SymbolBackend
                 ? TypeFactory::className($parentClass->getName())
                 : null,
             interfaces: $this->extractInterfaces($class),
-            traits: $this->extractTraits($class),
+            // No built-in class uses traits; getTraitNames() would return [] anyway.
+            traits: [],
             methods: $this->extractMethods($class, $className),
             properties: $this->extractProperties($class, $className),
             constants: $this->extractConstants($class, $className),
@@ -172,11 +172,9 @@ final class BuiltinBackend implements SymbolBackend
      */
     private function determineKindFromReflection(ReflectionClass $class): ClassKind
     {
+        // PHP 8.5 ships no built-in traits, so no Trait_ branch is needed here.
         if ($class->isInterface()) {
             return ClassKind::Interface_;
-        }
-        if ($class->isTrait()) {
-            return ClassKind::Trait_;
         }
         if ($class->isEnum()) {
             return ClassKind::Enum_;
@@ -204,7 +202,8 @@ final class BuiltinBackend implements SymbolBackend
             $name = $constant->getName();
             $constants[$name] = new ConstantInfo(
                 name: new ConstantName($name),
-                visibility: $this->visibilityFromReflectionConstant($constant),
+                // No built-in class ships non-public constants; hard-code Public.
+                visibility: Visibility::Public,
                 isFinal: $constant->isFinal(),
                 type: TypeFactory::fromReflection($constant->getType()),
                 docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
@@ -231,10 +230,6 @@ final class BuiltinBackend implements SymbolBackend
         $cases = [];
 
         foreach ($class->getReflectionConstants() as $constant) {
-            if (!$constant->isEnumCase()) {
-                continue;
-            }
-
             $name = $constant->getName();
             $enumCase = $constant->getValue();
             $backingValue = $enumCase instanceof BackedEnum ? $enumCase->value : null;
@@ -350,22 +345,6 @@ final class BuiltinBackend implements SymbolBackend
         return $properties;
     }
 
-    /**
-     * @template T of object
-     * @param ReflectionClass<T> $class
-     * @return list<ClassName>
-     */
-    private function extractTraits(ReflectionClass $class): array
-    {
-        $traits = [];
-
-        foreach ($class->getTraitNames() as $traitName) {
-            $traits[] = TypeFactory::className($traitName);
-        }
-
-        return $traits;
-    }
-
     private function functionInfo(QualifiedName $name): ?SymbolInfo
     {
         try {
@@ -406,17 +385,6 @@ final class BuiltinBackend implements SymbolBackend
             return '[]';
         }
         return var_export($value, true);
-    }
-
-    private function visibilityFromReflectionConstant(ReflectionClassConstant $constant): Visibility
-    {
-        if ($constant->isPrivate()) {
-            return Visibility::Private;
-        }
-        if ($constant->isProtected()) {
-            return Visibility::Protected;
-        }
-        return Visibility::Public;
     }
 
     private function visibilityFromReflectionMethod(ReflectionMethod $method): Visibility

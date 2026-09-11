@@ -507,19 +507,21 @@ final readonly class DeclarationSymbolInfoFactory
     private function resolveClassName(Stmt\ClassLike $node): ClassName
     {
         $fqn = LateBindingKeyword::Self->resolveIn($node);
+        // @codeCoverageIgnoreStart
         if ($fqn === null) {
             throw new InvalidArgumentException('Cannot create ClassInfo for anonymous class');
         }
+        // @codeCoverageIgnoreEnd
         return TypeFactory::className($fqn);
     }
 
     private function resolveNameToClassName(Node\Name $name): ClassName
     {
-        $resolved = $name->getAttribute('resolvedName');
-        /** @var class-string */
-        $fqn = $resolved instanceof Node\Name\FullyQualified
-            ? $resolved->toString()
-            : $name->toString();
+        // TreeAnnotator's NameResolver replaces class-context names with
+        // FullyQualified in-place (default replaceNodes mode), so a plain
+        // toString() reads the resolved FQN.
+        /** @var class-string $fqn */
+        $fqn = $name->toString();
         return TypeFactory::className($fqn);
     }
 

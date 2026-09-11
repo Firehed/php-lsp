@@ -56,7 +56,7 @@ parameters:
 				TypeSource, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 4
+			count: 3
 			path: src/Knowledge/BuiltinBackend.php
 
 		-
@@ -111,16 +111,6 @@ parameters:
 
 		-
 			message: '''
-				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 1
-			path: src/Resolution/ParameterTyping.php
-
-		-
-			message: '''
 				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSource, construction primitives will migrate elsewhere$#
@@ -138,6 +128,16 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 5
 			path: src/Resolution/MemberAccessDetector.php
+
+		-
+			message: '''
+				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSource, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 1
+			path: src/Resolution/ParameterTyping.php
 
 		-
 			message: '''

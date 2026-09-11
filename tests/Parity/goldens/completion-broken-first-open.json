@@ -269,6 +269,10 @@
             "kind": 7
         },
         {
+            "label": "BrokenParameters",
+            "kind": 7
+        },
+        {
             "label": "ChainedAccess",
             "kind": 7
         },

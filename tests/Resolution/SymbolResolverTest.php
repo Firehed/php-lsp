@@ -94,6 +94,33 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($result);
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function resolveNewFallbacks(): iterable
+    {
+        yield '(new $var)->foo — class node is not a Name' => ['variable_new'];
+        yield '(new class {})->foo — class node is Stmt\\Class_' => ['anon_new'];
+        yield '(new NoSuchClass)->foo — name resolves but class is not indexed' => ['unknown_new'];
+        yield '(new self)->foo at global scope — resolveClassNameInContext returns null'
+            => ['global_self_new'];
+    }
+
+    #[DataProvider('resolveNewFallbacks')]
+    public function testResolveNewFallbacksReturnNull(string $marker): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/ResolveNewFallbacks.php', $marker);
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertNull(
+            $result,
+            'a method call whose receiver `new` cannot resolve to a class must not resolve',
+        );
+    }
+
     public function testResolvesInstanceMethodCall(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');

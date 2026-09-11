@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FileDeclarations;
@@ -165,6 +166,117 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         );
     }
 
+    public function testExtractsInsteadofExclusions(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'src/Hierarchy/TraitAdaptationUser.php',
+            'Fixtures\Hierarchy\TraitAdaptationUser',
+        );
+
+        self::assertSame(
+            ['Fixtures\Hierarchy\ConflictingTraitB' => ['conflictMethod']],
+            $info->traitExclusions,
+            'an insteadof adaptation must record the losing trait and the excluded method (RFC 1 §5.6)',
+        );
+    }
+
+    public function testExtractsAliasAdaptations(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'src/Hierarchy/TraitAdaptationUser.php',
+            'Fixtures\Hierarchy\TraitAdaptationUser',
+        );
+
+        $aliasesByNewName = [];
+        foreach ($info->traitAliases as $alias) {
+            $aliasesByNewName[$alias->newName ?? '(visibility-only)'] = $alias;
+        }
+
+        self::assertArrayHasKey(
+            'conflictMethodFromB',
+            $aliasesByNewName,
+            'a rename `as` adaptation must record its new name',
+        );
+        self::assertSame(
+            'conflictMethod',
+            $aliasesByNewName['conflictMethodFromB']->method,
+            'the alias must carry the original method name',
+        );
+        self::assertNull(
+            $aliasesByNewName['conflictMethodFromB']->newVisibility,
+            'a rename-only alias does not change visibility',
+        );
+
+        self::assertArrayHasKey(
+            'protectedOnlyInB',
+            $aliasesByNewName,
+            'an alias renaming and re-scoping must be recorded',
+        );
+        self::assertSame(
+            Visibility::Protected,
+            $aliasesByNewName['protectedOnlyInB']->newVisibility,
+            'the new visibility flag must be mapped through visibilityFromFlags',
+        );
+    }
+
+    public function testPromotedPropertyWithMalformedVarNodeIsSkipped(): void
+    {
+        // php-parser recovers `private $)` by attaching an Error node as the
+        // parameter's var. The extractor must skip it rather than crash on
+        // reading a non-string name (RFC 1 §9 tolerance for broken input).
+        $info = $this->buildClassInfoFromFixture(
+            'src/IncompleteCode/BrokenParameters.php',
+            'Fixtures\IncompleteCode\BrokenPromotedProperty',
+        );
+
+        self::assertSame(
+            [],
+            $info->properties,
+            'a promoted-property Param whose var is not a Variable must not become a PropertyInfo',
+        );
+    }
+
+    public function testFunctionParameterWithMalformedVarNodeIsSkipped(): void
+    {
+        // Same shape as the promoted-property fixture, in a free-standing
+        // function's parameter list.
+        $path = $this->fixturePath('src/IncompleteCode/BrokenParameters.php');
+        $production = ProductionSyntaxSource::create();
+        $document = $production->reader->read($path);
+        self::assertNotNull($document);
+        $declarations = (new DeclarationScanner())->scan($production->source->parse($document));
+
+        $info = $this->factory->fromDeclarations(
+            $declarations,
+            QualifiedName::fromFullyQualified('Fixtures\IncompleteCode\brokenFreeStandingParam'),
+            NameKind::Function_,
+            $path,
+        );
+
+        self::assertInstanceOf(FunctionInfo::class, $info);
+        self::assertSame(
+            [],
+            $info->parameters,
+            'a function Param whose var is not a Variable must not become a ParameterInfo',
+        );
+    }
+
+    public function testAliasWithoutSourceTraitLeavesTraitNull(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'src/Hierarchy/TraitNamelessAliasUser.php',
+            'Fixtures\Hierarchy\TraitNamelessAliasUser',
+        );
+
+        self::assertCount(1, $info->traitAliases, 'the fixture declares exactly one alias');
+        self::assertNull(
+            $info->traitAliases[0]->trait,
+            'an `as` clause that names no source trait leaves the alias trait null',
+        );
+        self::assertSame('onlyInA', $info->traitAliases[0]->method);
+        self::assertSame('renamedOnlyInA', $info->traitAliases[0]->newName);
+    }
+
     public function testLookupAgreesWithTheFullScan(): void
     {
         // RFC 1 §5.1: a derived verb must not fork from the one it derives from.
@@ -185,5 +297,23 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
             $kind,
             $this->path,
         );
+    }
+
+    private function buildClassInfoFromFixture(string $fixturePath, string $fqn): ClassInfo
+    {
+        $path = $this->fixturePath($fixturePath);
+        $production = ProductionSyntaxSource::create();
+        $document = $production->reader->read($path);
+        self::assertNotNull($document, "the fixture $fixturePath must be readable");
+        $declarations = (new DeclarationScanner())->scan($production->source->parse($document));
+
+        $info = $this->factory->fromDeclarations(
+            $declarations,
+            QualifiedName::fromFullyQualified($fqn),
+            NameKind::ClassLike,
+            $path,
+        );
+        self::assertInstanceOf(ClassInfo::class, $info, "the fixture must declare $fqn as a class-like");
+        return $info;
     }
 }

@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchable;
@@ -344,6 +345,81 @@ final class BuiltinBackendTest extends TestCase
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertArrayHasKey('STD_PROP_LIST', $info->constants);
+    }
+
+    public function testInheritedConstantsAreFilteredFromDeclaringClass(): void
+    {
+        $info = self::classLikeIn(
+            $this->backend(self::createStub(NamespaceCatalog::class)),
+            \RecursiveDirectoryIterator::class,
+        );
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(
+            [],
+            $info->constants,
+            'the class declares no constants; the inherited FilesystemIterator constants must be filtered out',
+        );
+    }
+
+    public function testNullDefaultParameterFormats(): void
+    {
+        $info = self::functionIn($this->backend(self::createStub(NamespaceCatalog::class)), 'str_replace');
+
+        self::assertNotNull($info, 'str_replace must resolve so its parameters can be inspected');
+        $paramsByName = [];
+        foreach ($info->parameters as $param) {
+            $paramsByName[$param->name] = $param;
+        }
+
+        self::assertArrayHasKey('count', $paramsByName, 'str_replace declares $count with a null default');
+        self::assertTrue($paramsByName['count']->hasDefault);
+        self::assertSame(
+            'null',
+            $paramsByName['count']->defaultValue,
+            'a null default must be formatted as the literal string "null" (formatReflectionDefault Null branch)',
+        );
+    }
+
+    public function testExceptionPropertyVisibilitiesAreMapped(): void
+    {
+        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalog::class)), \Exception::class);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(
+            Visibility::Protected,
+            $info->properties['message']->visibility,
+            'Exception::$message is protected; the visibility mapper must cover the Protected branch',
+        );
+        self::assertSame(
+            Visibility::Private,
+            $info->properties['string']->visibility,
+            'Exception::$string is private; the visibility mapper must cover the Private branch',
+        );
+    }
+
+    public function testProtectedMethodVisibilityIsMapped(): void
+    {
+        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalog::class)), \SplHeap::class);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(
+            Visibility::Protected,
+            $info->methods['compare']->visibility,
+            'SplHeap::compare is protected; the method visibility mapper must cover the Protected branch',
+        );
+    }
+
+    public function testPrivateMethodVisibilityIsMapped(): void
+    {
+        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalog::class)), \Exception::class);
+
+        self::assertInstanceOf(ClassInfo::class, $info);
+        self::assertSame(
+            Visibility::Private,
+            $info->methods['__clone']->visibility,
+            'Exception::__clone is private; the method visibility mapper must cover the Private branch',
+        );
     }
 
     public function testChildrenOfForwardsToTheReflectionCatalog(): void
