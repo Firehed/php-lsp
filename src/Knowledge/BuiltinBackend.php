@@ -355,7 +355,23 @@ final class BuiltinBackend implements SymbolBackend
 
         // Reflection also sees the server's own dependencies; enumeration filters
         // those out, so lookup must too (RFC 1 §4.2).
-        return $reflection->isInternal() ? FunctionInfo::fromReflection($reflection) : null;
+        if (!$reflection->isInternal()) {
+            return null;
+        }
+
+        $parameters = [];
+        foreach ($reflection->getParameters() as $param) {
+            $parameters[] = $this->parameterFromReflection($param);
+        }
+
+        return new FunctionInfo(
+            name: $reflection->getName(),
+            parameters: $parameters,
+            returnType: TypeFactory::fromReflection($reflection->getReturnType()),
+            docblock: $reflection->getDocComment() !== false ? $reflection->getDocComment() : null,
+            file: $reflection->getFileName() !== false ? $reflection->getFileName() : null,
+            line: $reflection->getStartLine() !== false ? $reflection->getStartLine() : null,
+        );
     }
 
     private function parameterFromReflection(ReflectionParameter $param): ParameterInfo

@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-use PhpParser\Node\Stmt;
-use ReflectionFunction;
-
 /**
  * Metadata about a standalone function.
  */
@@ -26,58 +23,6 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
         public ?string $file,
         public ?int $line,
     ) {
-    }
-
-    /**
-     * @param ?string $file the declaring file, which the node does not carry;
-     *        supplied when the function was resolved from a known file rather than
-     *        from the document already being read
-     * @deprecated sweep: source-context factory
-     */
-    #[\Deprecated('sweep: source-context factory')]
-    public static function fromNode(Stmt\Function_ $node, ?string $file = null): self
-    {
-        $params = [];
-        foreach ($node->params as $position => $param) {
-            $paramInfo = ParameterInfo::fromNode($param, $position);
-            if ($paramInfo !== null) {
-                $params[] = $paramInfo;
-            }
-        }
-
-        return new self(
-            name: $node->name->toString(),
-            parameters: $params,
-            returnType: TypeFactory::fromNode($node->returnType),
-            docblock: $node->getDocComment()?->getText(),
-            file: $file,
-            line: $node->getStartLine(),
-        );
-    }
-
-    /**
-     * @deprecated sweep: source-context factory
-     */
-    #[\Deprecated('sweep: source-context factory')]
-    public static function fromReflection(ReflectionFunction $func): self
-    {
-        return new self(
-            name: $func->getName(),
-            parameters: array_map(
-                ParameterInfo::fromReflection(...),
-                $func->getParameters(),
-            ),
-            returnType: TypeFactory::fromReflection($func->getReturnType()),
-            docblock: $func->getDocComment() !== false
-                ? $func->getDocComment()
-                : null,
-            file: $func->getFileName() !== false
-                ? $func->getFileName()
-                : null,
-            line: $func->getStartLine() !== false
-                ? $func->getStartLine()
-                : null,
-        );
     }
 
     public function getReturnType(): ?Type
