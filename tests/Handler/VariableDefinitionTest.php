@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\VariableBinding;
 use Firehed\PhpLsp\Resolution\VariableBindings;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -60,7 +61,8 @@ class VariableDefinitionTest extends TestCase
             $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
-        $symbolResolver = new SymbolResolver($parser, $knowledge->source, $memberResolver);
+        $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
+        $symbolResolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
         $this->handler = new DefinitionHandler($this->documents, $symbolResolver);
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }

@@ -27,6 +27,7 @@ use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr;
@@ -63,6 +64,7 @@ final class ExpressionResolver
     public function __construct(
         private readonly MemberResolver $memberResolver,
         private readonly SymbolSource $symbolSource,
+        private readonly TypeSource $typeSource,
         private readonly TextDocument $document,
     ) {
     }
@@ -216,7 +218,28 @@ final class ExpressionResolver
             return $this->resolveVariable($node->name, $outerScope, $closure->getStartFilePos(), $ast)?->getType();
         }
         assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
-        return TypeFactory::fromNode($parent->type, $scope->getSelfContext(), $scope->getParentContext());
+        return $this->typeOfParameterBinding($parent, $node->name, $scope);
+    }
+
+    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?Type
+    {
+        $source = $scope->getSourceNode();
+        // @codeCoverageIgnoreStart
+        // A Param can only live inside a function-like, so the scope built at
+        // its offset always has a source node.
+        if ($source === null) {
+            return null;
+        }
+        // @codeCoverageIgnoreEnd
+        return ParameterTyping::resolve(
+            $this->typeSource,
+            $param,
+            $name,
+            $source,
+            $scope->getThisType(),
+            $scope->getSelfContext(),
+            $scope->getParentContext(),
+        );
     }
 
     /**
@@ -485,9 +508,14 @@ final class ExpressionResolver
 
     private function resolveLateBoundReturn(MethodInfo $methodInfo, ClassName $callingClass): MethodInfo
     {
+        // Look up by the receiver, not by $methodInfo->declaringClass: a trait
+        // alias exposes a method name on the using class that the trait does
+        // not declare, so querying the trait directly with the alias name
+        // returns null and drops the type entirely.
+        $declaredReturn = $this->typeSource->forMethodReturn($callingClass, $methodInfo->name);
         $isFromTrait = $this->memberResolver->isTraitClass($methodInfo->declaringClass);
-        $return = $methodInfo->returnType?->resolveLateBound($callingClass->fqn, $isFromTrait);
-        if ($return === $methodInfo->returnType) {
+        $return = $declaredReturn?->resolveLateBound($callingClass->fqn, $isFromTrait);
+        if ($return === $declaredReturn) {
             return $methodInfo;
         }
         return new MethodInfo(

@@ -33,6 +33,7 @@ use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -75,6 +76,7 @@ final class SymbolResolverTest extends TestCase
             parser: $this->parser,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
+            typeSource: new NativeTypeSource($knowledge->source, $memberResolver),
         );
 
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
@@ -365,6 +367,88 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(ParameterInfo::class, $result);
         self::assertStringContainsString('name', $result->format());
         self::assertSame('string', $result->getType()?->format());
+    }
+
+    public function testResolvesParameterDeclarationWithDefault(): void
+    {
+        $uri = $this->openFixture('src/Domain/User.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'private int $age = 0')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$age');
+                assert($pos !== false);
+                $character = $pos + 2;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ParameterInfo::class, $result);
+        self::assertSame('0', $result->defaultValue, 'default is pretty-printed from the AST');
+    }
+
+    public function testResolvesFunctionParameterDeclaration(): void
+    {
+        $uri = $this->openFixture('AutoloadFiles/helpers.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'function helperFormat(string $value)')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$value');
+                assert($pos !== false);
+                $character = $pos + 2;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ParameterInfo::class, $result);
+        self::assertSame('string', $result->getType()?->format(), 'function-scope param routes through TypeSource');
+    }
+
+    public function testResolvesClosureParameterDeclaration(): void
+    {
+        $uri = $this->openFixture('src/Resolution/ClosureParameter.php');
+        $document = $this->documents->get($uri);
+        assert($document !== null);
+
+        $content = $document->getContent();
+        $lines = explode("\n", $content);
+        $lineNum = 0;
+        $character = 0;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'function (string $captured)')) {
+                $lineNum = $i;
+                $pos = strpos($line, '$captured');
+                assert($pos !== false);
+                $character = $pos + 2;
+                break;
+            }
+        }
+
+        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
+
+        self::assertInstanceOf(ParameterInfo::class, $result);
+        self::assertSame(
+            'string',
+            $result->getType()?->format(),
+            'closure param falls through the shared helper to TypeFactory::fromNode, same as typeOfBinding does',
+        );
     }
 
     public function testResolvesNamedArgument(): void

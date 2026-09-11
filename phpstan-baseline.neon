@@ -161,7 +161,7 @@ parameters:
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
-			path: src/Resolution/ExpressionResolver.php
+			path: src/Resolution/ParameterTyping.php
 
 		-
 			message: '''
@@ -192,15 +192,6 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 1
 			path: src/Resolution/Scope.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromNode\(\) of class Firehed\\PhpLsp\\Domain\\ParameterInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Resolution/SymbolResolver.php
 
 		-
 			message: '''

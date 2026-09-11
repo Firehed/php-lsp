@@ -24,6 +24,7 @@ use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -58,10 +59,12 @@ class CompositeReceiverParityTest extends TestCase
             $production->reader,
         );
         $memberResolver = new MemberResolver($knowledge->source);
+        $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $symbolResolver = new SymbolResolver(
             $parser,
             $knowledge->source,
             $memberResolver,
+            $typeSource,
         );
 
         $capabilities = self::createStub(SessionCapabilitiesProvider::class);

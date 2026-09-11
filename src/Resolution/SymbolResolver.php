@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
@@ -67,11 +68,13 @@ final class SymbolResolver implements CodeResolver
         private readonly SyntaxSource $parser,
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
+        private readonly TypeSource $typeSource,
     ) {
         $this->callDetector = new CallContextDetector($parser);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
+            $typeSource,
             $parser,
         );
     }
@@ -81,6 +84,7 @@ final class SymbolResolver implements CodeResolver
         return new ExpressionResolver(
             $this->memberResolver,
             $this->symbolSource,
+            $this->typeSource,
             $document,
         );
     }
@@ -519,9 +523,37 @@ final class SymbolResolver implements CodeResolver
             }
         }
 
+        assert(
+            $param->var instanceof Node\Expr\Variable && is_string($param->var->name),
+            'Param->var is a named Variable',
+        );
+        $name = $param->var->name;
+
+        $defaultValue = null;
+        if ($param->default !== null) {
+            $printer = new \PhpParser\PrettyPrinter\Standard();
+            $defaultValue = $printer->prettyPrintExpr($param->default);
+        }
+
+        return new ParameterInfo(
+            name: $name,
+            type: $this->parameterType($param, $name, $enclosingScope),
+            hasDefault: $param->default !== null,
+            defaultValue: $defaultValue,
+            position: $position,
+            isVariadic: $param->variadic,
+            isPassedByReference: $param->byRef,
+        );
+    }
+
+    private function parameterType(
+        Node\Param $param,
+        string $name,
+        Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $enclosingScope,
+    ): ?Type {
+        $enclosingClass = null;
         $selfContext = null;
         $parentContext = null;
-
         if ($enclosingScope instanceof Stmt\ClassMethod) {
             $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
             // @codeCoverageIgnoreStart
@@ -529,17 +561,19 @@ final class SymbolResolver implements CodeResolver
                 throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
-            $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($selfContext));
+            $enclosingClass = TypeFactory::className($selfContext);
+            $classInfo = $this->symbolSource->lookupClassLike($enclosingClass);
             $parentContext = $classInfo?->parent?->fqn;
         }
-
-        $paramInfo = \Firehed\PhpLsp\Domain\ParameterInfo::fromNode($param, $position, $selfContext, $parentContext);
-        // @codeCoverageIgnoreStart
-        if ($paramInfo === null) {
-            throw new LogicException('ParameterInfo::fromNode should not return null for valid Param');
-        }
-        // @codeCoverageIgnoreEnd
-        return $paramInfo;
+        return ParameterTyping::resolve(
+            $this->typeSource,
+            $param,
+            $name,
+            $enclosingScope,
+            $enclosingClass,
+            $selfContext,
+            $parentContext,
+        );
     }
 
     /**
