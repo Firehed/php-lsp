@@ -21,7 +21,8 @@ use PHPStan\Rules\RuleErrorBuilder;
  * Allowed locations:
  * - Type implementations (internal operations)
  * - TypeFactory (construction)
- * - Metadata factories (DeclarationSymbolInfoFactory, ReflectionSymbolInfoFactory)
+ * - Metadata factory (DeclarationSymbolInfoFactory)
+ * - BuiltinBackend (inlined reflection-to-SymbolInfo build)
  * - Classifiers (CompletionItemFactory - maps symbol to LSP kind)
  * - Tests
  *
@@ -73,7 +74,6 @@ final class KindInspectionRule implements Rule
         'src/Domain/PrimitiveType.php',
         'src/Domain/LateStaticType.php',
         'src/Knowledge/CompositeSymbolSource.php',
-        'src/Knowledge/ReflectionSymbolInfoFactory.php',
     ];
 
     public function getNodeType(): string

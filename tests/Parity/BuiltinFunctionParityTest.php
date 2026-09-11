@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\ReflectionSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\SymbolCache;
 use PHPUnit\Framework\TestCase;
 
@@ -54,7 +53,6 @@ final class BuiltinFunctionParityTest extends TestCase
         // precedence backend, so the oracle measures the shipped configuration.
         $reflectionSource = new ReflectionNamespaceSource();
         $this->backend = new BuiltinBackend(
-            new ReflectionSymbolInfoFactory(),
             new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
             new SymbolCache(CacheFactory::inMemory()),
             $reflectionSource,

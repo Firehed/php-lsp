@@ -36,9 +36,9 @@ parameters:
                 - tests/*
         -
             namespace: 'Reflection*'
-            message: 'runtime reflection is confined: ReflectionNamespaceSource and the fromReflection factories'
+            message: 'runtime reflection is confined: ReflectionNamespaceSource, BuiltinBackend, and the fromReflection factories'
             allowIn:
-                - src/Knowledge/ReflectionSymbolInfoFactory.php
+                - src/Knowledge/BuiltinBackend.php
                 - src/Index/ReflectionNamespaceSource.php
                 - src/Domain/TypeFactory.php
                 - src/Domain/FunctionInfo.php
@@ -154,9 +154,9 @@ parameters:
                 - 'method_exists()'
                 - 'property_exists()'
                 - 'is_callable()'
-            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query (RFC 1 §4.2); ReflectionSymbolInfoFactory is the one place it may be the server''s own runtime'
+            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query (RFC 1 §4.2); BuiltinBackend is the one place it may be the server''s own runtime'
             allowIn:
-                - src/Knowledge/ReflectionSymbolInfoFactory.php
+                - src/Knowledge/BuiltinBackend.php
                 - tests/*
         -
             function:

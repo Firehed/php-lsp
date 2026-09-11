@@ -42,6 +42,35 @@ parameters:
 
 		-
 			message: '''
+				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Domain\\FunctionInfo\:
+				sweep\: source\-context factory$#
+			'''
+			identifier: staticMethod.deprecated
+			count: 1
+			path: src/Knowledge/BuiltinBackend.php
+
+		-
+			message: '''
+				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSource, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 4
+			path: src/Knowledge/BuiltinBackend.php
+
+		-
+			message: '''
+				#^Call to method fromReflection\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSource, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 4
+			path: src/Knowledge/BuiltinBackend.php
+
+		-
+			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSource, construction primitives will migrate elsewhere$#
@@ -69,35 +98,6 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 1
 			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to deprecated method fromReflection\(\) of class Firehed\\PhpLsp\\Domain\\FunctionInfo\:
-				sweep\: source\-context factory$#
-			'''
-			identifier: staticMethod.deprecated
-			count: 1
-			path: src/Knowledge/ReflectionSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 4
-			path: src/Knowledge/ReflectionSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to method fromReflection\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 4
-			path: src/Knowledge/ReflectionSymbolInfoFactory.php
 
 		-
 			message: '''
