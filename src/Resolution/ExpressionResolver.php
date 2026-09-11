@@ -224,9 +224,13 @@ final class ExpressionResolver
     private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?Type
     {
         $source = $scope->getSourceNode();
+        // @codeCoverageIgnoreStart
+        // A Param can only live inside a function-like, so the scope built at
+        // its offset always has a source node.
         if ($source === null) {
             return null;
         }
+        // @codeCoverageIgnoreEnd
         return ParameterTyping::resolve(
             $this->typeSource,
             $param,
