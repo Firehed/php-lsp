@@ -513,7 +513,11 @@ final class ExpressionResolver
 
     private function resolveLateBoundReturn(MethodInfo $methodInfo, ClassName $callingClass): MethodInfo
     {
-        $declaredReturn = $this->typeSource->forMethodReturn($methodInfo->declaringClass, $methodInfo->name);
+        // Look up by the receiver, not by $methodInfo->declaringClass: a trait
+        // alias exposes a method name on the using class that the trait does
+        // not declare, so querying the trait directly with the alias name
+        // returns null and drops the type entirely.
+        $declaredReturn = $this->typeSource->forMethodReturn($callingClass, $methodInfo->name);
         $isFromTrait = $this->memberResolver->isTraitClass($methodInfo->declaringClass);
         $return = $declaredReturn?->resolveLateBound($callingClass->fqn, $isFromTrait);
         if ($return === $declaredReturn) {

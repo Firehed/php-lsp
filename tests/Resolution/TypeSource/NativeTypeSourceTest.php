@@ -84,6 +84,36 @@ final class NativeTypeSourceTest extends TestCase
         self::assertSame('void', $type->format());
     }
 
+    public function testMethodReturnOnTraitAliasedName(): void
+    {
+        // The class exposes the trait's method under an alias. Querying the
+        // using class must find it via MemberResolver's alias walk; querying
+        // the trait with the alias name is blind (the trait doesn't declare
+        // the alias). resolveLateBoundReturn depends on the former.
+        $type = $this->source->forMethodReturn(
+            new ClassName('Fixtures\\Hierarchy\\TraitAliasSelfReturnUser'),
+            new MethodName('aliasedFluent'),
+        );
+
+        self::assertNotNull(
+            $type,
+            'aliased trait method resolves through MemberResolver.findMethod on the using class',
+        );
+    }
+
+    public function testMethodReturnLookupOnTraitByAliasedNameIsBlind(): void
+    {
+        $type = $this->source->forMethodReturn(
+            new ClassName('Fixtures\\Hierarchy\\AliasedSelfReturnTrait'),
+            new MethodName('aliasedFluent'),
+        );
+
+        self::assertNull(
+            $type,
+            'the trait itself does not declare the alias; late-binding rewrite must query the using class instead',
+        );
+    }
+
     public function testMethodReturnUnknownClass(): void
     {
         $type = $this->source->forMethodReturn(
