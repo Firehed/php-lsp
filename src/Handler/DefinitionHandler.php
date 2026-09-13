@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
 
 final class DefinitionHandler implements DocumentFeatureHandler
 {
-    use SupportsOwnMethod;
+    use SupportsOwnMethodTrait;
 
     public function __construct(
         private readonly DocumentManager $documentManager,

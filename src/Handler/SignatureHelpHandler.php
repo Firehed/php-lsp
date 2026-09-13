@@ -22,7 +22,7 @@ use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
  */
 final class SignatureHelpHandler implements DocumentFeatureHandler
 {
-    use SupportsOwnMethod;
+    use SupportsOwnMethodTrait;
 
     public function __construct(
         private readonly DocumentManager $documentManager,

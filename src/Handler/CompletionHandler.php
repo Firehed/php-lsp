@@ -30,7 +30,7 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
  */
 final class CompletionHandler implements DocumentFeatureHandler
 {
-    use SupportsOwnMethod;
+    use SupportsOwnMethodTrait;
 
     // The widest position is a bare `\`: every root namespace plus every global
     // class-like. Cap the response and report isIncomplete so the client re-queries
