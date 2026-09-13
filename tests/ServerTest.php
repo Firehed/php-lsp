@@ -1041,7 +1041,7 @@ class ServerTest extends TestCase
                 return $message;
             }
 
-            public function write(\Firehed\PhpLsp\Protocol\OutgoingMessage $message): void
+            public function write(\Firehed\PhpLsp\Protocol\OutgoingMessageInterface $message): void
             {
                 $this->writer->write($message);
             }

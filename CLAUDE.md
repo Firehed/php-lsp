@@ -288,7 +288,7 @@ a *Response* (an id with a `result`/`error` and no method) is the client's reply
 server-initiated request; the server does not correlate those, so `read()` drops it
 like a Notification rather than answering it.
 
-`TransportInterface::write()` takes any `OutgoingMessage` — a `ResponseMessage` or a
+`TransportInterface::write()` takes any `OutgoingMessageInterface` — a `ResponseMessage` or a
 server-initiated `OutgoingRequest` — so responses and server→client requests share one
 framed channel. Server-initiated requests go through **`ClientConnection`**
 (`TransportClientConnection`); today the sole use is dynamic capability registration

@@ -11,6 +11,6 @@ use JsonSerializable;
  * server-initiated {@see OutgoingRequest}. The transport's write side accepts any of
  * these, so responses and requests frame through one channel.
  */
-interface OutgoingMessage extends JsonSerializable
+interface OutgoingMessageInterface extends JsonSerializable
 {
 }

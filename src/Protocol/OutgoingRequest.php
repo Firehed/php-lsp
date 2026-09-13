@@ -9,7 +9,7 @@ namespace Firehed\PhpLsp\Protocol;
  * The id keeps the frame well-formed; the server does not correlate the reply, which
  * the reader drops.
  */
-final readonly class OutgoingRequest implements OutgoingMessage
+final readonly class OutgoingRequest implements OutgoingMessageInterface
 {
     /**
      * @param array<array-key, mixed> $params
