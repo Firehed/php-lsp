@@ -64,7 +64,7 @@ All symbol resolution flows through the `CodeResolverInterface` interface (imple
 
 **Context queries:**
 - `getMemberAccessContext(doc, line, char): ?MemberAccessContext` — Completion after `->`/`::`
-- `getAccessibleMembers(doc, type, minVisibility, filter): list<ResolvedMember>` — members of a type
+- `getAccessibleMembers(doc, type, minVisibility, filter): list<ResolvedMemberInterface>` — members of a type
 - `getVariablesInScope(doc, line, char): list<ResolvedVariable>` — Completion of `$`
 - `getCallContext(doc, line, char): ?CallContext` — SignatureHelp, named-argument completion
 
@@ -78,10 +78,10 @@ All symbol resolution flows through the `CodeResolverInterface` interface (imple
 
 **`ResolvedSymbolInterface` hierarchy** (`src/Resolution/`):
 - `ResolvedSymbolInterface` (base): `getDefinitionLocation()`, `getDocumentation()`, `getType()`, `format()`
-- `ResolvedMember` extends `ResolvedSymbolInterface`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
+- `ResolvedMemberInterface` extends `ResolvedSymbolInterface`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
 - `ResolvedCallable` extends `ResolvedSymbolInterface`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
-- `ResolvedMethod` implements `ResolvedMember` + `ResolvedCallable`
-- `ResolvedProperty`, `ResolvedConstant`, `ResolvedEnumCase` implement `ResolvedMember`
+- `ResolvedMethod` implements `ResolvedMemberInterface` + `ResolvedCallable`
+- `ResolvedProperty`, `ResolvedConstant`, `ResolvedEnumCase` implement `ResolvedMemberInterface`
 - `ResolvedFunction` implements `ResolvedCallable`
 - `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbolInterface`
 

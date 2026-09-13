@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\MemberFilter;
-use Firehed\PhpLsp\Domain\ResolvedMember;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
 
@@ -70,7 +70,7 @@ final readonly class MemberAccessContext
         );
     }
 
-    public function accepts(ResolvedMember $member): bool
+    public function accepts(ResolvedMemberInterface $member): bool
     {
         if ($this->methodsOnly && !$member->getMemberKind()->isMethod()) {
             return false;

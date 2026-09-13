@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
-use Firehed\PhpLsp\Domain\ResolvedMember;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -55,7 +55,7 @@ class MemberAccessContextTest extends TestCase
     public function testInstanceAcceptsAllKinds(MemberKind $memberKind): void
     {
         $ctx = MemberAccessContext::forInstance(self::type(), Visibility::Public, '');
-        $member = self::createStub(ResolvedMember::class);
+        $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
         self::assertTrue($ctx->accepts($member), "instance should accept $memberKind->name");
@@ -65,7 +65,7 @@ class MemberAccessContextTest extends TestCase
     public function testStaticAcceptsAllKinds(MemberKind $memberKind): void
     {
         $ctx = MemberAccessContext::forStatic(self::type(), Visibility::Public, '');
-        $member = self::createStub(ResolvedMember::class);
+        $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
         self::assertTrue($ctx->accepts($member), "static should accept $memberKind->name");
@@ -75,7 +75,7 @@ class MemberAccessContextTest extends TestCase
     public function testParentAcceptsOnlyMethods(MemberKind $memberKind, bool $expected): void
     {
         $ctx = MemberAccessContext::forParent(self::type(), Visibility::Public, '');
-        $member = self::createStub(ResolvedMember::class);
+        $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
         self::assertSame($expected, $ctx->accepts($member), "parent accepts $memberKind->name");

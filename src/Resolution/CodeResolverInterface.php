@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MemberFilter;
-use Firehed\PhpLsp\Domain\ResolvedMember;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -37,7 +37,7 @@ interface CodeResolverInterface
      * Get members accessible on a type.
      * Used by: Completion (after -> or ::)
      *
-     * @return list<ResolvedMember>
+     * @return list<ResolvedMemberInterface>
      */
     public function getAccessibleMembers(
         TextDocument $document,

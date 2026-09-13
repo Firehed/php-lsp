@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallable;
-use Firehed\PhpLsp\Domain\ResolvedMember;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
@@ -117,7 +117,7 @@ final class SymbolResolver implements CodeResolverInterface
      * For instance access: returns methods and properties.
      * For static access: also includes constants and enum cases.
      *
-     * @return list<ResolvedMember>
+     * @return list<ResolvedMemberInterface>
      */
     public function getAccessibleMembers(
         TextDocument $document,
@@ -149,10 +149,10 @@ final class SymbolResolver implements CodeResolverInterface
      * Get members for a single class using AST/reflection.
      *
      * One loop over the kinds a position admits, so no kind can drift onto a
-     * different walk. The *Info metadata objects implement {@see ResolvedMember}
+     * different walk. The *Info metadata objects implement {@see ResolvedMemberInterface}
      * directly, so no wrapper is built per member.
      *
-     * @return list<ResolvedMember>
+     * @return list<ResolvedMemberInterface>
      */
     private function getMembersForClass(
         ClassName $className,

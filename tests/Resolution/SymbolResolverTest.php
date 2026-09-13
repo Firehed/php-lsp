@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\ResolvedMember;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -576,9 +576,9 @@ final class SymbolResolverTest extends TestCase
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
         self::assertNotEmpty($members, 'Should return members for User class');
-        // For instance access, should return methods and properties (ResolvedMember)
+        // For instance access, should return methods and properties (ResolvedMemberInterface)
         foreach ($members as $member) {
-            self::assertInstanceOf(ResolvedMember::class, $member);
+            self::assertInstanceOf(ResolvedMemberInterface::class, $member);
         }
 
         self::assertMembersContain($members, 'getName');
@@ -597,7 +597,7 @@ final class SymbolResolverTest extends TestCase
 
         // All returned symbols for static access should be static members, constants, or enum cases
         foreach ($members as $member) {
-            self::assertInstanceOf(ResolvedMember::class, $member);
+            self::assertInstanceOf(ResolvedMemberInterface::class, $member);
             self::assertTrue($member->isStatic(), 'Expected only static members');
         }
     }
@@ -919,7 +919,7 @@ final class SymbolResolverTest extends TestCase
 
     /**
      * @codeCoverageIgnore
-     * @return iterable<string, array{string, string, class-string<ResolvedMember|FunctionInfo>, string}>
+     * @return iterable<string, array{string, string, class-string<ResolvedMemberInterface|FunctionInfo>, string}>
      */
     public static function callContextResolveCases(): iterable
     {
@@ -935,7 +935,7 @@ final class SymbolResolverTest extends TestCase
     }
 
     /**
-     * @param class-string<ResolvedMember|FunctionInfo> $expectedType
+     * @param class-string<ResolvedMemberInterface|FunctionInfo> $expectedType
      */
     #[DataProvider('callContextResolveCases')]
     public function testGetCallContextResolves(
@@ -2616,7 +2616,7 @@ final class SymbolResolverTest extends TestCase
     }
 
     /**
-     * @param list<ResolvedMember> $members
+     * @param list<ResolvedMemberInterface> $members
      */
     private static function assertMembersContain(array $members, string ...$expected): void
     {
@@ -2627,7 +2627,7 @@ final class SymbolResolverTest extends TestCase
     }
 
     /**
-     * @param list<ResolvedMember> $members
+     * @param list<ResolvedMemberInterface> $members
      */
     private static function assertNotMembersContain(array $members, string ...$expected): void
     {
@@ -2638,12 +2638,12 @@ final class SymbolResolverTest extends TestCase
     }
 
     /**
-     * @param list<ResolvedMember> $members
+     * @param list<ResolvedMemberInterface> $members
      * @return list<string>
      */
     private static function memberNames(array $members): array
     {
-        return array_map(fn(ResolvedMember $m) => $m->getName()->name, $members);
+        return array_map(fn(ResolvedMemberInterface $m) => $m->getName()->name, $members);
     }
 
     /**

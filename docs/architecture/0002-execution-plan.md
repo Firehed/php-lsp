@@ -657,7 +657,7 @@ To stop the two typing models fighting before they are built:
   a no-op. The nullable is a conscious exception to the no-nullable rule: the
   alternatives are a second metadata type differing in one field, or a sentinel
   `ClassName` the type system cannot catch as a lie.
-- A global constant is **not** a `ResolvedMember` — that interface means *reached through
+- A global constant is **not** a `ResolvedMemberInterface` — that interface means *reached through
   a class*, which is a path it does not have. Whether it instead gets a fifth wrapper or
   `ConstantInfo` carries `ResolvedSymbolInterface` itself is #416's, and turns on SC.13:
   `ResolvedSymbolInterface` is in `Resolution` and returns an `Index\Location`, so a `Domain`
