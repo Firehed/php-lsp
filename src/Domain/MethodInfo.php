@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class method.
  */
-final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
+final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallableInterface
 {
     use HasCallableParametersTrait;
     use HasSymbolLocationTrait;

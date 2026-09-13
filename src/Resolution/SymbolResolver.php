@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\ResolvedCallable;
+use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Type;
@@ -53,8 +53,8 @@ use Throwable;
  * - findSupertypes(ClassName $class): array<ClassInfo>
  *
  * FUTURE: Call hierarchy
- * - getIncomingCalls(ResolvedCallable $callable): array<CallHierarchyItem>
- * - getOutgoingCalls(ResolvedCallable $callable): array<CallHierarchyItem>
+ * - getIncomingCalls(ResolvedCallableInterface $callable): array<CallHierarchyItem>
+ * - getOutgoingCalls(ResolvedCallableInterface $callable): array<CallHierarchyItem>
  *
  * FUTURE: Batch operations (for SemanticTokens)
  * - resolveAllSymbols(Document $document): array<ResolvedToken>
@@ -397,7 +397,7 @@ final class SymbolResolver implements CodeResolverInterface
         FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         array $ast,
         TextDocument $document,
-    ): ?ResolvedCallable {
+    ): ?ResolvedCallableInterface {
         return $this->expressionResolver($document)->resolveCallable($call, $ast);
     }
 

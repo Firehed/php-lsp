@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * A resolved callable (function or method) with parameter information.
  */
-interface ResolvedCallable extends ResolvedSymbolInterface
+interface ResolvedCallableInterface extends ResolvedSymbolInterface
 {
     /**
      * @return list<ParameterInfo>

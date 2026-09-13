@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\ResolvedCallable;
+use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 
 /**
  * Context for signature help and named argument completion.
@@ -17,7 +17,7 @@ final readonly class CallContext
      * @param int $positionallyFilledCount Number of positional args before first named arg
      */
     public function __construct(
-        public ResolvedCallable $callable,
+        public ResolvedCallableInterface $callable,
         public int $activeParameterIndex,
         public array $usedParameterNames,
         public int $positionallyFilledCount = 0,

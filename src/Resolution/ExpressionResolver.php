@@ -20,7 +20,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\ResolvedCallable;
+use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
@@ -313,12 +313,12 @@ final class ExpressionResolver
     public function resolveCallable(
         FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         array $ast,
-    ): ?ResolvedCallable {
+    ): ?ResolvedCallableInterface {
         if ($call instanceof New_ || $call instanceof Attribute) {
             return $this->resolveConstructor($call);
         }
         $symbol = $this->resolve($call, $ast);
-        return $symbol instanceof ResolvedCallable ? $symbol : null;
+        return $symbol instanceof ResolvedCallableInterface ? $symbol : null;
     }
 
     /**

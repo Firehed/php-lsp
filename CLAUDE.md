@@ -79,10 +79,10 @@ All symbol resolution flows through the `CodeResolverInterface` interface (imple
 **`ResolvedSymbolInterface` hierarchy** (`src/Resolution/`):
 - `ResolvedSymbolInterface` (base): `getDefinitionLocation()`, `getDocumentation()`, `getType()`, `format()`
 - `ResolvedMemberInterface` extends `ResolvedSymbolInterface`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
-- `ResolvedCallable` extends `ResolvedSymbolInterface`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
-- `ResolvedMethod` implements `ResolvedMemberInterface` + `ResolvedCallable`
+- `ResolvedCallableInterface` extends `ResolvedSymbolInterface`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
+- `ResolvedMethod` implements `ResolvedMemberInterface` + `ResolvedCallableInterface`
 - `ResolvedProperty`, `ResolvedConstant`, `ResolvedEnumCase` implement `ResolvedMemberInterface`
-- `ResolvedFunction` implements `ResolvedCallable`
+- `ResolvedFunction` implements `ResolvedCallableInterface`
 - `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbolInterface`
 
 Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver`:

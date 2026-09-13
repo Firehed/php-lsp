@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * The ResolvedCallable parameter lookups, shared across every *Info that
+ * The ResolvedCallableInterface parameter lookups, shared across every *Info that
  * carries a `list<ParameterInfo> $parameters` field.
  */
 trait HasCallableParametersTrait
