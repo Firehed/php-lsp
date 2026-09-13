@@ -252,7 +252,7 @@ Key methods:
 - `getResolvableClassNames(): list<ClassName>` — Classes for member lookup (filters out primitives)
 - `isNullable(): bool` — Whether the type includes null
 
-**Never store types as strings.** Use `TypeFactory::fromNode()` or `TypeFactory::fromReflection()` to create Type objects at parse time. Use `Type::format()` only for display.
+**Never store types as strings.** Types are constructed inside source-aware boundaries (a `TypeSourceInterface` implementation, a `SymbolInfoInterface` producer). No call site under `src/` picks a construction path by name — the boundary owns its construction, and the caller reads a `TypeInterface`. Use `Type::format()` only at display time.
 
 ### Capability Negotiation
 
@@ -342,14 +342,17 @@ diverge from the one that handles `initialize`/`shutdown`.
 
 ### Guidelines for New Code
 
+- **Interface names end in `Interface`.** Every interface under `src/` is named `FooInterface`. Namespaces are named for the concept only (`Knowledge\SymbolSource\`, `Domain\Docblock\`) — never `Knowledge\SymbolSourceInterface\`. Value types, composites, and implementations inside a family namespace carry no suffix.
+- **Interfaces name the fact, not the source.** An interface method that asks "did this come from source X?" or that takes a source-shaped input in one implementation and a different source-shaped input in another has elevated an implementation detail into a seam. The source belongs to the implementation's name and body; the interface is source-blind by construction. See Architecture Invariants.
+- **No caller-picks-implementation static factories.** A static method under `src/` whose return type is an interface (or an abstract type) is forbidden outside the composition roots (`Server::forProject`, `KnowledgeStack::forProject`) and outside `tests/`. Types and structured records are constructed inside the source-aware boundary that owns them. If two producers in one family need shared internal logic, prefer a family-namespace-local trait with `private` methods (kept from outside use by deptrac) over a factory class.
+- **Value types belong in the family namespace of their producer, or hoist to `Domain\<Concept>\` when consumers reach across tiers.** Deptrac is the check: a value in `Knowledge\Foo\` that a handler needs is either an unintentional tier leak (fix the design) or a signal to hoist to `Domain\<Concept>\`.
 - **Keep code DRY.** Be on the lookout for existing tools that will solve your problem; NEVER copy-and-paste. Extract repeated logic aggressively.
-- **Use repositories, not direct reflection.** `MemberResolver::findMethod()` handles inheritance; raw `ReflectionClass` does not integrate with open documents.
+- **Use interfaces, not concretes.** `MemberResolverInterface::findMethod()` handles inheritance; raw `ReflectionClass` does not integrate with open documents. Consumer fields are always typed on interfaces.
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
-- **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
-- **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
-- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbol` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolver` (see Architecture Invariants) over calling this directly.
-- **Handlers are formatters, not resolvers.** Handlers call `CodeResolver` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
-- **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
+- **Check existing utilities before writing AST traversal.** Search the enclosing-scope walker and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
+- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbolInterface` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolverInterface` (see Architecture Invariants) over calling this directly.
+- **Handlers are formatters, not resolvers.** Handlers call `CodeResolverInterface` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to a `CodeResolverInterface` implementation instead. See Architecture Invariants.
+- **Use `TypeInterface` objects, not strings.** Store and pass types as `TypeInterface` instances read from a `TypeSourceInterface` implementation. Call `format()` only at display time.
 - **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
 
 ### Architecture Invariants
@@ -357,25 +360,27 @@ diverge from the one that handles `initialize`/`shutdown`.
 Rules that MUST be followed. Violating these reintroduces the M×N handler×node bugs
 described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't").
 
-**All symbol resolution goes through `CodeResolver`.**
+**All symbol resolution goes through `CodeResolverInterface`.**
 
-Handlers do NOT:
-- Parse documents, find nodes at positions, or detect node types
-- Resolve types or look up members
-- Call `MemberResolver`, `SymbolSource`, or `ExpressionResolver` directly
+Handlers may name only: `CodeResolverInterface` (or a narrower resolver interface
+it decomposes into), `DocumentManager`, LSP protocol types under `src/Protocol/`,
+and the parameter and result value types their own method carries. Everything else
+— `SyntaxSourceInterface`, `SymbolSourceInterface`, `MemberResolverInterface`,
+`ExpressionResolver`, `TypeSourceInterface` — is behind `CodeResolverInterface`.
 
-Handlers DO:
-- Extract LSP message parameters
-- Call `CodeResolver` methods
-- Format the result for their specific LSP response
+Handlers extract parameters, call the resolver, and format the result. If a handler
+is about to detect a node type, walk an AST, resolve a type, or look up a member,
+the logic belongs in a `CodeResolverInterface` implementation, not the handler.
+
+`HandlerDependenciesRule` enforces this: a handler that names anything outside the
+allowlist above fails PHPStan. The allowlist is positive so the rule holds against
+future primitives — a new resolution seam does not need the denylist widened.
 
 `CompletionHandler` is a coordinator: it classifies the position and delegates to
-completion *sources* (`src/Completion/*Candidates`), then merges and deduplicates.
-It no longer parses documents or touches `SyntaxSource` directly —
-sources own their lookups, and anything parser-derived (imports, file functions,
-members, variables, types) flows through `CodeResolver`. See Completion System.
+completion sources behind `CandidatesInterface`. It reads no AST and holds no
+resolver primitives. See Completion System.
 
-**All type-graph traversal goes through `MemberResolver::supertypes()`.**
+**All type-graph traversal goes through `MemberResolverInterface::supertypes()`.**
 
 The type graph is walked in exactly ONE place. Every member lookup — methods,
 properties, constants — follows the same edges (used traits, then the parent chain,
@@ -395,36 +400,69 @@ reached via a parent. A traversal that misses an edge fails it.
 
 Where a fact has, or could have, more than one complementary implementation — a parsed
 tree and a text-derived skeleton, an open document and a file on disk, a cache and what
-it caches — the code has exactly one interface for it, and one shape around it:
+it caches — the code has one interface for it, and consumers hold that interface:
 
-- Every implementation implements the interface, including the composite and any
-  decorator. The composite, always named `Composite<Interface>`, holds an ordered
-  `list` of the interface (not an `iterable`: a generator is read once, and the
-  composite walks its members on every call) and answers by asking its members in
-  order: a lookup returns the first non-null answer, an enumeration merges every answer
-  with the earlier member winning a name clash, and it holds no other logic. A decorator such as a cache
-  implements the interface and wraps one.
-- Syntax has one node model, php-parser's. `SyntaxSource` returns php-parser nodes, and
-  an implementation built on another parser converts its tree into that model.
-- A consumer is typed on the interface, holds one of it, and never names an
+- Every consumer of the fact is typed on the interface and never names an
   implementation. Only the composition roots (`Server::forProject` and
   `KnowledgeStack::forProject`, the hand-written container) name one; a test that
   needs production wiring gets it from a factory under `tests/`, never from `src/`.
-- The interface, its composite, and every implementation share one namespace named for
-  the interface under the tier that owns it.
+- When the interface has one implementation today, that is enough: one interface,
+  one implementation, consumers routed. Adding a second implementation later is a
+  wiring edit at the composition root, not a consumer-visible change.
+- When the interface has more than one implementation, one of those implementations
+  is a composite. The composite is the one holder of dispatch logic. It is named
+  `Composite<Concept>`, holds an ordered `list` of the interface (not `iterable`:
+  a generator is read once, and the composite walks its members on every call),
+  answers a lookup with the first non-null result, and merges enumerations with the
+  earlier member winning a name clash. It holds no other logic.
+- A decorator such as a cache implements the interface and wraps one.
+- Syntax has one node model, php-parser's. `SyntaxSourceInterface` returns php-parser
+  nodes, and an implementation built on another parser converts its tree into that
+  model.
 
-`NamespaceCatalog` with `CompositeNamespaceCatalog` and `CachedNamespaceCatalog` is the
-shape today. A consumer that names an implementation, calls a static method on one, or
-holds two routes to one fact has moved the problem, not removed it: that is how the
-parse-health M×N happened, with each positional question checking the tree and then
-calling the regex, and not all of them doing so. A null or empty check on one route
-before calling another is the pattern to refuse. `tests/Architecture/OneRoutePerFactTest.php`
-derives every implementation from its interface, checks the composite's name and the
-family's namespace, and fails when anything but the root names an implementation. A
-route with no interface, for a step or for good, is a confinement row naming its
-concrete classes and holders. A condition that fails today is recorded on its row with the manifest step that
-clears it; the row asserts it still fails, then skips. Adding a pending entry is a Loosen
-edit; clearing one is the step's work. A new fact with more than one route is a new row.
+**Namespaces name the concept, interfaces carry the suffix.** A family lives in a
+namespace named for the concept (`Knowledge\SymbolSource\`,
+`Resolution\MemberResolver\`, `Domain\Docblock\`). Only the touch-point interface
+inside carries the `Interface` suffix (`SymbolSourceInterface`,
+`MemberResolverInterface`, `DocblockParserInterface`). Composites, implementations,
+and associated value types have no suffix.
+
+**Interfaces name the fact, not the source.** An interface exists to describe what a
+caller can ask, never where the answer comes from. A method named
+`isTarget(reflectedSymbol)` or a signature that takes a `Node` on one implementation
+and a `ReflectionClass` on another has elevated an implementation detail into a seam.
+The source belongs to the implementation's name and body; the interface is
+source-blind by construction. The problem this rule prevents is "which thing do I ask
+for information?" — the moment a consumer has to pick between sources by name, the
+seam has failed.
+
+**Factories are discouraged and, when they exist, are family-internal.** A static
+class-picker factory (`TypeFactory::fromNode` vs `fromReflection`) is the M×N problem
+at construction time: the caller picks the source. Types are constructed inside the
+source-aware boundary that owns them (a `TypeSourceInterface` implementation, a
+`SymbolInfoInterface` producer). Cross-family factories under `src/` are refused; a
+factory used only within one family is acceptable, but if the goal is DRY, a
+family-namespace-local trait exposing `private` methods (kept from outside use by
+deptrac) is usually the better answer. Composition roots (`Server::forProject`,
+`KnowledgeStack::forProject`) and test helpers under `tests/` are the only places
+that construct implementations by name.
+
+`NamespaceCatalogInterface` with `CompositeNamespaceCatalog` and
+`CachedNamespaceCatalog` is a multi-implementation shape today.
+`TypeSourceInterface` with `NativeTypeSource` alone is a one-implementation shape,
+becoming multi-implementation when `DocblockTypeSource` joins it. A consumer that
+names an implementation, calls a static method on one, or holds two routes to one
+fact has moved the problem, not removed it: that is how the parse-health M×N
+happened, with each positional question checking the tree and then calling the
+regex, and not all of them doing so. A null or empty check on one route before
+calling another is the pattern to refuse.
+`tests/Architecture/OneRoutePerFactTest.php` derives every implementation from its
+interface, checks the family's namespace, checks that every consumer holds the
+interface, and fails when anything but the composition root names an implementation.
+A route with no interface, for a reason or for good, is a confinement row naming its
+concrete classes and holders. A condition that fails today is recorded on its row
+with the issue that clears it; the row asserts it still fails, then skips. A new
+fact with a candidate second implementation is a new row.
 
 **All client-capability reads go through `SessionCapabilities`.**
 
