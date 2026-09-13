@@ -445,7 +445,7 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
 
         self::assertInstanceOf(ParameterInfo::class, $result);
-        self::assertSame('string', $result->getType()?->format(), 'function-scope param routes through TypeSource');
+        self::assertSame('string', $result->getType()?->format(), 'function-scope param routes through TypeSourceInterface');
     }
 
     public function testResolvesClosureParameterDeclaration(): void

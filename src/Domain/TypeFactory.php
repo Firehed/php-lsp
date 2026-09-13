@@ -15,7 +15,7 @@ use ReflectionUnionType;
 
 /**
  * @deprecated sweep: source-context factory; resolution should go through
- * TypeSource, construction primitives will migrate elsewhere
+ * TypeSourceInterface, construction primitives will migrate elsewhere
  */
 final class TypeFactory
 {

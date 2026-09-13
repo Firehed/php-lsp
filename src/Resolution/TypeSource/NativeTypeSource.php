@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 
 /**
- * Answers {@see TypeSource} for a symbol PHP itself (native code or reflection)
+ * Answers {@see TypeSourceInterface} for a symbol PHP itself (native code or reflection)
  * declares. Class-members walk the inheritance graph through
  * {@see MemberResolver}, so a method inherited from a supertype resolves at the
  * subclass just as PHP would find it.
@@ -24,7 +24,7 @@ use Firehed\PhpLsp\Repository\MemberResolver;
  * The answer's origin (open-document AST, workspace file, vendored file,
  * reflection) is a {@see SymbolSource} concern and does not surface here.
  */
-final readonly class NativeTypeSource implements TypeSource
+final readonly class NativeTypeSource implements TypeSourceInterface
 {
     public function __construct(
         private SymbolSource $symbols,

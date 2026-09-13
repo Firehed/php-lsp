@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Domain\Type;
  * the type at a named position; the answer's origin (native declaration,
  * docblock, reflection) is not visible.
  */
-interface TypeSource
+interface TypeSourceInterface
 {
     public function forClassConstant(ClassName $class, ConstantName $constant): ?Type;
 
