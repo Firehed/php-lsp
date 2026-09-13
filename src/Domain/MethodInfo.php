@@ -51,7 +51,7 @@ final readonly class MethodInfo implements MemberInfo, ResolvedCallable
     }
 
     /**
-     * ResolvedSymbol's value type for a method is its return type.
+     * ResolvedSymbolInterface's value type for a method is its return type.
      */
     public function getType(): ?Type
     {

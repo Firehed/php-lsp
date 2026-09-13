@@ -350,13 +350,13 @@ parameters:
                 - src/Knowledge/CompositeSymbolSource.php # composite delegates to backends
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::format()'
+            method: 'Firehed\PhpLsp\Domain\ResolvedSymbolInterface::format()'
             message: 'signature composition goes through ResolvedSymbolPresenter, so hover/signature-help/completion-detail surface signatures uniformly (build-manifest step-30)'
             allowIn:
                 - src/Resolution/ResolvedSymbolPresenter.php
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::getDocumentation()'
+            method: 'Firehed\PhpLsp\Domain\ResolvedSymbolInterface::getDocumentation()'
             message: 'documentation composition goes through ResolvedSymbolPresenter (build-manifest step-30); ExpressionResolver keeps direct access for foreach element-type inference on the raw docblock (build-manifest step-25)'
             allowIn:
                 - src/Resolution/ExpressionResolver.php # foreach element-type inference reads the raw docblock (build-manifest step-25)

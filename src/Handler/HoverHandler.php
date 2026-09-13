@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Protocol\MarkupContent;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
@@ -58,7 +58,7 @@ final class HoverHandler implements DocumentFeatureHandlerInterface
         return ['contents' => (new MarkupContent($kind, $this->formatHover($symbol, $kind)))->toArray()];
     }
 
-    private function formatHover(ResolvedSymbol $symbol, MarkupKind $kind): string
+    private function formatHover(ResolvedSymbolInterface $symbol, MarkupKind $kind): string
     {
         $presented = ResolvedSymbolPresenter::present($symbol);
         $parts = [];

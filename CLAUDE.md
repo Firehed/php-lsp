@@ -16,10 +16,10 @@ CI-enforced mechanisms confine where code may live; a rule firing on your change
 
 - **Capability confinement** (`phpstan.neon`): parsing and lexing, AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration/kind inspection, and filesystem access are each usable only in their named homes (allowlists inline, each with its rationale). A deny set names every spelling of its capability, aliases included, so do not reach for a synonym.
 - **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis. A class in no layer is not analysed at all, so `composer layer-coverage` fails when `deptrac debug:unassigned` lists one.
-- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbol`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
+- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbolInterface`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
 - **Literal class references** (`DynamicClassReferenceRule`): a class is named literally. `new $c`, `$v instanceof $c`, `$v::class`, `$c::CONST` and `$c::m()` are denied, because every rule above reads a name to apply. Use `$v::class` nowhere; reach for a predicate instead.
 - **File inclusion** (`FileInclusionRule`): `include`/`require` read the disk, which no call list can name, so they are confined like the filesystem functions.
-- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`, `OneRoutePerFactTest`): every `Type` and `ResolvedSymbol` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, every allowlisted path still exists, and every implementation of a one-route interface is named only by its composition root (see One route per fact under Architecture Invariants).
+- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`, `OneRoutePerFactTest`): every `Type` and `ResolvedSymbolInterface` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, every allowlisted path still exists, and every implementation of a one-route interface is named only by its composition root (see One route per fact under Architecture Invariants).
 
 When a rule fires on your change:
 
@@ -60,7 +60,7 @@ All symbol resolution flows through the `CodeResolverInterface` interface (imple
 `SymbolResolver`). Handlers depend on the interface, never on the concrete class.
 
 **Point queries:**
-- `resolveAtPosition(doc, line, char): ?ResolvedSymbol` — Definition, Hover, TypeDefinition
+- `resolveAtPosition(doc, line, char): ?ResolvedSymbolInterface` — Definition, Hover, TypeDefinition
 
 **Context queries:**
 - `getMemberAccessContext(doc, line, char): ?MemberAccessContext` — Completion after `->`/`::`
@@ -76,14 +76,14 @@ All symbol resolution flows through the `CodeResolverInterface` interface (imple
 - `isInstantiable(ClassName): bool` — valid after `new`
 - `isValidTypeHint(ClassName): bool` — valid in a type-hint position (traits are not)
 
-**`ResolvedSymbol` hierarchy** (`src/Resolution/`):
-- `ResolvedSymbol` (base): `getDefinitionLocation()`, `getDocumentation()`, `getType()`, `format()`
-- `ResolvedMember` extends `ResolvedSymbol`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
-- `ResolvedCallable` extends `ResolvedSymbol`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
+**`ResolvedSymbolInterface` hierarchy** (`src/Resolution/`):
+- `ResolvedSymbolInterface` (base): `getDefinitionLocation()`, `getDocumentation()`, `getType()`, `format()`
+- `ResolvedMember` extends `ResolvedSymbolInterface`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
+- `ResolvedCallable` extends `ResolvedSymbolInterface`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
 - `ResolvedMethod` implements `ResolvedMember` + `ResolvedCallable`
 - `ResolvedProperty`, `ResolvedConstant`, `ResolvedEnumCase` implement `ResolvedMember`
 - `ResolvedFunction` implements `ResolvedCallable`
-- `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbol`
+- `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbolInterface`
 
 Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver`:
 the `SyntaxSourceInterface` composite falls through to `CursorTextSyntaxSource`, which
@@ -347,7 +347,7 @@ diverge from the one that handles `initialize`/`shutdown`.
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
-- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbol` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolverInterface` (see Architecture Invariants) over calling this directly.
+- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbolInterface` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolverInterface` (see Architecture Invariants) over calling this directly.
 - **Handlers are formatters, not resolvers.** Handlers call `CodeResolverInterface` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
 - **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 - **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.

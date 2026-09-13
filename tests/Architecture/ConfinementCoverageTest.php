@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture;
 
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Type;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -16,7 +16,7 @@ use ReflectionClass;
  * observation, so only this test can tell them apart.
  *
  * The implementation lists are derived here, so a new `Type` or
- * `ResolvedSymbol` fails until it is confined. The kind-enum list cannot be
+ * `ResolvedSymbolInterface` fails until it is confined. The kind-enum list cannot be
  * derived — no signature separates `SymbolKind` from `Visibility` — so it is a
  * registry: an enum is confined, or registered here with the reason it is not
  * a kind, or the test fails.
@@ -70,10 +70,10 @@ final class ConfinementCoverageTest extends TestCase
         self::assertSame(
             [],
             array_values(array_diff(
-                self::implementationsOf(ResolvedSymbol::class),
+                self::implementationsOf(ResolvedSymbolInterface::class),
                 self::ruleConstant(KindInspectionRule::class, 'CONFINED_RESOLVED_IMPLS'),
             )),
-            'an unconfined ResolvedSymbol implementation may be instanceof-inspected anywhere (RFC 1 §4.5)',
+            'an unconfined ResolvedSymbolInterface implementation may be instanceof-inspected anywhere (RFC 1 §4.5)',
         );
     }
 

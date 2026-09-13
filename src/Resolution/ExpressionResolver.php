@@ -21,7 +21,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\ResolvedCallable;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -50,7 +50,7 @@ use PhpParser\Node\Stmt;
 use PhpParser\Node\VarLikeIdentifier;
 
 /**
- * Resolves any expression to a {@see ResolvedSymbol}; its value type is
+ * Resolves any expression to a {@see ResolvedSymbolInterface}; its value type is
  * `->getType()`.
  *
  * One entry point that hover, definition, member-access typing, and variable
@@ -72,7 +72,7 @@ final class ExpressionResolver
     /**
      * @param array<Stmt> $ast
      */
-    public function resolve(Expr $expr, array $ast): ?ResolvedSymbol
+    public function resolve(Expr $expr, array $ast): ?ResolvedSymbolInterface
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
             $classLike = Scope::classLikeForThisAt($ast, $expr->getStartFilePos());
@@ -285,7 +285,7 @@ final class ExpressionResolver
         return null;
     }
 
-    private function resolveNew(New_ $expr): ?ResolvedSymbol
+    private function resolveNew(New_ $expr): ?ResolvedSymbolInterface
     {
         if (!$expr->class instanceof Name) {
             return null;
@@ -463,7 +463,7 @@ final class ExpressionResolver
         return $this->memberResolver->findProperty($className, new PropertyName($name), Visibility::Private);
     }
 
-    private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbol
+    private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbolInterface
     {
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;

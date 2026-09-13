@@ -659,8 +659,8 @@ To stop the two typing models fighting before they are built:
   `ClassName` the type system cannot catch as a lie.
 - A global constant is **not** a `ResolvedMember` — that interface means *reached through
   a class*, which is a path it does not have. Whether it instead gets a fifth wrapper or
-  `ConstantInfo` carries `ResolvedSymbol` itself is #416's, and turns on SC.13:
-  `ResolvedSymbol` is in `Resolution` and returns an `Index\Location`, so a `Domain`
+  `ConstantInfo` carries `ResolvedSymbolInterface` itself is #416's, and turns on SC.13:
+  `ResolvedSymbolInterface` is in `Resolution` and returns an `Index\Location`, so a `Domain`
   object carrying it adds edges the layer contract denies.
 - `locate(QualifiedName, NameKind)` is the kind-agnostic entry, used when the caller
   has an FQN whose kind is known only from syntactic position and has not minted a

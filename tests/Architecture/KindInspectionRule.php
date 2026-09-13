@@ -15,7 +15,7 @@ use PHPStan\Rules\RuleErrorBuilder;
 
 /**
  * The RFC 1 §8.1 mechanism for §4.5: consumers MUST NOT use `instanceof`
- * against a concrete Type or ResolvedSymbol implementation to decide
+ * against a concrete Type or ResolvedSymbolInterface implementation to decide
  * suitability.
  *
  * Allowed locations:
@@ -126,7 +126,7 @@ final class KindInspectionRule implements Rule
         if (in_array($className, self::CONFINED_TYPE_IMPLS, true)) {
             $interface = 'Type';
         } elseif (in_array($className, self::CONFINED_RESOLVED_IMPLS, true)) {
-            $interface = 'ResolvedSymbol';
+            $interface = 'ResolvedSymbolInterface';
         } else {
             return [];
         }

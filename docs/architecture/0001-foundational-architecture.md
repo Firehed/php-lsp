@@ -579,7 +579,7 @@ The rule set is frozen at the mechanisms registered in `phpstan.neon` and `deptr
                                       position or syntax tree (checked by the type
                                       checker on the interface).
     4.5 Predicates over kind/type     Static rule: no `instanceof` against a concrete
-                                      Type or ResolvedSymbol impl, and no branch on a
+                                      Type or ResolvedSymbolInterface impl, and no branch on a
                                       kind enum outside the factory and classifier —
                                       `match`, `switch`, the four equality operators,
                                       the array searches, and the same comparison made

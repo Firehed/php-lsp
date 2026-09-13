@@ -6,27 +6,27 @@ namespace Firehed\PhpLsp\Tests\Architecture\Data;
 
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 
 /**
- * A consumer deciding suitability by instanceof against concrete ResolvedSymbol
+ * A consumer deciding suitability by instanceof against concrete ResolvedSymbolInterface
  * implementations, which RFC 1 §4.5 forbids.
  */
 final class InstanceofResolvedSymbol
 {
-    public function isSuitableForParentAccess(ResolvedSymbol $symbol): bool
+    public function isSuitableForParentAccess(ResolvedSymbolInterface $symbol): bool
     {
         return $symbol instanceof MethodInfo;
     }
 
-    public function isSuitableViaVariable(ResolvedSymbol $symbol): bool
+    public function isSuitableViaVariable(ResolvedSymbolInterface $symbol): bool
     {
         $wanted = MethodInfo::class;
 
         return $symbol instanceof $wanted;
     }
 
-    public function getKind(ResolvedSymbol $symbol): string
+    public function getKind(ResolvedSymbolInterface $symbol): string
     {
         return match (true) {
             $symbol instanceof MethodInfo => 'method',

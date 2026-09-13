@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallable;
 use Firehed\PhpLsp\Domain\ResolvedMember;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -97,7 +97,7 @@ final class SymbolResolver implements CodeResolverInterface
         TextDocument $document,
         int $line,
         int $character,
-    ): ?ResolvedSymbol {
+    ): ?ResolvedSymbolInterface {
         $ast = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
@@ -404,7 +404,7 @@ final class SymbolResolver implements CodeResolverInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveNode(Node $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveNode(Node $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         // VarLikeIdentifier extends Identifier, so check it first
         if ($node instanceof VarLikeIdentifier) {
@@ -429,7 +429,7 @@ final class SymbolResolver implements CodeResolverInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveIdentifier(Identifier $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveIdentifier(Identifier $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         $parent = $node->getAttribute('parent');
 
@@ -466,7 +466,7 @@ final class SymbolResolver implements CodeResolverInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveName(Name $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveName(Name $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         $parent = $node->getAttribute('parent');
 
@@ -488,7 +488,7 @@ final class SymbolResolver implements CodeResolverInterface
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveVariable(Variable $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveVariable(Variable $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         $name = $node->name;
         if (!is_string($name)) {
@@ -623,7 +623,7 @@ final class SymbolResolver implements CodeResolverInterface
         VarLikeIdentifier $node,
         array $ast,
         TextDocument $document,
-    ): ?ResolvedSymbol {
+    ): ?ResolvedSymbolInterface {
         $parent = $node->getAttribute('parent');
 
         // Static property fetch: ClassName::$property

@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * A resolved class member (method, property, constant, enum case).
  */
-interface ResolvedMember extends ResolvedSymbol
+interface ResolvedMember extends ResolvedSymbolInterface
 {
     /**
      * Returns the class that declares this member.
