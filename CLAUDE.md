@@ -97,7 +97,7 @@ hierarchy, and batch resolution. These require an index and will be added to
 
 Repositories and reflection answer *lookup* ("resolve this known name"). Completion
 also needs *enumeration* ("what is inside `Psr\Log`?"), which is what the
-`NamespaceCatalog` (`src/Index/`) provides: the child namespaces of a namespace, plus
+`NamespaceCatalogInterface` (`src/Index/`) provides: the child namespaces of a namespace, plus
 the symbols declared directly in it.
 
 - **OpenDocumentBackend** — from the one map of `DeclaredSymbol`s the sink registers per
@@ -413,7 +413,7 @@ it caches — the code has exactly one interface for it, and one shape around it
 - The interface, its composite, and every implementation share one namespace named for
   the interface under the tier that owns it.
 
-`NamespaceCatalog` with `CompositeNamespaceCatalog` and `CachedNamespaceCatalog` is the
+`NamespaceCatalogInterface` with `CompositeNamespaceCatalog` and `CachedNamespaceCatalog` is the
 shape today. A consumer that names an implementation, calls a static method on one, or
 holds two routes to one fact has moved the problem, not removed it: that is how the
 parse-health M×N happened, with each positional question checking the tree and then

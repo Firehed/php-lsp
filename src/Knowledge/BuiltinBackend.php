@@ -25,7 +25,7 @@ use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\InternalConstantSet;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
@@ -59,7 +59,7 @@ use ReflectionProperty;
 final class BuiltinBackend implements SymbolBackendInterface
 {
     public function __construct(
-        private readonly NamespaceCatalog $namespaces,
+        private readonly NamespaceCatalogInterface $namespaces,
         private readonly SymbolCache $cache,
         private readonly PrefixSearchableInterface $prefixSearch,
         private readonly InternalConstantSet $constants = new InternalConstantSet(),

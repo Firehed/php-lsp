@@ -16,10 +16,10 @@ namespace Firehed\PhpLsp\Index;
  * Catalogs are passed in order of authority, so the earlier one settles a name they
  * both report ({@see NamespaceContents::merge()}).
  */
-final class CompositeNamespaceCatalog implements NamespaceCatalog
+final class CompositeNamespaceCatalog implements NamespaceCatalogInterface
 {
     /**
-     * @param list<NamespaceCatalog> $catalogs In precedence order
+     * @param list<NamespaceCatalogInterface> $catalogs In precedence order
      */
     public function __construct(
         private readonly array $catalogs,
@@ -29,7 +29,7 @@ final class CompositeNamespaceCatalog implements NamespaceCatalog
     public function childrenOf(string $namespace): NamespaceContents
     {
         return NamespaceContents::merge(array_map(
-            static fn(NamespaceCatalog $catalog): NamespaceContents => $catalog->childrenOf($namespace),
+            static fn(NamespaceCatalogInterface $catalog): NamespaceContents => $catalog->childrenOf($namespace),
             $this->catalogs,
         ));
     }

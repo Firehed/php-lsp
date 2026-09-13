@@ -57,7 +57,7 @@ throughout. That file must land first, or in the same merge; until it does, the
 | Reused (rewrapped, not rewritten) | New | Substantially rewritten |
 |---|---|---|
 | `Type` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSourceInterface` / `SymbolSinkInterface` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
-| `NamespaceCatalog` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
+| `NamespaceCatalogInterface` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
 | `DefaultClassRepository` tiering (becomes backend logic) | `TargetEnvironment` + version-aware built-in source (Step 5 — **deferred**) | `SymbolResolver` (decomposed) |
 | `ComposerAutoloadMap` (dedupe the double instance) | Replaceable cache abstraction (PSR-6/16 seam) | `TextFallbackHelper` (narrowed to FQN recovery) |
 | Completion coordinator + `*Candidates`; transport (amphp) | Enforcement rules (§8.1); `SymbolIdentity` (Step 3+) | `ClassLocator` → kind-general `SymbolLocatorInterface` |
@@ -72,7 +72,7 @@ needed only for the deferred workspace scope.
 | Capability | Needs an index? | Mechanism |
 |---|---|---|
 | `lookupClassLike(FQN)` | No | PSR-4 `findFile` → parse that one file (today's `ClassRepository`) |
-| `childrenOf(namespace)` | No | `scandir` that one directory (today's `NamespaceCatalog`) |
+| `childrenOf(namespace)` | No | `scandir` that one directory (today's `NamespaceCatalogInterface`) |
 | `autoload.files` reach — all kinds (Step 3) | Bounded, small | parse the `autoload.files` set (explicit, tiny; #181) + open docs |
 | Project-wide `search(prefix)` / `workspace/symbol` | Yes | deferred workspace scope |
 | Reverse queries (find-references, implementations) | Yes (reverse index) | deferred workspace scope |
@@ -232,10 +232,10 @@ lives in `tests/Parity/README.md`, the single source of truth. Keep it there.
 behavior change. Detailed in Section 5.
 
 *Acceptance:* read + write interfaces exist; a facade implements them by delegating
-to `ClassRepository` / `SymbolIndex` / `NamespaceCatalog` and the existing write
+to `ClassRepository` / `SymbolIndex` / `NamespaceCatalogInterface` and the existing write
 paths; class-like lookup, class-like prefix search, namespace enumeration, and the
 document write path flow through the interfaces; **no *migrated* consumer names
-`ClassRepository`, `SymbolIndex`, or `NamespaceCatalog` directly** (the function/
+`ClassRepository`, `SymbolIndex`, or `NamespaceCatalogInterface` directly** (the function/
 constant path still names `FunctionRepository` — deferred to Step 3, §5.5); the
 Step P harness is identical before/after; the §4.2 "no direct reflection/index/
 autoload/repository outside a backend" rule ships **scoped to exempt
@@ -705,7 +705,7 @@ final class DelegatingSymbolSource implements SymbolSourceInterface, SymbolSinkI
     public function __construct(
         private ClassRepository $classes,        // lookupClassLike → get()
         private SymbolIndex $index,              // searchClassLikes → findByPrefix()
-        private NamespaceCatalog $catalog,       // childrenOf → childrenOf()
+        private NamespaceCatalogInterface $catalog,       // childrenOf → childrenOf()
         private DocumentIndexer $indexer,        // write path A (existing)
         private ClassInfoFactory $classFactory,  // write path B: registerDocumentClasses (existing)
         private ParserService $parser,
@@ -726,7 +726,7 @@ Consumer migration (construction moves to `Server.php`):
 | Consumer | Today | Step 2 | Behavior |
 |---|---|---|---|
 | `ClassCandidates` | `SymbolIndex` | `SymbolSourceInterface::searchClassLikes` | identical (same backing) |
-| `NamespaceCandidates` | `NamespaceCatalog` | `SymbolSourceInterface::childrenOf` | identical |
+| `NamespaceCandidates` | `NamespaceCatalogInterface` | `SymbolSourceInterface::childrenOf` | identical |
 | `SymbolResolver` (class lookups) | `ClassRepository` | `SymbolSourceInterface::lookupClassLike` | identical |
 | `TextDocumentSyncHandler` | `DocumentIndexer` + `ClassInfoFactory` + `ClassRepository` | `SymbolSinkInterface` | identical (double-write hidden, not removed) |
 | `FunctionCandidates`, function/constant resolution | unchanged | **unchanged** | deferred to Step 3 |

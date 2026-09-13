@@ -24,7 +24,7 @@ use ReflectionClass;
  * The index is built once, on first use: the set of internal symbols is fixed
  * for the life of the process.
  */
-final class ReflectionNamespaceSource implements NamespaceCatalog, PrefixSearchableInterface
+final class ReflectionNamespaceSource implements NamespaceCatalogInterface, PrefixSearchableInterface
 {
     /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
     private ?array $byNamespace = null;

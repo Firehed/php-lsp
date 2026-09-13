@@ -20,10 +20,10 @@ use Psr\SimpleCache\CacheInterface;
  * Only wrap sources that are stable for the life of the process — `vendor/` and
  * the language's built-ins. The workspace is not one of them.
  */
-final class CachedNamespaceCatalog implements NamespaceCatalog, InvalidatableInterface
+final class CachedNamespaceCatalog implements NamespaceCatalogInterface, InvalidatableInterface
 {
     public function __construct(
-        private readonly NamespaceCatalog $source,
+        private readonly NamespaceCatalogInterface $source,
         private readonly CacheInterface $cache,
     ) {
     }

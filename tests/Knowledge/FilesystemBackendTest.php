@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
@@ -390,7 +390,7 @@ final class FilesystemBackendTest extends TestCase
     public function testChildrenOfForwardsToTheInjectedCatalog(): void
     {
         $expected = new NamespaceContents(['Fixtures\Domain\Sub'], []);
-        $catalog = $this->createMock(NamespaceCatalog::class);
+        $catalog = $this->createMock(NamespaceCatalogInterface::class);
         $catalog->expects($this->once())
             ->method('childrenOf')
             ->with('Fixtures\Domain')
@@ -455,7 +455,7 @@ final class FilesystemBackendTest extends TestCase
     {
         return new FilesystemBackend(
             $locator,
-            self::createStub(NamespaceCatalog::class),
+            self::createStub(NamespaceCatalogInterface::class),
             $this->parser,
             $this->reader,
             $this->infoFactory,

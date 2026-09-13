@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
@@ -32,7 +32,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
- * ({@see NamespaceCatalog}). Prefix search for class-likes is empty: a bare prefix
+ * ({@see NamespaceCatalogInterface}). Prefix search for class-likes is empty: a bare prefix
  * has no name→file map, so project-wide search over disk is the deferred
  * workspace-index scope (RFC 1 §3). Functions and constants are searched through the
  * autoload.files index ({@see PrefixSearchableInterface}), which is bounded and already in
@@ -49,7 +49,7 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
 
     public function __construct(
         private readonly SymbolLocatorInterface $locator,
-        private readonly NamespaceCatalog $namespaces,
+        private readonly NamespaceCatalogInterface $namespaces,
         private readonly SyntaxSourceInterface $parser,
         private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,

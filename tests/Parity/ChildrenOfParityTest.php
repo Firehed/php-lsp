@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Golden parity for the namespace-enumeration surface — `NamespaceCatalog::
+ * Golden parity for the namespace-enumeration surface — `NamespaceCatalogInterface::
  * childrenOf()`, which Step 2 migrates onto `SymbolSourceInterface::childrenOf`. The
  * golden queries only namespaces with no internal (reflected) symbols, whose
  * output is therefore stable across the 8.3/8.4/8.5 CI matrix; the built-in

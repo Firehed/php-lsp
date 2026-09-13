@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
 use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
@@ -75,7 +75,7 @@ final class OneRoutePerFactTest extends TestCase
         $rows = [
             Fact::family(
                 name: 'namespace catalog',
-                interface: NamespaceCatalog::class,
+                interface: NamespaceCatalogInterface::class,
                 roots: [KnowledgeStack::class],
                 layoutPending: 'step-52',
             ),

@@ -39,7 +39,7 @@ use PhpParser\Node;
  * completion is exactly the lookup/enumeration split RFC 1 §4.2 forbids. The kind
  * reported is the declaration's own, not the coarse guess a directory listing makes.
  */
-final class AutoloadFilesLocator implements SymbolLocatorInterface, NamespaceCatalog, PrefixSearchableInterface, InvalidatableInterface
+final class AutoloadFilesLocator implements SymbolLocatorInterface, NamespaceCatalogInterface, PrefixSearchableInterface, InvalidatableInterface
 {
     /**
      * Every name the set declares, as the declaration spells it: the index is keyed
