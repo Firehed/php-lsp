@@ -43,8 +43,8 @@ a bumped date.
        4.2. Symbol Discovery Authority
        4.3. Read/Write Segregation
        4.4. Separation of Positional and Knowledge Concerns
-       4.5. Capability Predicates over Kind and TypeInterface Inspection
-       4.6. TypeInterface Construction and Graph Traversal
+       4.5. Capability Predicates over Kind and Type Inspection
+       4.6. Type Construction and Graph Traversal
        4.7. Environment-Parameterized Built-ins
        4.8. Protocol Capability Negotiation
        4.9. Position Encoding
@@ -166,7 +166,7 @@ consumers of an axis. The catalog is in Appendix A. The axes are:
 - **Symbol kind** — what categories of symbol exist.
 - **Member kind** — what categories of class-like member exist (method, property, constant, enum case; future hooks).
 - **Access context** — which members exist for a position: visibility per operation, static-ness, and vantage point.
-- **TypeInterface form** — what shapes a type can take.
+- **Type form** — what shapes a type can take.
 - **Target environment** — which language version/platform is assumed.
 - **Protocol capability** — what the client understands and how output is shaped.
 - **Position/intent** — where in the source a completion or resolution is
@@ -235,7 +235,7 @@ require callers to supply a parsed syntax tree in order to resolve a symbol by
 name. Knowledge queries MUST be answerable from a name (and, where relevant, a
 target environment) alone.
 
-### 4.5. Capability Predicates over Kind and TypeInterface Inspection
+### 4.5. Capability Predicates over Kind and Type Inspection
 
 A consumer MUST determine a symbol's suitability for a position or operation by
 querying a capability predicate. A consumer MUST NOT branch on a concrete symbol
@@ -259,14 +259,14 @@ position is genuinely kind-ambiguous, the kind-agnostic location query
 candidate kind's result. This is the resolution of the apparent tension between
 this section and the per-kind return types required by Section 5.1.
 
-### 4.6. TypeInterface Construction and Graph Traversal
+### 4.6. Type Construction and Graph Traversal
 
 TypeInterface objects MUST be constructed through the type factory, from every input
 source (syntax tree, reflection, and documentation annotations). Types MUST be
 consumed through the type interface; consumers MUST NOT depend on a concrete type
 implementation.
 
-TypeInterface-graph traversal (the walk over used traits, parents, and interfaces) MUST
+Type-graph traversal (the walk over used traits, parents, and interfaces) MUST
 occur in exactly one place. Every member-kind lookup MUST follow the same edges.
 (This restates and retains the existing single-traversal invariant.)
 
@@ -584,7 +584,7 @@ The rule set is frozen at the mechanisms registered in `phpstan.neon` and `deptr
                                       `match`, `switch`, the four equality operators,
                                       the array searches, and the same comparison made
                                       against a case's backing value or name.
-    4.6 TypeInterface factory + traversal      Static rule: no `new` of a TypeInterface impl outside the
+    4.6 Type factory + traversal      Static rule: no `new` of a Type impl outside the
                                       factory; traversal capability confinement;
                                       TypeGraphParityTest for the walk.
         Literal class references      Static rule: no class named by a computed value
@@ -675,7 +675,7 @@ work.
     Symbol kind          kind + lookup + extraction          4.5, 5.1
     Member kind          one extraction + one walk + preds   4.5, 4.6 (target)
     Access context       one access-context value + filter   4.5 (target)
-    TypeInterface form            TypeInterface implementation + factory        4.6
+    Type form            Type implementation + factory        4.6
     Target environment   environment parameter + backend      4.7
     Protocol capability  session capabilities + handler       4.8, 5.4
     Position/intent      completion source + intent mapping   7
