@@ -410,11 +410,13 @@ it caches — the code has one interface for it, and consumers hold that interfa
   one implementation, consumers routed. Adding a second implementation later is a
   wiring edit at the composition root, not a consumer-visible change.
 - When the interface has more than one implementation, one of those implementations
-  is a composite. The composite is the one holder of dispatch logic. It is named
-  `Composite<Concept>`, holds an ordered `list` of the interface (not `iterable`:
-  a generator is read once, and the composite walks its members on every call),
-  answers a lookup with the first non-null result, and merges enumerations with the
-  earlier member winning a name clash. It holds no other logic.
+  is a composite, wired at the composition root as the interface. Named
+  `Composite<Concept>`, it MUST be the only place multi-implementation dispatch
+  occurs, and MUST be constructor-injectable. Its dispatch MAY be simple chaining
+  (first hit wins) or MAY combine facts across its members — either way, that
+  logic lives here or nowhere. It MAY hold a `list` of the interface, or take its
+  members through constructor injection of the concrete classes: the composite is
+  the one place outside a composition root where an implementation may be named.
 - A decorator such as a cache implements the interface and wraps one.
 - Syntax has one node model, php-parser's. `SyntaxSourceInterface` returns php-parser
   nodes, and an implementation built on another parser converts its tree into that
@@ -458,7 +460,8 @@ regex, and not all of them doing so. A null or empty check on one route before
 calling another is the pattern to refuse.
 `tests/Architecture/OneRoutePerFactTest.php` derives every implementation from its
 interface, checks the family's namespace, checks that every consumer holds the
-interface, and fails when anything but the composition root names an implementation.
+interface, and fails when anything but a composition root, or a composite for its
+own interface, names an implementation.
 A route with no interface, for a reason or for good, is a confinement row naming its
 concrete classes and holders. A condition that fails today is recorded on its row
 with the issue that clears it; the row asserts it still fails, then skips. A new
