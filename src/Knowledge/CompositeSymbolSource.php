@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -111,7 +111,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
      * one. That is the O(kinds) narrowing Plan 0002 §5.6 trades against a lookup
      * method per kind on every backend.
      */
-    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         foreach ($this->backends as $backend) {
             $info = $backend->lookup($name, $kind);

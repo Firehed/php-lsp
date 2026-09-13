@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchableInterface;
@@ -64,9 +64,9 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
         return $this->namespaces->childrenOf($namespace->path);
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
-        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfo {
+        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfoInterface {
             $filePath = $this->locator->locate($name, $kind);
             if ($filePath === null) {
                 return null;

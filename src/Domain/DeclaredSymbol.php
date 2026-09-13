@@ -14,7 +14,7 @@ final readonly class DeclaredSymbol
     public function __construct(
         public QualifiedName $name,
         public NameKind $kind,
-        public SymbolInfo $info,
+        public SymbolInfoInterface $info,
     ) {
     }
 }

@@ -25,7 +25,7 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -87,7 +87,7 @@ final readonly class DeclarationSymbolInfoFactory
         QualifiedName $name,
         NameKind $kind,
         string $filePath,
-    ): ?SymbolInfo {
+    ): ?SymbolInfoInterface {
         $target = $kind->normalize($name);
 
         foreach ($this->allIn($declarations, $filePath) as $symbol) {
@@ -554,7 +554,7 @@ final readonly class DeclarationSymbolInfoFactory
         array &$seen,
         QualifiedName $name,
         NameKind $kind,
-        SymbolInfo $info,
+        SymbolInfoInterface $info,
     ): void {
         $key = $kind->keyFor($name);
         if (array_key_exists($key, $seen)) {

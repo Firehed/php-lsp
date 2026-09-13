@@ -21,7 +21,7 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\InternalConstantSet;
@@ -53,7 +53,7 @@ use ReflectionProperty;
  * enumeration ({@see PrefixSearchableInterface}), which is bounded and already in memory.
  *
  * Symbol construction is inlined rather than delegated: the sole caller of the
- * reflection-to-SymbolInfo build is this backend, so a separate class only
+ * reflection-to-SymbolInfoInterface build is this backend, so a separate class only
  * duplicated the source-picking that {@see CompositeSymbolSource} already owns.
  */
 final class BuiltinBackend implements SymbolBackendInterface
@@ -71,12 +71,12 @@ final class BuiltinBackend implements SymbolBackendInterface
         return $this->namespaces->childrenOf($namespace->path);
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         return $this->cache->remember(
             $name,
             $kind,
-            fn(): ?SymbolInfo => $this->build($name, $kind),
+            fn(): ?SymbolInfoInterface => $this->build($name, $kind),
         );
     }
 
@@ -88,7 +88,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         return $this->prefixSearch->searchByPrefix($prefix, $kind);
     }
 
-    private function build(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    private function build(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         return match ($kind) {
             NameKind::ClassLike => $this->classInfo($name),
@@ -97,7 +97,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         };
     }
 
-    private function classInfo(QualifiedName $name): ?SymbolInfo
+    private function classInfo(QualifiedName $name): ?SymbolInfoInterface
     {
         $fqn = $name->fullyQualifiedName();
 
@@ -147,7 +147,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         );
     }
 
-    private function constantInfo(QualifiedName $name): ?SymbolInfo
+    private function constantInfo(QualifiedName $name): ?SymbolInfoInterface
     {
         $fqn = $name->fullyQualifiedName();
         if (!$this->constants->contains($fqn)) {
@@ -345,7 +345,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         return $properties;
     }
 
-    private function functionInfo(QualifiedName $name): ?SymbolInfo
+    private function functionInfo(QualifiedName $name): ?SymbolInfoInterface
     {
         try {
             $reflection = new ReflectionFunction($name->fullyQualifiedName());

@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Domain;
  * Not {@see FormattableInterface}, which says a value renders itself rather than that it is a
  * symbol; the two sets only coincide today.
  */
-interface SymbolInfo
+interface SymbolInfoInterface
 {
     /**
      * The LSP symbol kind for the symbol this metadata describes. Answered by the

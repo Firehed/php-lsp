@@ -148,7 +148,7 @@ symbol namespaces are independent, so a class and a function may share a name.
 Lookup is **per-kind at the `SymbolSourceInterface` facade** — a typed method per kind, taking a
 name type that carries its kind (`ClassName`, `FunctionName`), because RFC 1 §5.1 requires
 a concrete return type rather than a type-erased union — and **kind-parameterized at
-`SymbolBackendInterface`**: one `lookup(QualifiedName, NameKind): ?SymbolInfo`. Do NOT read the
+`SymbolBackendInterface`**: one `lookup(QualifiedName, NameKind): ?SymbolInfoInterface`. Do NOT read the
 facade's closed method set as licence to add a per-kind backend method. Kind dispatch
 lives in `DeclarationSymbolInfoFactory` and `ReflectionSymbolInfoFactory`, one per
 metadata route, so a new kind is a case in each rather than a method on every backend.

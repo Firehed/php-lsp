@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
@@ -23,7 +23,7 @@ use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
  */
 final class FakeSymbolBackend implements SymbolBackendInterface
 {
-    /** @var array<string, SymbolInfo> Kind-qualified key -> info */
+    /** @var array<string, SymbolInfoInterface> Kind-qualified key -> info */
     private array $byKey = [];
 
     /**
@@ -46,7 +46,7 @@ final class FakeSymbolBackend implements SymbolBackendInterface
         return $this->namespaces[$namespace->path] ?? new NamespaceContents();
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         return $this->byKey[$kind->keyFor($name)] ?? null;
     }

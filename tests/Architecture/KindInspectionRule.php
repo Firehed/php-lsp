@@ -22,7 +22,7 @@ use PHPStan\Rules\RuleErrorBuilder;
  * - Type implementations (internal operations)
  * - TypeFactory (construction)
  * - Metadata factory (DeclarationSymbolInfoFactory)
- * - BuiltinBackend (inlined reflection-to-SymbolInfo build)
+ * - BuiltinBackend (inlined reflection-to-SymbolInfoInterface build)
  * - Classifiers (CompletionItemFactory - maps symbol to LSP kind)
  * - Tests
  *

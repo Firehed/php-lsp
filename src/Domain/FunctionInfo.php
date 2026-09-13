@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a standalone function.
  */
-final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
+final readonly class FunctionInfo implements ResolvedCallable, SymbolInfoInterface
 {
     use HasCallableParametersTrait;
     use HasSymbolLocationTrait;

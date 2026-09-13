@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
@@ -31,7 +31,7 @@ final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbo
     /** @var array<string, list<DeclaredSymbol>> URI -> the symbols it declares */
     private array $symbolsByUri = [];
 
-    /** @var array<string, SymbolInfo> Kind-qualified key -> metadata, derived for O(1) lookup */
+    /** @var array<string, SymbolInfoInterface> Kind-qualified key -> metadata, derived for O(1) lookup */
     private array $byKey = [];
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
@@ -60,7 +60,7 @@ final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbo
         return new NamespaceContents(array_values($childNamespaces), $symbols);
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         return $this->byKey[$kind->keyFor($name)] ?? null;
     }

@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Psr\SimpleCache\CacheInterface;
 
 /**
@@ -33,15 +33,15 @@ final readonly class SymbolCache
     }
 
     /**
-     * @param callable(): ?SymbolInfo $resolve Consulted only on a miss
+     * @param callable(): ?SymbolInfoInterface $resolve Consulted only on a miss
      */
-    public function remember(QualifiedName $name, NameKind $kind, callable $resolve): ?SymbolInfo
+    public function remember(QualifiedName $name, NameKind $kind, callable $resolve): ?SymbolInfoInterface
     {
         $key = $this->keyFor($name, $kind);
 
         $cached = $this->cache->get($key);
         if ($cached !== null) {
-            assert($cached instanceof SymbolInfo);
+            assert($cached instanceof SymbolInfoInterface);
             return $cached;
         }
 
