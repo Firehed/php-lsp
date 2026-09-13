@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 /**
  * @phpstan-import-type LspMarkupContent from MarkupContent
  */
-final class HoverHandler implements DocumentFeatureHandler
+final class HoverHandler implements DocumentFeatureHandlerInterface
 {
     use SupportsOwnMethodTrait;
 

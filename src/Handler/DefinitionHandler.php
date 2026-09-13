@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CodeResolver;
 
-final class DefinitionHandler implements DocumentFeatureHandler
+final class DefinitionHandler implements DocumentFeatureHandlerInterface
 {
     use SupportsOwnMethodTrait;
 

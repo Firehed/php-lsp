@@ -28,7 +28,7 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class CompletionHandler implements DocumentFeatureHandler
+final class CompletionHandler implements DocumentFeatureHandlerInterface
 {
     use SupportsOwnMethodTrait;
 

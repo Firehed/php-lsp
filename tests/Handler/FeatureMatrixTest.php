@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
-use Firehed\PhpLsp\Handler\DocumentFeatureHandler;
+use Firehed\PhpLsp\Handler\DocumentFeatureHandlerInterface;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -35,7 +35,7 @@ use PHPUnit\Framework\TestCase;
  * Feature-matrix grid: every fixture scenario against every feature handler.
  *
  * Rows are fixture scenarios (a fixture file and a cursor marker). Columns are
- * the feature handlers, derived from all {@see DocumentFeatureHandler}
+ * the feature handlers, derived from all {@see DocumentFeatureHandlerInterface}
  * implementations found in src/Handler/. Each cell either asserts the handler
  * answers (returns a non-null, non-empty result) or is registered not-applicable
  * with a named blocker. An unregistered cell that does not answer fails, and a
@@ -74,7 +74,7 @@ final class FeatureMatrixTest extends TestCase
         ['src/Domain/User.php', 'markCreated'],
     ];
 
-    /** @var array<string, DocumentFeatureHandler> */
+    /** @var array<string, DocumentFeatureHandlerInterface> */
     private array $handlers;
 
     private TextDocumentSyncHandler $syncHandler;
@@ -200,7 +200,7 @@ final class FeatureMatrixTest extends TestCase
         self::assertSame(
             $implementations,
             $inGrid,
-            'every DocumentFeatureHandler in src/Handler/ must be a column in the grid',
+            'every DocumentFeatureHandlerInterface in src/Handler/ must be a column in the grid',
         );
     }
 
@@ -235,7 +235,7 @@ final class FeatureMatrixTest extends TestCase
     /**
      * @param CursorPosition $cursor
      */
-    private function answers(DocumentFeatureHandler $handler, array $cursor): bool
+    private function answers(DocumentFeatureHandlerInterface $handler, array $cursor): bool
     {
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -260,14 +260,14 @@ final class FeatureMatrixTest extends TestCase
         return true;
     }
 
-    private function handlerName(DocumentFeatureHandler $handler): string
+    private function handlerName(DocumentFeatureHandlerInterface $handler): string
     {
         $parts = explode('\\', $handler::class);
         return end($parts);
     }
 
     /**
-     * @return list<class-string<DocumentFeatureHandler>>
+     * @return list<class-string<DocumentFeatureHandlerInterface>>
      */
     private static function discoverImplementations(): array
     {
@@ -279,7 +279,7 @@ final class FeatureMatrixTest extends TestCase
             }
             /** @var class-string */
             $class = 'Firehed\\PhpLsp\\Handler\\' . $file->getBasename('.php');
-            if (class_exists($class) && is_a($class, DocumentFeatureHandler::class, true)) {
+            if (class_exists($class) && is_a($class, DocumentFeatureHandlerInterface::class, true)) {
                 $implementations[] = $class;
             }
         }

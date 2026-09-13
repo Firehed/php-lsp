@@ -20,7 +20,7 @@ use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
  *   parameters?: list<ParameterInfoShape>,
  * }
  */
-final class SignatureHelpHandler implements DocumentFeatureHandler
+final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
 {
     use SupportsOwnMethodTrait;
 
