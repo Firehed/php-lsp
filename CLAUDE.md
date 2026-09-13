@@ -40,7 +40,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 
 - `src/Handler/` — LSP request handlers (completion, hover, definition, etc.)
 - `src/Resolution/` — `CodeResolverInterface`/`SymbolResolver` and the `Resolved*` symbol hierarchy (see Architecture below)
-- `src/Repository/` — Class and member resolution (see Architecture below)
+- `src/Repository/` — **Legacy**: class and member resolution; consumers migrate onto `SymbolSourceInterface` and `MemberResolverInterface`.
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Composer autoload maps, namespace catalogs, symbol locators
 - `src/Document/` — Open document management
@@ -175,11 +175,8 @@ not a cost measurement; the set is explicit and usually tiny.
 reports every class-like, function and constant an AST declares — at any depth, paired
 with its declaring node (`Declaration`). Every consumer reads it: on-disk and
 open-document lookup, the write path, the `autoload.files` index, and completion's
-file-function query, so none can disagree about what a file declares. Hand-written
-traversals are how a `function_exists`-guarded polyfill came to resolve on hover while
-being invisible to completion, and how its `class_exists` twin dropped out of
-open-document lookup. Do NOT write a new one; a rule about what counts as a declaration
-is a change to the scanner.
+file-function query, so none can disagree about what a file declares. Do NOT write a
+new traversal; a rule about what counts as a declaration is a change to the scanner.
 
 The same map of registered `DeclaredSymbol`s also answers the backend's `childrenOf`,
 merged with the directory listing by `CompositeNamespaceCatalog`. Enumeration is not
@@ -218,11 +215,10 @@ until a file is opened and closed).
 Prefix search (`search(prefix, NameKind)`) is kind-parameterized: the open-document
 backend answers for every kind; the on-disk and built-in backends return empty
 (project-wide on-disk search is the deferred workspace-index scope, RFC 1 §3).
-Function search, and the migration of the consumers still calling
-`FunctionRepository`, are later Step 3b slices; constant reach is S3.8b.
+`FunctionRepository` is a legacy consumer being drained onto `SymbolSourceInterface`.
 
-- **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSourceInterface`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
-- **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
+- **`MemberResolverInterface`** (`MemberResolver`) — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSourceInterface`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
+- **`ClassInfoFactory`** (`DefaultClassInfoFactory`) — **Legacy**: builds `ClassInfo` from a parsed declaration or reflection. This is the caller-picks-source shape §Factories forbids; new consumers go through `SymbolSourceInterface`.
 
 ### Domain Objects
 
@@ -233,7 +229,7 @@ Typed representations of code constructs in `src/Domain/`:
 - `ParameterInfo`, `FunctionInfo` — Function/method parameter details
 - `Visibility` enum — Public/protected/private with comparison logic
 - `ClassName`, `MethodName`, `PropertyName` — Typed identifiers
-- `TypeFactory` — Creates TypeInterface domain objects from AST nodes and reflection
+- `TypeFactory` — **Legacy**: builds `TypeInterface` from AST or reflection. Retained for compatibility; new code reads a `TypeSourceInterface` instead.
 - `NamespacePath` — Segment operations on namespace and fully-qualified-name strings; the one place a name is split into namespace and short name, and the one place a namespace path is case-folded
 
 Domain objects implement `FormattableInterface` for consistent signature formatting across handlers.
@@ -253,6 +249,8 @@ Key methods:
 - `isNullable(): bool` — Whether the type includes null
 
 **Never store types as strings.** Types are constructed inside source-aware boundaries (a `TypeSourceInterface` implementation, a `SymbolInfoInterface` producer). No call site under `src/` picks a construction path by name — the boundary owns its construction, and the caller reads a `TypeInterface`. Use `Type::format()` only at display time.
+
+`TypeSourceInterface` is the seam where `TypeInterface` objects are built from a concrete source. Today: one implementation (`NativeTypeSource`, from AST/reflection declared types). A `DocblockTypeSource` joins it later, at which point the shape becomes multi-implementation and gains a composite. Consumers read a `TypeInterface` and never pick a construction path.
 
 ### Capability Negotiation
 
@@ -293,7 +291,7 @@ server-initiated `OutgoingRequest` — so responses and server→client requests
 framed channel. Server-initiated requests go through **`ClientConnectionInterface`**
 (`TransportClientConnection`); today the sole use is dynamic capability registration
 (`client/registerCapability`). Broader server-initiated output (diagnostics, cancellation)
-is the deferred scheduler tier (Plan 0002 Step 6).
+is the deferred scheduler tier.
 
 **Malformed input never terminates the process** (RFC 1 §9). `MessageReader`
 classifies an unparseable body as `ParseError` and a structurally invalid message as
@@ -309,15 +307,11 @@ consumed and dropped instead: §4.1 forbids replying to one, so `read()` skips i
 reports the next frame.
 
 `Content-Length` must be a run of decimal digits (RFC 7230 §3.3.2, which LSP binds
-via §3.2), and repeated headers must agree (§3.3.3). A bare `(int)` cast accepted `-5`,
-which makes `substr()` consume from the wrong end. When the value is unusable the
-frame's extent is unknown, so `read()` hands the rest of the buffer to the decoder
-rather than rescanning it as the next header block: a content part is JSON, so a client
-that merely mis-declared the length is served and anything else costs one `ParseError`.
-Either way the buffer is emptied, so no failure path leaves bytes to be re-read as
-framing. A conformant `Content-Length` still frames exactly, which is what tells a
-truncated body from a complete one and separates two coalesced frames — the fallback is
-the error path only.
+via §3.2), and repeated headers must agree (§3.3.3). An unusable value leaves the
+frame's extent unknown, so `read()` drains the rest of the buffer to the decoder and
+reports one `ParseError`: a body that is still JSON is served, anything else costs one
+error, and no failure path leaves bytes to be re-read as framing. A conformant
+`Content-Length` still frames exactly — the drain is the error path only.
 
 `Server` answers a throwing handler with `InternalError` — including a failure in
 `supports()` during handler lookup, and a result the encoder cannot represent, which
@@ -342,23 +336,21 @@ diverge from the one that handles `initialize`/`shutdown`.
 
 ### Guidelines for New Code
 
-- **Interface names end in `Interface`.** Every interface under `src/` is named `FooInterface`. Namespaces are named for the concept only (`Knowledge\SymbolSource\`, `Domain\Docblock\`) — never `Knowledge\SymbolSourceInterface\`. Value types, composites, and implementations inside a family namespace carry no suffix.
-- **Interfaces name the fact, not the source.** An interface method that asks "did this come from source X?" or that takes a source-shaped input in one implementation and a different source-shaped input in another has elevated an implementation detail into a seam. The source belongs to the implementation's name and body; the interface is source-blind by construction. See Architecture Invariants.
-- **No caller-picks-implementation static factories.** A static method under `src/` whose return type is an interface (or an abstract type) is forbidden outside the composition roots (`Server::forProject`, `KnowledgeStack::forProject`) and outside `tests/`. Types and structured records are constructed inside the source-aware boundary that owns them. If two producers in one family need shared internal logic, prefer a family-namespace-local trait with `private` methods (kept from outside use by deptrac) over a factory class.
+Naming, factories, handler shape, and consumer-holds-interface are covered under
+Architecture Invariants. What follows is the day-to-day digest.
+
+- **Keep code DRY.** Look for an existing utility before writing one; never copy-paste.
+- **Return domain objects, not raw AST or reflection.** `MethodInfo`, `PropertyInfo`, and their peers under `src/Domain/` are the vocabulary.
+- **Reach for `TypeInterface`, not strings.** Read it from a `TypeSourceInterface` implementation; call `format()` only at display time.
+- **Reach for an existing traversal before writing a new `NodeVisitorAbstract`.** Duplicate walkers are how the parity bugs happened; extract shared logic to a utility.
 - **Value types belong in the family namespace of their producer, or hoist to `Domain\<Concept>\` when consumers reach across tiers.** Deptrac is the check: a value in `Knowledge\Foo\` that a handler needs is either an unintentional tier leak (fix the design) or a signal to hoist to `Domain\<Concept>\`.
-- **Keep code DRY.** Be on the lookout for existing tools that will solve your problem; NEVER copy-and-paste. Extract repeated logic aggressively.
-- **Use interfaces, not concretes.** `MemberResolverInterface::findMethod()` handles inheritance; raw `ReflectionClass` does not integrate with open documents. Consumer fields are always typed on interfaces.
-- **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
-- **Check existing utilities before writing AST traversal.** Search the enclosing-scope walker and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
-- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbolInterface` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolverInterface` (see Architecture Invariants) over calling this directly.
-- **Handlers are formatters, not resolvers.** Handlers call `CodeResolverInterface` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to a `CodeResolverInterface` implementation instead. See Architecture Invariants.
-- **Use `TypeInterface` objects, not strings.** Store and pass types as `TypeInterface` instances read from a `TypeSourceInterface` implementation. Call `format()` only at display time.
-- **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
+- **Nullable return types are fine when "not found" is a real answer.** Nullable parameters usually are not — prefer a defaulted value, or a distinct method, over a caller-supplied null.
 
 ### Architecture Invariants
 
 Rules that MUST be followed. Violating these reintroduces the M×N handler×node bugs
-described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't").
+this design exists to prevent — hover works on X but definition doesn't, or one
+member kind inherits while another doesn't.
 
 **All symbol resolution goes through `CodeResolverInterface`.**
 
@@ -386,10 +378,10 @@ The type graph is walked in exactly ONE place. Every member lookup — methods,
 properties, constants — follows the same edges (used traits, then the parent chain,
 then interfaces), so no member kind can see a different hierarchy than another.
 
-Six hand-written traversals is how #334 happened: only the constant lookups ever
-learned to follow `interfaces`, so interface constants inherited while interface
-methods did not, and every feature was wrong at once. Do NOT reintroduce a
-per-member-kind walk. Adding an edge to the graph is a change to `supertypes()`.
+Per-kind traversals are how the interface-constants-inherit-but-methods-don't class
+of bug came about: only the constant lookup ever learned to follow `interfaces`, so
+every feature was wrong at once. Do NOT reintroduce a per-member-kind walk. Adding
+an edge to the graph is a change to `supertypes()`.
 
 `TypeGraphParityTest` enforces this: the members reported for a type must equal the
 members PHP exposes at runtime (reflection is the oracle), across every shape —
@@ -403,8 +395,10 @@ tree and a text-derived skeleton, an open document and a file on disk, a cache a
 it caches — the code has one interface for it, and consumers hold that interface:
 
 - Every consumer of the fact is typed on the interface and never names an
-  implementation. Only the composition roots (`Server::forProject` and
-  `KnowledgeStack::forProject`, the hand-written container) name one; a test that
+  implementation. Only the composition roots — today the hand-written
+  `Server::forProject` and `KnowledgeStack::forProject`, targeted to become a
+  PSR-11 container whose configuration and the constructor arguments of composites
+  are the only places concrete service types appear — name one. A test that
   needs production wiring gets it from a factory under `tests/`, never from `src/`.
 - When the interface has one implementation today, that is enough: one interface,
   one implementation, consumers routed. Adding a second implementation later is a
@@ -491,8 +485,6 @@ instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, 
 - `Scope` — Value object modelling a lexical scope (params, statements, self/parent context, `$this`, closure captures). Function-like nodes and file-level/global code both map onto it via `Scope::atOffset()`/`forNode()`/`global()`, so type/variable resolution never branches on node type or handles a "no enclosing function" case.
 - `DocblockParser` — Extracts description from docblocks
 
-Note: `MemberAccessResolver` was removed in #262 — instance/static member access now flows through `SymbolResolver`.
-
 ## Development Workflow
 
 - GitHub issues are the source of truth for feature specs
@@ -522,8 +514,7 @@ Architecture (`CompletionHandler` is a coordinator, not a resolver):
 lookup + prefix filter + item construction (via `CompletionItemFactory`). Adding a
 completion kind = a new source + a `CompletionKind`/enum case, not handler edits.
 `ClassCandidates` is filtered by intent (`ClassCandidateFilter`); the mapping is the
-extension point for context-specific class filtering (e.g. `implements` → interfaces,
-issue #298).
+extension point for context-specific class filtering (e.g. `implements` → interfaces).
 
 **Detection stays text-based where it is the mid-edit resilience layer.** This is a live
 server: completion must keep working on temporarily-broken code (see
