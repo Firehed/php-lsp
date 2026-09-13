@@ -11,7 +11,7 @@ namespace Firehed\PhpLsp\Completion;
  * Detection is intentionally text-based so completion keeps working on
  * temporarily-broken, mid-edit code where the parser cannot produce a usable
  * AST. Member, static, and call-argument contexts are detected separately via
- * {@see \Firehed\PhpLsp\Resolution\CodeResolver} and are not represented here.
+ * {@see \Firehed\PhpLsp\Resolution\CodeResolverInterface} and are not represented here.
  */
 enum CompletionKind
 {

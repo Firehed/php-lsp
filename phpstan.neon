@@ -281,7 +281,7 @@ parameters:
     disallowedClasses:
         -
             class: 'Firehed\PhpLsp\Knowledge\SymbolSource'
-            message: 'handlers resolve symbols through CodeResolver (RFC 1 §4.2); SymbolSource is the knowledge tier one layer down'
+            message: 'handlers resolve symbols through CodeResolverInterface (RFC 1 §4.2); SymbolSource is the knowledge tier one layer down'
             allowIn:
                 - src/Completion/* # completion sources own their lookups
                 - src/Knowledge/*

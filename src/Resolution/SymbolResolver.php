@@ -59,7 +59,7 @@ use Throwable;
  * FUTURE: Batch operations (for SemanticTokens)
  * - resolveAllSymbols(Document $document): array<ResolvedToken>
  */
-final class SymbolResolver implements CodeResolver
+final class SymbolResolver implements CodeResolverInterface
 {
     private readonly CallContextDetector $callDetector;
     private readonly MemberAccessDetector $memberAccessDetector;

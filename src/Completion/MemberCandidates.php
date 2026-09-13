@@ -7,13 +7,13 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 
 /**
  * Produces member completion items after `->`, `?->`, or `::`.
  *
- * Detection and resolution both flow through {@see CodeResolver}, so this source
+ * Detection and resolution both flow through {@see CodeResolverInterface}, so this source
  * owns the whole member-access case: it returns null when the position is not a
  * member access (letting the caller try other completion kinds) and a list of
  * items — possibly empty — when it is.
@@ -23,7 +23,7 @@ use Firehed\PhpLsp\Resolution\MemberAccessContext;
 final class MemberCandidates
 {
     public function __construct(
-        private readonly CodeResolver $codeResolver,
+        private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
     ) {
     }

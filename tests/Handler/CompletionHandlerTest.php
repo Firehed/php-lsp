@@ -1311,7 +1311,7 @@ class CompletionHandlerTest extends TestCase
 
     /**
      * Step 0 acceptance: one parse per handled message. Completion is the fan-out
-     * that made this matter — its sources each call a different CodeResolver
+     * that made this matter — its sources each call a different CodeResolverInterface
      * method, and every one of them re-parsed the same unchanged document.
      *
      * These fixtures are chosen to resolve nothing from disk, so the total parse

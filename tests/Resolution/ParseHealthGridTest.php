@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
@@ -30,7 +30,7 @@ use ReflectionMethod;
 /**
  * The parse-health grid (build-manifest step-33; RFC 1 §4.11).
  *
- * Every position-taking method on {@see CodeResolver} — derived by reflection so
+ * Every position-taking method on {@see CodeResolverInterface} — derived by reflection so
  * a new method is a new row without an edit to the test — is exercised at one
  * scenario in three parse states:
  *
@@ -107,7 +107,7 @@ final class ParseHealthGridTest extends TestCase
 
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
-    private CodeResolver $resolver;
+    private CodeResolverInterface $resolver;
     private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
@@ -204,7 +204,7 @@ final class ParseHealthGridTest extends TestCase
                 'getCallContext' => $this->assertCallContext($cursor, $config),
                 'getNameContext' => $this->assertNameContext($cursor, $config),
                 default => throw new LogicException(
-                    "no dispatch for {$method} — add a case when introducing a new position-taking CodeResolver method",
+                    "no dispatch for {$method} — add a case when introducing a new position-taking CodeResolverInterface method",
                 ),
             };
         } catch (AssertionFailedError $failure) {
@@ -226,7 +226,7 @@ final class ParseHealthGridTest extends TestCase
      */
     private static function positionTakingMethodNames(): array
     {
-        $reflection = new ReflectionClass(CodeResolver::class);
+        $reflection = new ReflectionClass(CodeResolverInterface::class);
         $names = [];
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             foreach ($method->getParameters() as $parameter) {

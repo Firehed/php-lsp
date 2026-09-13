@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
@@ -41,7 +41,7 @@ final class SymbolCandidates
 
     public function __construct(
         private readonly SymbolSource $symbolSource,
-        private readonly CodeResolver $codeResolver,
+        private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
     ) {
     }

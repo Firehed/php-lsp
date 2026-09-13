@@ -23,7 +23,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
@@ -39,7 +39,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
 
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly CodeResolver $codeResolver,
+        private readonly CodeResolverInterface $codeResolver,
         private readonly SymbolCandidates $symbolCandidates,
         private readonly KeywordCandidates $keywordCandidates,
         private readonly VariableCandidates $variableCandidates,

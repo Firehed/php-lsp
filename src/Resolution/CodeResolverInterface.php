@@ -21,7 +21,7 @@ use Firehed\PhpLsp\Domain\Visibility;
  * This abstraction allows different parsing strategies (PHP-Parser, tree-sitter)
  * to provide the same resolution capabilities.
  */
-interface CodeResolver
+interface CodeResolverInterface
 {
     /**
      * Resolve symbol at cursor position.

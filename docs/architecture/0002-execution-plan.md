@@ -340,10 +340,10 @@ optimistic availability) is intentional.
 The original decomposition slices predate the default-deny guardrails; the duplication they targeted is now enumerated mechanically as baseline entries, so "done" is checkable (those entries are gone, each positional question has one implementation) rather than judged (the class looks thin).
 `SymbolResolver` becoming thin glue is the side effect, not the metric.
 
-*Acceptance:* `phpstan-baseline.neon` and `deptrac.baseline.yaml` carry no entries for `src/Resolution/` or `src/TypeInference/`; each positional question is answered in exactly one place, with parse health collapsed behind the positional facade and the §4.11 AST/text agreement test in place; `TypeClassifier` owns the predicates; **`CodeResolver` is reduced to the positional-facing interface — its knowledge-facing responsibilities are served by `SymbolSource` (there is no second knowledge interface)**; the S4.1 rules pass, with the `instanceof` rule widened to resolved-symbol implementations (§4.5 as amended); parity green.
+*Acceptance:* `phpstan-baseline.neon` and `deptrac.baseline.yaml` carry no entries for `src/Resolution/` or `src/TypeInference/`; each positional question is answered in exactly one place, with parse health collapsed behind the positional facade and the §4.11 AST/text agreement test in place; `TypeClassifier` owns the predicates; **`CodeResolverInterface` is reduced to the positional-facing interface — its knowledge-facing responsibilities are served by `SymbolSource` (there is no second knowledge interface)**; the S4.1 rules pass, with the `instanceof` rule widened to resolved-symbol implementations (§4.5 as amended); parity green.
 
 *Handler dependency shape.* This does not give handlers a second resolver. Point-query
-handlers (Definition / Hover / …) depend on the positional-facing `CodeResolver`
+handlers (Definition / Hover / …) depend on the positional-facing `CodeResolverInterface`
 (`resolveAtPosition` and the glue behind it); `SymbolSource` is consumed by that glue
 and by the completion sources, **not** by handlers directly. The "handlers are thin
 formatters over one resolver" invariant is preserved — the knowledge interface sits
@@ -466,7 +466,7 @@ row must be discharged at the Definition of Done (Step Z).
     DefaultFunctionRepository AST-in signature                Step 3b
     SymbolResolver god class                                  Step 4
     TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
-    CodeResolver knowledge-facing methods                     Step 4
+    CodeResolverInterface knowledge-facing methods                     Step 4
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
     WorkspaceIndexer (dead today)                             SC.1
     ScopeFinder::extractImports/resolveFromUseStatements       SC.2
@@ -907,7 +907,7 @@ The **steady-state** column is the `SymbolResolver` fan-out. Its seven
 `parser->parse()` sites do not compound on the point-query paths: hover,
 definition, and signatureHelp each take one code path and parse the open document
 once. They compound on **completion**, which fans out to several sources — each
-calling a different `CodeResolver` method (`getMemberAccessContext`,
+calling a different `CodeResolverInterface` method (`getMemberAccessContext`,
 `getVariablesInScope`, `getImports`, `getNameContext`, `getFileFunctions`), each of
 which re-parses the same unchanged document. The sync notification adds two more:
 `TextDocumentSyncHandler::indexDocument()` parses, then hands the document to

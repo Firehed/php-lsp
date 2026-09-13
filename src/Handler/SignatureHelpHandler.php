@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CallContext;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
@@ -26,7 +26,7 @@ final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
 
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly CodeResolver $codeResolver,
+        private readonly CodeResolverInterface $codeResolver,
     ) {
     }
 

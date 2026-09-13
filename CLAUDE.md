@@ -39,7 +39,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 ## Project Structure
 
 - `src/Handler/` — LSP request handlers (completion, hover, definition, etc.)
-- `src/Resolution/` — `CodeResolver`/`SymbolResolver` and the `Resolved*` symbol hierarchy (see Architecture below)
+- `src/Resolution/` — `CodeResolverInterface`/`SymbolResolver` and the `Resolved*` symbol hierarchy (see Architecture below)
 - `src/Repository/` — Class and member resolution (see Architecture below)
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Composer autoload maps, namespace catalogs, symbol locators
@@ -56,7 +56,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 
 ### Resolution Layer
 
-All symbol resolution flows through the `CodeResolver` interface (implemented by
+All symbol resolution flows through the `CodeResolverInterface` interface (implemented by
 `SymbolResolver`). Handlers depend on the interface, never on the concrete class.
 
 **Point queries:**
@@ -91,7 +91,7 @@ synthesizes the node at the cursor, so handlers do not need their own fallbacks.
 
 **Future (workspace queries):** references, implementations, sub/supertypes, call
 hierarchy, and batch resolution. These require an index and will be added to
-`CodeResolver` when those features are implemented.
+`CodeResolverInterface` when those features are implemented.
 
 ### Namespace Catalog (Discovery)
 
@@ -120,7 +120,7 @@ built-in) — the `OpenDocumentBackend` is never cached.
 
 Discovery reports a coarse `NameKind` (class-like / function / constant), not which
 flavour of class-like: a PSR-4 listing cannot know without parsing. Deciding whether a
-candidate is valid in a position stays with the `CodeResolver` predicates
+candidate is valid in a position stays with the `CodeResolverInterface` predicates
 (`isInterface`, `isThrowable`, …), which resolve through the `SymbolSource` backends.
 
 Pair the catalog with `ReferenceResolver` (`src/Resolution/`), which computes the
@@ -347,8 +347,8 @@ diverge from the one that handles `initialize`/`shutdown`.
 - **Use domain objects.** Return `MethodInfo`/`PropertyInfo` from lookups, not raw AST nodes or reflection objects.
 - **Add factory methods to domain objects** for new construction patterns (e.g., `FunctionInfo::fromNode()`, `FunctionInfo::fromReflection()`).
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
-- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbol` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolver` (see Architecture Invariants) over calling this directly.
-- **Handlers are formatters, not resolvers.** Handlers call `CodeResolver` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
+- **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbol` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolverInterface` (see Architecture Invariants) over calling this directly.
+- **Handlers are formatters, not resolvers.** Handlers call `CodeResolverInterface` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
 - **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 - **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
 
@@ -357,7 +357,7 @@ diverge from the one that handles `initialize`/`shutdown`.
 Rules that MUST be followed. Violating these reintroduces the M×N handler×node bugs
 described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't").
 
-**All symbol resolution goes through `CodeResolver`.**
+**All symbol resolution goes through `CodeResolverInterface`.**
 
 Handlers do NOT:
 - Parse documents, find nodes at positions, or detect node types
@@ -366,14 +366,14 @@ Handlers do NOT:
 
 Handlers DO:
 - Extract LSP message parameters
-- Call `CodeResolver` methods
+- Call `CodeResolverInterface` methods
 - Format the result for their specific LSP response
 
 `CompletionHandler` is a coordinator: it classifies the position and delegates to
 completion *sources* (`src/Completion/*Candidates`), then merges and deduplicates.
 It no longer parses documents or touches `SyntaxSourceInterface` directly —
 sources own their lookups, and anything parser-derived (imports, file functions,
-members, variables, types) flows through `CodeResolver`. See Completion System.
+members, variables, types) flows through `CodeResolverInterface`. See Completion System.
 
 **All type-graph traversal goes through `MemberResolver::supertypes()`.**
 
@@ -439,8 +439,8 @@ instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, 
 4. Write tests in `SymbolResolverTest`
 
 **Adding a new LSP handler:**
-1. Create the handler with `DocumentManager` + `CodeResolver` dependencies
-2. Call the appropriate `CodeResolver` method
+1. Create the handler with `DocumentManager` + `CodeResolverInterface` dependencies
+2. Call the appropriate `CodeResolverInterface` method
 3. Format the result for the LSP response
 4. Do NOT add resolution logic to the handler
 
@@ -470,7 +470,7 @@ Architecture (`CompletionHandler` is a coordinator, not a resolver):
 
 1. **Coarse gate** — `ContextDetector` (token-based) classifies the broad context
    (None / VariablesOnly / Full); token analysis survives unparseable code.
-2. **Member/static/call** — detected via `CodeResolver` (`MemberCandidates`,
+2. **Member/static/call** — detected via `CodeResolverInterface` (`MemberCandidates`,
    `getCallContext`), which reads the tree the `SyntaxSourceInterface` composite produces
    (php-parser first, cursor-text synthesis when nothing parses).
 3. **Everything else** — `CompletionClassifier` maps the text before the cursor to a
@@ -489,7 +489,7 @@ server: completion must keep working on temporarily-broken code (see
 `CompletionHandlerTest::testCompletionThisInVeryBrokenFile`, where the parser yields no
 AST). `CompletionClassifier` and `ContextDetector` are deliberately text/token-based —
 do **not** convert them to AST analysis. Only member/static/call access flow through the
-AST+fallback `CodeResolver` path.
+AST+fallback `CodeResolverInterface` path.
 
 ## Testing
 

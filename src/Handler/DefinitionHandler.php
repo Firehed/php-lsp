@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Handler;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 final class DefinitionHandler implements DocumentFeatureHandlerInterface
 {
@@ -15,7 +15,7 @@ final class DefinitionHandler implements DocumentFeatureHandlerInterface
 
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly CodeResolver $codeResolver,
+        private readonly CodeResolverInterface $codeResolver,
     ) {
     }
 
