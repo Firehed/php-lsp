@@ -72,7 +72,7 @@ All symbol resolution flows through the `CodeResolverInterface` interface (imple
 - `getNameContext(doc, line): NameContext` — the namespace and the three import tables in effect
 - `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document, at any depth
 
-**TypeInterface checks:**
+**Type checks:**
 - `isInstantiable(ClassName): bool` — valid after `new`
 - `isValidTypeHint(ClassName): bool` — valid in a type-hint position (traits are not)
 
@@ -238,7 +238,7 @@ Typed representations of code constructs in `src/Domain/`:
 
 Domain objects implement `FormattableInterface` for consistent signature formatting across handlers.
 
-### TypeInterface System
+### Type System
 
 The `TypeInterface` interface represents PHP types throughout the codebase. Implementations:
 
@@ -512,7 +512,7 @@ Structure (all under `tests/Fixtures/src/` with `Fixtures\` namespace):
 - `Traits/`, `Inheritance/`, `Services/` — OOP patterns
 - `Repository/` — Repository pattern examples
 - `Completion/`, `Hover/`, `Definition/`, `SignatureHelp/` — Handler-specific fixtures with cursor markers
-- `TypeInference/` — TypeInterface resolver test fixtures
+- `TypeInference/` — Type resolver test fixtures
 - `Legacy/` — Code quality variations (docblock-only, untyped)
 - `Mixed/` — Procedural + OOP mixes
 
