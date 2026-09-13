@@ -21,7 +21,7 @@ final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInte
         public ConstantName $name,
         public Visibility $visibility,
         public bool $isFinal,
-        public ?Type $type,
+        public ?TypeInterface $type,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -83,7 +83,7 @@ final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInte
         return $this->name;
     }
 
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->type;
     }

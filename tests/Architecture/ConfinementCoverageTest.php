@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -15,7 +15,7 @@ use ReflectionClass;
  * and analysis still passes. An omission and a satisfied rule are the same
  * observation, so only this test can tell them apart.
  *
- * The implementation lists are derived here, so a new `Type` or
+ * The implementation lists are derived here, so a new `TypeInterface` or
  * `ResolvedSymbolInterface` fails until it is confined. The kind-enum list cannot be
  * derived — no signature separates `SymbolKind` from `Visibility` — so it is a
  * registry: an enum is confined, or registered here with the reason it is not
@@ -82,10 +82,10 @@ final class ConfinementCoverageTest extends TestCase
         self::assertSame(
             [],
             array_values(array_diff(
-                self::implementationsOf(Type::class),
+                self::implementationsOf(TypeInterface::class),
                 self::ruleConstant(KindInspectionRule::class, 'CONFINED_TYPE_IMPLS'),
             )),
-            'an unconfined Type implementation may be instanceof-inspected anywhere (RFC 1 §4.5)',
+            'an unconfined TypeInterface implementation may be instanceof-inspected anywhere (RFC 1 §4.5)',
         );
     }
 
@@ -94,10 +94,10 @@ final class ConfinementCoverageTest extends TestCase
         self::assertSame(
             [],
             array_values(array_diff(
-                self::implementationsOf(Type::class),
+                self::implementationsOf(TypeInterface::class),
                 self::ruleConstant(TypeConstructionRule::class, 'CONFINED_TYPES'),
             )),
-            'an unconfined Type implementation may be constructed outside TypeFactory (RFC 1 §4.6)',
+            'an unconfined TypeInterface implementation may be constructed outside TypeFactory (RFC 1 §4.6)',
         );
     }
 

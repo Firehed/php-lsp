@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -32,17 +32,17 @@ final readonly class NativeTypeSource implements TypeSourceInterface
     ) {
     }
 
-    public function forClassConstant(ClassName $class, ConstantName $constant): ?Type
+    public function forClassConstant(ClassName $class, ConstantName $constant): ?TypeInterface
     {
         return $this->members->findConstant($class, $constant, Visibility::Private)?->type;
     }
 
-    public function forGlobalConstant(GlobalConstantName $constant): ?Type
+    public function forGlobalConstant(GlobalConstantName $constant): ?TypeInterface
     {
         return $this->symbols->lookupConstant($constant)?->type;
     }
 
-    public function forFunctionParameter(FunctionName $function, string $parameter): ?Type
+    public function forFunctionParameter(FunctionName $function, string $parameter): ?TypeInterface
     {
         $info = $this->symbols->lookupFunction($function);
         if ($info === null) {
@@ -56,12 +56,12 @@ final readonly class NativeTypeSource implements TypeSourceInterface
         return null;
     }
 
-    public function forFunctionReturn(FunctionName $function): ?Type
+    public function forFunctionReturn(FunctionName $function): ?TypeInterface
     {
         return $this->symbols->lookupFunction($function)?->returnType;
     }
 
-    public function forMethodParameter(ClassName $class, MethodName $method, string $parameter): ?Type
+    public function forMethodParameter(ClassName $class, MethodName $method, string $parameter): ?TypeInterface
     {
         $info = $this->members->findMethod($class, $method, Visibility::Private);
         if ($info === null) {
@@ -75,12 +75,12 @@ final readonly class NativeTypeSource implements TypeSourceInterface
         return null;
     }
 
-    public function forMethodReturn(ClassName $class, MethodName $method): ?Type
+    public function forMethodReturn(ClassName $class, MethodName $method): ?TypeInterface
     {
         return $this->members->findMethod($class, $method, Visibility::Private)?->returnType;
     }
 
-    public function forProperty(ClassName $class, PropertyName $property): ?Type
+    public function forProperty(ClassName $class, PropertyName $property): ?TypeInterface
     {
         return $this->members->findProperty($class, $property, Visibility::Private)?->type;
     }

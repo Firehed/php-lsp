@@ -24,5 +24,5 @@ interface ResolvedSymbolInterface extends FormattableInterface
     /**
      * Returns the symbol's type. For callables, this is the return type.
      */
-    public function getType(): ?Type;
+    public function getType(): ?TypeInterface;
 }

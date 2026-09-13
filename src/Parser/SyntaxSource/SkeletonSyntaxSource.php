@@ -326,7 +326,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     private static function buildParams(string $paramsText, int $anchor, array $positions): array
     {
         $out = [];
-        // Each element: `?TypeRef\Name $name` or `Type $name = default`.
+        // Each element: `?TypeRef\Name $name` or `TypeInterface $name = default`.
         $pattern = '/(?:^|,)\s*((?:\?[?\w\\\\|]+)|[\w\\\\|]+)?\s*\$(\w+)/';
         if (preg_match_all($pattern, $paramsText, $matches, PREG_OFFSET_CAPTURE | PREG_SET_ORDER) === false) {
             // @codeCoverageIgnoreStart

@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 
 /**
  * A ResolvedSymbolInterface that carries only a type — used when an expression's value
@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Domain\Type;
 final readonly class ResolvedTypeOnly implements ResolvedSymbolInterface
 {
     public function __construct(
-        private Type $type,
+        private TypeInterface $type,
     ) {
     }
 
@@ -32,7 +32,7 @@ final readonly class ResolvedTypeOnly implements ResolvedSymbolInterface
         return null;
     }
 
-    public function getType(): Type
+    public function getType(): TypeInterface
     {
         return $this->type;
     }

@@ -22,7 +22,7 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         public bool $isAbstract,
         public bool $isFinal,
         public array $parameters,
-        public ?Type $returnType,
+        public ?TypeInterface $returnType,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -45,7 +45,7 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         return $this->name;
     }
 
-    public function getReturnType(): ?Type
+    public function getReturnType(): ?TypeInterface
     {
         return $this->returnType;
     }
@@ -53,7 +53,7 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
     /**
      * ResolvedSymbolInterface's value type for a method is its return type.
      */
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->returnType;
     }

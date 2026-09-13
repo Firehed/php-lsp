@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /** Represents a late-static-binding type (static, self, or parent). */
-final class LateStaticType implements Type
+final class LateStaticType implements TypeInterface
 {
     public function __construct(
         public readonly LateBindingKeyword $keyword,
@@ -31,7 +31,7 @@ final class LateStaticType implements Type
         return false;
     }
 
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
+    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
     {
         return match ($this->keyword) {
             LateBindingKeyword::Self => $declaringClassIsTrait
@@ -42,12 +42,12 @@ final class LateStaticType implements Type
         };
     }
 
-    public function valueType(): ?Type
+    public function valueType(): ?TypeInterface
     {
         return null;
     }
 
-    public function equals(Type $other): bool
+    public function equals(TypeInterface $other): bool
     {
         return $other instanceof self
             && $this->keyword === $other->keyword

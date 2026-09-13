@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-interface Type extends FormattableInterface
+interface TypeInterface extends FormattableInterface
 {
     /**
      * @return list<ClassName>
@@ -24,9 +24,9 @@ interface Type extends FormattableInterface
      * @param string $callingClass The class the method was called on
      * @param bool $declaringClassIsTrait Whether the method was declared in a trait
      */
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type;
+    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface;
 
-    public function valueType(): ?Type;
+    public function valueType(): ?TypeInterface;
 
-    public function equals(Type $other): bool;
+    public function equals(TypeInterface $other): bool;
 }

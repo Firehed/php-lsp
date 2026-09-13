@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 
 /**
@@ -41,7 +41,7 @@ interface CodeResolverInterface
      */
     public function getAccessibleMembers(
         TextDocument $document,
-        Type $type,
+        TypeInterface $type,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::Instance,
     ): array;

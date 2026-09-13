@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -143,7 +143,7 @@ final class MemberAccessDetector
      * restrictive visibility across the constituents — a member must be
      * visible on every possible runtime class to be safe to offer.
      */
-    private function visibilityForReceiver(?ClassName $vantage, ?Type $type): ?Visibility
+    private function visibilityForReceiver(?ClassName $vantage, ?TypeInterface $type): ?Visibility
     {
         $classes = ExpressionResolver::receiverClassNames($type);
         if ($classes === []) {

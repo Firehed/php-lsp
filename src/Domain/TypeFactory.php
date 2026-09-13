@@ -27,7 +27,7 @@ final class TypeFactory
         ?string $selfContext = null,
         ?string $parentContext = null,
         bool $preserveLateBinding = false,
-    ): ?Type {
+    ): ?TypeInterface {
         if ($node === null) {
             return null;
         }
@@ -99,9 +99,9 @@ final class TypeFactory
      * Build a union from resolved parts. A single-member "union" collapses to
      * that member, matching how PHP's type system treats it.
      *
-     * @param non-empty-list<Type> $members
+     * @param non-empty-list<TypeInterface> $members
      */
-    public static function union(array $members): Type
+    public static function union(array $members): TypeInterface
     {
         if (count($members) === 1) {
             return $members[0];
@@ -109,7 +109,7 @@ final class TypeFactory
         return new UnionType($members);
     }
 
-    public static function fromReflection(?ReflectionType $type): ?Type
+    public static function fromReflection(?ReflectionType $type): ?TypeInterface
     {
         if ($type === null) {
             return null;
@@ -157,7 +157,7 @@ final class TypeFactory
         ?string $selfContext,
         ?string $parentContext,
         bool $preserveLateBinding,
-    ): ?Type {
+    ): ?TypeInterface {
         $keyword = LateBindingKeyword::tryFromName($name);
         if ($keyword === null) {
             return null;

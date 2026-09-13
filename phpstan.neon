@@ -333,7 +333,7 @@ parameters:
                 - src/Repository/MemberResolver.php # internal self-calls in trait-alias resolution
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\Type::getResolvableClassNames()'
+            method: 'Firehed\PhpLsp\Domain\TypeInterface::getResolvableClassNames()'
             message: 'union/intersection receivers: member lookup must iterate every class, not index [0]. Route through ExpressionResolver::receiverClassNames or SymbolResolver::getAccessibleMembers (build-manifest step-27)'
             allowIn:
                 - src/Resolution/SymbolResolver.php # getAccessibleMembers: the legitimate every-class iterator

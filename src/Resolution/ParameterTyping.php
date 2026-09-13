@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodName;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use PhpParser\Node\Expr\ArrowFunction;
@@ -37,7 +37,7 @@ final class ParameterTyping
         ?ClassName $enclosingClass,
         ?string $selfContext,
         ?string $parentContext,
-    ): ?Type {
+    ): ?TypeInterface {
         if ($enclosingScope instanceof Stmt\ClassMethod && $enclosingClass !== null) {
             return $typeSource->forMethodParameter(
                 $enclosingClass,

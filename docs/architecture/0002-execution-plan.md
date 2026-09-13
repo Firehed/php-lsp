@@ -56,7 +56,7 @@ throughout. That file must land first, or in the same merge; until it does, the
 
 | Reused (rewrapped, not rewritten) | New | Substantially rewritten |
 |---|---|---|
-| `Type` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSourceInterface` / `SymbolSinkInterface` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
+| `TypeInterface` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSourceInterface` / `SymbolSinkInterface` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
 | `NamespaceCatalogInterface` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
 | `DefaultClassRepository` tiering (becomes backend logic) | `TargetEnvironment` + version-aware built-in source (Step 5 — **deferred**) | `SymbolResolver` (decomposed) |
 | `ComposerAutoloadMap` (dedupe the double instance) | Replaceable cache abstraction (PSR-6/16 seam) | `TextFallbackHelper` (narrowed to FQN recovery) |
@@ -445,7 +445,7 @@ feature-detected with a synchronous fallback (Fibers / FFI may be relied on).
 
 ### Unscheduled §8.1 mechanisms
 
-- §4.6 "no `new` of a `Type` impl outside the factory" — lands in Step 4 (above).
+- §4.6 "no `new` of a `TypeInterface` impl outside the factory" — lands in Step 4 (above).
 - §4.10 client conformance defects — review-only by design; carries no seam. The
   running defect list lives in RFC 1 Appendix B (currently: ale `textEdit` range,
   ale#4274). No step owns it; it is maintained on review.
@@ -645,7 +645,7 @@ To stop the two typing models fighting before they are built:
   it and **carry their kind intrinsically** (each exposes `kind(): NameKind`). These are
   the primary currency; the per-kind `lookup*` methods take the matching one, so the
   kind is implicit and `NameKind` is not passed. `ClassLikeName` is today's
-  `ClassName` (which per CLAUDE.md also serves as the class `Type`); whether it is
+  `ClassName` (which per CLAUDE.md also serves as the class `TypeInterface`); whether it is
   reused as-is, renamed, or wrapped is an open decision (§7). The other three are new.
 - **`GlobalConstantName`, because `ConstantName` is the class constant member name**
   beside `MethodName` and `PropertyName`. A bare member name is not an FQN, and one type
@@ -763,8 +763,8 @@ Consumer migration (construction moves to `Server.php`):
   is already on all three and must not be reused for this: it is about rendering, not
   about being a symbol. The facade's typed method narrows the result once, with an
   `assert`: O(kinds) narrowings at one site, against the O(kinds × backends) methods the
-  per-kind shape produces. §4.5's `instanceof` ban is scoped to concrete `Type`
-  implementations and `ClassInfo` is not a `Type`, so the assert is in bounds — recorded
+  per-kind shape produces. §4.5's `instanceof` ban is scoped to concrete `TypeInterface`
+  implementations and `ClassInfo` is not a `TypeInterface`, so the assert is in bounds — recorded
   here because a conformance reviewer would otherwise be right to flag it.
 - **No `lookupNamespace`.** A namespace has no declaration site; it exists iff
   something is declared under it. "What is in `Psr\Log`" is `childrenOf`, and
@@ -828,7 +828,7 @@ once Step P is green.
 - ~~The perceptibility threshold and cache decision from the Step 0 spike.~~
   **Resolved — see Section 8.**
 - Whether `ClassLikeName` is the existing `ClassName` reused as-is, renamed, or a
-  wrapper — it must coexist with `ClassName`'s dual role as the class `Type` (§5.3).
+  wrapper — it must coexist with `ClassName`'s dual role as the class `TypeInterface` (§5.3).
 - Whether `FunctionName` / `GlobalConstantName` / `NamespaceName` land in Step 2 as prep
   or in Step 3 with their lookups (lean: Step 3, to avoid an unused-type commit;
   `NamespaceName` is needed by `childrenOf` in Step 2, so it lands then).

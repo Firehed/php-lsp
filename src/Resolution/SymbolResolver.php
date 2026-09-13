@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -121,7 +121,7 @@ final class SymbolResolver implements CodeResolverInterface
      */
     public function getAccessibleMembers(
         TextDocument $document,
-        Type $type,
+        TypeInterface $type,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::Instance,
     ): array {
@@ -550,7 +550,7 @@ final class SymbolResolver implements CodeResolverInterface
         Node\Param $param,
         string $name,
         Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $enclosingScope,
-    ): ?Type {
+    ): ?TypeInterface {
         $enclosingClass = null;
         $selfContext = null;
         $parentContext = null;

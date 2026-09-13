@@ -37,7 +37,7 @@ final class BuiltinTypeCandidates
     /**
      * Context-specific type validity:
      *
-     * | Type   | Property | Parameter | Return |
+     * | TypeInterface   | Property | Parameter | Return |
      * |--------|----------|-----------|--------|
      * | void   | No       | No        | Yes    |
      * | never  | No       | No        | Yes    |

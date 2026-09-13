@@ -18,19 +18,19 @@ final readonly class FunctionInfo implements ResolvedCallableInterface, SymbolIn
     public function __construct(
         public string $name,
         public array $parameters,
-        public ?Type $returnType,
+        public ?TypeInterface $returnType,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
     ) {
     }
 
-    public function getReturnType(): ?Type
+    public function getReturnType(): ?TypeInterface
     {
         return $this->returnType;
     }
 
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->returnType;
     }

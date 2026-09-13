@@ -16,10 +16,10 @@ CI-enforced mechanisms confine where code may live; a rule firing on your change
 
 - **Capability confinement** (`phpstan.neon`): parsing and lexing, AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration/kind inspection, and filesystem access are each usable only in their named homes (allowlists inline, each with its rationale). A deny set names every spelling of its capability, aliases included, so do not reach for a synonym.
 - **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis. A class in no layer is not analysed at all, so `composer layer-coverage` fails when `deptrac debug:unassigned` lists one.
-- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbolInterface`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
+- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `TypeInterface` implementation outside `TypeFactory`; no `instanceof` against a concrete `TypeInterface` or `ResolvedSymbolInterface`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
 - **Literal class references** (`DynamicClassReferenceRule`): a class is named literally. `new $c`, `$v instanceof $c`, `$v::class`, `$c::CONST` and `$c::m()` are denied, because every rule above reads a name to apply. Use `$v::class` nowhere; reach for a predicate instead.
 - **File inclusion** (`FileInclusionRule`): `include`/`require` read the disk, which no call list can name, so they are confined like the filesystem functions.
-- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`, `OneRoutePerFactTest`): every `Type` and `ResolvedSymbolInterface` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, every allowlisted path still exists, and every implementation of a one-route interface is named only by its composition root (see One route per fact under Architecture Invariants).
+- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`, `OneRoutePerFactTest`): every `TypeInterface` and `ResolvedSymbolInterface` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, every allowlisted path still exists, and every implementation of a one-route interface is named only by its composition root (see One route per fact under Architecture Invariants).
 
 When a rule fires on your change:
 
@@ -72,7 +72,7 @@ All symbol resolution flows through the `CodeResolverInterface` interface (imple
 - `getNameContext(doc, line): NameContext` — the namespace and the three import tables in effect
 - `getFileFunctions(doc): list<FunctionInfo>` — user-defined functions declared in the document, at any depth
 
-**Type checks:**
+**TypeInterface checks:**
 - `isInstantiable(ClassName): bool` — valid after `new`
 - `isValidTypeHint(ClassName): bool` — valid in a type-hint position (traits are not)
 
@@ -233,14 +233,14 @@ Typed representations of code constructs in `src/Domain/`:
 - `ParameterInfo`, `FunctionInfo` — Function/method parameter details
 - `Visibility` enum — Public/protected/private with comparison logic
 - `ClassName`, `MethodName`, `PropertyName` — Typed identifiers
-- `TypeFactory` — Creates Type domain objects from AST nodes and reflection
+- `TypeFactory` — Creates TypeInterface domain objects from AST nodes and reflection
 - `NamespacePath` — Segment operations on namespace and fully-qualified-name strings; the one place a name is split into namespace and short name, and the one place a namespace path is case-folded
 
 Domain objects implement `FormattableInterface` for consistent signature formatting across handlers.
 
-### Type System
+### TypeInterface System
 
-The `Type` interface represents PHP types throughout the codebase. Implementations:
+The `TypeInterface` interface represents PHP types throughout the codebase. Implementations:
 
 - `ClassName` — Class/interface/trait/enum types (also serves as class identity)
 - `PrimitiveType` — Built-in types (`string`, `int`, `bool`, `null`, `mixed`, etc.)
@@ -252,7 +252,7 @@ Key methods:
 - `getResolvableClassNames(): list<ClassName>` — Classes for member lookup (filters out primitives)
 - `isNullable(): bool` — Whether the type includes null
 
-**Never store types as strings.** Use `TypeFactory::fromNode()` or `TypeFactory::fromReflection()` to create Type objects at parse time. Use `Type::format()` only for display.
+**Never store types as strings.** Use `TypeFactory::fromNode()` or `TypeFactory::fromReflection()` to create TypeInterface objects at parse time. Use `TypeInterface::format()` only for display.
 
 ### Capability Negotiation
 
@@ -349,7 +349,7 @@ diverge from the one that handles `initialize`/`shutdown`.
 - **Check existing utilities before writing AST traversal.** Search `ScopeFinder` and handlers for similar patterns before creating new `NodeVisitorAbstract` implementations. Duplicate traversal logic should be extracted to utilities.
 - **Use `ExpressionResolver` for expression types.** `resolve(Expr, $ast)` returns a `ResolvedSymbolInterface` whose `getType()` is the expression's type, `$this` included. Inside handlers, prefer `CodeResolverInterface` (see Architecture Invariants) over calling this directly.
 - **Handlers are formatters, not resolvers.** Handlers call `CodeResolverInterface` and format the result. If you find yourself adding node detection, type resolution, or member lookup to a handler, STOP — add it to `SymbolResolver` instead. See Architecture Invariants.
-- **Use `Type` objects, not strings.** Store and pass types as `Type` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
+- **Use `TypeInterface` objects, not strings.** Store and pass types as `TypeInterface` instances. Use `TypeFactory` to create them from AST or reflection. Call `format()` only at display time.
 - **Do not use nullable types.** Null hides bugs and adds unnecessary conditionals.
 
 ### Architecture Invariants
@@ -512,7 +512,7 @@ Structure (all under `tests/Fixtures/src/` with `Fixtures\` namespace):
 - `Traits/`, `Inheritance/`, `Services/` — OOP patterns
 - `Repository/` — Repository pattern examples
 - `Completion/`, `Hover/`, `Definition/`, `SignatureHelp/` — Handler-specific fixtures with cursor markers
-- `TypeInference/` — Type resolver test fixtures
+- `TypeInference/` — TypeInterface resolver test fixtures
 - `Legacy/` — Code quality variations (docblock-only, untyped)
 - `Mixed/` — Procedural + OOP mixes
 

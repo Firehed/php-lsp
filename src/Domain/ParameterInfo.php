@@ -11,7 +11,7 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
 {
     public function __construct(
         public string $name,
-        public ?Type $type,
+        public ?TypeInterface $type,
         public bool $hasDefault,
         public ?string $defaultValue,
         public int $position,
@@ -34,7 +34,7 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
         return null;
     }
 
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->type;
     }

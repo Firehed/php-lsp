@@ -22,7 +22,7 @@ use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -187,7 +187,7 @@ final class ExpressionResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function typeOfBinding(VariableBinding $binding, Scope $scope, array $ast): ?Type
+    private function typeOfBinding(VariableBinding $binding, Scope $scope, array $ast): ?TypeInterface
     {
         $node = $binding->node;
         assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
@@ -221,7 +221,7 @@ final class ExpressionResolver
         return $this->typeOfParameterBinding($parent, $node->name, $scope);
     }
 
-    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?Type
+    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?TypeInterface
     {
         $source = $scope->getSourceNode();
         // @codeCoverageIgnoreStart
@@ -245,7 +245,7 @@ final class ExpressionResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function foreachElementType(Stmt\Foreach_ $foreach, Variable $bindingVar, array $ast): ?Type
+    private function foreachElementType(Stmt\Foreach_ $foreach, Variable $bindingVar, array $ast): ?TypeInterface
     {
         if ($bindingVar === $foreach->keyVar) {
             return null;
@@ -267,7 +267,7 @@ final class ExpressionResolver
      *
      * @param array<Stmt> $ast
      */
-    private function resolveShortClassName(string $shortOrFqn, Node $atNode, array $ast): ?Type
+    private function resolveShortClassName(string $shortOrFqn, Node $atNode, array $ast): ?TypeInterface
     {
         if (str_starts_with($shortOrFqn, '\\')) {
             $fqn = ltrim($shortOrFqn, '\\');
@@ -444,7 +444,7 @@ final class ExpressionResolver
     /**
      * @return list<ClassName>
      */
-    public static function receiverClassNames(?Type $type): array
+    public static function receiverClassNames(?TypeInterface $type): array
     {
         return $type?->getResolvableClassNames() ?? [];
     }
