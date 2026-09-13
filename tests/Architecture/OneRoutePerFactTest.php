@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolBackend;
+use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -89,7 +89,7 @@ final class OneRoutePerFactTest extends TestCase
             // folds the two interfaces into one.
             Fact::family(
                 name: 'symbol backend',
-                interface: SymbolBackend::class,
+                interface: SymbolBackendInterface::class,
                 roots: [KnowledgeStack::class],
                 compositePending: 'step-51',
                 layoutPending: 'step-52',

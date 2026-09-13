@@ -325,7 +325,7 @@ shown to fail against the code it replaces. `/review-slice` checks for these by 
   `searchClassLikes` carries until S3.9b and the §3 workspace walk cannot calcify into a
   permanent exemption.
 
-  S3.8b's proof — **its diff touches no `SymbolBackend` implementation** — is a claim about
+  S3.8b's proof — **its diff touches no `SymbolBackendInterface` implementation** — is a claim about
   the diff's shape rather than a test, so it is checked by reading the diff.
 
 *Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
@@ -745,7 +745,7 @@ Consumer migration (construction moves to `Server.php`):
   concrete return type rather than a type-erased union. That is the structural answer to
   "do per-kind methods recreate M×N" *at the facade*.
 
-  It is not the answer one layer down. `SymbolBackend` takes **one** kind-parameterized
+  It is not the answer one layer down. `SymbolBackendInterface` takes **one** kind-parameterized
   lookup, because the kind changes only the case rule (`NameKind::normalize`), the
   unqualified-fallback rule, and which factory builds the metadata — never how a declaring
   file is found or how a namespace is listed. Three cross-products stay closed:
@@ -754,7 +754,7 @@ Consumer migration (construction moves to `Server.php`):
   info type, and one factory case — never a change to every backend.
 
   **Do not re-derive the per-kind backend method from the facade's closed method set.**
-  That reading is the one the guardrail exists to rule out; `SymbolBackend` carries it
+  That reading is the one the guardrail exists to rule out; `SymbolBackendInterface` carries it
   today and S3.8d removes it, before a third kind triples the copies.
 
   *The shape, so S3.8d does not have to invent it.* The backend takes

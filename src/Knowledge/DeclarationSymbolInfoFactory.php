@@ -41,7 +41,7 @@ use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
 /**
  * The one place a {@see NameKind} picks a declaration list and a builder, which is
- * what lets {@see SymbolBackend} carry a single lookup and a single registration
+ * what lets {@see SymbolBackendInterface} carry a single lookup and a single registration
  * (Plan 0002 §5.6).
  *
  * Lookup is a filter over {@see allIn()} rather than its own scan: RFC 1 §5.1

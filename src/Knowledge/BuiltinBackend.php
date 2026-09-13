@@ -37,7 +37,7 @@ use ReflectionParameter;
 use ReflectionProperty;
 
 /**
- * The lowest-precedence {@see SymbolBackend}: the symbols built into PHP and its
+ * The lowest-precedence {@see SymbolBackendInterface}: the symbols built into PHP and its
  * loaded extensions, described through reflection. It is consulted only after the
  * open-document, workspace, and vendor backends, so a name any of them can resolve
  * never reaches reflection (RFC 1 §5.3).
@@ -56,7 +56,7 @@ use ReflectionProperty;
  * reflection-to-SymbolInfo build is this backend, so a separate class only
  * duplicated the source-picking that {@see CompositeSymbolSource} already owns.
  */
-final class BuiltinBackend implements SymbolBackend
+final class BuiltinBackend implements SymbolBackendInterface
 {
     public function __construct(
         private readonly NamespaceCatalog $namespaces,

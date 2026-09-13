@@ -113,7 +113,7 @@ the symbols declared directly in it.
 - **AutoloadFilesLocator** — the `autoload.files` set, which sits outside every PSR-4 and
   PSR-0 prefix, so no directory listing reaches it. It enumerates the index it already
   derived for lookup, reporting each declaration's own `NameKind` rather than a guess.
-Each source is wrapped as a `SymbolBackend` (see Symbol Backends below): the
+Each source is wrapped as a `SymbolBackendInterface` (see Symbol Backends below): the
 `CompositeSymbolSource` merges and deduplicates their `childrenOf` results, and
 **CachedNamespaceCatalog** wraps the stable sources (workspace-on-disk, vendor,
 built-in) — the `OpenDocumentBackend` is never cached.
@@ -131,7 +131,7 @@ says how to write it.
 
 Class-like lookup, function lookup, namespace enumeration, and class-like prefix search
 flow through the **`SymbolSource`** read seam (`src/Knowledge/`), implemented by
-**`CompositeSymbolSource`** over a fixed-precedence list of **`SymbolBackend`s**
+**`CompositeSymbolSource`** over a fixed-precedence list of **`SymbolBackendInterface`s**
 (RFC 1 §5.3):
 
 1. **`OpenDocumentBackend`** — the editor's open documents (never cached); its answer overrides the rest.
@@ -148,7 +148,7 @@ symbol namespaces are independent, so a class and a function may share a name.
 Lookup is **per-kind at the `SymbolSource` facade** — a typed method per kind, taking a
 name type that carries its kind (`ClassName`, `FunctionName`), because RFC 1 §5.1 requires
 a concrete return type rather than a type-erased union — and **kind-parameterized at
-`SymbolBackend`**: one `lookup(QualifiedName, NameKind): ?SymbolInfo`. Do NOT read the
+`SymbolBackendInterface`**: one `lookup(QualifiedName, NameKind): ?SymbolInfo`. Do NOT read the
 facade's closed method set as licence to add a per-kind backend method. Kind dispatch
 lives in `DeclarationSymbolInfoFactory` and `ReflectionSymbolInfoFactory`, one per
 metadata route, so a new kind is a case in each rather than a method on every backend.

@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
 /**
- * The highest-precedence {@see SymbolBackend}: the documents the editor has open
+ * The highest-precedence {@see SymbolBackendInterface}: the documents the editor has open
  * (RFC 1 §5.3). Its answers override every on-disk backend, so a user's unsaved
  * edits are honored — including edits to a vendored file opened in the editor.
  *
@@ -26,7 +26,7 @@ use Firehed\PhpLsp\Index\Symbol;
  * and `search` all derive from it, so there is no way for the surfaces to disagree
  * about what an open document declares (build-manifest step-46).
  */
-final class OpenDocumentBackend implements SymbolBackend, DocumentSymbolStore
+final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbolStore
 {
     /** @var array<string, list<DeclaredSymbol>> URI -> the symbols it declares */
     private array $symbolsByUri = [];

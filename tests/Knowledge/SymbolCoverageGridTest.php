@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolBackend;
+use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -262,7 +262,7 @@ final class SymbolCoverageGridTest extends TestCase
     }
 
     /**
-     * @return array<string, SymbolBackend> Backend short name -> the first of its class
+     * @return array<string, SymbolBackendInterface> Backend short name -> the first of its class
      */
     private function rows(): array
     {
@@ -275,7 +275,7 @@ final class SymbolCoverageGridTest extends TestCase
         return $rows;
     }
 
-    private function answers(SymbolBackend $backend, string $row, NameKind $kind, GridQuery $query): bool
+    private function answers(SymbolBackendInterface $backend, string $row, NameKind $kind, GridQuery $query): bool
     {
         $probe = self::PROBES[$row][$kind->name] ?? null;
         self::assertNotNull($probe, "no probe is defined for the {$row} x {$kind->name} cells");
@@ -289,7 +289,7 @@ final class SymbolCoverageGridTest extends TestCase
         };
     }
 
-    private function looksUp(SymbolBackend $backend, string $fqn, NameKind $kind): bool
+    private function looksUp(SymbolBackendInterface $backend, string $fqn, NameKind $kind): bool
     {
         $info = $backend->lookup(QualifiedName::fromFullyQualified($fqn), $kind);
         if ($info === null) {
@@ -310,7 +310,7 @@ final class SymbolCoverageGridTest extends TestCase
         return true;
     }
 
-    private function searchFinds(SymbolBackend $backend, string $fqn, NameKind $kind): bool
+    private function searchFinds(SymbolBackendInterface $backend, string $fqn, NameKind $kind): bool
     {
         $prefix = QualifiedName::fromFullyQualified($fqn)->shortName;
 
@@ -323,7 +323,7 @@ final class SymbolCoverageGridTest extends TestCase
         return false;
     }
 
-    private function enumerates(SymbolBackend $backend, string $namespace, NameKind $kind, string $fqn): bool
+    private function enumerates(SymbolBackendInterface $backend, string $namespace, NameKind $kind, string $fqn): bool
     {
         foreach ($backend->childrenOf(new NamespaceName($namespace))->symbols as $symbol) {
             if ($symbol->kind === $kind && $symbol->fullyQualifiedName === $fqn) {

@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\DeclaredSymbol;
  * state: the two operations a document lifecycle event needs — register the
  * document's declared symbols, or drop them — with no read surface.
  *
- * Splitting the write seam from {@see SymbolBackend} keeps the sink typed on the
+ * Splitting the write seam from {@see SymbolBackendInterface} keeps the sink typed on the
  * one route it drives rather than on a full backend it does not read (RFC 1
  * §4.11, one route per fact).
  */

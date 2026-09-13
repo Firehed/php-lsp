@@ -38,7 +38,7 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
      * The symbol-discovery collaborators §4.2 confines to a backend: a concrete index,
      * autoload map, and reflection (`ReflectionClass` is a global class, so it
      * has no namespace prefix). Class-like lookup is now served entirely by the
-     * {@see \Firehed\PhpLsp\Knowledge\SymbolBackend}s, so `ClassRepository` is gone;
+     * {@see \Firehed\PhpLsp\Knowledge\SymbolBackendInterface}s, so `ClassRepository` is gone;
      * function lookup flows through `SymbolSource::lookupFunction`.
      *
      * Adding an entry tightens. Removing one loosens (human only). See

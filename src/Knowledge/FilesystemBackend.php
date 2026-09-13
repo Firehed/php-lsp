@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
- * A {@see SymbolBackend} over PHP files on disk, resolved through Composer's
+ * A {@see SymbolBackendInterface} over PHP files on disk, resolved through Composer's
  * autoload maps: the workspace's own code, and vendored dependencies. The same
  * class serves both roles — the difference is only which autoload map subset it is
  * given (Plan 0002 §3a: the workspace/vendor precedence split), so one lookup
@@ -38,7 +38,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * autoload.files index ({@see PrefixSearchable}), which is bounded and already in
  * memory.
  */
-final class FilesystemBackend implements SymbolBackend, InvalidatableInterface
+final class FilesystemBackend implements SymbolBackendInterface, InvalidatableInterface
 {
     /**
      * The symbols derived from each file, recorded so invalidation can evict them.

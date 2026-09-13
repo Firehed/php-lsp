@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Index\Symbol;
 
 /**
  * The {@see SymbolSource} read seam over a fixed-precedence list of
- * {@see SymbolBackend}s (RFC 1 §4.2, §5.3). This is the single place symbol
+ * {@see SymbolBackendInterface}s (RFC 1 §4.2, §5.3). This is the single place symbol
  * sources are composed: adding, removing, or reordering a source is a change to
  * the backend list here, with no change to any consumer.
  *
@@ -37,7 +37,7 @@ use Firehed\PhpLsp\Index\Symbol;
 final class CompositeSymbolSource implements SymbolSource
 {
     /**
-     * @param list<SymbolBackend> $backends In descending precedence: the first
+     * @param list<SymbolBackendInterface> $backends In descending precedence: the first
      *        that answers a lookup wins, and the first to report a name wins a
      *        merge. Readable so the §5.1 coverage grid derives its rows from it.
      */
@@ -49,7 +49,7 @@ final class CompositeSymbolSource implements SymbolSource
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
         return NamespaceContents::merge(array_map(
-            static fn(SymbolBackend $backend): NamespaceContents => $backend->childrenOf($namespace),
+            static fn(SymbolBackendInterface $backend): NamespaceContents => $backend->childrenOf($namespace),
             $this->backends,
         ));
     }

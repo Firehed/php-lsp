@@ -30,7 +30,7 @@ use Firehed\PhpLsp\Index\Symbol;
  * requires a concrete return type (Plan 0002 §5.6). Do not re-derive a per-kind
  * backend method from the facade's closed set.
  */
-interface SymbolBackend
+interface SymbolBackendInterface
 {
     /**
      * The immediate children of a namespace this backend can see — its child
