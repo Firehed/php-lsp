@@ -1429,7 +1429,7 @@ final class SymbolResolverTest extends TestCase
         self::assertSame(
             'Fixtures\\Domain\\User',
             $context->type->format(),
-            'TypeInterface should be resolved from parameter type hint',
+            'Type should be resolved from parameter type hint',
         );
         self::assertSame(
             Visibility::Public,
@@ -1480,7 +1480,7 @@ final class SymbolResolverTest extends TestCase
         self::assertSame(
             'Fixtures\\Domain\\Entity&Fixtures\\Domain\\Person',
             $context->type->format(),
-            'TypeInterface should be resolved from intersection parameter type hint',
+            'Type should be resolved from intersection parameter type hint',
         );
         self::assertSame(MemberAccessKind::Instance, $context->kind, 'Access via -> is instance access');
 

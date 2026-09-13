@@ -645,7 +645,7 @@ To stop the two typing models fighting before they are built:
   it and **carry their kind intrinsically** (each exposes `kind(): NameKind`). These are
   the primary currency; the per-kind `lookup*` methods take the matching one, so the
   kind is implicit and `NameKind` is not passed. `ClassLikeName` is today's
-  `ClassName` (which per CLAUDE.md also serves as the class `TypeInterface`); whether it is
+  `ClassName` (which per CLAUDE.md also serves as the class `Type`); whether it is
   reused as-is, renamed, or wrapped is an open decision (§7). The other three are new.
 - **`GlobalConstantName`, because `ConstantName` is the class constant member name**
   beside `MethodName` and `PropertyName`. A bare member name is not an FQN, and one type
@@ -828,7 +828,7 @@ once Step P is green.
 - ~~The perceptibility threshold and cache decision from the Step 0 spike.~~
   **Resolved — see Section 8.**
 - Whether `ClassLikeName` is the existing `ClassName` reused as-is, renamed, or a
-  wrapper — it must coexist with `ClassName`'s dual role as the class `TypeInterface` (§5.3).
+  wrapper — it must coexist with `ClassName`'s dual role as the class `Type` (§5.3).
 - Whether `FunctionName` / `GlobalConstantName` / `NamespaceName` land in Step 2 as prep
   or in Step 3 with their lookups (lean: Step 3, to avoid an unused-type commit;
   `NamespaceName` is needed by `childrenOf` in Step 2, so it lands then).
