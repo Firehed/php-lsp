@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Domain;
 final readonly class MethodInfo implements MemberInfo, ResolvedCallable
 {
     use HasCallableParametersTrait;
-    use HasSymbolLocation;
+    use HasSymbolLocationTrait;
 
     /**
      * @param list<ParameterInfo> $parameters

@@ -9,7 +9,7 @@ namespace Firehed\PhpLsp\Domain;
  */
 final readonly class PropertyInfo implements MemberInfo
 {
-    use HasSymbolLocation;
+    use HasSymbolLocationTrait;
 
     public function __construct(
         public PropertyName $name,

@@ -9,7 +9,7 @@ namespace Firehed\PhpLsp\Domain;
  */
 final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
 {
-    use HasSymbolLocation;
+    use HasSymbolLocationTrait;
 
     /**
      * @param list<ClassName> $interfaces Implemented interfaces

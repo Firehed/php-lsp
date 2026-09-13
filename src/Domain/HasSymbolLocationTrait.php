@@ -8,7 +8,7 @@ namespace Firehed\PhpLsp\Domain;
  * The ResolvedSymbol location and documentation methods, shared across every
  * *Info that carries a `$file`, `$line`, and `$docblock` field.
  */
-trait HasSymbolLocation
+trait HasSymbolLocationTrait
 {
     public function getDefinitionLocation(): ?Location
     {

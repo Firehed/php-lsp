@@ -15,7 +15,7 @@ namespace Firehed\PhpLsp\Domain;
  */
 final readonly class ConstantInfo implements MemberInfo, SymbolInfo
 {
-    use HasSymbolLocation;
+    use HasSymbolLocationTrait;
 
     public function __construct(
         public ConstantName $name,
