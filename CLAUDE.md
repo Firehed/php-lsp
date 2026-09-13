@@ -411,7 +411,8 @@ it caches — the code has exactly one interface for it, and one shape around it
   `KnowledgeStack::forProject`, the hand-written container) name one; a test that
   needs production wiring gets it from a factory under `tests/`, never from `src/`.
 - The interface, its composite, and every implementation share one namespace named for
-  the interface under the tier that owns it.
+  the base concept (the interface short name with any trailing "Interface" stripped)
+  under the tier that owns it.
 
 `NamespaceCatalogInterface` with `CompositeNamespaceCatalog` and `CachedNamespaceCatalog` is the
 shape today. A consumer that names an implementation, calls a static method on one, or

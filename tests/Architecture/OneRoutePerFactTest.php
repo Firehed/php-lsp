@@ -271,7 +271,8 @@ final class OneRoutePerFactTest extends TestCase
     {
         assert($fact->interface !== null);
         // The family namespace is the interface's own namespace, and that namespace
-        // is named for the interface: Knowledge\SymbolLocatorInterface\SymbolLocatorInterface.
+        // is named for the base concept (the interface short name with any trailing
+        // "Interface" stripped): Parser\SyntaxSource\SyntaxSourceInterface.
         $family = self::namespaceOf($fact->interface);
         $misplaced = array_values(array_filter(
             $routes,
