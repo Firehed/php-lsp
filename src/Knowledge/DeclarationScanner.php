@@ -32,8 +32,11 @@ use PhpParser\NodeVisitorAbstract;
  */
 final class DeclarationScanner
 {
-    public function scanFile(string $filePath, SourceFileReader $reader, SyntaxSourceInterface $parser): FileDeclarations
-    {
+    public function scanFile(
+        string $filePath,
+        SourceFileReader $reader,
+        SyntaxSourceInterface $parser,
+    ): FileDeclarations {
         $document = $reader->read($filePath);
         if ($document === null) {
             return new FileDeclarations([], [], []);

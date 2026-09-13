@@ -54,7 +54,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testLookupClassLikeReflectsABuiltinClass(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \ArrayObject::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \ArrayObject::class);
 
         self::assertNotNull($info, 'a loaded built-in class must resolve through reflection');
         self::assertSame('ArrayObject', $info->name->fqn, 'the reflected class must be returned');
@@ -107,7 +108,10 @@ final class BuiltinBackendTest extends TestCase
         require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
 
         self::assertNull(
-            self::functionIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'testDocumentedFunction'),
+            self::functionIn(
+                $this->backend(self::createStub(NamespaceCatalogInterface::class)),
+                'testDocumentedFunction',
+            ),
             'a userland function loaded in the server process is not a built-in',
         );
     }
@@ -276,7 +280,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoCarriesBasicMetadataForAPlainClass(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \stdClass::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \stdClass::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(\stdClass::class, $info->name->fqn);
@@ -316,7 +321,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoDetectsTheBuiltinAttributeClass(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \Attribute::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \Attribute::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertTrue($info->isAttribute, 'the built-in Attribute class is itself an attribute');
@@ -324,7 +330,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testPlainClassIsNotMarkedAsAttribute(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \stdClass::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \stdClass::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertFalse($info->isAttribute);
@@ -332,7 +339,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoCarriesMethodsPropertiesAndInterfaces(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \ArrayObject::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \ArrayObject::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertNotEmpty($info->methods, 'a built-in class must report its methods');
@@ -341,7 +349,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoCarriesConstants(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \ArrayObject::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \ArrayObject::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertArrayHasKey('STD_PROP_LIST', $info->constants);
@@ -383,7 +392,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testExceptionPropertyVisibilitiesAreMapped(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \Exception::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \Exception::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(
@@ -400,7 +410,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testProtectedMethodVisibilityIsMapped(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \SplHeap::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \SplHeap::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(
@@ -412,7 +423,8 @@ final class BuiltinBackendTest extends TestCase
 
     public function testPrivateMethodVisibilityIsMapped(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \Exception::class);
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        $info = self::classLikeIn($backend, \Exception::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(

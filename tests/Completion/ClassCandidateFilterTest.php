@@ -16,8 +16,9 @@ class ClassCandidateFilterTest extends TestCase
 {
     public function testAnyAcceptsWithoutResolving(): void
     {
+        $resolver = self::createStub(CodeResolverInterface::class);
         self::assertTrue(
-            ClassCandidateFilter::Any->accepts(new ClassName(\stdClass::class), self::createStub(CodeResolverInterface::class)),
+            ClassCandidateFilter::Any->accepts(new ClassName(\stdClass::class), $resolver),
             'Any position accepts every class-like without consulting the resolver',
         );
     }

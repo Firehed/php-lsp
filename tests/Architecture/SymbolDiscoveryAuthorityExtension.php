@@ -93,7 +93,8 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
         return RestrictedUsage::create(
             sprintf(
                 '%s is a symbol-discovery backend collaborator and must not be referenced outside a '
-                    . 'SymbolSourceInterface/SymbolSinkInterface backend; depend on the Knowledge seam instead (RFC 1 §4.2).',
+                . 'SymbolSourceInterface/SymbolSinkInterface backend; depend on the Knowledge seam instead '
+                . '(RFC 1 §4.2).',
                 $name,
             ),
             'phpLsp.symbolDiscoveryAuthority',

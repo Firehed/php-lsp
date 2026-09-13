@@ -204,7 +204,8 @@ final class ParseHealthGridTest extends TestCase
                 'getCallContext' => $this->assertCallContext($cursor, $config),
                 'getNameContext' => $this->assertNameContext($cursor, $config),
                 default => throw new LogicException(
-                    "no dispatch for {$method} — add a case when introducing a new position-taking CodeResolverInterface method",
+                    "no dispatch for {$method} — add a case when introducing a new position-taking "
+                    . 'CodeResolverInterface method',
                 ),
             };
         } catch (AssertionFailedError $failure) {

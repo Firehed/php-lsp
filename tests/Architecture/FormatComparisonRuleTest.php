@@ -17,10 +17,10 @@ class FormatComparisonRuleTest extends RuleTestCase
         $this->analyse(
             [__DIR__ . '/data/compares-format.php'],
             [
-                ['comparing format() output branches on display representation; use TypeInterface predicates (RFC 1 §4.5).', 17],
-                ['comparing format() output branches on display representation; use TypeInterface predicates (RFC 1 §4.5).', 22],
-                ['comparing format() output branches on display representation; use TypeInterface predicates (RFC 1 §4.5).', 27],
-                ['comparing format() output branches on display representation; use TypeInterface predicates (RFC 1 §4.5).', 32],
+                ['comparing format() output branches on display representation; use Type predicates (RFC 1 §4.5).', 17],
+                ['comparing format() output branches on display representation; use Type predicates (RFC 1 §4.5).', 22],
+                ['comparing format() output branches on display representation; use Type predicates (RFC 1 §4.5).', 27],
+                ['comparing format() output branches on display representation; use Type predicates (RFC 1 §4.5).', 32],
             ],
         );
     }
