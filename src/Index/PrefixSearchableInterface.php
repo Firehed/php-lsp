@@ -13,7 +13,7 @@ use Firehed\PhpLsp\Domain\NameKind;
  * index and the reflection-enumerated built-ins — where a prefix scan is a
  * filter over a list already in memory, not an unbounded walk.
  */
-interface PrefixSearchable
+interface PrefixSearchableInterface
 {
     /**
      * @return list<Symbol>

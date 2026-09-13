@@ -67,7 +67,7 @@ final readonly class KnowledgeStack
             $scanner,
         );
         // ReflectionNamespaceSource serves both enumeration (cached, via
-        // NamespaceCatalog) and prefix search (uncached, via PrefixSearchable).
+        // NamespaceCatalog) and prefix search (uncached, via PrefixSearchableInterface).
         // Both must draw on the same source so coverage is identical (§4.2).
         $reflectionSource = new ReflectionNamespaceSource();
         $source = new CompositeSymbolSource([

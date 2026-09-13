@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfo;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -35,7 +35,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * ({@see NamespaceCatalog}). Prefix search for class-likes is empty: a bare prefix
  * has no name→file map, so project-wide search over disk is the deferred
  * workspace-index scope (RFC 1 §3). Functions and constants are searched through the
- * autoload.files index ({@see PrefixSearchable}), which is bounded and already in
+ * autoload.files index ({@see PrefixSearchableInterface}), which is bounded and already in
  * memory.
  */
 final class FilesystemBackend implements SymbolBackendInterface, InvalidatableInterface
@@ -55,7 +55,7 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
-        private readonly PrefixSearchable $prefixSearch,
+        private readonly PrefixSearchableInterface $prefixSearch,
     ) {
     }
 

@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
@@ -38,7 +38,7 @@ final class BuiltinBackendTest extends TestCase
         return new BuiltinBackend(
             $namespaces,
             new SymbolCache(CacheFactory::inMemory()),
-            self::createStub(PrefixSearchable::class),
+            self::createStub(PrefixSearchableInterface::class),
         );
     }
 

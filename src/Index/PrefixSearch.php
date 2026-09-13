@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\SymbolKind;
 
 /**
- * Shared filter-and-map for {@see PrefixSearchable} implementations: given a
+ * Shared filter-and-map for {@see PrefixSearchableInterface} implementations: given a
  * list of catalog symbols already in memory, keep those whose short name
  * matches the prefix and wrap each in a {@see Symbol}.
  */
