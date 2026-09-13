@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Golden parity for the class-like lookup surface — `ClassRepository::get()`,
- * which Step 2 migrates onto `SymbolSource::lookupClassLike`. The golden freezes
+ * which Step 2 migrates onto `SymbolSourceInterface::lookupClassLike`. The golden freezes
  * the observable `ClassInfo` for a curated corpus of in-repo fixture classes and
  * locked vendored classes (both deterministic across the PHP matrix). A built-in
  * resolved through the reflection fallback is version-fragile, so it is covered

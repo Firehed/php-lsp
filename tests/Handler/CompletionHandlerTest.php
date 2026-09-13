@@ -30,7 +30,7 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -64,7 +64,7 @@ class CompletionHandlerTest extends TestCase
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
     private ParseMetrics $metrics;
-    private SymbolSource $symbolSource;
+    private SymbolSourceInterface $symbolSource;
     private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
@@ -108,7 +108,7 @@ class CompletionHandlerTest extends TestCase
         $this->openDocument($uri, $source);
     }
 
-    private function makeHandler(SymbolSource $symbolSource, bool $snippetSupport = false): CompletionHandler
+    private function makeHandler(SymbolSourceInterface $symbolSource, bool $snippetSupport = false): CompletionHandler
     {
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
@@ -679,7 +679,7 @@ class CompletionHandlerTest extends TestCase
             static fn(int $i): string => sprintf('Flood\\N%03d', $i),
             range(150, 1, -1),
         );
-        $source = new class ($children) implements SymbolSource {
+        $source = new class ($children) implements SymbolSourceInterface {
             /** @param list<string> $children */
             public function __construct(private readonly array $children)
             {

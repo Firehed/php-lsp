@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -44,7 +44,7 @@ use PhpParser\Node\Stmt;
 final class MemberAccessDetector
 {
     public function __construct(
-        private readonly SymbolSource $symbolSource,
+        private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TypeSourceInterface $typeSource,
         private readonly SyntaxSourceInterface $parser,

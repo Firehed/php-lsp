@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
@@ -186,7 +186,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
     /**
      * @return list<string>
      */
-    private function enumerate(SymbolSource $source): array
+    private function enumerate(SymbolSourceInterface $source): array
     {
         return array_map(
             static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
@@ -199,7 +199,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
         self::assertNotFalse(file_put_contents($path, $contents), "the fixture file {$path} must be writable");
     }
 
-    private function warm(SymbolSource $source, string ...$shortNames): void
+    private function warm(SymbolSourceInterface $source, string ...$shortNames): void
     {
         foreach ($shortNames as $shortName) {
             self::assertNotNull(

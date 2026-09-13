@@ -9,8 +9,8 @@ use Firehed\PhpLsp\Document\TextDocument;
 
 /**
  * The write contract for symbol state (RFC 1 §4.3, §5.2): the sole means of mutating
- * what {@see SymbolSource} reports. Kept separate from the read side so a read-only
- * consumer depends only on SymbolSource; one class may implement both.
+ * what {@see SymbolSourceInterface} reports. Kept separate from the read side so a read-only
+ * consumer depends only on SymbolSourceInterface; one class may implement both.
  *
  * There is exactly one write path (RFC 1 §4.3), and it has three producers: the
  * editor lifecycle (open/update/close) and external on-disk change. The latter is

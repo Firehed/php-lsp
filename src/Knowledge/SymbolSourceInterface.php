@@ -28,7 +28,7 @@ use Firehed\PhpLsp\Index\Symbol;
  * Constant lookup and a kind-parameterized search arrive with the slices that first
  * need them (Plan 0002 §5.2); a method with no caller is not carried ahead.
  */
-interface SymbolSource
+interface SymbolSourceInterface
 {
     /**
      * Enumerate a namespace's immediate children — its child namespaces and the

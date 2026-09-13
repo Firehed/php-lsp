@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -66,7 +66,7 @@ final class SymbolResolver implements CodeResolverInterface
 
     public function __construct(
         private readonly SyntaxSourceInterface $parser,
-        private readonly SymbolSource $symbolSource,
+        private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TypeSourceInterface $typeSource,
     ) {

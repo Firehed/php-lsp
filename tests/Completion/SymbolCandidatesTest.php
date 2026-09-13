@@ -13,7 +13,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
@@ -25,7 +25,7 @@ use PHPUnit\Framework\TestCase;
 final class SymbolCandidatesTest extends TestCase
 {
     private string $fixturesRoot;
-    private SymbolSource $symbolSource;
+    private SymbolSourceInterface $symbolSource;
     private SymbolSinkInterface $sink;
     private SymbolResolver $symbolResolver;
 

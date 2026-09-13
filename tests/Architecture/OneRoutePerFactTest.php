@@ -85,7 +85,7 @@ final class OneRoutePerFactTest extends TestCase
                 roots: [KnowledgeStack::class],
                 layoutPending: 'step-52',
             ),
-            // The composite of this family implements SymbolSource today; step-51
+            // The composite of this family implements SymbolSourceInterface today; step-51
             // folds the two interfaces into one.
             Fact::family(
                 name: 'symbol backend',

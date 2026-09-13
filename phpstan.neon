@@ -154,7 +154,7 @@ parameters:
                 - 'method_exists()'
                 - 'property_exists()'
                 - 'is_callable()'
-            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query (RFC 1 §4.2); BuiltinBackend is the one place it may be the server''s own runtime'
+            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSourceInterface query (RFC 1 §4.2); BuiltinBackend is the one place it may be the server''s own runtime'
             allowIn:
                 - src/Knowledge/BuiltinBackend.php
                 - tests/*
@@ -280,8 +280,8 @@ parameters:
 
     disallowedClasses:
         -
-            class: 'Firehed\PhpLsp\Knowledge\SymbolSource'
-            message: 'handlers resolve symbols through CodeResolverInterface (RFC 1 §4.2); SymbolSource is the knowledge tier one layer down'
+            class: 'Firehed\PhpLsp\Knowledge\SymbolSourceInterface'
+            message: 'handlers resolve symbols through CodeResolverInterface (RFC 1 §4.2); SymbolSourceInterface is the knowledge tier one layer down'
             allowIn:
                 - src/Completion/* # completion sources own their lookups
                 - src/Knowledge/*
@@ -342,7 +342,7 @@ parameters:
                 - src/Domain/IntersectionType.php # recursive composition
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Knowledge\SymbolSource::lookupConstant()'
+            method: 'Firehed\PhpLsp\Knowledge\SymbolSourceInterface::lookupConstant()'
             message: 'constant lookup iterates NameContext::candidates(NameKind::Constant) inside ExpressionResolver::resolveConstFetch (build-manifest step-28); identity-keyed type lookup goes through NativeTypeSource (issue #519)'
             allowIn:
                 - src/Resolution/ExpressionResolver.php # resolveConstFetch: the candidate-loop caller

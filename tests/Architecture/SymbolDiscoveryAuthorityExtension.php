@@ -15,7 +15,7 @@ use ReflectionClass;
 
 /**
  * The RFC 1 §8.1 mechanism for §4.2 (Symbol Discovery Authority): symbol existence,
- * metadata, and namespace enumeration are answered through the SymbolSource /
+ * metadata, and namespace enumeration are answered through the SymbolSourceInterface /
  * SymbolSinkInterface seam, so the concrete index, repository, autoload map, and reflection
  * that back it are reachable only within a backend.
  *
@@ -39,7 +39,7 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
      * autoload map, and reflection (`ReflectionClass` is a global class, so it
      * has no namespace prefix). Class-like lookup is now served entirely by the
      * {@see \Firehed\PhpLsp\Knowledge\SymbolBackendInterface}s, so `ClassRepository` is gone;
-     * function lookup flows through `SymbolSource::lookupFunction`.
+     * function lookup flows through `SymbolSourceInterface::lookupFunction`.
      *
      * Adding an entry tightens. Removing one loosens (human only). See
      * docs/architecture/enforcement-edits.md.
@@ -93,7 +93,7 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
         return RestrictedUsage::create(
             sprintf(
                 '%s is a symbol-discovery backend collaborator and must not be referenced outside a '
-                    . 'SymbolSource/SymbolSinkInterface backend; depend on the Knowledge seam instead (RFC 1 §4.2).',
+                    . 'SymbolSourceInterface/SymbolSinkInterface backend; depend on the Knowledge seam instead (RFC 1 §4.2).',
                 $name,
             ),
             'phpLsp.symbolDiscoveryAuthority',

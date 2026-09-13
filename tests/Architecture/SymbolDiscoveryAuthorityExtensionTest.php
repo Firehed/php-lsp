@@ -49,7 +49,7 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
         );
         self::assertSame(
             $className . ' is a symbol-discovery backend collaborator and must not be referenced outside a '
-                . 'SymbolSource/SymbolSinkInterface backend; depend on the Knowledge seam instead (RFC 1 §4.2).',
+                . 'SymbolSourceInterface/SymbolSinkInterface backend; depend on the Knowledge seam instead (RFC 1 §4.2).',
             $result->errorMessage,
             'The diagnostic must name the offending collaborator and cite §4.2.',
         );

@@ -21,12 +21,12 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 
 /**
  * Resolves class members with inheritance traversal.
  *
- * Class-like metadata is read through the {@see SymbolSource} seam (RFC 1 §4.2), so
+ * Class-like metadata is read through the {@see SymbolSourceInterface} seam (RFC 1 §4.2), so
  * the member walk sees the same coverage — open documents overriding the workspace,
  * vendored code, and built-ins — as every other consumer of symbol knowledge.
  *
@@ -38,7 +38,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSource;
 final class MemberResolver
 {
     public function __construct(
-        private readonly SymbolSource $source,
+        private readonly SymbolSourceInterface $source,
     ) {
     }
 

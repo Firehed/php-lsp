@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 
 /**
@@ -22,12 +22,12 @@ use Firehed\PhpLsp\Repository\MemberResolver;
  * subclass just as PHP would find it.
  *
  * The answer's origin (open-document AST, workspace file, vendored file,
- * reflection) is a {@see SymbolSource} concern and does not surface here.
+ * reflection) is a {@see SymbolSourceInterface} concern and does not surface here.
  */
 final readonly class NativeTypeSource implements TypeSourceInterface
 {
     public function __construct(
-        private SymbolSource $symbols,
+        private SymbolSourceInterface $symbols,
         private MemberResolver $members,
     ) {
     }

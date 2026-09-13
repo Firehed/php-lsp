@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
 /**
- * The {@see SymbolSource} read seam over a fixed-precedence list of
+ * The {@see SymbolSourceInterface} read seam over a fixed-precedence list of
  * {@see SymbolBackendInterface}s (RFC 1 §4.2, §5.3). This is the single place symbol
  * sources are composed: adding, removing, or reordering a source is a change to
  * the backend list here, with no change to any consumer.
@@ -34,7 +34,7 @@ use Firehed\PhpLsp\Index\Symbol;
  * open document's class may extend a vendored one and the walk crosses the seam
  * transparently.
  */
-final class CompositeSymbolSource implements SymbolSource
+final class CompositeSymbolSource implements SymbolSourceInterface
 {
     /**
      * @param list<SymbolBackendInterface> $backends In descending precedence: the first

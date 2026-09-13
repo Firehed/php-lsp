@@ -25,7 +25,7 @@ use Firehed\PhpLsp\Domain\ResolvedSymbol;
 use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use PhpParser\Node;
@@ -63,7 +63,7 @@ final class ExpressionResolver
 {
     public function __construct(
         private readonly MemberResolver $memberResolver,
-        private readonly SymbolSource $symbolSource,
+        private readonly SymbolSourceInterface $symbolSource,
         private readonly TypeSourceInterface $typeSource,
         private readonly TextDocument $document,
     ) {

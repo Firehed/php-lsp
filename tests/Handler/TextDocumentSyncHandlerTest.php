@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
@@ -26,7 +26,7 @@ class TextDocumentSyncHandlerTest extends TestCase
     private DocumentManager $manager;
     private MemoizingSyntaxSource $parser;
     private ParseMetrics $metrics;
-    private SymbolSource $source;
+    private SymbolSourceInterface $source;
     private TextDocumentSyncHandler $handler;
 
     protected function setUp(): void

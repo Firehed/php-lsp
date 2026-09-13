@@ -121,7 +121,7 @@ built-in) — the `OpenDocumentBackend` is never cached.
 Discovery reports a coarse `NameKind` (class-like / function / constant), not which
 flavour of class-like: a PSR-4 listing cannot know without parsing. Deciding whether a
 candidate is valid in a position stays with the `CodeResolverInterface` predicates
-(`isInterface`, `isThrowable`, …), which resolve through the `SymbolSource` backends.
+(`isInterface`, `isThrowable`, …), which resolve through the `SymbolSourceInterface` backends.
 
 Pair the catalog with `ReferenceResolver` (`src/Resolution/`), which computes the
 shortest reference that resolves at the cursor. Discovery says what exists; resolution
@@ -130,7 +130,7 @@ says how to write it.
 ### Symbol Backends
 
 Class-like lookup, function lookup, namespace enumeration, and class-like prefix search
-flow through the **`SymbolSource`** read seam (`src/Knowledge/`), implemented by
+flow through the **`SymbolSourceInterface`** read seam (`src/Knowledge/`), implemented by
 **`CompositeSymbolSource`** over a fixed-precedence list of **`SymbolBackendInterface`s**
 (RFC 1 §5.3):
 
@@ -145,7 +145,7 @@ per-backend PSR-16 policy (`src/Cache/`); on-disk and built-in results are cache
 documents never. A cache key carries the `NameKind` (`SymbolCache`): PHP's three
 symbol namespaces are independent, so a class and a function may share a name.
 
-Lookup is **per-kind at the `SymbolSource` facade** — a typed method per kind, taking a
+Lookup is **per-kind at the `SymbolSourceInterface` facade** — a typed method per kind, taking a
 name type that carries its kind (`ClassName`, `FunctionName`), because RFC 1 §5.1 requires
 a concrete return type rather than a type-erased union — and **kind-parameterized at
 `SymbolBackendInterface`**: one `lookup(QualifiedName, NameKind): ?SymbolInfo`. Do NOT read the
@@ -221,7 +221,7 @@ backend answers for every kind; the on-disk and built-in backends return empty
 Function search, and the migration of the consumers still calling
 `FunctionRepository`, are later Step 3b slices; constant reach is S3.8b.
 
-- **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
+- **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSourceInterface`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
 
 ### Domain Objects
@@ -362,7 +362,7 @@ described in #190, #253, and #256 (e.g. "hover works on X but definition doesn't
 Handlers do NOT:
 - Parse documents, find nodes at positions, or detect node types
 - Resolve types or look up members
-- Call `MemberResolver`, `SymbolSource`, or `ExpressionResolver` directly
+- Call `MemberResolver`, `SymbolSourceInterface`, or `ExpressionResolver` directly
 
 Handlers DO:
 - Extract LSP message parameters

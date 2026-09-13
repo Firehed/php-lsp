@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
@@ -36,7 +36,7 @@ class MemberAccessDetectorTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
 
-        $emptySource = self::createStub(SymbolSource::class);
+        $emptySource = self::createStub(SymbolSourceInterface::class);
         $emptySource->method('lookupClassLike')->willReturn(null);
         $emptySource->method('isSubclassOf')->willReturn(false);
         $emptyMemberResolver = new MemberResolver($emptySource);
