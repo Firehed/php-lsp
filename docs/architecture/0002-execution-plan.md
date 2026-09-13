@@ -60,7 +60,7 @@ throughout. That file must land first, or in the same merge; until it does, the
 | `NamespaceCatalog` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
 | `DefaultClassRepository` tiering (becomes backend logic) | `TargetEnvironment` + version-aware built-in source (Step 5 — **deferred**) | `SymbolResolver` (decomposed) |
 | `ComposerAutoloadMap` (dedupe the double instance) | Replaceable cache abstraction (PSR-6/16 seam) | `TextFallbackHelper` (narrowed to FQN recovery) |
-| Completion coordinator + `*Candidates`; transport (amphp) | Enforcement rules (§8.1); `SymbolIdentity` (Step 3+) | `ClassLocator` → kind-general `SymbolLocator` |
+| Completion coordinator + `*Candidates`; transport (amphp) | Enforcement rules (§8.1); `SymbolIdentity` (Step 3+) | `ClassLocator` → kind-general `SymbolLocatorInterface` |
 | Fixture tooling + `TypeGraphParityTest` | Corpus parity harness (Step P); scheduler tier (Step 6) | |
 
 ## 3. Indexing posture (lazy-first)
@@ -260,8 +260,8 @@ Step 4 (Section 6).
   harness compares only observable outputs, an internal divergence between the two
   structures could pass parity, so add a consistency check that both are written from
   the same parse and agree. Proven by the Step P harness.
-- **3b — `SymbolLocator` + `autoload.files` reach (behavior-changing).** Generalize
-  `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in `autoload.files`; give
+- **3b — `SymbolLocatorInterface` + `autoload.files` reach (behavior-changing).** Generalize
+  `ClassLocator` to a kind-agnostic `SymbolLocatorInterface`; fold in `autoload.files`; give
   `lookupFunction` / `lookupConstant` real project reach, and extend
   `lookupClassLike` to the class-likes those files declare, which the autoload maps
   cannot address (constant reach covers `const` declarations and literal-name

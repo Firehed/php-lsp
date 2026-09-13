@@ -48,7 +48,7 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
     private array $symbolsByPath = [];
 
     public function __construct(
-        private readonly SymbolLocator $locator,
+        private readonly SymbolLocatorInterface $locator,
         private readonly NamespaceCatalog $namespaces,
         private readonly SyntaxSourceInterface $parser,
         private readonly SourceFileReader $reader,

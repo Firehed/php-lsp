@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\NamespaceCatalog;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
-use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -81,7 +81,7 @@ final class OneRoutePerFactTest extends TestCase
             ),
             Fact::family(
                 name: 'symbol locator',
-                interface: SymbolLocator::class,
+                interface: SymbolLocatorInterface::class,
                 roots: [KnowledgeStack::class],
                 layoutPending: 'step-52',
             ),
@@ -221,7 +221,7 @@ final class OneRoutePerFactTest extends TestCase
 
     public function testImplementationScanFindsTheKnownFamily(): void
     {
-        $found = array_keys(self::implementationsOf(SymbolLocator::class));
+        $found = array_keys(self::implementationsOf(SymbolLocatorInterface::class));
         sort($found);
 
         self::assertSame(
@@ -271,7 +271,7 @@ final class OneRoutePerFactTest extends TestCase
     {
         assert($fact->interface !== null);
         // The family namespace is the interface's own namespace, and that namespace
-        // is named for the interface: Knowledge\SymbolLocator\SymbolLocator.
+        // is named for the interface: Knowledge\SymbolLocatorInterface\SymbolLocatorInterface.
         $family = self::namespaceOf($fact->interface);
         $misplaced = array_values(array_filter(
             $routes,

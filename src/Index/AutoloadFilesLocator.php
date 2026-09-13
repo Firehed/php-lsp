@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use PhpParser\Node;
@@ -39,7 +39,7 @@ use PhpParser\Node;
  * completion is exactly the lookup/enumeration split RFC 1 §4.2 forbids. The kind
  * reported is the declaration's own, not the coarse guess a directory listing makes.
  */
-final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, PrefixSearchable, InvalidatableInterface
+final class AutoloadFilesLocator implements SymbolLocatorInterface, NamespaceCatalog, PrefixSearchable, InvalidatableInterface
 {
     /**
      * Every name the set declares, as the declaration spells it: the index is keyed

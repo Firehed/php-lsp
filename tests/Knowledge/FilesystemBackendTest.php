@@ -22,7 +22,7 @@ use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolCache;
-use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -397,7 +397,7 @@ final class FilesystemBackendTest extends TestCase
             ->willReturn($expected);
 
         $backend = new FilesystemBackend(
-            self::createStub(SymbolLocator::class),
+            self::createStub(SymbolLocatorInterface::class),
             $catalog,
             $this->parser,
             $this->reader,
@@ -451,7 +451,7 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    private function backendWithLocator(SymbolLocator $locator): FilesystemBackend
+    private function backendWithLocator(SymbolLocatorInterface $locator): FilesystemBackend
     {
         return new FilesystemBackend(
             $locator,
@@ -465,9 +465,9 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    private function locatorReturning(string $path): SymbolLocator
+    private function locatorReturning(string $path): SymbolLocatorInterface
     {
-        $locator = self::createStub(SymbolLocator::class);
+        $locator = self::createStub(SymbolLocatorInterface::class);
         $locator->method('locate')->willReturn($path);
 
         return $locator;
