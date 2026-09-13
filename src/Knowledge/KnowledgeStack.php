@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
  * Assembles the symbol-knowledge tier: the {@see SymbolSource} read composite over
- * its fixed backend precedence, and the {@see SymbolSink} write path, sharing one
+ * its fixed backend precedence, and the {@see SymbolSinkInterface} write path, sharing one
  * open-document backend (RFC 1 §4.2, §4.3, §5.3).
  *
  * The wiring lives here, in one place, so the composition root ({@see \Firehed\PhpLsp\Server})
@@ -29,7 +29,7 @@ final readonly class KnowledgeStack
 {
     public function __construct(
         public SymbolSource $source,
-        public SymbolSink $sink,
+        public SymbolSinkInterface $sink,
     ) {
     }
 

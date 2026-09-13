@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * recovers the structural shape of a document php-parser drops, so a mid-edit
  * still yields declarations (RFC 1 §5.3).
  */
-final class DocumentSymbolSink implements SymbolSink
+final class DocumentSymbolSink implements SymbolSinkInterface
 {
     /**
      * @param list<InvalidatableInterface> $onDiskBackends the cached on-disk backends

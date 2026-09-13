@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
-use Firehed\PhpLsp\Knowledge\SymbolSink;
+use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +15,7 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
 {
     public function testSupportsOnlyTheWatchedFilesMethod(): void
     {
-        $handler = new DidChangeWatchedFilesHandler(self::createStub(SymbolSink::class));
+        $handler = new DidChangeWatchedFilesHandler(self::createStub(SymbolSinkInterface::class));
 
         self::assertTrue($handler->supports('workspace/didChangeWatchedFiles'));
         self::assertFalse($handler->supports('textDocument/didChange'));
@@ -23,7 +23,7 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
 
     public function testInvalidatesEveryChangedFileRegardlessOfChangeType(): void
     {
-        $sink = $this->createMock(SymbolSink::class);
+        $sink = $this->createMock(SymbolSinkInterface::class);
         // Created, changed, and deleted alike drop the cached entry (RFC 1 §5.2).
         $matcher = $this->exactly(3);
         $sink->expects($matcher)
@@ -59,7 +59,7 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
 
     public function testAnEmptyChangeSetInvalidatesNothing(): void
     {
-        $sink = $this->createMock(SymbolSink::class);
+        $sink = $this->createMock(SymbolSinkInterface::class);
         $sink->expects($this->never())->method('invalidate');
 
         $handler = new DidChangeWatchedFilesHandler($sink);

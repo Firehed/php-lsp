@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolSink;
+use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -62,7 +62,7 @@ final class FunctionSurfaceParityTest extends TestCase
 
     private string $fixturesRoot;
     private SymbolSource $symbolSource;
-    private SymbolSink $sink;
+    private SymbolSinkInterface $sink;
     private SymbolResolver $symbolResolver;
 
     protected function setUp(): void

@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Document\TextDocument;
  * {@see InvalidatableInterface::invalidate()}, extended here so it flows through this write
  * path rather than reaching a backend directly.
  */
-interface SymbolSink extends InvalidatableInterface
+interface SymbolSinkInterface extends InvalidatableInterface
 {
     public function closeDocument(string $uri): void;
 

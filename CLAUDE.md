@@ -187,7 +187,7 @@ optional: §4.2 requires lookup and enumeration to draw on the same backends, so
 that resolved on hover while being invisible to completion is the split this tier
 exists to prevent.
 
-The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers a document's
+The write path is **`SymbolSinkInterface`** (`DocumentSymbolSink`), which registers a document's
 declared symbols with `OpenDocumentBackend` — the one store `lookup`, `childrenOf`, and
 `search` all derive from. Registration is kind-parameterized like lookup: the sink hands
 the backend `DeclaredSymbol`s built by `DeclarationSymbolInfoFactory`, the same factory
@@ -200,7 +200,7 @@ disappear.
 sharing one open-document backend.
 
 **External-file-change invalidation** (RFC 1 §5.2, §5.3) is a third write-path
-producer alongside the editor lifecycle. `SymbolSink extends Cache\InvalidatableInterface`, so
+producer alongside the editor lifecycle. `SymbolSinkInterface extends Cache\InvalidatableInterface`, so
 `invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
 the next query re-reads disk. It fans out to the cached on-disk backends (also
 `InvalidatableInterface`): `FilesystemBackend` evicts that file's class-likes and functions (a

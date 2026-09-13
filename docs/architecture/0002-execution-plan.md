@@ -56,7 +56,7 @@ throughout. That file must land first, or in the same merge; until it does, the
 
 | Reused (rewrapped, not rewritten) | New | Substantially rewritten |
 |---|---|---|
-| `Type` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSource` / `SymbolSink` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
+| `Type` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSource` / `SymbolSinkInterface` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
 | `NamespaceCatalog` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
 | `DefaultClassRepository` tiering (becomes backend logic) | `TargetEnvironment` + version-aware built-in source (Step 5 — **deferred**) | `SymbolResolver` (decomposed) |
 | `ComposerAutoloadMap` (dedupe the double instance) | Replaceable cache abstraction (PSR-6/16 seam) | `TextFallbackHelper` (narrowed to FQN recovery) |
@@ -226,7 +226,7 @@ and that the goldens ride a surface-class refactor unchanged (they assert output
 a diff during a behavior-preserving step means the refactor changed behavior) —
 lives in `tests/Parity/README.md`, the single source of truth. Keep it there.
 
-### Step 2 — `SymbolSource` / `SymbolSink` facade (strangler, no behavior change)
+### Step 2 — `SymbolSource` / `SymbolSinkInterface` facade (strangler, no behavior change)
 
 *Goal:* introduce the read/write knowledge seam over today's collaborators, with no
 behavior change. Detailed in Section 5.
@@ -609,7 +609,7 @@ interface SymbolSource
     //   project-wide / cross-file search (workspace/symbol)
 }
 
-interface SymbolSink
+interface SymbolSinkInterface
 {
     public function openDocument(TextDocument $document): void;
     public function updateDocument(TextDocument $document): void;
@@ -620,7 +620,7 @@ interface SymbolSink
 **JIT the interface (should this be front-loaded? — no).** The interface grows with
 the features, like everything else in the plan. Step 2 carries only what the migrated
 features need — exact class-like lookup, class-like prefix search, namespace
-enumeration — plus the `SymbolSink` writes. `lookupFunction` / `lookupConstant` arrive
+enumeration — plus the `SymbolSinkInterface` writes. `lookupFunction` / `lookupConstant` arrive
 in Step 3b; a kind-parameterized `search` arrives with them (a `NameKind` argument is
 meaningless while only class-likes are searchable); `locate` and a cross-file `search`
 arrive with the workspace scope. A method with no current caller is not carried.
@@ -700,7 +700,7 @@ lightweight regardless.
 
 ```php
 // Illustrative Step-2 implementation: pure delegation, no logic.
-final class DelegatingSymbolSource implements SymbolSource, SymbolSink
+final class DelegatingSymbolSource implements SymbolSource, SymbolSinkInterface
 {
     public function __construct(
         private ClassRepository $classes,        // lookupClassLike → get()
@@ -728,7 +728,7 @@ Consumer migration (construction moves to `Server.php`):
 | `ClassCandidates` | `SymbolIndex` | `SymbolSource::searchClassLikes` | identical (same backing) |
 | `NamespaceCandidates` | `NamespaceCatalog` | `SymbolSource::childrenOf` | identical |
 | `SymbolResolver` (class lookups) | `ClassRepository` | `SymbolSource::lookupClassLike` | identical |
-| `TextDocumentSyncHandler` | `DocumentIndexer` + `ClassInfoFactory` + `ClassRepository` | `SymbolSink` | identical (double-write hidden, not removed) |
+| `TextDocumentSyncHandler` | `DocumentIndexer` + `ClassInfoFactory` + `ClassRepository` | `SymbolSinkInterface` | identical (double-write hidden, not removed) |
 | `FunctionCandidates`, function/constant resolution | unchanged | **unchanged** | deferred to Step 3 |
 
 ### 5.6. Design answers baked into the shape
@@ -790,7 +790,7 @@ Deferred, but the facade is the template and the hooks are cheap to leave in pla
 - **`SymbolDefinition` carries a stable `SymbolIdentity`** (the `(FQN, kind)` pair
   today) so a future reverse index keys on the same identity the forward side emits.
 - **Workspace queries are a sibling interface** (`WorkspaceQuery`), backed by the
-  same backend composite plus a reverse index the same `SymbolSink` populates — the
+  same backend composite plus a reverse index the same `SymbolSinkInterface` populates — the
   Step-2 facade pattern reused, not `SymbolSource` grown (§4.2, Appendix B).
 
 ## 6. Sequencing

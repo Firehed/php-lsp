@@ -52,7 +52,7 @@ a bumped date.
        4.11. Parse-Health Collapse
     5. Component Requirements
        5.1. Symbol Knowledge: Read Contract (SymbolSource)
-       5.2. Symbol State: Write Contract (SymbolSink)
+       5.2. Symbol State: Write Contract (SymbolSinkInterface)
        5.3. Backend Substitutability and Caching Policy
        5.4. Session Capabilities
     6. Concurrency Model
@@ -133,12 +133,12 @@ subsection titles are collected in Appendix C and were checked against the live
   not distinguish flavours of class-like.
 - **SymbolSource**: The single *read* abstraction through which symbol existence,
   metadata, definition location, and namespace enumeration are answered
-  (Section 4.2). It is read-only by definition; the write side is the SymbolSink.
-- **SymbolSink**: The sibling *write* abstraction through which document-lifecycle
+  (Section 4.2). It is read-only by definition; the write side is the SymbolSinkInterface.
+- **SymbolSinkInterface**: The sibling *write* abstraction through which document-lifecycle
   changes mutate symbol state (Section 5.2). A single object MAY implement both
-  SymbolSource and SymbolSink, but each consumer depends only on the one it needs.
+  SymbolSource and SymbolSinkInterface, but each consumer depends only on the one it needs.
 - **Backend**: A concrete provider of symbol knowledge behind the SymbolSource /
-  SymbolSink (e.g. open documents, workspace-on-disk, vendored dependencies,
+  SymbolSinkInterface (e.g. open documents, workspace-on-disk, vendored dependencies,
   language built-ins).
 - **Lookup**: A query keyed by name — "resolve this symbol."
 - **Enumeration**: A query keyed by namespace or prefix — "what exists here."
@@ -220,7 +220,7 @@ same backends so that coverage is identical across them.
 ### 4.3. Read/Write Segregation
 
 Read operations (SymbolSource) and document-lifecycle write operations
-(SymbolSink) MUST be exposed as separate interfaces. A consumer that only reads
+(SymbolSinkInterface) MUST be exposed as separate interfaces. A consumer that only reads
 MUST depend only on SymbolSource. A single implementation MAY provide both.
 
 There MUST be exactly one write path for symbol state — document changes and any
@@ -380,9 +380,9 @@ The query verbs are not all primitive, and derived verbs MUST NOT fork.
 A definition-site query (`locate`) MUST be a projection of lookup, never an independent implementation.
 A search SHOULD be derived from enumeration plus filtering; where cost forces an independent implementation, agreement between search and enumeration MUST be held by test.
 
-### 5.2. Symbol State: Write Contract (SymbolSink)
+### 5.2. Symbol State: Write Contract (SymbolSinkInterface)
 
-The SymbolSink write interface MUST be the sole means of mutating symbol state.
+The SymbolSinkInterface write interface MUST be the sole means of mutating symbol state.
 Its primary path is document lifecycle — open, update, and close operations keyed
 by document identity — and any other producer of symbol state (for example,
 background or parallel workspace indexing, Section 6) MUST write through the same
@@ -476,7 +476,7 @@ The requirements distinguish the interactive hot path from background work:
 - True parallelism (separate processes/threads) and native acceleration (FFI or an
   extension) MAY be used for background work such as workspace indexing or a
   parsing hot path. When used: results MUST re-enter shared state through the
-  SymbolSink write contract (Section 5.2); an accelerated component MUST sit behind
+  SymbolSinkInterface write contract (Section 5.2); an accelerated component MUST sit behind
   its existing abstraction (e.g. the parser or type factory) so consumers are
   unchanged; and — because stock PHP shares no memory across processes — the cost
   of marshalling results across the boundary MUST be accounted for.
@@ -521,7 +521,7 @@ exhaustive over the normative sections; each item names the section it checks.
 1. No handler performs resolution or knowledge lookup (Section 4.1).
 2. No symbol existence, location, metadata, or enumeration query bypasses
    SymbolSource (Section 4.2).
-3. Reads depend on SymbolSource and writes on SymbolSink; document state has a
+3. Reads depend on SymbolSource and writes on SymbolSinkInterface; document state has a
    single write path (Section 4.3).
 4. No knowledge query takes a cursor position or a caller-supplied syntax tree
    (Section 4.4).
@@ -572,7 +572,7 @@ The rule set is frozen at the mechanisms registered in `phpstan.neon` and `deptr
                                       and filesystem capability confinement.
     4.3 Read/write segregation        Layer contract (deptrac) for tier dependencies;
                                       single write path checked by architecture test.
-                                      The SymbolSource/SymbolSink split within the
+                                      The SymbolSource/SymbolSinkInterface split within the
                                       Knowledge layer is below deptrac granularity and
                                       is held by the §4.2 static rule.
     4.4 Positional/knowledge split    Interface shape: knowledge signatures accept no

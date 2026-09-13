@@ -71,7 +71,7 @@ deptrac:
       - Completion
       - Document
       - Domain
-      - Knowledge # write path only (SymbolSink); the SymbolSource read-side ban is held by the PHPStan rules
+      - Knowledge # write path only (SymbolSinkInterface); the SymbolSource read-side ban is held by the PHPStan rules
       - Protocol
       - Resolution
     Completion:

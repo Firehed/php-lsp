@@ -25,7 +25,7 @@ use PHPUnit\Framework\TestCase;
  * checkout, and a deletion are each reflected on the next query, and closing an
  * edited file re-reads from disk rather than restoring the pre-edit cache.
  *
- * The change notifications drive the real handler → {@see \Firehed\PhpLsp\Knowledge\SymbolSink}
+ * The change notifications drive the real handler → {@see \Firehed\PhpLsp\Knowledge\SymbolSinkInterface}
  * → backend chain; the workspace is a temp directory mutated between queries.
  */
 #[CoversNothing]
