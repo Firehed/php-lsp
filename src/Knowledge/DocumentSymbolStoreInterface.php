@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Domain\DeclaredSymbol;
  * one route it drives rather than on a full backend it does not read (RFC 1
  * §4.11, one route per fact).
  */
-interface DocumentSymbolStore
+interface DocumentSymbolStoreInterface
 {
     public function removeDocument(string $uri): void;
 

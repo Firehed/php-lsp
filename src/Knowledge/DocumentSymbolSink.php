@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
  * lifecycle events register the document's declared symbols with the
- * {@see DocumentSymbolStore}, so lookup, enumeration and prefix search all draw
+ * {@see DocumentSymbolStoreInterface}, so lookup, enumeration and prefix search all draw
  * from one map (build-manifest step-46). The skeleton source in the composite
  * recovers the structural shape of a document php-parser drops, so a mid-edit
  * still yields declarations (RFC 1 §5.3).
@@ -25,7 +25,7 @@ final class DocumentSymbolSink implements SymbolSink
      *        file changes on disk or is closed after being edited (RFC 1 §5.2, §5.3)
      */
     public function __construct(
-        private readonly DocumentSymbolStore $store,
+        private readonly DocumentSymbolStoreInterface $store,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly SyntaxSourceInterface $parser,
         private readonly DeclarationScanner $scanner,
