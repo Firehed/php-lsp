@@ -4,7 +4,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 2
@@ -14,7 +14,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 2
@@ -24,7 +24,7 @@ parameters:
 			message: '''
 				#^Call to method primitive\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 3
@@ -34,7 +34,7 @@ parameters:
 			message: '''
 				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
@@ -44,7 +44,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 3
@@ -54,7 +54,7 @@ parameters:
 			message: '''
 				#^Call to method fromReflection\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 5
@@ -64,7 +64,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 2
@@ -74,7 +74,7 @@ parameters:
 			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 6
@@ -84,7 +84,7 @@ parameters:
 			message: '''
 				#^Call to method primitive\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
@@ -94,7 +94,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 9
@@ -104,7 +104,7 @@ parameters:
 			message: '''
 				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
@@ -114,7 +114,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 5
@@ -124,7 +124,7 @@ parameters:
 			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
@@ -134,7 +134,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
@@ -144,7 +144,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 3
@@ -154,7 +154,7 @@ parameters:
 			message: '''
 				#^Access to constant on deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: classConstant.deprecatedClass
 			count: 1
@@ -164,7 +164,7 @@ parameters:
 			message: '''
 				#^Access to constant on deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: classConstant.deprecatedClass
 			count: 1
@@ -174,7 +174,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 4
@@ -184,7 +184,7 @@ parameters:
 			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 25
@@ -194,7 +194,7 @@ parameters:
 			message: '''
 				#^Call to method fromReflection\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 9
@@ -204,7 +204,7 @@ parameters:
 			message: '''
 				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 2
@@ -214,7 +214,7 @@ parameters:
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
-				TypeSource, construction primitives will migrate elsewhere$#
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 4

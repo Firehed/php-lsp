@@ -34,7 +34,7 @@ use PhpParser\Node\VarLikeIdentifier;
  * needs the enclosing class-like reads it from the node's position rather
  * than the parent chain.
  */
-final class CursorTextSyntaxSource implements SyntaxSource
+final class CursorTextSyntaxSource implements SyntaxSourceInterface
 {
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';

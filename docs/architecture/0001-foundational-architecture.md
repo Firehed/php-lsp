@@ -51,8 +51,8 @@ a bumped date.
        4.10. Client Conformance Defects
        4.11. Parse-Health Collapse
     5. Component Requirements
-       5.1. Symbol Knowledge: Read Contract (SymbolSource)
-       5.2. Symbol State: Write Contract (SymbolSink)
+       5.1. Symbol Knowledge: Read Contract (SymbolSourceInterface)
+       5.2. Symbol State: Write Contract (SymbolSinkInterface)
        5.3. Backend Substitutability and Caching Policy
        5.4. Session Capabilities
     6. Concurrency Model
@@ -131,14 +131,14 @@ subsection titles are collected in Appendix C and were checked against the live
 - **Symbol kind**: The coarse category of a symbol used for discovery. Discovery
   distinguishes only the categories that name resolution distinguishes; it does
   not distinguish flavours of class-like.
-- **SymbolSource**: The single *read* abstraction through which symbol existence,
+- **SymbolSourceInterface**: The single *read* abstraction through which symbol existence,
   metadata, definition location, and namespace enumeration are answered
-  (Section 4.2). It is read-only by definition; the write side is the SymbolSink.
-- **SymbolSink**: The sibling *write* abstraction through which document-lifecycle
+  (Section 4.2). It is read-only by definition; the write side is the SymbolSinkInterface.
+- **SymbolSinkInterface**: The sibling *write* abstraction through which document-lifecycle
   changes mutate symbol state (Section 5.2). A single object MAY implement both
-  SymbolSource and SymbolSink, but each consumer depends only on the one it needs.
-- **Backend**: A concrete provider of symbol knowledge behind the SymbolSource /
-  SymbolSink (e.g. open documents, workspace-on-disk, vendored dependencies,
+  SymbolSourceInterface and SymbolSinkInterface, but each consumer depends only on the one it needs.
+- **Backend**: A concrete provider of symbol knowledge behind the SymbolSourceInterface /
+  SymbolSinkInterface (e.g. open documents, workspace-on-disk, vendored dependencies,
   language built-ins).
 - **Lookup**: A query keyed by name — "resolve this symbol."
 - **Enumeration**: A query keyed by namespace or prefix — "what exists here."
@@ -185,7 +185,7 @@ Three concerns are kept distinct:
 1. **Positional layer** — answers "what is at this position." Document- and
    cursor-shaped. Owns node-at-offset, scope, and member/call-context detection,
    including any text-based resilience for incomplete input.
-2. **Knowledge layer (SymbolSource)** — answers "what exists in the project and
+2. **Knowledge layer (SymbolSourceInterface)** — answers "what exists in the project and
    where." Has no concept of a cursor.
 3. **Resolution glue** — turns a positional result into a resolved symbol by
    consulting the knowledge layer. Thin.
@@ -206,22 +206,22 @@ existing invariant established for the handler x node-type axis.)
 ### 4.2. Symbol Discovery Authority
 
 All queries for symbol existence, definition location, symbol metadata, and
-namespace enumeration MUST be answered through the SymbolSource abstraction.
+namespace enumeration MUST be answered through the SymbolSourceInterface abstraction.
 
 Components MUST NOT, for these purposes, query a concrete index, repository,
 autoload map, or reflection directly. Adding, removing, or changing *where*
 symbols come from MUST be expressible as a change to a backend (Section 5.3)
 with no change to consumers.
 
-Both lookup and enumeration MUST be served by SymbolSource. They are distinct
+Both lookup and enumeration MUST be served by SymbolSourceInterface. They are distinct
 operations and MUST NOT be collapsed into one another, but they MUST draw on the
 same backends so that coverage is identical across them.
 
 ### 4.3. Read/Write Segregation
 
-Read operations (SymbolSource) and document-lifecycle write operations
-(SymbolSink) MUST be exposed as separate interfaces. A consumer that only reads
-MUST depend only on SymbolSource. A single implementation MAY provide both.
+Read operations (SymbolSourceInterface) and document-lifecycle write operations
+(SymbolSinkInterface) MUST be exposed as separate interfaces. A consumer that only reads
+MUST depend only on SymbolSourceInterface. A single implementation MAY provide both.
 
 There MUST be exactly one write path for symbol state — document changes and any
 background indexing (Section 6) alike. A single document change MUST NOT update two
@@ -230,7 +230,7 @@ independent stores.
 ### 4.4. Separation of Positional and Knowledge Concerns
 
 Positional analysis (Section 3.2, layer 1) MUST be separated from symbol
-knowledge (layer 2). SymbolSource MUST NOT accept a cursor position, and MUST NOT
+knowledge (layer 2). SymbolSourceInterface MUST NOT accept a cursor position, and MUST NOT
 require callers to supply a parsed syntax tree in order to resolve a symbol by
 name. Knowledge queries MUST be answerable from a name (and, where relevant, a
 target environment) alone.
@@ -261,7 +261,7 @@ this section and the per-kind return types required by Section 5.1.
 
 ### 4.6. Type Construction and Graph Traversal
 
-Type objects MUST be constructed through the type factory, from every input
+TypeInterface objects MUST be constructed through the type factory, from every input
 source (syntax tree, reflection, and documentation annotations). Types MUST be
 consumed through the type interface; consumers MUST NOT depend on a concrete type
 implementation.
@@ -359,7 +359,7 @@ This is the same collapse Section 4.9 requires for encoding, applied to parse st
 
 ## 5. Component Requirements
 
-### 5.1. Symbol Knowledge: Read Contract (SymbolSource)
+### 5.1. Symbol Knowledge: Read Contract (SymbolSourceInterface)
 
 The read interface MUST provide, at minimum:
 
@@ -380,9 +380,9 @@ The query verbs are not all primitive, and derived verbs MUST NOT fork.
 A definition-site query (`locate`) MUST be a projection of lookup, never an independent implementation.
 A search SHOULD be derived from enumeration plus filtering; where cost forces an independent implementation, agreement between search and enumeration MUST be held by test.
 
-### 5.2. Symbol State: Write Contract (SymbolSink)
+### 5.2. Symbol State: Write Contract (SymbolSinkInterface)
 
-The SymbolSink write interface MUST be the sole means of mutating symbol state.
+The SymbolSinkInterface write interface MUST be the sole means of mutating symbol state.
 Its primary path is document lifecycle — open, update, and close operations keyed
 by document identity — and any other producer of symbol state (for example,
 background or parallel workspace indexing, Section 6) MUST write through the same
@@ -476,7 +476,7 @@ The requirements distinguish the interactive hot path from background work:
 - True parallelism (separate processes/threads) and native acceleration (FFI or an
   extension) MAY be used for background work such as workspace indexing or a
   parsing hot path. When used: results MUST re-enter shared state through the
-  SymbolSink write contract (Section 5.2); an accelerated component MUST sit behind
+  SymbolSinkInterface write contract (Section 5.2); an accelerated component MUST sit behind
   its existing abstraction (e.g. the parser or type factory) so consumers are
   unchanged; and — because stock PHP shares no memory across processes — the cost
   of marshalling results across the boundary MUST be accounted for.
@@ -520,8 +520,8 @@ exhaustive over the normative sections; each item names the section it checks.
 
 1. No handler performs resolution or knowledge lookup (Section 4.1).
 2. No symbol existence, location, metadata, or enumeration query bypasses
-   SymbolSource (Section 4.2).
-3. Reads depend on SymbolSource and writes on SymbolSink; document state has a
+   SymbolSourceInterface (Section 4.2).
+3. Reads depend on SymbolSourceInterface and writes on SymbolSinkInterface; document state has a
    single write path (Section 4.3).
 4. No knowledge query takes a cursor position or a caller-supplied syntax tree
    (Section 4.4).
@@ -567,19 +567,19 @@ The rule set is frozen at the mechanisms registered in `phpstan.neon` and `deptr
                                       cannot depend on parser, repository, index, or
                                       type-inference tiers; reflection confined by
                                       capability rule.
-    4.2 SymbolSource authority        Static rule: no ReflectionClass, concrete index,
+    4.2 SymbolSourceInterface authority        Static rule: no ReflectionClass, concrete index,
                                       or autoload-map use outside a backend; reflection
                                       and filesystem capability confinement.
     4.3 Read/write segregation        Layer contract (deptrac) for tier dependencies;
                                       single write path checked by architecture test.
-                                      The SymbolSource/SymbolSink split within the
+                                      The SymbolSourceInterface/SymbolSinkInterface split within the
                                       Knowledge layer is below deptrac granularity and
                                       is held by the §4.2 static rule.
     4.4 Positional/knowledge split    Interface shape: knowledge signatures accept no
                                       position or syntax tree (checked by the type
                                       checker on the interface).
     4.5 Predicates over kind/type     Static rule: no `instanceof` against a concrete
-                                      Type or ResolvedSymbol impl, and no branch on a
+                                      TypeInterface or ResolvedSymbolInterface impl, and no branch on a
                                       kind enum outside the factory and classifier —
                                       `match`, `switch`, the four equality operators,
                                       the array searches, and the same comparison made
@@ -671,7 +671,7 @@ work.
 
     Axis                 Extension point                     Governing section
     -------------------  ----------------------------------  -----------------
-    Data source          SymbolSource backend                4.2, 5.3
+    Data source          SymbolSourceInterface backend                4.2, 5.3
     Symbol kind          kind + lookup + extraction          4.5, 5.1
     Member kind          one extraction + one walk + preds   4.5, 4.6 (target)
     Access context       one access-context value + filter   4.5 (target)
@@ -679,7 +679,7 @@ work.
     Target environment   environment parameter + backend      4.7
     Protocol capability  session capabilities + handler       4.8, 5.4
     Position/intent      completion source + intent mapping   7
-    Parse health         SyntaxSource implementation          4.11
+    Parse health         SyntaxSourceInterface implementation          4.11
 
 Rows marked (target) name their intended single extension point ahead of it existing; issue #443 owns the work.
 
@@ -693,7 +693,7 @@ into target environment (4.7) and session capabilities (4.8, 5.4).
   second paragraph of Section 4.6. Both predate this document and are unchanged.
 - The design issues for workspace queries (#264), batch operations (#265), and
   diagnostics (#266) each require a tier this document constrains but does not
-  build: reverse indexing hangs off the SymbolSource authority (Section 4.2);
+  build: reverse indexing hangs off the SymbolSourceInterface authority (Section 4.2);
   batch traversal is a distinct entry that reuses per-node resolution; diagnostics
   are server-initiated output subject to Sections 4.8 and 6. This document defines
   the invariants those tiers MUST satisfy; it does not schedule them.

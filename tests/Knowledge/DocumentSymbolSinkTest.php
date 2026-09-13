@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -202,7 +202,7 @@ final class DocumentSymbolSinkTest extends TestCase
     public function testInvalidateFansOutToTheOnDiskBackends(): void
     {
         $uri = 'file:///workspace/src/Changed.php';
-        $onDisk = $this->createMock(Invalidatable::class);
+        $onDisk = $this->createMock(InvalidatableInterface::class);
         $onDisk->expects($this->once())
             ->method('invalidate')
             ->with($uri);
@@ -213,7 +213,7 @@ final class DocumentSymbolSinkTest extends TestCase
     public function testCloseDocumentInvalidatesTheOnDiskBackendsSoTheyReReadFromDisk(): void
     {
         $uri = 'file:///workspace/src/Widget.php';
-        $onDisk = $this->createMock(Invalidatable::class);
+        $onDisk = $this->createMock(InvalidatableInterface::class);
         // Closing a file that was edited in the editor must drop the on-disk cache
         // so the next query reflects disk rather than the pre-edit value (RFC 1 §5.3).
         $onDisk->expects($this->once())
@@ -289,7 +289,7 @@ final class DocumentSymbolSinkTest extends TestCase
         ];
     }
 
-    private function sinkWithOnDiskBackends(Invalidatable ...$onDiskBackends): DocumentSymbolSink
+    private function sinkWithOnDiskBackends(InvalidatableInterface ...$onDiskBackends): DocumentSymbolSink
     {
         $parser = ProductionSyntaxSource::create()->source;
 

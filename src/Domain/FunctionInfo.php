@@ -7,10 +7,10 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a standalone function.
  */
-final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
+final readonly class FunctionInfo implements ResolvedCallableInterface, SymbolInfoInterface
 {
-    use HasCallableParameters;
-    use HasSymbolLocation;
+    use HasCallableParametersTrait;
+    use HasSymbolLocationTrait;
 
     /**
      * @param list<ParameterInfo> $parameters
@@ -18,19 +18,19 @@ final readonly class FunctionInfo implements ResolvedCallable, SymbolInfo
     public function __construct(
         public string $name,
         public array $parameters,
-        public ?Type $returnType,
+        public ?TypeInterface $returnType,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
     ) {
     }
 
-    public function getReturnType(): ?Type
+    public function getReturnType(): ?TypeInterface
     {
         return $this->returnType;
     }
 
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->returnType;
     }

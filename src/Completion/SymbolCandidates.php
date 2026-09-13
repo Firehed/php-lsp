@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -13,9 +13,9 @@ use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
@@ -40,9 +40,9 @@ final class SymbolCandidates
     private const INLINE_THRESHOLD = 5;
 
     public function __construct(
-        private readonly SymbolSource $symbolSource,
-        private readonly CodeResolver $codeResolver,
-        private readonly SessionCapabilitiesProvider $capabilities,
+        private readonly SymbolSourceInterface $symbolSource,
+        private readonly CodeResolverInterface $codeResolver,
+        private readonly SessionCapabilitiesProviderInterface $capabilities,
     ) {
     }
 

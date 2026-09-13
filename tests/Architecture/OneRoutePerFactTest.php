@@ -6,12 +6,12 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolBackend;
-use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
+use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\NameContext as ResolutionNameContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
@@ -51,7 +51,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class OneRoutePerFactTest extends TestCase
 {
-    use ScansSourceFiles;
+    use ScansSourceFilesTrait;
 
     private const string PROJECT_NAMESPACE = 'Firehed\\PhpLsp\\';
 
@@ -75,21 +75,21 @@ final class OneRoutePerFactTest extends TestCase
         $rows = [
             Fact::family(
                 name: 'namespace catalog',
-                interface: NamespaceCatalog::class,
+                interface: NamespaceCatalogInterface::class,
                 roots: [KnowledgeStack::class],
                 layoutPending: 'step-52',
             ),
             Fact::family(
                 name: 'symbol locator',
-                interface: SymbolLocator::class,
+                interface: SymbolLocatorInterface::class,
                 roots: [KnowledgeStack::class],
                 layoutPending: 'step-52',
             ),
-            // The composite of this family implements SymbolSource today; step-51
+            // The composite of this family implements SymbolSourceInterface today; step-51
             // folds the two interfaces into one.
             Fact::family(
                 name: 'symbol backend',
-                interface: SymbolBackend::class,
+                interface: SymbolBackendInterface::class,
                 roots: [KnowledgeStack::class],
                 compositePending: 'step-51',
                 layoutPending: 'step-52',
@@ -101,7 +101,7 @@ final class OneRoutePerFactTest extends TestCase
             ),
             Fact::family(
                 name: 'syntax source',
-                interface: SyntaxSource::class,
+                interface: SyntaxSourceInterface::class,
                 roots: [Server::class],
             ),
             Fact::confined(
@@ -221,7 +221,7 @@ final class OneRoutePerFactTest extends TestCase
 
     public function testImplementationScanFindsTheKnownFamily(): void
     {
-        $found = array_keys(self::implementationsOf(SymbolLocator::class));
+        $found = array_keys(self::implementationsOf(SymbolLocatorInterface::class));
         sort($found);
 
         self::assertSame(
@@ -245,7 +245,8 @@ final class OneRoutePerFactTest extends TestCase
     private function compositeCheck(Fact $fact, array $routes): array
     {
         assert($fact->interface !== null);
-        $expected = self::namespaceOf($fact->interface) . '\\Composite' . self::shortNameOf($fact->interface);
+        $baseName = preg_replace('/Interface$/', '', self::shortNameOf($fact->interface));
+        $expected = self::namespaceOf($fact->interface) . '\\Composite' . $baseName;
         $present = in_array($expected, $routes, true);
 
         if ($fact->compositePending === null) {
@@ -270,15 +271,17 @@ final class OneRoutePerFactTest extends TestCase
     {
         assert($fact->interface !== null);
         // The family namespace is the interface's own namespace, and that namespace
-        // is named for the interface: Knowledge\SymbolLocator\SymbolLocator.
+        // is named for the base concept (the interface short name with any trailing
+        // "Interface" stripped): Parser\SyntaxSource\SyntaxSourceInterface.
         $family = self::namespaceOf($fact->interface);
         $misplaced = array_values(array_filter(
             $routes,
             static fn (string $class): bool => self::namespaceOf($class) !== $family,
         ));
         $short = self::shortNameOf($fact->interface);
+        $baseName = preg_replace('/Interface$/', '', $short);
         $target = $family;
-        if (self::shortNameOf($family) !== $short) {
+        if (self::shortNameOf($family) !== $baseName) {
             $misplaced[] = $fact->interface;
             $target = $family . '\\' . $short;
         }

@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Transport\TransportInterface;
  * Ids are namespaced (`server-N`) so they never collide with the client's own; the
  * reply is not correlated, so the id only has to be unique.
  */
-final class TransportClientConnection implements ClientConnection
+final class TransportClientConnection implements ClientConnectionInterface
 {
     private int $nextId = 0;
 

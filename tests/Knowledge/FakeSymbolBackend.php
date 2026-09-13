@@ -7,23 +7,23 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolBackend;
+use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
 
 /**
- * An in-memory {@see SymbolBackend} configured with fixed answers, so
+ * An in-memory {@see SymbolBackendInterface} configured with fixed answers, so
  * {@see \Firehed\PhpLsp\Tests\Knowledge\CompositeSymbolSourceTest} can prove the
  * composite's precedence and merge behavior without standing up real sources.
  *
  * Kind-agnostic like the real backends: a symbol carries its own kind, so a kind this
  * file has never heard of is configurable without a new parameter (Plan 0002 §5.6).
  */
-final class FakeSymbolBackend implements SymbolBackend
+final class FakeSymbolBackend implements SymbolBackendInterface
 {
-    /** @var array<string, SymbolInfo> Kind-qualified key -> info */
+    /** @var array<string, SymbolInfoInterface> Kind-qualified key -> info */
     private array $byKey = [];
 
     /**
@@ -46,7 +46,7 @@ final class FakeSymbolBackend implements SymbolBackend
         return $this->namespaces[$namespace->path] ?? new NamespaceContents();
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         return $this->byKey[$kind->keyFor($name)] ?? null;
     }

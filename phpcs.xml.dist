@@ -7,6 +7,8 @@
     <arg value="sp"/>
 
     <rule ref="PSR12"/>
+    <rule ref="Generic.NamingConventions.InterfaceNameSuffix"/>
+    <rule ref="Generic.NamingConventions.TraitNameSuffix"/>
 
     <config name="installed_paths" value="../../slevomat/coding-standard"/>
     <rule ref="SlevomatCodingStandard.Namespaces.UnusedUses">

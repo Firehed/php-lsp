@@ -7,11 +7,11 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a method or function parameter.
  */
-final readonly class ParameterInfo implements ResolvedSymbol
+final readonly class ParameterInfo implements ResolvedSymbolInterface
 {
     public function __construct(
         public string $name,
-        public ?Type $type,
+        public ?TypeInterface $type,
         public bool $hasDefault,
         public ?string $defaultValue,
         public int $position,
@@ -34,7 +34,7 @@ final readonly class ParameterInfo implements ResolvedSymbol
         return null;
     }
 
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->type;
     }
@@ -42,7 +42,7 @@ final readonly class ParameterInfo implements ResolvedSymbol
     /**
      * The parameter's typed name, e.g. `int $count` or `string ...$tail`. A
      * standalone method (not on any interface) so a caller composing a callable's
-     * signature does not go through {@see ResolvedSymbol::format()}, which the
+     * signature does not go through {@see ResolvedSymbolInterface::format()}, which the
      * presenter owns.
      */
     public static function signature(self $parameter, bool $showDefault = false): string

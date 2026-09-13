@@ -7,10 +7,10 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class method.
  */
-final readonly class MethodInfo implements MemberInfo, ResolvedCallable
+final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallableInterface
 {
-    use HasCallableParameters;
-    use HasSymbolLocation;
+    use HasCallableParametersTrait;
+    use HasSymbolLocationTrait;
 
     /**
      * @param list<ParameterInfo> $parameters
@@ -22,7 +22,7 @@ final readonly class MethodInfo implements MemberInfo, ResolvedCallable
         public bool $isAbstract,
         public bool $isFinal,
         public array $parameters,
-        public ?Type $returnType,
+        public ?TypeInterface $returnType,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -45,15 +45,15 @@ final readonly class MethodInfo implements MemberInfo, ResolvedCallable
         return $this->name;
     }
 
-    public function getReturnType(): ?Type
+    public function getReturnType(): ?TypeInterface
     {
         return $this->returnType;
     }
 
     /**
-     * ResolvedSymbol's value type for a method is its return type.
+     * ResolvedSymbolInterface's value type for a method is its return type.
      */
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->returnType;
     }

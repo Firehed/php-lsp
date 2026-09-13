@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolSink;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
@@ -25,8 +25,8 @@ use PHPUnit\Framework\TestCase;
 final class SymbolCandidatesTest extends TestCase
 {
     private string $fixturesRoot;
-    private SymbolSource $symbolSource;
-    private SymbolSink $sink;
+    private SymbolSourceInterface $symbolSource;
+    private SymbolSinkInterface $sink;
     private SymbolResolver $symbolResolver;
 
     protected function setUp(): void
@@ -136,7 +136,7 @@ final class SymbolCandidatesTest extends TestCase
 
     private function candidates(): SymbolCandidates
     {
-        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities());
 

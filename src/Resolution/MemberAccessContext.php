@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\MemberFilter;
-use Firehed\PhpLsp\Domain\ResolvedMember;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 
 final readonly class MemberAccessContext
 {
     private function __construct(
-        public Type $type,
+        public TypeInterface $type,
         public Visibility $minVisibility,
         public MemberAccessKind $kind,
         public string $prefix,
@@ -23,7 +23,7 @@ final readonly class MemberAccessContext
     }
 
     public static function forInstance(
-        Type $type,
+        TypeInterface $type,
         Visibility $minVisibility,
         string $prefix,
     ): self {
@@ -39,7 +39,7 @@ final readonly class MemberAccessContext
     }
 
     public static function forStatic(
-        Type $type,
+        TypeInterface $type,
         Visibility $minVisibility,
         string $prefix,
     ): self {
@@ -55,7 +55,7 @@ final readonly class MemberAccessContext
     }
 
     public static function forParent(
-        Type $type,
+        TypeInterface $type,
         Visibility $minVisibility,
         string $prefix,
     ): self {
@@ -70,7 +70,7 @@ final readonly class MemberAccessContext
         );
     }
 
-    public function accepts(ResolvedMember $member): bool
+    public function accepts(ResolvedMemberInterface $member): bool
     {
         if ($this->methodsOnly && !$member->getMemberKind()->isMethod()) {
             return false;

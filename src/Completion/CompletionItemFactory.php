@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\ResolvedMember;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
@@ -36,7 +36,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forResolvedMember(ResolvedMember $member, bool $snippetSupport = false): array
+    public static function forResolvedMember(ResolvedMemberInterface $member, bool $snippetSupport = false): array
     {
         $memberKind = $member->getMemberKind();
         $itemKind = match ($memberKind) {

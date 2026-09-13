@@ -17,7 +17,7 @@ use PhpParser\Node\Stmt;
  * `nodeAt` takes the tree the caller obtained from `parse()` so no implementation
  * parses twice and the memo stays a pure decorator.
  */
-interface SyntaxSource
+interface SyntaxSourceInterface
 {
     /**
      * @return array<Stmt>

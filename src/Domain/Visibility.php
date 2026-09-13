@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Member visibility level.
  */
-enum Visibility: int implements Formattable
+enum Visibility: int implements FormattableInterface
 {
     case Private = 0;
     case Protected = 1;

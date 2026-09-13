@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
@@ -30,7 +30,7 @@ use Firehed\PhpLsp\Index\Symbol;
  * requires a concrete return type (Plan 0002 §5.6). Do not re-derive a per-kind
  * backend method from the facade's closed set.
  */
-interface SymbolBackend
+interface SymbolBackendInterface
 {
     /**
      * The immediate children of a namespace this backend can see — its child
@@ -43,7 +43,7 @@ interface SymbolBackend
      * Full metadata for the symbol $name names *as a $kind*, or `null` when this
      * backend cannot reach such a declaration (RFC 1 §5.3).
      */
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo;
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface;
 
     /**
      * The symbols of $kind this backend can enumerate whose short name begins

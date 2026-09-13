@@ -10,13 +10,13 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
 /**
- * The highest-precedence {@see SymbolBackend}: the documents the editor has open
+ * The highest-precedence {@see SymbolBackendInterface}: the documents the editor has open
  * (RFC 1 §5.3). Its answers override every on-disk backend, so a user's unsaved
  * edits are honored — including edits to a vendored file opened in the editor.
  *
@@ -26,12 +26,12 @@ use Firehed\PhpLsp\Index\Symbol;
  * and `search` all derive from it, so there is no way for the surfaces to disagree
  * about what an open document declares (build-manifest step-46).
  */
-final class OpenDocumentBackend implements SymbolBackend, DocumentSymbolStore
+final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbolStoreInterface
 {
     /** @var array<string, list<DeclaredSymbol>> URI -> the symbols it declares */
     private array $symbolsByUri = [];
 
-    /** @var array<string, SymbolInfo> Kind-qualified key -> metadata, derived for O(1) lookup */
+    /** @var array<string, SymbolInfoInterface> Kind-qualified key -> metadata, derived for O(1) lookup */
     private array $byKey = [];
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
@@ -60,7 +60,7 @@ final class OpenDocumentBackend implements SymbolBackend, DocumentSymbolStore
         return new NamespaceContents(array_values($childNamespaces), $symbols);
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         return $this->byKey[$kind->keyFor($name)] ?? null;
     }

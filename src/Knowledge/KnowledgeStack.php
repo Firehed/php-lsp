@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -14,11 +14,11 @@ use Firehed\PhpLsp\Index\ComposerSymbolLocator;
 use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
- * Assembles the symbol-knowledge tier: the {@see SymbolSource} read composite over
- * its fixed backend precedence, and the {@see SymbolSink} write path, sharing one
+ * Assembles the symbol-knowledge tier: the {@see SymbolSourceInterface} read composite over
+ * its fixed backend precedence, and the {@see SymbolSinkInterface} write path, sharing one
  * open-document backend (RFC 1 §4.2, §4.3, §5.3).
  *
  * The wiring lives here, in one place, so the composition root ({@see \Firehed\PhpLsp\Server})
@@ -28,8 +28,8 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
 final readonly class KnowledgeStack
 {
     public function __construct(
-        public SymbolSource $source,
-        public SymbolSink $sink,
+        public SymbolSourceInterface $source,
+        public SymbolSinkInterface $sink,
     ) {
     }
 
@@ -42,7 +42,7 @@ final readonly class KnowledgeStack
     public static function forProject(
         ComposerAutoloadMap $autoloadMap,
         string $vendorDirectory,
-        SyntaxSource $parser,
+        SyntaxSourceInterface $parser,
         SourceFileReader $reader,
     ): self {
         $declarationInfoFactory = new DeclarationSymbolInfoFactory();
@@ -67,7 +67,7 @@ final readonly class KnowledgeStack
             $scanner,
         );
         // ReflectionNamespaceSource serves both enumeration (cached, via
-        // NamespaceCatalog) and prefix search (uncached, via PrefixSearchable).
+        // NamespaceCatalogInterface) and prefix search (uncached, via PrefixSearchableInterface).
         // Both must draw on the same source so coverage is identical (§4.2).
         $reflectionSource = new ReflectionNamespaceSource();
         $source = new CompositeSymbolSource([
@@ -97,11 +97,11 @@ final readonly class KnowledgeStack
     }
 
     /**
-     * @return array{FilesystemBackend, list<Invalidatable>}
+     * @return array{FilesystemBackend, list<InvalidatableInterface>}
      */
     private static function filesystemBackend(
         ComposerAutoloadMap $map,
-        SyntaxSource $parser,
+        SyntaxSourceInterface $parser,
         SourceFileReader $reader,
         DeclarationSymbolInfoFactory $infoFactory,
         DeclarationScanner $scanner,

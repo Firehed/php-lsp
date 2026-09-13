@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
-use Firehed\PhpLsp\Capability\InitializedListener;
+use Firehed\PhpLsp\Capability\InitializedListenerInterface;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -24,7 +24,7 @@ final class LifecycleHandler implements HandlerInterface
     private ?int $exitCode = null;
 
     /**
-     * @param list<InitializedListener> $initializedListeners invoked once the
+     * @param list<InitializedListenerInterface> $initializedListeners invoked once the
      *        client sends `initialized`, when the negotiated session capabilities
      *        are settled and dynamic registration may proceed ([LSP] Register
      *        Capability)

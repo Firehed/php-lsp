@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Index;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -87,7 +87,7 @@ final class CompositeNamespaceCatalogTest extends TestCase
      * @param list<string> $childNamespaces
      * @param list<string> $symbolFqns
      */
-    private static function catalogOf(array $childNamespaces, array $symbolFqns): NamespaceCatalog
+    private static function catalogOf(array $childNamespaces, array $symbolFqns): NamespaceCatalogInterface
     {
         return self::catalogReturning(new NamespaceContents(
             $childNamespaces,
@@ -101,14 +101,14 @@ final class CompositeNamespaceCatalogTest extends TestCase
     /**
      * @param list<CatalogSymbol> $symbols
      */
-    private static function catalogOfSymbols(array $symbols): NamespaceCatalog
+    private static function catalogOfSymbols(array $symbols): NamespaceCatalogInterface
     {
         return self::catalogReturning(new NamespaceContents([], $symbols));
     }
 
-    private static function catalogReturning(NamespaceContents $contents): NamespaceCatalog
+    private static function catalogReturning(NamespaceContents $contents): NamespaceCatalogInterface
     {
-        $catalog = self::createStub(NamespaceCatalog::class);
+        $catalog = self::createStub(NamespaceCatalogInterface::class);
         $catalog->method('childrenOf')->willReturn($contents);
 
         return $catalog;

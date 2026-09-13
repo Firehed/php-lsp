@@ -14,7 +14,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
  * while the others stay frozen. See docs/architecture/0002-execution-plan.md,
  * Step P.
  */
-trait AssertsGolden
+trait AssertsGoldenTrait
 {
     /**
      * When true, {@see assertGoldenMatches} rewrites the golden instead of

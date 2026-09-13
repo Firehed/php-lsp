@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 /**
  * The intent behind a class-name completion, which determines the resolution
@@ -46,9 +46,9 @@ enum ClassCandidateFilter
 
     /**
      * Whether a class-like is valid in this position, resolved through the
-     * {@see CodeResolver} predicates (which read the caching class repository).
+     * {@see CodeResolverInterface} predicates (which read the caching class repository).
      */
-    public function accepts(ClassName $className, CodeResolver $codeResolver): bool
+    public function accepts(ClassName $className, CodeResolverInterface $codeResolver): bool
     {
         return match ($this) {
             self::Any => true,

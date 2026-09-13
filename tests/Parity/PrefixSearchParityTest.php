@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class PrefixSearchParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     /**
      * The documents whose symbols make up the searchable index. The set spans

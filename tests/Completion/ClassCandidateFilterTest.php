@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -16,8 +16,9 @@ class ClassCandidateFilterTest extends TestCase
 {
     public function testAnyAcceptsWithoutResolving(): void
     {
+        $resolver = self::createStub(CodeResolverInterface::class);
         self::assertTrue(
-            ClassCandidateFilter::Any->accepts(new ClassName(\stdClass::class), self::createStub(CodeResolver::class)),
+            ClassCandidateFilter::Any->accepts(new ClassName(\stdClass::class), $resolver),
             'Any position accepts every class-like without consulting the resolver',
         );
     }
@@ -30,7 +31,7 @@ class ClassCandidateFilterTest extends TestCase
     #[DataProvider('provideFilterPredicates')]
     public function testFilterDefersToItsPredicate(ClassCandidateFilter $filter, string $method): void
     {
-        $resolver = self::createStub(CodeResolver::class);
+        $resolver = self::createStub(CodeResolverInterface::class);
         $resolver->method($method)->willReturn(true);
 
         self::assertTrue($filter->accepts(new ClassName(\stdClass::class), $resolver));

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-final readonly class UnionType implements Type
+final readonly class UnionType implements TypeInterface
 {
     /**
-     * @param list<Type> $members
+     * @param list<TypeInterface> $members
      */
     public function __construct(
         private array $members,
@@ -25,7 +25,7 @@ final readonly class UnionType implements Type
             }
         }
 
-        $parts = array_map(function (Type $member): string {
+        $parts = array_map(function (TypeInterface $member): string {
             if ($member instanceof IntersectionType) {
                 return '(' . $member->format() . ')';
             }
@@ -53,16 +53,16 @@ final readonly class UnionType implements Type
         return false;
     }
 
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
+    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
     {
         $resolved = array_map(
-            fn (Type $member) => $member->resolveLateBound($callingClass, $declaringClassIsTrait),
+            fn (TypeInterface $member) => $member->resolveLateBound($callingClass, $declaringClassIsTrait),
             $this->members,
         );
         return new self($resolved);
     }
 
-    public function valueType(): ?Type
+    public function valueType(): ?TypeInterface
     {
         $shared = null;
         foreach ($this->members as $member) {
@@ -81,7 +81,7 @@ final readonly class UnionType implements Type
         return $shared;
     }
 
-    public function equals(Type $other): bool
+    public function equals(TypeInterface $other): bool
     {
         if (!$other instanceof self) {
             return false;

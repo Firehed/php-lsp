@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 
 /**
- * The test-facing wiring for the production SyntaxSource stack. Mirrors what
+ * The test-facing wiring for the production SyntaxSourceInterface stack. Mirrors what
  * {@see \Firehed\PhpLsp\Server::forProject} assembles, so a test that needs
  * production wiring does not name any implementation directly.
  *

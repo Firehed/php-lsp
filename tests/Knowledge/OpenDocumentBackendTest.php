@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
@@ -134,7 +134,7 @@ final class OpenDocumentBackendTest extends TestCase
         // The point of the kind-parameterized write path: a kind whose metadata type
         // this backend has never heard of round-trips, so adding one is a change to
         // the info factories alone (Plan 0002 §5.6).
-        $info = new class implements SymbolInfo {
+        $info = new class implements SymbolInfoInterface {
             public function symbolKind(): SymbolKind
             {
                 return SymbolKind::Constant;

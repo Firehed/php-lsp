@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
-use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -68,7 +68,7 @@ final class CompositeSymbolLocatorTest extends TestCase
 
     public function testTheLaterLocatorIsNotConsultedOnceOneAnswers(): void
     {
-        $second = $this->createMock(SymbolLocator::class);
+        $second = $this->createMock(SymbolLocatorInterface::class);
         $second->expects($this->never())->method('locate');
 
         $locator = new CompositeSymbolLocator([self::locatorReturning('/first.php'), $second]);
@@ -80,9 +80,9 @@ final class CompositeSymbolLocatorTest extends TestCase
         );
     }
 
-    private static function locatorReturning(?string $path): SymbolLocator
+    private static function locatorReturning(?string $path): SymbolLocatorInterface
     {
-        $locator = self::createStub(SymbolLocator::class);
+        $locator = self::createStub(SymbolLocatorInterface::class);
         $locator->method('locate')->willReturn($path);
 
         return $locator;

@@ -7,9 +7,9 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class, interface, trait, or enum.
  */
-final readonly class ClassInfo implements ResolvedSymbol, SymbolInfo
+final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInterface
 {
-    use HasSymbolLocation;
+    use HasSymbolLocationTrait;
 
     /**
      * @param list<ClassName> $interfaces Implemented interfaces

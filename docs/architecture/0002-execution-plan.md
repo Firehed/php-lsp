@@ -56,11 +56,11 @@ throughout. That file must land first, or in the same merge; until it does, the
 
 | Reused (rewrapped, not rewritten) | New | Substantially rewritten |
 |---|---|---|
-| `Type` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSource` / `SymbolSink` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
-| `NamespaceCatalog` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
+| `TypeInterface` + `TypeFactory`; `MemberResolver::supertypes()` | `SymbolSourceInterface` / `SymbolSinkInterface` + backend composition | `DefaultFunctionRepository` (AST-in signature dies) |
+| `NamespaceCatalogInterface` + 3 sources + `Cached*` | `SessionCapabilities` + negotiation + encoding edge | Open-doc double store (`SymbolIndex` + `documentClasses`) |
 | `DefaultClassRepository` tiering (becomes backend logic) | `TargetEnvironment` + version-aware built-in source (Step 5 — **deferred**) | `SymbolResolver` (decomposed) |
 | `ComposerAutoloadMap` (dedupe the double instance) | Replaceable cache abstraction (PSR-6/16 seam) | `TextFallbackHelper` (narrowed to FQN recovery) |
-| Completion coordinator + `*Candidates`; transport (amphp) | Enforcement rules (§8.1); `SymbolIdentity` (Step 3+) | `ClassLocator` → kind-general `SymbolLocator` |
+| Completion coordinator + `*Candidates`; transport (amphp) | Enforcement rules (§8.1); `SymbolIdentity` (Step 3+) | `ClassLocator` → kind-general `SymbolLocatorInterface` |
 | Fixture tooling + `TypeGraphParityTest` | Corpus parity harness (Step P); scheduler tier (Step 6) | |
 
 ## 3. Indexing posture (lazy-first)
@@ -72,7 +72,7 @@ needed only for the deferred workspace scope.
 | Capability | Needs an index? | Mechanism |
 |---|---|---|
 | `lookupClassLike(FQN)` | No | PSR-4 `findFile` → parse that one file (today's `ClassRepository`) |
-| `childrenOf(namespace)` | No | `scandir` that one directory (today's `NamespaceCatalog`) |
+| `childrenOf(namespace)` | No | `scandir` that one directory (today's `NamespaceCatalogInterface`) |
 | `autoload.files` reach — all kinds (Step 3) | Bounded, small | parse the `autoload.files` set (explicit, tiny; #181) + open docs |
 | Project-wide `search(prefix)` / `workspace/symbol` | Yes | deferred workspace scope |
 | Reverse queries (find-references, implementations) | Yes (reverse index) | deferred workspace scope |
@@ -226,16 +226,16 @@ and that the goldens ride a surface-class refactor unchanged (they assert output
 a diff during a behavior-preserving step means the refactor changed behavior) —
 lives in `tests/Parity/README.md`, the single source of truth. Keep it there.
 
-### Step 2 — `SymbolSource` / `SymbolSink` facade (strangler, no behavior change)
+### Step 2 — `SymbolSourceInterface` / `SymbolSinkInterface` facade (strangler, no behavior change)
 
 *Goal:* introduce the read/write knowledge seam over today's collaborators, with no
 behavior change. Detailed in Section 5.
 
 *Acceptance:* read + write interfaces exist; a facade implements them by delegating
-to `ClassRepository` / `SymbolIndex` / `NamespaceCatalog` and the existing write
+to `ClassRepository` / `SymbolIndex` / `NamespaceCatalogInterface` and the existing write
 paths; class-like lookup, class-like prefix search, namespace enumeration, and the
 document write path flow through the interfaces; **no *migrated* consumer names
-`ClassRepository`, `SymbolIndex`, or `NamespaceCatalog` directly** (the function/
+`ClassRepository`, `SymbolIndex`, or `NamespaceCatalogInterface` directly** (the function/
 constant path still names `FunctionRepository` — deferred to Step 3, §5.5); the
 Step P harness is identical before/after; the §4.2 "no direct reflection/index/
 autoload/repository outside a backend" rule ships **scoped to exempt
@@ -260,8 +260,8 @@ Step 4 (Section 6).
   harness compares only observable outputs, an internal divergence between the two
   structures could pass parity, so add a consistency check that both are written from
   the same parse and agree. Proven by the Step P harness.
-- **3b — `SymbolLocator` + `autoload.files` reach (behavior-changing).** Generalize
-  `ClassLocator` to a kind-agnostic `SymbolLocator`; fold in `autoload.files`; give
+- **3b — `SymbolLocatorInterface` + `autoload.files` reach (behavior-changing).** Generalize
+  `ClassLocator` to a kind-agnostic `SymbolLocatorInterface`; fold in `autoload.files`; give
   `lookupFunction` / `lookupConstant` real project reach, and extend
   `lookupClassLike` to the class-likes those files declare, which the autoload maps
   cannot address (constant reach covers `const` declarations and literal-name
@@ -325,7 +325,7 @@ shown to fail against the code it replaces. `/review-slice` checks for these by 
   `searchClassLikes` carries until S3.9b and the §3 workspace walk cannot calcify into a
   permanent exemption.
 
-  S3.8b's proof — **its diff touches no `SymbolBackend` implementation** — is a claim about
+  S3.8b's proof — **its diff touches no `SymbolBackendInterface` implementation** — is a claim about
   the diff's shape rather than a test, so it is checked by reading the diff.
 
 *Known tracked gap:* the Builtin backend stood up in 3a is reflection-backed and not
@@ -340,11 +340,11 @@ optimistic availability) is intentional.
 The original decomposition slices predate the default-deny guardrails; the duplication they targeted is now enumerated mechanically as baseline entries, so "done" is checkable (those entries are gone, each positional question has one implementation) rather than judged (the class looks thin).
 `SymbolResolver` becoming thin glue is the side effect, not the metric.
 
-*Acceptance:* `phpstan-baseline.neon` and `deptrac.baseline.yaml` carry no entries for `src/Resolution/` or `src/TypeInference/`; each positional question is answered in exactly one place, with parse health collapsed behind the positional facade and the §4.11 AST/text agreement test in place; `TypeClassifier` owns the predicates; **`CodeResolver` is reduced to the positional-facing interface — its knowledge-facing responsibilities are served by `SymbolSource` (there is no second knowledge interface)**; the S4.1 rules pass, with the `instanceof` rule widened to resolved-symbol implementations (§4.5 as amended); parity green.
+*Acceptance:* `phpstan-baseline.neon` and `deptrac.baseline.yaml` carry no entries for `src/Resolution/` or `src/TypeInference/`; each positional question is answered in exactly one place, with parse health collapsed behind the positional facade and the §4.11 AST/text agreement test in place; `TypeClassifier` owns the predicates; **`CodeResolverInterface` is reduced to the positional-facing interface — its knowledge-facing responsibilities are served by `SymbolSourceInterface` (there is no second knowledge interface)**; the S4.1 rules pass, with the `instanceof` rule widened to resolved-symbol implementations (§4.5 as amended); parity green.
 
 *Handler dependency shape.* This does not give handlers a second resolver. Point-query
-handlers (Definition / Hover / …) depend on the positional-facing `CodeResolver`
-(`resolveAtPosition` and the glue behind it); `SymbolSource` is consumed by that glue
+handlers (Definition / Hover / …) depend on the positional-facing `CodeResolverInterface`
+(`resolveAtPosition` and the glue behind it); `SymbolSourceInterface` is consumed by that glue
 and by the completion sources, **not** by handlers directly. The "handlers are thin
 formatters over one resolver" invariant is preserved — the knowledge interface sits
 below the glue, not beside the handler.
@@ -445,7 +445,7 @@ feature-detected with a synchronous fallback (Fibers / FFI may be relied on).
 
 ### Unscheduled §8.1 mechanisms
 
-- §4.6 "no `new` of a `Type` impl outside the factory" — lands in Step 4 (above).
+- §4.6 "no `new` of a `TypeInterface` impl outside the factory" — lands in Step 4 (above).
 - §4.10 client conformance defects — review-only by design; carries no seam. The
   running defect list lives in RFC 1 Appendix B (currently: ale `textEdit` range,
   ale#4274). No step owns it; it is maintained on review.
@@ -466,7 +466,7 @@ row must be discharged at the Definition of Done (Step Z).
     DefaultFunctionRepository AST-in signature                Step 3b
     SymbolResolver god class                                  Step 4
     TextFallbackHelper breadth (narrow to FQN recovery)       Step 4
-    CodeResolver knowledge-facing methods                     Step 4
+    CodeResolverInterface knowledge-facing methods                     Step 4
     A Step 0 standing cache, if built (no orphan)             Step 3a(i)
     WorkspaceIndexer (dead today)                             SC.1
     ScopeFinder::extractImports/resolveFromUseStatements       SC.2
@@ -582,7 +582,7 @@ Only when every item above holds is the foundation deemed complete.
 
 ### 5.1. The design decision that shapes the interface
 
-Knowledge queries are **FQN-based** (§4.4). `SymbolSource` takes already-qualified
+Knowledge queries are **FQN-based** (§4.4). `SymbolSourceInterface` takes already-qualified
 names; turning "`foo()` in this namespace with these imports" into candidate FQNs
 is positional / name-context work and stays with the caller (today's `NameContext`
 / `ScopeFinder`, which land in the positional layer in Step 4). That is what lets
@@ -591,7 +591,7 @@ the interface drop the `document` / `$ast` parameters.
 ### 5.2. Interfaces (illustrative, not normative)
 
 ```php
-interface SymbolSource
+interface SymbolSourceInterface
 {
     // --- Step 2: the surface today's migrated features actually need ---
     public function lookupClassLike(ClassLikeName $name): ?ClassInfo;          // exact name -> full info (hover, def, members)
@@ -609,7 +609,7 @@ interface SymbolSource
     //   project-wide / cross-file search (workspace/symbol)
 }
 
-interface SymbolSink
+interface SymbolSinkInterface
 {
     public function openDocument(TextDocument $document): void;
     public function updateDocument(TextDocument $document): void;
@@ -620,7 +620,7 @@ interface SymbolSink
 **JIT the interface (should this be front-loaded? — no).** The interface grows with
 the features, like everything else in the plan. Step 2 carries only what the migrated
 features need — exact class-like lookup, class-like prefix search, namespace
-enumeration — plus the `SymbolSink` writes. `lookupFunction` / `lookupConstant` arrive
+enumeration — plus the `SymbolSinkInterface` writes. `lookupFunction` / `lookupConstant` arrive
 in Step 3b; a kind-parameterized `search` arrives with them (a `NameKind` argument is
 meaningless while only class-likes are searchable); `locate` and a cross-file `search`
 arrive with the workspace scope. A method with no current caller is not carried.
@@ -657,10 +657,10 @@ To stop the two typing models fighting before they are built:
   a no-op. The nullable is a conscious exception to the no-nullable rule: the
   alternatives are a second metadata type differing in one field, or a sentinel
   `ClassName` the type system cannot catch as a lie.
-- A global constant is **not** a `ResolvedMember` — that interface means *reached through
+- A global constant is **not** a `ResolvedMemberInterface` — that interface means *reached through
   a class*, which is a path it does not have. Whether it instead gets a fifth wrapper or
-  `ConstantInfo` carries `ResolvedSymbol` itself is #416's, and turns on SC.13:
-  `ResolvedSymbol` is in `Resolution` and returns an `Index\Location`, so a `Domain`
+  `ConstantInfo` carries `ResolvedSymbolInterface` itself is #416's, and turns on SC.13:
+  `ResolvedSymbolInterface` is in `Resolution` and returns an `Index\Location`, so a `Domain`
   object carrying it adds edges the layer contract denies.
 - `locate(QualifiedName, NameKind)` is the kind-agnostic entry, used when the caller
   has an FQN whose kind is known only from syntactic position and has not minted a
@@ -700,12 +700,12 @@ lightweight regardless.
 
 ```php
 // Illustrative Step-2 implementation: pure delegation, no logic.
-final class DelegatingSymbolSource implements SymbolSource, SymbolSink
+final class DelegatingSymbolSource implements SymbolSourceInterface, SymbolSinkInterface
 {
     public function __construct(
         private ClassRepository $classes,        // lookupClassLike → get()
         private SymbolIndex $index,              // searchClassLikes → findByPrefix()
-        private NamespaceCatalog $catalog,       // childrenOf → childrenOf()
+        private NamespaceCatalogInterface $catalog,       // childrenOf → childrenOf()
         private DocumentIndexer $indexer,        // write path A (existing)
         private ClassInfoFactory $classFactory,  // write path B: registerDocumentClasses (existing)
         private ParserService $parser,
@@ -725,10 +725,10 @@ Consumer migration (construction moves to `Server.php`):
 
 | Consumer | Today | Step 2 | Behavior |
 |---|---|---|---|
-| `ClassCandidates` | `SymbolIndex` | `SymbolSource::searchClassLikes` | identical (same backing) |
-| `NamespaceCandidates` | `NamespaceCatalog` | `SymbolSource::childrenOf` | identical |
-| `SymbolResolver` (class lookups) | `ClassRepository` | `SymbolSource::lookupClassLike` | identical |
-| `TextDocumentSyncHandler` | `DocumentIndexer` + `ClassInfoFactory` + `ClassRepository` | `SymbolSink` | identical (double-write hidden, not removed) |
+| `ClassCandidates` | `SymbolIndex` | `SymbolSourceInterface::searchClassLikes` | identical (same backing) |
+| `NamespaceCandidates` | `NamespaceCatalogInterface` | `SymbolSourceInterface::childrenOf` | identical |
+| `SymbolResolver` (class lookups) | `ClassRepository` | `SymbolSourceInterface::lookupClassLike` | identical |
+| `TextDocumentSyncHandler` | `DocumentIndexer` + `ClassInfoFactory` + `ClassRepository` | `SymbolSinkInterface` | identical (double-write hidden, not removed) |
 | `FunctionCandidates`, function/constant resolution | unchanged | **unchanged** | deferred to Step 3 |
 
 ### 5.6. Design answers baked into the shape
@@ -740,12 +740,12 @@ Consumer migration (construction moves to `Server.php`):
 - **Per-kind at the facade, kind-parameterized at the backends.** These are different
   answers to the same question, and the split is deliberate.
 
-  `SymbolSource` carries a typed method per kind, and that set is **closed**: PHP has
+  `SymbolSourceInterface` carries a typed method per kind, and that set is **closed**: PHP has
   exactly three symbol namespaces, so it cannot grow with new kinds, and §5.1 requires a
   concrete return type rather than a type-erased union. That is the structural answer to
   "do per-kind methods recreate M×N" *at the facade*.
 
-  It is not the answer one layer down. `SymbolBackend` takes **one** kind-parameterized
+  It is not the answer one layer down. `SymbolBackendInterface` takes **one** kind-parameterized
   lookup, because the kind changes only the case rule (`NameKind::normalize`), the
   unqualified-fallback rule, and which factory builds the metadata — never how a declaring
   file is found or how a namespace is listed. Three cross-products stay closed:
@@ -754,17 +754,17 @@ Consumer migration (construction moves to `Server.php`):
   info type, and one factory case — never a change to every backend.
 
   **Do not re-derive the per-kind backend method from the facade's closed method set.**
-  That reading is the one the guardrail exists to rule out; `SymbolBackend` carries it
+  That reading is the one the guardrail exists to rule out; `SymbolBackendInterface` carries it
   today and S3.8d removes it, before a third kind triples the copies.
 
   *The shape, so S3.8d does not have to invent it.* The backend takes
-  `lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo`, where `SymbolInfo` is a new
-  marker on `ClassInfo`, `FunctionInfo` and the global-constant info type. `Formattable`
+  `lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface`, where `SymbolInfoInterface` is a new
+  marker on `ClassInfo`, `FunctionInfo` and the global-constant info type. `FormattableInterface`
   is already on all three and must not be reused for this: it is about rendering, not
   about being a symbol. The facade's typed method narrows the result once, with an
   `assert`: O(kinds) narrowings at one site, against the O(kinds × backends) methods the
-  per-kind shape produces. §4.5's `instanceof` ban is scoped to concrete `Type`
-  implementations and `ClassInfo` is not a `Type`, so the assert is in bounds — recorded
+  per-kind shape produces. §4.5's `instanceof` ban is scoped to concrete `TypeInterface`
+  implementations and `ClassInfo` is not a `TypeInterface`, so the assert is in bounds — recorded
   here because a conformance reviewer would otherwise be right to flag it.
 - **No `lookupNamespace`.** A namespace has no declaration site; it exists iff
   something is declared under it. "What is in `Psr\Log`" is `childrenOf`, and
@@ -790,8 +790,8 @@ Deferred, but the facade is the template and the hooks are cheap to leave in pla
 - **`SymbolDefinition` carries a stable `SymbolIdentity`** (the `(FQN, kind)` pair
   today) so a future reverse index keys on the same identity the forward side emits.
 - **Workspace queries are a sibling interface** (`WorkspaceQuery`), backed by the
-  same backend composite plus a reverse index the same `SymbolSink` populates — the
-  Step-2 facade pattern reused, not `SymbolSource` grown (§4.2, Appendix B).
+  same backend composite plus a reverse index the same `SymbolSinkInterface` populates — the
+  Step-2 facade pattern reused, not `SymbolSourceInterface` grown (§4.2, Appendix B).
 
 ## 6. Sequencing
 
@@ -907,7 +907,7 @@ The **steady-state** column is the `SymbolResolver` fan-out. Its seven
 `parser->parse()` sites do not compound on the point-query paths: hover,
 definition, and signatureHelp each take one code path and parse the open document
 once. They compound on **completion**, which fans out to several sources — each
-calling a different `CodeResolver` method (`getMemberAccessContext`,
+calling a different `CodeResolverInterface` method (`getMemberAccessContext`,
 `getVariablesInScope`, `getImports`, `getNameContext`, `getFileFunctions`), each of
 which re-parses the same unchanged document. The sync notification adds two more:
 `TextDocumentSyncHandler::indexDocument()` parses, then hands the document to

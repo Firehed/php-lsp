@@ -19,14 +19,14 @@ use PHPUnit\Framework\TestCase;
 class MemberInfoTest extends TestCase
 {
     #[DataProvider('members')]
-    public function testAnswersTheWalk(MemberInfo $member, Visibility $visibility, bool $isStatic): void
+    public function testAnswersTheWalk(MemberInfoInterface $member, Visibility $visibility, bool $isStatic): void
     {
         self::assertSame($visibility, $member->getVisibility());
         self::assertSame($isStatic, $member->isStatic());
     }
 
     /**
-     * @return iterable<string, array{MemberInfo, Visibility, bool}>
+     * @return iterable<string, array{MemberInfoInterface, Visibility, bool}>
      */
     public static function members(): iterable
     {
