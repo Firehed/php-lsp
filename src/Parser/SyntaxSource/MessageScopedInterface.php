@@ -11,7 +11,7 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
  * per-message counter) implements it and joins the boundary without a new
  * hook.
  */
-interface MessageScoped
+interface MessageScopedInterface
 {
     public function endMessage(): void;
 }

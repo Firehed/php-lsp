@@ -29,7 +29,7 @@ use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\MessageScoped;
+use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
@@ -63,7 +63,7 @@ final class Server
         private readonly TransportInterface $transport,
         private readonly LifecycleHandler $lifecycleHandler,
         array $handlers,
-        private readonly MessageScoped $messageScope,
+        private readonly MessageScopedInterface $messageScope,
     ) {
         $this->handlers = [$lifecycleHandler, ...$handlers];
     }
@@ -79,7 +79,7 @@ final class Server
         TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
-        SyntaxSource&MessageScoped $parser = new MemoizingSyntaxSource(
+        SyntaxSource&MessageScopedInterface $parser = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
                 new SkeletonSyntaxSource(),
@@ -222,9 +222,9 @@ final class Server
                     }
                 }
             } finally {
-                // Per-message state (the parse memo, and any later MessageScoped
+                // Per-message state (the parse memo, and any later MessageScopedInterface
                 // decorator) closes here — this loop is the only boundary that knows
-                // where the message ends. Clearing it through MessageScoped keeps
+                // where the message ends. Clearing it through MessageScopedInterface keeps
                 // Server from naming the decorator, and keeps the memo from becoming
                 // the standing cache the Step 0 spike declined
                 // (0002-execution-plan.md, Section 8.5).
