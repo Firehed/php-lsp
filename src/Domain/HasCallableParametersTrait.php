@@ -8,7 +8,7 @@ namespace Firehed\PhpLsp\Domain;
  * The ResolvedCallable parameter lookups, shared across every *Info that
  * carries a `list<ParameterInfo> $parameters` field.
  */
-trait HasCallableParameters
+trait HasCallableParametersTrait
 {
     public function getParameters(): array
     {
