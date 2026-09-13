@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
@@ -110,7 +110,7 @@ class CompletionHandlerTest extends TestCase
 
     private function makeHandler(SymbolSource $symbolSource, bool $snippetSupport = false): CompletionHandler
     {
-        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
 

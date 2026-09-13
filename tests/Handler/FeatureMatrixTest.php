@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -103,7 +103,7 @@ final class FeatureMatrixTest extends TestCase
             $typeSource,
         );
 
-        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities());
 

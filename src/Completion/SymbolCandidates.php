@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -42,7 +42,7 @@ final class SymbolCandidates
     public function __construct(
         private readonly SymbolSource $symbolSource,
         private readonly CodeResolver $codeResolver,
-        private readonly SessionCapabilitiesProvider $capabilities,
+        private readonly SessionCapabilitiesProviderInterface $capabilities,
     ) {
     }
 

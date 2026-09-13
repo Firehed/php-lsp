@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Resolution\CodeResolver;
@@ -24,7 +24,7 @@ final class MemberCandidates
 {
     public function __construct(
         private readonly CodeResolver $codeResolver,
-        private readonly SessionCapabilitiesProvider $capabilities,
+        private readonly SessionCapabilitiesProviderInterface $capabilities,
     ) {
     }
 

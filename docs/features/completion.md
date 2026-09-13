@@ -32,7 +32,7 @@ parentheses typed for you with the cursor between them — as an LSP snippet, bu
 only when the client declared `completionItem.snippetSupport` during
 `initialize`. A client without snippet support gets the bare name inserted, since
 it would show the `$0` tab stop literally. The decision is shaped by
-`SessionCapabilities` (RFC 1 §4.8), read through `SessionCapabilitiesProvider`;
+`SessionCapabilities` (RFC 1 §4.8), read through `SessionCapabilitiesProviderInterface`;
 non-callable members (properties, constants, enum cases) never gain parentheses.
 
 Member completions cover the full type graph: members declared on the type itself,

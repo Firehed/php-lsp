@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -211,7 +211,7 @@ final class CompletionParityTest extends TestCase
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
 
-        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: false));
 
