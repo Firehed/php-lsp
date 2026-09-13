@@ -9,7 +9,7 @@ namespace Firehed\PhpLsp\Domain;
  * The metadata objects (ClassInfo, MethodInfo, etc.) implement this directly so
  * handlers do not branch on kind.
  */
-interface ResolvedSymbol extends Formattable
+interface ResolvedSymbol extends FormattableInterface
 {
     /**
      * Returns the source location where this symbol is defined, or null if unknown.

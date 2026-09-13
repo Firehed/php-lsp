@@ -236,7 +236,7 @@ Typed representations of code constructs in `src/Domain/`:
 - `TypeFactory` — Creates Type domain objects from AST nodes and reflection
 - `NamespacePath` — Segment operations on namespace and fully-qualified-name strings; the one place a name is split into namespace and short name, and the one place a namespace path is case-folded
 
-Domain objects implement `Formattable` for consistent signature formatting across handlers.
+Domain objects implement `FormattableInterface` for consistent signature formatting across handlers.
 
 ### Type System
 

@@ -271,7 +271,7 @@ final class ClassLikeLookupParityTest extends TestCase
     }
 
     /**
-     * @param array<string, \Firehed\PhpLsp\Domain\Formattable> $members
+     * @param array<string, \Firehed\PhpLsp\Domain\FormattableInterface> $members
      * @return array<string, string>
      */
     private static function formatted(array $members): array

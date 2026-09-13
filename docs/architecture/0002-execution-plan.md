@@ -759,7 +759,7 @@ Consumer migration (construction moves to `Server.php`):
 
   *The shape, so S3.8d does not have to invent it.* The backend takes
   `lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo`, where `SymbolInfo` is a new
-  marker on `ClassInfo`, `FunctionInfo` and the global-constant info type. `Formattable`
+  marker on `ClassInfo`, `FunctionInfo` and the global-constant info type. `FormattableInterface`
   is already on all three and must not be reused for this: it is about rendering, not
   about being a symbol. The facade's typed method narrows the result once, with an
   `assert`: O(kinds) narrowings at one site, against the O(kinds × backends) methods the

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-interface Type extends Formattable
+interface Type extends FormattableInterface
 {
     /**
      * @return list<ClassName>
