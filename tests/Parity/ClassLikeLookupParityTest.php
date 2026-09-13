@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Golden parity for the class-like lookup surface — `ClassRepository::get()`,
- * which Step 2 migrates onto `SymbolSource::lookupClassLike`. The golden freezes
+ * which Step 2 migrates onto `SymbolSourceInterface::lookupClassLike`. The golden freezes
  * the observable `ClassInfo` for a curated corpus of in-repo fixture classes and
  * locked vendored classes (both deterministic across the PHP matrix). A built-in
  * resolved through the reflection fallback is version-fragile, so it is covered
@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class ClassLikeLookupParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     /**
      * Corpus of class-like names whose full `ClassInfo` is deterministic and
@@ -271,7 +271,7 @@ final class ClassLikeLookupParityTest extends TestCase
     }
 
     /**
-     * @param array<string, \Firehed\PhpLsp\Domain\Formattable> $members
+     * @param array<string, \Firehed\PhpLsp\Domain\FormattableInterface> $members
      * @return array<string, string>
      */
     private static function formatted(array $members): array

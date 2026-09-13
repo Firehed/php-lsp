@@ -9,16 +9,16 @@ use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\ResolvedCallable;
-use Firehed\PhpLsp\Domain\ResolvedMember;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
+use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
@@ -53,22 +53,22 @@ use Throwable;
  * - findSupertypes(ClassName $class): array<ClassInfo>
  *
  * FUTURE: Call hierarchy
- * - getIncomingCalls(ResolvedCallable $callable): array<CallHierarchyItem>
- * - getOutgoingCalls(ResolvedCallable $callable): array<CallHierarchyItem>
+ * - getIncomingCalls(ResolvedCallableInterface $callable): array<CallHierarchyItem>
+ * - getOutgoingCalls(ResolvedCallableInterface $callable): array<CallHierarchyItem>
  *
  * FUTURE: Batch operations (for SemanticTokens)
  * - resolveAllSymbols(Document $document): array<ResolvedToken>
  */
-final class SymbolResolver implements CodeResolver
+final class SymbolResolver implements CodeResolverInterface
 {
     private readonly CallContextDetector $callDetector;
     private readonly MemberAccessDetector $memberAccessDetector;
 
     public function __construct(
-        private readonly SyntaxSource $parser,
-        private readonly SymbolSource $symbolSource,
+        private readonly SyntaxSourceInterface $parser,
+        private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolver $memberResolver,
-        private readonly TypeSource $typeSource,
+        private readonly TypeSourceInterface $typeSource,
     ) {
         $this->callDetector = new CallContextDetector($parser);
         $this->memberAccessDetector = new MemberAccessDetector(
@@ -97,7 +97,7 @@ final class SymbolResolver implements CodeResolver
         TextDocument $document,
         int $line,
         int $character,
-    ): ?ResolvedSymbol {
+    ): ?ResolvedSymbolInterface {
         $ast = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
@@ -117,11 +117,11 @@ final class SymbolResolver implements CodeResolver
      * For instance access: returns methods and properties.
      * For static access: also includes constants and enum cases.
      *
-     * @return list<ResolvedMember>
+     * @return list<ResolvedMemberInterface>
      */
     public function getAccessibleMembers(
         TextDocument $document,
-        Type $type,
+        TypeInterface $type,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::Instance,
     ): array {
@@ -149,10 +149,10 @@ final class SymbolResolver implements CodeResolver
      * Get members for a single class using AST/reflection.
      *
      * One loop over the kinds a position admits, so no kind can drift onto a
-     * different walk. The *Info metadata objects implement {@see ResolvedMember}
+     * different walk. The *Info metadata objects implement {@see ResolvedMemberInterface}
      * directly, so no wrapper is built per member.
      *
-     * @return list<ResolvedMember>
+     * @return list<ResolvedMemberInterface>
      */
     private function getMembersForClass(
         ClassName $className,
@@ -397,14 +397,14 @@ final class SymbolResolver implements CodeResolver
         FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         array $ast,
         TextDocument $document,
-    ): ?ResolvedCallable {
+    ): ?ResolvedCallableInterface {
         return $this->expressionResolver($document)->resolveCallable($call, $ast);
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveNode(Node $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveNode(Node $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         // VarLikeIdentifier extends Identifier, so check it first
         if ($node instanceof VarLikeIdentifier) {
@@ -429,7 +429,7 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveIdentifier(Identifier $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveIdentifier(Identifier $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         $parent = $node->getAttribute('parent');
 
@@ -466,7 +466,7 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveName(Name $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveName(Name $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         $parent = $node->getAttribute('parent');
 
@@ -488,7 +488,7 @@ final class SymbolResolver implements CodeResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function resolveVariable(Variable $node, array $ast, TextDocument $document): ?ResolvedSymbol
+    private function resolveVariable(Variable $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
     {
         $name = $node->name;
         if (!is_string($name)) {
@@ -550,7 +550,7 @@ final class SymbolResolver implements CodeResolver
         Node\Param $param,
         string $name,
         Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $enclosingScope,
-    ): ?Type {
+    ): ?TypeInterface {
         $enclosingClass = null;
         $selfContext = null;
         $parentContext = null;
@@ -623,7 +623,7 @@ final class SymbolResolver implements CodeResolver
         VarLikeIdentifier $node,
         array $ast,
         TextDocument $document,
-    ): ?ResolvedSymbol {
+    ): ?ResolvedSymbolInterface {
         $parent = $node->getAttribute('parent');
 
         // Static property fetch: ClassName::$property

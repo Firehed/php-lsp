@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
- * A {@see SymbolBackend} over PHP files on disk, resolved through Composer's
+ * A {@see SymbolBackendInterface} over PHP files on disk, resolved through Composer's
  * autoload maps: the workspace's own code, and vendored dependencies. The same
  * class serves both roles — the difference is only which autoload map subset it is
  * given (Plan 0002 §3a: the workspace/vendor precedence split), so one lookup
@@ -27,18 +27,18 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
  * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
  * replaceable cache seam (RFC 1 §5.3): a file on disk is stable while unchanged, so
  * a resolved symbol is memoized. An on-disk change to a file is signalled through
- * {@see invalidate()} ({@see Invalidatable}), which evicts that file's cached
+ * {@see invalidate()} ({@see InvalidatableInterface}), which evicts that file's cached
  * symbols and drops cached namespace listings so the next query reflects disk
  * (RFC 1 §5.2, §5.3).
  *
  * Namespace enumeration is a directory listing through the same autoload map
- * ({@see NamespaceCatalog}). Prefix search for class-likes is empty: a bare prefix
+ * ({@see NamespaceCatalogInterface}). Prefix search for class-likes is empty: a bare prefix
  * has no name→file map, so project-wide search over disk is the deferred
  * workspace-index scope (RFC 1 §3). Functions and constants are searched through the
- * autoload.files index ({@see PrefixSearchable}), which is bounded and already in
+ * autoload.files index ({@see PrefixSearchableInterface}), which is bounded and already in
  * memory.
  */
-final class FilesystemBackend implements SymbolBackend, Invalidatable
+final class FilesystemBackend implements SymbolBackendInterface, InvalidatableInterface
 {
     /**
      * The symbols derived from each file, recorded so invalidation can evict them.
@@ -48,14 +48,14 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
     private array $symbolsByPath = [];
 
     public function __construct(
-        private readonly SymbolLocator $locator,
-        private readonly NamespaceCatalog $namespaces,
-        private readonly SyntaxSource $parser,
+        private readonly SymbolLocatorInterface $locator,
+        private readonly NamespaceCatalogInterface $namespaces,
+        private readonly SyntaxSourceInterface $parser,
         private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
-        private readonly PrefixSearchable $prefixSearch,
+        private readonly PrefixSearchableInterface $prefixSearch,
     ) {
     }
 
@@ -64,9 +64,9 @@ final class FilesystemBackend implements SymbolBackend, Invalidatable
         return $this->namespaces->childrenOf($namespace->path);
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfo
+    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
-        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfo {
+        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfoInterface {
             $filePath = $this->locator->locate($name, $kind);
             if ($filePath === null) {
                 return null;

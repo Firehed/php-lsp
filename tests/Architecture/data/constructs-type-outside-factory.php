@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
 
 /**
- * A component constructing Type implementations directly instead of through
+ * A component constructing TypeInterface implementations directly instead of through
  * TypeFactory, which RFC 1 §4.6 forbids.
  */
 final class ConstructsTypeOutsideFactory

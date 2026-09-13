@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 
 /**
  * Locates a declaration through Composer's autoload maps, which address class-likes
@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Knowledge\SymbolLocator;
  * index from; the two are chained by
  * {@see \Firehed\PhpLsp\Knowledge\CompositeSymbolLocator}.
  */
-final class ComposerSymbolLocator implements SymbolLocator
+final class ComposerSymbolLocator implements SymbolLocatorInterface
 {
     public function __construct(
         private readonly ComposerAutoloadMap $map,

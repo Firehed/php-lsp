@@ -16,10 +16,10 @@ use Firehed\PhpLsp\Domain\QualifiedName;
  * covers what the maps structurally cannot (Plan 0002 §3). Chaining keeps the
  * cheaper route first and leaves each locator responsible for one mechanism.
  */
-final class CompositeSymbolLocator implements SymbolLocator
+final class CompositeSymbolLocator implements SymbolLocatorInterface
 {
     /**
-     * @param list<SymbolLocator> $locators In precedence order
+     * @param list<SymbolLocatorInterface> $locators In precedence order
      */
     public function __construct(
         private readonly array $locators,

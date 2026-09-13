@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Knowledge\SymbolSink;
+use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Protocol\Message;
 
 /**
@@ -19,7 +19,7 @@ final class DidChangeWatchedFilesHandler implements HandlerInterface
     private const string METHOD = 'workspace/didChangeWatchedFiles';
 
     public function __construct(
-        private readonly SymbolSink $symbols,
+        private readonly SymbolSinkInterface $symbols,
     ) {
     }
 

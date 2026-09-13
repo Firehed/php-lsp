@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Transport;
 use Amp\ByteStream\ReadableStream;
 use Amp\ByteStream\WritableStream;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Protocol\OutgoingMessage;
+use Firehed\PhpLsp\Protocol\OutgoingMessageInterface;
 
 /**
  * Frames LSP messages over a stream pair, per [LSP] "Base Protocol".
@@ -34,7 +34,7 @@ final class StreamTransport implements TransportInterface
         return $this->reader->read();
     }
 
-    public function write(OutgoingMessage $message): void
+    public function write(OutgoingMessageInterface $message): void
     {
         $this->writer->write($message);
     }

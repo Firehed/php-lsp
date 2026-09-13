@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 
 /**
- * The four cases every Info implementing {@see \Firehed\PhpLsp\Domain\ResolvedSymbol}
+ * The four cases every Info implementing {@see \Firehed\PhpLsp\Domain\ResolvedSymbolInterface}
  * shares: file/line -> Location round-trip, null file, docblock -> raw text,
  * null docblock. Using classes supply {@see self::makeSubject()} once instead of
  * writing the same four tests per class.
@@ -18,7 +18,7 @@ trait HasSymbolLocationTestTrait
         ?string $file = null,
         ?int $line = null,
         ?string $docblock = null,
-    ): ResolvedSymbol;
+    ): ResolvedSymbolInterface;
 
     public function testGetDefinitionLocation(): void
     {

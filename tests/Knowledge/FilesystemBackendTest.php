@@ -12,9 +12,9 @@ use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
-use Firehed\PhpLsp\Index\NamespaceCatalog;
+use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchable;
+use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
@@ -22,7 +22,7 @@ use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolCache;
-use Firehed\PhpLsp\Knowledge\SymbolLocator;
+use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -390,21 +390,21 @@ final class FilesystemBackendTest extends TestCase
     public function testChildrenOfForwardsToTheInjectedCatalog(): void
     {
         $expected = new NamespaceContents(['Fixtures\Domain\Sub'], []);
-        $catalog = $this->createMock(NamespaceCatalog::class);
+        $catalog = $this->createMock(NamespaceCatalogInterface::class);
         $catalog->expects($this->once())
             ->method('childrenOf')
             ->with('Fixtures\Domain')
             ->willReturn($expected);
 
         $backend = new FilesystemBackend(
-            self::createStub(SymbolLocator::class),
+            self::createStub(SymbolLocatorInterface::class),
             $catalog,
             $this->parser,
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
-            self::createStub(PrefixSearchable::class),
+            self::createStub(PrefixSearchableInterface::class),
         );
 
         self::assertSame(
@@ -451,23 +451,23 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    private function backendWithLocator(SymbolLocator $locator): FilesystemBackend
+    private function backendWithLocator(SymbolLocatorInterface $locator): FilesystemBackend
     {
         return new FilesystemBackend(
             $locator,
-            self::createStub(NamespaceCatalog::class),
+            self::createStub(NamespaceCatalogInterface::class),
             $this->parser,
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
-            self::createStub(PrefixSearchable::class),
+            self::createStub(PrefixSearchableInterface::class),
         );
     }
 
-    private function locatorReturning(string $path): SymbolLocator
+    private function locatorReturning(string $path): SymbolLocatorInterface
     {
-        $locator = self::createStub(SymbolLocator::class);
+        $locator = self::createStub(SymbolLocatorInterface::class);
         $locator->method('locate')->willReturn($path);
 
         return $locator;

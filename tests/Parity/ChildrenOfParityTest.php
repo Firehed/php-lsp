@@ -10,13 +10,13 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Golden parity for the namespace-enumeration surface — `NamespaceCatalog::
- * childrenOf()`, which Step 2 migrates onto `SymbolSource::childrenOf`. The
+ * Golden parity for the namespace-enumeration surface — `NamespaceCatalogInterface::
+ * childrenOf()`, which Step 2 migrates onto `SymbolSourceInterface::childrenOf`. The
  * golden queries only namespaces with no internal (reflected) symbols, whose
  * output is therefore stable across the 8.3/8.4/8.5 CI matrix; the built-in
  * reflection source is version-fragile and is covered by a subset assertion.
@@ -25,7 +25,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class ChildrenOfParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     /**
      * A fixed set of workspace documents indexed before enumeration, so the
@@ -73,7 +73,7 @@ final class ChildrenOfParityTest extends TestCase
     ];
 
     private string $fixturesRoot;
-    private SymbolSource $source;
+    private SymbolSourceInterface $source;
 
     protected function setUp(): void
     {

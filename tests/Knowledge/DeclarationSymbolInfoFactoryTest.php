@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -289,7 +289,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         }
     }
 
-    private function build(string $fqn, NameKind $kind): ?SymbolInfo
+    private function build(string $fqn, NameKind $kind): ?SymbolInfoInterface
     {
         return $this->factory->fromDeclarations(
             $this->declarations,

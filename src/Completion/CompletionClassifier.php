@@ -13,7 +13,7 @@ namespace Firehed\PhpLsp\Completion;
  * broken mid-edit (see CompletionHandlerTest::testCompletionThisInVeryBrokenFile,
  * where the parser produces no AST at all). Member, static, and call-argument
  * contexts are AST-first with a text fallback and are detected upstream via
- * {@see \Firehed\PhpLsp\Resolution\CodeResolver}, so they never reach here.
+ * {@see \Firehed\PhpLsp\Resolution\CodeResolverInterface}, so they never reach here.
  *
  * The ordering of checks is significant: earlier, more specific patterns must be
  * tested before later, broader ones (e.g. a visibility keyword before the general

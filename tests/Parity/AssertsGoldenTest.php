@@ -9,12 +9,12 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The harness is only trustworthy if a diverged surface actually goes red. This
- * exercises {@see AssertsGolden} against a scratch golden directory so the "fails
+ * exercises {@see AssertsGoldenTrait} against a scratch golden directory so the "fails
  * on any diff" and "captures in update mode" behaviors are proven, not assumed.
  */
 final class AssertsGoldenTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     private string $scratchDir;
 

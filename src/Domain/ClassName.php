@@ -10,10 +10,10 @@ namespace Firehed\PhpLsp\Domain;
  * `ClassName` before any lookup, so the runtime existence of the class is a
  * separate question the resolution tier answers.
  */
-final readonly class ClassName implements Type
+final readonly class ClassName implements TypeInterface
 {
     /**
-     * @param list<Type> $typeArguments
+     * @param list<TypeInterface> $typeArguments
      */
     public function __construct(
         public string $fqn,
@@ -51,7 +51,7 @@ final readonly class ClassName implements Type
         return $namespace === '' ? null : $namespace;
     }
 
-    public function equals(Type $other): bool
+    public function equals(TypeInterface $other): bool
     {
         if (!$other instanceof self) {
             return false;
@@ -72,12 +72,12 @@ final readonly class ClassName implements Type
         return true;
     }
 
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): Type
+    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
     {
         return $this;
     }
 
-    public function valueType(): ?Type
+    public function valueType(): ?TypeInterface
     {
         return $this->typeArguments[0] ?? null;
     }

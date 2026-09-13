@@ -28,7 +28,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class WritePathParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     /**
      * Documents whose combined symbol state is frozen. The set spans class,

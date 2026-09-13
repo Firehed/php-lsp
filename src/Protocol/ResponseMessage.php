@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Protocol;
 
-final readonly class ResponseMessage implements OutgoingMessage
+final readonly class ResponseMessage implements OutgoingMessageInterface
 {
     private function __construct(
         private int|string|null $id,

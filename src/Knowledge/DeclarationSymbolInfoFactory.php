@@ -25,7 +25,7 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfo;
+use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -41,7 +41,7 @@ use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
 /**
  * The one place a {@see NameKind} picks a declaration list and a builder, which is
- * what lets {@see SymbolBackend} carry a single lookup and a single registration
+ * what lets {@see SymbolBackendInterface} carry a single lookup and a single registration
  * (Plan 0002 §5.6).
  *
  * Lookup is a filter over {@see allIn()} rather than its own scan: RFC 1 §5.1
@@ -87,7 +87,7 @@ final readonly class DeclarationSymbolInfoFactory
         QualifiedName $name,
         NameKind $kind,
         string $filePath,
-    ): ?SymbolInfo {
+    ): ?SymbolInfoInterface {
         $target = $kind->normalize($name);
 
         foreach ($this->allIn($declarations, $filePath) as $symbol) {
@@ -554,7 +554,7 @@ final readonly class DeclarationSymbolInfoFactory
         array &$seen,
         QualifiedName $name,
         NameKind $kind,
-        SymbolInfo $info,
+        SymbolInfoInterface $info,
     ): void {
         $key = $kind->keyFor($name);
         if (array_key_exists($key, $seen)) {

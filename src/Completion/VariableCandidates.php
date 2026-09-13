@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 /**
  * Produces variable completion items for the variables in scope at a position.
@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Resolution\CodeResolver;
 final class VariableCandidates
 {
     public function __construct(
-        private readonly CodeResolver $codeResolver,
+        private readonly CodeResolverInterface $codeResolver,
     ) {
     }
 

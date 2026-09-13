@@ -16,10 +16,10 @@ CI-enforced mechanisms confine where code may live; a rule firing on your change
 
 - **Capability confinement** (`phpstan.neon`): parsing and lexing, AST traversal, symbol-name case folding, regex, runtime reflection, runtime symbol existence/enumeration/kind inspection, and filesystem access are each usable only in their named homes (allowlists inline, each with its rationale). A deny set names every spelling of its capability, aliases included, so do not reach for a synonym.
 - **Layer contract** (`deptrac.yaml`): an inter-layer dependency not in the ruleset fails analysis. A class in no layer is not analysed at all, so `composer layer-coverage` fails when `deptrac debug:unassigned` lists one.
-- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `Type` implementation outside `TypeFactory`; no `instanceof` against a concrete `Type` or `ResolvedSymbol`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
+- **Kind and type rules** (`tests/Architecture/*Rule.php`): no `new` of a `TypeInterface` implementation outside `TypeFactory`; no `instanceof` against a concrete `TypeInterface` or `ResolvedSymbolInterface`; no branch on a kind enum outside its named homes, in any form (`match`, `switch`, the four equality operators, `in_array`/`array_search`, or the same comparison against `->value` or `->name`).
 - **Literal class references** (`DynamicClassReferenceRule`): a class is named literally. `new $c`, `$v instanceof $c`, `$v::class`, `$c::CONST` and `$c::m()` are denied, because every rule above reads a name to apply. Use `$v::class` nowhere; reach for a predicate instead.
 - **File inclusion** (`FileInclusionRule`): `include`/`require` read the disk, which no call list can name, so they are confined like the filesystem functions.
-- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`, `OneRoutePerFactTest`): every `Type` and `ResolvedSymbol` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, every allowlisted path still exists, and every implementation of a one-route interface is named only by its composition root (see One route per fact under Architecture Invariants).
+- **Self-check** (`ConfinementCoverageTest`, `EnforcementWiringTest`, `OneRoutePerFactTest`): every `TypeInterface` and `ResolvedSymbolInterface` implementation is in its rule's list, every enum is confined or registered as not a kind, every rule is registered with PHPStan and has its own test, every allowlisted path still exists, and every implementation of a one-route interface is named only by its composition root (see One route per fact under Architecture Invariants).
 
 When a rule fires on your change:
 
@@ -39,12 +39,12 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 ## Project Structure
 
 - `src/Handler/` — LSP request handlers (completion, hover, definition, etc.)
-- `src/Resolution/` — `CodeResolver`/`SymbolResolver` and the `Resolved*` symbol hierarchy (see Architecture below)
+- `src/Resolution/` — `CodeResolverInterface`/`SymbolResolver` and the `Resolved*` symbol hierarchy (see Architecture below)
 - `src/Repository/` — Class and member resolution (see Architecture below)
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Composer autoload maps, namespace catalogs, symbol locators
 - `src/Document/` — Open document management
-- `src/Parser/` — the `SyntaxSource` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScoped` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
+- `src/Parser/` — the `SyntaxSourceInterface` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScopedInterface` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `src/Capability/` — Protocol capability negotiation (see Capability Negotiation below)
@@ -56,15 +56,15 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 
 ### Resolution Layer
 
-All symbol resolution flows through the `CodeResolver` interface (implemented by
+All symbol resolution flows through the `CodeResolverInterface` interface (implemented by
 `SymbolResolver`). Handlers depend on the interface, never on the concrete class.
 
 **Point queries:**
-- `resolveAtPosition(doc, line, char): ?ResolvedSymbol` — Definition, Hover, TypeDefinition
+- `resolveAtPosition(doc, line, char): ?ResolvedSymbolInterface` — Definition, Hover, TypeDefinition
 
 **Context queries:**
 - `getMemberAccessContext(doc, line, char): ?MemberAccessContext` — Completion after `->`/`::`
-- `getAccessibleMembers(doc, type, minVisibility, filter): list<ResolvedMember>` — members of a type
+- `getAccessibleMembers(doc, type, minVisibility, filter): list<ResolvedMemberInterface>` — members of a type
 - `getVariablesInScope(doc, line, char): list<ResolvedVariable>` — Completion of `$`
 - `getCallContext(doc, line, char): ?CallContext` — SignatureHelp, named-argument completion
 
@@ -76,28 +76,28 @@ All symbol resolution flows through the `CodeResolver` interface (implemented by
 - `isInstantiable(ClassName): bool` — valid after `new`
 - `isValidTypeHint(ClassName): bool` — valid in a type-hint position (traits are not)
 
-**`ResolvedSymbol` hierarchy** (`src/Resolution/`):
-- `ResolvedSymbol` (base): `getDefinitionLocation()`, `getDocumentation()`, `getType()`, `format()`
-- `ResolvedMember` extends `ResolvedSymbol`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
-- `ResolvedCallable` extends `ResolvedSymbol`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
-- `ResolvedMethod` implements `ResolvedMember` + `ResolvedCallable`
-- `ResolvedProperty`, `ResolvedConstant`, `ResolvedEnumCase` implement `ResolvedMember`
-- `ResolvedFunction` implements `ResolvedCallable`
-- `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbol`
+**`ResolvedSymbolInterface` hierarchy** (`src/Resolution/`):
+- `ResolvedSymbolInterface` (base): `getDefinitionLocation()`, `getDocumentation()`, `getType()`, `format()`
+- `ResolvedMemberInterface` extends `ResolvedSymbolInterface`: `getDeclaringClass()`, `getName()`, `getVisibility()`, `isStatic()`
+- `ResolvedCallableInterface` extends `ResolvedSymbolInterface`: `getParameters()`, `getReturnType()`, `getParameterAtPosition()`, `getParameterByName()`
+- `ResolvedMethod` implements `ResolvedMemberInterface` + `ResolvedCallableInterface`
+- `ResolvedProperty`, `ResolvedConstant`, `ResolvedEnumCase` implement `ResolvedMemberInterface`
+- `ResolvedFunction` implements `ResolvedCallableInterface`
+- `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbolInterface`
 
 Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver`:
-the `SyntaxSource` composite falls through to `CursorTextSyntaxSource`, which
+the `SyntaxSourceInterface` composite falls through to `CursorTextSyntaxSource`, which
 synthesizes the node at the cursor, so handlers do not need their own fallbacks.
 
 **Future (workspace queries):** references, implementations, sub/supertypes, call
 hierarchy, and batch resolution. These require an index and will be added to
-`CodeResolver` when those features are implemented.
+`CodeResolverInterface` when those features are implemented.
 
 ### Namespace Catalog (Discovery)
 
 Repositories and reflection answer *lookup* ("resolve this known name"). Completion
 also needs *enumeration* ("what is inside `Psr\Log`?"), which is what the
-`NamespaceCatalog` (`src/Index/`) provides: the child namespaces of a namespace, plus
+`NamespaceCatalogInterface` (`src/Index/`) provides: the child namespaces of a namespace, plus
 the symbols declared directly in it.
 
 - **OpenDocumentBackend** — from the one map of `DeclaredSymbol`s the sink registers per
@@ -113,15 +113,15 @@ the symbols declared directly in it.
 - **AutoloadFilesLocator** — the `autoload.files` set, which sits outside every PSR-4 and
   PSR-0 prefix, so no directory listing reaches it. It enumerates the index it already
   derived for lookup, reporting each declaration's own `NameKind` rather than a guess.
-Each source is wrapped as a `SymbolBackend` (see Symbol Backends below): the
+Each source is wrapped as a `SymbolBackendInterface` (see Symbol Backends below): the
 `CompositeSymbolSource` merges and deduplicates their `childrenOf` results, and
 **CachedNamespaceCatalog** wraps the stable sources (workspace-on-disk, vendor,
 built-in) — the `OpenDocumentBackend` is never cached.
 
 Discovery reports a coarse `NameKind` (class-like / function / constant), not which
 flavour of class-like: a PSR-4 listing cannot know without parsing. Deciding whether a
-candidate is valid in a position stays with the `CodeResolver` predicates
-(`isInterface`, `isThrowable`, …), which resolve through the `SymbolSource` backends.
+candidate is valid in a position stays with the `CodeResolverInterface` predicates
+(`isInterface`, `isThrowable`, …), which resolve through the `SymbolSourceInterface` backends.
 
 Pair the catalog with `ReferenceResolver` (`src/Resolution/`), which computes the
 shortest reference that resolves at the cursor. Discovery says what exists; resolution
@@ -130,8 +130,8 @@ says how to write it.
 ### Symbol Backends
 
 Class-like lookup, function lookup, namespace enumeration, and class-like prefix search
-flow through the **`SymbolSource`** read seam (`src/Knowledge/`), implemented by
-**`CompositeSymbolSource`** over a fixed-precedence list of **`SymbolBackend`s**
+flow through the **`SymbolSourceInterface`** read seam (`src/Knowledge/`), implemented by
+**`CompositeSymbolSource`** over a fixed-precedence list of **`SymbolBackendInterface`s**
 (RFC 1 §5.3):
 
 1. **`OpenDocumentBackend`** — the editor's open documents (never cached); its answer overrides the rest.
@@ -145,10 +145,10 @@ per-backend PSR-16 policy (`src/Cache/`); on-disk and built-in results are cache
 documents never. A cache key carries the `NameKind` (`SymbolCache`): PHP's three
 symbol namespaces are independent, so a class and a function may share a name.
 
-Lookup is **per-kind at the `SymbolSource` facade** — a typed method per kind, taking a
+Lookup is **per-kind at the `SymbolSourceInterface` facade** — a typed method per kind, taking a
 name type that carries its kind (`ClassName`, `FunctionName`), because RFC 1 §5.1 requires
 a concrete return type rather than a type-erased union — and **kind-parameterized at
-`SymbolBackend`**: one `lookup(QualifiedName, NameKind): ?SymbolInfo`. Do NOT read the
+`SymbolBackendInterface`**: one `lookup(QualifiedName, NameKind): ?SymbolInfoInterface`. Do NOT read the
 facade's closed method set as licence to add a per-kind backend method. Kind dispatch
 lives in `DeclarationSymbolInfoFactory` and `ReflectionSymbolInfoFactory`, one per
 metadata route, so a new kind is a case in each rather than a method on every backend.
@@ -187,7 +187,7 @@ optional: §4.2 requires lookup and enumeration to draw on the same backends, so
 that resolved on hover while being invisible to completion is the split this tier
 exists to prevent.
 
-The write path is **`SymbolSink`** (`DocumentSymbolSink`), which registers a document's
+The write path is **`SymbolSinkInterface`** (`DocumentSymbolSink`), which registers a document's
 declared symbols with `OpenDocumentBackend` — the one store `lookup`, `childrenOf`, and
 `search` all derive from. Registration is kind-parameterized like lookup: the sink hands
 the backend `DeclaredSymbol`s built by `DeclarationSymbolInfoFactory`, the same factory
@@ -200,10 +200,10 @@ disappear.
 sharing one open-document backend.
 
 **External-file-change invalidation** (RFC 1 §5.2, §5.3) is a third write-path
-producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable`, so
+producer alongside the editor lifecycle. `SymbolSinkInterface extends Cache\InvalidatableInterface`, so
 `invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
 the next query re-reads disk. It fans out to the cached on-disk backends (also
-`Invalidatable`): `FilesystemBackend` evicts that file's class-likes and functions (a
+`InvalidatableInterface`): `FilesystemBackend` evicts that file's class-likes and functions (a
 path→key reverse map), `CachedNamespaceCatalog` drops its listings, and the locator composite
 re-derives the `autoload.files` index if the changed file is in that set — evicting
 only the `ClassInfo` cache would leave the name→file map itself stale.
@@ -211,7 +211,7 @@ Two triggers reach it:
 the `workspace/didChangeWatchedFiles` notification (`DidChangeWatchedFilesHandler`)
 and `didClose` (so a closed-after-edit file re-reads disk). Watched files are
 registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outbound
-`ClientConnection` — no static server capability exists), gated on the client's
+`ClientConnectionInterface` — no static server capability exists), gated on the client's
 `dynamicRegistration`; an unregistered client follows the §7 fallback (no invalidation
 until a file is opened and closed).
 
@@ -221,7 +221,7 @@ backend answers for every kind; the on-disk and built-in backends return empty
 Function search, and the migration of the consumers still calling
 `FunctionRepository`, are later Step 3b slices; constant reach is S3.8b.
 
-- **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSource`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
+- **MemberResolver** — Finds methods/properties/constants on a class, traversing the inheritance chain via `supertypes()`; reads class metadata through `SymbolSourceInterface`. Returns domain objects (`MethodInfo`, `PropertyInfo`).
 - **ClassInfoFactory** (`DefaultClassInfoFactory`) — Creates `ClassInfo` from AST nodes or reflection.
 
 ### Domain Objects
@@ -233,14 +233,14 @@ Typed representations of code constructs in `src/Domain/`:
 - `ParameterInfo`, `FunctionInfo` — Function/method parameter details
 - `Visibility` enum — Public/protected/private with comparison logic
 - `ClassName`, `MethodName`, `PropertyName` — Typed identifiers
-- `TypeFactory` — Creates Type domain objects from AST nodes and reflection
+- `TypeFactory` — Creates TypeInterface domain objects from AST nodes and reflection
 - `NamespacePath` — Segment operations on namespace and fully-qualified-name strings; the one place a name is split into namespace and short name, and the one place a namespace path is case-folded
 
-Domain objects implement `Formattable` for consistent signature formatting across handlers.
+Domain objects implement `FormattableInterface` for consistent signature formatting across handlers.
 
 ### Type System
 
-The `Type` interface represents PHP types throughout the codebase. Implementations:
+The `TypeInterface` interface represents PHP types throughout the codebase. Implementations:
 
 - `ClassName` — Class/interface/trait/enum types (also serves as class identity)
 - `PrimitiveType` — Built-in types (`string`, `int`, `bool`, `null`, `mixed`, etc.)
@@ -288,9 +288,9 @@ a *Response* (an id with a `result`/`error` and no method) is the client's reply
 server-initiated request; the server does not correlate those, so `read()` drops it
 like a Notification rather than answering it.
 
-`TransportInterface::write()` takes any `OutgoingMessage` — a `ResponseMessage` or a
+`TransportInterface::write()` takes any `OutgoingMessageInterface` — a `ResponseMessage` or a
 server-initiated `OutgoingRequest` — so responses and server→client requests share one
-framed channel. Server-initiated requests go through **`ClientConnection`**
+framed channel. Server-initiated requests go through **`ClientConnectionInterface`**
 (`TransportClientConnection`); today the sole use is dynamic capability registration
 (`client/registerCapability`). Broader server-initiated output (diagnostics, cancellation)
 is the deferred scheduler tier (Plan 0002 Step 6).
@@ -331,7 +331,7 @@ always honored so the server can terminate. `initialize` "may only be sent once"
 the already-resolved session. A gated message is never dispatched; a gated
 notification has no id, so its error is dropped rather than sent — which is what LSP
 "Server lifecycle" means by notifications being *dropped*. The gate opens only once
-`initialize` has produced a result. On `initialized`, it runs its `InitializedListener`s
+`initialize` has produced a result. On `initialized`, it runs its `InitializedListenerInterface`s
 against the settled `SessionCapabilities` — the point where dynamic capability
 registration proceeds (e.g. `WatchedFilesRegistrar`) — rather than growing a dependency
 on each feature that needs to act post-initialize.
@@ -477,8 +477,8 @@ instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, 
 4. Write tests in `SymbolResolverTest`
 
 **Adding a new LSP handler:**
-1. Create the handler with `DocumentManager` + `CodeResolver` dependencies
-2. Call the appropriate `CodeResolver` method
+1. Create the handler with `DocumentManager` + `CodeResolverInterface` dependencies
+2. Call the appropriate `CodeResolverInterface` method
 3. Format the result for the LSP response
 4. Do NOT add resolution logic to the handler
 
@@ -508,8 +508,8 @@ Architecture (`CompletionHandler` is a coordinator, not a resolver):
 
 1. **Coarse gate** — `ContextDetector` (token-based) classifies the broad context
    (None / VariablesOnly / Full); token analysis survives unparseable code.
-2. **Member/static/call** — detected via `CodeResolver` (`MemberCandidates`,
-   `getCallContext`), which reads the tree the `SyntaxSource` composite produces
+2. **Member/static/call** — detected via `CodeResolverInterface` (`MemberCandidates`,
+   `getCallContext`), which reads the tree the `SyntaxSourceInterface` composite produces
    (php-parser first, cursor-text synthesis when nothing parses).
 3. **Everything else** — `CompletionClassifier` maps the text before the cursor to a
    typed `CompletionKind`; the handler dispatches to a source per kind.
@@ -527,7 +527,7 @@ server: completion must keep working on temporarily-broken code (see
 `CompletionHandlerTest::testCompletionThisInVeryBrokenFile`, where the parser yields no
 AST). `CompletionClassifier` and `ContextDetector` are deliberately text/token-based —
 do **not** convert them to AST analysis. Only member/static/call access flow through the
-AST+fallback `CodeResolver` path.
+AST+fallback `CodeResolverInterface` path.
 
 ## Testing
 

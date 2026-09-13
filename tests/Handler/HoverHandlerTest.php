@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -949,7 +949,7 @@ class HoverHandlerTest extends TestCase
 
     private function handlerFor(MarkupKind $hoverMarkupKind): HoverHandler
     {
-        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(hoverMarkupKind: $hoverMarkupKind));
 

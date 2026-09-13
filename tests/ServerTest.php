@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ServerInfo;
@@ -472,7 +472,7 @@ class ServerTest extends TestCase
 
         $handler = new class ($parser, $document) implements HandlerInterface {
             public function __construct(
-                private SyntaxSource $parser,
+                private SyntaxSourceInterface $parser,
                 private TextDocument $document,
             ) {
             }
@@ -1041,7 +1041,7 @@ class ServerTest extends TestCase
                 return $message;
             }
 
-            public function write(\Firehed\PhpLsp\Protocol\OutgoingMessage $message): void
+            public function write(\Firehed\PhpLsp\Protocol\OutgoingMessageInterface $message): void
             {
                 $this->writer->write($message);
             }

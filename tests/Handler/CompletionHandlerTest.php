@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
@@ -30,7 +30,7 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\NamespaceName;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -64,7 +64,7 @@ class CompletionHandlerTest extends TestCase
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
     private ParseMetrics $metrics;
-    private SymbolSource $symbolSource;
+    private SymbolSourceInterface $symbolSource;
     private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
@@ -108,9 +108,9 @@ class CompletionHandlerTest extends TestCase
         $this->openDocument($uri, $source);
     }
 
-    private function makeHandler(SymbolSource $symbolSource, bool $snippetSupport = false): CompletionHandler
+    private function makeHandler(SymbolSourceInterface $symbolSource, bool $snippetSupport = false): CompletionHandler
     {
-        $capabilities = self::createStub(SessionCapabilitiesProvider::class);
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
 
@@ -679,7 +679,7 @@ class CompletionHandlerTest extends TestCase
             static fn(int $i): string => sprintf('Flood\\N%03d', $i),
             range(150, 1, -1),
         );
-        $source = new class ($children) implements SymbolSource {
+        $source = new class ($children) implements SymbolSourceInterface {
             /** @param list<string> $children */
             public function __construct(private readonly array $children)
             {
@@ -1311,7 +1311,7 @@ class CompletionHandlerTest extends TestCase
 
     /**
      * Step 0 acceptance: one parse per handled message. Completion is the fan-out
-     * that made this matter — its sources each call a different CodeResolver
+     * that made this matter — its sources each call a different CodeResolverInterface
      * method, and every one of them re-parsed the same unchanged document.
      *
      * These fixtures are chosen to resolve nothing from disk, so the total parse

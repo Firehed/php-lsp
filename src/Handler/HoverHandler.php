@@ -4,27 +4,27 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProvider;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Protocol\MarkupContent;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Resolution\CodeResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * @phpstan-import-type LspMarkupContent from MarkupContent
  */
-final class HoverHandler implements DocumentFeatureHandler
+final class HoverHandler implements DocumentFeatureHandlerInterface
 {
-    use SupportsOwnMethod;
+    use SupportsOwnMethodTrait;
 
     public function __construct(
         private readonly DocumentManager $documentManager,
-        private readonly CodeResolver $codeResolver,
-        private readonly SessionCapabilitiesProvider $capabilities,
+        private readonly CodeResolverInterface $codeResolver,
+        private readonly SessionCapabilitiesProviderInterface $capabilities,
     ) {
     }
 
@@ -58,7 +58,7 @@ final class HoverHandler implements DocumentFeatureHandler
         return ['contents' => (new MarkupContent($kind, $this->formatHover($symbol, $kind)))->toArray()];
     }
 
-    private function formatHover(ResolvedSymbol $symbol, MarkupKind $kind): string
+    private function formatHover(ResolvedSymbolInterface $symbol, MarkupKind $kind): string
     {
         $presented = ResolvedSymbolPresenter::present($symbol);
         $parts = [];

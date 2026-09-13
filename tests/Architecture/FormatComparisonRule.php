@@ -15,7 +15,7 @@ use PHPStan\Rules\RuleErrorBuilder;
 /**
  * Comparing a formatted type string (`$type->format() === 'int'`) branches on
  * the type's display representation, which can diverge from the type's actual
- * identity. Use Type predicates or instanceof checks (which the existing rules
+ * identity. Use type predicates or instanceof checks (which the existing rules
  * confine) instead.
  *
  * @implements Rule<BinaryOp>

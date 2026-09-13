@@ -23,7 +23,7 @@ use Firehed\PhpLsp\Domain\NamespacePath;
  * The classmap is the exception: it maps names to files with no namespace
  * structure, so it is turned into a namespace index once, on first use.
  */
-final class ComposerNamespaceSource implements NamespaceCatalog
+final class ComposerNamespaceSource implements NamespaceCatalogInterface
 {
     /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
     private ?array $classMapIndex = null;

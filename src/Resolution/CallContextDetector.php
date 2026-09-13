@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -32,7 +32,7 @@ use PhpParser\Node\Stmt;
 final class CallContextDetector
 {
     public function __construct(
-        private readonly SyntaxSource $parser,
+        private readonly SyntaxSourceInterface $parser,
     ) {
     }
 

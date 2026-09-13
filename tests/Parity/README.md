@@ -6,16 +6,16 @@ resolution; this covers the surfaces those steps move consumers onto:
 
 | Surface | Production entry point | Golden |
 |---|---|---|
-| class-like lookup | `SymbolSource::lookupClassLike()` | `goldens/class-like-lookup.json` |
-| namespace enumeration | `SymbolSource::childrenOf()` | `goldens/children-of.json` |
-| prefix search | `SymbolSource::search()` | `goldens/prefix-search.json` |
+| class-like lookup | `SymbolSourceInterface::lookupClassLike()` | `goldens/class-like-lookup.json` |
+| namespace enumeration | `SymbolSourceInterface::childrenOf()` | `goldens/children-of.json` |
+| prefix search | `SymbolSourceInterface::search()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
 | function completion | `FunctionCandidates::find()` | `goldens/function-surface.json` |
 | broken-file completion | `CompletionHandler::handle()` at cursors in broken fixtures | `goldens/completion-broken-first-open.json`, `goldens/completion-broken-mid-edit.json` |
 
 The function surface is frozen ahead of the step that changes it: Step 3b moves
 function completion off its direct `get_defined_functions()` call and onto
-`SymbolSource::search`, adding project reach it does not have today. The new reach
+`SymbolSourceInterface::search`, adding project reach it does not have today. The new reach
 is proven by new fixtures in that slice; the golden is the *preservation* half of
 its acceptance — built-in and open-document function completion must survive the
 migration unchanged.
@@ -51,7 +51,7 @@ recaptures **only** that surface's golden while the others stay frozen.
   corpus for unrelated tests: it is deliberately small and stable so unrelated
   fixture churn does not ripple here.
 - **A refactor that moves a surface class needs no harness change.** The goldens
-  assert *output*, so they ride a rename or relocation (e.g. the `SymbolSource`
+  assert *output*, so they ride a rename or relocation (e.g. the `SymbolSourceInterface`
   facade in Step 2, the `SymbolResolver` decomposition in Step 4) unchanged; if a
   golden *does* diff during a "behavior-preserving" step, the refactor changed
   behavior. There is no separate config or surface-file list to keep in sync — the

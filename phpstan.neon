@@ -154,7 +154,7 @@ parameters:
                 - 'method_exists()'
                 - 'property_exists()'
                 - 'is_callable()'
-            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSource query (RFC 1 §4.2); BuiltinBackend is the one place it may be the server''s own runtime'
+            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSourceInterface query (RFC 1 §4.2); BuiltinBackend is the one place it may be the server''s own runtime'
             allowIn:
                 - src/Knowledge/BuiltinBackend.php
                 - tests/*
@@ -280,8 +280,8 @@ parameters:
 
     disallowedClasses:
         -
-            class: 'Firehed\PhpLsp\Knowledge\SymbolSource'
-            message: 'handlers resolve symbols through CodeResolver (RFC 1 §4.2); SymbolSource is the knowledge tier one layer down'
+            class: 'Firehed\PhpLsp\Knowledge\SymbolSourceInterface'
+            message: 'handlers resolve symbols through CodeResolverInterface (RFC 1 §4.2); SymbolSourceInterface is the knowledge tier one layer down'
             allowIn:
                 - src/Completion/* # completion sources own their lookups
                 - src/Knowledge/*
@@ -303,7 +303,7 @@ parameters:
 
     disallowedMethodCalls:
         -
-            method: 'Firehed\PhpLsp\Cache\Invalidatable::invalidate()'
+            method: 'Firehed\PhpLsp\Cache\InvalidatableInterface::invalidate()'
             message: 'single write path (RFC 1 §5.2/§5.3): every cached on-disk holder forgets a changed file together, which is DocumentSymbolSink''s fan-out; evicting one leaves the others stale'
             allowIn:
                 - src/Knowledge/DocumentSymbolSink.php
@@ -333,7 +333,7 @@ parameters:
                 - src/Repository/MemberResolver.php # internal self-calls in trait-alias resolution
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\Type::getResolvableClassNames()'
+            method: 'Firehed\PhpLsp\Domain\TypeInterface::getResolvableClassNames()'
             message: 'union/intersection receivers: member lookup must iterate every class, not index [0]. Route through ExpressionResolver::receiverClassNames or SymbolResolver::getAccessibleMembers (build-manifest step-27)'
             allowIn:
                 - src/Resolution/SymbolResolver.php # getAccessibleMembers: the legitimate every-class iterator
@@ -342,7 +342,7 @@ parameters:
                 - src/Domain/IntersectionType.php # recursive composition
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Knowledge\SymbolSource::lookupConstant()'
+            method: 'Firehed\PhpLsp\Knowledge\SymbolSourceInterface::lookupConstant()'
             message: 'constant lookup iterates NameContext::candidates(NameKind::Constant) inside ExpressionResolver::resolveConstFetch (build-manifest step-28); identity-keyed type lookup goes through NativeTypeSource (issue #519)'
             allowIn:
                 - src/Resolution/ExpressionResolver.php # resolveConstFetch: the candidate-loop caller
@@ -350,13 +350,13 @@ parameters:
                 - src/Knowledge/CompositeSymbolSource.php # composite delegates to backends
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::format()'
+            method: 'Firehed\PhpLsp\Domain\ResolvedSymbolInterface::format()'
             message: 'signature composition goes through ResolvedSymbolPresenter, so hover/signature-help/completion-detail surface signatures uniformly (build-manifest step-30)'
             allowIn:
                 - src/Resolution/ResolvedSymbolPresenter.php
                 - tests/*
         -
-            method: 'Firehed\PhpLsp\Domain\ResolvedSymbol::getDocumentation()'
+            method: 'Firehed\PhpLsp\Domain\ResolvedSymbolInterface::getDocumentation()'
             message: 'documentation composition goes through ResolvedSymbolPresenter (build-manifest step-30); ExpressionResolver keeps direct access for foreach element-type inference on the raw docblock (build-manifest step-25)'
             allowIn:
                 - src/Resolution/ExpressionResolver.php # foreach element-type inference reads the raw docblock (build-manifest step-25)

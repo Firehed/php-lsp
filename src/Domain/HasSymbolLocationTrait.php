@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * The ResolvedSymbol location and documentation methods, shared across every
+ * The ResolvedSymbolInterface location and documentation methods, shared across every
  * *Info that carries a `$file`, `$line`, and `$docblock` field.
  */
-trait HasSymbolLocation
+trait HasSymbolLocationTrait
 {
     public function getDefinitionLocation(): ?Location
     {

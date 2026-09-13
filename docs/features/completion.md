@@ -32,7 +32,7 @@ parentheses typed for you with the cursor between them — as an LSP snippet, bu
 only when the client declared `completionItem.snippetSupport` during
 `initialize`. A client without snippet support gets the bare name inserted, since
 it would show the `$0` tab stop literally. The decision is shaped by
-`SessionCapabilities` (RFC 1 §4.8), read through `SessionCapabilitiesProvider`;
+`SessionCapabilities` (RFC 1 §4.8), read through `SessionCapabilitiesProviderInterface`;
 non-callable members (properties, constants, enum cases) never gain parentheses.
 
 Member completions cover the full type graph: members declared on the type itself,
@@ -124,8 +124,8 @@ completion source, then merges and deduplicates. It never parses documents itsel
 ```
 CompletionHandler (coordinator)
 ├── MemberCandidates                  → -> ?-> :: (member/static/parent access)
-│     via CodeResolver (AST-first, text fallback for mid-edit code)
-├── call context (CodeResolver::getCallContext)
+│     via CodeResolverInterface (AST-first, text fallback for mid-edit code)
+├── call context (CodeResolverInterface::getCallContext)
 │     ├── NamedArgumentCandidates     → name: arguments
 │     ├── VariableCandidates          → $var in argument position
 │     └── after name: (value position) → KeywordCandidates (expression)
@@ -140,7 +140,7 @@ CompletionHandler (coordinator)
 
 Sources live in `src/Completion/*Candidates`; each owns lookup + prefix filter +
 item construction (`CompletionItemFactory`). Parser-derived data (imports, file
-functions, members, variables, types) flows through `CodeResolver`, so sources are
+functions, members, variables, types) flows through `CodeResolverInterface`, so sources are
 agnostic to the parsing strategy. Detection stays text/token-based (`ContextDetector`,
 `CompletionClassifier`) so completion keeps working on temporarily-broken code.
 

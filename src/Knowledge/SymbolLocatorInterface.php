@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
  * names a different symbol as a function than as a constant, and only the syntactic
  * position the caller read it from can say which.
  */
-interface SymbolLocator
+interface SymbolLocatorInterface
 {
     /**
      * @return ?string Absolute path to the file declaring $name, or null when this

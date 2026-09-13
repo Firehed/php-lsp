@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Capability;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
-use Firehed\PhpLsp\Client\ClientConnection;
+use Firehed\PhpLsp\Client\ClientConnectionInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +15,7 @@ class WatchedFilesRegistrarTest extends TestCase
 {
     public function testRegistersForWatchedFilesWhenTheClientSupportsDynamicRegistration(): void
     {
-        $client = $this->createMock(ClientConnection::class);
+        $client = $this->createMock(ClientConnectionInterface::class);
         $client->expects($this->once())
             ->method('request')
             ->with(
@@ -41,7 +41,7 @@ class WatchedFilesRegistrarTest extends TestCase
 
     public function testDoesNotRegisterWhenTheClientLacksDynamicRegistrationSupport(): void
     {
-        $client = $this->createMock(ClientConnection::class);
+        $client = $this->createMock(ClientConnectionInterface::class);
         // Without client support the feature cannot be registered ([LSP] Register
         // Capability); the §7 fallback (no invalidation) applies instead.
         $client->expects($this->never())->method('request');

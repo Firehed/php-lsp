@@ -14,7 +14,7 @@ namespace Firehed\PhpLsp\Capability;
  * the raw `initialize` parameters confined to {@see CapabilityNegotiator} — a
  * consumer cannot reach `negotiate()` or the parameters through it.
  */
-interface SessionCapabilitiesProvider
+interface SessionCapabilitiesProviderInterface
 {
     public function getSessionCapabilities(): SessionCapabilities;
 }

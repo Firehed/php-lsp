@@ -7,9 +7,9 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class property.
  */
-final readonly class PropertyInfo implements MemberInfo
+final readonly class PropertyInfo implements MemberInfoInterface
 {
-    use HasSymbolLocation;
+    use HasSymbolLocationTrait;
 
     public function __construct(
         public PropertyName $name,
@@ -17,7 +17,7 @@ final readonly class PropertyInfo implements MemberInfo
         public bool $isStatic,
         public bool $isReadonly,
         public bool $isPromoted,
-        public ?Type $type,
+        public ?TypeInterface $type,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
@@ -56,7 +56,7 @@ final readonly class PropertyInfo implements MemberInfo
         return $this->name;
     }
 
-    public function getType(): ?Type
+    public function getType(): ?TypeInterface
     {
         return $this->type;
     }

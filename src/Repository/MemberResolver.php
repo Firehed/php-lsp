@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
-use Firehed\PhpLsp\Domain\MemberInfo;
+use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -21,12 +21,12 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 
 /**
  * Resolves class members with inheritance traversal.
  *
- * Class-like metadata is read through the {@see SymbolSource} seam (RFC 1 §4.2), so
+ * Class-like metadata is read through the {@see SymbolSourceInterface} seam (RFC 1 §4.2), so
  * the member walk sees the same coverage — open documents overriding the workspace,
  * vendored code, and built-ins — as every other consumer of symbol knowledge.
  *
@@ -38,7 +38,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSource;
 final class MemberResolver
 {
     public function __construct(
-        private readonly SymbolSource $source,
+        private readonly SymbolSourceInterface $source,
     ) {
     }
 
@@ -129,7 +129,7 @@ final class MemberResolver
      * caller can iterate over kinds without a per-kind method for every one, which
      * is how member completion collapses to one loop over MemberKind cases.
      *
-     * @return list<MemberInfo>
+     * @return list<MemberInfoInterface>
      */
     public function getMembersOfKind(
         ClassName $class,
@@ -165,7 +165,7 @@ final class MemberResolver
      *   $kind is MemberKind::Method ? list<MethodInfo> : (
      *     $kind is MemberKind::Property ? list<PropertyInfo> : (
      *       $kind is MemberKind::Constant ? list<ConstantInfo> : (
-     *         $kind is MemberKind::EnumCase ? list<EnumCaseInfo> : list<MemberInfo>
+     *         $kind is MemberKind::EnumCase ? list<EnumCaseInfo> : list<MemberInfoInterface>
      *       )
      *     )
      *   )
@@ -208,7 +208,7 @@ final class MemberResolver
      *   $kind is MemberKind::Method ? ?MethodInfo : (
      *     $kind is MemberKind::Property ? ?PropertyInfo : (
      *       $kind is MemberKind::Constant ? ?ConstantInfo : (
-     *         $kind is MemberKind::EnumCase ? ?EnumCaseInfo : ?MemberInfo
+     *         $kind is MemberKind::EnumCase ? ?EnumCaseInfo : ?MemberInfoInterface
      *       )
      *     )
      *   )
@@ -220,7 +220,7 @@ final class MemberResolver
         string $name,
         Visibility $minVisibility,
         ?ClassInfo $origin = null,
-    ): ?MemberInfo {
+    ): ?MemberInfoInterface {
         $origin ??= $this->source->lookupClassLike($class);
         if ($origin === null) {
             return null;
@@ -266,7 +266,7 @@ final class MemberResolver
     }
 
     private function isVisible(
-        MemberInfo $member,
+        MemberInfoInterface $member,
         Visibility $minVisibility,
         MemberFilter $filter,
         bool $isOriginClass,
@@ -275,9 +275,9 @@ final class MemberResolver
         // string lookup, avoiding a match on the enum that the kind-branch rule
         // would flag.
         $filters = [
-            'All' => static fn(MemberInfo $m): bool => true,
-            'Static' => static fn(MemberInfo $m): bool => $m->isStatic(),
-            'Instance' => static fn(MemberInfo $m): bool => !$m->isStatic(),
+            'All' => static fn(MemberInfoInterface $m): bool => true,
+            'Static' => static fn(MemberInfoInterface $m): bool => $m->isStatic(),
+            'Instance' => static fn(MemberInfoInterface $m): bool => !$m->isStatic(),
         ];
         if (!$filters[$filter->name]($member)) {
             return false;
@@ -335,7 +335,7 @@ final class MemberResolver
      * entries the walk produced. The alias is invisible if its resolved source
      * cannot be found or fails the visibility gate.
      *
-     * @template T of MemberInfo
+     * @template T of MemberInfoInterface
      * @param list<T> $members
      * @return list<T|MethodInfo>
      */

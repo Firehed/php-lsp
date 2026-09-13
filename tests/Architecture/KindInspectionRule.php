@@ -15,14 +15,14 @@ use PHPStan\Rules\RuleErrorBuilder;
 
 /**
  * The RFC 1 §8.1 mechanism for §4.5: consumers MUST NOT use `instanceof`
- * against a concrete Type or ResolvedSymbol implementation to decide
+ * against a concrete TypeInterface or ResolvedSymbolInterface implementation to decide
  * suitability.
  *
  * Allowed locations:
- * - Type implementations (internal operations)
+ * - TypeInterface implementations (internal operations)
  * - TypeFactory (construction)
  * - Metadata factory (DeclarationSymbolInfoFactory)
- * - BuiltinBackend (inlined reflection-to-SymbolInfo build)
+ * - BuiltinBackend (inlined reflection-to-SymbolInfoInterface build)
  * - Classifiers (CompletionItemFactory - maps symbol to LSP kind)
  * - Tests
  *
@@ -124,9 +124,9 @@ final class KindInspectionRule implements Rule
     private function errorsFor(string $className): array
     {
         if (in_array($className, self::CONFINED_TYPE_IMPLS, true)) {
-            $interface = 'Type';
+            $interface = 'TypeInterface';
         } elseif (in_array($className, self::CONFINED_RESOLVED_IMPLS, true)) {
-            $interface = 'ResolvedSymbol';
+            $interface = 'ResolvedSymbolInterface';
         } else {
             return [];
         }

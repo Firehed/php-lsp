@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Resolution\ParameterTyping;
-use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Param;
@@ -30,7 +30,7 @@ final class ParameterTypingTest extends TestCase
         $param = self::findNode($ast, Param::class);
         $expected = new PrimitiveType('string');
 
-        $typeSource = self::createStub(TypeSource::class);
+        $typeSource = self::createStub(TypeSourceInterface::class);
         $typeSource
             ->method('forMethodParameter')
             ->willReturn($expected);
@@ -45,7 +45,7 @@ final class ParameterTypingTest extends TestCase
             null,
         );
 
-        self::assertSame($expected, $type, 'ClassMethod scope routes through TypeSource::forMethodParameter');
+        self::assertSame($expected, $type, 'ClassMethod scope routes through TypeSourceInterface::forMethodParameter');
     }
 
     public function testFunctionRoutesThroughForFunctionParameter(): void
@@ -55,7 +55,7 @@ final class ParameterTypingTest extends TestCase
         $param = self::findNode($ast, Param::class);
         $expected = new PrimitiveType('string');
 
-        $typeSource = self::createStub(TypeSource::class);
+        $typeSource = self::createStub(TypeSourceInterface::class);
         $typeSource
             ->method('forFunctionParameter')
             ->willReturn($expected);
@@ -70,7 +70,7 @@ final class ParameterTypingTest extends TestCase
             null,
         );
 
-        self::assertSame($expected, $type, 'Function_ scope routes through TypeSource::forFunctionParameter');
+        self::assertSame($expected, $type, 'Function_ scope routes through TypeSourceInterface::forFunctionParameter');
     }
 
     public function testClosureFallsThroughToTypeFactory(): void
@@ -79,7 +79,7 @@ final class ParameterTypingTest extends TestCase
         $closure = self::findNode($ast, Closure::class);
         $param = self::findNode($ast, Param::class);
 
-        $typeSource = self::createStub(TypeSource::class);
+        $typeSource = self::createStub(TypeSourceInterface::class);
 
         $type = ParameterTyping::resolve(
             $typeSource,
@@ -105,7 +105,7 @@ final class ParameterTypingTest extends TestCase
         $arrow = self::findNode($ast, ArrowFunction::class);
         $param = self::findNode($ast, Param::class);
 
-        $typeSource = self::createStub(TypeSource::class);
+        $typeSource = self::createStub(TypeSourceInterface::class);
 
         $type = ParameterTyping::resolve(
             $typeSource,
@@ -131,7 +131,7 @@ final class ParameterTypingTest extends TestCase
         $method = self::findNode($ast, Stmt\ClassMethod::class);
         $param = self::findNode($ast, Param::class);
 
-        $typeSource = self::createStub(TypeSource::class);
+        $typeSource = self::createStub(TypeSourceInterface::class);
 
         $type = ParameterTyping::resolve(
             $typeSource,

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Client;
 
 use Firehed\PhpLsp\Client\TransportClientConnection;
-use Firehed\PhpLsp\Protocol\OutgoingMessage;
+use Firehed\PhpLsp\Protocol\OutgoingMessageInterface;
 use Firehed\PhpLsp\Transport\TransportInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -54,7 +54,7 @@ class TransportClientConnectionTest extends TestCase
     {
         $transport = self::createStub(TransportInterface::class);
         $transport->method('write')->willReturnCallback(
-            function (OutgoingMessage $message) use (&$written): void {
+            function (OutgoingMessageInterface $message) use (&$written): void {
                 $written[] = $message->jsonSerialize();
             },
         );

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\PrimitiveType;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -16,7 +16,7 @@ class ResolvedVariableTest extends TestCase
     {
         $resolved = new ResolvedVariable('name', new PrimitiveType('string'));
 
-        self::assertInstanceOf(ResolvedSymbol::class, $resolved);
+        self::assertInstanceOf(ResolvedSymbolInterface::class, $resolved);
     }
 
     public function testGetName(): void

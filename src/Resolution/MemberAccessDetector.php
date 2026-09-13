@@ -7,13 +7,13 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
-use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ClassConstFetch;
@@ -31,7 +31,7 @@ use PhpParser\Node\Stmt;
 /**
  * Detects member-access context at a cursor position.
  *
- * Walks the tree the {@see SyntaxSource} composite returns. A cursor over
+ * Walks the tree the {@see SyntaxSourceInterface} composite returns. A cursor over
  * broken text lands on a node the cursor-text source synthesizes (build-manifest
  * step-40), so instance and static access resolve through the same branches as
  * a real AST node — no separate text path. One
@@ -44,10 +44,10 @@ use PhpParser\Node\Stmt;
 final class MemberAccessDetector
 {
     public function __construct(
-        private readonly SymbolSource $symbolSource,
+        private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolver $memberResolver,
-        private readonly TypeSource $typeSource,
-        private readonly SyntaxSource $parser,
+        private readonly TypeSourceInterface $typeSource,
+        private readonly SyntaxSourceInterface $parser,
     ) {
     }
 
@@ -143,7 +143,7 @@ final class MemberAccessDetector
      * restrictive visibility across the constituents — a member must be
      * visible on every possible runtime class to be safe to offer.
      */
-    private function visibilityForReceiver(?ClassName $vantage, ?Type $type): ?Visibility
+    private function visibilityForReceiver(?ClassName $vantage, ?TypeInterface $type): ?Visibility
     {
         $classes = ExpressionResolver::receiverClassNames($type);
         if ($classes === []) {

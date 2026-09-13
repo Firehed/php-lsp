@@ -14,20 +14,20 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\Location;
-use Firehed\PhpLsp\Domain\MemberInfo;
+use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\ResolvedCallable;
-use Firehed\PhpLsp\Domain\ResolvedSymbol;
-use Firehed\PhpLsp\Domain\Type;
+use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSource;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr;
@@ -50,7 +50,7 @@ use PhpParser\Node\Stmt;
 use PhpParser\Node\VarLikeIdentifier;
 
 /**
- * Resolves any expression to a {@see ResolvedSymbol}; its value type is
+ * Resolves any expression to a {@see ResolvedSymbolInterface}; its value type is
  * `->getType()`.
  *
  * One entry point that hover, definition, member-access typing, and variable
@@ -63,8 +63,8 @@ final class ExpressionResolver
 {
     public function __construct(
         private readonly MemberResolver $memberResolver,
-        private readonly SymbolSource $symbolSource,
-        private readonly TypeSource $typeSource,
+        private readonly SymbolSourceInterface $symbolSource,
+        private readonly TypeSourceInterface $typeSource,
         private readonly TextDocument $document,
     ) {
     }
@@ -72,7 +72,7 @@ final class ExpressionResolver
     /**
      * @param array<Stmt> $ast
      */
-    public function resolve(Expr $expr, array $ast): ?ResolvedSymbol
+    public function resolve(Expr $expr, array $ast): ?ResolvedSymbolInterface
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
             $classLike = Scope::classLikeForThisAt($ast, $expr->getStartFilePos());
@@ -187,7 +187,7 @@ final class ExpressionResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function typeOfBinding(VariableBinding $binding, Scope $scope, array $ast): ?Type
+    private function typeOfBinding(VariableBinding $binding, Scope $scope, array $ast): ?TypeInterface
     {
         $node = $binding->node;
         assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
@@ -221,7 +221,7 @@ final class ExpressionResolver
         return $this->typeOfParameterBinding($parent, $node->name, $scope);
     }
 
-    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?Type
+    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?TypeInterface
     {
         $source = $scope->getSourceNode();
         // @codeCoverageIgnoreStart
@@ -245,7 +245,7 @@ final class ExpressionResolver
     /**
      * @param array<Stmt> $ast
      */
-    private function foreachElementType(Stmt\Foreach_ $foreach, Variable $bindingVar, array $ast): ?Type
+    private function foreachElementType(Stmt\Foreach_ $foreach, Variable $bindingVar, array $ast): ?TypeInterface
     {
         if ($bindingVar === $foreach->keyVar) {
             return null;
@@ -267,7 +267,7 @@ final class ExpressionResolver
      *
      * @param array<Stmt> $ast
      */
-    private function resolveShortClassName(string $shortOrFqn, Node $atNode, array $ast): ?Type
+    private function resolveShortClassName(string $shortOrFqn, Node $atNode, array $ast): ?TypeInterface
     {
         if (str_starts_with($shortOrFqn, '\\')) {
             $fqn = ltrim($shortOrFqn, '\\');
@@ -285,7 +285,7 @@ final class ExpressionResolver
         return null;
     }
 
-    private function resolveNew(New_ $expr): ?ResolvedSymbol
+    private function resolveNew(New_ $expr): ?ResolvedSymbolInterface
     {
         if (!$expr->class instanceof Name) {
             return null;
@@ -313,12 +313,12 @@ final class ExpressionResolver
     public function resolveCallable(
         FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         array $ast,
-    ): ?ResolvedCallable {
+    ): ?ResolvedCallableInterface {
         if ($call instanceof New_ || $call instanceof Attribute) {
             return $this->resolveConstructor($call);
         }
         $symbol = $this->resolve($call, $ast);
-        return $symbol instanceof ResolvedCallable ? $symbol : null;
+        return $symbol instanceof ResolvedCallableInterface ? $symbol : null;
     }
 
     /**
@@ -412,7 +412,7 @@ final class ExpressionResolver
      * through `ScopeFinder` — is here, so a new member-access node kind adds
      * one call site rather than another copy of this dance.
      *
-     * @template T of MemberInfo
+     * @template T of MemberInfoInterface
      * @param callable(ClassName, string): ?T $find
      * @param array<Stmt> $ast
      * @return ?T
@@ -423,7 +423,7 @@ final class ExpressionResolver
         string $memberName,
         callable $find,
         array $ast,
-    ): ?MemberInfo {
+    ): ?MemberInfoInterface {
         if ($receiver instanceof Name) {
             $classNameStr = ScopeFinder::resolveClassNameInContext($receiver, $context);
             if ($classNameStr === null) {
@@ -444,7 +444,7 @@ final class ExpressionResolver
     /**
      * @return list<ClassName>
      */
-    public static function receiverClassNames(?Type $type): array
+    public static function receiverClassNames(?TypeInterface $type): array
     {
         return $type?->getResolvableClassNames() ?? [];
     }
@@ -463,7 +463,7 @@ final class ExpressionResolver
         return $this->memberResolver->findProperty($className, new PropertyName($name), Visibility::Private);
     }
 
-    private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbol
+    private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbolInterface
     {
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
