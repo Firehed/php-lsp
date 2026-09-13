@@ -31,7 +31,7 @@ enum MemberKind
     /**
      * Where a class-like holds the members of this kind, keyed by declared name.
      *
-     * @return array<string, MemberInfo>
+     * @return array<string, MemberInfoInterface>
      */
     public function membersOf(ClassInfo $classInfo): array
     {

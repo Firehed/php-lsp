@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about a class property.
  */
-final readonly class PropertyInfo implements MemberInfo
+final readonly class PropertyInfo implements MemberInfoInterface
 {
     use HasSymbolLocationTrait;
 

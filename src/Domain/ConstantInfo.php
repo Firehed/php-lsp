@@ -13,7 +13,7 @@ namespace Firehed\PhpLsp\Domain;
  * differing in one field, or a sentinel ClassName the type system cannot catch
  * as a lie.
  */
-final readonly class ConstantInfo implements MemberInfo, SymbolInfo
+final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfo
 {
     use HasSymbolLocationTrait;
 

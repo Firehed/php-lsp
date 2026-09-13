@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Metadata about an enum case.
  */
-final readonly class EnumCaseInfo implements MemberInfo
+final readonly class EnumCaseInfo implements MemberInfoInterface
 {
     use HasSymbolLocationTrait;
 

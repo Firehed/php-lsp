@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\Location;
-use Firehed\PhpLsp\Domain\MemberInfo;
+use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -412,7 +412,7 @@ final class ExpressionResolver
      * through `ScopeFinder` — is here, so a new member-access node kind adds
      * one call site rather than another copy of this dance.
      *
-     * @template T of MemberInfo
+     * @template T of MemberInfoInterface
      * @param callable(ClassName, string): ?T $find
      * @param array<Stmt> $ast
      * @return ?T
@@ -423,7 +423,7 @@ final class ExpressionResolver
         string $memberName,
         callable $find,
         array $ast,
-    ): ?MemberInfo {
+    ): ?MemberInfoInterface {
         if ($receiver instanceof Name) {
             $classNameStr = ScopeFinder::resolveClassNameInContext($receiver, $context);
             if ($classNameStr === null) {
