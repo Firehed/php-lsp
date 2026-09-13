@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Capability;
  * Separate from {@see \Firehed\PhpLsp\Handler\LifecycleHandler} so post-initialize
  * actions are added without that handler depending on each feature.
  */
-interface InitializedListener
+interface InitializedListenerInterface
 {
     public function onInitialized(SessionCapabilities $capabilities): void;
 }

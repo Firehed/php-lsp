@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
-use Firehed\PhpLsp\Capability\InitializedListener;
+use Firehed\PhpLsp\Capability\InitializedListenerInterface;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Protocol\InitializeResult;
@@ -91,7 +91,7 @@ class LifecycleHandlerTest extends TestCase
     {
         $negotiator = new CapabilityNegotiator(new ServerInfo('test', '1.0'));
         $captured = null;
-        $listener = $this->createMock(InitializedListener::class);
+        $listener = $this->createMock(InitializedListenerInterface::class);
         $listener->expects($this->once())
             ->method('onInitialized')
             ->willReturnCallback(function (SessionCapabilities $capabilities) use (&$captured): void {

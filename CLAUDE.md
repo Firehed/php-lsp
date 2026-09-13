@@ -331,7 +331,7 @@ always honored so the server can terminate. `initialize` "may only be sent once"
 the already-resolved session. A gated message is never dispatched; a gated
 notification has no id, so its error is dropped rather than sent — which is what LSP
 "Server lifecycle" means by notifications being *dropped*. The gate opens only once
-`initialize` has produced a result. On `initialized`, it runs its `InitializedListener`s
+`initialize` has produced a result. On `initialized`, it runs its `InitializedListenerInterface`s
 against the settled `SessionCapabilities` — the point where dynamic capability
 registration proceeds (e.g. `WatchedFilesRegistrar`) — rather than growing a dependency
 on each feature that needs to act post-initialize.

@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Client\ClientConnection;
  * and only when the client declared support (RFC 1 §4.8); a client that did not is
  * left on the §7 fallback (no invalidation until a file is opened and closed).
  */
-final class WatchedFilesRegistrar implements InitializedListener
+final class WatchedFilesRegistrar implements InitializedListenerInterface
 {
     // The registration id doubles as the method name: the server never unregisters,
     // so it only has to identify the capability ([LSP] Registration).
