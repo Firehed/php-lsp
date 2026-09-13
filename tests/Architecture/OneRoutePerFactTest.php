@@ -51,7 +51,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class OneRoutePerFactTest extends TestCase
 {
-    use ScansSourceFiles;
+    use ScansSourceFilesTrait;
 
     private const string PROJECT_NAMESPACE = 'Firehed\\PhpLsp\\';
 

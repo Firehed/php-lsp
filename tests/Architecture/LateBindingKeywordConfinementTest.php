@@ -27,7 +27,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class LateBindingKeywordConfinementTest extends TestCase
 {
-    use ScansSourceFiles;
+    use ScansSourceFilesTrait;
 
     /**
      * The one file allowed to name the three keyword literals as their own

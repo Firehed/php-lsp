@@ -8,7 +8,7 @@ namespace Firehed\PhpLsp\Tests\Architecture;
  * File walking shared by the architecture tests that read every file under
  * `src/` rather than running as a PHPStan rule.
  */
-trait ScansSourceFiles
+trait ScansSourceFilesTrait
 {
     /**
      * @return iterable<string>
