@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Capability;
 
-use Firehed\PhpLsp\Client\ClientConnection;
+use Firehed\PhpLsp\Client\ClientConnectionInterface;
 
 /**
  * Registers the server for `workspace/didChangeWatchedFiles` events once the
@@ -21,7 +21,7 @@ final class WatchedFilesRegistrar implements InitializedListenerInterface
     private const string METHOD = 'workspace/didChangeWatchedFiles';
 
     public function __construct(
-        private readonly ClientConnection $client,
+        private readonly ClientConnectionInterface $client,
     ) {
     }
 

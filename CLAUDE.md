@@ -211,7 +211,7 @@ Two triggers reach it:
 the `workspace/didChangeWatchedFiles` notification (`DidChangeWatchedFilesHandler`)
 and `didClose` (so a closed-after-edit file re-reads disk). Watched files are
 registered dynamically after `initialized` (`WatchedFilesRegistrar` via the outbound
-`ClientConnection` — no static server capability exists), gated on the client's
+`ClientConnectionInterface` — no static server capability exists), gated on the client's
 `dynamicRegistration`; an unregistered client follows the §7 fallback (no invalidation
 until a file is opened and closed).
 
@@ -290,7 +290,7 @@ like a Notification rather than answering it.
 
 `TransportInterface::write()` takes any `OutgoingMessageInterface` — a `ResponseMessage` or a
 server-initiated `OutgoingRequest` — so responses and server→client requests share one
-framed channel. Server-initiated requests go through **`ClientConnection`**
+framed channel. Server-initiated requests go through **`ClientConnectionInterface`**
 (`TransportClientConnection`); today the sole use is dynamic capability registration
 (`client/registerCapability`). Broader server-initiated output (diagnostics, cancellation)
 is the deferred scheduler tier (Plan 0002 Step 6).

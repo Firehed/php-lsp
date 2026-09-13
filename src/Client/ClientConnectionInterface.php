@@ -9,7 +9,7 @@ namespace Firehed\PhpLsp\Client;
  * dynamic capability registration (`client/registerCapability`); server-initiated
  * notifications (diagnostics) are the deferred scheduler tier (Plan 0002 Step 6).
  */
-interface ClientConnection
+interface ClientConnectionInterface
 {
     /**
      * Send a server-initiated request. The reply is not correlated — the read loop
