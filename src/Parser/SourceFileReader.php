@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 
 /**
  * Reads a PHP source file from a path into a {@see TextDocument} so consumers
- * that hold a path parse through the {@see SyntaxSource\SyntaxSource} interface
+ * that hold a path parse through the {@see SyntaxSource\SyntaxSourceInterface} interface
  * the same way an open-document caller does. Filesystem access is confined
  * here so the parser layer is the only place a source file is opened.
  */

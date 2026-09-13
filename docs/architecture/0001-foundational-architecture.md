@@ -679,7 +679,7 @@ work.
     Target environment   environment parameter + backend      4.7
     Protocol capability  session capabilities + handler       4.8, 5.4
     Position/intent      completion source + intent mapping   7
-    Parse health         SyntaxSource implementation          4.11
+    Parse health         SyntaxSourceInterface implementation          4.11
 
 Rows marked (target) name their intended single extension point ahead of it existing; issue #443 owns the work.
 

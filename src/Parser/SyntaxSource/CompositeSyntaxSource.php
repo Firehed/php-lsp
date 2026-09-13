@@ -8,16 +8,16 @@ use Firehed\PhpLsp\Document\TextDocument;
 use PhpParser\Node;
 
 /**
- * The one-route composite for {@see SyntaxSource}. Members are asked in order,
+ * The one-route composite for {@see SyntaxSourceInterface}. Members are asked in order,
  * and the first non-empty result wins; the empty list is returned only when
  * every member returned it, so a fallback (a skeleton tree, a cursor-local
  * fragment) reaches consumers exactly when the earlier members had nothing to
  * say (RFC 1 §4.11).
  */
-final class CompositeSyntaxSource implements SyntaxSource
+final class CompositeSyntaxSource implements SyntaxSourceInterface
 {
     /**
-     * @param list<SyntaxSource> $sources
+     * @param list<SyntaxSourceInterface> $sources
      */
     public function __construct(
         private readonly array $sources,

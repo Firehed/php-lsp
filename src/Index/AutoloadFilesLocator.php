@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use PhpParser\Node;
 
 /**
@@ -75,7 +75,7 @@ final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, Pre
 
     public function __construct(
         private readonly ComposerAutoloadMap $map,
-        private readonly SyntaxSource $parser,
+        private readonly SyntaxSourceInterface $parser,
         private readonly SourceFileReader $reader,
         private readonly DeclarationScanner $scanner,
     ) {

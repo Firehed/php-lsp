@@ -15,7 +15,7 @@ use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 
 /**
- * The regex-based {@see SyntaxSource}. Reads the structural shape of PHP source
+ * The regex-based {@see SyntaxSourceInterface}. Reads the structural shape of PHP source
  * — namespace, imports, class-likes with `extends`/`implements`, and their
  * top-level members — from the text alone, so a document php-parser cannot make
  * sense of still yields a tree that {@see \Firehed\PhpLsp\Resolution\Scope},
@@ -51,7 +51,7 @@ use PhpParser\Node\UseItem;
  *   braceDepths: list<int>,
  * }
  */
-final class SkeletonSyntaxSource implements SyntaxSource
+final class SkeletonSyntaxSource implements SyntaxSourceInterface
 {
     private const string NAME_PATTERN = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
     private const string SIMPLE_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_]*';

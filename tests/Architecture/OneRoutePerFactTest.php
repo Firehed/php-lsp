@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolBackend;
 use Firehed\PhpLsp\Knowledge\SymbolLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\NameContext as ResolutionNameContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
@@ -101,7 +101,7 @@ final class OneRoutePerFactTest extends TestCase
             ),
             Fact::family(
                 name: 'syntax source',
-                interface: SyntaxSource::class,
+                interface: SyntaxSourceInterface::class,
                 roots: [Server::class],
             ),
             Fact::confined(
@@ -245,7 +245,8 @@ final class OneRoutePerFactTest extends TestCase
     private function compositeCheck(Fact $fact, array $routes): array
     {
         assert($fact->interface !== null);
-        $expected = self::namespaceOf($fact->interface) . '\\Composite' . self::shortNameOf($fact->interface);
+        $baseName = preg_replace('/Interface$/', '', self::shortNameOf($fact->interface));
+        $expected = self::namespaceOf($fact->interface) . '\\Composite' . $baseName;
         $present = in_array($expected, $routes, true);
 
         if ($fact->compositePending === null) {
@@ -277,8 +278,9 @@ final class OneRoutePerFactTest extends TestCase
             static fn (string $class): bool => self::namespaceOf($class) !== $family,
         ));
         $short = self::shortNameOf($fact->interface);
+        $baseName = preg_replace('/Interface$/', '', $short);
         $target = $family;
-        if (self::shortNameOf($family) !== $short) {
+        if (self::shortNameOf($family) !== $baseName) {
             $misplaced[] = $fact->interface;
             $target = $family . '\\' . $short;
         }

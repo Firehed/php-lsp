@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\Nop;
@@ -46,7 +46,7 @@ final class CompositeSyntaxSourceTest extends TestCase
     public function testStopsAskingSourcesAfterTheFirstNonEmpty(): void
     {
         $winner = self::stubReturning([new Nop()]);
-        $later = new class implements SyntaxSource {
+        $later = new class implements SyntaxSourceInterface {
             public bool $called = false;
 
             /**
@@ -84,9 +84,9 @@ final class CompositeSyntaxSourceTest extends TestCase
     /**
      * @param array<Stmt> $tree
      */
-    private static function stubReturning(array $tree): SyntaxSource
+    private static function stubReturning(array $tree): SyntaxSourceInterface
     {
-        return new class ($tree) implements SyntaxSource {
+        return new class ($tree) implements SyntaxSourceInterface {
             /**
              * @param array<Stmt> $tree
              */

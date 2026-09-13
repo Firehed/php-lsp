@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
@@ -29,7 +29,7 @@ class MemberAccessDetectorTest extends TestCase
 
     private MemberAccessDetector $detector;
     private MemberAccessDetector $detectorWithReflection;
-    private SyntaxSource $parser;
+    private SyntaxSourceInterface $parser;
 
     protected function setUp(): void
     {

@@ -44,7 +44,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 - `src/Domain/` — Domain objects representing code constructs
 - `src/Index/` — Composer autoload maps, namespace catalogs, symbol locators
 - `src/Document/` — Open document management
-- `src/Parser/` — the `SyntaxSource` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScopedInterface` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
+- `src/Parser/` — the `SyntaxSourceInterface` composite behind the one interface every AST reader holds: `SyntaxSource\PhpParserSyntaxSource` (the only class that names `PhpParser\Parser`), `SyntaxSource\CompositeSyntaxSource` (first non-empty tree wins), `SyntaxSource\MemoizingSyntaxSource` (content-keyed memo for one handled message, cleared through `SyntaxSource\MessageScopedInterface` by `Server`'s message loop), plus `TreeAnnotator` (the parent-connecting and name-resolving pass every tree-producing implementation runs), `SourceFileReader` (the one place a source file is opened), and `ParseMetrics` (parse count/time, which every parse is metered through)
 - `src/Utility/` — AST helpers (ScopeFinder, Scope, DocblockParser)
 - `src/Completion/` — Completion context detection (`ContextDetector`, `CompletionClassifier`) and per-kind sources (`*Candidates`, `CompletionItemFactory`)
 - `src/Capability/` — Protocol capability negotiation (see Capability Negotiation below)
@@ -86,7 +86,7 @@ All symbol resolution flows through the `CodeResolver` interface (implemented by
 - `ResolvedClass`, `ResolvedVariable`, `ResolvedParameter` implement `ResolvedSymbol`
 
 Incomplete code (e.g. `$this->`, `Foo::`) is handled inside `SymbolResolver`:
-the `SyntaxSource` composite falls through to `CursorTextSyntaxSource`, which
+the `SyntaxSourceInterface` composite falls through to `CursorTextSyntaxSource`, which
 synthesizes the node at the cursor, so handlers do not need their own fallbacks.
 
 **Future (workspace queries):** references, implementations, sub/supertypes, call
@@ -371,7 +371,7 @@ Handlers DO:
 
 `CompletionHandler` is a coordinator: it classifies the position and delegates to
 completion *sources* (`src/Completion/*Candidates`), then merges and deduplicates.
-It no longer parses documents or touches `SyntaxSource` directly —
+It no longer parses documents or touches `SyntaxSourceInterface` directly —
 sources own their lookups, and anything parser-derived (imports, file functions,
 members, variables, types) flows through `CodeResolver`. See Completion System.
 
@@ -404,7 +404,7 @@ it caches — the code has exactly one interface for it, and one shape around it
   order: a lookup returns the first non-null answer, an enumeration merges every answer
   with the earlier member winning a name clash, and it holds no other logic. A decorator such as a cache
   implements the interface and wraps one.
-- Syntax has one node model, php-parser's. `SyntaxSource` returns php-parser nodes, and
+- Syntax has one node model, php-parser's. `SyntaxSourceInterface` returns php-parser nodes, and
   an implementation built on another parser converts its tree into that model.
 - A consumer is typed on the interface, holds one of it, and never names an
   implementation. Only the composition roots (`Server::forProject` and
@@ -471,7 +471,7 @@ Architecture (`CompletionHandler` is a coordinator, not a resolver):
 1. **Coarse gate** — `ContextDetector` (token-based) classifies the broad context
    (None / VariablesOnly / Full); token analysis survives unparseable code.
 2. **Member/static/call** — detected via `CodeResolver` (`MemberCandidates`,
-   `getCallContext`), which reads the tree the `SyntaxSource` composite produces
+   `getCallContext`), which reads the tree the `SyntaxSourceInterface` composite produces
    (php-parser first, cursor-text synthesis when nothing parses).
 3. **Everything else** — `CompletionClassifier` maps the text before the cursor to a
    typed `CompletionKind`; the handler dispatches to a source per kind.

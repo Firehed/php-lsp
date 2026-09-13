@@ -14,14 +14,14 @@ use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
 /**
- * The {@see SyntaxSource} backed by php-parser: the one class that names
+ * The {@see SyntaxSourceInterface} backed by php-parser: the one class that names
  * {@see \PhpParser\Parser}. Recovers from partial or invalid input through the
  * error-collecting handler, meters every exit path via {@see ParseMetrics}, and
  * hands the resulting tree to {@see TreeAnnotator} so `parent`, `resolvedName`,
  * and `namespacedName` are set the same way every other tree-producing source
  * has them set.
  */
-final class PhpParserSyntaxSource implements SyntaxSource
+final class PhpParserSyntaxSource implements SyntaxSourceInterface
 {
     private readonly Parser $parser;
 

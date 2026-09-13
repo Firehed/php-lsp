@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchable;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
  * A {@see SymbolBackend} over PHP files on disk, resolved through Composer's
@@ -50,7 +50,7 @@ final class FilesystemBackend implements SymbolBackend, InvalidatableInterface
     public function __construct(
         private readonly SymbolLocator $locator,
         private readonly NamespaceCatalog $namespaces,
-        private readonly SyntaxSource $parser,
+        private readonly SyntaxSourceInterface $parser,
         private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,

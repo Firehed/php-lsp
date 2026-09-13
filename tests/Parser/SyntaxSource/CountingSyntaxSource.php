@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 
 /**
- * Test-only SyntaxSource stub that records how many times it was asked to
+ * Test-only SyntaxSourceInterface stub that records how many times it was asked to
  * parse, so the memoizer's dedup can be pinned on the count.
  */
-final class CountingSyntaxSource implements SyntaxSource
+final class CountingSyntaxSource implements SyntaxSourceInterface
 {
     public int $parseCount = 0;
 

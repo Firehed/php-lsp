@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
 use LogicException;
@@ -65,7 +65,7 @@ final class SymbolResolver implements CodeResolver
     private readonly MemberAccessDetector $memberAccessDetector;
 
     public function __construct(
-        private readonly SyntaxSource $parser,
+        private readonly SyntaxSourceInterface $parser,
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TypeSource $typeSource,

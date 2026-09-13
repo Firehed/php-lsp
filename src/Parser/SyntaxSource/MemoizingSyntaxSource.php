@@ -8,14 +8,14 @@ use Firehed\PhpLsp\Document\TextDocument;
 use PhpParser\Node;
 
 /**
- * Content-keyed memo around one {@see SyntaxSource}, discarded at the LSP
+ * Content-keyed memo around one {@see SyntaxSourceInterface}, discarded at the LSP
  * message boundary through {@see MessageScopedInterface}. Within one handled message a
  * document parses at most once; different content is a different key, so no
  * invalidation rule has to be got right. Discarding it at the message boundary
  * is what keeps it request-scoped rather than a standing cache the Step 0
  * spike declined (0002-execution-plan.md, Section 8.5).
  */
-final class MemoizingSyntaxSource implements SyntaxSource, MessageScopedInterface
+final class MemoizingSyntaxSource implements SyntaxSourceInterface, MessageScopedInterface
 {
     /**
      * Content => the tree it produced, for the message being handled. Keyed
@@ -27,7 +27,7 @@ final class MemoizingSyntaxSource implements SyntaxSource, MessageScopedInterfac
     private array $memo = [];
 
     public function __construct(
-        private readonly SyntaxSource $inner,
+        private readonly SyntaxSourceInterface $inner,
     ) {
     }
 

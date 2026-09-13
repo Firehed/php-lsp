@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Index\ComposerSymbolLocator;
 use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
  * Assembles the symbol-knowledge tier: the {@see SymbolSource} read composite over
@@ -42,7 +42,7 @@ final readonly class KnowledgeStack
     public static function forProject(
         ComposerAutoloadMap $autoloadMap,
         string $vendorDirectory,
-        SyntaxSource $parser,
+        SyntaxSourceInterface $parser,
         SourceFileReader $reader,
     ): self {
         $declarationInfoFactory = new DeclarationSymbolInfoFactory();
@@ -101,7 +101,7 @@ final readonly class KnowledgeStack
      */
     private static function filesystemBackend(
         ComposerAutoloadMap $map,
-        SyntaxSource $parser,
+        SyntaxSourceInterface $parser,
         SourceFileReader $reader,
         DeclarationSymbolInfoFactory $infoFactory,
         DeclarationScanner $scanner,

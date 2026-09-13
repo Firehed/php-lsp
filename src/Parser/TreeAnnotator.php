@@ -13,7 +13,7 @@ use PhpParser\NodeVisitor\ParentConnectingVisitor;
 
 /**
  * The parent-connecting and name-resolving pass every tree-producing
- * {@see SyntaxSource\SyntaxSource} runs on its own result.
+ * {@see SyntaxSource\SyntaxSourceInterface} runs on its own result.
  *
  * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource}, build-manifest
  * step-37) is annotated by the same code as a parsed one, so a downstream

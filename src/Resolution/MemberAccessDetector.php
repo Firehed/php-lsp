@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\Type;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSource;
 use LogicException;
@@ -31,7 +31,7 @@ use PhpParser\Node\Stmt;
 /**
  * Detects member-access context at a cursor position.
  *
- * Walks the tree the {@see SyntaxSource} composite returns. A cursor over
+ * Walks the tree the {@see SyntaxSourceInterface} composite returns. A cursor over
  * broken text lands on a node the cursor-text source synthesizes (build-manifest
  * step-40), so instance and static access resolve through the same branches as
  * a real AST node — no separate text path. One
@@ -47,7 +47,7 @@ final class MemberAccessDetector
         private readonly SymbolSource $symbolSource,
         private readonly MemberResolver $memberResolver,
         private readonly TypeSource $typeSource,
-        private readonly SyntaxSource $parser,
+        private readonly SyntaxSourceInterface $parser,
     ) {
     }
 

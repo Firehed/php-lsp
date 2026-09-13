@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
@@ -27,7 +27,7 @@ final class DocumentSymbolSink implements SymbolSink
     public function __construct(
         private readonly DocumentSymbolStore $store,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
-        private readonly SyntaxSource $parser,
+        private readonly SyntaxSourceInterface $parser,
         private readonly DeclarationScanner $scanner,
         private readonly array $onDiskBackends = [],
     ) {
