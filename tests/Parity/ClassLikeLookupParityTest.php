@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class ClassLikeLookupParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     /**
      * Corpus of class-like names whose full `ClassInfo` is deterministic and

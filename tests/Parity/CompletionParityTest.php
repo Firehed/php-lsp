@@ -37,7 +37,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class CompletionParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
     use LoadsFixturesTrait;
 
     /**

@@ -44,7 +44,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class FunctionSurfaceParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     /**
      * The fixture whose top-level functions the surface should report: one with a

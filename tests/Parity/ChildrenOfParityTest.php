@@ -25,7 +25,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class ChildrenOfParityTest extends TestCase
 {
-    use AssertsGolden;
+    use AssertsGoldenTrait;
 
     /**
      * A fixed set of workspace documents indexed before enumeration, so the
