@@ -200,10 +200,10 @@ disappear.
 sharing one open-document backend.
 
 **External-file-change invalidation** (RFC 1 §5.2, §5.3) is a third write-path
-producer alongside the editor lifecycle. `SymbolSink extends Cache\Invalidatable`, so
+producer alongside the editor lifecycle. `SymbolSink extends Cache\InvalidatableInterface`, so
 `invalidate($uri)` drops the on-disk cache for a file changed outside the editor and
 the next query re-reads disk. It fans out to the cached on-disk backends (also
-`Invalidatable`): `FilesystemBackend` evicts that file's class-likes and functions (a
+`InvalidatableInterface`): `FilesystemBackend` evicts that file's class-likes and functions (a
 path→key reverse map), `CachedNamespaceCatalog` drops its listings, and the locator composite
 re-derives the `autoload.files` index if the changed file is in that set — evicting
 only the `ClassInfo` cache would leave the name→file map itself stale.

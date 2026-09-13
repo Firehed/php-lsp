@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 
 /**
@@ -14,10 +14,10 @@ use Firehed\PhpLsp\Document\TextDocument;
  *
  * There is exactly one write path (RFC 1 §4.3), and it has three producers: the
  * editor lifecycle (open/update/close) and external on-disk change. The latter is
- * {@see Invalidatable::invalidate()}, extended here so it flows through this write
+ * {@see InvalidatableInterface::invalidate()}, extended here so it flows through this write
  * path rather than reaching a backend directly.
  */
-interface SymbolSink extends Invalidatable
+interface SymbolSink extends InvalidatableInterface
 {
     public function closeDocument(string $uri): void;
 

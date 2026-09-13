@@ -11,7 +11,7 @@ namespace Firehed\PhpLsp\Cache;
  * drops everything. Lives in the cache leaf so both `Knowledge` backends and
  * `Index` caches can implement it without a cross-dependency.
  */
-interface Invalidatable
+interface InvalidatableInterface
 {
     public function invalidate(string $uri): void;
 }

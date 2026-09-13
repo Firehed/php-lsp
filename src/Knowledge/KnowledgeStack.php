@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -97,7 +97,7 @@ final readonly class KnowledgeStack
     }
 
     /**
-     * @return array{FilesystemBackend, list<Invalidatable>}
+     * @return array{FilesystemBackend, list<InvalidatableInterface>}
      */
     private static function filesystemBackend(
         ComposerAutoloadMap $map,

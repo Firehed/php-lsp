@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -27,7 +27,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
  * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
  * replaceable cache seam (RFC 1 §5.3): a file on disk is stable while unchanged, so
  * a resolved symbol is memoized. An on-disk change to a file is signalled through
- * {@see invalidate()} ({@see Invalidatable}), which evicts that file's cached
+ * {@see invalidate()} ({@see InvalidatableInterface}), which evicts that file's cached
  * symbols and drops cached namespace listings so the next query reflects disk
  * (RFC 1 §5.2, §5.3).
  *
@@ -38,7 +38,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSource;
  * autoload.files index ({@see PrefixSearchable}), which is bounded and already in
  * memory.
  */
-final class FilesystemBackend implements SymbolBackend, Invalidatable
+final class FilesystemBackend implements SymbolBackend, InvalidatableInterface
 {
     /**
      * The symbols derived from each file, recorded so invalidation can evict them.

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Cache\CacheKey;
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Psr\SimpleCache\CacheInterface;
 
@@ -20,7 +20,7 @@ use Psr\SimpleCache\CacheInterface;
  * Only wrap sources that are stable for the life of the process — `vendor/` and
  * the language's built-ins. The workspace is not one of them.
  */
-final class CachedNamespaceCatalog implements NamespaceCatalog, Invalidatable
+final class CachedNamespaceCatalog implements NamespaceCatalog, InvalidatableInterface
 {
     public function __construct(
         private readonly NamespaceCatalog $source,

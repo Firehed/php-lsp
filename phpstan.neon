@@ -303,7 +303,7 @@ parameters:
 
     disallowedMethodCalls:
         -
-            method: 'Firehed\PhpLsp\Cache\Invalidatable::invalidate()'
+            method: 'Firehed\PhpLsp\Cache\InvalidatableInterface::invalidate()'
             message: 'single write path (RFC 1 §5.2/§5.3): every cached on-disk holder forgets a changed file together, which is DocumentSymbolSink''s fan-out; evicting one leaves the others stale'
             allowIn:
                 - src/Knowledge/DocumentSymbolSink.php

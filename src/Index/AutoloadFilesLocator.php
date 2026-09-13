@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
-use Firehed\PhpLsp\Cache\Invalidatable;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -39,7 +39,7 @@ use PhpParser\Node;
  * completion is exactly the lookup/enumeration split RFC 1 §4.2 forbids. The kind
  * reported is the declaration's own, not the coarse guess a directory listing makes.
  */
-final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, PrefixSearchable, Invalidatable
+final class AutoloadFilesLocator implements SymbolLocator, NamespaceCatalog, PrefixSearchable, InvalidatableInterface
 {
     /**
      * Every name the set declares, as the declaration spells it: the index is keyed
