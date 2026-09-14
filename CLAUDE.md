@@ -346,6 +346,18 @@ Architecture Invariants. What follows is the day-to-day digest.
 - **Value types belong in the family namespace of their producer, or hoist to `Domain\<Concept>\` when consumers reach across tiers.** Deptrac is the check: a value in `Knowledge\Foo\` that a handler needs is either an unintentional tier leak (fix the design) or a signal to hoist to `Domain\<Concept>\`.
 - **Nullable return types are fine when "not found" is a real answer.** Nullable parameters usually are not — prefer a defaulted value, or a distinct method, over a caller-supplied null.
 
+**Adding support for a new AST node type:**
+1. Add handling in `SymbolResolver` (ONE place)
+2. Create a `ResolvedX` implementation if needed
+3. All handlers support it automatically
+4. Write tests in `SymbolResolverTest`
+
+**Adding a new LSP handler:**
+1. Create the handler with `DocumentManager` + `CodeResolverInterface` dependencies
+2. Call the appropriate `CodeResolverInterface` method
+3. Format the result for the LSP response
+4. Do NOT add resolution logic to the handler
+
 ### Architecture Invariants
 
 Rules that MUST be followed. Violating these reintroduces the M×N handler×node bugs
@@ -466,18 +478,6 @@ fact with a candidate second implementation is a new row.
 The raw `initialize` parameters are read once, in `src/Capability/`. No other package
 may re-inspect them; output shaped by client support queries `SessionCapabilities`
 instead. `RawInitializeCapabilitiesRule` enforces this in PHPStan (RFC 1 §4.8, §8.1).
-
-**Adding support for a new AST node type:**
-1. Add handling in `SymbolResolver` (ONE place)
-2. Create a `ResolvedX` implementation if needed
-3. All handlers support it automatically
-4. Write tests in `SymbolResolverTest`
-
-**Adding a new LSP handler:**
-1. Create the handler with `DocumentManager` + `CodeResolverInterface` dependencies
-2. Call the appropriate `CodeResolverInterface` method
-3. Format the result for the LSP response
-4. Do NOT add resolution logic to the handler
 
 ### Utility Classes
 
