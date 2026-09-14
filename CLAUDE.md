@@ -336,8 +336,8 @@ diverge from the one that handles `initialize`/`shutdown`.
 
 ### Guidelines for New Code
 
-Naming, factories, handler shape, and consumer-holds-interface are covered under
-Architecture Invariants. What follows is the day-to-day digest.
+Coding conventions that apply throughout `src/`. Architecture Invariants below carry
+the hard rules; these are the day-to-day habits.
 
 - **Keep code DRY.** Look for an existing utility before writing one; never copy-paste.
 - **Return domain objects, not raw AST or reflection.** `MethodInfo`, `PropertyInfo`, and their peers under `src/Domain/` are the vocabulary.
