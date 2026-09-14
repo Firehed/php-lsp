@@ -32,5 +32,8 @@ return [
         );
     },
 
+    Client\ClientConnectionInterface::class => Client\TransportClientConnection::class,
+    Client\TransportClientConnection::class,
+
     Document\DocumentManager::class,
 ];

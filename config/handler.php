@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\Container\TypedContainerInterface as TC;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 
 return [
     TextDocumentSyncHandler::class,
@@ -17,7 +18,7 @@ return [
 
     LifecycleHandler::class => function (TC $c) {
         $listeners = [
-            // FIXME: Server
+            $c->get(WatchedFilesRegistrar::class),
         ];
         return new LifecycleHandler(
             $c->get(CapabilityNegotiator::class),
