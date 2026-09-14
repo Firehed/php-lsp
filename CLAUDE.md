@@ -57,7 +57,7 @@ This section overrides the global "avoid adding to the baseline" guidance in the
 ### Resolution Layer
 
 All symbol resolution flows through the `CodeResolverInterface` interface (implemented by
-`SymbolResolver`). Handlers depend on the interface, never on the concrete class.
+`SymbolResolver`).
 
 **Point queries:**
 - `resolveAtPosition(doc, line, char): ?ResolvedSymbolInterface` — Definition, Hover, TypeDefinition
