@@ -5,17 +5,16 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Amp\ByteStream\ReadableResourceStream;
-use Amp\ByteStream\WritableResourceStream;
+use Firehed\Container\AutoDetect;
 use Firehed\PhpLsp\Server;
-use Firehed\PhpLsp\Protocol\ServerInfo;
-use Firehed\PhpLsp\Transport\StreamTransport;
 
-$serverInfo = new ServerInfo('php-lsp', '0.1.0');
-$transport = new StreamTransport(
-    new ReadableResourceStream(STDIN),
-    new WritableResourceStream(STDOUT),
-);
-$server = Server::forProject($transport, $serverInfo);
+// Future: this should (probably) be based on whether this is being run within
+// as a dev dependency or standalone (e.g. composer global install)
+$_ENV['ENVIRONMENT'] = 'dev';
+// Don't rely on cwd(); tack to installation path. Avoids conflicts with
+// projects also using the same container.
+$container = AutoDetect::from(__DIR__ . '/../config');
+
+$server = $container->get(Server::class);
 
 exit($server->run());
