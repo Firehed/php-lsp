@@ -10,10 +10,10 @@ use Amp\ByteStream\WritableResourceStream;
 use Amp\ByteStream\WritableStream;
 
 return [
-    ReadableStream::class => ReadableResourceStream::class,
     ReadableResourceStream::class => fn () => new ReadableResourceStream(STDIN),
-    WritableStream::class => WritableResourceStream::class,
+    ReadableStream::class => ReadableResourceStream::class,
     WritableResourceStream::class => fn () => new WritableResourceStream(STDOUT),
+    WritableStream::class => WritableResourceStream::class,
 
     Transport\StreamTransport::class,
     Transport\TransportInterface::class => Transport\StreamTransport::class,
