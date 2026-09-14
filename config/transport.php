@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
-use Amp\ByteStream\ReadableStream;
-use Amp\ByteStream\WritableStream;
 use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\ReadableStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\ByteStream\WritableStream;
 
 return [
     ReadableStream::class => ReadableResourceStream::class,
