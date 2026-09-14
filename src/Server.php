@@ -79,14 +79,16 @@ final class Server
         TransportInterface $transport,
         ServerInfo $serverInfo,
         ?string $projectRoot = null,
-        SyntaxSourceInterface&MessageScopedInterface $parser = new MemoizingSyntaxSource(
+        (SyntaxSourceInterface&MessageScopedInterface)|null $parser = null,
+    ): self {
+        $parser ??= new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
                 new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
                 new SkeletonSyntaxSource(),
                 new CursorTextSyntaxSource(),
             ]),
-        ),
-    ): self {
+        );
+
         $reader = new SourceFileReader();
         if ($projectRoot === null) {
             $cwd = getcwd();
