@@ -342,7 +342,7 @@ the hard rules; these are the day-to-day habits.
 - **Keep code DRY.** Look for an existing utility before writing one; never copy-paste.
 - **Return domain objects, not raw AST or reflection.** `MethodInfo`, `PropertyInfo`, and their peers under `src/Domain/` are the vocabulary.
 - **Reach for `TypeInterface`, not strings.** Read it from a `TypeSourceInterface` implementation; call `format()` only at display time.
-- **Reach for an existing traversal before writing a new `NodeVisitorAbstract`.** Duplicate walkers are how the parity bugs happened; extract shared logic to a utility.
+- **Reach for an existing traversal before writing a new `NodeVisitorAbstract`.** Duplicate walkers are how the parity bugs happened; extract shared logic to a utility. `PhpParser\NodeFinder` is often enough.
 - **Value types belong in the family namespace of their producer, or hoist to `Domain\<Concept>\` when consumers reach across tiers.** Deptrac is the check: a value in `Knowledge\Foo\` that a handler needs is either an unintentional tier leak (fix the design) or a signal to hoist to `Domain\<Concept>\`.
 - **Nullable return types are fine when "not found" is a real answer.** Nullable parameters usually are not — prefer a defaulted value, or a distinct method, over a caller-supplied null.
 
@@ -526,8 +526,6 @@ AST+fallback `CodeResolverInterface` path.
 ## Testing
 
 ### Writing Tests
-
-Do not re-invent AST traversal. It is built in to the library. You probably want an existing utility in the project, or `PhpParser\NodeFinder`.
 
 Do not write new tests using inlined PHP code. ALWAYS use the fixture tooling when the test is covering code or file handling.
 
