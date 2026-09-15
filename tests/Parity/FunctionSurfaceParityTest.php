@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
+use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -49,9 +50,11 @@ final class FunctionSurfaceParityTest extends TestCase
     /**
      * The fixture whose top-level functions the surface should report: one with a
      * docblock and typed parameters (so `detail` and `documentation` are frozen,
-     * not just the label), one without.
+     * not just the label), one without. The probe document that carries the
+     * cursor shares this fixture's namespace.
      */
     private const string DOCUMENT_WITH_FUNCTIONS = 'src/Completion/FunctionCompletion.php';
+    private const string DOCUMENT_WITH_FUNCTIONS_NAMESPACE = 'Fixtures\\Completion';
 
     /**
      * A fixture declaring no top-level functions, used to prove the document half
@@ -59,6 +62,7 @@ final class FunctionSurfaceParityTest extends TestCase
      * everything indexed.
      */
     private const string DOCUMENT_WITHOUT_FUNCTIONS = 'src/Domain/User.php';
+    private const string DOCUMENT_WITHOUT_FUNCTIONS_NAMESPACE = 'Fixtures\\Domain';
 
     private string $fixturesRoot;
     private SymbolSourceInterface $symbolSource;
@@ -93,38 +97,40 @@ final class FunctionSurfaceParityTest extends TestCase
 
     public function testFunctionCompletionMatchesGolden(): void
     {
+        $with = self::DOCUMENT_WITH_FUNCTIONS;
+        $withNs = self::DOCUMENT_WITH_FUNCTIONS_NAMESPACE;
+        $without = self::DOCUMENT_WITHOUT_FUNCTIONS;
+        $withoutNs = self::DOCUMENT_WITHOUT_FUNCTIONS_NAMESPACE;
+
         $queries = [
             // A document function: label, signature detail, and the description
             // lifted from its docblock.
-            'document|calc' => [self::DOCUMENT_WITH_FUNCTIONS, 'calc', false],
+            'document|calc' => [$with, $withNs, 'calc', false],
             // The same query with snippet support declared, which is the only
             // capability that reshapes an item on this surface (RFC 1 §4.8).
-            'document|calc+snippet' => [self::DOCUMENT_WITH_FUNCTIONS, 'calc', true],
+            'document|calc+snippet' => [$with, $withNs, 'calc', true],
             // Prefix matching is case-insensitive; a case-sensitive regression
             // returns nothing here.
-            'document|CALCULATE' => [self::DOCUMENT_WITH_FUNCTIONS, 'CALCULATE', false],
+            'document|CALCULATE' => [$with, $withNs, 'CALCULATE', false],
             // A document function with no docblock: no `documentation` key, and a
             // return type the signature detail must still carry.
-            'document|getConfig' => [self::DOCUMENT_WITH_FUNCTIONS, 'getConfig', false],
+            'document|getConfig' => [$with, $withNs, 'getConfig', false],
             // Built-ins reach the surface, and carry no signature detail today.
-            'builtin|str_contains' => [self::DOCUMENT_WITH_FUNCTIONS, 'str_contains', false],
-            'builtin|str_contains+snippet' => [self::DOCUMENT_WITH_FUNCTIONS, 'str_contains', true],
-            'builtin|array_map' => [self::DOCUMENT_WITH_FUNCTIONS, 'array_map', false],
+            'builtin|str_contains' => [$with, $withNs, 'str_contains', false],
+            'builtin|str_contains+snippet' => [$with, $withNs, 'str_contains', true],
+            'builtin|array_map' => [$with, $withNs, 'array_map', false],
             // The document half is scoped to the document asked about: this one
             // declares no functions, and no built-in matches the prefix.
-            'other-document|calc' => [self::DOCUMENT_WITHOUT_FUNCTIONS, 'calc', false],
+            'other-document|calc' => [$without, $withoutNs, 'calc', false],
             // A prefix nothing matches, so an over-eager source shows up as a diff.
-            'no-match|zzzz' => [self::DOCUMENT_WITH_FUNCTIONS, 'zzzz', false],
+            'no-match|zzzz' => [$with, $withNs, 'zzzz', false],
         ];
 
         $captured = [];
-        foreach ($queries as $label => [$fixture, $prefix, $snippetSupport]) {
-            $doc = $this->document($fixture);
-            $captured[$label] = $this->candidates($snippetSupport)->search(
-                $prefix,
-                $doc,
-                5,
-                strlen($prefix),
+        foreach ($queries as $label => [$fixture, $namespace, $prefix, $snippetSupport]) {
+            $this->indexFixture($fixture);
+            $captured[$label] = $this->candidates($snippetSupport)->find(
+                $this->probe($namespace, $prefix),
                 [NameKind::Function_],
                 ClassCandidateFilter::Any,
             );
@@ -140,12 +146,9 @@ final class FunctionSurfaceParityTest extends TestCase
         // names. The exact set is version-fragile and is asserted against
         // reflection in BuiltinFunctionParityTest; here only that the surface
         // passes through the bulk of it.
-        $doc = $this->document(self::DOCUMENT_WITHOUT_FUNCTIONS);
-        $items = $this->candidates(false)->search(
-            'array_',
-            $doc,
-            5,
-            0,
+        $this->indexFixture(self::DOCUMENT_WITHOUT_FUNCTIONS);
+        $items = $this->candidates(false)->find(
+            $this->probe(self::DOCUMENT_WITHOUT_FUNCTIONS_NAMESPACE, 'array_'),
             [NameKind::Function_],
             ClassCandidateFilter::Any,
         );
@@ -170,12 +173,9 @@ final class FunctionSurfaceParityTest extends TestCase
         // version-fragile built-in list — but the head is not: the document's own
         // functions are emitted first, in declaration order. A migration that
         // merged the two halves into one ranked list would reorder this.
-        $doc = $this->document(self::DOCUMENT_WITH_FUNCTIONS);
-        $items = $this->candidates(false)->search(
-            '',
-            $doc,
-            5,
-            0,
+        $this->indexFixture(self::DOCUMENT_WITH_FUNCTIONS);
+        $items = $this->candidates(false)->find(
+            $this->probe(self::DOCUMENT_WITH_FUNCTIONS_NAMESPACE, ''),
             [NameKind::Function_],
             ClassCandidateFilter::Any,
         );
@@ -200,14 +200,25 @@ final class FunctionSurfaceParityTest extends TestCase
         );
     }
 
-    private function document(string $relativePath): TextDocument
+    private function indexFixture(string $relativePath): void
     {
         $path = $this->fixturesRoot . '/' . $relativePath;
         $content = file_get_contents($path);
         self::assertNotFalse($content, "fixture document should be readable: {$relativePath}");
 
-        $doc = new TextDocument('file://' . $path, 'php', 0, $content);
+        $this->sink->openDocument(new TextDocument('file://' . $path, 'php', 0, $content));
+    }
+
+    /**
+     * A cursor document in the given namespace whose last line is the prefix
+     * under test — the classifier reads the prefix from that line, and the
+     * resolver reads the namespace from the same document.
+     */
+    private function probe(string $namespace, string $prefix): CompletionRequest
+    {
+        $content = "<?php\nnamespace {$namespace};\n{$prefix}";
+        $doc = new TextDocument('file:///probe.php', 'php', 0, $content);
         $this->sink->openDocument($doc);
-        return $doc;
+        return new CompletionRequest($doc, 2, strlen($prefix));
     }
 }

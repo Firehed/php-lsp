@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
@@ -58,29 +57,10 @@ final class SymbolCandidates
      */
     public function find(CompletionRequest $request, array $kinds, ClassCandidateFilter $filter): array
     {
-        return $this->search(
-            $request->classification()->prefix,
-            $request->document,
-            $request->line,
-            $request->character,
-            $kinds,
-            $filter,
-        );
-    }
-
-    /**
-     * @param list<NameKind> $kinds
-     * @return list<CompletionItem>
-     */
-    public function search(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-        array $kinds,
-        ClassCandidateFilter $filter,
-    ): array {
-        $context = $this->codeResolver->getNameContext($document, $line);
+        $prefix = $request->classification()->prefix;
+        $line = $request->line;
+        $character = $request->character;
+        $context = $this->codeResolver->getNameContext($request->document, $line);
         $range = $this->replaceRange($line, $character, $prefix);
         $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
 
