@@ -1548,7 +1548,12 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{list<array{0: string, 1: ClassKind, 2: ?string, 3: list<string>}>, string, string, bool}>
+     * @return iterable<string, array{
+     *     list<array{0: string, 1: ClassKind, 2: ?string, 3: list<string>}>,
+     *     string,
+     *     string,
+     *     bool,
+     * }>
      */
     public static function isSubclassOfCases(): iterable
     {
