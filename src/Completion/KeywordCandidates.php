@@ -7,11 +7,17 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 
 /**
- * Produces keyword completion items for a given {@see KeywordGroup}.
+ * Produces keyword completion items for one {@see KeywordGroup}.
+ *
+ * One instance per group is wired: the group is fixed at construction, and the
+ * source reads the prefix from the request in the shape that group needs — the
+ * Expression group uses {@see CompletionClassifier::callExpressionPrefix()}
+ * because its position is inside a call, and every other group uses the
+ * classification prefix.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class KeywordCandidates
+final class KeywordCandidates implements CompletionSourceInterface
 {
     private const KEYWORDS_ALL = [
         // Control flow
@@ -42,13 +48,20 @@ final class KeywordCandidates
         'true', 'false', 'null',
     ];
 
-    /**
-     * @return list<CompletionItem>
-     */
-    public function find(string $prefix, KeywordGroup $group): array
+    public function __construct(
+        private readonly KeywordGroup $group,
+    ) {
+    }
+
+    public function find(CompletionRequest $request): ?array
     {
+        $prefix = $this->prefixFrom($request);
+        if ($prefix === null) {
+            return null;
+        }
+
         $items = [];
-        foreach ($this->keywords($group) as $keyword) {
+        foreach ($this->keywords() as $keyword) {
             if (PrefixMatcher::matches($keyword, $prefix)) {
                 $items[] = CompletionItemFactory::forKeyword($keyword);
             }
@@ -57,12 +70,20 @@ final class KeywordCandidates
         return $items;
     }
 
+    private function prefixFrom(CompletionRequest $request): ?string
+    {
+        return match ($this->group) {
+            KeywordGroup::Expression => CompletionClassifier::callExpressionPrefix($request->textBeforeCursor()),
+            default => $request->classification()->prefix,
+        };
+    }
+
     /**
      * @return list<string>
      */
-    private function keywords(KeywordGroup $group): array
+    private function keywords(): array
     {
-        return match ($group) {
+        return match ($this->group) {
             KeywordGroup::All => self::KEYWORDS_ALL,
             KeywordGroup::ClassBody => self::KEYWORDS_CLASS_BODY,
             KeywordGroup::AfterVisibility => self::KEYWORDS_AFTER_VISIBILITY,

@@ -42,7 +42,10 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         private readonly DocumentManagerInterface $documentManager,
         private readonly CodeResolverInterface $codeResolver,
         private readonly SymbolCandidates $symbolCandidates,
-        private readonly KeywordCandidates $keywordCandidates,
+        private readonly KeywordCandidates $allKeywords,
+        private readonly KeywordCandidates $classBodyKeywords,
+        private readonly KeywordCandidates $afterVisibilityKeywords,
+        private readonly KeywordCandidates $expressionKeywords,
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
         private readonly NamedArgumentCandidates $namedArgumentCandidates,
@@ -162,7 +165,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
             if ($expressionPrefix !== null) {
                 $items = array_merge($items, array_map(
                     static fn(array $item): array => ['sortText' => '"' . $item['label']] + $item,
-                    $this->keywordCandidates->find($expressionPrefix, KeywordGroup::Expression),
+                    $this->expressionKeywords->find(new CompletionRequest($document, $line, $character)) ?? [],
                 ));
                 $items = array_merge(
                     $items,
@@ -253,7 +256,9 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
                 ClassCandidateFilter::TypeHint,
             ),
             CompletionKind::Use_ => $this->getUseCompletions($prefix, $document, $line, $character),
-            CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
+            CompletionKind::ClassBody => $this->classBodyKeywords->find(
+                new CompletionRequest($document, $line, $character),
+            ) ?? [],
             CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $line, $character),
             CompletionKind::None => [],
         };
@@ -336,7 +341,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         int $line,
         int $character,
     ): array {
-        $items = $this->keywordCandidates->find($prefix, KeywordGroup::AfterVisibility);
+        $items = $this->afterVisibilityKeywords->find(new CompletionRequest($document, $line, $character)) ?? [];
         $items = array_merge(
             $items,
             $this->getTypeHintCompletions($prefix, $document, $line, $character, TypeHintContext::Property),
@@ -355,7 +360,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         int $line,
         int $character,
     ): array {
-        $items = $this->keywordCandidates->find($prefix, KeywordGroup::All);
+        $items = $this->allKeywords->find(new CompletionRequest($document, $line, $character)) ?? [];
         $items = array_merge(
             $items,
             $this->symbolCandidates->find(

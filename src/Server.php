@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 use Firehed\PhpLsp\Client\TransportClientConnection;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
@@ -155,7 +156,10 @@ final class Server
                 $documentManager,
                 $symbolResolver,
                 new SymbolCandidates($symbolSource, $symbolResolver, $negotiator),
-                new KeywordCandidates(),
+                new KeywordCandidates(KeywordGroup::All),
+                new KeywordCandidates(KeywordGroup::ClassBody),
+                new KeywordCandidates(KeywordGroup::AfterVisibility),
+                new KeywordCandidates(KeywordGroup::Expression),
                 new VariableCandidates($symbolResolver),
                 new MemberCandidates($symbolResolver, $negotiator),
                 new NamedArgumentCandidates(),

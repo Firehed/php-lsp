@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
@@ -83,7 +84,10 @@ class PresenterParityTest extends TestCase
             $this->documents,
             $symbolResolver,
             new SymbolCandidates($knowledge->source, $symbolResolver, $capabilities),
-            new KeywordCandidates(),
+            new KeywordCandidates(KeywordGroup::All),
+            new KeywordCandidates(KeywordGroup::ClassBody),
+            new KeywordCandidates(KeywordGroup::AfterVisibility),
+            new KeywordCandidates(KeywordGroup::Expression),
             new VariableCandidates($symbolResolver),
             new MemberCandidates($symbolResolver, $capabilities),
             new NamedArgumentCandidates(),

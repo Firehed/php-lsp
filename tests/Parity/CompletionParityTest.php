@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
@@ -219,7 +220,10 @@ final class CompletionParityTest extends TestCase
             $documents,
             $resolver,
             new SymbolCandidates($knowledge->source, $resolver, $capabilities),
-            new KeywordCandidates(),
+            new KeywordCandidates(KeywordGroup::All),
+            new KeywordCandidates(KeywordGroup::ClassBody),
+            new KeywordCandidates(KeywordGroup::AfterVisibility),
+            new KeywordCandidates(KeywordGroup::Expression),
             new VariableCandidates($resolver),
             new MemberCandidates($resolver, $capabilities),
             new NamedArgumentCandidates(),

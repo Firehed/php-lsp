@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
@@ -118,7 +119,10 @@ class CompletionHandlerTest extends TestCase
             $this->documents,
             $this->symbolResolver,
             new SymbolCandidates($symbolSource, $this->symbolResolver, $capabilities),
-            new KeywordCandidates(),
+            new KeywordCandidates(KeywordGroup::All),
+            new KeywordCandidates(KeywordGroup::ClassBody),
+            new KeywordCandidates(KeywordGroup::AfterVisibility),
+            new KeywordCandidates(KeywordGroup::Expression),
             new VariableCandidates($this->symbolResolver),
             new MemberCandidates($this->symbolResolver, $capabilities),
             new NamedArgumentCandidates(),
