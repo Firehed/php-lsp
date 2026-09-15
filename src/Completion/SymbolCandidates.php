@@ -28,40 +28,48 @@ use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
  * namespace-qualified or `\`-rooted prefix it navigates the tree instead,
  * offering child namespaces as Module nodes and leaf symbols of the requested
  * kinds. Nav-node offering is structural (a namespace is a namespace whatever
- * lives inside), but leaf symbols honour $kinds — so a class-only position no
- * longer picks up a function or constant through navigation (#317, #383).
+ * lives inside), but leaf symbols honour the requested kinds — so a class-only
+ * position no longer picks up a function or constant through navigation
+ * (#317, #383).
+ *
+ * The kinds and the class filter are per-call parameters: the composite passes
+ * the intent for the position, and one instance serves every position. The
+ * class does not implement {@see CompletionSourceInterface} because its
+ * behaviour is chosen by the caller, not by inspection of the request.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class SymbolCandidates implements CompletionSourceInterface
+final class SymbolCandidates
 {
     // A child namespace with this many members or fewer is inlined rather than
     // offered as a node. A starting point, expected to be tuned with real use.
     private const INLINE_THRESHOLD = 5;
 
-    /**
-     * @param list<NameKind> $kinds
-     */
     public function __construct(
         private readonly SymbolSourceInterface $symbolSource,
         private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
-        private readonly array $kinds,
-        private readonly ClassCandidateFilter $classFilter,
     ) {
     }
 
-    public function find(CompletionRequest $request): array
+    /**
+     * @param list<NameKind> $kinds
+     * @return list<CompletionItem>
+     */
+    public function find(CompletionRequest $request, array $kinds, ClassCandidateFilter $filter): array
     {
         return $this->search(
             $request->classification()->prefix,
             $request->document,
             $request->line,
             $request->character,
+            $kinds,
+            $filter,
         );
     }
 
     /**
+     * @param list<NameKind> $kinds
      * @return list<CompletionItem>
      */
     public function search(
@@ -69,31 +77,33 @@ final class SymbolCandidates implements CompletionSourceInterface
         TextDocument $document,
         int $line,
         int $character,
+        array $kinds,
+        ClassCandidateFilter $filter,
     ): array {
         $context = $this->codeResolver->getNameContext($document, $line);
         $range = $this->replaceRange($line, $character, $prefix);
         $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
 
         if (str_starts_with($prefix, '\\')) {
-            return $this->navigateAbsolute(substr($prefix, 1), $this->kinds, $this->classFilter, $range, $snippets);
+            return $this->navigateAbsolute(substr($prefix, 1), $kinds, $filter, $range, $snippets);
         }
         if (str_contains($prefix, '\\')) {
-            return $this->navigateQualified($prefix, $context, $this->kinds, $this->classFilter, $range, $snippets);
+            return $this->navigateQualified($prefix, $context, $kinds, $filter, $range, $snippets);
         }
 
         $seen = [];
         $items = [];
-        foreach ($this->kinds as $kind) {
+        foreach ($kinds as $kind) {
             $items = array_merge(
                 $items,
-                $this->fromSearch($prefix, $kind, $context, $this->classFilter, $range, $snippets, $seen),
-                $this->fromImports($prefix, $kind, $context, $this->classFilter, $range, $snippets, $seen),
-                $this->fromCurrentNamespace($prefix, $kind, $context, $this->classFilter, $range, $snippets, $seen),
+                $this->fromSearch($prefix, $kind, $context, $filter, $range, $snippets, $seen),
+                $this->fromImports($prefix, $kind, $context, $filter, $range, $snippets, $seen),
+                $this->fromCurrentNamespace($prefix, $kind, $context, $filter, $range, $snippets, $seen),
             );
         }
         $items = array_merge(
             $items,
-            $this->descendBare($prefix, $context, $this->kinds, $this->classFilter, $range, $snippets),
+            $this->descendBare($prefix, $context, $kinds, $filter, $range, $snippets),
         );
 
         return $items;
@@ -118,7 +128,7 @@ final class SymbolCandidates implements CompletionSourceInterface
         return $this->navigateAbsolute(
             ltrim($prefix, '\\'),
             [NameKind::ClassLike],
-            $this->classFilter,
+            ClassCandidateFilter::Any,
             $range,
             $snippets,
         );

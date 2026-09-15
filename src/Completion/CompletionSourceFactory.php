@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
@@ -23,31 +22,9 @@ final class CompletionSourceFactory
         CodeResolverInterface $codeResolver,
         SessionCapabilitiesProviderInterface $capabilities,
     ): CompositeCompletionSource {
-        $classes = static fn(ClassCandidateFilter $filter): SymbolCandidates => new SymbolCandidates(
-            $symbolSource,
-            $codeResolver,
-            $capabilities,
-            [NameKind::ClassLike],
-            $filter,
-        );
-
         return new CompositeCompletionSource(
             $codeResolver,
-            $classes(ClassCandidateFilter::Instantiable),
-            $classes(ClassCandidateFilter::TypeHint),
-            $classes(ClassCandidateFilter::Interface_),
-            $classes(ClassCandidateFilter::ExtendableClass),
-            $classes(ClassCandidateFilter::Throwable),
-            $classes(ClassCandidateFilter::Attribute),
-            $classes(ClassCandidateFilter::Trait_),
-            $classes(ClassCandidateFilter::Any),
-            new SymbolCandidates(
-                $symbolSource,
-                $codeResolver,
-                $capabilities,
-                NameKind::cases(),
-                ClassCandidateFilter::Any,
-            ),
+            new SymbolCandidates($symbolSource, $codeResolver, $capabilities),
             new KeywordCandidates(KeywordGroup::All),
             new KeywordCandidates(KeywordGroup::ClassBody),
             new KeywordCandidates(KeywordGroup::AfterVisibility),

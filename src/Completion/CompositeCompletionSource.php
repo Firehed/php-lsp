@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 /**
@@ -17,15 +18,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
 {
     public function __construct(
         private readonly CodeResolverInterface $codeResolver,
-        private readonly SymbolCandidates $instantiableClasses,
-        private readonly SymbolCandidates $typeHintClasses,
-        private readonly SymbolCandidates $interfaces,
-        private readonly SymbolCandidates $extendableClasses,
-        private readonly SymbolCandidates $throwables,
-        private readonly SymbolCandidates $attributes,
-        private readonly SymbolCandidates $traits,
-        private readonly SymbolCandidates $useStatementSymbols,
-        private readonly SymbolCandidates $anySymbols,
+        private readonly SymbolCandidates $symbols,
         private readonly KeywordCandidates $allKeywords,
         private readonly KeywordCandidates $classBodyKeywords,
         private readonly KeywordCandidates $afterVisibilityKeywords,
@@ -90,7 +83,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
             $this->expressionKeywords->find($request) ?? [],
         ));
 
-        return array_merge($items, $this->anySymbols->find($request));
+        return array_merge($items, $this->symbols->find($request, NameKind::cases(), ClassCandidateFilter::Any));
     }
 
     /**
@@ -102,16 +95,28 @@ final class CompositeCompletionSource implements CompletionSourceInterface
 
         return match ($classification->kind) {
             CompletionKind::Variable => $this->variableCandidates->find($request),
-            CompletionKind::New_ => $this->deduplicate($this->instantiableClasses->find($request)),
+            CompletionKind::New_ => $this->deduplicate(
+                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Instantiable),
+            ),
             CompletionKind::AfterVisibility => $this->afterVisibilityItems($request),
             CompletionKind::ReturnType => $this->typeHintItems($this->returnTypeBuiltins, $request),
             CompletionKind::PropertyType => $this->typeHintItems($this->propertyBuiltins, $request),
             CompletionKind::ParameterType => $this->typeHintItems($this->parameterBuiltins, $request),
-            CompletionKind::InterfaceList => $this->deduplicate($this->interfaces->find($request)),
-            CompletionKind::ExtendableClass => $this->deduplicate($this->extendableClasses->find($request)),
-            CompletionKind::Throwable => $this->deduplicate($this->throwables->find($request)),
-            CompletionKind::Attribute => $this->deduplicate($this->attributes->find($request)),
-            CompletionKind::Instanceof_ => $this->deduplicate($this->typeHintClasses->find($request)),
+            CompletionKind::InterfaceList => $this->deduplicate(
+                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Interface_),
+            ),
+            CompletionKind::ExtendableClass => $this->deduplicate(
+                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::ExtendableClass),
+            ),
+            CompletionKind::Throwable => $this->deduplicate(
+                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Throwable),
+            ),
+            CompletionKind::Attribute => $this->deduplicate(
+                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Attribute),
+            ),
+            CompletionKind::Instanceof_ => $this->deduplicate(
+                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::TypeHint),
+            ),
             CompletionKind::Use_ => $this->useStatementItems($request),
             CompletionKind::ClassBody => $this->classBodyKeywords->find($request) ?? [],
             CompletionKind::Expression => $this->expressionItems($request),
@@ -137,7 +142,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     {
         return $this->deduplicate(array_merge(
             $builtins->find($request),
-            $this->typeHintClasses->find($request),
+            $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::TypeHint),
         ));
     }
 
@@ -154,13 +159,15 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         $offset = $request->document->offsetAt($request->line, $request->character);
         $content = $request->document->getContent();
         if (ContextDetector::isInsideClassBody($content, $offset)) {
-            return $this->deduplicate($this->traits->find($request));
+            return $this->deduplicate(
+                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Trait_),
+            );
         }
         if (ContextDetector::isClosureUse($content, $offset)) {
             return $this->variableCandidates->find($request);
         }
 
-        return $this->useStatementSymbols->forUseStatement(
+        return $this->symbols->forUseStatement(
             $request->classification()->prefix,
             $request->line,
             $request->character,
@@ -174,7 +181,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     {
         return $this->deduplicate(array_merge(
             $this->allKeywords->find($request) ?? [],
-            $this->anySymbols->find($request),
+            $this->symbols->find($request, NameKind::cases(), ClassCandidateFilter::Any),
         ));
     }
 

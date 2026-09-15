@@ -125,6 +125,8 @@ final class FunctionSurfaceParityTest extends TestCase
                 $doc,
                 5,
                 strlen($prefix),
+                [NameKind::Function_],
+                ClassCandidateFilter::Any,
             );
         }
 
@@ -144,6 +146,8 @@ final class FunctionSurfaceParityTest extends TestCase
             $doc,
             5,
             0,
+            [NameKind::Function_],
+            ClassCandidateFilter::Any,
         );
 
         $labels = array_column($items, 'label');
@@ -172,6 +176,8 @@ final class FunctionSurfaceParityTest extends TestCase
             $doc,
             5,
             0,
+            [NameKind::Function_],
+            ClassCandidateFilter::Any,
         );
 
         self::assertSame(
@@ -191,8 +197,6 @@ final class FunctionSurfaceParityTest extends TestCase
             $this->symbolSource,
             $this->symbolResolver,
             $capabilities,
-            [NameKind::Function_],
-            ClassCandidateFilter::Any,
         );
     }
 
