@@ -93,9 +93,10 @@ final class SymbolCandidatesTest extends TestCase
         $doc = $this->openFixture('src/Completion/ShadowedImport.php');
 
         $candidates = $this->candidates();
-        $classOnly = $candidates->search('ShadowedImport', $doc, 7, 14, [NameKind::ClassLike], ClassCandidateFilter::Any);
-        $functionOnly = $candidates->search('ShadowedImport', $doc, 7, 14, [NameKind::Function_], ClassCandidateFilter::Any);
-        $allKinds = $candidates->search('ShadowedImport', $doc, 7, 14, NameKind::cases(), ClassCandidateFilter::Any);
+        $any = ClassCandidateFilter::Any;
+        $classOnly = $candidates->search('ShadowedImport', $doc, 7, 14, [NameKind::ClassLike], $any);
+        $functionOnly = $candidates->search('ShadowedImport', $doc, 7, 14, [NameKind::Function_], $any);
+        $allKinds = $candidates->search('ShadowedImport', $doc, 7, 14, NameKind::cases(), $any);
 
         self::assertCount(1, $classOnly, 'class-only search finds the class');
         self::assertCount(1, $functionOnly, 'function-only search finds the function');
