@@ -7,7 +7,16 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 
 /**
- * Produces keyword completion items for a given {@see KeywordGroup}.
+ * Produces keyword completion items for a {@see KeywordGroup}.
+ *
+ * The group is a per-call parameter: the composite passes the intent for the
+ * position, and one instance serves every position. The class does not
+ * implement {@see CompletionSourceInterface} because its behaviour is chosen
+ * by the caller, not by inspection of the request.
+ *
+ * The Expression group reads the prefix via
+ * {@see CompletionClassifier::callExpressionPrefix()} because its position is
+ * inside a call; every other group uses the classification prefix.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
@@ -43,12 +52,17 @@ final class KeywordCandidates
     ];
 
     /**
-     * @return list<CompletionItem>
+     * @return list<CompletionItem>|null
      */
-    public function find(string $prefix, KeywordGroup $group): array
+    public function find(CompletionRequest $request, KeywordGroup $group): ?array
     {
+        $prefix = $this->prefixFrom($request, $group);
+        if ($prefix === null) {
+            return null;
+        }
+
         $items = [];
-        foreach ($this->keywords($group) as $keyword) {
+        foreach ($this->keywordsFor($group) as $keyword) {
             if (PrefixMatcher::matches($keyword, $prefix)) {
                 $items[] = CompletionItemFactory::forKeyword($keyword);
             }
@@ -57,10 +71,18 @@ final class KeywordCandidates
         return $items;
     }
 
+    private function prefixFrom(CompletionRequest $request, KeywordGroup $group): ?string
+    {
+        return match ($group) {
+            KeywordGroup::Expression => CompletionClassifier::callExpressionPrefix($request->textBeforeCursor()),
+            default => $request->classification()->prefix,
+        };
+    }
+
     /**
      * @return list<string>
      */
-    private function keywords(KeywordGroup $group): array
+    private function keywordsFor(KeywordGroup $group): array
     {
         return match ($group) {
             KeywordGroup::All => self::KEYWORDS_ALL,

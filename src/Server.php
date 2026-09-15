@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 use Firehed\PhpLsp\Client\TransportClientConnection;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
@@ -153,13 +154,15 @@ final class Server
             ),
             new CompletionHandler(
                 $documentManager,
-                $symbolResolver,
-                new SymbolCandidates($symbolSource, $symbolResolver, $negotiator),
-                new KeywordCandidates(),
-                new VariableCandidates($symbolResolver),
-                new MemberCandidates($symbolResolver, $negotiator),
-                new NamedArgumentCandidates(),
-                new BuiltinTypeCandidates(),
+                new CompositeCompletionSource(
+                    $symbolResolver,
+                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator),
+                    new KeywordCandidates(),
+                    new VariableCandidates($symbolResolver),
+                    new MemberCandidates($symbolResolver, $negotiator),
+                    new NamedArgumentCandidates($symbolResolver),
+                    new BuiltinTypeCandidates(),
+                ),
             ),
         ];
 

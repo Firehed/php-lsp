@@ -4,26 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\ClassCandidateFilter;
-use Firehed\PhpLsp\Completion\CompletionClassifier;
-use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
-use Firehed\PhpLsp\Completion\CompletionKind;
-use Firehed\PhpLsp\Completion\ContextDetector;
-use Firehed\PhpLsp\Completion\KeywordCandidates;
-use Firehed\PhpLsp\Completion\KeywordGroup;
-use Firehed\PhpLsp\Completion\MemberCandidates;
-use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\SymbolCandidates;
-use Firehed\PhpLsp\Completion\TypeHintContext;
-use Firehed\PhpLsp\Completion\VariableCandidates;
+use Firehed\PhpLsp\Completion\CompletionRequest;
+use Firehed\PhpLsp\Completion\CompletionSourceInterface;
 use Firehed\PhpLsp\Document\DocumentManagerInterface;
-use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 /**
  * @phpstan-import-type CompletionItem from CompletionItemFactory
@@ -39,13 +25,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
 
     public function __construct(
         private readonly DocumentManagerInterface $documentManager,
-        private readonly CodeResolverInterface $codeResolver,
-        private readonly SymbolCandidates $symbolCandidates,
-        private readonly KeywordCandidates $keywordCandidates,
-        private readonly VariableCandidates $variableCandidates,
-        private readonly MemberCandidates $memberCandidates,
-        private readonly NamedArgumentCandidates $namedArgumentCandidates,
-        private readonly BuiltinTypeCandidates $builtinTypeCandidates,
+        private readonly CompletionSourceInterface $completionSource,
     ) {
     }
 
@@ -66,37 +46,14 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         if ($position === null) {
             return null;
         }
-        $line = $position->line;
-        $character = $position->character;
 
         $document = $this->documentManager->get($position->uri);
         if ($document === null) {
             return null;
         }
 
-        // Determine completion context
-        $offset = $document->offsetAt($line, $character);
-        $context = ContextDetector::getContext($document->getContent(), $offset);
-        if ($context === CompletionContext::None) {
-            return [
-                'isIncomplete' => false,
-                'items' => [],
-            ];
-        }
-
-        // Get text before cursor to determine completion context
-        $textBeforeCursor = $document->textBeforeCursor($line, $character);
-
-        // In interpolated strings, only variables are valid — take the variable
-        // source alone rather than filter every source's output after the fact.
-        $items = $context === CompletionContext::VariablesOnly
-            ? $this->variableCandidates->find(
-                CompletionClassifier::variablePrefix($textBeforeCursor),
-                $document,
-                $line,
-                $character,
-            )
-            : $this->getCompletionItems($textBeforeCursor, $document, $line, $character);
+        $items = $this->completionSource->find(new CompletionRequest($document, $position->line, $position->character))
+            ?? [];
 
         return $this->capped($items);
     }
@@ -134,292 +91,5 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
             'isIncomplete' => true,
             'items' => array_slice($items, 0, self::RESULT_LIMIT),
         ];
-    }
-
-    /**
-     * @return list<CompletionItem>
-     */
-    private function getCompletionItems(
-        string $textBeforeCursor,
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): array {
-        // Member/static access (after -> or ::)
-        $memberItems = $this->memberCandidates->find($document, $line, $character);
-        if ($memberItems !== null) {
-            return $memberItems;
-        }
-
-        // Inside a call context, offer named arguments + variables
-        $callContext = $this->codeResolver->getCallContext($document, $line, $character);
-        if ($callContext !== null) {
-            $items = $this->namedArgumentCandidates->find($callContext, $textBeforeCursor);
-
-            // Also offer variables - filter by prefix if cursor is on one
-            $items = array_merge(
-                $items,
-                $this->variableCandidates->find(
-                    CompletionClassifier::variablePrefix($textBeforeCursor),
-                    $document,
-                    $line,
-                    $character,
-                ),
-            );
-
-            $expressionPrefix = CompletionClassifier::callExpressionPrefix($textBeforeCursor);
-            if ($expressionPrefix !== null) {
-                $items = array_merge($items, array_map(
-                    static fn(array $item): array => ['sortText' => '"' . $item['label']] + $item,
-                    $this->keywordCandidates->find($expressionPrefix, KeywordGroup::Expression),
-                ));
-                $items = array_merge(
-                    $items,
-                    $this->symbolCandidates->find(
-                        $expressionPrefix,
-                        $document,
-                        $line,
-                        $character,
-                        NameKind::cases(),
-                        ClassCandidateFilter::Any,
-                    ),
-                );
-            }
-
-            return $this->deduplicateCompletions($items);
-        }
-
-        // Remaining positions are classified by text before the cursor. Detection
-        // stays text-based so completion keeps working on mid-edit, unparseable code.
-        $classification = CompletionClassifier::classify($textBeforeCursor);
-        $prefix = $classification->prefix;
-
-        return match ($classification->kind) {
-            CompletionKind::Variable => $this->variableCandidates->find($prefix, $document, $line, $character),
-            CompletionKind::New_ => $this->getNewCompletions($prefix, $document, $line, $character),
-            CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-            ),
-            CompletionKind::ReturnType => $this->getTypeHintCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                TypeHintContext::ReturnType,
-            ),
-            CompletionKind::PropertyType => $this->getTypeHintCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                TypeHintContext::Property,
-            ),
-            CompletionKind::ParameterType => $this->getTypeHintCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                TypeHintContext::Parameter,
-            ),
-            CompletionKind::InterfaceList => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::Interface_,
-            ),
-            CompletionKind::ExtendableClass => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::ExtendableClass,
-            ),
-            CompletionKind::Throwable => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::Throwable,
-            ),
-            CompletionKind::Attribute => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::Attribute,
-            ),
-            CompletionKind::Instanceof_ => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::TypeHint,
-            ),
-            CompletionKind::Use_ => $this->getUseCompletions($prefix, $document, $line, $character),
-            CompletionKind::ClassBody => $this->keywordCandidates->find($prefix, KeywordGroup::ClassBody),
-            CompletionKind::Expression => $this->getExpressionCompletions($prefix, $document, $line, $character),
-            CompletionKind::None => [],
-        };
-    }
-
-    /**
-     * Suggest instantiable class names after `new`.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getNewCompletions(string $prefix, TextDocument $document, int $line, int $character): array
-    {
-        return $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::Instantiable);
-    }
-
-    /**
-     * Class-name candidates valid for a position: one call to
-     * {@see SymbolCandidates::find()}, whose $kinds restriction keeps navigation
-     * from offering a function or constant leaf where the position rejects one.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getClassCompletions(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-        ClassCandidateFilter $filter,
-    ): array {
-        return $this->deduplicateCompletions(
-            $this->symbolCandidates->find($prefix, $document, $line, $character, [NameKind::ClassLike], $filter),
-        );
-    }
-
-    /**
-     * Suggest completions for a `use` keyword. The classifier sees only the
-     * current line, so a multi-line class body `use` and a top-level `use`
-     * import are indistinguishable there; the structural checks here read the
-     * whole document to disambiguate.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getUseCompletions(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): array {
-        $offset = $document->offsetAt($line, $character);
-        $content = $document->getContent();
-        if (ContextDetector::isInsideClassBody($content, $offset)) {
-            return $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::Trait_,
-            );
-        }
-        if (ContextDetector::isClosureUse($content, $offset)) {
-            return $this->variableCandidates->find($prefix, $document, $line, $character);
-        }
-
-        return $this->symbolCandidates->forUseStatement(
-            $prefix,
-            $line,
-            $character,
-            ClassCandidateFilter::Any,
-        );
-    }
-
-    /**
-     * Suggest member keywords or a property type after a visibility keyword.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getAfterVisibilityCompletions(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): array {
-        $items = $this->keywordCandidates->find($prefix, KeywordGroup::AfterVisibility);
-        $items = array_merge(
-            $items,
-            $this->getTypeHintCompletions($prefix, $document, $line, $character, TypeHintContext::Property),
-        );
-        return $this->deduplicateCompletions($items);
-    }
-
-    /**
-     * Suggest keywords, functions, and class names at the start of an expression.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getExpressionCompletions(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): array {
-        $items = $this->keywordCandidates->find($prefix, KeywordGroup::All);
-        $items = array_merge(
-            $items,
-            $this->symbolCandidates->find(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                NameKind::cases(),
-                ClassCandidateFilter::Any,
-            ),
-        );
-        return $this->deduplicateCompletions($items);
-    }
-
-    /**
-     * Remove duplicate completions, preferring items that appear earlier.
-     *
-     * @param list<CompletionItem> $items
-     * @return list<CompletionItem>
-     */
-    private function deduplicateCompletions(array $items): array
-    {
-        $seen = [];
-        $result = [];
-
-        foreach ($items as $item) {
-            $key = $item['label'];
-            if (!isset($seen[$key])) {
-                $seen[$key] = true;
-                $result[] = $item;
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Get completions for type hint positions.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getTypeHintCompletions(
-        string $prefix,
-        TextDocument $document,
-        int $line,
-        int $character,
-        TypeHintContext $context,
-    ): array {
-        $items = $this->builtinTypeCandidates->find($prefix, $context);
-
-        // Class-likes valid as type hints (traits excluded), plus navigation into
-        // absolute namespaces (`function f(\Ps`), via the shared class path.
-        $items = array_merge(
-            $items,
-            $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::TypeHint),
-        );
-
-        return $this->deduplicateCompletions($items);
     }
 }

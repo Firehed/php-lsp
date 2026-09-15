@@ -6,12 +6,6 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\KeywordCandidates;
-use Firehed\PhpLsp\Completion\MemberCandidates;
-use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\SymbolCandidates;
-use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
@@ -25,6 +19,7 @@ use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -35,6 +30,7 @@ use PHPUnit\Framework\TestCase;
 class CompositeReceiverParityTest extends TestCase
 {
     use OpensDocumentsTrait;
+    use WiresCompletionSourceTrait;
 
     private DocumentManager $documents;
     private HoverHandler $hover;
@@ -76,13 +72,7 @@ class CompositeReceiverParityTest extends TestCase
         $this->signatureHelp = new SignatureHelpHandler($this->documents, $symbolResolver);
         $this->completion = new CompletionHandler(
             $this->documents,
-            $symbolResolver,
-            new SymbolCandidates($knowledge->source, $symbolResolver, $capabilities),
-            new KeywordCandidates(),
-            new VariableCandidates($symbolResolver),
-            new MemberCandidates($symbolResolver, $capabilities),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
+            self::completionSourceFor($knowledge->source, $symbolResolver, $capabilities),
         );
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
 

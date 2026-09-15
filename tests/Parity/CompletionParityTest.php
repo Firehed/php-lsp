@@ -6,12 +6,6 @@ namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\KeywordCandidates;
-use Firehed\PhpLsp\Completion\MemberCandidates;
-use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\SymbolCandidates;
-use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -21,6 +15,7 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +34,7 @@ final class CompletionParityTest extends TestCase
 {
     use AssertsGoldenTrait;
     use LoadsFixturesTrait;
+    use WiresCompletionSourceTrait;
 
     /**
      * Every broken-file cursor the handler tests already drive, so the frozen
@@ -217,13 +213,7 @@ final class CompletionParityTest extends TestCase
 
         $handler = new CompletionHandler(
             $documents,
-            $resolver,
-            new SymbolCandidates($knowledge->source, $resolver, $capabilities),
-            new KeywordCandidates(),
-            new VariableCandidates($resolver),
-            new MemberCandidates($resolver, $capabilities),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
+            self::completionSourceFor($knowledge->source, $resolver, $capabilities),
         );
         $sync = new TextDocumentSyncHandler($documents, $knowledge->sink);
 

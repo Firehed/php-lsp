@@ -15,12 +15,12 @@ use Firehed\PhpLsp\Resolution\MemberAccessContext;
  *
  * Detection and resolution both flow through {@see CodeResolverInterface}, so this source
  * owns the whole member-access case: it returns null when the position is not a
- * member access (letting the caller try other completion kinds) and a list of
- * items — possibly empty — when it is.
+ * member access (letting the composite try other sources) and a list of items —
+ * possibly empty — when it is.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class MemberCandidates
+final class MemberCandidates implements CompletionSourceInterface
 {
     public function __construct(
         private readonly CodeResolverInterface $codeResolver,
@@ -28,17 +28,18 @@ final class MemberCandidates
     ) {
     }
 
-    /**
-     * @return list<CompletionItem>|null Null when the position is not a member access.
-     */
-    public function find(TextDocument $document, int $line, int $character): ?array
+    public function find(CompletionRequest $request): ?array
     {
-        $context = $this->codeResolver->getMemberAccessContext($document, $line, $character);
+        $context = $this->codeResolver->getMemberAccessContext(
+            $request->document,
+            $request->line,
+            $request->character,
+        );
         if ($context === null) {
             return null;
         }
 
-        return $this->itemsFor($context, $document);
+        return $this->itemsFor($context, $request->document);
     }
 
     /**

@@ -9,6 +9,9 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
+use Firehed\PhpLsp\Completion\CompletionRequest;
+use Firehed\PhpLsp\Completion\CompletionSourceInterface;
+use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -39,6 +42,7 @@ use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -50,6 +54,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CompletionHandler::class)]
 #[CoversClass(BuiltinTypeCandidates::class)]
 #[CoversClass(CompletionItemFactory::class)]
+#[CoversClass(CompletionRequest::class)]
+#[CoversClass(CompositeCompletionSource::class)]
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(KeywordCandidates::class)]
 #[CoversClass(MemberCandidates::class)]
@@ -60,6 +66,7 @@ use PHPUnit\Framework\TestCase;
 class CompletionHandlerTest extends TestCase
 {
     use OpensDocumentsTrait;
+    use WiresCompletionSourceTrait;
 
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
@@ -116,13 +123,7 @@ class CompletionHandlerTest extends TestCase
 
         return new CompletionHandler(
             $this->documents,
-            $this->symbolResolver,
-            new SymbolCandidates($symbolSource, $this->symbolResolver, $capabilities),
-            new KeywordCandidates(),
-            new VariableCandidates($this->symbolResolver),
-            new MemberCandidates($this->symbolResolver, $capabilities),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
+            self::completionSourceFor($symbolSource, $this->symbolResolver, $capabilities),
         );
     }
 
@@ -146,6 +147,77 @@ class CompletionHandlerTest extends TestCase
     {
         self::assertTrue($this->handler->supports('textDocument/completion'));
         self::assertFalse($this->handler->supports('textDocument/hover'));
+    }
+
+    public function testReturnsNullForMalformedParams(): void
+    {
+        // textDocument as a string breaks TextDocumentPositionParams::tryFromMessage,
+        // so the handler answers null (RFC 1 §9): a bad request must not crash the loop.
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => 'not-an-array',
+                'position' => ['line' => 0, 'character' => 0],
+            ],
+        ]);
+
+        self::assertNull(
+            $this->handler->handle($request),
+            'a malformed params payload returns null rather than crashing',
+        );
+    }
+
+    public function testReturnsNullForUnopenedDocument(): void
+    {
+        // The client can race a completion request ahead of didOpen; the handler
+        // must answer null rather than reach into an absent document.
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///never-opened.php'],
+                'position' => ['line' => 0, 'character' => 0],
+            ],
+        ]);
+
+        self::assertNull(
+            $this->handler->handle($request),
+            'a completion request for an unopened URI returns null',
+        );
+    }
+
+    public function testEmptyResponseWhenSourceReturnsNull(): void
+    {
+        // CompletionSourceInterface::find is nullable; a source that returns null
+        // means "no items here." The handler must cap-wrap this into an empty
+        // response rather than a null one.
+        $nullSource = new class implements CompletionSourceInterface {
+            public function find(CompletionRequest $request): ?array
+            {
+                return null;
+            }
+        };
+        $handler = new CompletionHandler($this->documents, $nullSource);
+        $this->openDocument('file:///null-source.php', '<?php ');
+
+        $request = RequestMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'method' => 'textDocument/completion',
+            'params' => [
+                'textDocument' => ['uri' => 'file:///null-source.php'],
+                'position' => ['line' => 0, 'character' => 6],
+            ],
+        ]);
+
+        self::assertSame(
+            ['isIncomplete' => false, 'items' => []],
+            $handler->handle($request),
+            'a null source result becomes an empty, complete response',
+        );
     }
 
     public function testThisMethodCompletion(): void

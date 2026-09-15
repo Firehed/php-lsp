@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
+use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -58,16 +59,13 @@ final class SymbolCandidatesTest extends TestCase
     public function testShadowedFunctionInCurrentNamespaceIsNotOffered(): void
     {
         $this->openFixture('src/Completion/FunctionCompletion.php');
-        $doc = $this->openFixture('src/Completion/ShadowedImport.php');
+        $this->openFixture('src/Completion/ShadowedImport.php');
 
-        $items = $this->candidates()->find(
-            'calc',
-            $doc,
-            7,
-            4,
-            [NameKind::Function_],
-            ClassCandidateFilter::Any,
+        $request = $this->probe(
+            "<?php\nnamespace Fixtures\\Completion;\nuse function str_contains as calculateSum;\ncalc",
         );
+        $items = $this->candidates()
+            ->find($request, [NameKind::Function_], ClassCandidateFilter::Any);
 
         $labels = array_column($items, 'label');
         self::assertContains(
@@ -96,32 +94,14 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testCrossKindFqnCollisionDeduplicates(): void
     {
-        $doc = $this->openFixture('src/Completion/ShadowedImport.php');
+        $this->openFixture('src/Completion/ShadowedImport.php');
 
-        $classOnly = $this->candidates()->find(
-            'ShadowedImport',
-            $doc,
-            7,
-            14,
-            [NameKind::ClassLike],
-            ClassCandidateFilter::Any,
-        );
-        $functionOnly = $this->candidates()->find(
-            'ShadowedImport',
-            $doc,
-            7,
-            14,
-            [NameKind::Function_],
-            ClassCandidateFilter::Any,
-        );
-        $allKinds = $this->candidates()->find(
-            'ShadowedImport',
-            $doc,
-            7,
-            14,
-            NameKind::cases(),
-            ClassCandidateFilter::Any,
-        );
+        $request = $this->probe("<?php\nnamespace Fixtures\\Completion;\nShadowedImport");
+        $candidates = $this->candidates();
+        $any = ClassCandidateFilter::Any;
+        $classOnly = $candidates->find($request, [NameKind::ClassLike], $any);
+        $functionOnly = $candidates->find($request, [NameKind::Function_], $any);
+        $allKinds = $candidates->find($request, NameKind::cases(), $any);
 
         self::assertCount(1, $classOnly, 'class-only search finds the class');
         self::assertCount(1, $functionOnly, 'function-only search finds the function');
@@ -152,5 +132,19 @@ final class SymbolCandidatesTest extends TestCase
         $doc = new TextDocument('file://' . $path, 'php', 0, $content);
         $this->sink->openDocument($doc);
         return $doc;
+    }
+
+    /**
+     * A cursor document whose text ends at the position under test — the
+     * classifier reads the prefix from the tail, and the resolver reads the
+     * namespace and imports from the same document.
+     */
+    private function probe(string $content): CompletionRequest
+    {
+        $doc = new TextDocument('file:///probe.php', 'php', 0, $content);
+        $this->sink->openDocument($doc);
+        $lines = explode("\n", $content);
+        $lastLine = count($lines) - 1;
+        return new CompletionRequest($doc, $lastLine, strlen($lines[$lastLine]));
     }
 }

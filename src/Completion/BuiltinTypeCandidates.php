@@ -7,7 +7,12 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 
 /**
- * Produces built-in type completion items valid in a given type-hint position.
+ * Produces built-in type completion items valid in a type-hint position.
+ *
+ * The context is a per-call parameter: the composite passes the intent for the
+ * position, and one instance serves every position. The class does not
+ * implement {@see CompletionSourceInterface} because its behaviour is chosen
+ * by the caller, not by inspection of the request.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
@@ -22,8 +27,9 @@ final class BuiltinTypeCandidates
     /**
      * @return list<CompletionItem>
      */
-    public function find(string $prefix, TypeHintContext $context): array
+    public function find(CompletionRequest $request, TypeHintContext $context): array
     {
+        $prefix = $request->classification()->prefix;
         $items = [];
         foreach ($this->typesFor($context) as $type) {
             if (PrefixMatcher::matches($type, $prefix)) {
