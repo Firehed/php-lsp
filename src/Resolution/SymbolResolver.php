@@ -212,20 +212,12 @@ final class SymbolResolver implements CodeResolverInterface
      */
     public function isInterface(ClassName $className): bool
     {
-        $classInfo = $this->symbolSource->lookupClassLike($className);
-        if ($classInfo === null) {
-            return false;
-        }
-        return $classInfo->isInterface();
+        return $this->memberResolver->isInterface($className);
     }
 
     public function isTrait(ClassName $className): bool
     {
-        $classInfo = $this->symbolSource->lookupClassLike($className);
-        if ($classInfo === null) {
-            return false;
-        }
-        return $classInfo->isTrait();
+        return $this->memberResolver->isTrait($className);
     }
 
     /**
