@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\TypeHintContext;
@@ -15,6 +16,7 @@ use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
@@ -81,10 +83,31 @@ class PresenterParityTest extends TestCase
 
         $this->hover = new HoverHandler($this->documents, $symbolResolver, $capabilities);
         $this->signatureHelp = new SignatureHelpHandler($this->documents, $symbolResolver);
+        $classes = static fn(ClassCandidateFilter $filter): SymbolCandidates => new SymbolCandidates(
+            $knowledge->source,
+            $symbolResolver,
+            $capabilities,
+            [NameKind::ClassLike],
+            $filter,
+        );
         $this->completion = new CompletionHandler(
             $this->documents,
             $symbolResolver,
-            new SymbolCandidates($knowledge->source, $symbolResolver, $capabilities),
+            $classes(ClassCandidateFilter::Instantiable),
+            $classes(ClassCandidateFilter::TypeHint),
+            $classes(ClassCandidateFilter::Interface_),
+            $classes(ClassCandidateFilter::ExtendableClass),
+            $classes(ClassCandidateFilter::Throwable),
+            $classes(ClassCandidateFilter::Attribute),
+            $classes(ClassCandidateFilter::Trait_),
+            $classes(ClassCandidateFilter::Any),
+            new SymbolCandidates(
+                $knowledge->source,
+                $symbolResolver,
+                $capabilities,
+                NameKind::cases(),
+                ClassCandidateFilter::Any,
+            ),
             new KeywordCandidates(KeywordGroup::All),
             new KeywordCandidates(KeywordGroup::ClassBody),
             new KeywordCandidates(KeywordGroup::AfterVisibility),

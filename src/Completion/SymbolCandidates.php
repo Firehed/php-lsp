@@ -33,53 +33,68 @@ use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class SymbolCandidates
+final class SymbolCandidates implements CompletionSourceInterface
 {
     // A child namespace with this many members or fewer is inlined rather than
     // offered as a node. A starting point, expected to be tuned with real use.
     private const INLINE_THRESHOLD = 5;
 
+    /**
+     * @param list<NameKind> $kinds
+     */
     public function __construct(
         private readonly SymbolSourceInterface $symbolSource,
         private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
+        private readonly array $kinds,
+        private readonly ClassCandidateFilter $classFilter,
     ) {
     }
 
+    public function find(CompletionRequest $request): ?array
+    {
+        return $this->search(
+            $request->classification()->prefix,
+            $request->document,
+            $request->line,
+            $request->character,
+        );
+    }
+
     /**
-     * @param list<NameKind> $kinds
      * @return list<CompletionItem>
      */
-    public function find(
+    public function search(
         string $prefix,
         TextDocument $document,
         int $line,
         int $character,
-        array $kinds,
-        ClassCandidateFilter $classFilter,
     ): array {
         $context = $this->codeResolver->getNameContext($document, $line);
         $range = $this->replaceRange($line, $character, $prefix);
         $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
 
         if (str_starts_with($prefix, '\\')) {
-            return $this->navigateAbsolute(substr($prefix, 1), $kinds, $classFilter, $range, $snippets);
+            return $this->navigateAbsolute(substr($prefix, 1), $this->kinds, $this->classFilter, $range, $snippets);
         }
         if (str_contains($prefix, '\\')) {
-            return $this->navigateQualified($prefix, $context, $kinds, $classFilter, $range, $snippets);
+            return $this->navigateQualified($prefix, $context, $this->kinds, $this->classFilter, $range, $snippets);
         }
 
         $seen = [];
         $items = [];
-        foreach ($kinds as $kind) {
+        foreach ($this->kinds as $kind) {
             $items = array_merge(
                 $items,
-                $this->fromSearch($prefix, $kind, $context, $classFilter, $range, $snippets, $seen),
-                $this->fromImports($prefix, $kind, $context, $classFilter, $range, $snippets, $seen),
-                $this->fromCurrentNamespace($prefix, $kind, $context, $classFilter, $range, $snippets, $seen),
+                $this->fromSearch($prefix, $kind, $context, $this->classFilter, $range, $snippets, $seen),
+                $this->fromImports($prefix, $kind, $context, $this->classFilter, $range, $snippets, $seen),
+                $this->fromCurrentNamespace($prefix, $kind, $context, $this->classFilter, $range, $snippets, $seen),
             );
         }
-        $items = array_merge($items, $this->descendBare($prefix, $context, $kinds, $classFilter, $range, $snippets));
+        $items = array_merge(
+            $items,
+            $this->descendBare($prefix, $context, $this->kinds, $this->classFilter, $range, $snippets),
+        );
 
         return $items;
     }
@@ -96,7 +111,6 @@ final class SymbolCandidates
         string $prefix,
         int $line,
         int $character,
-        ClassCandidateFilter $classFilter,
     ): array {
         $range = $this->replaceRange($line, $character, $prefix);
         $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
@@ -104,7 +118,7 @@ final class SymbolCandidates
         return $this->navigateAbsolute(
             ltrim($prefix, '\\'),
             [NameKind::ClassLike],
-            $classFilter,
+            $this->classFilter,
             $range,
             $snippets,
         );

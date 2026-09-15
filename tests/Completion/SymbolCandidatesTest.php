@@ -60,14 +60,8 @@ final class SymbolCandidatesTest extends TestCase
         $this->openFixture('src/Completion/FunctionCompletion.php');
         $doc = $this->openFixture('src/Completion/ShadowedImport.php');
 
-        $items = $this->candidates()->find(
-            'calc',
-            $doc,
-            7,
-            4,
-            [NameKind::Function_],
-            ClassCandidateFilter::Any,
-        );
+        $items = $this->candidates([NameKind::Function_], ClassCandidateFilter::Any)
+            ->search('calc', $doc, 7, 4);
 
         $labels = array_column($items, 'label');
         self::assertContains(
@@ -98,30 +92,12 @@ final class SymbolCandidatesTest extends TestCase
     {
         $doc = $this->openFixture('src/Completion/ShadowedImport.php');
 
-        $classOnly = $this->candidates()->find(
-            'ShadowedImport',
-            $doc,
-            7,
-            14,
-            [NameKind::ClassLike],
-            ClassCandidateFilter::Any,
-        );
-        $functionOnly = $this->candidates()->find(
-            'ShadowedImport',
-            $doc,
-            7,
-            14,
-            [NameKind::Function_],
-            ClassCandidateFilter::Any,
-        );
-        $allKinds = $this->candidates()->find(
-            'ShadowedImport',
-            $doc,
-            7,
-            14,
-            NameKind::cases(),
-            ClassCandidateFilter::Any,
-        );
+        $classOnly = $this->candidates([NameKind::ClassLike], ClassCandidateFilter::Any)
+            ->search('ShadowedImport', $doc, 7, 14);
+        $functionOnly = $this->candidates([NameKind::Function_], ClassCandidateFilter::Any)
+            ->search('ShadowedImport', $doc, 7, 14);
+        $allKinds = $this->candidates(NameKind::cases(), ClassCandidateFilter::Any)
+            ->search('ShadowedImport', $doc, 7, 14);
 
         self::assertCount(1, $classOnly, 'class-only search finds the class');
         self::assertCount(1, $functionOnly, 'function-only search finds the function');
@@ -134,13 +110,16 @@ final class SymbolCandidatesTest extends TestCase
         );
     }
 
-    private function candidates(): SymbolCandidates
+    /**
+     * @param list<NameKind> $kinds
+     */
+    private function candidates(array $kinds, ClassCandidateFilter $filter): SymbolCandidates
     {
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities());
 
-        return new SymbolCandidates($this->symbolSource, $this->symbolResolver, $capabilities);
+        return new SymbolCandidates($this->symbolSource, $this->symbolResolver, $capabilities, $kinds, $filter);
     }
 
     private function openFixture(string $relativePath): TextDocument

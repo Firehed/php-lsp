@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 use Firehed\PhpLsp\Client\TransportClientConnection;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -15,6 +16,7 @@ use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
@@ -156,7 +158,69 @@ final class Server
             new CompletionHandler(
                 $documentManager,
                 $symbolResolver,
-                new SymbolCandidates($symbolSource, $symbolResolver, $negotiator),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Instantiable,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::TypeHint,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Interface_,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::ExtendableClass,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Throwable,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Attribute,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Trait_,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Any,
+                ),
+                new SymbolCandidates(
+                    $symbolSource,
+                    $symbolResolver,
+                    $negotiator,
+                    NameKind::cases(),
+                    ClassCandidateFilter::Any,
+                ),
                 new KeywordCandidates(KeywordGroup::All),
                 new KeywordCandidates(KeywordGroup::ClassBody),
                 new KeywordCandidates(KeywordGroup::AfterVisibility),

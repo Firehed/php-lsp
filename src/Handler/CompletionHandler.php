@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
@@ -13,7 +12,6 @@ use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
-use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
@@ -21,7 +19,6 @@ use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManagerInterface;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
@@ -41,7 +38,15 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
     public function __construct(
         private readonly DocumentManagerInterface $documentManager,
         private readonly CodeResolverInterface $codeResolver,
-        private readonly SymbolCandidates $symbolCandidates,
+        private readonly SymbolCandidates $instantiableClasses,
+        private readonly SymbolCandidates $typeHintClasses,
+        private readonly SymbolCandidates $interfaces,
+        private readonly SymbolCandidates $extendableClasses,
+        private readonly SymbolCandidates $throwables,
+        private readonly SymbolCandidates $attributes,
+        private readonly SymbolCandidates $traits,
+        private readonly SymbolCandidates $useStatementSymbols,
+        private readonly SymbolCandidates $anySymbols,
         private readonly KeywordCandidates $allKeywords,
         private readonly KeywordCandidates $classBodyKeywords,
         private readonly KeywordCandidates $afterVisibilityKeywords,
@@ -171,14 +176,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
                 ));
                 $items = array_merge(
                     $items,
-                    $this->symbolCandidates->find(
-                        $expressionPrefix,
-                        $document,
-                        $line,
-                        $character,
-                        NameKind::cases(),
-                        ClassCandidateFilter::Any,
-                    ),
+                    $this->anySymbols->find(new CompletionRequest($document, $line, $character)) ?? [],
                 );
             }
 
@@ -194,7 +192,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
             CompletionKind::Variable => $this->variableCandidates->find(
                 new CompletionRequest($document, $line, $character),
             ) ?? [],
-            CompletionKind::New_ => $this->getNewCompletions($prefix, $document, $line, $character),
+            CompletionKind::New_ => $this->classItemsFrom($this->instantiableClasses, $document, $line, $character),
             CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions(
                 $prefix,
                 $document,
@@ -222,41 +220,16 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
                 $character,
                 TypeHintContext::Parameter,
             ),
-            CompletionKind::InterfaceList => $this->getClassCompletions(
-                $prefix,
+            CompletionKind::InterfaceList => $this->classItemsFrom($this->interfaces, $document, $line, $character),
+            CompletionKind::ExtendableClass => $this->classItemsFrom(
+                $this->extendableClasses,
                 $document,
                 $line,
                 $character,
-                ClassCandidateFilter::Interface_,
             ),
-            CompletionKind::ExtendableClass => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::ExtendableClass,
-            ),
-            CompletionKind::Throwable => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::Throwable,
-            ),
-            CompletionKind::Attribute => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::Attribute,
-            ),
-            CompletionKind::Instanceof_ => $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::TypeHint,
-            ),
+            CompletionKind::Throwable => $this->classItemsFrom($this->throwables, $document, $line, $character),
+            CompletionKind::Attribute => $this->classItemsFrom($this->attributes, $document, $line, $character),
+            CompletionKind::Instanceof_ => $this->classItemsFrom($this->typeHintClasses, $document, $line, $character),
             CompletionKind::Use_ => $this->getUseCompletions($prefix, $document, $line, $character),
             CompletionKind::ClassBody => $this->classBodyKeywords->find(
                 new CompletionRequest($document, $line, $character),
@@ -267,31 +240,16 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
     }
 
     /**
-     * Suggest instantiable class names after `new`.
-     *
      * @return list<CompletionItem>
      */
-    private function getNewCompletions(string $prefix, TextDocument $document, int $line, int $character): array
-    {
-        return $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::Instantiable);
-    }
-
-    /**
-     * Class-name candidates valid for a position: one call to
-     * {@see SymbolCandidates::find()}, whose $kinds restriction keeps navigation
-     * from offering a function or constant leaf where the position rejects one.
-     *
-     * @return list<CompletionItem>
-     */
-    private function getClassCompletions(
-        string $prefix,
+    private function classItemsFrom(
+        SymbolCandidates $source,
         TextDocument $document,
         int $line,
         int $character,
-        ClassCandidateFilter $filter,
     ): array {
         return $this->deduplicateCompletions(
-            $this->symbolCandidates->find($prefix, $document, $line, $character, [NameKind::ClassLike], $filter),
+            $source->find(new CompletionRequest($document, $line, $character)) ?? [],
         );
     }
 
@@ -312,24 +270,13 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         $offset = $document->offsetAt($line, $character);
         $content = $document->getContent();
         if (ContextDetector::isInsideClassBody($content, $offset)) {
-            return $this->getClassCompletions(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                ClassCandidateFilter::Trait_,
-            );
+            return $this->classItemsFrom($this->traits, $document, $line, $character);
         }
         if (ContextDetector::isClosureUse($content, $offset)) {
             return $this->variableCandidates->find(new CompletionRequest($document, $line, $character)) ?? [];
         }
 
-        return $this->symbolCandidates->forUseStatement(
-            $prefix,
-            $line,
-            $character,
-            ClassCandidateFilter::Any,
-        );
+        return $this->useStatementSymbols->forUseStatement($prefix, $line, $character);
     }
 
     /**
@@ -365,14 +312,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         $items = $this->allKeywords->find(new CompletionRequest($document, $line, $character)) ?? [];
         $items = array_merge(
             $items,
-            $this->symbolCandidates->find(
-                $prefix,
-                $document,
-                $line,
-                $character,
-                NameKind::cases(),
-                ClassCandidateFilter::Any,
-            ),
+            $this->anySymbols->find(new CompletionRequest($document, $line, $character)) ?? [],
         );
         return $this->deduplicateCompletions($items);
     }
@@ -422,7 +362,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         // absolute namespaces (`function f(\Ps`), via the shared class path.
         $items = array_merge(
             $items,
-            $this->getClassCompletions($prefix, $document, $line, $character, ClassCandidateFilter::TypeHint),
+            $this->classItemsFrom($this->typeHintClasses, $document, $line, $character),
         );
 
         return $this->deduplicateCompletions($items);

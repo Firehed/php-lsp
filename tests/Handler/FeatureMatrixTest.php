@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\TypeHintContext;
@@ -15,6 +16,7 @@ use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\DocumentFeatureHandlerInterface;
@@ -113,21 +115,44 @@ final class FeatureMatrixTest extends TestCase
             DefinitionHandler::class => new DefinitionHandler($documents, $symbolResolver),
             HoverHandler::class => new HoverHandler($documents, $symbolResolver, $capabilities),
             SignatureHelpHandler::class => new SignatureHelpHandler($documents, $symbolResolver),
-            CompletionHandler::class => new CompletionHandler(
-                $documents,
-                $symbolResolver,
-                new SymbolCandidates($knowledge->source, $symbolResolver, $capabilities),
-                new KeywordCandidates(KeywordGroup::All),
-                new KeywordCandidates(KeywordGroup::ClassBody),
-                new KeywordCandidates(KeywordGroup::AfterVisibility),
-                new KeywordCandidates(KeywordGroup::Expression),
-                new VariableCandidates($symbolResolver),
-                new MemberCandidates($symbolResolver, $capabilities),
-                new NamedArgumentCandidates($symbolResolver),
-                new BuiltinTypeCandidates(TypeHintContext::Property),
-                new BuiltinTypeCandidates(TypeHintContext::Parameter),
-                new BuiltinTypeCandidates(TypeHintContext::ReturnType),
-            ),
+            CompletionHandler::class => (function () use ($documents, $symbolResolver, $knowledge, $capabilities) {
+                $classes = static fn(ClassCandidateFilter $filter): SymbolCandidates => new SymbolCandidates(
+                    $knowledge->source,
+                    $symbolResolver,
+                    $capabilities,
+                    [NameKind::ClassLike],
+                    $filter,
+                );
+                return new CompletionHandler(
+                    $documents,
+                    $symbolResolver,
+                    $classes(ClassCandidateFilter::Instantiable),
+                    $classes(ClassCandidateFilter::TypeHint),
+                    $classes(ClassCandidateFilter::Interface_),
+                    $classes(ClassCandidateFilter::ExtendableClass),
+                    $classes(ClassCandidateFilter::Throwable),
+                    $classes(ClassCandidateFilter::Attribute),
+                    $classes(ClassCandidateFilter::Trait_),
+                    $classes(ClassCandidateFilter::Any),
+                    new SymbolCandidates(
+                        $knowledge->source,
+                        $symbolResolver,
+                        $capabilities,
+                        NameKind::cases(),
+                        ClassCandidateFilter::Any,
+                    ),
+                    new KeywordCandidates(KeywordGroup::All),
+                    new KeywordCandidates(KeywordGroup::ClassBody),
+                    new KeywordCandidates(KeywordGroup::AfterVisibility),
+                    new KeywordCandidates(KeywordGroup::Expression),
+                    new VariableCandidates($symbolResolver),
+                    new MemberCandidates($symbolResolver, $capabilities),
+                    new NamedArgumentCandidates($symbolResolver),
+                    new BuiltinTypeCandidates(TypeHintContext::Property),
+                    new BuiltinTypeCandidates(TypeHintContext::Parameter),
+                    new BuiltinTypeCandidates(TypeHintContext::ReturnType),
+                );
+            })(),
         ];
 
         $this->syncHandler = new TextDocumentSyncHandler($documents, $knowledge->sink);

@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
@@ -119,7 +120,21 @@ class CompletionHandlerTest extends TestCase
         return new CompletionHandler(
             $this->documents,
             $this->symbolResolver,
-            new SymbolCandidates($symbolSource, $this->symbolResolver, $capabilities),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Instantiable),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::TypeHint),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Interface_),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::ExtendableClass),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Throwable),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Attribute),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Trait_),
+            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Any),
+            new SymbolCandidates(
+                $symbolSource,
+                $this->symbolResolver,
+                $capabilities,
+                NameKind::cases(),
+                ClassCandidateFilter::Any,
+            ),
             new KeywordCandidates(KeywordGroup::All),
             new KeywordCandidates(KeywordGroup::ClassBody),
             new KeywordCandidates(KeywordGroup::AfterVisibility),
@@ -130,6 +145,21 @@ class CompletionHandlerTest extends TestCase
             new BuiltinTypeCandidates(TypeHintContext::Property),
             new BuiltinTypeCandidates(TypeHintContext::Parameter),
             new BuiltinTypeCandidates(TypeHintContext::ReturnType),
+        );
+    }
+
+    private static function classCandidates(
+        SymbolSourceInterface $symbolSource,
+        SymbolResolver $symbolResolver,
+        SessionCapabilitiesProviderInterface $capabilities,
+        ClassCandidateFilter $filter,
+    ): SymbolCandidates {
+        return new SymbolCandidates(
+            $symbolSource,
+            $symbolResolver,
+            $capabilities,
+            [NameKind::ClassLike],
+            $filter,
         );
     }
 

@@ -120,13 +120,11 @@ final class FunctionSurfaceParityTest extends TestCase
         $captured = [];
         foreach ($queries as $label => [$fixture, $prefix, $snippetSupport]) {
             $doc = $this->document($fixture);
-            $captured[$label] = $this->candidates($snippetSupport)->find(
+            $captured[$label] = $this->candidates($snippetSupport)->search(
                 $prefix,
                 $doc,
                 5,
                 strlen($prefix),
-                [NameKind::Function_],
-                ClassCandidateFilter::Any,
             );
         }
 
@@ -141,13 +139,11 @@ final class FunctionSurfaceParityTest extends TestCase
         // reflection in BuiltinFunctionParityTest; here only that the surface
         // passes through the bulk of it.
         $doc = $this->document(self::DOCUMENT_WITHOUT_FUNCTIONS);
-        $items = $this->candidates(false)->find(
+        $items = $this->candidates(false)->search(
             'array_',
             $doc,
             5,
             0,
-            [NameKind::Function_],
-            ClassCandidateFilter::Any,
         );
 
         $labels = array_column($items, 'label');
@@ -171,13 +167,11 @@ final class FunctionSurfaceParityTest extends TestCase
         // functions are emitted first, in declaration order. A migration that
         // merged the two halves into one ranked list would reorder this.
         $doc = $this->document(self::DOCUMENT_WITH_FUNCTIONS);
-        $items = $this->candidates(false)->find(
+        $items = $this->candidates(false)->search(
             '',
             $doc,
             5,
             0,
-            [NameKind::Function_],
-            ClassCandidateFilter::Any,
         );
 
         self::assertSame(
@@ -193,7 +187,13 @@ final class FunctionSurfaceParityTest extends TestCase
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
 
-        return new SymbolCandidates($this->symbolSource, $this->symbolResolver, $capabilities);
+        return new SymbolCandidates(
+            $this->symbolSource,
+            $this->symbolResolver,
+            $capabilities,
+            [NameKind::Function_],
+            ClassCandidateFilter::Any,
+        );
     }
 
     private function document(string $relativePath): TextDocument
