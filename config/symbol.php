@@ -26,7 +26,10 @@ return [
 
     CompositeSymbolSource::class => function (TC $c) {
         $backends = [
-            // FIXME: see KnowledgeStack
+            $c->get(OpenDocumentBackend::class),
+            // FIXME: worksapce
+            // FIXME: vendor
+            $c->get(BuiltinBackend::class),
         ];
         return new CompositeSymbolSource($backends);
     },
@@ -36,4 +39,6 @@ return [
     OpenDocumentBackend::class,
     DeclarationSymbolInfoFactory::class,
     DeclarationScanner::class,
+    BuiltinBackend::class,
+    SymbolCache::class,
 ];
