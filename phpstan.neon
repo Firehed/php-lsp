@@ -365,6 +365,8 @@ parameters:
 
     level: max
     paths:
+        - bin
+        - config
         - src
         - tests
     # Adding a path here removes it from every check: loosen (human only).
