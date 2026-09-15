@@ -9,6 +9,8 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
+use Firehed\PhpLsp\Completion\CompletionRequest;
+use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -51,6 +53,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CompletionHandler::class)]
 #[CoversClass(BuiltinTypeCandidates::class)]
 #[CoversClass(CompletionItemFactory::class)]
+#[CoversClass(CompletionRequest::class)]
+#[CoversClass(CompositeCompletionSource::class)]
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(KeywordCandidates::class)]
 #[CoversClass(MemberCandidates::class)]
