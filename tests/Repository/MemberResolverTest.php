@@ -14,13 +14,16 @@ use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(MemberResolver::class)]
@@ -1486,6 +1489,188 @@ final class MemberResolverTest extends TestCase
         self::assertNull(
             $resolver->findMethod($className, new MethodName('exposedName'), Visibility::Public),
             'a nameless alias whose method is in no used trait must not surface',
+        );
+    }
+
+    public function testIsSubclassOfReturnsFalseForUnknownClass(): void
+    {
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse(
+            $resolver->isSubclassOf(new ClassName(self::fakeClass()), new ClassName(self::fakeClass())),
+            'a class no backend declares cannot be a subclass of anything',
+        );
+    }
+
+    public function testIsSubclassOfIsNotReflexive(): void
+    {
+        $name = new ClassName(self::fakeClass());
+        $info = $this->createClassInfo($name);
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $q) => $q->fqn === $name->fqn ? $info : null,
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse(
+            $resolver->isSubclassOf($name, $name),
+            'a class is never a subclass of itself, matching PHP is_subclass_of',
+        );
+    }
+
+    public function testIsSubclassOfReturnsFalseWhenTargetIsAUsedTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $className = new ClassName(self::fakeClass());
+        $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
+        $classInfo = $this->createClassInfo($className, traits: [$traitName]);
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $q) => match ($q->fqn) {
+                $traitName->fqn => $traitInfo,
+                $className->fqn => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse(
+            $resolver->isSubclassOf($className, $traitName),
+            'is_subclass_of never treats a used trait as a parent',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{list<array{0: string, 1: ClassKind, 2: ?string, 3: list<string>}>, string, string, bool}>
+     */
+    public static function isSubclassOfCases(): iterable
+    {
+        yield 'direct parent' => [
+            [
+                ['App\\Child', ClassKind::Class_, 'App\\ParentClass', []],
+                ['App\\ParentClass', ClassKind::Class_, null, []],
+            ],
+            'App\\Child',
+            'App\\ParentClass',
+            true,
+        ];
+        yield 'grandparent through the parent chain' => [
+            [
+                ['App\\Child', ClassKind::Class_, 'App\\ParentClass', []],
+                ['App\\ParentClass', ClassKind::Class_, 'App\\Grandparent', []],
+                ['App\\Grandparent', ClassKind::Class_, null, []],
+            ],
+            'App\\Child',
+            'App\\Grandparent',
+            true,
+        ];
+        yield 'directly implemented interface' => [
+            [
+                ['App\\Child', ClassKind::Class_, null, ['App\\IfaceA']],
+                ['App\\IfaceA', ClassKind::Interface_, null, []],
+            ],
+            'App\\Child',
+            'App\\IfaceA',
+            true,
+        ];
+        yield 'interface reached through an interface' => [
+            [
+                ['App\\Child', ClassKind::Class_, null, ['App\\IfaceA']],
+                ['App\\IfaceA', ClassKind::Interface_, null, ['App\\IfaceBase']],
+                ['App\\IfaceBase', ClassKind::Interface_, null, []],
+            ],
+            'App\\Child',
+            'App\\IfaceBase',
+            true,
+        ];
+        yield 'unrelated type' => [
+            [
+                ['App\\Child', ClassKind::Class_, 'App\\ParentClass', []],
+                ['App\\ParentClass', ClassKind::Class_, null, []],
+                ['App\\Unrelated', ClassKind::Class_, null, []],
+            ],
+            'App\\Child',
+            'App\\Unrelated',
+            false,
+        ];
+        yield 'unresolvable supertypes' => [
+            [
+                ['App\\Orphan', ClassKind::Class_, 'App\\Missing', ['App\\AlsoMissing']],
+            ],
+            'App\\Orphan',
+            'App\\ParentClass',
+            false,
+        ];
+        yield 'cyclic parent chain terminates' => [
+            [
+                ['App\\CycleA', ClassKind::Class_, 'App\\CycleB', []],
+                ['App\\CycleB', ClassKind::Class_, 'App\\CycleA', []],
+            ],
+            'App\\CycleA',
+            'App\\Unrelated',
+            false,
+        ];
+        yield 'diamond interface graph terminates' => [
+            [
+                ['App\\Diamond', ClassKind::Class_, null, ['App\\IfaceA', 'App\\IfaceB']],
+                ['App\\IfaceA', ClassKind::Interface_, null, ['App\\IfaceBase']],
+                ['App\\IfaceB', ClassKind::Interface_, null, ['App\\IfaceBase']],
+                ['App\\IfaceBase', ClassKind::Interface_, null, []],
+            ],
+            'App\\Diamond',
+            'App\\Unrelated',
+            false,
+        ];
+        yield 'case-divergent parent spelling still matches' => [
+            [
+                ['App\\Child', ClassKind::Class_, 'APP\\PARENTCLASS', []],
+                ['App\\ParentClass', ClassKind::Class_, null, []],
+            ],
+            'App\\Child',
+            'App\\ParentClass',
+            true,
+        ];
+    }
+
+    /**
+     * @param list<array{0: string, 1: ClassKind, 2: ?string, 3: list<string>}> $graph
+     */
+    #[DataProvider('isSubclassOfCases')]
+    public function testIsSubclassOfWalksTheGraph(
+        array $graph,
+        string $subject,
+        string $target,
+        bool $expected,
+    ): void {
+        $infos = [];
+        foreach ($graph as [$fqn, $kind, $parent, $interfaces]) {
+            $info = $this->createClassInfo(
+                new ClassName($fqn),
+                $kind,
+                parent: $parent !== null ? new ClassName($parent) : null,
+                interfaces: array_map(fn (string $i): ClassName => new ClassName($i), $interfaces),
+            );
+            $infos[NameKind::ClassLike->normalize(QualifiedName::fromFullyQualified($fqn))] = $info;
+        }
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClassName $q) => $infos[NameKind::ClassLike->normalize(QualifiedName::fromClassName($q))] ?? null,
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertSame(
+            $expected,
+            $resolver->isSubclassOf(new ClassName($subject), new ClassName($target)),
+            "isSubclassOf walking from {$subject} to {$target}",
         );
     }
 
