@@ -91,12 +91,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         // In interpolated strings, only variables are valid — take the variable
         // source alone rather than filter every source's output after the fact.
         $items = $context === CompletionContext::VariablesOnly
-            ? $this->variableCandidates->find(
-                CompletionClassifier::variablePrefix($textBeforeCursor),
-                $document,
-                $line,
-                $character,
-            )
+            ? ($this->variableCandidates->find(new CompletionRequest($document, $line, $character)) ?? [])
             : $this->getCompletionItems($textBeforeCursor, $document, $line, $character);
 
         return $this->capped($items);
@@ -160,12 +155,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
             // Also offer variables - filter by prefix if cursor is on one
             $items = array_merge(
                 $items,
-                $this->variableCandidates->find(
-                    CompletionClassifier::variablePrefix($textBeforeCursor),
-                    $document,
-                    $line,
-                    $character,
-                ),
+                $this->variableCandidates->find(new CompletionRequest($document, $line, $character)) ?? [],
             );
 
             $expressionPrefix = CompletionClassifier::callExpressionPrefix($textBeforeCursor);
@@ -196,7 +186,9 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         $prefix = $classification->prefix;
 
         return match ($classification->kind) {
-            CompletionKind::Variable => $this->variableCandidates->find($prefix, $document, $line, $character),
+            CompletionKind::Variable => $this->variableCandidates->find(
+                new CompletionRequest($document, $line, $character),
+            ) ?? [],
             CompletionKind::New_ => $this->getNewCompletions($prefix, $document, $line, $character),
             CompletionKind::AfterVisibility => $this->getAfterVisibilityCompletions(
                 $prefix,
@@ -322,7 +314,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
             );
         }
         if (ContextDetector::isClosureUse($content, $offset)) {
-            return $this->variableCandidates->find($prefix, $document, $line, $character);
+            return $this->variableCandidates->find(new CompletionRequest($document, $line, $character)) ?? [];
         }
 
         return $this->symbolCandidates->forUseStatement(
