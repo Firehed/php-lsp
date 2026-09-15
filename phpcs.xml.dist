@@ -24,8 +24,10 @@
         </properties>
     </rule>
     <rule ref="SlevomatCodingStandard.Classes.RequireConstructorPropertyPromotion"/>
+    <rule ref="SlevomatCodingStandard.Arrays.TrailingArrayComma"/>
 
     <file>bin/</file>
+    <file>config/</file>
     <file>src/</file>
     <file>tests/</file>
 
