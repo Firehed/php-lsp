@@ -91,5 +91,5 @@ interface MemberResolverInterface
      */
     public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool;
 
-    public function isTraitClass(ClassName $class): bool;
+    public function isTrait(ClassName $class): bool;
 }

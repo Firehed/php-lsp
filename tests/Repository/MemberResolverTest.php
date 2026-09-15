@@ -1357,7 +1357,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        self::assertTrue($resolver->isTraitClass($traitName));
+        self::assertTrue($resolver->isTrait($traitName));
     }
 
     public function testIsTraitClassReturnsFalseForClass(): void
@@ -1370,7 +1370,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        self::assertFalse($resolver->isTraitClass($className));
+        self::assertFalse($resolver->isTrait($className));
     }
 
     public function testIsTraitClassReturnsFalseForUnknownClass(): void
@@ -1380,7 +1380,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        self::assertFalse($resolver->isTraitClass(new ClassName(self::fakeClass())));
+        self::assertFalse($resolver->isTrait(new ClassName(self::fakeClass())));
     }
 
     public function testAliasNamingAnUnknownMethodOnANamedTraitIsInvisible(): void

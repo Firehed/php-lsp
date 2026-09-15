@@ -180,7 +180,7 @@ final class MemberResolver implements MemberResolverInterface
         return false;
     }
 
-    public function isTraitClass(ClassName $class): bool
+    public function isTrait(ClassName $class): bool
     {
         return $this->source->lookupClassLike($class)?->isTrait() ?? false;
     }
