@@ -13,12 +13,12 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Repository\MemberResolverInterface;
 
 /**
  * Answers {@see TypeSourceInterface} for a symbol PHP itself (native code or reflection)
  * declares. Class-members walk the inheritance graph through
- * {@see MemberResolver}, so a method inherited from a supertype resolves at the
+ * {@see MemberResolverInterface}, so a method inherited from a supertype resolves at the
  * subclass just as PHP would find it.
  *
  * The answer's origin (open-document AST, workspace file, vendored file,
@@ -28,7 +28,7 @@ final readonly class NativeTypeSource implements TypeSourceInterface
 {
     public function __construct(
         private SymbolSourceInterface $symbols,
-        private MemberResolver $members,
+        private MemberResolverInterface $members,
     ) {
     }
 
