@@ -1347,7 +1347,7 @@ final class MemberResolverTest extends TestCase
         self::assertContains($childConstant, $result);
     }
 
-    public function testIsTraitClassReturnsTrueForTrait(): void
+    public function testIsTraitReturnsTrueForTrait(): void
     {
         $traitName = new ClassName(self::fakeClass());
         $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
@@ -1360,7 +1360,7 @@ final class MemberResolverTest extends TestCase
         self::assertTrue($resolver->isTrait($traitName));
     }
 
-    public function testIsTraitClassReturnsFalseForClass(): void
+    public function testIsTraitReturnsFalseForClass(): void
     {
         $className = new ClassName(self::fakeClass());
         $classInfo = $this->createClassInfo($className, ClassKind::Class_);
@@ -1373,7 +1373,7 @@ final class MemberResolverTest extends TestCase
         self::assertFalse($resolver->isTrait($className));
     }
 
-    public function testIsTraitClassReturnsFalseForUnknownClass(): void
+    public function testIsTraitReturnsFalseForUnknownClass(): void
     {
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturn(null);
