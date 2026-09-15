@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use LogicException;
 use PhpParser\Node;
@@ -45,7 +45,7 @@ final class MemberAccessDetector
 {
     public function __construct(
         private readonly SymbolSourceInterface $symbolSource,
-        private readonly MemberResolver $memberResolver,
+        private readonly MemberResolverInterface $memberResolver,
         private readonly TypeSourceInterface $typeSource,
         private readonly SyntaxSourceInterface $parser,
     ) {
