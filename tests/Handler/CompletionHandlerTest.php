@@ -764,11 +764,6 @@ class CompletionHandlerTest extends TestCase
                     : new NamespaceContents([], []);
             }
 
-            public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool
-            {
-                return false;
-            }
-
             public function lookupClassLike(ClassName $name): ?ClassInfo
             {
                 return null;

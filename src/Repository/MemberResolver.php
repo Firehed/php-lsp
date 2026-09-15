@@ -149,6 +149,37 @@ final class MemberResolver implements MemberResolverInterface
         return $this->applyMethodAliases($members, $origin, $minVisibility, $filter);
     }
 
+    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool
+    {
+        $origin = $this->source->lookupClassLike($class);
+        if ($origin === null) {
+            return false;
+        }
+        $originKey = NameKind::ClassLike->normalize(QualifiedName::fromClassName($class));
+        $targetKey = NameKind::ClassLike->normalize(QualifiedName::fromClassName($potentialParent));
+        if ($originKey === $targetKey) {
+            return false;
+        }
+
+        $seen = [];
+        foreach ($this->descend($origin, true, [], $seen) as [$info]) {
+            // is_subclass_of never treats a trait as a parent; the walk yields
+            // used traits so member kinds see them, so filter them here.
+            if ($info->isTrait()) {
+                continue;
+            }
+            $key = NameKind::ClassLike->normalize(QualifiedName::fromClassName($info->name));
+            if ($key === $originKey) {
+                continue;
+            }
+            if ($key === $targetKey) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function isTraitClass(ClassName $class): bool
     {
         return $this->source->lookupClassLike($class)?->isTrait() ?? false;

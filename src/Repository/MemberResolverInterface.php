@@ -34,6 +34,13 @@ interface MemberResolverInterface
 
     public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo;
 
+    /**
+     * Whether $class is a subtype of $potentialParent somewhere along the type
+     * graph. Not reflexive, and — matching PHP's `is_subclass_of` — a class is
+     * never a subclass of a trait it uses.
+     */
+    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool;
+
     public function findMethod(
         ClassName $class,
         MethodName $method,
