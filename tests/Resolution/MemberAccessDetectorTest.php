@@ -38,7 +38,6 @@ class MemberAccessDetectorTest extends TestCase
 
         $emptySource = self::createStub(SymbolSourceInterface::class);
         $emptySource->method('lookupClassLike')->willReturn(null);
-        $emptySource->method('isSubclassOf')->willReturn(false);
         $emptyMemberResolver = new MemberResolver($emptySource);
         $emptyTypeSource = new NativeTypeSource($emptySource, $emptyMemberResolver);
         $this->detector = new MemberAccessDetector(
