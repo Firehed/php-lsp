@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\DocumentManagerInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Protocol\Message;
@@ -18,7 +18,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
     ];
 
     public function __construct(
-        private readonly DocumentManager $documentManager,
+        private readonly DocumentManagerInterface $documentManager,
         private readonly SymbolSinkInterface $symbols,
     ) {
     }
