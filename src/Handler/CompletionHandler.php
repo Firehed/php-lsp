@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionContext;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionKind;
+use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\ContextDetector;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
@@ -146,7 +147,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         int $character,
     ): array {
         // Member/static access (after -> or ::)
-        $memberItems = $this->memberCandidates->find($document, $line, $character);
+        $memberItems = $this->memberCandidates->find(new CompletionRequest($document, $line, $character));
         if ($memberItems !== null) {
             return $memberItems;
         }
