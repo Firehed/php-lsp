@@ -39,7 +39,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     ) {
     }
 
-    public function find(CompletionRequest $request): ?array
+    public function find(CompletionRequest $request): array
     {
         $offset = $request->document->offsetAt($request->line, $request->character);
         $context = ContextDetector::getContext($request->document->getContent(), $offset);
@@ -50,7 +50,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         // In interpolated strings, only variables are valid — take the variable
         // source alone rather than filter every source's output after the fact.
         if ($context === CompletionContext::VariablesOnly) {
-            return $this->variableCandidates->find($request) ?? [];
+            return $this->variableCandidates->find($request);
         }
 
         // Member/static access (after -> or ::) short-circuits — the source owns
@@ -75,7 +75,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     {
         $items = array_merge(
             $this->namedArgumentCandidates->find($request) ?? [],
-            $this->variableCandidates->find($request) ?? [],
+            $this->variableCandidates->find($request),
         );
 
         $expressionPrefix = CompletionClassifier::callExpressionPrefix($request->textBeforeCursor());
@@ -90,7 +90,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
             $this->expressionKeywords->find($request) ?? [],
         ));
 
-        return array_merge($items, $this->anySymbols->find($request) ?? []);
+        return array_merge($items, $this->anySymbols->find($request));
     }
 
     /**
@@ -101,17 +101,17 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         $classification = $request->classification();
 
         return match ($classification->kind) {
-            CompletionKind::Variable => $this->variableCandidates->find($request) ?? [],
-            CompletionKind::New_ => $this->deduplicate($this->instantiableClasses->find($request) ?? []),
+            CompletionKind::Variable => $this->variableCandidates->find($request),
+            CompletionKind::New_ => $this->deduplicate($this->instantiableClasses->find($request)),
             CompletionKind::AfterVisibility => $this->afterVisibilityItems($request),
             CompletionKind::ReturnType => $this->typeHintItems($this->returnTypeBuiltins, $request),
             CompletionKind::PropertyType => $this->typeHintItems($this->propertyBuiltins, $request),
             CompletionKind::ParameterType => $this->typeHintItems($this->parameterBuiltins, $request),
-            CompletionKind::InterfaceList => $this->deduplicate($this->interfaces->find($request) ?? []),
-            CompletionKind::ExtendableClass => $this->deduplicate($this->extendableClasses->find($request) ?? []),
-            CompletionKind::Throwable => $this->deduplicate($this->throwables->find($request) ?? []),
-            CompletionKind::Attribute => $this->deduplicate($this->attributes->find($request) ?? []),
-            CompletionKind::Instanceof_ => $this->deduplicate($this->typeHintClasses->find($request) ?? []),
+            CompletionKind::InterfaceList => $this->deduplicate($this->interfaces->find($request)),
+            CompletionKind::ExtendableClass => $this->deduplicate($this->extendableClasses->find($request)),
+            CompletionKind::Throwable => $this->deduplicate($this->throwables->find($request)),
+            CompletionKind::Attribute => $this->deduplicate($this->attributes->find($request)),
+            CompletionKind::Instanceof_ => $this->deduplicate($this->typeHintClasses->find($request)),
             CompletionKind::Use_ => $this->useStatementItems($request),
             CompletionKind::ClassBody => $this->classBodyKeywords->find($request) ?? [],
             CompletionKind::Expression => $this->expressionItems($request),
@@ -136,8 +136,8 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     private function typeHintItems(BuiltinTypeCandidates $builtins, CompletionRequest $request): array
     {
         return $this->deduplicate(array_merge(
-            $builtins->find($request) ?? [],
-            $this->typeHintClasses->find($request) ?? [],
+            $builtins->find($request),
+            $this->typeHintClasses->find($request),
         ));
     }
 
@@ -154,10 +154,10 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         $offset = $request->document->offsetAt($request->line, $request->character);
         $content = $request->document->getContent();
         if (ContextDetector::isInsideClassBody($content, $offset)) {
-            return $this->deduplicate($this->traits->find($request) ?? []);
+            return $this->deduplicate($this->traits->find($request));
         }
         if (ContextDetector::isClosureUse($content, $offset)) {
-            return $this->variableCandidates->find($request) ?? [];
+            return $this->variableCandidates->find($request);
         }
 
         return $this->useStatementSymbols->forUseStatement(
@@ -174,7 +174,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     {
         return $this->deduplicate(array_merge(
             $this->allKeywords->find($request) ?? [],
-            $this->anySymbols->find($request) ?? [],
+            $this->anySymbols->find($request),
         ));
     }
 

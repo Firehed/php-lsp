@@ -51,7 +51,7 @@ final class SymbolCandidates implements CompletionSourceInterface
     ) {
     }
 
-    public function find(CompletionRequest $request): ?array
+    public function find(CompletionRequest $request): array
     {
         return $this->search(
             $request->classification()->prefix,

@@ -27,7 +27,7 @@ final class BuiltinTypeCandidates implements CompletionSourceInterface
     ) {
     }
 
-    public function find(CompletionRequest $request): ?array
+    public function find(CompletionRequest $request): array
     {
         $prefix = $request->classification()->prefix;
         $items = [];

@@ -24,14 +24,16 @@ final class VariableCandidates implements CompletionSourceInterface
     ) {
     }
 
-    public function find(CompletionRequest $request): ?array
+    public function find(CompletionRequest $request): array
     {
         $prefix = CompletionClassifier::variablePrefix($request->textBeforeCursor());
+        $variables = $this->codeResolver->getVariablesInScope(
+            $request->document,
+            $request->line,
+            $request->character,
+        );
         $items = [];
-        foreach (
-            $this->codeResolver->getVariablesInScope($request->document, $request->line, $request->character)
-            as $variable
-        ) {
+        foreach ($variables as $variable) {
             if (PrefixMatcher::matches($variable->getName(), $prefix)) {
                 $items[] = CompletionItemFactory::forVariable(
                     $variable->getName(),

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
-use Firehed\PhpLsp\Completion\CompletionClassification;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Document\TextDocument;
