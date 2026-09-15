@@ -35,7 +35,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
  * {@see MemberKind}, so no two kinds can come to disagree about the hierarchy or
  * about how a member name is matched.
  */
-final class MemberResolver
+final class MemberResolver implements MemberResolverInterface
 {
     public function __construct(
         private readonly SymbolSourceInterface $source,
