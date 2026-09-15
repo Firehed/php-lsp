@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
+use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
@@ -162,8 +163,10 @@ final class Server
                 new KeywordCandidates(KeywordGroup::Expression),
                 new VariableCandidates($symbolResolver),
                 new MemberCandidates($symbolResolver, $negotiator),
-                new NamedArgumentCandidates(),
-                new BuiltinTypeCandidates(),
+                new NamedArgumentCandidates($symbolResolver),
+                new BuiltinTypeCandidates(TypeHintContext::Property),
+                new BuiltinTypeCandidates(TypeHintContext::Parameter),
+                new BuiltinTypeCandidates(TypeHintContext::ReturnType),
             ),
         ];
 

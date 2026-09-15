@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
+use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
@@ -85,8 +86,10 @@ class CompositeReceiverParityTest extends TestCase
             new KeywordCandidates(KeywordGroup::Expression),
             new VariableCandidates($symbolResolver),
             new MemberCandidates($symbolResolver, $capabilities),
-            new NamedArgumentCandidates(),
-            new BuiltinTypeCandidates(),
+            new NamedArgumentCandidates($symbolResolver),
+            new BuiltinTypeCandidates(TypeHintContext::Property),
+            new BuiltinTypeCandidates(TypeHintContext::Parameter),
+            new BuiltinTypeCandidates(TypeHintContext::ReturnType),
         );
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
 

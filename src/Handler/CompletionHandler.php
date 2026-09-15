@@ -49,7 +49,9 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
         private readonly NamedArgumentCandidates $namedArgumentCandidates,
-        private readonly BuiltinTypeCandidates $builtinTypeCandidates,
+        private readonly BuiltinTypeCandidates $propertyBuiltins,
+        private readonly BuiltinTypeCandidates $parameterBuiltins,
+        private readonly BuiltinTypeCandidates $returnTypeBuiltins,
     ) {
     }
 
@@ -153,7 +155,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         // Inside a call context, offer named arguments + variables
         $callContext = $this->codeResolver->getCallContext($document, $line, $character);
         if ($callContext !== null) {
-            $items = $this->namedArgumentCandidates->find($callContext, $textBeforeCursor);
+            $items = $this->namedArgumentCandidates->find(new CompletionRequest($document, $line, $character)) ?? [];
 
             // Also offer variables - filter by prefix if cursor is on one
             $items = array_merge(
@@ -409,7 +411,12 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
         int $character,
         TypeHintContext $context,
     ): array {
-        $items = $this->builtinTypeCandidates->find($prefix, $context);
+        $builtins = match ($context) {
+            TypeHintContext::Property => $this->propertyBuiltins,
+            TypeHintContext::Parameter => $this->parameterBuiltins,
+            TypeHintContext::ReturnType => $this->returnTypeBuiltins,
+        };
+        $items = $builtins->find(new CompletionRequest($document, $line, $character)) ?? [];
 
         // Class-likes valid as type hints (traits excluded), plus navigation into
         // absolute namespaces (`function f(\Ps`), via the shared class path.

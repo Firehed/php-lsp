@@ -7,11 +7,14 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 
 /**
- * Produces built-in type completion items valid in a given type-hint position.
+ * Produces built-in type completion items valid in one type-hint position.
+ *
+ * The context is fixed at construction; one instance per {@see TypeHintContext}
+ * is wired.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class BuiltinTypeCandidates
+final class BuiltinTypeCandidates implements CompletionSourceInterface
 {
     /** Types valid in every type-hint position */
     private const COMMON_TYPES = [
@@ -19,13 +22,16 @@ final class BuiltinTypeCandidates
         'mixed', 'null', 'callable', 'iterable', 'true', 'false',
     ];
 
-    /**
-     * @return list<CompletionItem>
-     */
-    public function find(string $prefix, TypeHintContext $context): array
+    public function __construct(
+        private readonly TypeHintContext $context,
+    ) {
+    }
+
+    public function find(CompletionRequest $request): ?array
     {
+        $prefix = $request->classification()->prefix;
         $items = [];
-        foreach ($this->typesFor($context) as $type) {
+        foreach ($this->types() as $type) {
             if (PrefixMatcher::matches($type, $prefix)) {
                 $items[] = CompletionItemFactory::forBuiltinType($type);
             }
@@ -47,9 +53,9 @@ final class BuiltinTypeCandidates
      *
      * @return list<string>
      */
-    private function typesFor(TypeHintContext $context): array
+    private function types(): array
     {
-        return match ($context) {
+        return match ($this->context) {
             TypeHintContext::Property => self::COMMON_TYPES,
             TypeHintContext::Parameter => [...self::COMMON_TYPES, 'self', 'parent'],
             TypeHintContext::ReturnType => [...self::COMMON_TYPES, 'void', 'never', 'self', 'static', 'parent'],

@@ -5,22 +5,35 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CallContext;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 /**
  * Produces named-argument completion items (`name:`) for a call, skipping
  * parameters already supplied positionally or by name and variadics.
  *
+ * Returns null when the position is not inside a call.
+ *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class NamedArgumentCandidates
+final class NamedArgumentCandidates implements CompletionSourceInterface
 {
-    /**
-     * @return list<CompletionItem>
-     */
-    public function find(CallContext $callContext, string $textBeforeCursor): array
+    public function __construct(
+        private readonly CodeResolverInterface $codeResolver,
+    ) {
+    }
+
+    public function find(CompletionRequest $request): ?array
     {
-        $prefix = $this->extractPrefix($textBeforeCursor);
+        $callContext = $this->codeResolver->getCallContext(
+            $request->document,
+            $request->line,
+            $request->character,
+        );
+        if ($callContext === null) {
+            return null;
+        }
+
+        $prefix = CompletionClassifier::argumentNamePrefix($request->textBeforeCursor());
         $usedNames = $callContext->usedParameterNames;
         $positionallyFilledCount = $callContext->positionallyFilledCount;
 
@@ -47,10 +60,5 @@ final class NamedArgumentCandidates
         }
 
         return $items;
-    }
-
-    private function extractPrefix(string $textBeforeCursor): string
-    {
-        return CompletionClassifier::argumentNamePrefix($textBeforeCursor);
     }
 }
