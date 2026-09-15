@@ -7,7 +7,13 @@ namespace Firehed\PhpLsp;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 use Firehed\PhpLsp\Client\TransportClientConnection;
-use Firehed\PhpLsp\Completion\CompletionSourceFactory;
+use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\CompositeCompletionSource;
+use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\MemberCandidates;
+use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\SymbolCandidates;
+use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
@@ -148,7 +154,15 @@ final class Server
             ),
             new CompletionHandler(
                 $documentManager,
-                CompletionSourceFactory::forProject($symbolSource, $symbolResolver, $negotiator),
+                new CompositeCompletionSource(
+                    $symbolResolver,
+                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator),
+                    new KeywordCandidates(),
+                    new VariableCandidates($symbolResolver),
+                    new MemberCandidates($symbolResolver, $negotiator),
+                    new NamedArgumentCandidates($symbolResolver),
+                    new BuiltinTypeCandidates(),
+                ),
             ),
         ];
 
