@@ -14,5 +14,5 @@ return [
             $c->get(Transport\TransportInterface::class),
             $c->get(Protocol\ServerInfo::class),
         );
-    }
+    },
 ];
