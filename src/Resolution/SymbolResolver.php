@@ -260,7 +260,7 @@ final class SymbolResolver implements CodeResolverInterface
         if ($classInfo->name->equals($throwable)) {
             return true;
         }
-        return $this->symbolSource->isSubclassOf($className, $throwable);
+        return $this->memberResolver->isSubclassOf($className, $throwable);
     }
 
     /**

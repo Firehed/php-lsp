@@ -177,7 +177,7 @@ final class MemberAccessDetector
         if ($vantage->fqn === $target->fqn) {
             return Visibility::Private;
         }
-        if ($this->symbolSource->isSubclassOf($vantage, $target)) {
+        if ($this->memberResolver->isSubclassOf($vantage, $target)) {
             return Visibility::Protected;
         }
         return Visibility::Public;

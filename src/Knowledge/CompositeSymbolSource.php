@@ -28,11 +28,6 @@ use Firehed\PhpLsp\Index\Symbol;
  * (RFC 1 §5.3). A lookup takes the first backend that answers; an enumeration or
  * search merges every backend, letting the earlier (more authoritative) one win a
  * name clash — a user's unsaved edit is honored over the cached file it shadows.
- *
- * The subtype query walks the type graph over {@see lookupClassLike}, so every
- * edge it follows is resolved through the same precedence as a direct lookup: an
- * open document's class may extend a vendored one and the walk crosses the seam
- * transparently.
  */
 final class CompositeSymbolSource implements SymbolSourceInterface
 {
@@ -52,19 +47,6 @@ final class CompositeSymbolSource implements SymbolSourceInterface
             static fn(SymbolBackendInterface $backend): NamespaceContents => $backend->childrenOf($namespace),
             $this->backends,
         ));
-    }
-
-    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool
-    {
-        $classInfo = $this->lookupClassLike($class);
-        if ($classInfo === null) {
-            return false;
-        }
-
-        $targetKey = self::normalizeKey($potentialParent->fqn);
-        $visited = [self::normalizeKey($class->fqn) => true];
-
-        return $this->checkInheritance($classInfo, $targetKey, $visited);
     }
 
     public function lookupClassLike(ClassName $name): ?ClassInfo
@@ -123,46 +105,6 @@ final class CompositeSymbolSource implements SymbolSourceInterface
         return null;
     }
 
-    /**
-     * @param array<string, true> $visited
-     */
-    private function checkInheritance(ClassInfo $classInfo, string $targetKey, array &$visited): bool
-    {
-        if ($classInfo->parent !== null) {
-            $parentKey = self::normalizeKey($classInfo->parent->fqn);
-            if ($parentKey === $targetKey) {
-                return true;
-            }
-            if (!array_key_exists($parentKey, $visited)) {
-                $visited[$parentKey] = true;
-                $parentInfo = $this->lookupClassLike($classInfo->parent);
-                if ($parentInfo !== null && $this->checkInheritance($parentInfo, $targetKey, $visited)) {
-                    return true;
-                }
-            }
-        }
-
-        foreach ($classInfo->interfaces as $interface) {
-            $interfaceKey = self::normalizeKey($interface->fqn);
-            if ($interfaceKey === $targetKey) {
-                return true;
-            }
-            if (!array_key_exists($interfaceKey, $visited)) {
-                $visited[$interfaceKey] = true;
-                $interfaceInfo = $this->lookupClassLike($interface);
-                if ($interfaceInfo !== null && $this->checkInheritance($interfaceInfo, $targetKey, $visited)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Class-like identity under the kind's case rule; every name this class keys
-     * or compares is a class-like. `fromFullyQualified` drops a leading `\`.
-     */
     private static function normalizeKey(string $fqn): string
     {
         return NameKind::ClassLike->normalize(QualifiedName::fromFullyQualified($fqn));

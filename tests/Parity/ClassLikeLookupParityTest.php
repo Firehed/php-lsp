@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -153,10 +154,11 @@ final class ClassLikeLookupParityTest extends TestCase
             ['Fixtures\Absent\Missing', 'Fixtures\Domain\Entity', false, 'an unresolvable subject is not a subclass'],
         ];
 
+        $resolver = new MemberResolver($this->knowledge->source);
         foreach ($cases as [$class, $parent, $expected, $why]) {
             self::assertSame(
                 $expected,
-                $this->knowledge->source->isSubclassOf(self::className($class), self::className($parent)),
+                $resolver->isSubclassOf(self::className($class), self::className($parent)),
                 "isSubclassOf should follow the type graph: {$why}",
             );
         }
