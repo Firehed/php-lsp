@@ -28,6 +28,7 @@ use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -44,6 +45,7 @@ use PHPUnit\Framework\TestCase;
 class PresenterParityTest extends TestCase
 {
     use OpensDocumentsTrait;
+    use WiresCompletionSourceTrait;
 
     private const string FIXTURE = 'PresenterParity.php';
     private const string EXPECTED_DESCRIPTION = 'Doubles the input number.';
@@ -83,41 +85,9 @@ class PresenterParityTest extends TestCase
 
         $this->hover = new HoverHandler($this->documents, $symbolResolver, $capabilities);
         $this->signatureHelp = new SignatureHelpHandler($this->documents, $symbolResolver);
-        $classes = static fn(ClassCandidateFilter $filter): SymbolCandidates => new SymbolCandidates(
-            $knowledge->source,
-            $symbolResolver,
-            $capabilities,
-            [NameKind::ClassLike],
-            $filter,
-        );
         $this->completion = new CompletionHandler(
             $this->documents,
-            $symbolResolver,
-            $classes(ClassCandidateFilter::Instantiable),
-            $classes(ClassCandidateFilter::TypeHint),
-            $classes(ClassCandidateFilter::Interface_),
-            $classes(ClassCandidateFilter::ExtendableClass),
-            $classes(ClassCandidateFilter::Throwable),
-            $classes(ClassCandidateFilter::Attribute),
-            $classes(ClassCandidateFilter::Trait_),
-            $classes(ClassCandidateFilter::Any),
-            new SymbolCandidates(
-                $knowledge->source,
-                $symbolResolver,
-                $capabilities,
-                NameKind::cases(),
-                ClassCandidateFilter::Any,
-            ),
-            new KeywordCandidates(KeywordGroup::All),
-            new KeywordCandidates(KeywordGroup::ClassBody),
-            new KeywordCandidates(KeywordGroup::AfterVisibility),
-            new KeywordCandidates(KeywordGroup::Expression),
-            new VariableCandidates($symbolResolver),
-            new MemberCandidates($symbolResolver, $capabilities),
-            new NamedArgumentCandidates($symbolResolver),
-            new BuiltinTypeCandidates(TypeHintContext::Property),
-            new BuiltinTypeCandidates(TypeHintContext::Parameter),
-            new BuiltinTypeCandidates(TypeHintContext::ReturnType),
+            self::completionSourceFor($knowledge->source, $symbolResolver, $capabilities),
         );
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }

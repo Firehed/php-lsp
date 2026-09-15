@@ -25,6 +25,7 @@ use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
@@ -43,6 +44,7 @@ final class CompletionParityTest extends TestCase
 {
     use AssertsGoldenTrait;
     use LoadsFixturesTrait;
+    use WiresCompletionSourceTrait;
 
     /**
      * Every broken-file cursor the handler tests already drive, so the frozen
@@ -219,41 +221,9 @@ final class CompletionParityTest extends TestCase
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities(snippetSupport: false));
 
-        $classes = static fn(ClassCandidateFilter $filter): SymbolCandidates => new SymbolCandidates(
-            $knowledge->source,
-            $resolver,
-            $capabilities,
-            [NameKind::ClassLike],
-            $filter,
-        );
         $handler = new CompletionHandler(
             $documents,
-            $resolver,
-            $classes(ClassCandidateFilter::Instantiable),
-            $classes(ClassCandidateFilter::TypeHint),
-            $classes(ClassCandidateFilter::Interface_),
-            $classes(ClassCandidateFilter::ExtendableClass),
-            $classes(ClassCandidateFilter::Throwable),
-            $classes(ClassCandidateFilter::Attribute),
-            $classes(ClassCandidateFilter::Trait_),
-            $classes(ClassCandidateFilter::Any),
-            new SymbolCandidates(
-                $knowledge->source,
-                $resolver,
-                $capabilities,
-                NameKind::cases(),
-                ClassCandidateFilter::Any,
-            ),
-            new KeywordCandidates(KeywordGroup::All),
-            new KeywordCandidates(KeywordGroup::ClassBody),
-            new KeywordCandidates(KeywordGroup::AfterVisibility),
-            new KeywordCandidates(KeywordGroup::Expression),
-            new VariableCandidates($resolver),
-            new MemberCandidates($resolver, $capabilities),
-            new NamedArgumentCandidates($resolver),
-            new BuiltinTypeCandidates(TypeHintContext::Property),
-            new BuiltinTypeCandidates(TypeHintContext::Parameter),
-            new BuiltinTypeCandidates(TypeHintContext::ReturnType),
+            self::completionSourceFor($knowledge->source, $resolver, $capabilities),
         );
         $sync = new TextDocumentSyncHandler($documents, $knowledge->sink);
 

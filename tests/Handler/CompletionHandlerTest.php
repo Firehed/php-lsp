@@ -29,6 +29,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
+use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
@@ -63,6 +64,7 @@ use PHPUnit\Framework\TestCase;
 class CompletionHandlerTest extends TestCase
 {
     use OpensDocumentsTrait;
+    use WiresCompletionSourceTrait;
 
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
@@ -119,47 +121,7 @@ class CompletionHandlerTest extends TestCase
 
         return new CompletionHandler(
             $this->documents,
-            $this->symbolResolver,
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Instantiable),
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::TypeHint),
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Interface_),
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::ExtendableClass),
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Throwable),
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Attribute),
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Trait_),
-            self::classCandidates($symbolSource, $this->symbolResolver, $capabilities, ClassCandidateFilter::Any),
-            new SymbolCandidates(
-                $symbolSource,
-                $this->symbolResolver,
-                $capabilities,
-                NameKind::cases(),
-                ClassCandidateFilter::Any,
-            ),
-            new KeywordCandidates(KeywordGroup::All),
-            new KeywordCandidates(KeywordGroup::ClassBody),
-            new KeywordCandidates(KeywordGroup::AfterVisibility),
-            new KeywordCandidates(KeywordGroup::Expression),
-            new VariableCandidates($this->symbolResolver),
-            new MemberCandidates($this->symbolResolver, $capabilities),
-            new NamedArgumentCandidates($this->symbolResolver),
-            new BuiltinTypeCandidates(TypeHintContext::Property),
-            new BuiltinTypeCandidates(TypeHintContext::Parameter),
-            new BuiltinTypeCandidates(TypeHintContext::ReturnType),
-        );
-    }
-
-    private static function classCandidates(
-        SymbolSourceInterface $symbolSource,
-        SymbolResolver $symbolResolver,
-        SessionCapabilitiesProviderInterface $capabilities,
-        ClassCandidateFilter $filter,
-    ): SymbolCandidates {
-        return new SymbolCandidates(
-            $symbolSource,
-            $symbolResolver,
-            $capabilities,
-            [NameKind::ClassLike],
-            $filter,
+            self::completionSourceFor($symbolSource, $this->symbolResolver, $capabilities),
         );
     }
 
