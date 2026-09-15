@@ -7,17 +7,20 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 
 /**
- * Produces keyword completion items for one {@see KeywordGroup}.
+ * Produces keyword completion items for a {@see KeywordGroup}.
  *
- * One instance per group is wired: the group is fixed at construction, and the
- * source reads the prefix from the request in the shape that group needs — the
- * Expression group uses {@see CompletionClassifier::callExpressionPrefix()}
- * because its position is inside a call, and every other group uses the
- * classification prefix.
+ * The group is a per-call parameter: the composite passes the intent for the
+ * position, and one instance serves every position. The class does not
+ * implement {@see CompletionSourceInterface} because its behaviour is chosen
+ * by the caller, not by inspection of the request.
+ *
+ * The Expression group reads the prefix via
+ * {@see CompletionClassifier::callExpressionPrefix()} because its position is
+ * inside a call; every other group uses the classification prefix.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class KeywordCandidates implements CompletionSourceInterface
+final class KeywordCandidates
 {
     private const KEYWORDS_ALL = [
         // Control flow
@@ -48,20 +51,18 @@ final class KeywordCandidates implements CompletionSourceInterface
         'true', 'false', 'null',
     ];
 
-    public function __construct(
-        private readonly KeywordGroup $group,
-    ) {
-    }
-
-    public function find(CompletionRequest $request): ?array
+    /**
+     * @return list<CompletionItem>|null
+     */
+    public function find(CompletionRequest $request, KeywordGroup $group): ?array
     {
-        $prefix = $this->prefixFrom($request);
+        $prefix = $this->prefixFrom($request, $group);
         if ($prefix === null) {
             return null;
         }
 
         $items = [];
-        foreach ($this->keywords() as $keyword) {
+        foreach ($this->keywordsFor($group) as $keyword) {
             if (PrefixMatcher::matches($keyword, $prefix)) {
                 $items[] = CompletionItemFactory::forKeyword($keyword);
             }
@@ -70,9 +71,9 @@ final class KeywordCandidates implements CompletionSourceInterface
         return $items;
     }
 
-    private function prefixFrom(CompletionRequest $request): ?string
+    private function prefixFrom(CompletionRequest $request, KeywordGroup $group): ?string
     {
-        return match ($this->group) {
+        return match ($group) {
             KeywordGroup::Expression => CompletionClassifier::callExpressionPrefix($request->textBeforeCursor()),
             default => $request->classification()->prefix,
         };
@@ -81,9 +82,9 @@ final class KeywordCandidates implements CompletionSourceInterface
     /**
      * @return list<string>
      */
-    private function keywords(): array
+    private function keywordsFor(KeywordGroup $group): array
     {
-        return match ($this->group) {
+        return match ($group) {
             KeywordGroup::All => self::KEYWORDS_ALL,
             KeywordGroup::ClassBody => self::KEYWORDS_CLASS_BODY,
             KeywordGroup::AfterVisibility => self::KEYWORDS_AFTER_VISIBILITY,

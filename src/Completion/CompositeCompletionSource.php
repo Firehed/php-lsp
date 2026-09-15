@@ -19,10 +19,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     public function __construct(
         private readonly CodeResolverInterface $codeResolver,
         private readonly SymbolCandidates $symbols,
-        private readonly KeywordCandidates $allKeywords,
-        private readonly KeywordCandidates $classBodyKeywords,
-        private readonly KeywordCandidates $afterVisibilityKeywords,
-        private readonly KeywordCandidates $expressionKeywords,
+        private readonly KeywordCandidates $keywords,
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
         private readonly NamedArgumentCandidates $namedArgumentCandidates,
@@ -80,7 +77,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         // sortText so a project symbol beats a keyword on the same prefix.
         $items = array_merge($items, array_map(
             static fn(array $item): array => ['sortText' => '"' . $item['label']] + $item,
-            $this->expressionKeywords->find($request) ?? [],
+            $this->keywords->find($request, KeywordGroup::Expression) ?? [],
         ));
 
         return array_merge($items, $this->symbols->find($request, NameKind::cases(), ClassCandidateFilter::Any));
@@ -118,7 +115,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
                 $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::TypeHint),
             ),
             CompletionKind::Use_ => $this->useStatementItems($request),
-            CompletionKind::ClassBody => $this->classBodyKeywords->find($request) ?? [],
+            CompletionKind::ClassBody => $this->keywords->find($request, KeywordGroup::ClassBody) ?? [],
             CompletionKind::Expression => $this->expressionItems($request),
             CompletionKind::None => [],
         };
@@ -130,7 +127,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     private function afterVisibilityItems(CompletionRequest $request): array
     {
         return $this->deduplicate(array_merge(
-            $this->afterVisibilityKeywords->find($request) ?? [],
+            $this->keywords->find($request, KeywordGroup::AfterVisibility) ?? [],
             $this->typeHintItems($this->propertyBuiltins, $request),
         ));
     }
@@ -180,7 +177,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     private function expressionItems(CompletionRequest $request): array
     {
         return $this->deduplicate(array_merge(
-            $this->allKeywords->find($request) ?? [],
+            $this->keywords->find($request, KeywordGroup::All) ?? [],
             $this->symbols->find($request, NameKind::cases(), ClassCandidateFilter::Any),
         ));
     }

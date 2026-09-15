@@ -25,10 +25,7 @@ final class CompletionSourceFactory
         return new CompositeCompletionSource(
             $codeResolver,
             new SymbolCandidates($symbolSource, $codeResolver, $capabilities),
-            new KeywordCandidates(KeywordGroup::All),
-            new KeywordCandidates(KeywordGroup::ClassBody),
-            new KeywordCandidates(KeywordGroup::AfterVisibility),
-            new KeywordCandidates(KeywordGroup::Expression),
+            new KeywordCandidates(),
             new VariableCandidates($codeResolver),
             new MemberCandidates($codeResolver, $capabilities),
             new NamedArgumentCandidates($codeResolver),
