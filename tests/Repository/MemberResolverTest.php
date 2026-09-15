@@ -1347,6 +1347,42 @@ final class MemberResolverTest extends TestCase
         self::assertContains($childConstant, $result);
     }
 
+    public function testIsInterfaceReturnsTrueForInterface(): void
+    {
+        $interfaceName = new ClassName(self::fakeClass());
+        $interfaceInfo = $this->createClassInfo($interfaceName, ClassKind::Interface_);
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturn($interfaceInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertTrue($resolver->isInterface($interfaceName));
+    }
+
+    public function testIsInterfaceReturnsFalseForClass(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $classInfo = $this->createClassInfo($className, ClassKind::Class_);
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse($resolver->isInterface($className));
+    }
+
+    public function testIsInterfaceReturnsFalseForUnknownClass(): void
+    {
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse($resolver->isInterface(new ClassName(self::fakeClass())));
+    }
+
     public function testIsTraitReturnsTrueForTrait(): void
     {
         $traitName = new ClassName(self::fakeClass());
