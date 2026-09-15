@@ -14,6 +14,8 @@ return [
     DocumentSymbolSink::class => function (TC $c) {
         $backends = [
             // FIXME: see KnowledgeStack
+            // ... workspaceInvalidatables
+            // ... vendorInvalidatables
         ];
         return new DocumentSymbolSink(
             $c->get(DocumentSymbolStoreInterface::class),
