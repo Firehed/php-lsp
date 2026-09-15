@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Document;
 
-final class DocumentManager
+final class DocumentManager implements DocumentManagerInterface
 {
     /** @var array<string, TextDocument> */
     private array $documents = [];

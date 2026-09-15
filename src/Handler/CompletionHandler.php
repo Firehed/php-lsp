@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use Firehed\PhpLsp\Completion\VariableCandidates;
-use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\DocumentManagerInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Protocol\Message;
@@ -38,7 +38,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
     private const RESULT_LIMIT = 100;
 
     public function __construct(
-        private readonly DocumentManager $documentManager,
+        private readonly DocumentManagerInterface $documentManager,
         private readonly CodeResolverInterface $codeResolver,
         private readonly SymbolCandidates $symbolCandidates,
         private readonly KeywordCandidates $keywordCandidates,

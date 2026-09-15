@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\DocumentManagerInterface;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
@@ -25,7 +25,7 @@ final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
     use SupportsOwnMethodTrait;
 
     public function __construct(
-        private readonly DocumentManager $documentManager,
+        private readonly DocumentManagerInterface $documentManager,
         private readonly CodeResolverInterface $codeResolver,
     ) {
     }
