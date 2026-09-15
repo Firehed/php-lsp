@@ -12,8 +12,10 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
  * Wires the completion composite for a project. Mirrors the shape of
  * {@see \Firehed\PhpLsp\Knowledge\KnowledgeStack::forProject}: one factory
  * per family, called from the top-level {@see \Firehed\PhpLsp\Server::forProject},
- * so the classes below (NameKind, SymbolSourceInterface, the source
- * implementations) stay inside the family's own layer.
+ * so the source implementations stay inside the family's own layer.
+ *
+ * Each source is wired once. The composite passes filter/group/context per
+ * call to name the intent for each match arm.
  */
 final class CompletionSourceFactory
 {
@@ -29,9 +31,7 @@ final class CompletionSourceFactory
             new VariableCandidates($codeResolver),
             new MemberCandidates($codeResolver, $capabilities),
             new NamedArgumentCandidates($codeResolver),
-            new BuiltinTypeCandidates(TypeHintContext::Property),
-            new BuiltinTypeCandidates(TypeHintContext::Parameter),
-            new BuiltinTypeCandidates(TypeHintContext::ReturnType),
+            new BuiltinTypeCandidates(),
         );
     }
 }

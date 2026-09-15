@@ -23,9 +23,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         private readonly VariableCandidates $variableCandidates,
         private readonly MemberCandidates $memberCandidates,
         private readonly NamedArgumentCandidates $namedArgumentCandidates,
-        private readonly BuiltinTypeCandidates $propertyBuiltins,
-        private readonly BuiltinTypeCandidates $parameterBuiltins,
-        private readonly BuiltinTypeCandidates $returnTypeBuiltins,
+        private readonly BuiltinTypeCandidates $builtinTypes,
     ) {
     }
 
@@ -96,9 +94,9 @@ final class CompositeCompletionSource implements CompletionSourceInterface
                 $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Instantiable),
             ),
             CompletionKind::AfterVisibility => $this->afterVisibilityItems($request),
-            CompletionKind::ReturnType => $this->typeHintItems($this->returnTypeBuiltins, $request),
-            CompletionKind::PropertyType => $this->typeHintItems($this->propertyBuiltins, $request),
-            CompletionKind::ParameterType => $this->typeHintItems($this->parameterBuiltins, $request),
+            CompletionKind::ReturnType => $this->typeHintItems(TypeHintContext::ReturnType, $request),
+            CompletionKind::PropertyType => $this->typeHintItems(TypeHintContext::Property, $request),
+            CompletionKind::ParameterType => $this->typeHintItems(TypeHintContext::Parameter, $request),
             CompletionKind::InterfaceList => $this->deduplicate(
                 $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Interface_),
             ),
@@ -128,17 +126,17 @@ final class CompositeCompletionSource implements CompletionSourceInterface
     {
         return $this->deduplicate(array_merge(
             $this->keywords->find($request, KeywordGroup::AfterVisibility) ?? [],
-            $this->typeHintItems($this->propertyBuiltins, $request),
+            $this->typeHintItems(TypeHintContext::Property, $request),
         ));
     }
 
     /**
      * @return list<CompletionItem>
      */
-    private function typeHintItems(BuiltinTypeCandidates $builtins, CompletionRequest $request): array
+    private function typeHintItems(TypeHintContext $context, CompletionRequest $request): array
     {
         return $this->deduplicate(array_merge(
-            $builtins->find($request),
+            $this->builtinTypes->find($request, $context),
             $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::TypeHint),
         ));
     }

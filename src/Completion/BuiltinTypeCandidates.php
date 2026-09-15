@@ -7,14 +7,16 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 
 /**
- * Produces built-in type completion items valid in one type-hint position.
+ * Produces built-in type completion items valid in a type-hint position.
  *
- * The context is fixed at construction; one instance per {@see TypeHintContext}
- * is wired.
+ * The context is a per-call parameter: the composite passes the intent for the
+ * position, and one instance serves every position. The class does not
+ * implement {@see CompletionSourceInterface} because its behaviour is chosen
+ * by the caller, not by inspection of the request.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class BuiltinTypeCandidates implements CompletionSourceInterface
+final class BuiltinTypeCandidates
 {
     /** Types valid in every type-hint position */
     private const COMMON_TYPES = [
@@ -22,16 +24,14 @@ final class BuiltinTypeCandidates implements CompletionSourceInterface
         'mixed', 'null', 'callable', 'iterable', 'true', 'false',
     ];
 
-    public function __construct(
-        private readonly TypeHintContext $context,
-    ) {
-    }
-
-    public function find(CompletionRequest $request): array
+    /**
+     * @return list<CompletionItem>
+     */
+    public function find(CompletionRequest $request, TypeHintContext $context): array
     {
         $prefix = $request->classification()->prefix;
         $items = [];
-        foreach ($this->types() as $type) {
+        foreach ($this->typesFor($context) as $type) {
             if (PrefixMatcher::matches($type, $prefix)) {
                 $items[] = CompletionItemFactory::forBuiltinType($type);
             }
@@ -53,9 +53,9 @@ final class BuiltinTypeCandidates implements CompletionSourceInterface
      *
      * @return list<string>
      */
-    private function types(): array
+    private function typesFor(TypeHintContext $context): array
     {
-        return match ($this->context) {
+        return match ($context) {
             TypeHintContext::Property => self::COMMON_TYPES,
             TypeHintContext::Parameter => [...self::COMMON_TYPES, 'self', 'parent'],
             TypeHintContext::ReturnType => [...self::COMMON_TYPES, 'void', 'never', 'self', 'static', 'parent'],
