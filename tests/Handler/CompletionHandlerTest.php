@@ -22,9 +22,9 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Handler\CompletionHandler;
@@ -769,7 +769,7 @@ class CompletionHandlerTest extends TestCase
                 return null;
             }
 
-            public function lookupConstant(GlobalConstantName $name): ?ConstantInfo
+            public function lookupConstant(ConstantName $name): ?ConstantInfo
             {
                 return null;
             }

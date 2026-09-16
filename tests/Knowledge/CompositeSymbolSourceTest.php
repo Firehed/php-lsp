@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\SymbolKind;
@@ -110,7 +110,7 @@ final class CompositeSymbolSourceTest extends TestCase
         $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
-        $info = $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\DEBUG'));
+        $info = $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG'));
 
         self::assertNotNull($info, 'the constant is declared, so the lookup must resolve');
         self::assertSame(
@@ -126,7 +126,7 @@ final class CompositeSymbolSourceTest extends TestCase
         $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
-        $info = $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\DEBUG'));
+        $info = $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG'));
 
         self::assertNotNull($info, 'a later backend must answer when an earlier one cannot');
         self::assertSame('vendor.php', $info->file, 'the answer must come from the backend that declares it');
@@ -137,7 +137,7 @@ final class CompositeSymbolSourceTest extends TestCase
         $source = new CompositeSymbolSource([new FakeSymbolBackend(), new FakeSymbolBackend()]);
 
         self::assertNull(
-            $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\ABSENT')),
+            $source->lookupConstant(ConstantName::fromFullyQualified('App\ABSENT')),
             'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
         );
     }
@@ -148,11 +148,11 @@ final class CompositeSymbolSourceTest extends TestCase
         $source = new CompositeSymbolSource([$backend]);
 
         self::assertNotNull(
-            $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\DEBUG')),
+            $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG')),
             'exact case match must resolve',
         );
         self::assertNull(
-            $source->lookupConstant(GlobalConstantName::fromFullyQualified('App\debug')),
+            $source->lookupConstant(ConstantName::fromFullyQualified('App\debug')),
             'constant names are case-sensitive, so a case mismatch must not resolve',
         );
     }

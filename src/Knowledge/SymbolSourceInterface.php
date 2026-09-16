@@ -7,9 +7,9 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
@@ -55,7 +55,7 @@ interface SymbolSourceInterface
      * computed-name `define()` is a runtime call invisible to static parse
      * (Plan 0002 §3).
      */
-    public function lookupConstant(GlobalConstantName $name): ?ConstantInfo;
+    public function lookupConstant(ConstantName $name): ?ConstantInfo;
 
     /**
      * Full metadata for a standalone function by its exact name, or null when
