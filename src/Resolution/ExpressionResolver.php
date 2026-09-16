@@ -8,11 +8,11 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
@@ -498,7 +498,7 @@ final class ExpressionResolver
         $context = NameContextFactory::fromAst($ast, $line);
 
         foreach ($context->candidates($shortName, NameKind::Constant) as $candidate) {
-            $info = $this->symbolSource->lookupConstant(GlobalConstantName::fromFullyQualified($candidate));
+            $info = $this->symbolSource->lookupConstant(ConstantName::fromFullyQualified($candidate));
             if ($info !== null) {
                 return $info;
             }

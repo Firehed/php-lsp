@@ -7,9 +7,9 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
@@ -57,7 +57,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
         return $info;
     }
 
-    public function lookupConstant(GlobalConstantName $name): ?ConstantInfo
+    public function lookupConstant(ConstantName $name): ?ConstantInfo
     {
         $info = $this->lookup($name->qualifiedName, $name->kind());
         assert($info === null || $info instanceof ConstantInfo);

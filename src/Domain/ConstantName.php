@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * The fully-qualified name of a global constant (Plan 0002 §5.3): a
- * {@see QualifiedName} that carries its {@see NameKind} intrinsically, so a lookup
- * taking one needs no separate kind argument. `Foo\BAR` names a different symbol as
- * a constant than as a class, and the type is what says which.
+ * The fully-qualified name of a free-standing (namespace-level) constant
+ * (Plan 0002 §5.3): a {@see QualifiedName} that carries its {@see NameKind}
+ * intrinsically, so a lookup taking one needs no separate kind argument.
+ * `Foo\BAR` names a different symbol as a constant than as a class, and the
+ * type is what says which.
  *
- * Distinct from {@see ClasslikeConstantName}, which is the unqualified name of a class
- * constant member.
+ * Distinct from {@see ClasslikeConstantName}, which is the unqualified name
+ * of a class constant member.
  */
-final readonly class GlobalConstantName
+final readonly class ConstantName
 {
     public function __construct(
         public QualifiedName $qualifiedName,

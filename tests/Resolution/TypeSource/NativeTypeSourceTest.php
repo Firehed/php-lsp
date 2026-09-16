@@ -6,8 +6,8 @@ namespace Firehed\PhpLsp\Tests\Resolution\TypeSource;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyName;
@@ -227,7 +227,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testGlobalConstantUserDeclared(): void
     {
         $type = $this->source->forGlobalConstant(
-            GlobalConstantName::fromFullyQualified('Fixtures\\Helpers\\HELPER_LIMIT'),
+            ConstantName::fromFullyQualified('Fixtures\\Helpers\\HELPER_LIMIT'),
         );
 
         self::assertNull($type, 'untyped global const declaration has no declared type');
@@ -236,7 +236,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testGlobalConstantUnknown(): void
     {
         $type = $this->source->forGlobalConstant(
-            GlobalConstantName::fromFullyQualified('Some\\Never\\Declared\\THING'),
+            ConstantName::fromFullyQualified('Some\\Never\\Declared\\THING'),
         );
 
         self::assertNull($type, 'unknown global constant yields no type');

@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Domain\GlobalConstantName;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(GlobalConstantName::class)]
-final class GlobalConstantNameTest extends TestCase
+#[CoversClass(ConstantName::class)]
+final class ConstantNameTest extends TestCase
 {
     public function testCarriesItsKindIntrinsically(): void
     {
-        $name = GlobalConstantName::fromFullyQualified('Fixtures\Helpers\HELPER_LIMIT');
+        $name = ConstantName::fromFullyQualified('Fixtures\Helpers\HELPER_LIMIT');
 
         self::assertSame(
             NameKind::Constant,
@@ -26,7 +26,7 @@ final class GlobalConstantNameTest extends TestCase
 
     public function testWrapsTheKindNeutralName(): void
     {
-        $name = GlobalConstantName::fromFullyQualified('\Fixtures\Helpers\HELPER_LIMIT');
+        $name = ConstantName::fromFullyQualified('\Fixtures\Helpers\HELPER_LIMIT');
 
         self::assertEquals(
             new QualifiedName('Fixtures\Helpers', 'HELPER_LIMIT'),
@@ -38,7 +38,7 @@ final class GlobalConstantNameTest extends TestCase
 
     public function testGlobalConstantHasNoNamespace(): void
     {
-        $name = GlobalConstantName::fromFullyQualified('PHP_VERSION');
+        $name = ConstantName::fromFullyQualified('PHP_VERSION');
 
         self::assertSame('', $name->qualifiedName->namespace);
         self::assertSame('PHP_VERSION', $name->fullyQualifiedName());
