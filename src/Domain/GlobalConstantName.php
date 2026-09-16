@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Domain;
  * taking one needs no separate kind argument. `Foo\BAR` names a different symbol as
  * a constant than as a class, and the type is what says which.
  *
- * Distinct from {@see ConstantName}, which is the unqualified name of a class
+ * Distinct from {@see ClasslikeConstantName}, which is the unqualified name of a class
  * constant member.
  */
 final readonly class GlobalConstantName

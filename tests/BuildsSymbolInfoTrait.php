@@ -6,9 +6,9 @@ namespace Firehed\PhpLsp\Tests;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -89,7 +89,7 @@ trait BuildsSymbolInfoTrait
     private static function constantInfo(string $shortName, ?string $file = null): ConstantInfo
     {
         return new ConstantInfo(
-            name: new ConstantName($shortName),
+            name: new ClasslikeConstantName($shortName),
             visibility: Visibility::Public,
             isFinal: true,
             type: null,

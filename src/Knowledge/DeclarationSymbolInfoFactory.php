@@ -7,9 +7,9 @@ namespace Firehed\PhpLsp\Knowledge;
 use Attribute;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -143,7 +143,7 @@ final readonly class DeclarationSymbolInfoFactory
         $doc = ($parent instanceof Node ? $parent->getDocComment() : null) ?? $node->getDocComment();
 
         return new ConstantInfo(
-            name: new ConstantName($shortName),
+            name: new ClasslikeConstantName($shortName),
             visibility: Visibility::Public,
             isFinal: true,
             type: null,
@@ -180,7 +180,7 @@ final readonly class DeclarationSymbolInfoFactory
             foreach ($stmt->consts as $const) {
                 $name = $const->name->toString();
                 $constants[$name] = new ConstantInfo(
-                    name: new ConstantName($name),
+                    name: new ClasslikeConstantName($name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
                     type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),

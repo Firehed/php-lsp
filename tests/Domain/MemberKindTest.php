@@ -113,7 +113,7 @@ class MemberKindTest extends TestCase
     private static function createConstantInfo(): ConstantInfo
     {
         return new ConstantInfo(
-            name: new ConstantName('MAX'),
+            name: new ClasslikeConstantName('MAX'),
             visibility: Visibility::Public,
             isFinal: false,
             type: null,

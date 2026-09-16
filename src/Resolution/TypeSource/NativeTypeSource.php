@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution\TypeSource;
 
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -32,7 +32,7 @@ final readonly class NativeTypeSource implements TypeSourceInterface
     ) {
     }
 
-    public function forClassConstant(ClassName $class, ConstantName $constant): ?TypeInterface
+    public function forClassConstant(ClassName $class, ClasslikeConstantName $constant): ?TypeInterface
     {
         return $this->members->findConstant($class, $constant, Visibility::Private)?->type;
     }

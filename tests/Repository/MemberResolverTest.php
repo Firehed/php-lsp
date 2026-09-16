@@ -6,9 +6,9 @@ namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
@@ -70,7 +70,7 @@ final class MemberResolverTest extends TestCase
 
         $result = $resolver->findConstant(
             new ClassName(self::fakeClass()),
-            new ConstantName('FOO'),
+            new ClasslikeConstantName('FOO'),
             Visibility::Public,
         );
 
@@ -378,7 +378,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findConstant($className, new ConstantName('MY_CONST'), Visibility::Public);
+        $result = $resolver->findConstant($className, new ClasslikeConstantName('MY_CONST'), Visibility::Public);
 
         self::assertSame($constInfo, $result);
     }
@@ -403,7 +403,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findConstant($childName, new ConstantName('PARENT_CONST'), Visibility::Public);
+        $result = $resolver->findConstant($childName, new ClasslikeConstantName('PARENT_CONST'), Visibility::Public);
 
         self::assertSame($constInfo, $result);
     }
@@ -432,7 +432,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findConstant($className, new ConstantName('TRAIT_CONST'), Visibility::Public);
+        $result = $resolver->findConstant($className, new ClasslikeConstantName('TRAIT_CONST'), Visibility::Public);
 
         self::assertSame($constInfo, $result);
     }
@@ -447,7 +447,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findConstant($className, new ConstantName('NONEXISTENT'), Visibility::Public);
+        $result = $resolver->findConstant($className, new ClasslikeConstantName('NONEXISTENT'), Visibility::Public);
 
         self::assertNull($result);
     }
@@ -898,7 +898,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findConstant($childName, new ConstantName('NONEXISTENT'), Visibility::Public);
+        $result = $resolver->findConstant($childName, new ClasslikeConstantName('NONEXISTENT'), Visibility::Public);
 
         self::assertNull($result);
     }
@@ -1181,7 +1181,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findConstant($className, new ConstantName('INTERFACE_CONST'), Visibility::Public);
+        $result = $resolver->findConstant($className, new ClasslikeConstantName('INTERFACE_CONST'), Visibility::Public);
 
         self::assertSame($interfaceConst, $result);
     }
@@ -1296,7 +1296,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findConstant($className, new ConstantName('Value'), Visibility::Public);
+        $result = $resolver->findConstant($className, new ClasslikeConstantName('Value'), Visibility::Public);
 
         self::assertNull($result);
     }
@@ -1813,7 +1813,7 @@ final class MemberResolverTest extends TestCase
         ClassName $declaringClass,
     ): ConstantInfo {
         return new ConstantInfo(
-            name: new ConstantName($name),
+            name: new ClasslikeConstantName($name),
             visibility: $visibility,
             isFinal: false,
             type: null,
