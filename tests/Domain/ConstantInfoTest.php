@@ -17,7 +17,7 @@ class ConstantInfoTest extends TestCase
     public function testConstruction(): void
     {
         $constant = new ConstantInfo(
-            name: new ConstantName('MAX_SIZE'),
+            name: new ClasslikeConstantName('MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: true,
             type: new PrimitiveType('int'),
@@ -41,7 +41,7 @@ class ConstantInfoTest extends TestCase
     public function testFormatSimple(): void
     {
         $constant = new ConstantInfo(
-            name: new ConstantName('FOO'),
+            name: new ClasslikeConstantName('FOO'),
             visibility: Visibility::Public,
             isFinal: false,
             type: null,
@@ -57,7 +57,7 @@ class ConstantInfoTest extends TestCase
     public function testFormatWithType(): void
     {
         $constant = new ConstantInfo(
-            name: new ConstantName('MAX_SIZE'),
+            name: new ClasslikeConstantName('MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: false,
             type: new PrimitiveType('int'),
@@ -73,7 +73,7 @@ class ConstantInfoTest extends TestCase
     public function testFormatFinal(): void
     {
         $constant = new ConstantInfo(
-            name: new ConstantName('VERSION'),
+            name: new ClasslikeConstantName('VERSION'),
             visibility: Visibility::Public,
             isFinal: true,
             type: new PrimitiveType('string'),
@@ -89,7 +89,7 @@ class ConstantInfoTest extends TestCase
     public function testFormatPrivate(): void
     {
         $constant = new ConstantInfo(
-            name: new ConstantName('INTERNAL'),
+            name: new ClasslikeConstantName('INTERNAL'),
             visibility: Visibility::Private,
             isFinal: false,
             type: null,
@@ -105,7 +105,7 @@ class ConstantInfoTest extends TestCase
     public function testFormatGlobalConstant(): void
     {
         $constant = new ConstantInfo(
-            name: new ConstantName('DEBUG'),
+            name: new ClasslikeConstantName('DEBUG'),
             visibility: Visibility::Public,
             isFinal: true,
             type: null,
@@ -121,7 +121,7 @@ class ConstantInfoTest extends TestCase
     public function testFormatGlobalConstantWithType(): void
     {
         $constant = new ConstantInfo(
-            name: new ConstantName('MAX_SIZE'),
+            name: new ClasslikeConstantName('MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: true,
             type: new PrimitiveType('int'),
@@ -149,7 +149,7 @@ class ConstantInfoTest extends TestCase
     public function testGetDeclaringClassFailsOnGlobalConstant(): void
     {
         $globalConstant = new ConstantInfo(
-            name: new ConstantName('DEBUG'),
+            name: new ClasslikeConstantName('DEBUG'),
             visibility: Visibility::Public,
             isFinal: true,
             type: null,
@@ -177,7 +177,7 @@ class ConstantInfoTest extends TestCase
         ?string $docblock = null,
     ): ConstantInfo {
         return new ConstantInfo(
-            name: new ConstantName('MAX_SIZE'),
+            name: new ClasslikeConstantName('MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: true,
             type: new PrimitiveType('int'),

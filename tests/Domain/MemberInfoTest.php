@@ -33,7 +33,7 @@ class MemberInfoTest extends TestCase
         $declaringClass = new ClassName(self::class);
 
         $constant = new ConstantInfo(
-            name: new ConstantName('MAX'),
+            name: new ClasslikeConstantName('MAX'),
             visibility: Visibility::Protected,
             isFinal: false,
             type: null,

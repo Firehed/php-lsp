@@ -7,12 +7,12 @@ namespace Firehed\PhpLsp\Domain;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(ConstantName::class)]
-class ConstantNameTest extends TestCase
+#[CoversClass(ClasslikeConstantName::class)]
+class ClasslikeConstantNameTest extends TestCase
 {
     public function testConstruction(): void
     {
-        $name = new ConstantName('MY_CONST');
+        $name = new ClasslikeConstantName('MY_CONST');
         self::assertSame('MY_CONST', $name->name);
     }
 }

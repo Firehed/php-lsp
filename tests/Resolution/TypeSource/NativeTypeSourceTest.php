@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution\TypeSource;
 
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -218,7 +218,7 @@ final class NativeTypeSourceTest extends TestCase
     {
         $type = $this->source->forClassConstant(
             new ClassName('Fixtures\\Domain\\User'),
-            new ConstantName('DEFAULT_ROLE'),
+            new ClasslikeConstantName('DEFAULT_ROLE'),
         );
 
         self::assertNull($type, 'untyped class constants have no declared type');

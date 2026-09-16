@@ -18,7 +18,7 @@ final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInte
     use HasSymbolLocationTrait;
 
     public function __construct(
-        public ConstantName $name,
+        public ClasslikeConstantName $name,
         public Visibility $visibility,
         public bool $isFinal,
         public ?TypeInterface $type,
@@ -78,7 +78,7 @@ final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInte
         return MemberKind::Constant;
     }
 
-    public function getName(): ConstantName
+    public function getName(): ClasslikeConstantName
     {
         return $this->name;
     }

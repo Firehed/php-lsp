@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -479,7 +479,7 @@ final class ExpressionResolver
         }
         $constant = $this->memberResolver->findConstant(
             $className,
-            new ConstantName($expr->name->toString()),
+            new ClasslikeConstantName($expr->name->toString()),
             Visibility::Private,
         );
         return $constant;

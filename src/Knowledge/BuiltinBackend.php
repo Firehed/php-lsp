@@ -8,9 +8,9 @@ use Attribute;
 use BackedEnum;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -155,7 +155,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         }
 
         return new ConstantInfo(
-            name: new ConstantName($name->shortName),
+            name: new ClasslikeConstantName($name->shortName),
             visibility: Visibility::Public,
             isFinal: true,
             type: null,
@@ -201,7 +201,7 @@ final class BuiltinBackend implements SymbolBackendInterface
 
             $name = $constant->getName();
             $constants[$name] = new ConstantInfo(
-                name: new ConstantName($name),
+                name: new ClasslikeConstantName($name),
                 // No built-in class ships non-public constants; hard-code Public.
                 visibility: Visibility::Public,
                 isFinal: $constant->isFinal(),

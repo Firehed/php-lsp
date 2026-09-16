@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Repository;
 
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClassName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
@@ -28,7 +28,7 @@ interface MemberResolverInterface
 {
     public function findConstant(
         ClassName $class,
-        ConstantName $constant,
+        ClasslikeConstantName $constant,
         Visibility $minVisibility,
     ): ?ConstantInfo;
 
