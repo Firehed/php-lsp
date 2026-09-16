@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -16,7 +16,7 @@ final class TraitAliasTest extends TestCase
     public function testCarriesEveryFieldItIsConstructedWith(): void
     {
         $alias = new TraitAlias(
-            trait: new ClassName('Some\\Trait'),
+            trait: new ClasslikeName('Some\\Trait'),
             method: 'original',
             newName: 'renamed',
             newVisibility: Visibility::Protected,

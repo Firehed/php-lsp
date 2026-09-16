@@ -50,7 +50,7 @@ final class TypeFactory
                 $fqn = $resolvedName instanceof Name
                     ? $resolvedName->toString()
                     : $name;
-                return new ClassName($fqn);
+                return new ClasslikeName($fqn);
             }
 
             if (in_array($name, PrimitiveType::NAMES, true)) {
@@ -85,9 +85,9 @@ final class TypeFactory
         // @codeCoverageIgnoreEnd
     }
 
-    public static function className(string $fqn): ClassName
+    public static function className(string $fqn): ClasslikeName
     {
-        return new ClassName($fqn);
+        return new ClasslikeName($fqn);
     }
 
     public static function primitive(string $name): PrimitiveType
@@ -126,7 +126,7 @@ final class TypeFactory
                 return $primitive;
             }
 
-            $className = new ClassName($name);
+            $className = new ClasslikeName($name);
             if ($type->allowsNull()) {
                 return new UnionType([$className, new PrimitiveType('null')]);
             }
@@ -173,9 +173,9 @@ final class TypeFactory
         }
 
         if ($preserveLateBinding) {
-            return new LateStaticType($keyword, new ClassName($context));
+            return new LateStaticType($keyword, new ClasslikeName($context));
         }
 
-        return new ClassName($context);
+        return new ClasslikeName($context);
     }
 }

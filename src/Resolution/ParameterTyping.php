@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\TypeFactory;
@@ -34,7 +34,7 @@ final class ParameterTyping
         Param $param,
         string $name,
         Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction $enclosingScope,
-        ?ClassName $enclosingClass,
+        ?ClasslikeName $enclosingClass,
         ?string $selfContext,
         ?string $parentContext,
     ): ?TypeInterface {

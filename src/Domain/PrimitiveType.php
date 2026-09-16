@@ -43,9 +43,9 @@ final readonly class PrimitiveType implements TypeInterface
     }
 
     /**
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
-    public function getResolvableClassNames(): array
+    public function getResolvableClasslikeNames(): array
     {
         return [];
     }

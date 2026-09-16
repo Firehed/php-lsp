@@ -7,9 +7,9 @@ namespace Firehed\PhpLsp\Domain;
 interface TypeInterface extends FormattableInterface
 {
     /**
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
-    public function getResolvableClassNames(): array;
+    public function getResolvableClasslikeNames(): array;
 
     public function isNullable(): bool;
 

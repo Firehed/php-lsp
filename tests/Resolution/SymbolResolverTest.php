@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Exception;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -102,7 +102,7 @@ final class SymbolResolverTest extends TestCase
         yield '(new $var)->foo — class node is not a Name' => ['variable_new'];
         yield '(new class {})->foo — class node is Stmt\\Class_' => ['anon_new'];
         yield '(new NoSuchClass)->foo — name resolves but class is not indexed' => ['unknown_new'];
-        yield '(new self)->foo at global scope — resolveClassNameInContext returns null'
+        yield '(new self)->foo at global scope — resolveClasslikeNameInContext returns null'
             => ['global_self_new'];
     }
 
@@ -157,7 +157,7 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('create', $result->format());
     }
 
-    public function testResolvesClassName(): void
+    public function testResolvesClasslikeName(): void
     {
         $this->openFixture('src/Domain/User.php');
         $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'class_instantiation');
@@ -576,7 +576,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClassName('Fixtures\\Domain\\User');
+        $type = new ClasslikeName('Fixtures\\Domain\\User');
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
         self::assertNotEmpty($members, 'Should return members for User class');
@@ -594,7 +594,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClassName('Fixtures\\Domain\\User');
+        $type = new ClasslikeName('Fixtures\\Domain\\User');
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
         self::assertNotEmpty($members, 'Should return static members for User class');
@@ -624,7 +624,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClassName('Fixtures\\Enum\\Status');
+        $type = new ClasslikeName('Fixtures\\Enum\\Status');
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
         $hasEnumCase = false;
@@ -645,8 +645,8 @@ final class SymbolResolverTest extends TestCase
         assert($document !== null);
 
         $type = new IntersectionType([
-                new ClassName('Fixtures\\Domain\\Entity'),
-                new ClassName('Fixtures\\Domain\\Person'),
+                new ClasslikeName('Fixtures\\Domain\\Entity'),
+                new ClasslikeName('Fixtures\\Domain\\Person'),
         ]);
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
@@ -1585,31 +1585,31 @@ final class SymbolResolverTest extends TestCase
     public function testIsInstantiableReturnsFalseForAbstractClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');
-        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\AbstractBase')));
+        self::assertFalse($this->resolver->isInstantiable(new ClasslikeName('Fixtures\\Utility\\AbstractBase')));
     }
 
     public function testIsInstantiableReturnsTrueForConcreteClass(): void
     {
         $this->openFixture('src/Utility/ClassModifiers.php');
-        self::assertTrue($this->resolver->isInstantiable(new ClassName('Fixtures\\Utility\\SealedClass')));
+        self::assertTrue($this->resolver->isInstantiable(new ClasslikeName('Fixtures\\Utility\\SealedClass')));
     }
 
     public function testIsInstantiableReturnsFalseForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Domain\\Entity')));
+        self::assertFalse($this->resolver->isInstantiable(new ClasslikeName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsInstantiableReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        self::assertFalse($this->resolver->isInstantiable(new ClassName('Fixtures\\Enum\\Status')));
+        self::assertFalse($this->resolver->isInstantiable(new ClasslikeName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsInstantiableReturnsTrueForUnknownClass(): void
     {
         // Unknown classes are assumed instantiable (optimistic filtering)
-        self::assertTrue($this->resolver->isInstantiable(new ClassName('NonExistent\\Unknown')));
+        self::assertTrue($this->resolver->isInstantiable(new ClasslikeName('NonExistent\\Unknown')));
     }
 
     public function testIsClassLikeReturnsTrueForEveryClassLikeKind(): void
@@ -1619,10 +1619,10 @@ final class SymbolResolverTest extends TestCase
         $this->openFixture('src/Traits/SingletonTrait.php');
         $this->openFixture('src/Enum/Status.php');
 
-        $class = new ClassName('Fixtures\\Domain\\User');
-        $interface = new ClassName('Fixtures\\Domain\\Entity');
-        $trait = new ClassName('Fixtures\\Traits\\SingletonTrait');
-        $enum = new ClassName('Fixtures\\Enum\\Status');
+        $class = new ClasslikeName('Fixtures\\Domain\\User');
+        $interface = new ClasslikeName('Fixtures\\Domain\\Entity');
+        $trait = new ClasslikeName('Fixtures\\Traits\\SingletonTrait');
+        $enum = new ClasslikeName('Fixtures\\Enum\\Status');
 
         self::assertTrue($this->resolver->isClassLike($class), 'a class is a class-like');
         self::assertTrue($this->resolver->isClassLike($interface), 'an interface is a class-like');
@@ -1635,7 +1635,7 @@ final class SymbolResolverTest extends TestCase
         // A catalog directory listing reports every .php file as a coarse
         // class-like without parsing it, so a functions.php arrives as a phantom
         // name that resolves to nothing. It must not be treated as a class-like.
-        $unknown = new ClassName('NonExistent\\Unknown');
+        $unknown = new ClasslikeName('NonExistent\\Unknown');
         self::assertFalse(
             $this->resolver->isClassLike($unknown),
             'a name with no class-like behind it is not a class-like',
@@ -1645,90 +1645,90 @@ final class SymbolResolverTest extends TestCase
     public function testIsValidTypeHintReturnsTrueForClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Domain\\User')));
+        self::assertTrue($this->resolver->isValidTypeHint(new ClasslikeName('Fixtures\\Domain\\User')));
     }
 
     public function testIsValidTypeHintReturnsTrueForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Domain\\Entity')));
+        self::assertTrue($this->resolver->isValidTypeHint(new ClasslikeName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsValidTypeHintReturnsTrueForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Enum\\Status')));
+        self::assertTrue($this->resolver->isValidTypeHint(new ClasslikeName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsValidTypeHintReturnsFalseForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        self::assertFalse($this->resolver->isValidTypeHint(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+        self::assertFalse($this->resolver->isValidTypeHint(new ClasslikeName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsValidTypeHintReturnsTrueForUnknownClass(): void
     {
-        self::assertTrue($this->resolver->isValidTypeHint(new ClassName('NonExistent\\Unknown')));
+        self::assertTrue($this->resolver->isValidTypeHint(new ClasslikeName('NonExistent\\Unknown')));
     }
 
     public function testIsInterfaceReturnsTrueForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        self::assertTrue($this->resolver->isInterface(new ClassName('Fixtures\\Domain\\Entity')));
+        self::assertTrue($this->resolver->isInterface(new ClasslikeName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsInterfaceReturnsFalseForClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Domain\\User')));
+        self::assertFalse($this->resolver->isInterface(new ClasslikeName('Fixtures\\Domain\\User')));
     }
 
     public function testIsInterfaceReturnsFalseForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+        self::assertFalse($this->resolver->isInterface(new ClasslikeName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsInterfaceReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        self::assertFalse($this->resolver->isInterface(new ClassName('Fixtures\\Enum\\Status')));
+        self::assertFalse($this->resolver->isInterface(new ClasslikeName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsInterfaceReturnsFalseForUnknownClass(): void
     {
         // Unlike the optimistic predicates, an implements list must only offer
         // confirmed interfaces, so an unresolvable name is excluded.
-        self::assertFalse($this->resolver->isInterface(new ClassName('NonExistent\\Unknown')));
+        self::assertFalse($this->resolver->isInterface(new ClasslikeName('NonExistent\\Unknown')));
     }
 
     public function testIsTraitReturnsTrueForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        self::assertTrue($this->resolver->isTrait(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+        self::assertTrue($this->resolver->isTrait(new ClasslikeName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsTraitReturnsFalseForClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Domain\\User')));
+        self::assertFalse($this->resolver->isTrait(new ClasslikeName('Fixtures\\Domain\\User')));
     }
 
     public function testIsTraitReturnsFalseForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Domain\\Entity')));
+        self::assertFalse($this->resolver->isTrait(new ClasslikeName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsTraitReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        self::assertFalse($this->resolver->isTrait(new ClassName('Fixtures\\Enum\\Status')));
+        self::assertFalse($this->resolver->isTrait(new ClasslikeName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsTraitReturnsFalseForUnknownClass(): void
     {
-        self::assertFalse($this->resolver->isTrait(new ClassName('NonExistent\\Unknown')));
+        self::assertFalse($this->resolver->isTrait(new ClasslikeName('NonExistent\\Unknown')));
     }
 
     #[DataProvider('extendableClassProvider')]
@@ -1737,7 +1737,7 @@ final class SymbolResolverTest extends TestCase
         if ($fixture !== null) {
             $this->openFixture($fixture);
         }
-        self::assertSame($expected, $this->resolver->isExtendableClass(new ClassName($fqcn)), $message);
+        self::assertSame($expected, $this->resolver->isExtendableClass(new ClasslikeName($fqcn)), $message);
     }
 
     /**
@@ -1802,7 +1802,7 @@ final class SymbolResolverTest extends TestCase
         if ($fixture !== null) {
             $this->openFixture($fixture);
         }
-        self::assertSame($expected, $this->resolver->isThrowable(new ClassName($fqcn)), $message);
+        self::assertSame($expected, $this->resolver->isThrowable(new ClasslikeName($fqcn)), $message);
     }
 
     /**
@@ -1876,38 +1876,38 @@ final class SymbolResolverTest extends TestCase
     public function testIsAttributeReturnsTrueForAttributeClass(): void
     {
         $this->openFixture('src/Attributes/Route.php');
-        self::assertTrue($this->resolver->isAttribute(new ClassName('Fixtures\\Attributes\\Route')));
+        self::assertTrue($this->resolver->isAttribute(new ClasslikeName('Fixtures\\Attributes\\Route')));
     }
 
     public function testIsAttributeReturnsFalseForPlainClass(): void
     {
         $this->openFixture('src/Domain/User.php');
-        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Domain\\User')));
+        self::assertFalse($this->resolver->isAttribute(new ClasslikeName('Fixtures\\Domain\\User')));
     }
 
     public function testIsAttributeReturnsFalseForInterface(): void
     {
         $this->openFixture('src/Domain/Entity.php');
-        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Domain\\Entity')));
+        self::assertFalse($this->resolver->isAttribute(new ClasslikeName('Fixtures\\Domain\\Entity')));
     }
 
     public function testIsAttributeReturnsFalseForTrait(): void
     {
         $this->openFixture('src/Traits/SingletonTrait.php');
-        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Traits\\SingletonTrait')));
+        self::assertFalse($this->resolver->isAttribute(new ClasslikeName('Fixtures\\Traits\\SingletonTrait')));
     }
 
     public function testIsAttributeReturnsFalseForEnum(): void
     {
         $this->openFixture('src/Enum/Status.php');
-        self::assertFalse($this->resolver->isAttribute(new ClassName('Fixtures\\Enum\\Status')));
+        self::assertFalse($this->resolver->isAttribute(new ClasslikeName('Fixtures\\Enum\\Status')));
     }
 
     public function testIsAttributeReturnsFalseForUnknownClass(): void
     {
         // Like isInterface, an attribute position must only offer confirmed
         // attributes, so an unresolvable name is excluded.
-        self::assertFalse($this->resolver->isAttribute(new ClassName('NonExistent\\Unknown')));
+        self::assertFalse($this->resolver->isAttribute(new ClasslikeName('NonExistent\\Unknown')));
     }
 
     public function testGetCallContextForNamedArguments(): void
@@ -2199,7 +2199,7 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($context, 'Unresolved class should return null context');
     }
 
-    public function testGetCallContextMultiPartClassName(): void
+    public function testGetCallContextMultiPartClasslikeName(): void
     {
         $cursor = $this->openFixtureAtCursor('NoNamespace/NoUseStatement.php', 'multi_part_class');
         $document = $this->documents->get($cursor['uri']);
@@ -2313,7 +2313,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClassName('Fixtures\\Repository\\ClassInfoPatterns');
+        $type = new ClasslikeName('Fixtures\\Repository\\ClassInfoPatterns');
 
         // When accessed from outside (Public visibility), only public constants should be visible
         $members = $this->resolver->getAccessibleMembers(

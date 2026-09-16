@@ -7,10 +7,10 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * A fully-qualified name intended to be a class-like. Not a `class-string`:
  * text-derived names (RFC 1 §5.3), fixtures, and forward references all produce a
- * `ClassName` before any lookup, so the runtime existence of the class is a
+ * `ClasslikeName` before any lookup, so the runtime existence of the class is a
  * separate question the resolution tier answers.
  */
-final readonly class ClassName implements TypeInterface
+final readonly class ClasslikeName implements TypeInterface
 {
     /**
      * @param list<TypeInterface> $typeArguments
@@ -27,9 +27,9 @@ final readonly class ClassName implements TypeInterface
     }
 
     /**
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
-    public function getResolvableClassNames(): array
+    public function getResolvableClasslikeNames(): array
     {
         return [$this];
     }
@@ -56,8 +56,8 @@ final readonly class ClassName implements TypeInterface
         if (!$other instanceof self) {
             return false;
         }
-        $sameFqn = NameKind::ClassLike->normalize(QualifiedName::fromClassName($this))
-            === NameKind::ClassLike->normalize(QualifiedName::fromClassName($other));
+        $sameFqn = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($this))
+            === NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($other));
         if (!$sameFqn) {
             return false;
         }

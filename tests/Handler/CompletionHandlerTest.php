@@ -20,7 +20,7 @@ use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -764,7 +764,7 @@ class CompletionHandlerTest extends TestCase
                     : new NamespaceContents([], []);
             }
 
-            public function lookupClassLike(ClassName $name): ?ClassInfo
+            public function lookupClassLike(ClasslikeName $name): ?ClassInfo
             {
                 return null;
             }
@@ -1014,7 +1014,7 @@ class CompletionHandlerTest extends TestCase
         );
     }
 
-    public function testStaticCompletionResolvesImportedClassName(): void
+    public function testStaticCompletionResolvesImportedClasslikeName(): void
     {
         $cursor = $this->openFixtureAtCursor('Namespacing/MultiNamespaceImports.php', 'imported_static');
 
@@ -2118,7 +2118,7 @@ class CompletionHandlerTest extends TestCase
         self::assertContains('$this', $labels);
     }
 
-    public function testVariableCompletionThisShowsClassName(): void
+    public function testVariableCompletionThisShowsClasslikeName(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'this_prefix');
 

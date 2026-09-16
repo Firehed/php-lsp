@@ -106,7 +106,7 @@ final class CompletionClassifier
             return new CompletionClassification(CompletionKind::Variable, $matches[1]);
         }
 
-        // new ClassName completion. The prefix keeps a leading `\` and embedded
+        // new ClasslikeName completion. The prefix keeps a leading `\` and embedded
         // separators so a qualified/navigated name (`new \Ps`, `new Psr\Ht`) reaches
         // the handler intact rather than being truncated to its last segment.
         if (preg_match('/new\s+' . self::QUALIFIED_TAIL . '$/', $textBeforeCursor, $matches) === 1) {

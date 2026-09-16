@@ -58,7 +58,7 @@ final class LateBindingKeywordTest extends TestCase
         );
     }
 
-    public function testResolveInSelfReturnsEnclosingClassName(): void
+    public function testResolveInSelfReturnsEnclosingClasslikeName(): void
     {
         $class = new Stmt\Class_('Foo');
         $class->namespacedName = new Name('App\\Foo');

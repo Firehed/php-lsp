@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -49,9 +49,9 @@ final class CompositeSymbolSource implements SymbolSourceInterface
         ));
     }
 
-    public function lookupClassLike(ClassName $name): ?ClassInfo
+    public function lookupClassLike(ClasslikeName $name): ?ClassInfo
     {
-        $info = $this->lookup(QualifiedName::fromClassName($name), NameKind::ClassLike);
+        $info = $this->lookup(QualifiedName::fromClasslikeName($name), NameKind::ClassLike);
         assert($info === null || $info instanceof ClassInfo);
 
         return $info;

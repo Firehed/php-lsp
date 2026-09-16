@@ -17,14 +17,14 @@ class ClassInfoTest extends TestCase
     public function testConstruction(): void
     {
         $class = new ClassInfo(
-            name: new ClassName(ClassInfo::class),
+            name: new ClasslikeName(ClassInfo::class),
             kind: ClassKind::Class_,
             isAbstract: false,
             isFinal: true,
             isReadonly: true,
             isAttribute: false,
-            parent: new ClassName(TestCase::class),
-            interfaces: [new ClassName(\Stringable::class)],
+            parent: new ClasslikeName(TestCase::class),
+            interfaces: [new ClasslikeName(\Stringable::class)],
             traits: [],
             methods: [],
             properties: [],
@@ -56,7 +56,7 @@ class ClassInfoTest extends TestCase
     public function testConstructionWithNullParent(): void
     {
         $class = new ClassInfo(
-            name: new ClassName(\Stringable::class),
+            name: new ClasslikeName(\Stringable::class),
             kind: ClassKind::Interface_,
             isAbstract: false,
             isFinal: false,
@@ -151,7 +151,7 @@ class ClassInfoTest extends TestCase
         $class = $this->createClassInfo(
             name: \Exception::class,
             kind: ClassKind::Class_,
-            parent: new ClassName(\Error::class),
+            parent: new ClasslikeName(\Error::class),
         );
 
         self::assertSame('class Exception extends Error', $class->format());
@@ -163,8 +163,8 @@ class ClassInfoTest extends TestCase
             name: \stdClass::class,
             kind: ClassKind::Class_,
             interfaces: [
-                new ClassName(\JsonSerializable::class),
-                new ClassName(\Stringable::class),
+                new ClasslikeName(\JsonSerializable::class),
+                new ClasslikeName(\Stringable::class),
             ],
         );
 
@@ -177,8 +177,8 @@ class ClassInfoTest extends TestCase
             name: \Exception::class,
             kind: ClassKind::Class_,
             isFinal: true,
-            parent: new ClassName(\Error::class),
-            interfaces: [new ClassName(\JsonSerializable::class)],
+            parent: new ClasslikeName(\Error::class),
+            interfaces: [new ClasslikeName(\JsonSerializable::class)],
         );
 
         self::assertSame('final class Exception extends Error implements JsonSerializable', $class->format());
@@ -200,8 +200,8 @@ class ClassInfoTest extends TestCase
             name: \Stringable::class,
             kind: ClassKind::Interface_,
             interfaces: [
-                new ClassName(\JsonSerializable::class),
-                new ClassName(\Countable::class),
+                new ClasslikeName(\JsonSerializable::class),
+                new ClasslikeName(\Countable::class),
             ],
         );
 
@@ -228,7 +228,7 @@ class ClassInfoTest extends TestCase
         self::assertSame('enum ClassKind', $class->format());
     }
 
-    public function testGetTypeReturnsClassName(): void
+    public function testGetTypeReturnsClasslikeName(): void
     {
         $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_);
 
@@ -248,7 +248,7 @@ class ClassInfoTest extends TestCase
 
     /**
      * @param class-string $name
-     * @param list<ClassName> $interfaces
+     * @param list<ClasslikeName> $interfaces
      */
     private function createClassInfo(
         string $name,
@@ -256,14 +256,14 @@ class ClassInfoTest extends TestCase
         bool $isAbstract = false,
         bool $isFinal = false,
         bool $isReadonly = false,
-        ?ClassName $parent = null,
+        ?ClasslikeName $parent = null,
         array $interfaces = [],
         ?string $file = null,
         ?int $line = null,
         ?string $docblock = null,
     ): ClassInfo {
         return new ClassInfo(
-            name: new ClassName($name),
+            name: new ClasslikeName($name),
             kind: $kind,
             isAbstract: $isAbstract,
             isFinal: $isFinal,

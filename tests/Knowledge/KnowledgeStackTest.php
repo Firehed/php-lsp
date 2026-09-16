@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -219,8 +219,8 @@ final class KnowledgeStackTest extends TestCase
         );
     }
 
-    private static function className(string $fqn): ClassName
+    private static function className(string $fqn): ClasslikeName
     {
-        return new ClassName($fqn);
+        return new ClasslikeName($fqn);
     }
 }

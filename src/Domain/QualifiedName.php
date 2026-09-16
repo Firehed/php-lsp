@@ -20,7 +20,7 @@ final readonly class QualifiedName
     ) {
     }
 
-    public static function fromClassName(ClassName $name): self
+    public static function fromClasslikeName(ClasslikeName $name): self
     {
         return self::fromFullyQualified($name->fqn);
     }

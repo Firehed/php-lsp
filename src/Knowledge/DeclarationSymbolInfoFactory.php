@@ -8,7 +8,7 @@ use Attribute;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
@@ -101,7 +101,7 @@ final readonly class DeclarationSymbolInfoFactory
 
     private function classInfoFromNode(Stmt\ClassLike $node, string $uri): ClassInfo
     {
-        $className = $this->resolveClassName($node);
+        $className = $this->resolveClasslikeName($node);
         $filePath = FileUri::toPath($uri);
         $traitUse = $this->extractTraitUse($node);
 
@@ -167,7 +167,7 @@ final readonly class DeclarationSymbolInfoFactory
     /**
      * @return array<string, ConstantInfo>
      */
-    private function extractConstants(Stmt\ClassLike $node, ClassName $className, string $filePath): array
+    private function extractConstants(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
         $constants = [];
         $parentClass = $this->resolveParent($node);
@@ -198,7 +198,7 @@ final readonly class DeclarationSymbolInfoFactory
     /**
      * @return array<string, EnumCaseInfo>
      */
-    private function extractEnumCases(Stmt\ClassLike $node, ClassName $className, string $filePath): array
+    private function extractEnumCases(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
         if (!$node instanceof Stmt\Enum_) {
             return [];
@@ -238,7 +238,7 @@ final readonly class DeclarationSymbolInfoFactory
     }
 
     /**
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
     private function extractInterfaces(Stmt\ClassLike $node): array
     {
@@ -246,13 +246,13 @@ final readonly class DeclarationSymbolInfoFactory
 
         if ($node instanceof Stmt\Class_ || $node instanceof Stmt\Enum_) {
             foreach ($node->implements as $interface) {
-                $interfaces[] = $this->resolveNameToClassName($interface);
+                $interfaces[] = $this->resolveNameToClasslikeName($interface);
             }
         }
 
         if ($node instanceof Stmt\Interface_) {
             foreach ($node->extends as $interface) {
-                $interfaces[] = $this->resolveNameToClassName($interface);
+                $interfaces[] = $this->resolveNameToClasslikeName($interface);
             }
         }
 
@@ -266,7 +266,7 @@ final readonly class DeclarationSymbolInfoFactory
     /**
      * @return array<string, MethodInfo>
      */
-    private function extractMethods(Stmt\ClassLike $node, ClassName $className, string $filePath): array
+    private function extractMethods(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
         $methods = [];
         $parentClass = $this->resolveParent($node);
@@ -308,7 +308,7 @@ final readonly class DeclarationSymbolInfoFactory
      * @param array<Param> $params
      * @return list<ParameterInfo>
      */
-    private function extractParameters(array $params, ClassName $className, ?ClassName $parentClass): array
+    private function extractParameters(array $params, ClasslikeName $className, ?ClasslikeName $parentClass): array
     {
         $result = [];
         foreach ($params as $position => $param) {
@@ -323,7 +323,7 @@ final readonly class DeclarationSymbolInfoFactory
     /**
      * @return array<string, PropertyInfo>
      */
-    private function extractProperties(Stmt\ClassLike $node, ClassName $className, string $filePath): array
+    private function extractProperties(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
         $properties = [];
 
@@ -381,7 +381,7 @@ final readonly class DeclarationSymbolInfoFactory
     }
 
     /**
-     * @return array{traits: list<ClassName>, exclusions: array<string, list<string>>, aliases: list<TraitAlias>}
+     * @return array{traits: list<ClasslikeName>, exclusions: array<string, list<string>>, aliases: list<TraitAlias>}
      */
     private function extractTraitUse(Stmt\ClassLike $node): array
     {
@@ -394,20 +394,20 @@ final readonly class DeclarationSymbolInfoFactory
                 continue;
             }
             foreach ($stmt->traits as $trait) {
-                $traits[] = $this->resolveNameToClassName($trait);
+                $traits[] = $this->resolveNameToClasslikeName($trait);
             }
             foreach ($stmt->adaptations as $adaptation) {
                 if ($adaptation instanceof Stmt\TraitUseAdaptation\Precedence) {
                     $method = $adaptation->method->toString();
                     foreach ($adaptation->insteadof as $loser) {
-                        $exclusions[$this->resolveNameToClassName($loser)->fqn][] = $method;
+                        $exclusions[$this->resolveNameToClasslikeName($loser)->fqn][] = $method;
                     }
                     continue;
                 }
                 if ($adaptation instanceof Stmt\TraitUseAdaptation\Alias) {
                     $aliases[] = new TraitAlias(
                         trait: $adaptation->trait !== null
-                            ? $this->resolveNameToClassName($adaptation->trait)
+                            ? $this->resolveNameToClasslikeName($adaptation->trait)
                             : null,
                         method: $adaptation->method->toString(),
                         newName: $adaptation->newName?->toString(),
@@ -463,7 +463,7 @@ final readonly class DeclarationSymbolInfoFactory
 
         foreach ($node->attrGroups as $group) {
             foreach ($group->attrs as $attr) {
-                if ($this->resolveNameToClassName($attr->name)->fqn === Attribute::class) {
+                if ($this->resolveNameToClasslikeName($attr->name)->fqn === Attribute::class) {
                     return true;
                 }
             }
@@ -504,7 +504,7 @@ final readonly class DeclarationSymbolInfoFactory
         );
     }
 
-    private function resolveClassName(Stmt\ClassLike $node): ClassName
+    private function resolveClasslikeName(Stmt\ClassLike $node): ClasslikeName
     {
         $fqn = LateBindingKeyword::Self->resolveIn($node);
         // @codeCoverageIgnoreStart
@@ -515,7 +515,7 @@ final readonly class DeclarationSymbolInfoFactory
         return TypeFactory::className($fqn);
     }
 
-    private function resolveNameToClassName(Node\Name $name): ClassName
+    private function resolveNameToClasslikeName(Node\Name $name): ClasslikeName
     {
         // TreeAnnotator's NameResolver replaces class-context names with
         // FullyQualified in-place (default replaceNodes mode), so a plain
@@ -525,13 +525,13 @@ final readonly class DeclarationSymbolInfoFactory
         return TypeFactory::className($fqn);
     }
 
-    private function resolveParent(Stmt\ClassLike $node): ?ClassName
+    private function resolveParent(Stmt\ClassLike $node): ?ClasslikeName
     {
         if (!$node instanceof Stmt\Class_ || $node->extends === null) {
             return null;
         }
 
-        return $this->resolveNameToClassName($node->extends);
+        return $this->resolveNameToClasslikeName($node->extends);
     }
 
     private function visibilityFromFlags(int $flags): Visibility

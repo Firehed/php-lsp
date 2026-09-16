@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\TypeInterface;
@@ -121,7 +121,7 @@ final class MemberAccessDetector
      *
      * @param array<Stmt> $ast
      */
-    private static function vantageFor(Node $node, array $ast): ?ClassName
+    private static function vantageFor(Node $node, array $ast): ?ClasslikeName
     {
         $classLike = Scope::atOffset($ast, $node->getStartFilePos())->getEnclosingClassLike();
         $enclosingName = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
@@ -143,9 +143,9 @@ final class MemberAccessDetector
      * restrictive visibility across the constituents — a member must be
      * visible on every possible runtime class to be safe to offer.
      */
-    private function visibilityForReceiver(?ClassName $vantage, ?TypeInterface $type): ?Visibility
+    private function visibilityForReceiver(?ClasslikeName $vantage, ?TypeInterface $type): ?Visibility
     {
-        $classes = ExpressionResolver::receiverClassNames($type);
+        $classes = ExpressionResolver::receiverClasslikeNames($type);
         if ($classes === []) {
             return null;
         }
@@ -169,7 +169,7 @@ final class MemberAccessDetector
      * through this function, so the branches cannot disagree on which members
      * a position may see.
      */
-    private function visibilityBetween(?ClassName $vantage, ClassName $target): Visibility
+    private function visibilityBetween(?ClasslikeName $vantage, ClasslikeName $target): Visibility
     {
         if ($vantage === null) {
             return Visibility::Public;
@@ -204,11 +204,11 @@ final class MemberAccessDetector
         $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
 
         if ($keyword === LateBindingKeyword::Parent) {
-            $parentClassName = $keyword->resolveIn($enclosingClassLike);
-            if ($parentClassName === null) {
+            $parentClasslikeName = $keyword->resolveIn($enclosingClassLike);
+            if ($parentClasslikeName === null) {
                 return null;
             }
-            $target = TypeFactory::className($parentClassName);
+            $target = TypeFactory::className($parentClasslikeName);
             return MemberAccessContext::forParent(
                 $target,
                 $this->visibilityBetween($vantage, $target),

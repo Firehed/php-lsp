@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -40,7 +40,7 @@ interface SymbolSourceInterface
      * Full metadata for a class-like by its exact name, or null when nothing the
      * source can reach declares it (RFC 1 §5.3: absence is a bare null).
      */
-    public function lookupClassLike(ClassName $name): ?ClassInfo;
+    public function lookupClassLike(ClasslikeName $name): ?ClassInfo;
 
     /**
      * Full metadata for a global constant by its exact name, or null when

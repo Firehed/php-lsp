@@ -86,7 +86,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
      */
     private static function synthesizeMemberAccess(string $lineText, int $lineStart, int $offset, int $line): ?Node
     {
-        // Static: ClassName::prefix, excluding $var::.
+        // Static: ClasslikeName::prefix, excluding $var::.
         if (
             preg_match_all(
                 '/(?<!\$)([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)(::)(\w*)/',
@@ -487,7 +487,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
      */
     private static function buildStatic(array $m, int $matchStart, int $line, int $lineStart): StaticPropertyFetch
     {
-        // The regex captured `ClassName::prefix`. Each `*Start`/`*End` names the
+        // The regex captured `ClasslikeName::prefix`. Each `*Start`/`*End` names the
         // absolute file offset of one segment: the class name, the `::` pair,
         // and the (possibly empty) identifier prefix after it. `endFilePos` in
         // php-parser is inclusive — the offset of the last byte — so the `- 1`

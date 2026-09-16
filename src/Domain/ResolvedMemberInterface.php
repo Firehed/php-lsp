@@ -12,7 +12,7 @@ interface ResolvedMemberInterface extends ResolvedSymbolInterface
     /**
      * Returns the class that declares this member.
      */
-    public function getDeclaringClass(): ClassName;
+    public function getDeclaringClass(): ClasslikeName;
 
     public function getMemberKind(): MemberKind;
 

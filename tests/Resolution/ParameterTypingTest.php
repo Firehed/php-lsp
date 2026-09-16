@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Resolution\ParameterTyping;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -40,7 +40,7 @@ final class ParameterTypingTest extends TestCase
             $param,
             'x',
             $method,
-            new ClassName('C'),
+            new ClasslikeName('C'),
             'C',
             null,
         );

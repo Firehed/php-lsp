@@ -87,7 +87,7 @@ final class ScopeFinder
      *
      * @return class-string
      */
-    public static function resolveClassName(Name $name): string
+    public static function resolveClasslikeName(Name $name): string
     {
         $resolvedName = $name->getAttribute('resolvedName');
         /** @var class-string */
@@ -104,14 +104,14 @@ final class ScopeFinder
      *
      * @return ?class-string
      */
-    public static function resolveClassNameInContext(Name $name, Node $contextNode): ?string
+    public static function resolveClasslikeNameInContext(Name $name, Node $contextNode): ?string
     {
         $keyword = LateBindingKeyword::tryFromName($name->toString());
         if ($keyword !== null) {
             return $keyword->resolveIn(self::findEnclosingClassNode($contextNode));
         }
 
-        return self::resolveClassName($name);
+        return self::resolveClasslikeName($name);
     }
 
     /**
@@ -132,7 +132,7 @@ final class ScopeFinder
      *
      * @return ?class-string
      */
-    public static function findEnclosingClassName(Node $node): ?string
+    public static function findEnclosingClasslikeName(Node $node): ?string
     {
         return LateBindingKeyword::Self->resolveIn(self::findEnclosingClassNode($node));
     }

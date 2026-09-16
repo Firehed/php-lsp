@@ -9,7 +9,7 @@ use BackedEnum;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -187,7 +187,7 @@ final class BuiltinBackend implements SymbolBackendInterface
      * @param ReflectionClass<T> $class
      * @return array<string, ConstantInfo>
      */
-    private function extractConstants(ReflectionClass $class, ClassName $className): array
+    private function extractConstants(ReflectionClass $class, ClasslikeName $className): array
     {
         $constants = [];
 
@@ -221,7 +221,7 @@ final class BuiltinBackend implements SymbolBackendInterface
      * @param ReflectionClass<T> $class
      * @return array<string, EnumCaseInfo>
      */
-    private function extractEnumCases(ReflectionClass $class, ClassName $className): array
+    private function extractEnumCases(ReflectionClass $class, ClasslikeName $className): array
     {
         if (!$class->isEnum()) {
             return [];
@@ -250,7 +250,7 @@ final class BuiltinBackend implements SymbolBackendInterface
     /**
      * @template T of object
      * @param ReflectionClass<T> $class
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
     private function extractInterfaces(ReflectionClass $class): array
     {
@@ -273,7 +273,7 @@ final class BuiltinBackend implements SymbolBackendInterface
      * @param ReflectionClass<T> $class
      * @return array<string, MethodInfo>
      */
-    private function extractMethods(ReflectionClass $class, ClassName $className): array
+    private function extractMethods(ReflectionClass $class, ClasslikeName $className): array
     {
         $methods = [];
 
@@ -318,7 +318,7 @@ final class BuiltinBackend implements SymbolBackendInterface
      * @param ReflectionClass<T> $class
      * @return array<string, PropertyInfo>
      */
-    private function extractProperties(ReflectionClass $class, ClassName $className): array
+    private function extractProperties(ReflectionClass $class, ClasslikeName $className): array
     {
         $properties = [];
 

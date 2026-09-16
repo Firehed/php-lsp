@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
@@ -168,7 +168,7 @@ class TextDocumentSyncHandlerTest extends TestCase
 
         /** @var class-string $className */
         $className = 'MyTestClass'; // @phpstan-ignore varTag.nativeType
-        $classInfo = $this->source->lookupClassLike(new ClassName($className));
+        $classInfo = $this->source->lookupClassLike(new ClasslikeName($className));
         self::assertNotNull($classInfo);
         self::assertSame('MyTestClass', $classInfo->name->shortName());
     }
@@ -205,12 +205,12 @@ class TextDocumentSyncHandlerTest extends TestCase
 
         $this->handler->handle($notification);
 
-        /** @var class-string $oldClassName */
-        $oldClassName = 'OldClass'; // @phpstan-ignore varTag.nativeType
-        /** @var class-string $newClassName */
-        $newClassName = 'NewClass'; // @phpstan-ignore varTag.nativeType
-        self::assertNull($this->source->lookupClassLike(new ClassName($oldClassName)));
-        $newClass = $this->source->lookupClassLike(new ClassName($newClassName));
+        /** @var class-string $oldClasslikeName */
+        $oldClasslikeName = 'OldClass'; // @phpstan-ignore varTag.nativeType
+        /** @var class-string $newClasslikeName */
+        $newClasslikeName = 'NewClass'; // @phpstan-ignore varTag.nativeType
+        self::assertNull($this->source->lookupClassLike(new ClasslikeName($oldClasslikeName)));
+        $newClass = $this->source->lookupClassLike(new ClasslikeName($newClasslikeName));
         self::assertNotNull($newClass);
         self::assertSame('NewClass', $newClass->name->shortName());
     }
@@ -233,7 +233,7 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
         $this->handler->handle($openNotification);
-        self::assertNotNull($this->source->lookupClassLike(new ClassName($className)));
+        self::assertNotNull($this->source->lookupClassLike(new ClasslikeName($className)));
 
         $closeNotification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -246,6 +246,6 @@ class TextDocumentSyncHandlerTest extends TestCase
         ]);
         $this->handler->handle($closeNotification);
 
-        self::assertNull($this->source->lookupClassLike(new ClassName($className)));
+        self::assertNull($this->source->lookupClassLike(new ClasslikeName($className)));
     }
 }

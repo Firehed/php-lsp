@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DocblockParser;
@@ -203,7 +203,7 @@ final class ExpressionResolver
             assert($parent->types !== [], 'PHP grammar requires at least one type in a catch clause');
             $classNames = [];
             foreach ($parent->types as $type) {
-                $classNames[] = TypeFactory::className(ScopeFinder::resolveClassName($type));
+                $classNames[] = TypeFactory::className(ScopeFinder::resolveClasslikeName($type));
             }
             return count($classNames) === 1 ? $classNames[0] : TypeFactory::union($classNames);
         }
@@ -258,7 +258,7 @@ final class ExpressionResolver
         if ($elemShort === null) {
             return null;
         }
-        return $this->resolveShortClassName($elemShort, $foreach->expr, $ast);
+        return $this->resolveShortClasslikeName($elemShort, $foreach->expr, $ast);
     }
 
     /**
@@ -267,7 +267,7 @@ final class ExpressionResolver
      *
      * @param array<Stmt> $ast
      */
-    private function resolveShortClassName(string $shortOrFqn, Node $atNode, array $ast): ?TypeInterface
+    private function resolveShortClasslikeName(string $shortOrFqn, Node $atNode, array $ast): ?TypeInterface
     {
         if (str_starts_with($shortOrFqn, '\\')) {
             $fqn = ltrim($shortOrFqn, '\\');
@@ -290,7 +290,7 @@ final class ExpressionResolver
         if (!$expr->class instanceof Name) {
             return null;
         }
-        $className = ScopeFinder::resolveClassNameInContext($expr->class, $expr);
+        $className = ScopeFinder::resolveClasslikeNameInContext($expr->class, $expr);
         if ($className === null) {
             return null;
         }
@@ -407,13 +407,13 @@ final class ExpressionResolver
 
     /**
      * Access a member on the receiver, delegating the kind-specific lookup to
-     * `$find`. The receiver-to-ClassName dance — an instance expression that
+     * `$find`. The receiver-to-ClasslikeName dance — an instance expression that
      * resolves through `resolve()`, versus a class-name `Name` that resolves
      * through `ScopeFinder` — is here, so a new member-access node kind adds
      * one call site rather than another copy of this dance.
      *
      * @template T of MemberInfoInterface
-     * @param callable(ClassName, string): ?T $find
+     * @param callable(ClasslikeName, string): ?T $find
      * @param array<Stmt> $ast
      * @return ?T
      */
@@ -425,14 +425,14 @@ final class ExpressionResolver
         array $ast,
     ): ?MemberInfoInterface {
         if ($receiver instanceof Name) {
-            $classNameStr = ScopeFinder::resolveClassNameInContext($receiver, $context);
+            $classNameStr = ScopeFinder::resolveClasslikeNameInContext($receiver, $context);
             if ($classNameStr === null) {
                 return null;
             }
             return $find(TypeFactory::className($classNameStr), $memberName);
         }
         $receiverType = $this->resolve($receiver, $ast)?->getType();
-        foreach (self::receiverClassNames($receiverType) as $className) {
+        foreach (self::receiverClasslikeNames($receiverType) as $className) {
             $member = $find($className, $memberName);
             if ($member !== null) {
                 return $member;
@@ -442,14 +442,14 @@ final class ExpressionResolver
     }
 
     /**
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
-    public static function receiverClassNames(?TypeInterface $type): array
+    public static function receiverClasslikeNames(?TypeInterface $type): array
     {
-        return $type?->getResolvableClassNames() ?? [];
+        return $type?->getResolvableClasslikeNames() ?? [];
     }
 
-    private function findMethod(ClassName $className, string $name): ?MethodInfo
+    private function findMethod(ClasslikeName $className, string $name): ?MethodInfo
     {
         $info = $this->memberResolver->findMethod($className, new MethodName($name), Visibility::Private);
         if ($info === null) {
@@ -458,7 +458,7 @@ final class ExpressionResolver
         return $this->resolveLateBoundReturn($info, $className);
     }
 
-    private function findProperty(ClassName $className, string $name): ?PropertyInfo
+    private function findProperty(ClasslikeName $className, string $name): ?PropertyInfo
     {
         return $this->memberResolver->findProperty($className, new PropertyName($name), Visibility::Private);
     }
@@ -468,7 +468,7 @@ final class ExpressionResolver
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
         }
-        $classNameStr = ScopeFinder::resolveClassNameInContext($expr->class, $expr);
+        $classNameStr = ScopeFinder::resolveClasslikeNameInContext($expr->class, $expr);
         if ($classNameStr === null) {
             return null;
         }
@@ -506,7 +506,7 @@ final class ExpressionResolver
         return null;
     }
 
-    private function resolveLateBoundReturn(MethodInfo $methodInfo, ClassName $callingClass): MethodInfo
+    private function resolveLateBoundReturn(MethodInfo $methodInfo, ClasslikeName $callingClass): MethodInfo
     {
         // Look up by the receiver, not by $methodInfo->declaringClass: a trait
         // alias exposes a method name on the using class that the trait does

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -27,21 +27,21 @@ use Firehed\PhpLsp\Domain\Visibility;
 interface MemberResolverInterface
 {
     public function findConstant(
-        ClassName $class,
+        ClasslikeName $class,
         ClasslikeConstantName $constant,
         Visibility $minVisibility,
     ): ?ConstantInfo;
 
-    public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo;
+    public function findEnumCase(ClasslikeName $class, EnumCaseName $case): ?EnumCaseInfo;
 
     public function findMethod(
-        ClassName $class,
+        ClasslikeName $class,
         MethodName $method,
         Visibility $minVisibility,
     ): ?MethodInfo;
 
     public function findProperty(
-        ClassName $class,
+        ClasslikeName $class,
         PropertyName $property,
         Visibility $minVisibility,
     ): ?PropertyInfo;
@@ -49,18 +49,18 @@ interface MemberResolverInterface
     /**
      * @return list<ConstantInfo>
      */
-    public function getConstants(ClassName $class, Visibility $minVisibility): array;
+    public function getConstants(ClasslikeName $class, Visibility $minVisibility): array;
 
     /**
      * @return list<EnumCaseInfo>
      */
-    public function getEnumCases(ClassName $class): array;
+    public function getEnumCases(ClasslikeName $class): array;
 
     /**
      * @return list<MemberInfoInterface>
      */
     public function getMembersOfKind(
-        ClassName $class,
+        ClasslikeName $class,
         MemberKind $kind,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
@@ -70,7 +70,7 @@ interface MemberResolverInterface
      * @return list<MethodInfo>
      */
     public function getMethods(
-        ClassName $class,
+        ClasslikeName $class,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array;
@@ -79,7 +79,7 @@ interface MemberResolverInterface
      * @return list<PropertyInfo>
      */
     public function getProperties(
-        ClassName $class,
+        ClasslikeName $class,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array;
@@ -89,9 +89,9 @@ interface MemberResolverInterface
      * graph. Not reflexive, and — matching PHP's `is_subclass_of` — a class is
      * never a subclass of a trait it uses.
      */
-    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool;
+    public function isSubclassOf(ClasslikeName $class, ClasslikeName $potentialParent): bool;
 
-    public function isInterface(ClassName $class): bool;
+    public function isInterface(ClasslikeName $class): bool;
 
-    public function isTrait(ClassName $class): bool;
+    public function isTrait(ClasslikeName $class): bool;
 }

@@ -21,7 +21,7 @@ namespace Firehed\PhpLsp\Domain;
 final class EnumImplicits
 {
     /**
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
     public static function interfaces(bool $isBacked): array
     {
@@ -33,7 +33,7 @@ final class EnumImplicits
         return $interfaces;
     }
 
-    public static function isImplicitInterface(ClassName $name): bool
+    public static function isImplicitInterface(ClasslikeName $name): bool
     {
         return $name->fqn === \UnitEnum::class || $name->fqn === \BackedEnum::class;
     }
@@ -41,7 +41,7 @@ final class EnumImplicits
     /**
      * @return array<string, MethodInfo>
      */
-    public static function methods(ClassName $enum, ?PrimitiveType $scalarType): array
+    public static function methods(ClasslikeName $enum, ?PrimitiveType $scalarType): array
     {
         $methods = [
             'cases' => new MethodInfo(
@@ -103,7 +103,7 @@ final class EnumImplicits
     /**
      * @return array<string, PropertyInfo>
      */
-    public static function properties(ClassName $enum, ?PrimitiveType $scalarType): array
+    public static function properties(ClasslikeName $enum, ?PrimitiveType $scalarType): array
     {
         $properties = [
             'name' => new PropertyInfo(

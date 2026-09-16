@@ -95,7 +95,7 @@ class MemberAccessDetectorTest extends TestCase
         );
     }
 
-    public function testDetectResolvesFullyQualifiedClassName(): void
+    public function testDetectResolvesFullyQualifiedClasslikeName(): void
     {
         $result = $this->detect('TopLevel/fully_qualified.php', 2, 18);
         self::assertInstanceOf(MemberAccessContext::class, $result);
