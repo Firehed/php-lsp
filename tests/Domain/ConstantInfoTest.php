@@ -62,7 +62,11 @@ class ConstantInfoTest extends TestCase
             line: null,
         );
 
-        self::assertSame(SymbolKind::Constant, $constant->symbolKind(), 'a free constant reports the Constant LSP kind');
+        self::assertSame(
+            SymbolKind::Constant,
+            $constant->symbolKind(),
+            'a free constant reports the Constant LSP kind',
+        );
     }
 
     public function testFormatGlobalConstant(): void
