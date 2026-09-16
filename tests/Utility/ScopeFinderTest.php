@@ -160,55 +160,55 @@ class ScopeFinderTest extends TestCase
         self::assertNull($classNode);
     }
 
-    public function testFindEnclosingClassNameReturnsShortName(): void
+    public function testFindEnclosingClasslikeNameReturnsShortName(): void
     {
         $code = $this->loadFixture('TypeInference/GlobalFunction.php');
         $ast = self::parseWithParents($code);
         $thisNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($thisNode);
-        $className = ScopeFinder::findEnclosingClassName($thisNode);
+        $className = ScopeFinder::findEnclosingClasslikeName($thisNode);
 
         self::assertSame('GlobalConfig', $className);
     }
 
-    public function testFindEnclosingClassNameReturnsFqn(): void
+    public function testFindEnclosingClasslikeNameReturnsFqn(): void
     {
         $code = $this->loadFixture('src/Domain/User.php');
         $ast = self::parseWithParents($code);
         $thisNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($thisNode);
-        $className = ScopeFinder::findEnclosingClassName($thisNode);
+        $className = ScopeFinder::findEnclosingClasslikeName($thisNode);
 
         self::assertSame('Fixtures\Domain\User', $className);
     }
 
-    public function testFindEnclosingClassNameReturnsNullOutsideClass(): void
+    public function testFindEnclosingClasslikeNameReturnsNullOutsideClass(): void
     {
         $code = $this->loadFixture('src/Utility/GlobalScope.php');
         $ast = self::parseWithParents($code);
         $varNode = self::findVariableNode('functionVar', $ast);
 
         self::assertNotNull($varNode);
-        $className = ScopeFinder::findEnclosingClassName($varNode);
+        $className = ScopeFinder::findEnclosingClasslikeName($varNode);
 
         self::assertNull($className);
     }
 
-    public function testFindEnclosingClassNameReturnsNullForAnonymousClass(): void
+    public function testFindEnclosingClasslikeNameReturnsNullForAnonymousClass(): void
     {
         $code = $this->loadFixture('src/Utility/AnonymousClassScope.php');
         $ast = self::parseWithParents($code);
         $thisNode = self::findVariableNode('this', $ast);
 
         self::assertNotNull($thisNode);
-        $className = ScopeFinder::findEnclosingClassName($thisNode);
+        $className = ScopeFinder::findEnclosingClasslikeName($thisNode);
 
         self::assertNull($className);
     }
 
-    public function testResolveClassNameReturnsRawNameWhenNoResolvedAttribute(): void
+    public function testResolveClasslikeNameReturnsRawNameWhenNoResolvedAttribute(): void
     {
         $code = $this->loadFixture('src/Inheritance/ParentClass.php');
         $ast = self::parseWithParents($code);
@@ -218,10 +218,10 @@ class ScopeFinderTest extends TestCase
         self::assertNotNull($class);
         self::assertNotNull($class->extends);
 
-        self::assertSame('Fixtures\Inheritance\Grandparent', ScopeFinder::resolveClassName($class->extends));
+        self::assertSame('Fixtures\Inheritance\Grandparent', ScopeFinder::resolveClasslikeName($class->extends));
     }
 
-    public function testResolveClassNameUsesResolvedNameWhenAvailable(): void
+    public function testResolveClasslikeNameUsesResolvedNameWhenAvailable(): void
     {
         $code = $this->loadFixture('src/Utility/ImportedExtends.php');
         $ast = self::parseWithParents($code);
@@ -231,7 +231,7 @@ class ScopeFinderTest extends TestCase
         self::assertNotNull($class);
         self::assertNotNull($class->extends);
 
-        self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveClassName($class->extends));
+        self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveClasslikeName($class->extends));
     }
 
     public function testGetClassLikeNameReturnsNamespacedName(): void
@@ -318,43 +318,43 @@ class ScopeFinderTest extends TestCase
         self::assertSame('Fixtures\Enum\Status', ScopeFinder::getClassLikeName($enum));
     }
 
-    public function testResolveClassNameInContextResolvesSelf(): void
+    public function testResolveClasslikeNameInContextResolvesSelf(): void
     {
         $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
         $selfName = self::findNameNode('self', $ast);
 
         self::assertNotNull($selfName);
-        $resolved = ScopeFinder::resolveClassNameInContext($selfName, $selfName);
+        $resolved = ScopeFinder::resolveClasslikeNameInContext($selfName, $selfName);
 
         self::assertSame('Fixtures\TypeInference\NewKeywords', $resolved);
     }
 
-    public function testResolveClassNameInContextResolvesStatic(): void
+    public function testResolveClasslikeNameInContextResolvesStatic(): void
     {
         $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
         $staticName = self::findNameNode('static', $ast);
 
         self::assertNotNull($staticName);
-        $resolved = ScopeFinder::resolveClassNameInContext($staticName, $staticName);
+        $resolved = ScopeFinder::resolveClasslikeNameInContext($staticName, $staticName);
 
         self::assertSame('Fixtures\TypeInference\NewKeywords', $resolved);
     }
 
-    public function testResolveClassNameInContextResolvesParent(): void
+    public function testResolveClasslikeNameInContextResolvesParent(): void
     {
         $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
         $parentName = self::findNameNode('parent', $ast);
 
         self::assertNotNull($parentName);
-        $resolved = ScopeFinder::resolveClassNameInContext($parentName, $parentName);
+        $resolved = ScopeFinder::resolveClasslikeNameInContext($parentName, $parentName);
 
         self::assertSame('Fixtures\Inheritance\ParentClass', $resolved);
     }
 
-    public function testResolveClassNameInContextResolvesRegularClass(): void
+    public function testResolveClasslikeNameInContextResolvesRegularClass(): void
     {
         $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
         $ast = self::parseWithParents($code);
@@ -362,36 +362,36 @@ class ScopeFinderTest extends TestCase
         self::assertNotNull($staticCall);
         self::assertInstanceOf(Node\Name::class, $staticCall->class);
 
-        $resolved = ScopeFinder::resolveClassNameInContext($staticCall->class, $staticCall);
+        $resolved = ScopeFinder::resolveClasslikeNameInContext($staticCall->class, $staticCall);
 
         self::assertSame('Fixtures\Inheritance\ParentClass', $resolved);
     }
 
-    public function testResolveClassNameInContextReturnsNullForSelfOutsideClass(): void
+    public function testResolveClasslikeNameInContextReturnsNullForSelfOutsideClass(): void
     {
         $code = $this->loadFixture('src/TypeInference/StaticCallOutsideClass.php');
         $ast = self::parseWithParents($code);
         $selfName = self::findNameNode('self', $ast);
 
         self::assertNotNull($selfName);
-        $resolved = ScopeFinder::resolveClassNameInContext($selfName, $selfName);
+        $resolved = ScopeFinder::resolveClasslikeNameInContext($selfName, $selfName);
 
         self::assertNull($resolved);
     }
 
-    public function testResolveClassNameInContextReturnsNullForParentWithNoExtends(): void
+    public function testResolveClasslikeNameInContextReturnsNullForParentWithNoExtends(): void
     {
         $code = $this->loadFixture('src/TypeInference/ParentWithoutExtends.php');
         $ast = self::parseWithParents($code);
         $parentName = self::findNameNode('parent', $ast);
 
         self::assertNotNull($parentName);
-        $resolved = ScopeFinder::resolveClassNameInContext($parentName, $parentName);
+        $resolved = ScopeFinder::resolveClasslikeNameInContext($parentName, $parentName);
 
         self::assertNull($resolved);
     }
 
-    public function testResolveClassNameInContextReturnsNullForParentInInterface(): void
+    public function testResolveClasslikeNameInContextReturnsNullForParentInInterface(): void
     {
         $code = $this->loadFixture('src/Domain/Entity.php');
         $ast = self::parseWithParents($code);
@@ -405,7 +405,7 @@ class ScopeFinderTest extends TestCase
         // Manually set parent attribute
         $name->setAttribute('parent', $methodNode);
 
-        $resolved = ScopeFinder::resolveClassNameInContext($name, $name);
+        $resolved = ScopeFinder::resolveClasslikeNameInContext($name, $name);
 
         self::assertNull($resolved);
     }

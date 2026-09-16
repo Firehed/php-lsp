@@ -24,7 +24,7 @@ class NodeAtPositionTest extends TestCase
         $this->parser = ProductionSyntaxSource::create()->source;
     }
 
-    public function testFindClassName(): void
+    public function testFindClasslikeName(): void
     {
         $code = '<?php new MyClass();';
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);

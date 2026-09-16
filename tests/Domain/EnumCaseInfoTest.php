@@ -21,7 +21,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 8,
-            declaringClass: new ClassName(ClassKind::class),
+            declaringClass: new ClasslikeName(ClassKind::class),
         );
 
         self::assertSame('Active', $case->name->name);
@@ -40,7 +40,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(ClassKind::class),
+            declaringClass: new ClasslikeName(ClassKind::class),
         );
 
         self::assertSame('case Pending', $case->format());
@@ -54,7 +54,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(ClassKind::class),
+            declaringClass: new ClasslikeName(ClassKind::class),
         );
 
         self::assertSame('case Active = 1', $case->format());
@@ -68,7 +68,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(ClassKind::class),
+            declaringClass: new ClasslikeName(ClassKind::class),
         );
 
         self::assertSame("case Draft = 'draft'", $case->format());
@@ -94,7 +94,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: new ClassName(ClassKind::class),
+            declaringClass: new ClasslikeName(ClassKind::class),
         );
     }
 }

@@ -9,7 +9,7 @@ final class LateStaticType implements TypeInterface
 {
     public function __construct(
         public readonly LateBindingKeyword $keyword,
-        public readonly ClassName $declaringClass,
+        public readonly ClasslikeName $declaringClass,
     ) {
     }
 
@@ -19,9 +19,9 @@ final class LateStaticType implements TypeInterface
     }
 
     /**
-     * @return list<ClassName>
+     * @return list<ClasslikeName>
      */
-    public function getResolvableClassNames(): array
+    public function getResolvableClasslikeNames(): array
     {
         return [$this->declaringClass];
     }
@@ -35,9 +35,9 @@ final class LateStaticType implements TypeInterface
     {
         return match ($this->keyword) {
             LateBindingKeyword::Self => $declaringClassIsTrait
-                ? new ClassName($callingClass)
+                ? new ClasslikeName($callingClass)
                 : $this->declaringClass,
-            LateBindingKeyword::Static => new ClassName($callingClass),
+            LateBindingKeyword::Static => new ClasslikeName($callingClass),
             LateBindingKeyword::Parent => $this->declaringClass,
         };
     }

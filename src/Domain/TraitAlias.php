@@ -19,7 +19,7 @@ final readonly class TraitAlias
          * writes `method as newName` without naming a trait (PHP resolves the
          * trait at member lookup time).
          */
-        public ?ClassName $trait,
+        public ?ClasslikeName $trait,
         public string $method,
         /** Null when the alias only changes visibility. */
         public ?string $newName,

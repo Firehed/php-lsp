@@ -21,7 +21,7 @@ final readonly class PropertyInfo implements MemberInfoInterface
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ClassName $declaringClass,
+        public ClasslikeName $declaringClass,
     ) {
     }
 
@@ -41,7 +41,7 @@ final readonly class PropertyInfo implements MemberInfoInterface
         return implode(' ', $parts);
     }
 
-    public function getDeclaringClass(): ClassName
+    public function getDeclaringClass(): ClasslikeName
     {
         return $this->declaringClass;
     }

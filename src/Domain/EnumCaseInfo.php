@@ -17,7 +17,7 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ClassName $declaringClass,
+        public ClasslikeName $declaringClass,
     ) {
     }
 
@@ -32,7 +32,7 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
         return $str;
     }
 
-    public function getDeclaringClass(): ClassName
+    public function getDeclaringClass(): ClasslikeName
     {
         return $this->declaringClass;
     }
@@ -51,7 +51,7 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
      * An enum case's value type is the enum itself: each case is a singleton
      * instance of the declaring enum.
      */
-    public function getType(): ClassName
+    public function getType(): ClasslikeName
     {
         return $this->declaringClass;
     }

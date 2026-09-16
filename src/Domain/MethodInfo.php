@@ -26,11 +26,11 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ClassName $declaringClass,
+        public ClasslikeName $declaringClass,
     ) {
     }
 
-    public function getDeclaringClass(): ClassName
+    public function getDeclaringClass(): ClasslikeName
     {
         return $this->declaringClass;
     }

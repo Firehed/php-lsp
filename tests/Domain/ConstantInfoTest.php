@@ -24,7 +24,7 @@ class ConstantInfoTest extends TestCase
             docblock: '/** Maximum size */',
             file: '/path/to/file.php',
             line: 5,
-            declaringClass: new ClassName(ConstantInfo::class),
+            declaringClass: new ClasslikeName(ConstantInfo::class),
         );
 
         self::assertSame('MAX_SIZE', $constant->name->name);
@@ -48,7 +48,7 @@ class ConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('public const FOO', $constant->format());
@@ -64,7 +64,7 @@ class ConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('public const int MAX_SIZE', $constant->format());
@@ -80,7 +80,7 @@ class ConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('public final const string VERSION', $constant->format());
@@ -96,7 +96,7 @@ class ConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('private const INTERNAL', $constant->format());
@@ -184,7 +184,7 @@ class ConstantInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: new ClassName(ConstantInfo::class),
+            declaringClass: new ClasslikeName(ConstantInfo::class),
         );
     }
 }

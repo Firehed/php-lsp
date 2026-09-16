@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution\TypeSource;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -32,7 +32,7 @@ final readonly class NativeTypeSource implements TypeSourceInterface
     ) {
     }
 
-    public function forClassConstant(ClassName $class, ClasslikeConstantName $constant): ?TypeInterface
+    public function forClassConstant(ClasslikeName $class, ClasslikeConstantName $constant): ?TypeInterface
     {
         return $this->members->findConstant($class, $constant, Visibility::Private)?->type;
     }
@@ -61,7 +61,7 @@ final readonly class NativeTypeSource implements TypeSourceInterface
         return $this->symbols->lookupFunction($function)?->returnType;
     }
 
-    public function forMethodParameter(ClassName $class, MethodName $method, string $parameter): ?TypeInterface
+    public function forMethodParameter(ClasslikeName $class, MethodName $method, string $parameter): ?TypeInterface
     {
         $info = $this->members->findMethod($class, $method, Visibility::Private);
         if ($info === null) {
@@ -75,12 +75,12 @@ final readonly class NativeTypeSource implements TypeSourceInterface
         return null;
     }
 
-    public function forMethodReturn(ClassName $class, MethodName $method): ?TypeInterface
+    public function forMethodReturn(ClasslikeName $class, MethodName $method): ?TypeInterface
     {
         return $this->members->findMethod($class, $method, Visibility::Private)?->returnType;
     }
 
-    public function forProperty(ClassName $class, PropertyName $property): ?TypeInterface
+    public function forProperty(ClasslikeName $class, PropertyName $property): ?TypeInterface
     {
         return $this->members->findProperty($class, $property, Visibility::Private)?->type;
     }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -48,9 +48,9 @@ use Throwable;
  *
  * FUTURE: Workspace queries (requires index)
  * - findReferences(SymbolIdentity $symbol, ?Scope $scope = null): array<Location>
- * - findImplementations(ClassName $interface): array<ClassInfo>
- * - findSubtypes(ClassName $class): array<ClassInfo>
- * - findSupertypes(ClassName $class): array<ClassInfo>
+ * - findImplementations(ClasslikeName $interface): array<ClassInfo>
+ * - findSubtypes(ClasslikeName $class): array<ClassInfo>
+ * - findSupertypes(ClasslikeName $class): array<ClassInfo>
  *
  * FUTURE: Call hierarchy
  * - getIncomingCalls(ResolvedCallableInterface $callable): array<CallHierarchyItem>
@@ -125,7 +125,7 @@ final class SymbolResolver implements CodeResolverInterface
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::Instance,
     ): array {
-        $classNames = $type->getResolvableClassNames();
+        $classNames = $type->getResolvableClasslikeNames();
         if ($classNames === []) {
             return [];
         }
@@ -155,7 +155,7 @@ final class SymbolResolver implements CodeResolverInterface
      * @return list<ResolvedMemberInterface>
      */
     private function getMembersForClass(
-        ClassName $className,
+        ClasslikeName $className,
         Visibility $minVisibility,
         MemberFilter $filter,
         bool $includeStatic,
@@ -178,7 +178,7 @@ final class SymbolResolver implements CodeResolverInterface
      * Returns false for unknown names: a phantom must be dropped, so this cannot
      * share the optimism of the position predicates.
      */
-    public function isClassLike(ClassName $className): bool
+    public function isClassLike(ClasslikeName $className): bool
     {
         return $this->symbolSource->lookupClassLike($className) !== null;
     }
@@ -187,7 +187,7 @@ final class SymbolResolver implements CodeResolverInterface
      * Check if a class can be instantiated with `new`.
      * Returns true for unknown classes (optimistic filtering).
      */
-    public function isInstantiable(ClassName $className): bool
+    public function isInstantiable(ClasslikeName $className): bool
     {
         $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
@@ -196,7 +196,7 @@ final class SymbolResolver implements CodeResolverInterface
         return !$classInfo->isAbstract && $classInfo->isClass();
     }
 
-    public function isValidTypeHint(ClassName $className): bool
+    public function isValidTypeHint(ClasslikeName $className): bool
     {
         $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
@@ -210,12 +210,12 @@ final class SymbolResolver implements CodeResolverInterface
      * Returns false for unknown classes: an implements list must only offer
      * confirmed interfaces.
      */
-    public function isInterface(ClassName $className): bool
+    public function isInterface(ClasslikeName $className): bool
     {
         return $this->memberResolver->isInterface($className);
     }
 
-    public function isTrait(ClassName $className): bool
+    public function isTrait(ClasslikeName $className): bool
     {
         return $this->memberResolver->isTrait($className);
     }
@@ -226,7 +226,7 @@ final class SymbolResolver implements CodeResolverInterface
      * interfaces, traits, enums, and unknown classes: an extends clause must
      * only offer confirmed base classes.
      */
-    public function isExtendableClass(ClassName $className): bool
+    public function isExtendableClass(ClasslikeName $className): bool
     {
         $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
@@ -241,7 +241,7 @@ final class SymbolResolver implements CodeResolverInterface
      * transitively (classes and interfaces alike). Returns false for unknown
      * classes: a catch clause must only offer confirmed Throwables.
      */
-    public function isThrowable(ClassName $className): bool
+    public function isThrowable(ClasslikeName $className): bool
     {
         $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
@@ -260,7 +260,7 @@ final class SymbolResolver implements CodeResolverInterface
      * Returns false for unknown classes: an attribute position must only offer
      * confirmed attributes.
      */
-    public function isAttribute(ClassName $className): bool
+    public function isAttribute(ClasslikeName $className): bool
     {
         $classInfo = $this->symbolSource->lookupClassLike($className);
         if ($classInfo === null) {
@@ -338,7 +338,7 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-        self::resolveClassNameOnSynthesizedCall($callNode, $ast, $line);
+        self::resolveClasslikeNameOnSynthesizedCall($callNode, $ast, $line);
         $callable = $this->resolveCallable($callNode, $ast, $document);
         if ($callable === null) {
             return null;
@@ -354,7 +354,7 @@ final class SymbolResolver implements CodeResolverInterface
      *
      * @param array<Stmt> $ast
      */
-    private static function resolveClassNameOnSynthesizedCall(Node $callNode, array $ast, int $line): void
+    private static function resolveClasslikeNameOnSynthesizedCall(Node $callNode, array $ast, int $line): void
     {
         $classNameNode = match (true) {
             $callNode instanceof New_ => $callNode->class,
@@ -431,7 +431,7 @@ final class SymbolResolver implements CodeResolverInterface
             return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
-        // Static method call: ClassName::method()
+        // Static method call: ClasslikeName::method()
         if ($parent instanceof StaticCall) {
             return $this->expressionResolver($document)->resolve($parent, $ast);
         }
@@ -442,7 +442,7 @@ final class SymbolResolver implements CodeResolverInterface
             return $this->expressionResolver($document)->resolve($parent, $ast);
         }
 
-        // Class constant or enum case: ClassName::CONSTANT or Enum::Case
+        // Class constant or enum case: ClasslikeName::CONSTANT or Enum::Case
         if ($parent instanceof ClassConstFetch) {
             return $this->expressionResolver($document)->resolve($parent, $ast);
         }
@@ -467,7 +467,7 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         // Class reference (new, instanceof, static call, type hint, etc.)
-        $classNameStr = ScopeFinder::resolveClassName($node);
+        $classNameStr = ScopeFinder::resolveClasslikeName($node);
 
         $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($classNameStr));
         if ($classInfo === null) {
@@ -547,7 +547,7 @@ final class SymbolResolver implements CodeResolverInterface
         $selfContext = null;
         $parentContext = null;
         if ($enclosingScope instanceof Stmt\ClassMethod) {
-            $selfContext = ScopeFinder::findEnclosingClassName($enclosingScope);
+            $selfContext = ScopeFinder::findEnclosingClasslikeName($enclosingScope);
             // @codeCoverageIgnoreStart
             if ($selfContext === null) {
                 throw new LogicException('ClassMethod always has enclosing class');
@@ -618,7 +618,7 @@ final class SymbolResolver implements CodeResolverInterface
     ): ?ResolvedSymbolInterface {
         $parent = $node->getAttribute('parent');
 
-        // Static property fetch: ClassName::$property
+        // Static property fetch: ClasslikeName::$property
         if ($parent instanceof StaticPropertyFetch) {
             return $this->expressionResolver($document)->resolve($parent, $ast);
         }

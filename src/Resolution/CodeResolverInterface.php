@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
@@ -53,45 +53,45 @@ interface CodeResolverInterface
      * surfaced as a coarse class-like) before a position filter, which is
      * optimistic for unknown names, would let them through.
      */
-    public function isClassLike(ClassName $className): bool;
+    public function isClassLike(ClasslikeName $className): bool;
 
     /**
      * Check if a class can be instantiated with `new`.
      */
-    public function isInstantiable(ClassName $className): bool;
+    public function isInstantiable(ClasslikeName $className): bool;
 
     /**
      * Check if a class name is valid as a type hint.
      */
-    public function isValidTypeHint(ClassName $className): bool;
+    public function isValidTypeHint(ClasslikeName $className): bool;
 
     /**
      * Check if a class-like is an interface (e.g. valid in an `implements` list).
      */
-    public function isInterface(ClassName $className): bool;
+    public function isInterface(ClasslikeName $className): bool;
 
     /**
      * Check if a class-like is a trait (e.g. valid after `use` in a class body).
      */
-    public function isTrait(ClassName $className): bool;
+    public function isTrait(ClasslikeName $className): bool;
 
     /**
      * Check if a class-like can be extended by a class (e.g. valid after
      * `class X extends`). True for non-final classes, abstract included.
      */
-    public function isExtendableClass(ClassName $className): bool;
+    public function isExtendableClass(ClasslikeName $className): bool;
 
     /**
      * Check if a class-like can be caught (e.g. valid after `catch (`). True for
      * `Throwable` itself and for any class or interface that extends or implements
      * it, directly or transitively.
      */
-    public function isThrowable(ClassName $className): bool;
+    public function isThrowable(ClasslikeName $className): bool;
 
     /**
      * Check if a class is a PHP attribute (e.g. valid in a `#[...]` position).
      */
-    public function isAttribute(ClassName $className): bool;
+    public function isAttribute(ClasslikeName $className): bool;
 
     /**
      * Detect member access context at cursor position.

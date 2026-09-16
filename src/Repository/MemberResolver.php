@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -43,20 +43,20 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     public function findConstant(
-        ClassName $class,
+        ClasslikeName $class,
         ClasslikeConstantName $constant,
         Visibility $minVisibility,
     ): ?ConstantInfo {
         return $this->findMember($class, MemberKind::Constant, $constant->name, $minVisibility);
     }
 
-    public function findEnumCase(ClassName $class, EnumCaseName $case): ?EnumCaseInfo
+    public function findEnumCase(ClasslikeName $class, EnumCaseName $case): ?EnumCaseInfo
     {
         return $this->findMember($class, MemberKind::EnumCase, $case->name, Visibility::Public);
     }
 
     public function findMethod(
-        ClassName $class,
+        ClasslikeName $class,
         MethodName $method,
         Visibility $minVisibility,
     ): ?MethodInfo {
@@ -73,7 +73,7 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     public function findProperty(
-        ClassName $class,
+        ClasslikeName $class,
         PropertyName $property,
         Visibility $minVisibility,
     ): ?PropertyInfo {
@@ -83,7 +83,7 @@ final class MemberResolver implements MemberResolverInterface
     /**
      * @return list<ConstantInfo>
      */
-    public function getConstants(ClassName $class, Visibility $minVisibility): array
+    public function getConstants(ClasslikeName $class, Visibility $minVisibility): array
     {
         return $this->collectMembers($class, MemberKind::Constant, $minVisibility, MemberFilter::All);
     }
@@ -91,7 +91,7 @@ final class MemberResolver implements MemberResolverInterface
     /**
      * @return list<EnumCaseInfo>
      */
-    public function getEnumCases(ClassName $class): array
+    public function getEnumCases(ClasslikeName $class): array
     {
         return $this->collectMembers($class, MemberKind::EnumCase, Visibility::Public, MemberFilter::All);
     }
@@ -100,7 +100,7 @@ final class MemberResolver implements MemberResolverInterface
      * @return list<MethodInfo>
      */
     public function getMethods(
-        ClassName $class,
+        ClasslikeName $class,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
@@ -117,7 +117,7 @@ final class MemberResolver implements MemberResolverInterface
      * @return list<PropertyInfo>
      */
     public function getProperties(
-        ClassName $class,
+        ClasslikeName $class,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array {
@@ -132,7 +132,7 @@ final class MemberResolver implements MemberResolverInterface
      * @return list<MemberInfoInterface>
      */
     public function getMembersOfKind(
-        ClassName $class,
+        ClasslikeName $class,
         MemberKind $kind,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
@@ -149,14 +149,14 @@ final class MemberResolver implements MemberResolverInterface
         return $this->applyMethodAliases($members, $origin, $minVisibility, $filter);
     }
 
-    public function isSubclassOf(ClassName $class, ClassName $potentialParent): bool
+    public function isSubclassOf(ClasslikeName $class, ClasslikeName $potentialParent): bool
     {
         $origin = $this->source->lookupClassLike($class);
         if ($origin === null) {
             return false;
         }
-        $originKey = NameKind::ClassLike->normalize(QualifiedName::fromClassName($class));
-        $targetKey = NameKind::ClassLike->normalize(QualifiedName::fromClassName($potentialParent));
+        $originKey = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($class));
+        $targetKey = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($potentialParent));
         if ($originKey === $targetKey) {
             return false;
         }
@@ -168,7 +168,7 @@ final class MemberResolver implements MemberResolverInterface
             if ($info->isTrait()) {
                 continue;
             }
-            $key = NameKind::ClassLike->normalize(QualifiedName::fromClassName($info->name));
+            $key = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($info->name));
             if ($key === $originKey) {
                 continue;
             }
@@ -180,12 +180,12 @@ final class MemberResolver implements MemberResolverInterface
         return false;
     }
 
-    public function isInterface(ClassName $class): bool
+    public function isInterface(ClasslikeName $class): bool
     {
         return $this->source->lookupClassLike($class)?->isInterface() ?? false;
     }
 
-    public function isTrait(ClassName $class): bool
+    public function isTrait(ClasslikeName $class): bool
     {
         return $this->source->lookupClassLike($class)?->isTrait() ?? false;
     }
@@ -208,7 +208,7 @@ final class MemberResolver implements MemberResolverInterface
      * )
      */
     private function collectMembers(
-        ClassName $class,
+        ClasslikeName $class,
         MemberKind $kind,
         Visibility $minVisibility,
         MemberFilter $filter,
@@ -251,7 +251,7 @@ final class MemberResolver implements MemberResolverInterface
      * )
      */
     private function findMember(
-        ClassName $class,
+        ClasslikeName $class,
         MemberKind $kind,
         string $name,
         Visibility $minVisibility,
@@ -288,7 +288,7 @@ final class MemberResolver implements MemberResolverInterface
      */
     private function descend(ClassInfo $classInfo, bool $isOriginClass, array $exclusions, array &$seen): iterable
     {
-        $key = NameKind::ClassLike->normalize(QualifiedName::fromClassName($classInfo->name));
+        $key = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($classInfo->name));
         if (array_key_exists($key, $seen)) {
             return;
         }

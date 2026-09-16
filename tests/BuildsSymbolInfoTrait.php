@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -110,8 +110,8 @@ trait BuildsSymbolInfoTrait
      * not seen as class-strings; only the FQN string is read, so the concession is
      * harmless and confined here.
      */
-    private static function className(string $fqn): ClassName
+    private static function className(string $fqn): ClasslikeName
     {
-        return new ClassName($fqn);
+        return new ClasslikeName($fqn);
     }
 }

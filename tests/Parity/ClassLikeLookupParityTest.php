@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -172,7 +172,7 @@ final class ClassLikeLookupParityTest extends TestCase
         // is asserted, so a regression that stops extracting reflected members —
         // whose lines still execute, but whose output the golden never sees —
         // goes red rather than passing silently.
-        $info = $this->knowledge->source->lookupClassLike(new ClassName(\ArrayObject::class));
+        $info = $this->knowledge->source->lookupClassLike(new ClasslikeName(\ArrayObject::class));
 
         self::assertNotNull($info, 'a built-in class must resolve via the reflection fallback');
         self::assertSame('ArrayObject', $info->name->shortName(), 'reflection fallback must report the built-in');
@@ -209,7 +209,7 @@ final class ClassLikeLookupParityTest extends TestCase
         // that returned no interfaces goes red rather than surviving behind the
         // method check.
         $interfaceFqns = array_map(
-            static fn(ClassName $name): string => $name->fqn,
+            static fn(ClasslikeName $name): string => $name->fqn,
             $info->interfaces,
         );
         foreach (['ArrayAccess', 'Countable', 'IteratorAggregate'] as $interface) {
@@ -226,9 +226,9 @@ final class ClassLikeLookupParityTest extends TestCase
      * autoload path, so they are not seen as class-strings. The repository reads
      * only the FQN, so the concession is harmless and confined here.
      */
-    private static function className(string $fqn): ClassName
+    private static function className(string $fqn): ClasslikeName
     {
-        return new ClassName($fqn);
+        return new ClasslikeName($fqn);
     }
 
     /**
@@ -261,12 +261,12 @@ final class ClassLikeLookupParityTest extends TestCase
     }
 
     /**
-     * @param list<ClassName> $names
+     * @param list<ClasslikeName> $names
      * @return list<string>
      */
     private static function sortedFqns(array $names): array
     {
-        $fqns = array_map(static fn(ClassName $name): string => $name->fqn, $names);
+        $fqns = array_map(static fn(ClasslikeName $name): string => $name->fqn, $names);
         sort($fqns);
 
         return $fqns;

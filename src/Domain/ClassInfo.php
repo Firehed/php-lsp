@@ -12,8 +12,8 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
     use HasSymbolLocationTrait;
 
     /**
-     * @param list<ClassName> $interfaces Implemented interfaces
-     * @param list<ClassName> $traits Used traits
+     * @param list<ClasslikeName> $interfaces Implemented interfaces
+     * @param list<ClasslikeName> $traits Used traits
      * @param array<string, MethodInfo> $methods Keyed by method name
      * @param array<string, PropertyInfo> $properties Keyed by property name
      * @param array<string, ConstantInfo> $constants Keyed by constant name
@@ -25,13 +25,13 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
      *     class's `use TraitX { ... }` block.
      */
     public function __construct(
-        public ClassName $name,
+        public ClasslikeName $name,
         public ClassKind $kind,
         public bool $isAbstract,
         public bool $isFinal,
         public bool $isReadonly,
         public bool $isAttribute,
-        public ?ClassName $parent,
+        public ?ClasslikeName $parent,
         public array $interfaces,
         public array $traits,
         public array $methods,
@@ -49,7 +49,7 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
     /**
      * A resolved class's value type is the class itself.
      */
-    public function getType(): ClassName
+    public function getType(): ClasslikeName
     {
         return $this->name;
     }

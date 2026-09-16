@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Repository;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -37,7 +37,7 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         $result = $resolver->findMethod(
-            new ClassName(self::fakeClass()),
+            new ClasslikeName(self::fakeClass()),
             new MethodName('foo'),
             Visibility::Public,
         );
@@ -53,7 +53,7 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         $result = $resolver->findProperty(
-            new ClassName(self::fakeClass()),
+            new ClasslikeName(self::fakeClass()),
             new PropertyName('foo'),
             Visibility::Public,
         );
@@ -69,7 +69,7 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         $result = $resolver->findConstant(
-            new ClassName(self::fakeClass()),
+            new ClasslikeName(self::fakeClass()),
             new ClasslikeConstantName('FOO'),
             Visibility::Public,
         );
@@ -85,7 +85,7 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         $result = $resolver->findEnumCase(
-            new ClassName(self::fakeClass()),
+            new ClasslikeName(self::fakeClass()),
             new EnumCaseName('Foo'),
         );
 
@@ -99,7 +99,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getMethods(new ClassName(self::fakeClass()), Visibility::Public);
+        $result = $resolver->getMethods(new ClasslikeName(self::fakeClass()), Visibility::Public);
 
         self::assertSame([], $result);
     }
@@ -111,7 +111,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getProperties(new ClassName(self::fakeClass()), Visibility::Public);
+        $result = $resolver->getProperties(new ClasslikeName(self::fakeClass()), Visibility::Public);
 
         self::assertSame([], $result);
     }
@@ -123,7 +123,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants(new ClassName(self::fakeClass()), Visibility::Public);
+        $result = $resolver->getConstants(new ClasslikeName(self::fakeClass()), Visibility::Public);
 
         self::assertSame([], $result);
     }
@@ -135,14 +135,14 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getEnumCases(new ClassName(self::fakeClass()));
+        $result = $resolver->getEnumCases(new ClasslikeName(self::fakeClass()));
 
         self::assertSame([], $result);
     }
 
     public function testFindMethodReturnsMethodFromClass(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $methodInfo = $this->createMethodInfo('doSomething', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, methods: ['doSomething' => $methodInfo]);
 
@@ -160,8 +160,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodReturnsMethodFromParent(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
         $methodInfo = $this->createMethodInfo('parentMethod', Visibility::Public, $parentName);
 
         $parentInfo = $this->createClassInfo($parentName, methods: ['parentMethod' => $methodInfo]);
@@ -169,7 +169,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -185,8 +185,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodReturnsMethodFromTrait(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $methodInfo = $this->createMethodInfo('traitMethod', Visibility::Public, $traitName);
 
         $traitInfo = $this->createClassInfo(
@@ -198,7 +198,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -214,7 +214,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodFiltersVisibility(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $privateMethod = $this->createMethodInfo('privateMethod', Visibility::Private, $className);
         $classInfo = $this->createClassInfo($className, methods: ['privateMethod' => $privateMethod]);
 
@@ -230,8 +230,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodExcludesParentPrivateMethods(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
         $privateMethod = $this->createMethodInfo('privateMethod', Visibility::Private, $parentName);
 
         $parentInfo = $this->createClassInfo($parentName, methods: ['privateMethod' => $privateMethod]);
@@ -239,7 +239,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -255,8 +255,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodIncludesTraitPrivateMethods(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $privateMethod = $this->createMethodInfo('privateMethod', Visibility::Private, $traitName);
 
         $traitInfo = $this->createClassInfo(
@@ -268,7 +268,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -284,7 +284,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindPropertyReturnsPropertyFromClass(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $propInfo = $this->createPropertyInfo('myProp', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, properties: ['myProp' => $propInfo]);
 
@@ -300,8 +300,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindPropertyReturnsPropertyFromParent(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
         $propInfo = $this->createPropertyInfo('parentProp', Visibility::Public, $parentName);
 
         $parentInfo = $this->createClassInfo($parentName, properties: ['parentProp' => $propInfo]);
@@ -309,7 +309,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -325,8 +325,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindPropertyReturnsPropertyFromTrait(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $propInfo = $this->createPropertyInfo('traitProp', Visibility::Public, $traitName);
 
         $traitInfo = $this->createClassInfo(
@@ -338,7 +338,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -354,7 +354,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindPropertyReturnsNullWhenNotFound(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $classInfo = $this->createClassInfo($className);
 
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -369,7 +369,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantReturnsConstantFromClass(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $constInfo = $this->createConstantInfo('MY_CONST', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, constants: ['MY_CONST' => $constInfo]);
 
@@ -385,8 +385,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantReturnsConstantFromParent(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
         $constInfo = $this->createConstantInfo('PARENT_CONST', Visibility::Public, $parentName);
 
         $parentInfo = $this->createClassInfo($parentName, constants: ['PARENT_CONST' => $constInfo]);
@@ -394,7 +394,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -410,8 +410,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantReturnsConstantFromTrait(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $constInfo = $this->createConstantInfo('TRAIT_CONST', Visibility::Public, $traitName);
 
         $traitInfo = $this->createClassInfo(
@@ -423,7 +423,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -439,7 +439,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantReturnsNullWhenNotFound(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $classInfo = $this->createClassInfo($className);
 
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -454,8 +454,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetMethodsReturnsAllAccessibleMethods(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $parentPublic = $this->createMethodInfo('parentPublic', Visibility::Public, $parentName);
         $parentProtected = $this->createMethodInfo('parentProtected', Visibility::Protected, $parentName);
@@ -474,7 +474,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -494,7 +494,7 @@ final class MemberResolverTest extends TestCase
 
     public function testGetMethodsFiltersStatic(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $instanceMethod = $this->createMethodInfo('instance', Visibility::Public, $className, isStatic: false);
         $staticMethod = $this->createMethodInfo('static', Visibility::Public, $className, isStatic: true);
 
@@ -517,7 +517,7 @@ final class MemberResolverTest extends TestCase
 
     public function testGetPropertiesReturnsAllAccessibleProperties(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $prop1 = $this->createPropertyInfo('prop1', Visibility::Public, $className);
         $prop2 = $this->createPropertyInfo('prop2', Visibility::Protected, $className);
 
@@ -538,8 +538,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetPropertiesIncludesParentProperties(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $parentPublic = $this->createPropertyInfo('parentPublic', Visibility::Public, $parentName);
         $parentProtected = $this->createPropertyInfo('parentProtected', Visibility::Protected, $parentName);
@@ -558,7 +558,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -578,7 +578,7 @@ final class MemberResolverTest extends TestCase
 
     public function testGetPropertiesFiltersStatic(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $instanceProp = $this->createPropertyInfo('instance', Visibility::Public, $className, isStatic: false);
         $staticProp = $this->createPropertyInfo('static', Visibility::Public, $className, isStatic: true);
 
@@ -601,8 +601,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetPropertiesIncludesTraitProperties(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
 
         $traitProp = $this->createPropertyInfo('traitProp', Visibility::Public, $traitName);
         $classProp = $this->createPropertyInfo('classProp', Visibility::Public, $className);
@@ -618,7 +618,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -636,7 +636,7 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsReturnsAllAccessibleConstants(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $const1 = $this->createConstantInfo('CONST1', Visibility::Public, $className);
 
         $classInfo = $this->createClassInfo($className, constants: ['CONST1' => $const1]);
@@ -653,8 +653,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsIncludesParentConstants(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $parentConst = $this->createConstantInfo('PARENT_CONST', Visibility::Public, $parentName);
         $childConst = $this->createConstantInfo('CHILD_CONST', Visibility::Public, $childName);
@@ -666,7 +666,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -684,8 +684,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsIncludesTraitConstants(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
 
         $traitConst = $this->createConstantInfo('TRAIT_CONST', Visibility::Public, $traitName);
         $classConst = $this->createConstantInfo('CLASS_CONST', Visibility::Public, $className);
@@ -701,7 +701,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -719,7 +719,7 @@ final class MemberResolverTest extends TestCase
 
     public function testGetEnumCasesReturnsAllCases(): void
     {
-        $enumName = new ClassName(self::fakeClass());
+        $enumName = new ClasslikeName(self::fakeClass());
         $case1 = $this->createEnumCaseInfo('Case1', $enumName);
         $case2 = $this->createEnumCaseInfo('Case2', $enumName);
 
@@ -742,7 +742,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindEnumCaseReturnsCase(): void
     {
-        $enumName = new ClassName(self::fakeClass());
+        $enumName = new ClasslikeName(self::fakeClass());
         $case1 = $this->createEnumCaseInfo('Case1', $enumName);
         $case2 = $this->createEnumCaseInfo('Case2', $enumName);
 
@@ -763,7 +763,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindEnumCaseReturnsNullWhenNotFound(): void
     {
-        $enumName = new ClassName(self::fakeClass());
+        $enumName = new ClasslikeName(self::fakeClass());
         $enumInfo = $this->createClassInfo($enumName, kind: ClassKind::Enum_);
 
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -779,10 +779,10 @@ final class MemberResolverTest extends TestCase
     public function testDiamondInheritanceNoDuplicates(): void
     {
         // Diamond: Child uses Trait1 and Trait2, both use BaseTrait
-        $baseTrait = new ClassName(self::fakeClass());
-        $trait1 = new ClassName(self::fakeClass());
-        $trait2 = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $baseTrait = new ClasslikeName(self::fakeClass());
+        $trait1 = new ClasslikeName(self::fakeClass());
+        $trait2 = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $sharedMethod = $this->createMethodInfo('sharedMethod', Visibility::Public, $baseTrait);
 
@@ -795,7 +795,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
                 $trait2->fqn => $trait2Info,
@@ -815,10 +815,10 @@ final class MemberResolverTest extends TestCase
     {
         // Diamond where the method doesn't exist anywhere, forcing full traversal
         // This hits the $seen check when trait2 tries to traverse baseTrait (already seen via trait1)
-        $baseTrait = new ClassName(self::fakeClass());
-        $trait1 = new ClassName(self::fakeClass());
-        $trait2 = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $baseTrait = new ClasslikeName(self::fakeClass());
+        $trait1 = new ClasslikeName(self::fakeClass());
+        $trait2 = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_);
         $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
@@ -827,7 +827,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
                 $trait2->fqn => $trait2Info,
@@ -845,10 +845,10 @@ final class MemberResolverTest extends TestCase
 
     public function testFindPropertyWithDiamondInheritanceHitsSeenCheck(): void
     {
-        $baseTrait = new ClassName(self::fakeClass());
-        $trait1 = new ClassName(self::fakeClass());
-        $trait2 = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $baseTrait = new ClasslikeName(self::fakeClass());
+        $trait1 = new ClasslikeName(self::fakeClass());
+        $trait2 = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_);
         $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
@@ -857,7 +857,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
                 $trait2->fqn => $trait2Info,
@@ -875,10 +875,10 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantWithDiamondInheritanceHitsSeenCheck(): void
     {
-        $baseTrait = new ClassName(self::fakeClass());
-        $trait1 = new ClassName(self::fakeClass());
-        $trait2 = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $baseTrait = new ClasslikeName(self::fakeClass());
+        $trait1 = new ClasslikeName(self::fakeClass());
+        $trait2 = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $baseTraitInfo = $this->createClassInfo($baseTrait, kind: ClassKind::Trait_);
         $trait1Info = $this->createClassInfo($trait1, kind: ClassKind::Trait_, traits: [$baseTrait]);
@@ -887,7 +887,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
                 $trait2->fqn => $trait2Info,
@@ -905,7 +905,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodSkipsNonMatchingMethods(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $method1 = $this->createMethodInfo('method1', Visibility::Public, $className);
         $method2 = $this->createMethodInfo('method2', Visibility::Public, $className);
 
@@ -926,7 +926,7 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsFiltersInaccessibleConstants(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $publicConst = $this->createConstantInfo('PUBLIC', Visibility::Public, $className);
         $privateConst = $this->createConstantInfo('PRIVATE', Visibility::Private, $className);
 
@@ -947,8 +947,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetMethodsChildOverridesParent(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $parentMethod = $this->createMethodInfo('method', Visibility::Public, $parentName);
         $childMethod = $this->createMethodInfo('method', Visibility::Public, $childName);
@@ -958,7 +958,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -975,8 +975,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetPropertiesChildOverridesParent(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $parentProp = $this->createPropertyInfo('prop', Visibility::Public, $parentName);
         $childProp = $this->createPropertyInfo('prop', Visibility::Public, $childName);
@@ -986,7 +986,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -1003,8 +1003,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsChildOverridesParent(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $parentConst = $this->createConstantInfo('CONST', Visibility::Public, $parentName);
         $childConst = $this->createConstantInfo('CONST', Visibility::Public, $childName);
@@ -1014,7 +1014,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -1031,10 +1031,10 @@ final class MemberResolverTest extends TestCase
 
     public function testGetPropertiesDiamondInheritance(): void
     {
-        $baseTrait = new ClassName(self::fakeClass());
-        $trait1 = new ClassName(self::fakeClass());
-        $trait2 = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $baseTrait = new ClasslikeName(self::fakeClass());
+        $trait1 = new ClasslikeName(self::fakeClass());
+        $trait2 = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $sharedProp = $this->createPropertyInfo('sharedProp', Visibility::Public, $baseTrait);
 
@@ -1047,7 +1047,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
                 $trait2->fqn => $trait2Info,
@@ -1065,10 +1065,10 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsDiamondInheritance(): void
     {
-        $baseTrait = new ClassName(self::fakeClass());
-        $trait1 = new ClassName(self::fakeClass());
-        $trait2 = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $baseTrait = new ClasslikeName(self::fakeClass());
+        $trait1 = new ClasslikeName(self::fakeClass());
+        $trait2 = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $sharedConst = $this->createConstantInfo('SHARED', Visibility::Public, $baseTrait);
 
@@ -1081,7 +1081,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $baseTrait->fqn => $baseTraitInfo,
                 $trait1->fqn => $trait1Info,
                 $trait2->fqn => $trait2Info,
@@ -1099,8 +1099,8 @@ final class MemberResolverTest extends TestCase
 
     public function testChildMethodOverridesParent(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $parentMethod = $this->createMethodInfo('method', Visibility::Public, $parentName);
         $childMethod = $this->createMethodInfo('method', Visibility::Public, $childName);
@@ -1110,7 +1110,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -1126,9 +1126,9 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodFromGrandparent(): void
     {
-        $grandparentName = new ClassName(self::fakeClass());
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $grandparentName = new ClasslikeName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
 
         $grandparentMethod = $this->createMethodInfo('deepMethod', Visibility::Public, $grandparentName);
 
@@ -1141,7 +1141,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $grandparentName->fqn => $grandparentInfo,
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
@@ -1158,8 +1158,8 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantFromInterface(): void
     {
-        $interfaceName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $interfaceName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
 
         $interfaceConst = $this->createConstantInfo('INTERFACE_CONST', Visibility::Public, $interfaceName);
 
@@ -1172,7 +1172,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $interfaceName->fqn => $interfaceInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -1188,8 +1188,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsIncludesInterfaceConstants(): void
     {
-        $interfaceName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $interfaceName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
 
         $classConst = $this->createConstantInfo('CLASS_CONST', Visibility::Public, $className);
         $interfaceConst = $this->createConstantInfo('INTERFACE_CONST', Visibility::Public, $interfaceName);
@@ -1207,7 +1207,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $interfaceName->fqn => $interfaceInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -1225,7 +1225,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindMethodMatchesNameCaseInsensitively(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $methodInfo = $this->createMethodInfo('overriddenMethod', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, methods: ['overriddenMethod' => $methodInfo]);
 
@@ -1241,8 +1241,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetMethodsTreatsCaseVariedOverrideAsOneMethod(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
         $parentMethod = $this->createMethodInfo('overriddenMethod', Visibility::Public, $parentName);
         $childMethod = $this->createMethodInfo('OVERRIDDENMETHOD', Visibility::Public, $childName);
 
@@ -1255,7 +1255,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -1271,7 +1271,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindPropertyMatchesNameCaseSensitively(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $propertyInfo = $this->createPropertyInfo('value', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, properties: ['value' => $propertyInfo]);
 
@@ -1287,7 +1287,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindConstantMatchesNameCaseSensitively(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $constantInfo = $this->createConstantInfo('VALUE', Visibility::Public, $className);
         $classInfo = $this->createClassInfo($className, constants: ['VALUE' => $constantInfo]);
 
@@ -1303,7 +1303,7 @@ final class MemberResolverTest extends TestCase
 
     public function testFindEnumCaseMatchesNameCaseSensitively(): void
     {
-        $enumName = new ClassName(self::fakeClass());
+        $enumName = new ClasslikeName(self::fakeClass());
         $caseInfo = $this->createEnumCaseInfo('Draft', $enumName);
         $enumInfo = $this->createClassInfo($enumName, ClassKind::Enum_, enumCases: ['Draft' => $caseInfo]);
 
@@ -1317,8 +1317,8 @@ final class MemberResolverTest extends TestCase
 
     public function testGetConstantsKeepsCaseVariedNamesApart(): void
     {
-        $parentName = new ClassName(self::fakeClass());
-        $childName = new ClassName(self::fakeClass());
+        $parentName = new ClasslikeName(self::fakeClass());
+        $childName = new ClasslikeName(self::fakeClass());
         $parentConstant = $this->createConstantInfo('VALUE', Visibility::Public, $parentName);
         $childConstant = $this->createConstantInfo('Value', Visibility::Public, $childName);
 
@@ -1331,7 +1331,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $parentName->fqn => $parentInfo,
                 $childName->fqn => $childInfo,
                 default => null,
@@ -1349,7 +1349,7 @@ final class MemberResolverTest extends TestCase
 
     public function testIsInterfaceReturnsTrueForInterface(): void
     {
-        $interfaceName = new ClassName(self::fakeClass());
+        $interfaceName = new ClasslikeName(self::fakeClass());
         $interfaceInfo = $this->createClassInfo($interfaceName, ClassKind::Interface_);
 
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -1362,7 +1362,7 @@ final class MemberResolverTest extends TestCase
 
     public function testIsInterfaceReturnsFalseForClass(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $classInfo = $this->createClassInfo($className, ClassKind::Class_);
 
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -1380,12 +1380,12 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        self::assertFalse($resolver->isInterface(new ClassName(self::fakeClass())));
+        self::assertFalse($resolver->isInterface(new ClasslikeName(self::fakeClass())));
     }
 
     public function testIsTraitReturnsTrueForTrait(): void
     {
-        $traitName = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
         $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
 
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -1398,7 +1398,7 @@ final class MemberResolverTest extends TestCase
 
     public function testIsTraitReturnsFalseForClass(): void
     {
-        $className = new ClassName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $classInfo = $this->createClassInfo($className, ClassKind::Class_);
 
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -1416,13 +1416,13 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        self::assertFalse($resolver->isTrait(new ClassName(self::fakeClass())));
+        self::assertFalse($resolver->isTrait(new ClasslikeName(self::fakeClass())));
     }
 
     public function testAliasNamingAnUnknownMethodOnANamedTraitIsInvisible(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
         $classInfo = $this->createClassInfo(
             $className,
@@ -1437,7 +1437,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -1459,8 +1459,8 @@ final class MemberResolverTest extends TestCase
 
     public function testNamelessAliasResolvesThroughUsedTraits(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $sourceMethod = $this->createMethodInfo('helper', Visibility::Public, $traitName);
         $traitInfo = $this->createClassInfo(
             $traitName,
@@ -1480,7 +1480,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -1497,8 +1497,8 @@ final class MemberResolverTest extends TestCase
 
     public function testNamelessAliasWithNoOwningTraitIsInvisible(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
         $classInfo = $this->createClassInfo(
             $className,
@@ -1513,7 +1513,7 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $name) => match ($name->fqn) {
+            fn (ClasslikeName $name) => match ($name->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -1536,19 +1536,19 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         self::assertFalse(
-            $resolver->isSubclassOf(new ClassName(self::fakeClass()), new ClassName(self::fakeClass())),
+            $resolver->isSubclassOf(new ClasslikeName(self::fakeClass()), new ClasslikeName(self::fakeClass())),
             'a class no backend declares cannot be a subclass of anything',
         );
     }
 
     public function testIsSubclassOfIsNotReflexive(): void
     {
-        $name = new ClassName(self::fakeClass());
+        $name = new ClasslikeName(self::fakeClass());
         $info = $this->createClassInfo($name);
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $q) => $q->fqn === $name->fqn ? $info : null,
+            fn (ClasslikeName $q) => $q->fqn === $name->fqn ? $info : null,
         );
 
         $resolver = new MemberResolver($repo);
@@ -1561,14 +1561,14 @@ final class MemberResolverTest extends TestCase
 
     public function testIsSubclassOfReturnsFalseWhenTargetIsAUsedTrait(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $className = new ClassName(self::fakeClass());
+        $traitName = new ClasslikeName(self::fakeClass());
+        $className = new ClasslikeName(self::fakeClass());
         $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
         $classInfo = $this->createClassInfo($className, traits: [$traitName]);
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $q) => match ($q->fqn) {
+            fn (ClasslikeName $q) => match ($q->fqn) {
                 $traitName->fqn => $traitInfo,
                 $className->fqn => $classInfo,
                 default => null,
@@ -1693,24 +1693,25 @@ final class MemberResolverTest extends TestCase
         $infos = [];
         foreach ($graph as [$fqn, $kind, $parent, $interfaces]) {
             $info = $this->createClassInfo(
-                new ClassName($fqn),
+                new ClasslikeName($fqn),
                 $kind,
-                parent: $parent !== null ? new ClassName($parent) : null,
-                interfaces: array_map(fn (string $i): ClassName => new ClassName($i), $interfaces),
+                parent: $parent !== null ? new ClasslikeName($parent) : null,
+                interfaces: array_map(fn (string $i): ClasslikeName => new ClasslikeName($i), $interfaces),
             );
             $infos[NameKind::ClassLike->normalize(QualifiedName::fromFullyQualified($fqn))] = $info;
         }
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClassName $q) => $infos[NameKind::ClassLike->normalize(QualifiedName::fromClassName($q))] ?? null,
+            fn (ClasslikeName $q) => $infos[NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($q))]
+                ?? null,
         );
 
         $resolver = new MemberResolver($repo);
 
         self::assertSame(
             $expected,
-            $resolver->isSubclassOf(new ClassName($subject), new ClassName($target)),
+            $resolver->isSubclassOf(new ClasslikeName($subject), new ClasslikeName($target)),
             "isSubclassOf walking from {$subject} to {$target}",
         );
     }
@@ -1729,14 +1730,14 @@ final class MemberResolverTest extends TestCase
      * @param array<string, PropertyInfo> $properties
      * @param array<string, ConstantInfo> $constants
      * @param array<string, EnumCaseInfo> $enumCases
-     * @param list<ClassName> $traits
-     * @param list<ClassName> $interfaces
+     * @param list<ClasslikeName> $traits
+     * @param list<ClasslikeName> $interfaces
      * @param list<\Firehed\PhpLsp\Domain\TraitAlias> $traitAliases
      */
     private function createClassInfo(
-        ClassName $name,
+        ClasslikeName $name,
         ClassKind $kind = ClassKind::Class_,
-        ?ClassName $parent = null,
+        ?ClasslikeName $parent = null,
         array $methods = [],
         array $properties = [],
         array $constants = [],
@@ -1769,7 +1770,7 @@ final class MemberResolverTest extends TestCase
     private function createMethodInfo(
         string $name,
         Visibility $visibility,
-        ClassName $declaringClass,
+        ClasslikeName $declaringClass,
         bool $isStatic = false,
     ): MethodInfo {
         return new MethodInfo(
@@ -1790,7 +1791,7 @@ final class MemberResolverTest extends TestCase
     private function createPropertyInfo(
         string $name,
         Visibility $visibility,
-        ClassName $declaringClass,
+        ClasslikeName $declaringClass,
         bool $isStatic = false,
     ): PropertyInfo {
         return new PropertyInfo(
@@ -1810,7 +1811,7 @@ final class MemberResolverTest extends TestCase
     private function createConstantInfo(
         string $name,
         Visibility $visibility,
-        ClassName $declaringClass,
+        ClasslikeName $declaringClass,
     ): ConstantInfo {
         return new ConstantInfo(
             name: new ClasslikeConstantName($name),
@@ -1824,7 +1825,7 @@ final class MemberResolverTest extends TestCase
         );
     }
 
-    private function createEnumCaseInfo(string $name, ClassName $declaringClass): EnumCaseInfo
+    private function createEnumCaseInfo(string $name, ClasslikeName $declaringClass): EnumCaseInfo
     {
         return new EnumCaseInfo(
             name: new EnumCaseName($name),
@@ -1846,7 +1847,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame(
             [],
             $resolver->getMembersOfKind(
-                new ClassName(self::fakeClass()),
+                new ClasslikeName(self::fakeClass()),
                 \Firehed\PhpLsp\Domain\MemberKind::Method,
                 Visibility::Public,
             ),

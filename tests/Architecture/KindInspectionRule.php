@@ -37,7 +37,7 @@ final class KindInspectionRule implements Rule
      * @var list<class-string>
      */
     private const array CONFINED_TYPE_IMPLS = [
-        \Firehed\PhpLsp\Domain\ClassName::class,
+        \Firehed\PhpLsp\Domain\ClasslikeName::class,
         \Firehed\PhpLsp\Domain\UnionType::class,
         \Firehed\PhpLsp\Domain\IntersectionType::class,
         \Firehed\PhpLsp\Domain\PrimitiveType::class,
@@ -68,7 +68,7 @@ final class KindInspectionRule implements Rule
      */
     private const array ALLOWED_FILES = [
         'src/Domain/TypeFactory.php',
-        'src/Domain/ClassName.php',
+        'src/Domain/ClasslikeName.php',
         'src/Domain/UnionType.php',
         'src/Domain/IntersectionType.php',
         'src/Domain/PrimitiveType.php',

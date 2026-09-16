@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Repository;
 
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
@@ -85,7 +85,7 @@ final class TypeGraphParityTest extends TestCase
     {
         $resolved = array_map(
             fn ($method) => $method->name->name,
-            $this->resolver->getMethods(new ClassName($fqcn), Visibility::Public),
+            $this->resolver->getMethods(new ClasslikeName($fqcn), Visibility::Public),
         );
 
         self::assertSame(
@@ -108,7 +108,7 @@ final class TypeGraphParityTest extends TestCase
 
         $resolved = array_map(
             fn ($property) => $property->name->name,
-            $this->resolver->getProperties(new ClassName($fqcn), Visibility::Public),
+            $this->resolver->getProperties(new ClasslikeName($fqcn), Visibility::Public),
         );
 
         self::assertSame(
@@ -136,11 +136,11 @@ final class TypeGraphParityTest extends TestCase
         // asserted against the union of both.
         $resolved = array_map(
             fn ($constant) => $constant->name->name,
-            $this->resolver->getConstants(new ClassName($fqcn), Visibility::Public),
+            $this->resolver->getConstants(new ClasslikeName($fqcn), Visibility::Public),
         );
         $resolved = array_merge($resolved, array_map(
             fn ($case) => $case->name->name,
-            $this->resolver->getEnumCases(new ClassName($fqcn)),
+            $this->resolver->getEnumCases(new ClasslikeName($fqcn)),
         ));
 
         self::assertSame(
@@ -182,7 +182,7 @@ final class TypeGraphParityTest extends TestCase
     public function testInsteadofPicksTheWinningTraitOnFind(string $fqcn, string $method, string $expectedTrait): void
     {
         $resolved = $this->resolver->findMethod(
-            new ClassName($fqcn),
+            new ClasslikeName($fqcn),
             new \Firehed\PhpLsp\Domain\MethodName($method),
             Visibility::Public,
         );
@@ -204,7 +204,7 @@ final class TypeGraphParityTest extends TestCase
         string $method,
         string $expectedTrait,
     ): void {
-        $methods = $this->resolver->getMethods(new ClassName($fqcn), Visibility::Public);
+        $methods = $this->resolver->getMethods(new ClasslikeName($fqcn), Visibility::Public);
         $conflicting = null;
         foreach ($methods as $candidate) {
             if ($candidate->name->name === $method) {
@@ -224,7 +224,7 @@ final class TypeGraphParityTest extends TestCase
     public function testFindMethodResolvesAnAliasByItsNewName(): void
     {
         $resolved = $this->resolver->findMethod(
-            new ClassName('Fixtures\Hierarchy\TraitAdaptationUser'),
+            new ClasslikeName('Fixtures\Hierarchy\TraitAdaptationUser'),
             new \Firehed\PhpLsp\Domain\MethodName('conflictMethodFromB'),
             Visibility::Public,
         );
@@ -245,7 +245,7 @@ final class TypeGraphParityTest extends TestCase
     public function testAliasReplacesAnAlreadyWalkedInheritedMethod(): void
     {
         $methods = $this->resolver->getMethods(
-            new ClassName('Fixtures\Hierarchy\TraitAliasCollidingUser'),
+            new ClasslikeName('Fixtures\Hierarchy\TraitAliasCollidingUser'),
             Visibility::Public,
         );
         $collision = null;

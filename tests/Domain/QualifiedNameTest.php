@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -40,9 +40,9 @@ final class QualifiedNameTest extends TestCase
         self::assertSame(ltrim($fqn, '\\'), $name->fullyQualifiedName());
     }
 
-    public function testFromClassNameConvertsTheClassLikeIdentifier(): void
+    public function testFromClasslikeNameConvertsTheClassLikeIdentifier(): void
     {
-        $name = QualifiedName::fromClassName(new ClassName(QualifiedName::class));
+        $name = QualifiedName::fromClasslikeName(new ClasslikeName(QualifiedName::class));
 
         self::assertSame('Firehed\PhpLsp\Domain', $name->namespace);
         self::assertSame('QualifiedName', $name->shortName);

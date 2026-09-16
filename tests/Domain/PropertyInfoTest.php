@@ -25,7 +25,7 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 10,
-            declaringClass: new ClassName(PropertyInfo::class),
+            declaringClass: new ClasslikeName(PropertyInfo::class),
         );
 
         self::assertSame('value', $property->name->name);
@@ -52,7 +52,7 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('public string $name', $property->format());
@@ -70,7 +70,7 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('private static self $instance', $property->format());
@@ -88,7 +88,7 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('public readonly int $id', $property->format());
@@ -106,7 +106,7 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('protected $data', $property->format());
@@ -124,7 +124,7 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClassName(self::class),
+            declaringClass: new ClasslikeName(self::class),
         );
 
         self::assertSame('private static readonly array $cache', $property->format());
@@ -154,7 +154,7 @@ class PropertyInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: new ClassName(PropertyInfo::class),
+            declaringClass: new ClasslikeName(PropertyInfo::class),
         );
     }
 }

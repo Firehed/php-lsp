@@ -341,7 +341,7 @@ class DefinitionHandlerTest extends TestCase
         self::assertIsArray($result, 'variable JTD lands on the binding, not the unresolved method');
     }
 
-    public function testReturnsNullForDynamicClassName(): void
+    public function testReturnsNullForDynamicClasslikeName(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('EdgeCases/DynamicAccess.php', 'dynamic_class_name');
 

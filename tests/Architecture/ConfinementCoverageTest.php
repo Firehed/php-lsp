@@ -48,7 +48,7 @@ final class ConfinementCoverageTest extends TestCase
         $confined = self::ruleConstant(KindBranchRule::class, 'CONFINED_KIND_ENUMS');
 
         $unregistered = [];
-        foreach (self::sourceClassNames() as $className) {
+        foreach (self::sourceClasslikeNames() as $className) {
             if (!enum_exists($className)) {
                 continue;
             }
@@ -109,7 +109,7 @@ final class ConfinementCoverageTest extends TestCase
     private static function implementationsOf(string $interface): array
     {
         $implementations = [];
-        foreach (self::sourceClassNames() as $className) {
+        foreach (self::sourceClasslikeNames() as $className) {
             if (!class_exists($className)) {
                 continue;
             }
@@ -127,7 +127,7 @@ final class ConfinementCoverageTest extends TestCase
      *
      * @return list<class-string>
      */
-    private static function sourceClassNames(): array
+    private static function sourceClasslikeNames(): array
     {
         $root = dirname(__DIR__, 2) . '/src';
         $files = new \RecursiveIteratorIterator(

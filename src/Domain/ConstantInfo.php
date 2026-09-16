@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Domain;
  *
  * One type serves both (Plan 0002 §5.3): the nullable is a conscious exception
  * to the no-nullable rule, since the alternatives are a second metadata type
- * differing in one field, or a sentinel ClassName the type system cannot catch
+ * differing in one field, or a sentinel ClasslikeName the type system cannot catch
  * as a lie.
  */
 final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInterface
@@ -25,7 +25,7 @@ final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInte
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ?ClassName $declaringClass = null,
+        public ?ClasslikeName $declaringClass = null,
     ) {
     }
 
@@ -67,7 +67,7 @@ final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInte
      * the two shapes stay in one metadata type (§5.3), and the assertion is the
      * type system's stand-in for the invariant the resolver enforces.
      */
-    public function getDeclaringClass(): ClassName
+    public function getDeclaringClass(): ClasslikeName
     {
         assert($this->declaringClass !== null, 'getDeclaringClass() is only defined for class constants');
         return $this->declaringClass;

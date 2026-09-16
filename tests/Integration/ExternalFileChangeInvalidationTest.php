@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -252,8 +252,8 @@ class ExternalFileChangeInvalidationTest extends TestCase
         return 'file://' . $this->workspace . '/' . $shortName . '.php';
     }
 
-    private function classNameFor(string $shortName): ClassName
+    private function classNameFor(string $shortName): ClasslikeName
     {
-        return new ClassName('Temp\\' . $shortName);
+        return new ClasslikeName('Temp\\' . $shortName);
     }
 }

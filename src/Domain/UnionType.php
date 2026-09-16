@@ -34,11 +34,11 @@ final readonly class UnionType implements TypeInterface
         return implode('|', $parts);
     }
 
-    public function getResolvableClassNames(): array
+    public function getResolvableClasslikeNames(): array
     {
         $classNames = [];
         foreach ($this->members as $member) {
-            $classNames = array_merge($classNames, $member->getResolvableClassNames());
+            $classNames = array_merge($classNames, $member->getResolvableClasslikeNames());
         }
         return $classNames;
     }

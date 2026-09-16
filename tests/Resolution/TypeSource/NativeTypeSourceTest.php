@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution\TypeSource;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\GlobalConstantName;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -44,7 +44,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodReturnPrimitive(): void
     {
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('getName'),
         );
 
@@ -52,21 +52,21 @@ final class NativeTypeSourceTest extends TestCase
         self::assertSame('string', $type->format());
     }
 
-    public function testMethodReturnClassName(): void
+    public function testMethodReturnClasslikeName(): void
     {
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('getStatus'),
         );
 
-        self::assertInstanceOf(ClassName::class, $type, 'getStatus returns the Status enum');
+        self::assertInstanceOf(ClasslikeName::class, $type, 'getStatus returns the Status enum');
         self::assertSame('Fixtures\\Enum\\Status', $type->fqn);
     }
 
     public function testMethodReturnNullableIsUnion(): void
     {
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('getTeam'),
         );
 
@@ -77,7 +77,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodReturnInheritedFromTrait(): void
     {
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('markCreated'),
         );
 
@@ -92,7 +92,7 @@ final class NativeTypeSourceTest extends TestCase
         // the trait with the alias name is blind (the trait doesn't declare
         // the alias). resolveLateBoundReturn depends on the former.
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Hierarchy\\TraitAliasSelfReturnUser'),
+            new ClasslikeName('Fixtures\\Hierarchy\\TraitAliasSelfReturnUser'),
             new MethodName('aliasedFluent'),
         );
 
@@ -105,7 +105,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodReturnLookupOnTraitByAliasedNameIsBlind(): void
     {
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Hierarchy\\AliasedSelfReturnTrait'),
+            new ClasslikeName('Fixtures\\Hierarchy\\AliasedSelfReturnTrait'),
             new MethodName('aliasedFluent'),
         );
 
@@ -118,7 +118,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodReturnUnknownClass(): void
     {
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Does\\NotExist'),
+            new ClasslikeName('Fixtures\\Does\\NotExist'),
             new MethodName('anything'),
         );
 
@@ -128,7 +128,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodReturnUnknownMethod(): void
     {
         $type = $this->source->forMethodReturn(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('nonexistent'),
         );
 
@@ -138,7 +138,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodParameterPrimitive(): void
     {
         $type = $this->source->forMethodParameter(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('__construct'),
             'age',
         );
@@ -150,19 +150,19 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodParameterClass(): void
     {
         $type = $this->source->forMethodParameter(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('__construct'),
             'status',
         );
 
-        self::assertInstanceOf(ClassName::class, $type, '$status is declared as Status');
+        self::assertInstanceOf(ClasslikeName::class, $type, '$status is declared as Status');
         self::assertSame('Fixtures\\Enum\\Status', $type->fqn);
     }
 
     public function testMethodParameterUnknownName(): void
     {
         $type = $this->source->forMethodParameter(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('__construct'),
             'unknown',
         );
@@ -173,7 +173,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testMethodParameterUnknownMethod(): void
     {
         $type = $this->source->forMethodParameter(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new MethodName('nonexistent'),
             'anything',
         );
@@ -184,7 +184,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testPropertyPromoted(): void
     {
         $type = $this->source->forProperty(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new PropertyName('name'),
         );
 
@@ -195,7 +195,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testPropertyStatic(): void
     {
         $type = $this->source->forProperty(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new PropertyName('instanceCount'),
         );
 
@@ -206,7 +206,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testPropertyInheritedFromTrait(): void
     {
         $type = $this->source->forProperty(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new PropertyName('displayName'),
         );
 
@@ -217,7 +217,7 @@ final class NativeTypeSourceTest extends TestCase
     public function testClassConstantUntypedReturnsNull(): void
     {
         $type = $this->source->forClassConstant(
-            new ClassName('Fixtures\\Domain\\User'),
+            new ClasslikeName('Fixtures\\Domain\\User'),
             new ClasslikeConstantName('DEFAULT_ROLE'),
         );
 

@@ -12,7 +12,7 @@ use PHPStan\Testing\RuleTestCase;
  */
 class DynamicClassReferenceRuleTest extends RuleTestCase
 {
-    public function testEveryComputedClassNameIsReported(): void
+    public function testEveryComputedClasslikeNameIsReported(): void
     {
         $this->analyse(
             [__DIR__ . '/data/dynamic-class-reference.php'],

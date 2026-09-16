@@ -34,7 +34,7 @@ final class ResolveNewFallbacks
 }
 
 // `self` at global scope has no enclosing class-like, so
-// resolveClassNameInContext returns null.
+// resolveClasslikeNameInContext returns null.
 function newSelfAtGlobalScope(): void
 {
     (new self())->foo(); //hover:global_self_new

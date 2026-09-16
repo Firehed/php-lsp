@@ -17,7 +17,7 @@ class ConfinedFileTest extends TestCase
     public static function paths(): iterable
     {
         yield 'allowed file' => ['src/Domain/TypeFactory.php', true];
-        yield 'other source file' => ['src/Domain/ClassName.php', false];
+        yield 'other source file' => ['src/Domain/ClasslikeName.php', false];
         yield 'test file' => ['tests/Domain/TypeFactoryTest.php', true];
         yield 'rule test data' => ['tests/Architecture/data/constructs-type.php', false];
         yield 'source path containing tests' => ['src/tests/Foo.php', false];

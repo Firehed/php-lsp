@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 
 /**
@@ -48,7 +48,7 @@ enum ClassCandidateFilter
      * Whether a class-like is valid in this position, resolved through the
      * {@see CodeResolverInterface} predicates (which read the caching class repository).
      */
-    public function accepts(ClassName $className, CodeResolverInterface $codeResolver): bool
+    public function accepts(ClasslikeName $className, CodeResolverInterface $codeResolver): bool
     {
         return match ($this) {
             self::Any => true,

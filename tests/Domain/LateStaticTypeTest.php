@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Domain;
 
 use ArrayIterator;
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
@@ -18,16 +18,16 @@ class LateStaticTypeTest extends TestCase
 {
     public function testFormatReturnsKeyword(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
 
         self::assertSame('static', $type->format());
     }
 
-    public function testGetResolvableClassNamesReturnsDeclaringClass(): void
+    public function testGetResolvableClasslikeNamesReturnsDeclaringClass(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
 
-        $classNames = $type->getResolvableClassNames();
+        $classNames = $type->getResolvableClasslikeNames();
 
         self::assertCount(1, $classNames);
         self::assertSame(Traversable::class, $classNames[0]->fqn);
@@ -35,24 +35,24 @@ class LateStaticTypeTest extends TestCase
 
     public function testIsNullableReturnsFalse(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
 
         self::assertFalse($type->isNullable());
     }
 
     public function testResolveLateBoundStaticReturnsCallingClass(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
 
         $resolved = $type->resolveLateBound(ArrayIterator::class);
 
-        self::assertInstanceOf(ClassName::class, $resolved);
+        self::assertInstanceOf(ClasslikeName::class, $resolved);
         self::assertSame(ArrayIterator::class, $resolved->fqn);
     }
 
     public function testResolveLateBoundSelfReturnsDeclaringClassForRegularClass(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Self, new ClasslikeName(Traversable::class));
 
         $resolved = $type->resolveLateBound(ArrayIterator::class, declaringClassIsTrait: false);
 
@@ -61,17 +61,17 @@ class LateStaticTypeTest extends TestCase
 
     public function testResolveLateBoundSelfReturnsCallingClassForTrait(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Self, new ClasslikeName(Traversable::class));
 
         $resolved = $type->resolveLateBound(ArrayIterator::class, declaringClassIsTrait: true);
 
-        self::assertInstanceOf(ClassName::class, $resolved);
+        self::assertInstanceOf(ClasslikeName::class, $resolved);
         self::assertSame(ArrayIterator::class, $resolved->fqn);
     }
 
     public function testResolveLateBoundParentReturnsDeclaringClass(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Parent, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Parent, new ClasslikeName(Traversable::class));
 
         $resolved = $type->resolveLateBound(ArrayIterator::class);
 
@@ -80,35 +80,35 @@ class LateStaticTypeTest extends TestCase
 
     public function testValueTypeIsNull(): void
     {
-        $type = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $type = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
 
         self::assertNull($type->valueType());
     }
 
     public function testEqualsSameKeywordAndDeclaringClass(): void
     {
-        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
-        $b = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
+        $b = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
         self::assertTrue($a->equals($b));
     }
 
     public function testEqualsFalseWhenKeywordDiffers(): void
     {
-        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
-        $b = new LateStaticType(LateBindingKeyword::Self, new ClassName(Traversable::class));
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
+        $b = new LateStaticType(LateBindingKeyword::Self, new ClasslikeName(Traversable::class));
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseWhenDeclaringClassDiffers(): void
     {
-        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
-        $b = new LateStaticType(LateBindingKeyword::Static, new ClassName(ArrayIterator::class));
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
+        $b = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(ArrayIterator::class));
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
-        $a = new LateStaticType(LateBindingKeyword::Static, new ClassName(Traversable::class));
+        $a = new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(Traversable::class));
         $b = new PrimitiveType('object');
         self::assertFalse($a->equals($b));
     }

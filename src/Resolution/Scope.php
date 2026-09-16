@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\ClassName;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
@@ -36,7 +36,7 @@ final class Scope
         private readonly array $statements,
         private readonly ?string $selfContext,
         private readonly ?string $parentContext,
-        private readonly ?ClassName $thisType,
+        private readonly ?ClasslikeName $thisType,
         private readonly array $uses,
         private readonly Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
         private readonly Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null $sourceNode,
@@ -140,7 +140,7 @@ final class Scope
      * The type of `$this` in this scope, or null when `$this` is not bound
      * (free functions, closures, and file-level code).
      */
-    public function getThisType(): ?ClassName
+    public function getThisType(): ?ClasslikeName
     {
         return $this->thisType;
     }
