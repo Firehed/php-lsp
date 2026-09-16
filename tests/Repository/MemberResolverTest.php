@@ -1347,20 +1347,20 @@ final class MemberResolverTest extends TestCase
         self::assertContains($childConstant, $result);
     }
 
-    public function testIsTraitClassReturnsTrueForTrait(): void
+    public function testIsInterfaceReturnsTrueForInterface(): void
     {
-        $traitName = new ClassName(self::fakeClass());
-        $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
+        $interfaceName = new ClassName(self::fakeClass());
+        $interfaceInfo = $this->createClassInfo($interfaceName, ClassKind::Interface_);
 
         $repo = self::createStub(SymbolSourceInterface::class);
-        $repo->method('lookupClassLike')->willReturn($traitInfo);
+        $repo->method('lookupClassLike')->willReturn($interfaceInfo);
 
         $resolver = new MemberResolver($repo);
 
-        self::assertTrue($resolver->isTraitClass($traitName));
+        self::assertTrue($resolver->isInterface($interfaceName));
     }
 
-    public function testIsTraitClassReturnsFalseForClass(): void
+    public function testIsInterfaceReturnsFalseForClass(): void
     {
         $className = new ClassName(self::fakeClass());
         $classInfo = $this->createClassInfo($className, ClassKind::Class_);
@@ -1370,17 +1370,53 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        self::assertFalse($resolver->isTraitClass($className));
+        self::assertFalse($resolver->isInterface($className));
     }
 
-    public function testIsTraitClassReturnsFalseForUnknownClass(): void
+    public function testIsInterfaceReturnsFalseForUnknownClass(): void
     {
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturn(null);
 
         $resolver = new MemberResolver($repo);
 
-        self::assertFalse($resolver->isTraitClass(new ClassName(self::fakeClass())));
+        self::assertFalse($resolver->isInterface(new ClassName(self::fakeClass())));
+    }
+
+    public function testIsTraitReturnsTrueForTrait(): void
+    {
+        $traitName = new ClassName(self::fakeClass());
+        $traitInfo = $this->createClassInfo($traitName, ClassKind::Trait_);
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturn($traitInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertTrue($resolver->isTrait($traitName));
+    }
+
+    public function testIsTraitReturnsFalseForClass(): void
+    {
+        $className = new ClassName(self::fakeClass());
+        $classInfo = $this->createClassInfo($className, ClassKind::Class_);
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturn($classInfo);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse($resolver->isTrait($className));
+    }
+
+    public function testIsTraitReturnsFalseForUnknownClass(): void
+    {
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturn(null);
+
+        $resolver = new MemberResolver($repo);
+
+        self::assertFalse($resolver->isTrait(new ClassName(self::fakeClass())));
     }
 
     public function testAliasNamingAnUnknownMethodOnANamedTraitIsInvisible(): void

@@ -513,7 +513,7 @@ final class ExpressionResolver
         // not declare, so querying the trait directly with the alias name
         // returns null and drops the type entirely.
         $declaredReturn = $this->typeSource->forMethodReturn($callingClass, $methodInfo->name);
-        $isFromTrait = $this->memberResolver->isTraitClass($methodInfo->declaringClass);
+        $isFromTrait = $this->memberResolver->isTrait($methodInfo->declaringClass);
         $return = $declaredReturn?->resolveLateBound($callingClass->fqn, $isFromTrait);
         if ($return === $declaredReturn) {
             return $methodInfo;
