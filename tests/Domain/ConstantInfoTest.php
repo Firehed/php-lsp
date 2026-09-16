@@ -17,158 +17,82 @@ class ConstantInfoTest extends TestCase
     public function testConstruction(): void
     {
         $constant = new ConstantInfo(
-            name: new ClasslikeConstantName('MAX_SIZE'),
-            visibility: Visibility::Public,
-            isFinal: true,
-            type: new PrimitiveType('int'),
-            docblock: '/** Maximum size */',
+            name: ConstantName::fromFullyQualified('APP\\DEBUG'),
+            type: new PrimitiveType('bool'),
+            docblock: '/** Debug flag */',
             file: '/path/to/file.php',
             line: 5,
-            declaringClass: new ClasslikeName(ConstantInfo::class),
         );
 
-        self::assertSame('MAX_SIZE', $constant->name->name);
-        self::assertSame(Visibility::Public, $constant->visibility);
-        self::assertTrue($constant->isFinal);
-        self::assertSame('int', $constant->type?->format());
-        self::assertSame('/** Maximum size */', $constant->docblock);
+        self::assertSame('DEBUG', $constant->name->qualifiedName->shortName);
+        self::assertSame('bool', $constant->type?->format());
+        self::assertSame('/** Debug flag */', $constant->docblock);
         self::assertSame('/path/to/file.php', $constant->file);
         self::assertSame(5, $constant->line);
-        self::assertNotNull($constant->declaringClass, 'class constant has a declaring class');
-        self::assertSame(ConstantInfo::class, $constant->declaringClass->fqn);
     }
 
-    public function testFormatSimple(): void
+    public function testGetTypeReportsTheDeclaredType(): void
     {
-        $constant = new ConstantInfo(
-            name: new ClasslikeConstantName('FOO'),
-            visibility: Visibility::Public,
-            isFinal: false,
-            type: null,
-            docblock: null,
-            file: null,
-            line: null,
-            declaringClass: new ClasslikeName(self::class),
-        );
-
-        self::assertSame('public const FOO', $constant->format());
-    }
-
-    public function testFormatWithType(): void
-    {
-        $constant = new ConstantInfo(
-            name: new ClasslikeConstantName('MAX_SIZE'),
-            visibility: Visibility::Public,
-            isFinal: false,
+        $typed = new ConstantInfo(
+            name: ConstantName::fromFullyQualified('MAX_SIZE'),
             type: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
         );
-
-        self::assertSame('public const int MAX_SIZE', $constant->format());
-    }
-
-    public function testFormatFinal(): void
-    {
-        $constant = new ConstantInfo(
-            name: new ClasslikeConstantName('VERSION'),
-            visibility: Visibility::Public,
-            isFinal: true,
-            type: new PrimitiveType('string'),
-            docblock: null,
-            file: null,
-            line: null,
-            declaringClass: new ClasslikeName(self::class),
-        );
-
-        self::assertSame('public final const string VERSION', $constant->format());
-    }
-
-    public function testFormatPrivate(): void
-    {
-        $constant = new ConstantInfo(
-            name: new ClasslikeConstantName('INTERNAL'),
-            visibility: Visibility::Private,
-            isFinal: false,
+        $untyped = new ConstantInfo(
+            name: ConstantName::fromFullyQualified('DEBUG'),
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
         );
 
-        self::assertSame('private const INTERNAL', $constant->format());
+        self::assertSame('int', $typed->getType()?->format(), 'a typed constant returns its declared type');
+        self::assertNull($untyped->getType(), 'an untyped constant returns null');
+    }
+
+    public function testSymbolKindIsConstant(): void
+    {
+        $constant = new ConstantInfo(
+            name: ConstantName::fromFullyQualified('DEBUG'),
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(
+            SymbolKind::Constant,
+            $constant->symbolKind(),
+            'a free constant reports the Constant LSP kind',
+        );
     }
 
     public function testFormatGlobalConstant(): void
     {
         $constant = new ConstantInfo(
-            name: new ClasslikeConstantName('DEBUG'),
-            visibility: Visibility::Public,
-            isFinal: true,
+            name: ConstantName::fromFullyQualified('DEBUG'),
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: null,
         );
 
-        self::assertSame('const DEBUG', $constant->format(), 'global constants omit visibility');
+        self::assertSame('const DEBUG', $constant->format(), 'free constants omit visibility');
     }
 
     public function testFormatGlobalConstantWithType(): void
     {
         $constant = new ConstantInfo(
-            name: new ClasslikeConstantName('MAX_SIZE'),
-            visibility: Visibility::Public,
-            isFinal: true,
+            name: ConstantName::fromFullyQualified('MAX_SIZE'),
             type: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
-            declaringClass: null,
         );
 
-        self::assertSame('const int MAX_SIZE', $constant->format(), 'global constants show type after const');
-    }
-
-    public function testResolvedMemberMetadata(): void
-    {
-        $constant = $this->makeSubject();
-
-        self::assertSame(MemberKind::Constant, $constant->getMemberKind());
-        self::assertSame('MAX_SIZE', $constant->getName()->name);
-        self::assertSame(ConstantInfo::class, $constant->getDeclaringClass()->fqn);
-        self::assertSame('int', $constant->getType()?->format());
-        self::assertSame(Visibility::Public, $constant->getVisibility());
-        self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');
-    }
-
-    public function testGetDeclaringClassFailsOnGlobalConstant(): void
-    {
-        $globalConstant = new ConstantInfo(
-            name: new ClasslikeConstantName('DEBUG'),
-            visibility: Visibility::Public,
-            isFinal: true,
-            type: null,
-            docblock: null,
-            file: null,
-            line: null,
-            declaringClass: null,
-        );
-
-        // With assertions on (dev), assert() throws AssertionError. With them off
-        // (prod), assert() is a no-op and PHP's declared return type raises
-        // TypeError. Either shape enforces the same invariant.
-        try {
-            $globalConstant->getDeclaringClass();
-            self::fail('getDeclaringClass on a global constant should fail');
-        } catch (\AssertionError | \TypeError) {
-            // Expected: one of the two, depending on zend.assertions.
-            $this->addToAssertionCount(1);
-        }
+        self::assertSame('const int MAX_SIZE', $constant->format(), 'free constants render type after const');
     }
 
     protected function makeSubject(
@@ -177,14 +101,11 @@ class ConstantInfoTest extends TestCase
         ?string $docblock = null,
     ): ConstantInfo {
         return new ConstantInfo(
-            name: new ClasslikeConstantName('MAX_SIZE'),
-            visibility: Visibility::Public,
-            isFinal: true,
+            name: ConstantName::fromFullyQualified('APP\\LIMIT'),
             type: new PrimitiveType('int'),
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: new ClasslikeName(ConstantInfo::class),
         );
     }
 }

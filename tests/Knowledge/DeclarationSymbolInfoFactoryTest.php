@@ -120,7 +120,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertInstanceOf(
             \Firehed\PhpLsp\Domain\ConstantInfo::class,
             $info,
-            'a declared constant must resolve to ConstantInfo',
+            'a declared free-standing constant must resolve to ConstantInfo',
         );
     }
 

@@ -7,9 +7,11 @@ namespace Firehed\PhpLsp\Knowledge;
 use Attribute;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -73,7 +75,7 @@ final readonly class DeclarationSymbolInfoFactory
         foreach ($declarations->constants as $declaration) {
             $info = $this->constantInfoFromGlobalDeclaration(
                 $declaration->node,
-                $declaration->name->shortName,
+                $declaration->name,
                 $filePath,
             );
             self::collect($symbols, $seen, $declaration->name, NameKind::Constant, $info);
@@ -132,7 +134,7 @@ final readonly class DeclarationSymbolInfoFactory
      */
     private function constantInfoFromGlobalDeclaration(
         Node\Const_|Expr\FuncCall $node,
-        string $shortName,
+        QualifiedName $name,
         string $filePath,
     ): ConstantInfo {
         // php-parser attaches a doc comment to the outer statement — `Stmt\Const_`
@@ -143,14 +145,11 @@ final readonly class DeclarationSymbolInfoFactory
         $doc = ($parent instanceof Node ? $parent->getDocComment() : null) ?? $node->getDocComment();
 
         return new ConstantInfo(
-            name: new ClasslikeConstantName($shortName),
-            visibility: Visibility::Public,
-            isFinal: true,
+            name: new ConstantName($name),
             type: null,
             docblock: $doc?->getText(),
             file: $filePath,
             line: $node->getStartLine(),
-            declaringClass: null,
         );
     }
 
@@ -165,7 +164,7 @@ final readonly class DeclarationSymbolInfoFactory
     }
 
     /**
-     * @return array<string, ConstantInfo>
+     * @return array<string, ClasslikeConstantInfo>
      */
     private function extractConstants(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
@@ -179,7 +178,7 @@ final readonly class DeclarationSymbolInfoFactory
 
             foreach ($stmt->consts as $const) {
                 $name = $const->name->toString();
-                $constants[$name] = new ConstantInfo(
+                $constants[$name] = new ClasslikeConstantInfo(
                     name: new ClasslikeConstantName($name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),

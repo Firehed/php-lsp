@@ -51,6 +51,7 @@ final class KindInspectionRule implements Rule
      */
     private const array CONFINED_RESOLVED_IMPLS = [
         \Firehed\PhpLsp\Domain\ClassInfo::class,
+        \Firehed\PhpLsp\Domain\ClasslikeConstantInfo::class,
         \Firehed\PhpLsp\Domain\ConstantInfo::class,
         \Firehed\PhpLsp\Domain\EnumCaseInfo::class,
         \Firehed\PhpLsp\Domain\FunctionInfo::class,
