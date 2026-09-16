@@ -31,6 +31,40 @@ class ConstantInfoTest extends TestCase
         self::assertSame(5, $constant->line);
     }
 
+    public function testGetTypeReportsTheDeclaredType(): void
+    {
+        $typed = new ConstantInfo(
+            name: ConstantName::fromFullyQualified('MAX_SIZE'),
+            type: new PrimitiveType('int'),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+        $untyped = new ConstantInfo(
+            name: ConstantName::fromFullyQualified('DEBUG'),
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame('int', $typed->getType()?->format(), 'a typed constant returns its declared type');
+        self::assertNull($untyped->getType(), 'an untyped constant returns null');
+    }
+
+    public function testSymbolKindIsConstant(): void
+    {
+        $constant = new ConstantInfo(
+            name: ConstantName::fromFullyQualified('DEBUG'),
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(SymbolKind::Constant, $constant->symbolKind(), 'a free constant reports the Constant LSP kind');
+    }
+
     public function testFormatGlobalConstant(): void
     {
         $constant = new ConstantInfo(

@@ -101,6 +101,17 @@ class ClasslikeConstantInfoTest extends TestCase
         self::assertSame('private const INTERNAL', $constant->format());
     }
 
+    public function testSymbolKindIsConstant(): void
+    {
+        $constant = $this->makeSubject();
+
+        self::assertSame(
+            SymbolKind::Constant,
+            $constant->symbolKind(),
+            'a class-owned constant reports the Constant LSP kind',
+        );
+    }
+
     public function testResolvedMemberMetadata(): void
     {
         $constant = $this->makeSubject();
