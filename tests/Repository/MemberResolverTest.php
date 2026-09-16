@@ -6,9 +6,9 @@ namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
@@ -1728,7 +1728,7 @@ final class MemberResolverTest extends TestCase
     /**
      * @param array<string, MethodInfo> $methods
      * @param array<string, PropertyInfo> $properties
-     * @param array<string, ConstantInfo> $constants
+     * @param array<string, ClasslikeConstantInfo> $constants
      * @param array<string, EnumCaseInfo> $enumCases
      * @param list<ClasslikeName> $traits
      * @param list<ClasslikeName> $interfaces
@@ -1812,8 +1812,8 @@ final class MemberResolverTest extends TestCase
         string $name,
         Visibility $visibility,
         ClasslikeName $declaringClass,
-    ): ConstantInfo {
-        return new ConstantInfo(
+    ): ClasslikeConstantInfo {
+        return new ClasslikeConstantInfo(
             name: new ClasslikeConstantName($name),
             visibility: $visibility,
             isFinal: false,

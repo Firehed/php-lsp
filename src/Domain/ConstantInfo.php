@@ -5,100 +5,41 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * Metadata about a constant — either a class constant (when declaringClass is
- * set) or a global constant (when declaringClass is null).
+ * Metadata about a free-standing (namespace-level) constant.
  *
- * One type serves both (Plan 0002 §5.3): the nullable is a conscious exception
- * to the no-nullable rule, since the alternatives are a second metadata type
- * differing in one field, or a sentinel ClasslikeName the type system cannot catch
- * as a lie.
+ * A free constant carries its own fully-qualified name and no declaring class;
+ * the class-owned sibling is {@see ClasslikeConstantInfo}. The split lets the
+ * member-resolver walk hand out only the class-owned variant, so the type
+ * system enforces the invariant a nullable declaring class once stood in for.
+ *
+ * Visibility and finality do not apply here — a `const` or `define()` at
+ * namespace level has neither.
  */
-final readonly class ConstantInfo implements MemberInfoInterface, SymbolInfoInterface
+final readonly class ConstantInfo implements ResolvedSymbolInterface, SymbolInfoInterface
 {
     use HasSymbolLocationTrait;
 
     public function __construct(
-        public ClasslikeConstantName $name,
-        public Visibility $visibility,
-        public bool $isFinal,
+        public ConstantName $name,
         public ?TypeInterface $type,
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ?ClasslikeName $declaringClass = null,
     ) {
     }
 
     public function format(): string
     {
-        if ($this->declaringClass === null) {
-            return $this->formatGlobal();
-        }
-
-        return $this->formatClassConstant();
-    }
-
-    private function formatClassConstant(): string
-    {
-        $parts = [$this->visibility->format()];
-        if ($this->isFinal) {
-            $parts[] = 'final';
-        }
-        $parts[] = 'const';
-        if ($this->type !== null) {
-            $parts[] = $this->type->format();
-        }
-        $parts[] = $this->name->name;
-        return implode(' ', $parts);
-    }
-
-    private function formatGlobal(): string
-    {
-        $parts = ['const', $this->name->name];
+        $parts = ['const', $this->name->qualifiedName->shortName];
         if ($this->type !== null) {
             array_splice($parts, 1, 0, [$this->type->format()]);
         }
         return implode(' ', $parts);
     }
 
-    /**
-     * A class constant's declaring class. Fails on a global constant, matching
-     * how the resolver hands one out only for the class-constant lookup path;
-     * the two shapes stay in one metadata type (§5.3), and the assertion is the
-     * type system's stand-in for the invariant the resolver enforces.
-     */
-    public function getDeclaringClass(): ClasslikeName
-    {
-        assert($this->declaringClass !== null, 'getDeclaringClass() is only defined for class constants');
-        return $this->declaringClass;
-    }
-
-    public function getMemberKind(): MemberKind
-    {
-        return MemberKind::Constant;
-    }
-
-    public function getName(): ClasslikeConstantName
-    {
-        return $this->name;
-    }
-
     public function getType(): ?TypeInterface
     {
         return $this->type;
-    }
-
-    public function getVisibility(): Visibility
-    {
-        return $this->visibility;
-    }
-
-    /**
-     * A class constant is reached on the class, never on an instance.
-     */
-    public function isStatic(): bool
-    {
-        return true;
     }
 
     public function symbolKind(): SymbolKind

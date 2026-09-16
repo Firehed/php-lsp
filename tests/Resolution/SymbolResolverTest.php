@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Exception;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
@@ -340,7 +341,7 @@ final class SymbolResolverTest extends TestCase
 
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
-        self::assertInstanceOf(ConstantInfo::class, $result);
+        self::assertInstanceOf(ClasslikeConstantInfo::class, $result);
         self::assertStringContainsString('PARENT_CONST', $result->format());
     }
 

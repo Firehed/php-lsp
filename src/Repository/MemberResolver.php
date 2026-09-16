@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
@@ -46,7 +46,7 @@ final class MemberResolver implements MemberResolverInterface
         ClasslikeName $class,
         ClasslikeConstantName $constant,
         Visibility $minVisibility,
-    ): ?ConstantInfo {
+    ): ?ClasslikeConstantInfo {
         return $this->findMember($class, MemberKind::Constant, $constant->name, $minVisibility);
     }
 
@@ -81,7 +81,7 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
-     * @return list<ConstantInfo>
+     * @return list<ClasslikeConstantInfo>
      */
     public function getConstants(ClasslikeName $class, Visibility $minVisibility): array
     {
@@ -200,7 +200,7 @@ final class MemberResolver implements MemberResolverInterface
      * @phpstan-return (
      *   $kind is MemberKind::Method ? list<MethodInfo> : (
      *     $kind is MemberKind::Property ? list<PropertyInfo> : (
-     *       $kind is MemberKind::Constant ? list<ConstantInfo> : (
+     *       $kind is MemberKind::Constant ? list<ClasslikeConstantInfo> : (
      *         $kind is MemberKind::EnumCase ? list<EnumCaseInfo> : list<MemberInfoInterface>
      *       )
      *     )
@@ -243,7 +243,7 @@ final class MemberResolver implements MemberResolverInterface
      * @phpstan-return (
      *   $kind is MemberKind::Method ? ?MethodInfo : (
      *     $kind is MemberKind::Property ? ?PropertyInfo : (
-     *       $kind is MemberKind::Constant ? ?ConstantInfo : (
+     *       $kind is MemberKind::Constant ? ?ClasslikeConstantInfo : (
      *         $kind is MemberKind::EnumCase ? ?EnumCaseInfo : ?MemberInfoInterface
      *       )
      *     )

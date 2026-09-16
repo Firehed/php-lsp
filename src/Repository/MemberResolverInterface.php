@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Repository;
 
+use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
@@ -30,7 +30,7 @@ interface MemberResolverInterface
         ClasslikeName $class,
         ClasslikeConstantName $constant,
         Visibility $minVisibility,
-    ): ?ConstantInfo;
+    ): ?ClasslikeConstantInfo;
 
     public function findEnumCase(ClasslikeName $class, EnumCaseName $case): ?EnumCaseInfo;
 
@@ -47,7 +47,7 @@ interface MemberResolverInterface
     ): ?PropertyInfo;
 
     /**
-     * @return list<ConstantInfo>
+     * @return list<ClasslikeConstantInfo>
      */
     public function getConstants(ClasslikeName $class, Visibility $minVisibility): array;
 

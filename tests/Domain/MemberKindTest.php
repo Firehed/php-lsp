@@ -85,7 +85,7 @@ class MemberKindTest extends TestCase
     }
 
     private static function createClassInfo(
-        ConstantInfo $constant,
+        ClasslikeConstantInfo $constant,
         EnumCaseInfo $enumCase,
         MethodInfo $method,
         PropertyInfo $property,
@@ -110,9 +110,9 @@ class MemberKindTest extends TestCase
         );
     }
 
-    private static function createConstantInfo(): ConstantInfo
+    private static function createConstantInfo(): ClasslikeConstantInfo
     {
-        return new ConstantInfo(
+        return new ClasslikeConstantInfo(
             name: new ClasslikeConstantName('MAX'),
             visibility: Visibility::Public,
             isFinal: false,

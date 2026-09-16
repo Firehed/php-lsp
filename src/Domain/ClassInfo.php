@@ -16,7 +16,7 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
      * @param list<ClasslikeName> $traits Used traits
      * @param array<string, MethodInfo> $methods Keyed by method name
      * @param array<string, PropertyInfo> $properties Keyed by property name
-     * @param array<string, ConstantInfo> $constants Keyed by constant name
+     * @param array<string, ClasslikeConstantInfo> $constants Keyed by constant name
      * @param array<string, EnumCaseInfo> $enumCases Keyed by case name
      * @param array<string, list<string>> $traitExclusions Methods excluded from
      *     a used trait by an `A::method insteadof B` clause, keyed by the

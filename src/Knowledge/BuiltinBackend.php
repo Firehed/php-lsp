@@ -8,9 +8,11 @@ use Attribute;
 use BackedEnum;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -155,14 +157,11 @@ final class BuiltinBackend implements SymbolBackendInterface
         }
 
         return new ConstantInfo(
-            name: new ClasslikeConstantName($name->shortName),
-            visibility: Visibility::Public,
-            isFinal: true,
+            name: new ConstantName($name),
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: null,
         );
     }
 
@@ -185,7 +184,7 @@ final class BuiltinBackend implements SymbolBackendInterface
     /**
      * @template T of object
      * @param ReflectionClass<T> $class
-     * @return array<string, ConstantInfo>
+     * @return array<string, ClasslikeConstantInfo>
      */
     private function extractConstants(ReflectionClass $class, ClasslikeName $className): array
     {
@@ -200,7 +199,7 @@ final class BuiltinBackend implements SymbolBackendInterface
             }
 
             $name = $constant->getName();
-            $constants[$name] = new ConstantInfo(
+            $constants[$name] = new ClasslikeConstantInfo(
                 name: new ClasslikeConstantName($name),
                 // No built-in class ships non-public constants; hard-code Public.
                 visibility: Visibility::Public,

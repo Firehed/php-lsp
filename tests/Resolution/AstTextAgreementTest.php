@@ -561,7 +561,7 @@ final class AstTextAgreementTest extends TestCase
     }
 
     /**
-     * @param array<string, \Firehed\PhpLsp\Domain\ConstantInfo> $constants
+     * @param array<string, \Firehed\PhpLsp\Domain\ClasslikeConstantInfo> $constants
      * @return array<string, array<string, string>>
      */
     private static function describeConstants(array $constants): array

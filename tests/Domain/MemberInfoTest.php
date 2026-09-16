@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
  * The two questions the hierarchy walk asks of every member kind. They are
  * asserted together so no kind can answer them in its own terms.
  */
-#[CoversClass(ConstantInfo::class)]
+#[CoversClass(ClasslikeConstantInfo::class)]
 #[CoversClass(EnumCaseInfo::class)]
 #[CoversClass(MethodInfo::class)]
 #[CoversClass(PropertyInfo::class)]
@@ -32,7 +32,7 @@ class MemberInfoTest extends TestCase
     {
         $declaringClass = new ClasslikeName(self::class);
 
-        $constant = new ConstantInfo(
+        $constant = new ClasslikeConstantInfo(
             name: new ClasslikeConstantName('MAX'),
             visibility: Visibility::Protected,
             isFinal: false,
