@@ -17,11 +17,11 @@ class TypeConstructionRuleTest extends RuleTestCase
         $this->analyse(
             [__DIR__ . '/data/constructs-type-outside-factory.php'],
             [
-                ['new ClasslikeName is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 19],
-                ['new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 24],
-                ['new ClasslikeName is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 29],
-                ['new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 29],
-                ['new UnionType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 29],
+                ['new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 20],
+                ['new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 25],
+                ['new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 30],
+                ['new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 30],
+                ['new UnionType is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).', 30],
             ],
         );
     }
