@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\TypeInterface;
@@ -208,10 +209,10 @@ final class MemberAccessDetector
             if ($parentClasslikeName === null) {
                 return null;
             }
-            $target = TypeFactory::className($parentClasslikeName);
+            $targetName = TypeFactory::className($parentClasslikeName);
             return MemberAccessContext::forParent(
-                $target,
-                $this->visibilityBetween($vantage, $target),
+                new ClasslikeType($targetName),
+                $this->visibilityBetween($vantage, $targetName),
                 $prefix,
             );
         }
@@ -220,10 +221,10 @@ final class MemberAccessDetector
             if ($enclosingName === null) {
                 return null;
             }
-            $target = TypeFactory::className($enclosingName);
+            $targetName = TypeFactory::className($enclosingName);
             return MemberAccessContext::forStatic(
-                $target,
-                $this->visibilityBetween($vantage, $target),
+                new ClasslikeType($targetName),
+                $this->visibilityBetween($vantage, $targetName),
                 $prefix,
             );
         }
@@ -245,10 +246,10 @@ final class MemberAccessDetector
         }
         /** @var class-string $className */
 
-        $target = TypeFactory::className($className);
+        $targetName = TypeFactory::className($className);
         return MemberAccessContext::forStatic(
-            $target,
-            $this->visibilityBetween($vantage, $target),
+            new ClasslikeType($targetName),
+            $this->visibilityBetween($vantage, $targetName),
             $prefix,
         );
     }

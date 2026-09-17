@@ -232,7 +232,7 @@ class ClassInfoTest extends TestCase
     {
         $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_);
 
-        self::assertSame(ClassInfo::class, $class->getType()->fqn);
+        self::assertSame(ClassInfo::class, $class->getType()->name->fqn);
     }
 
     protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): ClassInfo
