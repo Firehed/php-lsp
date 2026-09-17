@@ -11,6 +11,18 @@ parameters:
 			path: src/Completion/SymbolCandidates.php
 
 		-
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
+			path: src/Domain/ClassInfo.php
+
+		-
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
+			path: src/Domain/EnumCaseInfo.php
+
+		-
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
@@ -37,6 +49,12 @@ parameters:
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
+			count: 1
+			path: src/Domain/EnumImplicits.php
+
+		-
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Domain/EnumImplicits.php
 
@@ -97,7 +115,7 @@ parameters:
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 9
+			count: 7
 			path: src/Resolution/ExpressionResolver.php
 
 		-
@@ -111,6 +129,12 @@ parameters:
 			path: src/Resolution/ExpressionResolver.php
 
 		-
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 5
+			path: src/Resolution/ExpressionResolver.php
+
+		-
 			message: '''
 				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
@@ -118,6 +142,12 @@ parameters:
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 5
+			path: src/Resolution/MemberAccessDetector.php
+
+		-
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 3
 			path: src/Resolution/MemberAccessDetector.php
 
 		-
@@ -148,6 +178,12 @@ parameters:
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 3
+			path: src/Resolution/SymbolResolver.php
+
+		-
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
+			count: 1
 			path: src/Resolution/SymbolResolver.php
 
 		-

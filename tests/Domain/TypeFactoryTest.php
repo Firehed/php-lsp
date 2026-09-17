@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Domain;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
@@ -29,13 +30,13 @@ class TypeFactoryTest extends TestCase
         self::assertNull(TypeFactory::fromNode(null));
     }
 
-    public function testFromNodeWithNameCreatesClasslikeName(): void
+    public function testFromNodeWithNameCreatesClasslikeType(): void
     {
         $node = new Name(\stdClass::class);
         $type = TypeFactory::fromNode($node);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\stdClass::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\stdClass::class, $type->name->fqn);
     }
 
     public function testFromNodeWithNameUsesResolvedName(): void
@@ -44,8 +45,8 @@ class TypeFactoryTest extends TestCase
         $node->setAttribute('resolvedName', new Name('App\\Models\\User'));
         $type = TypeFactory::fromNode($node);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame('App\\Models\\User', $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame('App\\Models\\User', $type->name->fqn);
     }
 
     /**
@@ -80,31 +81,31 @@ class TypeFactoryTest extends TestCase
         self::assertSame($name, $type->format());
     }
 
-    public function testFromNodeWithSelfAndContextCreatesClasslikeName(): void
+    public function testFromNodeWithSelfAndContextCreatesClasslikeType(): void
     {
         $node = new Identifier('self');
         $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\stdClass::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\stdClass::class, $type->name->fqn);
     }
 
-    public function testFromNodeWithStaticAndContextCreatesClasslikeName(): void
+    public function testFromNodeWithStaticAndContextCreatesClasslikeType(): void
     {
         $node = new Identifier('static');
         $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\ArrayObject::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\ArrayObject::class, $type->name->fqn);
     }
 
-    public function testFromNodeWithParentAndContextCreatesClasslikeName(): void
+    public function testFromNodeWithParentAndContextCreatesClasslikeType(): void
     {
         $node = new Identifier('parent');
         $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\Throwable::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\Throwable::class, $type->name->fqn);
     }
 
     public function testFromNodeWithSelfWithoutContextCreatesPrimitiveType(): void
@@ -155,31 +156,31 @@ class TypeFactoryTest extends TestCase
         self::assertSame('parent', $type->format());
     }
 
-    public function testFromNodeWithNameSelfAndContextCreatesClasslikeName(): void
+    public function testFromNodeWithNameSelfAndContextCreatesClasslikeType(): void
     {
         $node = new Name('self');
         $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\stdClass::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\stdClass::class, $type->name->fqn);
     }
 
-    public function testFromNodeWithNameStaticAndContextCreatesClasslikeName(): void
+    public function testFromNodeWithNameStaticAndContextCreatesClasslikeType(): void
     {
         $node = new Name('static');
         $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\ArrayObject::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\ArrayObject::class, $type->name->fqn);
     }
 
-    public function testFromNodeWithNameParentAndContextCreatesClasslikeName(): void
+    public function testFromNodeWithNameParentAndContextCreatesClasslikeType(): void
     {
         $node = new Name('parent');
         $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\Throwable::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\Throwable::class, $type->name->fqn);
     }
 
     public function testFromNodeWithNameSelfWithoutContextCreatesPrimitiveType(): void
@@ -321,13 +322,13 @@ class TypeFactoryTest extends TestCase
         self::assertSame('?string', $type->format());
     }
 
-    public function testFromReflectionWithClassCreatesClasslikeName(): void
+    public function testFromReflectionWithClassCreatesClasslikeType(): void
     {
         $func = new ReflectionFunction(fn (): \stdClass => new \stdClass());
         $type = TypeFactory::fromReflection($func->getReturnType());
 
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\stdClass::class, $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type);
+        self::assertSame(\stdClass::class, $type->name->fqn);
     }
 
     public function testFromReflectionWithNullableCreatesUnionType(): void
@@ -378,14 +379,14 @@ class TypeFactoryTest extends TestCase
 
     public function testUnionCollapsesToSingleMember(): void
     {
-        $type = TypeFactory::className(\DateTime::class);
+        $type = new ClasslikeType(TypeFactory::className(\DateTime::class));
         self::assertSame($type, TypeFactory::union([$type]));
     }
 
     public function testUnionOfSeveralMembersBuildsUnionType(): void
     {
-        $a = TypeFactory::className(\DateTime::class);
-        $b = TypeFactory::className(\DateTimeImmutable::class);
+        $a = new ClasslikeType(TypeFactory::className(\DateTime::class));
+        $b = new ClasslikeType(TypeFactory::className(\DateTimeImmutable::class));
         $type = TypeFactory::union([$a, $b]);
         self::assertInstanceOf(UnionType::class, $type);
         self::assertSame('DateTime|DateTimeImmutable', $type->format());

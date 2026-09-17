@@ -51,9 +51,9 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
      * An enum case's value type is the enum itself: each case is a singleton
      * instance of the declaring enum.
      */
-    public function getType(): ClasslikeName
+    public function getType(): ClasslikeType
     {
-        return $this->declaringClass;
+        return new ClasslikeType($this->declaringClass);
     }
 
     /**

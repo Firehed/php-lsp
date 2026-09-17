@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Resolution\TypeSource;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -59,8 +60,8 @@ final class NativeTypeSourceTest extends TestCase
             new MethodName('getStatus'),
         );
 
-        self::assertInstanceOf(ClasslikeName::class, $type, 'getStatus returns the Status enum');
-        self::assertSame('Fixtures\\Enum\\Status', $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type, 'getStatus returns the Status enum');
+        self::assertSame('Fixtures\\Enum\\Status', $type->name->fqn);
     }
 
     public function testMethodReturnNullableIsUnion(): void
@@ -155,8 +156,8 @@ final class NativeTypeSourceTest extends TestCase
             'status',
         );
 
-        self::assertInstanceOf(ClasslikeName::class, $type, '$status is declared as Status');
-        self::assertSame('Fixtures\\Enum\\Status', $type->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $type, '$status is declared as Status');
+        self::assertSame('Fixtures\\Enum\\Status', $type->name->fqn);
     }
 
     public function testMethodParameterUnknownName(): void

@@ -11,11 +11,20 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(LateStaticType::class)]
 class IntersectionTypeTest extends TestCase
 {
+    /**
+     * @param list<TypeInterface> $args
+     */
+    private static function classlike(string $fqn, array $args = []): ClasslikeType
+    {
+        /** @var class-string $fqn */
+        return new ClasslikeType(new ClasslikeName($fqn), $args);
+    }
+
     public function testFormatJoinsWithAmpersand(): void
     {
         $type = new IntersectionType([
-            new ClasslikeName(\Iterator::class),
-            new ClasslikeName(\Countable::class),
+            self::classlike(\Iterator::class),
+            self::classlike(\Countable::class),
         ]);
         self::assertSame('Iterator&Countable', $type->format());
     }
@@ -23,8 +32,8 @@ class IntersectionTypeTest extends TestCase
     public function testGetResolvableClasslikeNamesCollectsFromAllMembers(): void
     {
         $type = new IntersectionType([
-            new ClasslikeName(\Iterator::class),
-            new ClasslikeName(\Countable::class),
+            self::classlike(\Iterator::class),
+            self::classlike(\Countable::class),
         ]);
         $classNames = $type->getResolvableClasslikeNames();
         self::assertCount(2, $classNames);
@@ -35,29 +44,29 @@ class IntersectionTypeTest extends TestCase
     public function testIsNullableReturnsFalse(): void
     {
         $type = new IntersectionType([
-            new ClasslikeName(\Iterator::class),
-            new ClasslikeName(\Countable::class),
+            self::classlike(\Iterator::class),
+            self::classlike(\Countable::class),
         ]);
         self::assertFalse($type->isNullable());
     }
 
     public function testValueTypeAgreesWhenMembersAgree(): void
     {
-        $value = new ClasslikeName(\stdClass::class);
+        $value = self::classlike(\stdClass::class);
         $type = new IntersectionType([
-            new ClasslikeName(\ArrayIterator::class, [$value]),
-            new ClasslikeName(\IteratorAggregate::class, [$value]),
+            self::classlike(\ArrayIterator::class, [$value]),
+            self::classlike(\IteratorAggregate::class, [$value]),
         ]);
         $valueType = $type->valueType();
-        self::assertInstanceOf(ClasslikeName::class, $valueType);
-        self::assertSame(\stdClass::class, $valueType->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $valueType);
+        self::assertSame(\stdClass::class, $valueType->name->fqn);
     }
 
     public function testValueTypeIsNullWhenMembersDisagree(): void
     {
         $type = new IntersectionType([
-            new ClasslikeName(\ArrayIterator::class, [new ClasslikeName(\stdClass::class)]),
-            new ClasslikeName(\IteratorAggregate::class, [new ClasslikeName(\Iterator::class)]),
+            self::classlike(\ArrayIterator::class, [self::classlike(\stdClass::class)]),
+            self::classlike(\IteratorAggregate::class, [self::classlike(\Iterator::class)]),
         ]);
         self::assertNull($type->valueType());
     }
@@ -65,37 +74,37 @@ class IntersectionTypeTest extends TestCase
     public function testValueTypeIsNullWhenAnyMemberHasNone(): void
     {
         $type = new IntersectionType([
-            new ClasslikeName(\ArrayIterator::class, [new ClasslikeName(\stdClass::class)]),
-            new ClasslikeName(\IteratorAggregate::class),
+            self::classlike(\ArrayIterator::class, [self::classlike(\stdClass::class)]),
+            self::classlike(\IteratorAggregate::class),
         ]);
         self::assertNull($type->valueType());
     }
 
     public function testEqualsSameMembersInOrder(): void
     {
-        $a = new IntersectionType([new ClasslikeName(\Iterator::class), new ClasslikeName(\Countable::class)]);
-        $b = new IntersectionType([new ClasslikeName(\Iterator::class), new ClasslikeName(\Countable::class)]);
+        $a = new IntersectionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);
+        $b = new IntersectionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);
         self::assertTrue($a->equals($b));
     }
 
     public function testEqualsFalseWhenMemberOrderDiffers(): void
     {
-        $a = new IntersectionType([new ClasslikeName(\Iterator::class), new ClasslikeName(\Countable::class)]);
-        $b = new IntersectionType([new ClasslikeName(\Countable::class), new ClasslikeName(\Iterator::class)]);
+        $a = new IntersectionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);
+        $b = new IntersectionType([self::classlike(\Countable::class), self::classlike(\Iterator::class)]);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseWhenMemberCountDiffers(): void
     {
-        $a = new IntersectionType([new ClasslikeName(\Iterator::class), new ClasslikeName(\Countable::class)]);
-        $b = new IntersectionType([new ClasslikeName(\Iterator::class)]);
+        $a = new IntersectionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);
+        $b = new IntersectionType([self::classlike(\Iterator::class)]);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
-        $a = new IntersectionType([new ClasslikeName(\Iterator::class), new ClasslikeName(\Countable::class)]);
-        $b = new UnionType([new ClasslikeName(\Iterator::class), new ClasslikeName(\Countable::class)]);
+        $a = new IntersectionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);
+        $b = new UnionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);
         self::assertFalse($a->equals($b));
     }
 
@@ -103,7 +112,7 @@ class IntersectionTypeTest extends TestCase
     {
         $type = new IntersectionType([
             new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(\Traversable::class)),
-            new ClasslikeName(\Countable::class),
+            self::classlike(\Countable::class),
         ]);
 
         $resolved = $type->resolveLateBound(\ArrayIterator::class);

@@ -47,7 +47,7 @@ class KindInspectionRuleTest extends RuleTestCase
             [__DIR__ . '/data/instanceof-type.php'],
             [
                 [
-                    'instanceof ClasslikeName branches on concrete TypeInterface; '
+                    'instanceof ClasslikeType branches on concrete TypeInterface; '
                         . 'use predicates (RFC 1 §4.5).',
                     18,
                 ],

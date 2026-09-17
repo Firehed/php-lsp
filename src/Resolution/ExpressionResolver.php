@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DocblockParser;
@@ -80,7 +81,7 @@ final class ExpressionResolver
             if ($enclosing === null) {
                 return null;
             }
-            return new ResolvedTypeOnly(TypeFactory::className($enclosing));
+            return new ResolvedTypeOnly(new ClasslikeType(TypeFactory::className($enclosing)));
         }
 
         if ($expr instanceof Variable && is_string($expr->name)) {
@@ -201,11 +202,11 @@ final class ExpressionResolver
         }
         if ($parent instanceof Stmt\Catch_) {
             assert($parent->types !== [], 'PHP grammar requires at least one type in a catch clause');
-            $classNames = [];
+            $classTypes = [];
             foreach ($parent->types as $type) {
-                $classNames[] = TypeFactory::className(ScopeFinder::resolveClasslikeName($type));
+                $classTypes[] = new ClasslikeType(TypeFactory::className(ScopeFinder::resolveClasslikeName($type)));
             }
-            return count($classNames) === 1 ? $classNames[0] : TypeFactory::union($classNames);
+            return count($classTypes) === 1 ? $classTypes[0] : TypeFactory::union($classTypes);
         }
         if ($parent instanceof Node\ClosureUse) {
             $closure = $parent->getAttribute('parent');
@@ -272,14 +273,15 @@ final class ExpressionResolver
         if (str_starts_with($shortOrFqn, '\\')) {
             $fqn = ltrim($shortOrFqn, '\\');
             /** @var class-string $fqn */
-            return TypeFactory::className($fqn);
+            return new ClasslikeType(TypeFactory::className($fqn));
         }
         $context = NameContextFactory::fromAst($ast, $atNode->getStartLine() - 1);
         $candidates = $context->candidates($shortOrFqn, NameKind::ClassLike);
         foreach ($candidates as $candidate) {
             /** @var class-string $candidate */
-            if ($this->symbolSource->lookupClassLike(TypeFactory::className($candidate)) !== null) {
-                return TypeFactory::className($candidate);
+            $name = TypeFactory::className($candidate);
+            if ($this->symbolSource->lookupClassLike($name) !== null) {
+                return new ClasslikeType($name);
             }
         }
         return null;
@@ -294,9 +296,10 @@ final class ExpressionResolver
         if ($className === null) {
             return null;
         }
-        $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($className));
+        $name = TypeFactory::className($className);
+        $classInfo = $this->symbolSource->lookupClassLike($name);
         if ($classInfo === null) {
-            return new ResolvedTypeOnly(TypeFactory::className($className));
+            return new ResolvedTypeOnly(new ClasslikeType($name));
         }
         return $classInfo;
     }

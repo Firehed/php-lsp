@@ -50,7 +50,7 @@ final class TypeFactory
                 $fqn = $resolvedName instanceof Name
                     ? $resolvedName->toString()
                     : $name;
-                return new ClasslikeName($fqn);
+                return new ClasslikeType(new ClasslikeName($fqn));
             }
 
             if (in_array($name, PrimitiveType::NAMES, true)) {
@@ -126,11 +126,11 @@ final class TypeFactory
                 return $primitive;
             }
 
-            $className = new ClasslikeName($name);
+            $classType = new ClasslikeType(new ClasslikeName($name));
             if ($type->allowsNull()) {
-                return new UnionType([$className, new PrimitiveType('null')]);
+                return new UnionType([$classType, new PrimitiveType('null')]);
             }
-            return $className;
+            return $classType;
         }
 
         if ($type instanceof ReflectionUnionType) {
@@ -176,6 +176,6 @@ final class TypeFactory
             return new LateStaticType($keyword, new ClasslikeName($context));
         }
 
-        return new ClasslikeName($context);
+        return new ClasslikeType(new ClasslikeName($context));
     }
 }

@@ -81,7 +81,7 @@ class EnumCaseInfoTest extends TestCase
         self::assertSame(MemberKind::EnumCase, $case->getMemberKind());
         self::assertSame('Active', $case->getName()->name);
         self::assertSame(ClassKind::class, $case->getDeclaringClass()->fqn);
-        self::assertSame(ClassKind::class, $case->getType()->fqn);
+        self::assertSame(ClassKind::class, $case->getType()->name->fqn);
         self::assertSame(Visibility::Public, $case->getVisibility());
         self::assertTrue($case->isStatic(), 'an enum case is reached on the enum');
     }

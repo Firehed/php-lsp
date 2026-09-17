@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Domain;
 
 use ArrayIterator;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
@@ -46,8 +47,8 @@ class LateStaticTypeTest extends TestCase
 
         $resolved = $type->resolveLateBound(ArrayIterator::class);
 
-        self::assertInstanceOf(ClasslikeName::class, $resolved);
-        self::assertSame(ArrayIterator::class, $resolved->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $resolved, 'static resolves to a concrete class-like type');
+        self::assertSame(ArrayIterator::class, $resolved->name->fqn);
     }
 
     public function testResolveLateBoundSelfReturnsDeclaringClassForRegularClass(): void
@@ -56,7 +57,8 @@ class LateStaticTypeTest extends TestCase
 
         $resolved = $type->resolveLateBound(ArrayIterator::class, declaringClassIsTrait: false);
 
-        self::assertSame($type->declaringClass, $resolved);
+        self::assertInstanceOf(ClasslikeType::class, $resolved, 'self resolves to the declaring class as a type');
+        self::assertSame($type->declaringClass, $resolved->name);
     }
 
     public function testResolveLateBoundSelfReturnsCallingClassForTrait(): void
@@ -65,8 +67,8 @@ class LateStaticTypeTest extends TestCase
 
         $resolved = $type->resolveLateBound(ArrayIterator::class, declaringClassIsTrait: true);
 
-        self::assertInstanceOf(ClasslikeName::class, $resolved);
-        self::assertSame(ArrayIterator::class, $resolved->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $resolved, 'self in a trait resolves to the using class');
+        self::assertSame(ArrayIterator::class, $resolved->name->fqn);
     }
 
     public function testResolveLateBoundParentReturnsDeclaringClass(): void
@@ -75,7 +77,8 @@ class LateStaticTypeTest extends TestCase
 
         $resolved = $type->resolveLateBound(ArrayIterator::class);
 
-        self::assertSame($type->declaringClass, $resolved);
+        self::assertInstanceOf(ClasslikeType::class, $resolved, 'parent resolves to the recorded parent as a type');
+        self::assertSame($type->declaringClass, $resolved->name);
     }
 
     public function testValueTypeIsNull(): void

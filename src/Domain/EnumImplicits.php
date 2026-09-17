@@ -70,6 +70,7 @@ final class EnumImplicits
             isVariadic: false,
             isPassedByReference: false,
         );
+        $enumType = new ClasslikeType($enum);
         $methods['from'] = new MethodInfo(
             name: new MethodName('from'),
             visibility: Visibility::Public,
@@ -77,7 +78,7 @@ final class EnumImplicits
             isAbstract: false,
             isFinal: false,
             parameters: [$valueParam],
-            returnType: $enum,
+            returnType: $enumType,
             docblock: null,
             file: null,
             line: null,
@@ -90,7 +91,7 @@ final class EnumImplicits
             isAbstract: false,
             isFinal: false,
             parameters: [$valueParam],
-            returnType: TypeFactory::union([$enum, TypeFactory::primitive('null')]),
+            returnType: TypeFactory::union([$enumType, TypeFactory::primitive('null')]),
             docblock: null,
             file: null,
             line: null,

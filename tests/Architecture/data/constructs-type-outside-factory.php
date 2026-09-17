@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Architecture\Data;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\UnionType;
 
@@ -14,9 +15,9 @@ use Firehed\PhpLsp\Domain\UnionType;
  */
 final class ConstructsTypeOutsideFactory
 {
-    public function makeClasslikeName(): ClasslikeName
+    public function makeClasslikeType(): ClasslikeType
     {
-        return new ClasslikeName('Foo\\Bar');
+        return new ClasslikeType(new ClasslikeName('Foo\\Bar'));
     }
 
     public function makePrimitive(): PrimitiveType
@@ -26,6 +27,6 @@ final class ConstructsTypeOutsideFactory
 
     public function makeUnion(): UnionType
     {
-        return new UnionType([new ClasslikeName('Foo'), new PrimitiveType('null')]);
+        return new UnionType([new ClasslikeType(new ClasslikeName('Foo')), new PrimitiveType('null')]);
     }
 }

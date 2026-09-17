@@ -13,8 +13,8 @@ class UnionTypeTest extends TestCase
     public function testFormatJoinsWithPipe(): void
     {
         $type = new UnionType([
-            new ClasslikeName(\Iterator::class),
-            new ClasslikeName(\Countable::class),
+            new ClasslikeType(new ClasslikeName(\Iterator::class)),
+            new ClasslikeType(new ClasslikeName(\Countable::class)),
         ]);
         self::assertSame('Iterator|Countable', $type->format());
     }
@@ -22,7 +22,7 @@ class UnionTypeTest extends TestCase
     public function testFormatNullableAsQuestionMark(): void
     {
         $type = new UnionType([
-            new ClasslikeName(\stdClass::class),
+            new ClasslikeType(new ClasslikeName(\stdClass::class)),
             new PrimitiveType('null'),
         ]);
         self::assertSame('?stdClass', $type->format());
@@ -32,7 +32,7 @@ class UnionTypeTest extends TestCase
     {
         $type = new UnionType([
             new PrimitiveType('null'),
-            new ClasslikeName(\stdClass::class),
+            new ClasslikeType(new ClasslikeName(\stdClass::class)),
         ]);
         self::assertSame('?stdClass', $type->format());
     }
@@ -41,8 +41,8 @@ class UnionTypeTest extends TestCase
     {
         $type = new UnionType([
             new IntersectionType([
-                new ClasslikeName(\Iterator::class),
-                new ClasslikeName(\Countable::class),
+                new ClasslikeType(new ClasslikeName(\Iterator::class)),
+                new ClasslikeType(new ClasslikeName(\Countable::class)),
             ]),
             new PrimitiveType('null'),
         ]);
@@ -52,9 +52,9 @@ class UnionTypeTest extends TestCase
     public function testGetResolvableClasslikeNamesCollectsFromAllMembers(): void
     {
         $type = new UnionType([
-            new ClasslikeName(\Iterator::class),
+            new ClasslikeType(new ClasslikeName(\Iterator::class)),
             new PrimitiveType('string'),
-            new ClasslikeName(\Countable::class),
+            new ClasslikeType(new ClasslikeName(\Countable::class)),
         ]);
         $classNames = $type->getResolvableClasslikeNames();
         self::assertCount(2, $classNames);
@@ -66,10 +66,10 @@ class UnionTypeTest extends TestCase
     {
         $type = new UnionType([
             new IntersectionType([
-                new ClasslikeName(\Iterator::class),
-                new ClasslikeName(\Countable::class),
+                new ClasslikeType(new ClasslikeName(\Iterator::class)),
+                new ClasslikeType(new ClasslikeName(\Countable::class)),
             ]),
-            new ClasslikeName(\Traversable::class),
+            new ClasslikeType(new ClasslikeName(\Traversable::class)),
         ]);
         $classNames = $type->getResolvableClasslikeNames();
         self::assertCount(3, $classNames);
@@ -81,7 +81,7 @@ class UnionTypeTest extends TestCase
     public function testIsNullableWithNullMember(): void
     {
         $type = new UnionType([
-            new ClasslikeName(\stdClass::class),
+            new ClasslikeType(new ClasslikeName(\stdClass::class)),
             new PrimitiveType('null'),
         ]);
         self::assertTrue($type->isNullable());
@@ -90,28 +90,29 @@ class UnionTypeTest extends TestCase
     public function testIsNullableWithoutNull(): void
     {
         $type = new UnionType([
-            new ClasslikeName(\Iterator::class),
-            new ClasslikeName(\Countable::class),
+            new ClasslikeType(new ClasslikeName(\Iterator::class)),
+            new ClasslikeType(new ClasslikeName(\Countable::class)),
         ]);
         self::assertFalse($type->isNullable());
     }
 
     public function testValueTypeAgreesWhenMembersAgree(): void
     {
-        $value = new ClasslikeName(\stdClass::class);
+        $value = new ClasslikeType(new ClasslikeName(\stdClass::class));
         $type = new UnionType([
-            new ClasslikeName(\ArrayIterator::class, [$value]),
+            new ClasslikeType(new ClasslikeName(\ArrayIterator::class), [$value]),
             new PrimitiveType('array', [$value]),
         ]);
         $valueType = $type->valueType();
-        self::assertInstanceOf(ClasslikeName::class, $valueType);
-        self::assertSame(\stdClass::class, $valueType->fqn);
+        self::assertInstanceOf(ClasslikeType::class, $valueType);
+        self::assertSame(\stdClass::class, $valueType->name->fqn);
     }
 
     public function testValueTypeIsNullWhenMembersDisagree(): void
     {
+        $stdClass = new ClasslikeType(new ClasslikeName(\stdClass::class));
         $type = new UnionType([
-            new ClasslikeName(\ArrayIterator::class, [new ClasslikeName(\stdClass::class)]),
+            new ClasslikeType(new ClasslikeName(\ArrayIterator::class), [$stdClass]),
             new PrimitiveType('array', [new PrimitiveType('int')]),
         ]);
         self::assertNull($type->valueType());
@@ -119,8 +120,9 @@ class UnionTypeTest extends TestCase
 
     public function testValueTypeIsNullWhenAnyMemberHasNone(): void
     {
+        $stdClass = new ClasslikeType(new ClasslikeName(\stdClass::class));
         $type = new UnionType([
-            new ClasslikeName(\ArrayIterator::class, [new ClasslikeName(\stdClass::class)]),
+            new ClasslikeType(new ClasslikeName(\ArrayIterator::class), [$stdClass]),
             new PrimitiveType('array'),
         ]);
         self::assertNull($type->valueType());
@@ -128,29 +130,29 @@ class UnionTypeTest extends TestCase
 
     public function testEqualsSameMembersInOrder(): void
     {
-        $a = new UnionType([new ClasslikeName(\stdClass::class), new PrimitiveType('null')]);
-        $b = new UnionType([new ClasslikeName(\stdClass::class), new PrimitiveType('null')]);
+        $a = new UnionType([new ClasslikeType(new ClasslikeName(\stdClass::class)), new PrimitiveType('null')]);
+        $b = new UnionType([new ClasslikeType(new ClasslikeName(\stdClass::class)), new PrimitiveType('null')]);
         self::assertTrue($a->equals($b));
     }
 
     public function testEqualsFalseWhenMemberOrderDiffers(): void
     {
-        $a = new UnionType([new ClasslikeName(\stdClass::class), new PrimitiveType('null')]);
-        $b = new UnionType([new PrimitiveType('null'), new ClasslikeName(\stdClass::class)]);
+        $a = new UnionType([new ClasslikeType(new ClasslikeName(\stdClass::class)), new PrimitiveType('null')]);
+        $b = new UnionType([new PrimitiveType('null'), new ClasslikeType(new ClasslikeName(\stdClass::class))]);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseWhenMemberCountDiffers(): void
     {
-        $a = new UnionType([new ClasslikeName(\stdClass::class), new PrimitiveType('null')]);
-        $b = new UnionType([new ClasslikeName(\stdClass::class)]);
+        $a = new UnionType([new ClasslikeType(new ClasslikeName(\stdClass::class)), new PrimitiveType('null')]);
+        $b = new UnionType([new ClasslikeType(new ClasslikeName(\stdClass::class))]);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
-        $a = new UnionType([new ClasslikeName(\stdClass::class), new PrimitiveType('null')]);
-        $b = new IntersectionType([new ClasslikeName(\stdClass::class), new PrimitiveType('null')]);
+        $a = new UnionType([new ClasslikeType(new ClasslikeName(\stdClass::class)), new PrimitiveType('null')]);
+        $b = new IntersectionType([new ClasslikeType(new ClasslikeName(\stdClass::class)), new PrimitiveType('null')]);
         self::assertFalse($a->equals($b));
     }
 

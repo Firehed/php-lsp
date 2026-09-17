@@ -49,9 +49,9 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
     /**
      * A resolved class's value type is the class itself.
      */
-    public function getType(): ClasslikeName
+    public function getType(): ClasslikeType
     {
-        return $this->name;
+        return new ClasslikeType($this->name);
     }
 
     public function symbolKind(): SymbolKind

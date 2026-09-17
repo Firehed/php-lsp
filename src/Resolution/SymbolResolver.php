@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -306,9 +307,9 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         $variables = [];
-        $thisType = $scope->getThisType();
-        if ($thisType !== null) {
-            $variables[] = new ResolvedVariable('this', $thisType);
+        $thisClass = $scope->getThisType();
+        if ($thisClass !== null) {
+            $variables[] = new ResolvedVariable('this', new ClasslikeType($thisClass));
             unset($nearest['this']);
         }
 

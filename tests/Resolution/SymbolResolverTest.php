@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
@@ -577,7 +578,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClasslikeName('Fixtures\\Domain\\User');
+        $type = new ClasslikeType(new ClasslikeName('Fixtures\\Domain\\User'));
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
         self::assertNotEmpty($members, 'Should return members for User class');
@@ -595,7 +596,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClasslikeName('Fixtures\\Domain\\User');
+        $type = new ClasslikeType(new ClasslikeName('Fixtures\\Domain\\User'));
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
         self::assertNotEmpty($members, 'Should return static members for User class');
@@ -625,7 +626,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClasslikeName('Fixtures\\Enum\\Status');
+        $type = new ClasslikeType(new ClasslikeName('Fixtures\\Enum\\Status'));
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public, MemberFilter::Static);
 
         $hasEnumCase = false;
@@ -646,8 +647,8 @@ final class SymbolResolverTest extends TestCase
         assert($document !== null);
 
         $type = new IntersectionType([
-                new ClasslikeName('Fixtures\\Domain\\Entity'),
-                new ClasslikeName('Fixtures\\Domain\\Person'),
+                new ClasslikeType(new ClasslikeName('Fixtures\\Domain\\Entity')),
+                new ClasslikeType(new ClasslikeName('Fixtures\\Domain\\Person')),
         ]);
         $members = $this->resolver->getAccessibleMembers($document, $type, Visibility::Public);
 
@@ -2314,7 +2315,7 @@ final class SymbolResolverTest extends TestCase
         $document = $this->documents->get($uri);
         assert($document !== null);
 
-        $type = new ClasslikeName('Fixtures\\Repository\\ClassInfoPatterns');
+        $type = new ClasslikeType(new ClasslikeName('Fixtures\\Repository\\ClassInfoPatterns'));
 
         // When accessed from outside (Public visibility), only public constants should be visible
         $members = $this->resolver->getAccessibleMembers(
