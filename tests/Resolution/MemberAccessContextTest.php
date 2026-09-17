@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
@@ -16,9 +17,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MemberAccessContext::class)]
 class MemberAccessContextTest extends TestCase
 {
-    private static function type(): ClasslikeName
+    private static function type(): ClasslikeType
     {
-        return new ClasslikeName(self::class);
+        return new ClasslikeType(new ClasslikeName(self::class));
     }
 
     public function testForInstanceSetsExpectedValues(): void

@@ -20,19 +20,20 @@ class ClasslikeTypeTest extends TestCase
     {
         $name = new ClasslikeName(\stdClass::class);
         $type = new ClasslikeType($name);
-        self::assertSame([$name], $type->getResolvableClasslikeNames(), 'a class-like type resolves to its own identifier');
+        self::assertSame([$name], $type->getResolvableClasslikeNames(), 'a class-like type resolves to its identifier');
     }
 
     public function testIsNullableReturnsFalse(): void
     {
         $type = new ClasslikeType(new ClasslikeName(\stdClass::class));
-        self::assertFalse($type->isNullable(), 'a bare class-like type is never nullable; nullability composes via UnionType');
+        self::assertFalse($type->isNullable(), 'a bare class-like type is never nullable');
     }
 
     public function testResolveLateBoundReturnsSelf(): void
     {
         $type = new ClasslikeType(new ClasslikeName(\stdClass::class));
-        self::assertSame($type, $type->resolveLateBound(\ArrayIterator::class), 'a concrete class-like type has nothing to resolve');
+        $resolved = $type->resolveLateBound(\ArrayIterator::class);
+        self::assertSame($type, $resolved, 'a concrete class-like type has nothing to resolve');
     }
 
     public function testValueTypeIsNullWhenNoTypeArguments(): void

@@ -81,7 +81,7 @@ final class ExpressionResolver
             if ($enclosing === null) {
                 return null;
             }
-            return new ResolvedTypeOnly(TypeFactory::className($enclosing));
+            return new ResolvedTypeOnly(new ClasslikeType(TypeFactory::className($enclosing)));
         }
 
         if ($expr instanceof Variable && is_string($expr->name)) {
@@ -296,9 +296,10 @@ final class ExpressionResolver
         if ($className === null) {
             return null;
         }
-        $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($className));
+        $name = TypeFactory::className($className);
+        $classInfo = $this->symbolSource->lookupClassLike($name);
         if ($classInfo === null) {
-            return new ResolvedTypeOnly(TypeFactory::className($className));
+            return new ResolvedTypeOnly(new ClasslikeType($name));
         }
         return $classInfo;
     }

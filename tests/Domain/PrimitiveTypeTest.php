@@ -48,15 +48,15 @@ class PrimitiveTypeTest extends TestCase
 
     public function testValueTypeIsFirstTypeArgument(): void
     {
-        $value = new ClasslikeName(\stdClass::class);
+        $value = new ClasslikeType(new ClasslikeName(\stdClass::class));
         $type = new PrimitiveType('array', [$value]);
         self::assertSame($value, $type->valueType());
     }
 
     public function testEqualsSameNameAndArgs(): void
     {
-        $a = new PrimitiveType('array', [new ClasslikeName(\stdClass::class)]);
-        $b = new PrimitiveType('array', [new ClasslikeName(\stdClass::class)]);
+        $a = new PrimitiveType('array', [new ClasslikeType(new ClasslikeName(\stdClass::class))]);
+        $b = new PrimitiveType('array', [new ClasslikeType(new ClasslikeName(\stdClass::class))]);
         self::assertTrue($a->equals($b));
     }
 
@@ -69,14 +69,14 @@ class PrimitiveTypeTest extends TestCase
 
     public function testEqualsFalseWhenTypeArgumentsDiffer(): void
     {
-        $a = new PrimitiveType('array', [new ClasslikeName(\stdClass::class)]);
-        $b = new PrimitiveType('array', [new ClasslikeName(\Iterator::class)]);
+        $a = new PrimitiveType('array', [new ClasslikeType(new ClasslikeName(\stdClass::class))]);
+        $b = new PrimitiveType('array', [new ClasslikeType(new ClasslikeName(\Iterator::class))]);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseWhenTypeArgumentCountsDiffer(): void
     {
-        $a = new PrimitiveType('array', [new ClasslikeName(\stdClass::class)]);
+        $a = new PrimitiveType('array', [new ClasslikeType(new ClasslikeName(\stdClass::class))]);
         $b = new PrimitiveType('array');
         self::assertFalse($a->equals($b));
     }
@@ -84,7 +84,7 @@ class PrimitiveTypeTest extends TestCase
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
         $a = new PrimitiveType('object');
-        $b = new ClasslikeName(\stdClass::class);
-        self::assertFalse($a->equals($b));
+        $b = new ClasslikeType(new ClasslikeName(\stdClass::class));
+        self::assertFalse($a->equals($b), 'a primitive is never equal to a class-like type');
     }
 }

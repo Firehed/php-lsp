@@ -10,38 +10,17 @@ namespace Firehed\PhpLsp\Domain;
  * `ClasslikeName` before any lookup, so the runtime existence of the class is a
  * separate question the resolution tier answers.
  */
-final readonly class ClasslikeName implements TypeInterface
+final readonly class ClasslikeName
 {
-    /**
-     * @param list<TypeInterface> $typeArguments
-     */
     public function __construct(
         public string $fqn,
-        private array $typeArguments = [],
     ) {
     }
 
-    public function format(): string
+    public function equals(self $other): bool
     {
-        return $this->fqn;
-    }
-
-    /**
-     * @return list<ClasslikeName>
-     */
-    public function getResolvableClasslikeNames(): array
-    {
-        return [$this];
-    }
-
-    public function isNullable(): bool
-    {
-        return false;
-    }
-
-    public function shortName(): string
-    {
-        return NamespacePath::shortNameOf($this->fqn);
+        return NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($this))
+            === NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($other));
     }
 
     public function namespace(): ?string
@@ -51,34 +30,8 @@ final readonly class ClasslikeName implements TypeInterface
         return $namespace === '' ? null : $namespace;
     }
 
-    public function equals(TypeInterface $other): bool
+    public function shortName(): string
     {
-        if (!$other instanceof self) {
-            return false;
-        }
-        $sameFqn = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($this))
-            === NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($other));
-        if (!$sameFqn) {
-            return false;
-        }
-        if (count($this->typeArguments) !== count($other->typeArguments)) {
-            return false;
-        }
-        foreach ($this->typeArguments as $i => $arg) {
-            if (!$arg->equals($other->typeArguments[$i])) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
-    {
-        return $this;
-    }
-
-    public function valueType(): ?TypeInterface
-    {
-        return $this->typeArguments[0] ?? null;
+        return NamespacePath::shortNameOf($this->fqn);
     }
 }
