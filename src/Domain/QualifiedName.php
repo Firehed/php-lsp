@@ -15,7 +15,7 @@ namespace Firehed\PhpLsp\Domain;
 final readonly class QualifiedName
 {
     public function __construct(
-        public string $namespace,
+        public NamespaceName $namespace,
         public string $shortName,
     ) {
     }
@@ -32,11 +32,14 @@ final readonly class QualifiedName
     {
         $fqn = ltrim($fullyQualifiedName, '\\');
 
-        return new self(NamespaceName::namespaceOf($fqn), NamespaceName::shortNameOf($fqn));
+        return new self(
+            new NamespaceName(NamespaceName::namespaceOf($fqn)),
+            NamespaceName::shortNameOf($fqn),
+        );
     }
 
     public function fullyQualifiedName(): string
     {
-        return NamespaceName::join($this->namespace, $this->shortName);
+        return NamespaceName::join($this->namespace->path, $this->shortName);
     }
 }

@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Domain;
 
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -29,7 +30,7 @@ final class FunctionNameTest extends TestCase
         $name = FunctionName::fromFullyQualified('\Fixtures\Helpers\helperFormat');
 
         self::assertEquals(
-            new QualifiedName('Fixtures\Helpers', 'helperFormat'),
+            new QualifiedName(new NamespaceName('Fixtures\Helpers'), 'helperFormat'),
             $name->qualifiedName,
             'the wrapped name should be split and normalized by QualifiedName',
         );
@@ -40,7 +41,7 @@ final class FunctionNameTest extends TestCase
     {
         $name = FunctionName::fromFullyQualified('str_contains');
 
-        self::assertSame('', $name->qualifiedName->namespace);
+        self::assertSame('', $name->qualifiedName->namespace->path);
         self::assertSame('str_contains', $name->fullyQualifiedName());
     }
 }
