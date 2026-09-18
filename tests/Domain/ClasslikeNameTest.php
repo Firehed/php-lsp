@@ -10,6 +10,16 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ClasslikeName::class)]
 class ClasslikeNameTest extends TestCase
 {
+    public function testCarriesItsKindIntrinsically(): void
+    {
+        $cn = ClasslikeName::fromFullyQualified(ClasslikeName::class);
+        self::assertSame(
+            NameKind::ClassLike,
+            $cn->kind,
+            'a class-like name must say what it names without being told',
+        );
+    }
+
     public function testShortNameWithNamespace(): void
     {
         $cn = ClasslikeName::fromFullyQualified(ClasslikeName::class);
