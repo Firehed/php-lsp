@@ -18,7 +18,7 @@ class ClassCandidateFilterTest extends TestCase
     {
         $resolver = self::createStub(CodeResolverInterface::class);
         self::assertTrue(
-            ClassCandidateFilter::Any->accepts(new ClasslikeName(\stdClass::class), $resolver),
+            ClassCandidateFilter::Any->accepts(ClasslikeName::fromFullyQualified(\stdClass::class), $resolver),
             'Any position accepts every class-like without consulting the resolver',
         );
     }
@@ -34,7 +34,7 @@ class ClassCandidateFilterTest extends TestCase
         $resolver = self::createStub(CodeResolverInterface::class);
         $resolver->method($method)->willReturn(true);
 
-        self::assertTrue($filter->accepts(new ClasslikeName(\stdClass::class), $resolver));
+        self::assertTrue($filter->accepts(ClasslikeName::fromFullyQualified(\stdClass::class), $resolver));
     }
 
     /**

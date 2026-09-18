@@ -12,57 +12,57 @@ class ClasslikeNameTest extends TestCase
 {
     public function testShortNameWithNamespace(): void
     {
-        $cn = new ClasslikeName(ClasslikeName::class);
-        self::assertSame('ClasslikeName', $cn->shortName());
+        $cn = ClasslikeName::fromFullyQualified(ClasslikeName::class);
+        self::assertSame('ClasslikeName', $cn->qualifiedName->shortName);
     }
 
     public function testShortNameWithoutNamespace(): void
     {
-        $cn = new ClasslikeName(\stdClass::class);
-        self::assertSame('stdClass', $cn->shortName());
+        $cn = ClasslikeName::fromFullyQualified(\stdClass::class);
+        self::assertSame('stdClass', $cn->qualifiedName->shortName);
     }
 
     public function testNamespaceWithNamespace(): void
     {
-        $cn = new ClasslikeName(ClasslikeName::class);
-        self::assertSame('Firehed\\PhpLsp\\Domain', $cn->namespace());
+        $cn = ClasslikeName::fromFullyQualified(ClasslikeName::class);
+        self::assertSame('Firehed\\PhpLsp\\Domain', $cn->qualifiedName->namespace->path);
     }
 
     public function testNamespaceWithoutNamespace(): void
     {
-        $cn = new ClasslikeName(\stdClass::class);
-        self::assertNull($cn->namespace());
+        $cn = ClasslikeName::fromFullyQualified(\stdClass::class);
+        self::assertSame('', $cn->qualifiedName->namespace->path);
     }
 
     public function testEqualsTrue(): void
     {
-        $a = new ClasslikeName(ClasslikeName::class);
-        $b = new ClasslikeName(ClasslikeName::class);
+        $a = ClasslikeName::fromFullyQualified(ClasslikeName::class);
+        $b = ClasslikeName::fromFullyQualified(ClasslikeName::class);
         self::assertTrue($a->equals($b));
     }
 
     public function testEqualsFalse(): void
     {
-        $a = new ClasslikeName(ClasslikeName::class);
-        $b = new ClasslikeName(ClassKind::class);
+        $a = ClasslikeName::fromFullyQualified(ClasslikeName::class);
+        $b = ClasslikeName::fromFullyQualified(ClassKind::class);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsCaseInsensitive(): void
     {
-        $a = new ClasslikeName(ClasslikeName::class);
+        $a = ClasslikeName::fromFullyQualified(ClasslikeName::class);
         /** @var class-string $lowercased */
         $lowercased = 'firehed\\phplsp\\domain\\classlikename';
-        $b = new ClasslikeName($lowercased);
+        $b = ClasslikeName::fromFullyQualified($lowercased);
         self::assertTrue($a->equals($b));
     }
 
     public function testEqualsIgnoresALeadingSeparator(): void
     {
-        $a = new ClasslikeName(ClasslikeName::class);
+        $a = ClasslikeName::fromFullyQualified(ClasslikeName::class);
         /** @var class-string $leadingSeparator */
         $leadingSeparator = '\\' . ClasslikeName::class;
-        $b = new ClasslikeName($leadingSeparator);
+        $b = ClasslikeName::fromFullyQualified($leadingSeparator);
         self::assertTrue($a->equals($b), 'A leading separator is spelling, not identity');
     }
 }

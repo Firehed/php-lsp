@@ -30,7 +30,7 @@ class MemberInfoTest extends TestCase
      */
     public static function members(): iterable
     {
-        $declaringClass = new ClasslikeName(self::class);
+        $declaringClass = ClasslikeName::fromFullyQualified(self::class);
 
         $constant = new ClasslikeConstantInfo(
             name: new ClasslikeConstantName('MAX'),

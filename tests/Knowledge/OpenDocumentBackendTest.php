@@ -41,7 +41,11 @@ final class OpenDocumentBackendTest extends TestCase
         $info = self::classLikeIn($this->backend, 'V\Widget');
 
         self::assertNotNull($info, 'a registered class must resolve');
-        self::assertSame('V\Widget', $info->name->fqn, 'the registered class must be returned unchanged');
+        self::assertSame(
+            'V\Widget',
+            $info->name->fullyQualifiedName(),
+            'the registered class must be returned unchanged',
+        );
     }
 
     public function testLookupClassLikeIsCaseInsensitive(): void

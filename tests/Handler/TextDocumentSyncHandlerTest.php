@@ -168,9 +168,9 @@ class TextDocumentSyncHandlerTest extends TestCase
 
         /** @var class-string $className */
         $className = 'MyTestClass'; // @phpstan-ignore varTag.nativeType
-        $classInfo = $this->source->lookupClassLike(new ClasslikeName($className));
+        $classInfo = $this->source->lookupClassLike(ClasslikeName::fromFullyQualified($className));
         self::assertNotNull($classInfo);
-        self::assertSame('MyTestClass', $classInfo->name->shortName());
+        self::assertSame('MyTestClass', $classInfo->name->qualifiedName->shortName);
     }
 
     public function testDidChangeUpdatesClasses(): void
@@ -209,10 +209,10 @@ class TextDocumentSyncHandlerTest extends TestCase
         $oldClasslikeName = 'OldClass'; // @phpstan-ignore varTag.nativeType
         /** @var class-string $newClasslikeName */
         $newClasslikeName = 'NewClass'; // @phpstan-ignore varTag.nativeType
-        self::assertNull($this->source->lookupClassLike(new ClasslikeName($oldClasslikeName)));
-        $newClass = $this->source->lookupClassLike(new ClasslikeName($newClasslikeName));
+        self::assertNull($this->source->lookupClassLike(ClasslikeName::fromFullyQualified($oldClasslikeName)));
+        $newClass = $this->source->lookupClassLike(ClasslikeName::fromFullyQualified($newClasslikeName));
         self::assertNotNull($newClass);
-        self::assertSame('NewClass', $newClass->name->shortName());
+        self::assertSame('NewClass', $newClass->name->qualifiedName->shortName);
     }
 
     public function testDidCloseRemovesClasses(): void
@@ -233,7 +233,7 @@ class TextDocumentSyncHandlerTest extends TestCase
             ],
         ]);
         $this->handler->handle($openNotification);
-        self::assertNotNull($this->source->lookupClassLike(new ClasslikeName($className)));
+        self::assertNotNull($this->source->lookupClassLike(ClasslikeName::fromFullyQualified($className)));
 
         $closeNotification = NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -246,6 +246,6 @@ class TextDocumentSyncHandlerTest extends TestCase
         ]);
         $this->handler->handle($closeNotification);
 
-        self::assertNull($this->source->lookupClassLike(new ClasslikeName($className)));
+        self::assertNull($this->source->lookupClassLike(ClasslikeName::fromFullyQualified($className)));
     }
 }

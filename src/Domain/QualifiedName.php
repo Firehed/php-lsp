@@ -20,11 +20,6 @@ final readonly class QualifiedName
     ) {
     }
 
-    public static function fromClasslikeName(ClasslikeName $name): self
-    {
-        return self::fromFullyQualified($name->fqn);
-    }
-
     /**
      * A leading `\` is spelling rather than identity, so it is dropped.
      */

@@ -175,7 +175,7 @@ final class MemberAccessDetector
         if ($vantage === null) {
             return Visibility::Public;
         }
-        if ($vantage->fqn === $target->fqn) {
+        if ($vantage->fullyQualifiedName() === $target->fullyQualifiedName()) {
             return Visibility::Private;
         }
         if ($this->memberResolver->isSubclassOf($vantage, $target)) {

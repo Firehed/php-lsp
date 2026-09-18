@@ -35,9 +35,9 @@ final class LateStaticType implements TypeInterface
     {
         return match ($this->keyword) {
             LateBindingKeyword::Self => $declaringClassIsTrait
-                ? new ClasslikeType(new ClasslikeName($callingClass))
+                ? new ClasslikeType(ClasslikeName::fromFullyQualified($callingClass))
                 : new ClasslikeType($this->declaringClass),
-            LateBindingKeyword::Static => new ClasslikeType(new ClasslikeName($callingClass)),
+            LateBindingKeyword::Static => new ClasslikeType(ClasslikeName::fromFullyQualified($callingClass)),
             LateBindingKeyword::Parent => new ClasslikeType($this->declaringClass),
         };
     }

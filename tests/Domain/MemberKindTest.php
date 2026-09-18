@@ -91,7 +91,7 @@ class MemberKindTest extends TestCase
         PropertyInfo $property,
     ): ClassInfo {
         return new ClassInfo(
-            name: new ClasslikeName(self::class),
+            name: ClasslikeName::fromFullyQualified(self::class),
             kind: ClassKind::Class_,
             isAbstract: false,
             isFinal: false,
@@ -120,7 +120,7 @@ class MemberKindTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 
@@ -132,7 +132,7 @@ class MemberKindTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 
@@ -149,7 +149,7 @@ class MemberKindTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 
@@ -165,7 +165,7 @@ class MemberKindTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 }

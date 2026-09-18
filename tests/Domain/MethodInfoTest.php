@@ -26,7 +26,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 42,
-            declaringClass: new ClasslikeName(MethodInfo::class),
+            declaringClass: ClasslikeName::fromFullyQualified(MethodInfo::class),
         );
 
         self::assertSame('doSomething', $method->name->name);
@@ -39,7 +39,7 @@ class MethodInfoTest extends TestCase
         self::assertNull($method->docblock);
         self::assertSame('/path/to/file.php', $method->file);
         self::assertSame(42, $method->line);
-        self::assertSame(MethodInfo::class, $method->declaringClass->fqn);
+        self::assertSame(MethodInfo::class, $method->declaringClass->fullyQualifiedName());
     }
 
     public function testFormatNoParamsNoReturnType(): void
@@ -55,7 +55,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function doSomething()', $method->format());
@@ -74,7 +74,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function getName(): string', $method->format());
@@ -95,7 +95,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function setName(string $name)', $method->format());
@@ -117,7 +117,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function calculate(int $a, int $b): int', $method->format());
@@ -138,7 +138,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function merge(array ...$arrays): array', $method->format());
@@ -160,7 +160,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public static function swap(mixed &$a, mixed &$b): void', $method->format());
@@ -179,7 +179,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('protected abstract function handle(): void', $method->format());
@@ -198,7 +198,7 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('private static final function getInstance(): self', $method->format());
@@ -210,7 +210,7 @@ class MethodInfoTest extends TestCase
 
         self::assertSame(MemberKind::Method, $method->getMemberKind());
         self::assertSame('doSomething', $method->getName()->name);
-        self::assertSame(MethodInfo::class, $method->getDeclaringClass()->fqn);
+        self::assertSame(MethodInfo::class, $method->getDeclaringClass()->fullyQualifiedName());
         self::assertSame(Visibility::Public, $method->getVisibility());
         self::assertFalse($method->isStatic());
     }
@@ -257,7 +257,7 @@ class MethodInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: new ClasslikeName(MethodInfo::class),
+            declaringClass: ClasslikeName::fromFullyQualified(MethodInfo::class),
         );
     }
 }

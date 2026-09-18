@@ -16,13 +16,13 @@ final class TraitAliasTest extends TestCase
     public function testCarriesEveryFieldItIsConstructedWith(): void
     {
         $alias = new TraitAlias(
-            trait: new ClasslikeName('Some\\Trait'),
+            trait: ClasslikeName::fromFullyQualified('Some\\Trait'),
             method: 'original',
             newName: 'renamed',
             newVisibility: Visibility::Protected,
         );
 
-        self::assertSame('Some\\Trait', $alias->trait?->fqn, 'source trait is retained');
+        self::assertSame('Some\\Trait', $alias->trait?->fullyQualifiedName(), 'source trait is retained');
         self::assertSame('original', $alias->method, 'source method name is retained');
         self::assertSame('renamed', $alias->newName, 'new exposed name is retained');
         self::assertSame(Visibility::Protected, $alias->newVisibility, 'new visibility is retained');

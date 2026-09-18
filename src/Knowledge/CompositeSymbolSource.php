@@ -52,7 +52,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
     {
-        $info = $this->lookup(QualifiedName::fromClasslikeName($name), NameKind::ClassLike);
+        $info = $this->lookup($name->qualifiedName, NameKind::ClassLike);
         assert($info === null || $info instanceof ClassInfo);
 
         return $info;

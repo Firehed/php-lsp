@@ -17,14 +17,14 @@ class ClassInfoTest extends TestCase
     public function testConstruction(): void
     {
         $class = new ClassInfo(
-            name: new ClasslikeName(ClassInfo::class),
+            name: ClasslikeName::fromFullyQualified(ClassInfo::class),
             kind: ClassKind::Class_,
             isAbstract: false,
             isFinal: true,
             isReadonly: true,
             isAttribute: false,
-            parent: new ClasslikeName(TestCase::class),
-            interfaces: [new ClasslikeName(\Stringable::class)],
+            parent: ClasslikeName::fromFullyQualified(TestCase::class),
+            interfaces: [ClasslikeName::fromFullyQualified(\Stringable::class)],
             traits: [],
             methods: [],
             properties: [],
@@ -35,14 +35,14 @@ class ClassInfoTest extends TestCase
             line: 3,
         );
 
-        self::assertSame(ClassInfo::class, $class->name->fqn);
+        self::assertSame(ClassInfo::class, $class->name->fullyQualifiedName());
         self::assertSame(ClassKind::Class_, $class->kind);
         self::assertFalse($class->isAbstract);
         self::assertTrue($class->isFinal);
         self::assertTrue($class->isReadonly);
-        self::assertSame(TestCase::class, $class->parent?->fqn);
+        self::assertSame(TestCase::class, $class->parent?->fullyQualifiedName());
         self::assertCount(1, $class->interfaces);
-        self::assertSame(\Stringable::class, $class->interfaces[0]->fqn);
+        self::assertSame(\Stringable::class, $class->interfaces[0]->fullyQualifiedName());
         self::assertSame([], $class->traits);
         self::assertSame([], $class->methods);
         self::assertSame([], $class->properties);
@@ -56,7 +56,7 @@ class ClassInfoTest extends TestCase
     public function testConstructionWithNullParent(): void
     {
         $class = new ClassInfo(
-            name: new ClasslikeName(\Stringable::class),
+            name: ClasslikeName::fromFullyQualified(\Stringable::class),
             kind: ClassKind::Interface_,
             isAbstract: false,
             isFinal: false,
@@ -151,7 +151,7 @@ class ClassInfoTest extends TestCase
         $class = $this->createClassInfo(
             name: \Exception::class,
             kind: ClassKind::Class_,
-            parent: new ClasslikeName(\Error::class),
+            parent: ClasslikeName::fromFullyQualified(\Error::class),
         );
 
         self::assertSame('class Exception extends Error', $class->format());
@@ -163,8 +163,8 @@ class ClassInfoTest extends TestCase
             name: \stdClass::class,
             kind: ClassKind::Class_,
             interfaces: [
-                new ClasslikeName(\JsonSerializable::class),
-                new ClasslikeName(\Stringable::class),
+                ClasslikeName::fromFullyQualified(\JsonSerializable::class),
+                ClasslikeName::fromFullyQualified(\Stringable::class),
             ],
         );
 
@@ -177,8 +177,8 @@ class ClassInfoTest extends TestCase
             name: \Exception::class,
             kind: ClassKind::Class_,
             isFinal: true,
-            parent: new ClasslikeName(\Error::class),
-            interfaces: [new ClasslikeName(\JsonSerializable::class)],
+            parent: ClasslikeName::fromFullyQualified(\Error::class),
+            interfaces: [ClasslikeName::fromFullyQualified(\JsonSerializable::class)],
         );
 
         self::assertSame('final class Exception extends Error implements JsonSerializable', $class->format());
@@ -200,8 +200,8 @@ class ClassInfoTest extends TestCase
             name: \Stringable::class,
             kind: ClassKind::Interface_,
             interfaces: [
-                new ClasslikeName(\JsonSerializable::class),
-                new ClasslikeName(\Countable::class),
+                ClasslikeName::fromFullyQualified(\JsonSerializable::class),
+                ClasslikeName::fromFullyQualified(\Countable::class),
             ],
         );
 
@@ -232,7 +232,7 @@ class ClassInfoTest extends TestCase
     {
         $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_);
 
-        self::assertSame(ClassInfo::class, $class->getType()->name->fqn);
+        self::assertSame(ClassInfo::class, $class->getType()->name->fullyQualifiedName());
     }
 
     protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): ClassInfo
@@ -263,7 +263,7 @@ class ClassInfoTest extends TestCase
         ?string $docblock = null,
     ): ClassInfo {
         return new ClassInfo(
-            name: new ClasslikeName($name),
+            name: ClasslikeName::fromFullyQualified($name),
             kind: $kind,
             isAbstract: $isAbstract,
             isFinal: $isFinal,

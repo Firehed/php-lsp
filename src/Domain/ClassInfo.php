@@ -98,12 +98,12 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
             ClassKind::Enum_ => 'enum',
             default => 'class',
         };
-        $parts[] = $this->name->shortName();
+        $parts[] = $this->name->qualifiedName->shortName;
 
         $sig = implode(' ', $parts);
 
         if ($this->kind === ClassKind::Class_ && $this->parent !== null) {
-            $sig .= ' extends ' . $this->parent->shortName();
+            $sig .= ' extends ' . $this->parent->qualifiedName->shortName;
         }
         $writtenInterfaces = $this->kind === ClassKind::Enum_
             ? array_values(array_filter(
@@ -111,10 +111,11 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
                 fn($n) => !EnumImplicits::isImplicitInterface($n),
             ))
             : $this->interfaces;
+        $shortNames = array_map(fn($n) => $n->qualifiedName->shortName, $writtenInterfaces);
         if ($this->kind === ClassKind::Interface_ && $writtenInterfaces !== []) {
-            $sig .= ' extends ' . implode(', ', array_map(fn($n) => $n->shortName(), $writtenInterfaces));
+            $sig .= ' extends ' . implode(', ', $shortNames);
         } elseif ($writtenInterfaces !== []) {
-            $sig .= ' implements ' . implode(', ', array_map(fn($n) => $n->shortName(), $writtenInterfaces));
+            $sig .= ' implements ' . implode(', ', $shortNames);
         }
 
         return $sig;

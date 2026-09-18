@@ -17,7 +17,7 @@ class IntersectionTypeTest extends TestCase
     private static function classlike(string $fqn, array $args = []): ClasslikeType
     {
         /** @var class-string $fqn */
-        return new ClasslikeType(new ClasslikeName($fqn), $args);
+        return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn), $args);
     }
 
     public function testFormatJoinsWithAmpersand(): void
@@ -37,8 +37,8 @@ class IntersectionTypeTest extends TestCase
         ]);
         $classNames = $type->getResolvableClasslikeNames();
         self::assertCount(2, $classNames);
-        self::assertSame(\Iterator::class, $classNames[0]->fqn);
-        self::assertSame(\Countable::class, $classNames[1]->fqn);
+        self::assertSame(\Iterator::class, $classNames[0]->fullyQualifiedName());
+        self::assertSame(\Countable::class, $classNames[1]->fullyQualifiedName());
     }
 
     public function testIsNullableReturnsFalse(): void
@@ -59,7 +59,7 @@ class IntersectionTypeTest extends TestCase
         ]);
         $valueType = $type->valueType();
         self::assertInstanceOf(ClasslikeType::class, $valueType);
-        self::assertSame(\stdClass::class, $valueType->name->fqn);
+        self::assertSame(\stdClass::class, $valueType->name->fullyQualifiedName());
     }
 
     public function testValueTypeIsNullWhenMembersDisagree(): void
@@ -111,7 +111,7 @@ class IntersectionTypeTest extends TestCase
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new IntersectionType([
-            new LateStaticType(LateBindingKeyword::Static, new ClasslikeName(\Traversable::class)),
+            new LateStaticType(LateBindingKeyword::Static, ClasslikeName::fromFullyQualified(\Traversable::class)),
             self::classlike(\Countable::class),
         ]);
 

@@ -510,7 +510,7 @@ final class AstTextAgreementTest extends TestCase
             );
             assert($info instanceof \Firehed\PhpLsp\Domain\ClassInfo);
             $out[] = [
-                'name' => $info->name->fqn,
+                'name' => $info->name->fullyQualifiedName(),
                 'kind' => match ($info->kind) {
                     ClassKind::Interface_ => 'interface',
                     ClassKind::Trait_ => 'trait',

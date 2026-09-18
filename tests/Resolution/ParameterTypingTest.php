@@ -40,7 +40,7 @@ final class ParameterTypingTest extends TestCase
             $param,
             'x',
             $method,
-            new ClasslikeName('C'),
+            ClasslikeName::fromFullyQualified('C'),
             'C',
             null,
         );

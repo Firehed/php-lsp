@@ -182,7 +182,11 @@ final readonly class DeclarationSymbolInfoFactory
                     name: new ClasslikeConstantName($name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                    type: TypeFactory::fromNode(
+                        $stmt->type,
+                        $className->fullyQualifiedName(),
+                        $parentClass?->fullyQualifiedName(),
+                    ),
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),
@@ -285,8 +289,8 @@ final readonly class DeclarationSymbolInfoFactory
                 parameters: $this->extractParameters($stmt->params, $className, $parentClass),
                 returnType: TypeFactory::fromNode(
                     $stmt->returnType,
-                    $className->fqn,
-                    $parentClass?->fqn,
+                    $className->fullyQualifiedName(),
+                    $parentClass?->fullyQualifiedName(),
                     preserveLateBinding: true,
                 ),
                 docblock: $stmt->getDocComment()?->getText(),
@@ -311,7 +315,12 @@ final readonly class DeclarationSymbolInfoFactory
     {
         $result = [];
         foreach ($params as $position => $param) {
-            $info = $this->parameterFromNode($param, $position, $className->fqn, $parentClass?->fqn);
+            $info = $this->parameterFromNode(
+                $param,
+                $position,
+                $className->fullyQualifiedName(),
+                $parentClass?->fullyQualifiedName(),
+            );
             if ($info !== null) {
                 $result[] = $info;
             }
@@ -341,7 +350,11 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
-                        type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::fromNode(
+                            $stmt->type,
+                            $className->fullyQualifiedName(),
+                            $parentClass?->fullyQualifiedName(),
+                        ),
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
                         line: $stmt->getStartLine(),
@@ -366,7 +379,11 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: false,
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
                         isPromoted: true,
-                        type: TypeFactory::fromNode($param->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::fromNode(
+                            $param->type,
+                            $className->fullyQualifiedName(),
+                            $parentClass?->fullyQualifiedName(),
+                        ),
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
                         line: $param->getStartLine(),
@@ -399,7 +416,7 @@ final readonly class DeclarationSymbolInfoFactory
                 if ($adaptation instanceof Stmt\TraitUseAdaptation\Precedence) {
                     $method = $adaptation->method->toString();
                     foreach ($adaptation->insteadof as $loser) {
-                        $exclusions[$this->resolveNameToClasslikeName($loser)->fqn][] = $method;
+                        $exclusions[$this->resolveNameToClasslikeName($loser)->fullyQualifiedName()][] = $method;
                     }
                     continue;
                 }
@@ -462,7 +479,7 @@ final readonly class DeclarationSymbolInfoFactory
 
         foreach ($node->attrGroups as $group) {
             foreach ($group->attrs as $attr) {
-                if ($this->resolveNameToClasslikeName($attr->name)->fqn === Attribute::class) {
+                if ($this->resolveNameToClasslikeName($attr->name)->fullyQualifiedName() === Attribute::class) {
                     return true;
                 }
             }

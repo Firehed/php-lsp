@@ -35,7 +35,7 @@ final class EnumImplicits
 
     public static function isImplicitInterface(ClasslikeName $name): bool
     {
-        return $name->fqn === \UnitEnum::class || $name->fqn === \BackedEnum::class;
+        return $name->fullyQualifiedName() === \UnitEnum::class || $name->fullyQualifiedName() === \BackedEnum::class;
     }
 
     /**
