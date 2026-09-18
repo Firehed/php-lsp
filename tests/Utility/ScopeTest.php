@@ -44,7 +44,7 @@ class ScopeTest extends TestCase
 
         self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext());
         self::assertNull($scope->getParentContext(), 'ScopePatterns has no parent class');
-        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getThisType()?->fullyQualifiedName());
+        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
     public function testForNodeChildMethodResolvesParentContext(): void
@@ -67,7 +67,7 @@ class ScopeTest extends TestCase
 
         self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getSelfContext());
         self::assertNull($scope->getParentContext(), 'A trait has no extends clause');
-        self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getThisType()?->fullyQualifiedName());
+        self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
     public function testForNodeClosureExposesUseCaptures(): void

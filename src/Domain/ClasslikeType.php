@@ -23,7 +23,7 @@ final readonly class ClasslikeType implements TypeInterface
 
     public function format(): string
     {
-        return $this->name->fullyQualifiedName();
+        return $this->name->qualifiedName->fullyQualifiedName();
     }
 
     /**

@@ -11,10 +11,12 @@ namespace Firehed\PhpLsp\Domain;
  * before any lookup, so the runtime existence of the class is a separate question
  * the resolution tier answers.
  */
-final readonly class ClasslikeName implements NamespaceOwnedNameInterface
+final class ClasslikeName implements NamespaceOwnedNameInterface
 {
+    public NameKind $kind { get => NameKind::ClassLike; }
+
     public function __construct(
-        public QualifiedName $qualifiedName,
+        public readonly QualifiedName $qualifiedName,
     ) {
     }
 
@@ -27,15 +29,5 @@ final readonly class ClasslikeName implements NamespaceOwnedNameInterface
     {
         return NameKind::ClassLike->normalize($this->qualifiedName)
             === NameKind::ClassLike->normalize($other->qualifiedName);
-    }
-
-    public function fullyQualifiedName(): string
-    {
-        return $this->qualifiedName->fullyQualifiedName();
-    }
-
-    public function kind(): NameKind
-    {
-        return NameKind::ClassLike;
     }
 }

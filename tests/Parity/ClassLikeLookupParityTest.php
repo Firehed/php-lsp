@@ -110,7 +110,7 @@ final class ClassLikeLookupParityTest extends TestCase
         self::assertNotNull($resolved, 'an open-document class must resolve through lookupClassLike()');
         self::assertSame(
             'Virtual\Widget',
-            $resolved->name->fullyQualifiedName(),
+            $resolved->name->qualifiedName->fullyQualifiedName(),
             'open-document lookup must win over disk',
         );
     }
@@ -217,7 +217,7 @@ final class ClassLikeLookupParityTest extends TestCase
         // that returned no interfaces goes red rather than surviving behind the
         // method check.
         $interfaceFqns = array_map(
-            static fn(ClasslikeName $name): string => $name->fullyQualifiedName(),
+            static fn(ClasslikeName $name): string => $name->qualifiedName->fullyQualifiedName(),
             $info->interfaces,
         );
         foreach (['ArrayAccess', 'Countable', 'IteratorAggregate'] as $interface) {
@@ -251,7 +251,7 @@ final class ClassLikeLookupParityTest extends TestCase
             'isFinal' => $info->isFinal,
             'isReadonly' => $info->isReadonly,
             'isAttribute' => $info->isAttribute,
-            'parent' => $info->parent?->fullyQualifiedName(),
+            'parent' => $info->parent?->qualifiedName->fullyQualifiedName(),
             'interfaces' => self::sortedFqns($info->interfaces),
             'traits' => self::sortedFqns($info->traits),
             'methods' => self::formatted($info->methods),
@@ -274,7 +274,7 @@ final class ClassLikeLookupParityTest extends TestCase
      */
     private static function sortedFqns(array $names): array
     {
-        $fqns = array_map(static fn(ClasslikeName $name): string => $name->fullyQualifiedName(), $names);
+        $fqns = array_map(static fn(ClasslikeName $name): string => $name->qualifiedName->fullyQualifiedName(), $names);
         sort($fqns);
 
         return $fqns;

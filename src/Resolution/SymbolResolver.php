@@ -556,7 +556,7 @@ final class SymbolResolver implements CodeResolverInterface
             // @codeCoverageIgnoreEnd
             $enclosingClass = TypeFactory::className($selfContext);
             $classInfo = $this->symbolSource->lookupClassLike($enclosingClass);
-            $parentContext = $classInfo?->parent?->fullyQualifiedName();
+            $parentContext = $classInfo?->parent?->qualifiedName->fullyQualifiedName();
         }
         return ParameterTyping::resolve(
             $this->typeSource,

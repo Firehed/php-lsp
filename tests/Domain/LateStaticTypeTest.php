@@ -31,7 +31,7 @@ class LateStaticTypeTest extends TestCase
         $classNames = $type->getResolvableClasslikeNames();
 
         self::assertCount(1, $classNames);
-        self::assertSame(Traversable::class, $classNames[0]->fullyQualifiedName());
+        self::assertSame(Traversable::class, $classNames[0]->qualifiedName->fullyQualifiedName());
     }
 
     public function testIsNullableReturnsFalse(): void
@@ -48,7 +48,7 @@ class LateStaticTypeTest extends TestCase
         $resolved = $type->resolveLateBound(ArrayIterator::class);
 
         self::assertInstanceOf(ClasslikeType::class, $resolved, 'static resolves to a concrete class-like type');
-        self::assertSame(ArrayIterator::class, $resolved->name->fullyQualifiedName());
+        self::assertSame(ArrayIterator::class, $resolved->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testResolveLateBoundSelfReturnsDeclaringClassForRegularClass(): void
@@ -68,7 +68,7 @@ class LateStaticTypeTest extends TestCase
         $resolved = $type->resolveLateBound(ArrayIterator::class, declaringClassIsTrait: true);
 
         self::assertInstanceOf(ClasslikeType::class, $resolved, 'self in a trait resolves to the using class');
-        self::assertSame(ArrayIterator::class, $resolved->name->fullyQualifiedName());
+        self::assertSame(ArrayIterator::class, $resolved->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testResolveLateBoundParentReturnsDeclaringClass(): void

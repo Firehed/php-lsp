@@ -29,7 +29,7 @@ class EnumCaseInfoTest extends TestCase
         self::assertNull($case->docblock);
         self::assertSame('/path/to/file.php', $case->file);
         self::assertSame(8, $case->line);
-        self::assertSame(ClassKind::class, $case->declaringClass->fullyQualifiedName());
+        self::assertSame(ClassKind::class, $case->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFormatUnitEnum(): void
@@ -80,8 +80,8 @@ class EnumCaseInfoTest extends TestCase
 
         self::assertSame(MemberKind::EnumCase, $case->getMemberKind());
         self::assertSame('Active', $case->getName()->name);
-        self::assertSame(ClassKind::class, $case->getDeclaringClass()->fullyQualifiedName());
-        self::assertSame(ClassKind::class, $case->getType()->name->fullyQualifiedName());
+        self::assertSame(ClassKind::class, $case->getDeclaringClass()->qualifiedName->fullyQualifiedName());
+        self::assertSame(ClassKind::class, $case->getType()->name->qualifiedName->fullyQualifiedName());
         self::assertSame(Visibility::Public, $case->getVisibility());
         self::assertTrue($case->isStatic(), 'an enum case is reached on the enum');
     }

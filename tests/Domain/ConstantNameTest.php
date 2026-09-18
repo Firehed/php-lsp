@@ -20,7 +20,7 @@ final class ConstantNameTest extends TestCase
 
         self::assertSame(
             NameKind::Constant,
-            $name->kind(),
+            $name->kind,
             'a constant name must say what it names without being told',
         );
     }
@@ -34,7 +34,7 @@ final class ConstantNameTest extends TestCase
             $name->qualifiedName,
             'the wrapped name should be split and normalized by QualifiedName',
         );
-        self::assertSame('Fixtures\Helpers\HELPER_LIMIT', $name->fullyQualifiedName());
+        self::assertSame('Fixtures\Helpers\HELPER_LIMIT', $name->qualifiedName->fullyQualifiedName());
     }
 
     public function testGlobalConstantHasNoNamespace(): void
@@ -42,6 +42,6 @@ final class ConstantNameTest extends TestCase
         $name = ConstantName::fromFullyQualified('PHP_VERSION');
 
         self::assertSame('', $name->qualifiedName->namespace->path);
-        self::assertSame('PHP_VERSION', $name->fullyQualifiedName());
+        self::assertSame('PHP_VERSION', $name->qualifiedName->fullyQualifiedName());
     }
 }

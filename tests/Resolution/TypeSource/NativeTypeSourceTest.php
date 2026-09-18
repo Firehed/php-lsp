@@ -61,7 +61,7 @@ final class NativeTypeSourceTest extends TestCase
         );
 
         self::assertInstanceOf(ClasslikeType::class, $type, 'getStatus returns the Status enum');
-        self::assertSame('Fixtures\\Enum\\Status', $type->name->fullyQualifiedName());
+        self::assertSame('Fixtures\\Enum\\Status', $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testMethodReturnNullableIsUnion(): void
@@ -157,7 +157,7 @@ final class NativeTypeSourceTest extends TestCase
         );
 
         self::assertInstanceOf(ClasslikeType::class, $type, '$status is declared as Status');
-        self::assertSame('Fixtures\\Enum\\Status', $type->name->fullyQualifiedName());
+        self::assertSame('Fixtures\\Enum\\Status', $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testMethodParameterUnknownName(): void

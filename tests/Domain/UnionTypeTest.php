@@ -58,8 +58,8 @@ class UnionTypeTest extends TestCase
         ]);
         $classNames = $type->getResolvableClasslikeNames();
         self::assertCount(2, $classNames);
-        self::assertSame(\Iterator::class, $classNames[0]->fullyQualifiedName());
-        self::assertSame(\Countable::class, $classNames[1]->fullyQualifiedName());
+        self::assertSame(\Iterator::class, $classNames[0]->qualifiedName->fullyQualifiedName());
+        self::assertSame(\Countable::class, $classNames[1]->qualifiedName->fullyQualifiedName());
     }
 
     public function testGetResolvableClasslikeNamesFromNestedTypes(): void
@@ -73,9 +73,9 @@ class UnionTypeTest extends TestCase
         ]);
         $classNames = $type->getResolvableClasslikeNames();
         self::assertCount(3, $classNames);
-        self::assertSame(\Iterator::class, $classNames[0]->fullyQualifiedName());
-        self::assertSame(\Countable::class, $classNames[1]->fullyQualifiedName());
-        self::assertSame(\Traversable::class, $classNames[2]->fullyQualifiedName());
+        self::assertSame(\Iterator::class, $classNames[0]->qualifiedName->fullyQualifiedName());
+        self::assertSame(\Countable::class, $classNames[1]->qualifiedName->fullyQualifiedName());
+        self::assertSame(\Traversable::class, $classNames[2]->qualifiedName->fullyQualifiedName());
     }
 
     public function testIsNullableWithNullMember(): void
@@ -105,7 +105,7 @@ class UnionTypeTest extends TestCase
         ]);
         $valueType = $type->valueType();
         self::assertInstanceOf(ClasslikeType::class, $valueType);
-        self::assertSame(\stdClass::class, $valueType->name->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $valueType->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testValueTypeIsNullWhenMembersDisagree(): void
@@ -173,6 +173,6 @@ class UnionTypeTest extends TestCase
         self::assertSame('?ArrayIterator', $resolved->format());
         $classNames = $resolved->getResolvableClasslikeNames();
         self::assertCount(1, $classNames);
-        self::assertSame(\ArrayIterator::class, $classNames[0]->fullyQualifiedName());
+        self::assertSame(\ArrayIterator::class, $classNames[0]->qualifiedName->fullyQualifiedName());
     }
 }

@@ -35,14 +35,14 @@ class ClassInfoTest extends TestCase
             line: 3,
         );
 
-        self::assertSame(ClassInfo::class, $class->name->fullyQualifiedName());
+        self::assertSame(ClassInfo::class, $class->name->qualifiedName->fullyQualifiedName());
         self::assertSame(ClassKind::Class_, $class->kind);
         self::assertFalse($class->isAbstract);
         self::assertTrue($class->isFinal);
         self::assertTrue($class->isReadonly);
-        self::assertSame(TestCase::class, $class->parent?->fullyQualifiedName());
+        self::assertSame(TestCase::class, $class->parent?->qualifiedName->fullyQualifiedName());
         self::assertCount(1, $class->interfaces);
-        self::assertSame(\Stringable::class, $class->interfaces[0]->fullyQualifiedName());
+        self::assertSame(\Stringable::class, $class->interfaces[0]->qualifiedName->fullyQualifiedName());
         self::assertSame([], $class->traits);
         self::assertSame([], $class->methods);
         self::assertSame([], $class->properties);
@@ -232,7 +232,7 @@ class ClassInfoTest extends TestCase
     {
         $class = $this->createClassInfo(ClassInfo::class, ClassKind::Class_);
 
-        self::assertSame(ClassInfo::class, $class->getType()->name->fullyQualifiedName());
+        self::assertSame(ClassInfo::class, $class->getType()->name->qualifiedName->fullyQualifiedName());
     }
 
     protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): ClassInfo

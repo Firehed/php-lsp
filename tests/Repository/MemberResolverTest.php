@@ -169,9 +169,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -198,9 +198,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -239,9 +239,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -268,9 +268,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -309,9 +309,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -338,9 +338,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -394,9 +394,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -423,9 +423,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -474,9 +474,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -558,9 +558,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -618,9 +618,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -666,9 +666,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -701,9 +701,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -795,11 +795,11 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $baseTrait->fullyQualifiedName() => $baseTraitInfo,
-                $trait1->fullyQualifiedName() => $trait1Info,
-                $trait2->fullyQualifiedName() => $trait2Info,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $baseTrait->qualifiedName->fullyQualifiedName() => $baseTraitInfo,
+                $trait1->qualifiedName->fullyQualifiedName() => $trait1Info,
+                $trait2->qualifiedName->fullyQualifiedName() => $trait2Info,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -827,11 +827,11 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $baseTrait->fullyQualifiedName() => $baseTraitInfo,
-                $trait1->fullyQualifiedName() => $trait1Info,
-                $trait2->fullyQualifiedName() => $trait2Info,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $baseTrait->qualifiedName->fullyQualifiedName() => $baseTraitInfo,
+                $trait1->qualifiedName->fullyQualifiedName() => $trait1Info,
+                $trait2->qualifiedName->fullyQualifiedName() => $trait2Info,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -857,11 +857,11 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $baseTrait->fullyQualifiedName() => $baseTraitInfo,
-                $trait1->fullyQualifiedName() => $trait1Info,
-                $trait2->fullyQualifiedName() => $trait2Info,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $baseTrait->qualifiedName->fullyQualifiedName() => $baseTraitInfo,
+                $trait1->qualifiedName->fullyQualifiedName() => $trait1Info,
+                $trait2->qualifiedName->fullyQualifiedName() => $trait2Info,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -887,11 +887,11 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $baseTrait->fullyQualifiedName() => $baseTraitInfo,
-                $trait1->fullyQualifiedName() => $trait1Info,
-                $trait2->fullyQualifiedName() => $trait2Info,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $baseTrait->qualifiedName->fullyQualifiedName() => $baseTraitInfo,
+                $trait1->qualifiedName->fullyQualifiedName() => $trait1Info,
+                $trait2->qualifiedName->fullyQualifiedName() => $trait2Info,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -958,9 +958,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -986,9 +986,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1014,9 +1014,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1047,11 +1047,11 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $baseTrait->fullyQualifiedName() => $baseTraitInfo,
-                $trait1->fullyQualifiedName() => $trait1Info,
-                $trait2->fullyQualifiedName() => $trait2Info,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $baseTrait->qualifiedName->fullyQualifiedName() => $baseTraitInfo,
+                $trait1->qualifiedName->fullyQualifiedName() => $trait1Info,
+                $trait2->qualifiedName->fullyQualifiedName() => $trait2Info,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1081,11 +1081,11 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $baseTrait->fullyQualifiedName() => $baseTraitInfo,
-                $trait1->fullyQualifiedName() => $trait1Info,
-                $trait2->fullyQualifiedName() => $trait2Info,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $baseTrait->qualifiedName->fullyQualifiedName() => $baseTraitInfo,
+                $trait1->qualifiedName->fullyQualifiedName() => $trait1Info,
+                $trait2->qualifiedName->fullyQualifiedName() => $trait2Info,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1110,9 +1110,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1141,10 +1141,10 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $grandparentName->fullyQualifiedName() => $grandparentInfo,
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $grandparentName->qualifiedName->fullyQualifiedName() => $grandparentInfo,
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1172,9 +1172,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $interfaceName->fullyQualifiedName() => $interfaceInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $interfaceName->qualifiedName->fullyQualifiedName() => $interfaceInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -1207,9 +1207,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $interfaceName->fullyQualifiedName() => $interfaceInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $interfaceName->qualifiedName->fullyQualifiedName() => $interfaceInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -1255,9 +1255,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1331,9 +1331,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $parentName->fullyQualifiedName() => $parentInfo,
-                $childName->fullyQualifiedName() => $childInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $parentName->qualifiedName->fullyQualifiedName() => $parentInfo,
+                $childName->qualifiedName->fullyQualifiedName() => $childInfo,
                 default => null,
             },
         );
@@ -1437,9 +1437,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -1480,9 +1480,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -1492,7 +1492,10 @@ final class MemberResolverTest extends TestCase
         $resolved = $resolver->findMethod($className, new MethodName('exposedName'), Visibility::Public);
 
         self::assertNotNull($resolved, 'the alias with no explicit trait must resolve through the used-trait scan');
-        self::assertSame($traitName->fullyQualifiedName(), $resolved->getDeclaringClass()->fullyQualifiedName());
+        self::assertSame(
+            $traitName->qualifiedName->fullyQualifiedName(),
+            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+        );
     }
 
     public function testNamelessAliasWithNoOwningTraitIsInvisible(): void
@@ -1513,9 +1516,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => match ($name->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );
@@ -1551,7 +1554,8 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $q) => $q->fullyQualifiedName() === $name->fullyQualifiedName() ? $info : null,
+            fn (ClasslikeName $q) => $q->qualifiedName->fullyQualifiedName()
+                === $name->qualifiedName->fullyQualifiedName() ? $info : null,
         );
 
         $resolver = new MemberResolver($repo);
@@ -1571,9 +1575,9 @@ final class MemberResolverTest extends TestCase
 
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $q) => match ($q->fullyQualifiedName()) {
-                $traitName->fullyQualifiedName() => $traitInfo,
-                $className->fullyQualifiedName() => $classInfo,
+            fn (ClasslikeName $q) => match ($q->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
                 default => null,
             },
         );

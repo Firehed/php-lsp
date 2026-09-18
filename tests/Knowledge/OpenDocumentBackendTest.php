@@ -43,7 +43,7 @@ final class OpenDocumentBackendTest extends TestCase
         self::assertNotNull($info, 'a registered class must resolve');
         self::assertSame(
             'V\Widget',
-            $info->name->fullyQualifiedName(),
+            $info->name->qualifiedName->fullyQualifiedName(),
             'the registered class must be returned unchanged',
         );
     }

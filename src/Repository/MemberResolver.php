@@ -345,7 +345,7 @@ final class MemberResolver implements MemberResolverInterface
     {
         $names = [];
         foreach ($classInfo->traits as $trait) {
-            $names[] = [$trait, true, $classInfo->traitExclusions[$trait->fullyQualifiedName()] ?? []];
+            $names[] = [$trait, true, $classInfo->traitExclusions[$trait->qualifiedName->fullyQualifiedName()] ?? []];
         }
         if ($classInfo->parent !== null) {
             $names[] = [$classInfo->parent, false, []];

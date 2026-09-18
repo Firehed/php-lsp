@@ -84,7 +84,11 @@ final class KnowledgeStackTest extends TestCase
         $info = $stack->source->lookupClassLike(self::className($fqn));
 
         self::assertNotNull($info, "a class-like declared in an autoload.files entry must resolve: {$fqn}");
-        self::assertSame($fqn, $info->name->fullyQualifiedName(), 'the located class-like must be the one asked for');
+        self::assertSame(
+            $fqn,
+            $info->name->qualifiedName->fullyQualifiedName(),
+            'the located class-like must be the one asked for',
+        );
     }
 
     /**

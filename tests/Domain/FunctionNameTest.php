@@ -20,7 +20,7 @@ final class FunctionNameTest extends TestCase
 
         self::assertSame(
             NameKind::Function_,
-            $name->kind(),
+            $name->kind,
             'a function name must say what it names without being told',
         );
     }
@@ -34,7 +34,7 @@ final class FunctionNameTest extends TestCase
             $name->qualifiedName,
             'the wrapped name should be split and normalized by QualifiedName',
         );
-        self::assertSame('Fixtures\Helpers\helperFormat', $name->fullyQualifiedName());
+        self::assertSame('Fixtures\Helpers\helperFormat', $name->qualifiedName->fullyQualifiedName());
     }
 
     public function testGlobalFunctionHasNoNamespace(): void
@@ -42,6 +42,6 @@ final class FunctionNameTest extends TestCase
         $name = FunctionName::fromFullyQualified('str_contains');
 
         self::assertSame('', $name->qualifiedName->namespace->path);
-        self::assertSame('str_contains', $name->fullyQualifiedName());
+        self::assertSame('str_contains', $name->qualifiedName->fullyQualifiedName());
     }
 }

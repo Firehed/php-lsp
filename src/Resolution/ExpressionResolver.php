@@ -517,7 +517,7 @@ final class ExpressionResolver
         // returns null and drops the type entirely.
         $declaredReturn = $this->typeSource->forMethodReturn($callingClass, $methodInfo->name);
         $isFromTrait = $this->memberResolver->isTrait($methodInfo->declaringClass);
-        $return = $declaredReturn?->resolveLateBound($callingClass->fullyQualifiedName(), $isFromTrait);
+        $return = $declaredReturn?->resolveLateBound($callingClass->qualifiedName->fullyQualifiedName(), $isFromTrait);
         if ($return === $declaredReturn) {
             return $methodInfo;
         }

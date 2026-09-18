@@ -22,7 +22,11 @@ final class TraitAliasTest extends TestCase
             newVisibility: Visibility::Protected,
         );
 
-        self::assertSame('Some\\Trait', $alias->trait?->fullyQualifiedName(), 'source trait is retained');
+        self::assertSame(
+            'Some\\Trait',
+            $alias->trait?->qualifiedName->fullyQualifiedName(),
+            'source trait is retained',
+        );
         self::assertSame('original', $alias->method, 'source method name is retained');
         self::assertSame('renamed', $alias->newName, 'new exposed name is retained');
         self::assertSame(Visibility::Protected, $alias->newVisibility, 'new visibility is retained');

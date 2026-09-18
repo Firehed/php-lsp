@@ -190,7 +190,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($resolved, 'the conflict method should resolve');
         self::assertSame(
             $expectedTrait,
-            $resolved->getDeclaringClass()->fullyQualifiedName(),
+            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'insteadof must pick the winning trait, regardless of trait-use order',
         );
     }
@@ -216,7 +216,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($conflicting, 'the conflict method should appear in getMethods');
         self::assertSame(
             $expectedTrait,
-            $conflicting->getDeclaringClass()->fullyQualifiedName(),
+            $conflicting->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'insteadof must pick the winning trait for enumerated members too',
         );
     }
@@ -237,7 +237,7 @@ final class TypeGraphParityTest extends TestCase
         );
         self::assertSame(
             'Fixtures\Hierarchy\ConflictingTraitB',
-            $resolved->getDeclaringClass()->fullyQualifiedName(),
+            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'the alias resolves to the source trait',
         );
     }
@@ -259,7 +259,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($collision, 'the aliased method must appear exactly once');
         self::assertSame(
             'Fixtures\Hierarchy\ConflictingTraitA',
-            $collision->getDeclaringClass()->fullyQualifiedName(),
+            $collision->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'the trait alias must replace the parent method the walk already collected',
         );
     }

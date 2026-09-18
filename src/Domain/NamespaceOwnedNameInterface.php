@@ -11,5 +11,7 @@ namespace Firehed\PhpLsp\Domain;
  */
 interface NamespaceOwnedNameInterface
 {
+    public NameKind $kind { get; }
+
     public QualifiedName $qualifiedName { get; }
 }

@@ -37,8 +37,8 @@ class IntersectionTypeTest extends TestCase
         ]);
         $classNames = $type->getResolvableClasslikeNames();
         self::assertCount(2, $classNames);
-        self::assertSame(\Iterator::class, $classNames[0]->fullyQualifiedName());
-        self::assertSame(\Countable::class, $classNames[1]->fullyQualifiedName());
+        self::assertSame(\Iterator::class, $classNames[0]->qualifiedName->fullyQualifiedName());
+        self::assertSame(\Countable::class, $classNames[1]->qualifiedName->fullyQualifiedName());
     }
 
     public function testIsNullableReturnsFalse(): void
@@ -59,7 +59,7 @@ class IntersectionTypeTest extends TestCase
         ]);
         $valueType = $type->valueType();
         self::assertInstanceOf(ClasslikeType::class, $valueType);
-        self::assertSame(\stdClass::class, $valueType->name->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $valueType->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testValueTypeIsNullWhenMembersDisagree(): void

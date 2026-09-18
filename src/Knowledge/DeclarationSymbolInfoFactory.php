@@ -184,8 +184,8 @@ final readonly class DeclarationSymbolInfoFactory
                     isFinal: $stmt->isFinal(),
                     type: TypeFactory::fromNode(
                         $stmt->type,
-                        $className->fullyQualifiedName(),
-                        $parentClass?->fullyQualifiedName(),
+                        $className->qualifiedName->fullyQualifiedName(),
+                        $parentClass?->qualifiedName->fullyQualifiedName(),
                     ),
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
@@ -289,8 +289,8 @@ final readonly class DeclarationSymbolInfoFactory
                 parameters: $this->extractParameters($stmt->params, $className, $parentClass),
                 returnType: TypeFactory::fromNode(
                     $stmt->returnType,
-                    $className->fullyQualifiedName(),
-                    $parentClass?->fullyQualifiedName(),
+                    $className->qualifiedName->fullyQualifiedName(),
+                    $parentClass?->qualifiedName->fullyQualifiedName(),
                     preserveLateBinding: true,
                 ),
                 docblock: $stmt->getDocComment()?->getText(),
@@ -318,8 +318,8 @@ final readonly class DeclarationSymbolInfoFactory
             $info = $this->parameterFromNode(
                 $param,
                 $position,
-                $className->fullyQualifiedName(),
-                $parentClass?->fullyQualifiedName(),
+                $className->qualifiedName->fullyQualifiedName(),
+                $parentClass?->qualifiedName->fullyQualifiedName(),
             );
             if ($info !== null) {
                 $result[] = $info;
@@ -352,8 +352,8 @@ final readonly class DeclarationSymbolInfoFactory
                         isPromoted: false,
                         type: TypeFactory::fromNode(
                             $stmt->type,
-                            $className->fullyQualifiedName(),
-                            $parentClass?->fullyQualifiedName(),
+                            $className->qualifiedName->fullyQualifiedName(),
+                            $parentClass?->qualifiedName->fullyQualifiedName(),
                         ),
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
@@ -381,8 +381,8 @@ final readonly class DeclarationSymbolInfoFactory
                         isPromoted: true,
                         type: TypeFactory::fromNode(
                             $param->type,
-                            $className->fullyQualifiedName(),
-                            $parentClass?->fullyQualifiedName(),
+                            $className->qualifiedName->fullyQualifiedName(),
+                            $parentClass?->qualifiedName->fullyQualifiedName(),
                         ),
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
@@ -416,7 +416,8 @@ final readonly class DeclarationSymbolInfoFactory
                 if ($adaptation instanceof Stmt\TraitUseAdaptation\Precedence) {
                     $method = $adaptation->method->toString();
                     foreach ($adaptation->insteadof as $loser) {
-                        $exclusions[$this->resolveNameToClasslikeName($loser)->fullyQualifiedName()][] = $method;
+                        $loserFqn = $this->resolveNameToClasslikeName($loser)->qualifiedName->fullyQualifiedName();
+                        $exclusions[$loserFqn][] = $method;
                     }
                     continue;
                 }
@@ -479,7 +480,8 @@ final readonly class DeclarationSymbolInfoFactory
 
         foreach ($node->attrGroups as $group) {
             foreach ($group->attrs as $attr) {
-                if ($this->resolveNameToClasslikeName($attr->name)->fullyQualifiedName() === Attribute::class) {
+                $attrFqn = $this->resolveNameToClasslikeName($attr->name)->qualifiedName->fullyQualifiedName();
+                if ($attrFqn === Attribute::class) {
                     return true;
                 }
             }

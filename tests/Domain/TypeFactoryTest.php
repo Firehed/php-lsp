@@ -36,7 +36,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\stdClass::class, $type->name->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithNameUsesResolvedName(): void
@@ -46,7 +46,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame('App\\Models\\User', $type->name->fullyQualifiedName());
+        self::assertSame('App\\Models\\User', $type->name->qualifiedName->fullyQualifiedName());
     }
 
     /**
@@ -87,7 +87,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\stdClass::class, $type->name->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithStaticAndContextCreatesClasslikeType(): void
@@ -96,7 +96,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\ArrayObject::class, $type->name->fullyQualifiedName());
+        self::assertSame(\ArrayObject::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithParentAndContextCreatesClasslikeType(): void
@@ -105,7 +105,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\Throwable::class, $type->name->fullyQualifiedName());
+        self::assertSame(\Throwable::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithSelfWithoutContextCreatesPrimitiveType(): void
@@ -124,7 +124,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(LateStaticType::class, $type);
         self::assertSame(LateBindingKeyword::Self, $type->keyword);
-        self::assertSame(\stdClass::class, $type->declaringClass->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $type->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithIdentifierStaticAndPreserveLateBindingCreatesLateStaticType(): void
@@ -134,7 +134,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(LateStaticType::class, $type);
         self::assertSame(LateBindingKeyword::Static, $type->keyword);
-        self::assertSame(\ArrayObject::class, $type->declaringClass->fullyQualifiedName());
+        self::assertSame(\ArrayObject::class, $type->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithIdentifierParentAndPreserveLateBindingCreatesLateStaticType(): void
@@ -144,7 +144,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(LateStaticType::class, $type);
         self::assertSame(LateBindingKeyword::Parent, $type->keyword);
-        self::assertSame(\Throwable::class, $type->declaringClass->fullyQualifiedName());
+        self::assertSame(\Throwable::class, $type->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithParentWithoutContextCreatesPrimitiveType(): void
@@ -162,7 +162,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\stdClass::class, $type->name->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithNameStaticAndContextCreatesClasslikeType(): void
@@ -171,7 +171,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\ArrayObject::class, $type->name->fullyQualifiedName());
+        self::assertSame(\ArrayObject::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithNameParentAndContextCreatesClasslikeType(): void
@@ -180,7 +180,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\Throwable::class, $type->name->fullyQualifiedName());
+        self::assertSame(\Throwable::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithNameSelfWithoutContextCreatesPrimitiveType(): void
@@ -199,7 +199,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(LateStaticType::class, $type);
         self::assertSame(LateBindingKeyword::Self, $type->keyword);
-        self::assertSame(\stdClass::class, $type->declaringClass->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $type->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithNameStaticAndPreserveLateBindingCreatesLateStaticType(): void
@@ -209,7 +209,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(LateStaticType::class, $type);
         self::assertSame(LateBindingKeyword::Static, $type->keyword);
-        self::assertSame(\ArrayObject::class, $type->declaringClass->fullyQualifiedName());
+        self::assertSame(\ArrayObject::class, $type->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithNameParentAndPreserveLateBindingCreatesLateStaticType(): void
@@ -219,7 +219,7 @@ class TypeFactoryTest extends TestCase
 
         self::assertInstanceOf(LateStaticType::class, $type);
         self::assertSame(LateBindingKeyword::Parent, $type->keyword);
-        self::assertSame(\Throwable::class, $type->declaringClass->fullyQualifiedName());
+        self::assertSame(\Throwable::class, $type->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromNodeWithNameParentWithoutContextCreatesPrimitiveType(): void
@@ -295,7 +295,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::className(\stdClass::class);
 
         self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\stdClass::class, $type->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $type->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromReflectionWithNullReturnsNull(): void
@@ -328,7 +328,7 @@ class TypeFactoryTest extends TestCase
         $type = TypeFactory::fromReflection($func->getReturnType());
 
         self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\stdClass::class, $type->name->fullyQualifiedName());
+        self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
     public function testFromReflectionWithNullableCreatesUnionType(): void

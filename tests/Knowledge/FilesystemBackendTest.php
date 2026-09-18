@@ -60,7 +60,7 @@ final class FilesystemBackendTest extends TestCase
         self::assertNotNull($info, 'a class reachable through the autoload map must resolve');
         self::assertSame(
             'Fixtures\Domain\User',
-            $info->name->fullyQualifiedName(),
+            $info->name->qualifiedName->fullyQualifiedName(),
             'the located class must be returned',
         );
     }

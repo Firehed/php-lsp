@@ -52,7 +52,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertInstanceOf(ClassInfo::class, $info, 'a class-like must build ClassInfo, not another kind\'s type');
         self::assertSame(
             'Fixtures\Helpers\HelperRegistry',
-            $info->name->fullyQualifiedName(),
+            $info->name->qualifiedName->fullyQualifiedName(),
             'the located declaration must be built',
         );
     }

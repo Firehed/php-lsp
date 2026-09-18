@@ -34,7 +34,7 @@ class ClasslikeConstantInfoTest extends TestCase
         self::assertSame('/** Maximum size */', $constant->docblock);
         self::assertSame('/path/to/file.php', $constant->file);
         self::assertSame(5, $constant->line);
-        self::assertSame(ClasslikeConstantInfo::class, $constant->declaringClass->fullyQualifiedName());
+        self::assertSame(ClasslikeConstantInfo::class, $constant->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFormatSimple(): void
@@ -118,7 +118,10 @@ class ClasslikeConstantInfoTest extends TestCase
 
         self::assertSame(MemberKind::Constant, $constant->getMemberKind());
         self::assertSame('MAX_SIZE', $constant->getName()->name);
-        self::assertSame(ClasslikeConstantInfo::class, $constant->getDeclaringClass()->fullyQualifiedName());
+        self::assertSame(
+            ClasslikeConstantInfo::class,
+            $constant->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+        );
         self::assertSame('int', $constant->getType()?->format());
         self::assertSame(Visibility::Public, $constant->getVisibility());
         self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');

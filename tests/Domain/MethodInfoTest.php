@@ -39,7 +39,7 @@ class MethodInfoTest extends TestCase
         self::assertNull($method->docblock);
         self::assertSame('/path/to/file.php', $method->file);
         self::assertSame(42, $method->line);
-        self::assertSame(MethodInfo::class, $method->declaringClass->fullyQualifiedName());
+        self::assertSame(MethodInfo::class, $method->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFormatNoParamsNoReturnType(): void
@@ -210,7 +210,7 @@ class MethodInfoTest extends TestCase
 
         self::assertSame(MemberKind::Method, $method->getMemberKind());
         self::assertSame('doSomething', $method->getName()->name);
-        self::assertSame(MethodInfo::class, $method->getDeclaringClass()->fullyQualifiedName());
+        self::assertSame(MethodInfo::class, $method->getDeclaringClass()->qualifiedName->fullyQualifiedName());
         self::assertSame(Visibility::Public, $method->getVisibility());
         self::assertFalse($method->isStatic());
     }
