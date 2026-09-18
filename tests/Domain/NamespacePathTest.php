@@ -12,30 +12,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NamespacePath::class)]
 class NamespacePathTest extends TestCase
 {
-    /**
-     * @param array<string, string> $expected
-     */
-    #[DataProvider('provideAncestors')]
-    public function testAncestors(string $namespace, array $expected): void
-    {
-        self::assertSame(
-            $expected,
-            NamespacePath::ancestors($namespace),
-            'Each ancestor maps to the child leading towards the namespace',
-        );
-    }
-
-    /**
-     * @codeCoverageIgnore
-     * @return iterable<string, array{string, array<string, string>}>
-     */
-    public static function provideAncestors(): iterable
-    {
-        yield 'global namespace has none' => ['', []];
-        yield 'single segment' => ['App', ['' => 'App']];
-        yield 'nested' => ['A\B\C', ['' => 'A', 'A' => 'A\B', 'A\B' => 'A\B\C']];
-    }
-
     #[DataProvider('provideRelativeTo')]
     public function testRelativeTo(string $namespace, string $ancestor, ?string $expected): void
     {

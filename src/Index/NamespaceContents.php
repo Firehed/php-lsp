@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\NamespacePath;
 
 /**
@@ -48,7 +49,7 @@ final readonly class NamespaceContents
             $namespace = NamespacePath::namespaceOf($symbol->fullyQualifiedName);
             $symbolsByNamespace[NamespacePath::normalize($namespace)][] = $symbol;
 
-            foreach (NamespacePath::ancestors($namespace) as $parent => $child) {
+            foreach ((new NamespaceName($namespace))->ancestors() as $parent => $child) {
                 $childNamespaces[NamespacePath::normalize($parent)][NamespacePath::normalize($child)] ??= $child;
             }
         }

@@ -19,4 +19,28 @@ final readonly class NamespaceName
         public string $path,
     ) {
     }
+
+    /**
+     * Every ancestor of this namespace mapped to the child leading towards it:
+     * `A\B\C` yields `'' => 'A'`, `'A' => 'A\B'`, `'A\B' => 'A\B\C'`.
+     *
+     * @return array<string, string>
+     */
+    public function ancestors(): array
+    {
+        if ($this->path === '') {
+            return [];
+        }
+
+        $ancestors = [];
+        $parent = '';
+
+        foreach (explode('\\', $this->path) as $segment) {
+            $child = NamespacePath::join($parent, $segment);
+            $ancestors[$parent] = $child;
+            $parent = $child;
+        }
+
+        return $ancestors;
+    }
 }
