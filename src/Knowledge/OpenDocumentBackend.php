@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
@@ -36,24 +36,24 @@ final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbo
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
-        $targetKey = NamespacePath::normalize($namespace->path);
+        $targetKey = $namespace->normalize();
         $childNamespaces = [];
         $symbols = [];
 
         foreach ($this->symbolsByUri as $uriSymbols) {
             foreach ($uriSymbols as $symbol) {
                 $fqn = $symbol->name->fullyQualifiedName();
-                $ns = NamespacePath::namespaceOf($fqn);
-                if (NamespacePath::normalize($ns) === $targetKey) {
+                $ns = new NamespaceName(NamespaceName::namespaceOf($fqn));
+                if ($ns->normalize() === $targetKey) {
                     $symbols[] = new CatalogSymbol($fqn, $symbol->kind);
                     continue;
                 }
-                $below = NamespacePath::relativeTo($ns, $namespace->path);
+                $below = $ns->relativeTo($namespace);
                 if ($below === null) {
                     continue;
                 }
-                $child = NamespacePath::join($namespace->path, NamespacePath::firstSegment($below));
-                $childNamespaces[NamespacePath::normalize($child)] ??= $child;
+                $child = NamespaceName::join($namespace->path, NamespaceName::firstSegment($below));
+                $childNamespaces[(new NamespaceName($child))->normalize()] ??= $child;
             }
         }
 

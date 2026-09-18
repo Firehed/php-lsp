@@ -26,13 +26,12 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
@@ -106,8 +105,8 @@ class CompletionHandlerTest extends TestCase
 
     private function seedClass(string $fqn): void
     {
-        $namespace = NamespacePath::namespaceOf($fqn);
-        $short = NamespacePath::shortNameOf($fqn);
+        $namespace = NamespaceName::namespaceOf($fqn);
+        $short = NamespaceName::shortNameOf($fqn);
         $source = $namespace === ''
             ? "<?php\nclass {$short} {}\n"
             : "<?php\nnamespace {$namespace};\nclass {$short} {}\n";

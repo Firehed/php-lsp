@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 
@@ -41,7 +41,7 @@ final class NameContextFactory
                 $prefix = $stmt->prefix->toString();
                 foreach ($stmt->uses as $use) {
                     $imports[self::typeOf($use, $stmt->type)][self::aliasOf($use)]
-                        = NamespacePath::join($prefix, $use->name->toString());
+                        = NamespaceName::join($prefix, $use->name->toString());
                 }
             }
         }

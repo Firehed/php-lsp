@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\Declaration;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
@@ -90,7 +90,7 @@ final class AutoloadFilesLocator implements
     {
         $this->namespaces ??= NamespaceContents::indexByNamespace($this->declarations);
 
-        return $this->namespaces[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
+        return $this->namespaces[(new NamespaceName($namespace))->normalize()] ?? new NamespaceContents();
     }
 
     /**

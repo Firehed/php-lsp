@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 
 /**
@@ -45,6 +45,6 @@ final readonly class CatalogSymbol
 
     public function shortName(): string
     {
-        return NamespacePath::shortNameOf($this->fullyQualifiedName);
+        return NamespaceName::shortNameOf($this->fullyQualifiedName);
     }
 }

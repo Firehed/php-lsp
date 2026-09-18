@@ -6,12 +6,11 @@ namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
-use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolCache;
 use PHPUnit\Framework\TestCase;
 
@@ -126,7 +125,7 @@ final class BuiltinFunctionParityTest extends TestCase
     {
         $namespaces = [];
         foreach ($names as $name) {
-            $namespaces[NamespacePath::namespaceOf($name)] = true;
+            $namespaces[NamespaceName::namespaceOf($name)] = true;
         }
 
         return array_keys($namespaces);

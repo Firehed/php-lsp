@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 
 /**
  * Discovers symbols through Composer's autoload maps, without parsing or
@@ -59,17 +59,17 @@ final class ComposerNamespaceSource implements NamespaceCatalogInterface
 
             // The namespace sits above the prefix: the prefix itself names the
             // child, and no directory needs to be read.
-            $below = NamespacePath::relativeTo($prefixNamespace, $namespace);
+            $below = (new NamespaceName($prefixNamespace))->relativeTo(new NamespaceName($namespace));
             if ($below !== null) {
-                $child = NamespacePath::join($namespace, NamespacePath::firstSegment($below));
-                $childNamespaces[NamespacePath::normalize($child)] = $child;
+                $child = NamespaceName::join($namespace, NamespaceName::firstSegment($below));
+                $childNamespaces[(new NamespaceName($child))->normalize()] = $child;
                 continue;
             }
 
             // The namespace is at or below the prefix: read the directory it maps to.
-            $withinPrefix = NamespacePath::equals($prefixNamespace, $namespace)
+            $withinPrefix = (new NamespaceName($prefixNamespace))->equals(new NamespaceName($namespace))
                 ? ''
-                : NamespacePath::relativeTo($namespace, $prefixNamespace);
+                : (new NamespaceName($namespace))->relativeTo(new NamespaceName($prefixNamespace));
             if ($withinPrefix === null) {
                 continue;
             }
@@ -91,11 +91,11 @@ final class ComposerNamespaceSource implements NamespaceCatalogInterface
 
                 // The namespace as it is really spelled: the prefix's own casing,
                 // then the casing of the directories actually on disk.
-                $canonical = NamespacePath::join($rootNamespace, ...$realSegments);
+                $canonical = NamespaceName::join($rootNamespace, ...$realSegments);
 
                 $contents = self::readDirectory($path, $canonical);
                 foreach ($contents->childNamespaces as $child) {
-                    $childNamespaces[NamespacePath::normalize($child)] = $child;
+                    $childNamespaces[(new NamespaceName($child))->normalize()] = $child;
                 }
                 foreach ($contents->symbols as $symbol) {
                     $symbols[$symbol->key()] = $symbol;
@@ -127,7 +127,7 @@ final class ComposerNamespaceSource implements NamespaceCatalogInterface
 
             $match = null;
             foreach ($entries as $entry) {
-                if (NamespacePath::equals($entry, $segment) && is_dir($path . '/' . $entry)) {
+                if ((new NamespaceName($entry))->equals(new NamespaceName($segment)) && is_dir($path . '/' . $entry)) {
                     $match = $entry;
                     break;
                 }
@@ -174,7 +174,7 @@ final class ComposerNamespaceSource implements NamespaceCatalogInterface
             }
 
             if (is_dir($path . '/' . $entry)) {
-                $childNamespaces[] = NamespacePath::join($namespace, $entry);
+                $childNamespaces[] = NamespaceName::join($namespace, $entry);
                 continue;
             }
 
@@ -183,7 +183,7 @@ final class ComposerNamespaceSource implements NamespaceCatalogInterface
             }
 
             $symbols[] = new CatalogSymbol(
-                NamespacePath::join($namespace, basename($entry, '.php')),
+                NamespaceName::join($namespace, basename($entry, '.php')),
                 NameKind::ClassLike,
             );
         }
@@ -198,6 +198,6 @@ final class ComposerNamespaceSource implements NamespaceCatalogInterface
             array_keys($this->map->classMap()),
         ));
 
-        return $this->classMapIndex[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
+        return $this->classMapIndex[(new NamespaceName($namespace))->normalize()] ?? new NamespaceContents();
     }
 }

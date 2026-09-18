@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 
 /**
@@ -44,11 +44,11 @@ final class ReferenceResolver
     public static function resolve(string $fullyQualifiedName, NameKind $kind, NameContext $context): Reference
     {
         $fqn = ltrim($fullyQualifiedName, '\\');
-        $namespace = NamespacePath::namespaceOf($fqn);
-        $shortName = NamespacePath::shortNameOf($fqn);
+        $namespace = NamespaceName::namespaceOf($fqn);
+        $shortName = NamespaceName::shortNameOf($fqn);
 
         if (
-            NamespacePath::equals($namespace, $context->namespace)
+            (new NamespaceName($namespace))->equals(new NamespaceName($context->namespace))
             && !self::isShadowed($shortName, $fqn, $context->importsFor($kind), $kind)
         ) {
             return new Reference($shortName, ReferenceKind::CurrentNamespace);
@@ -63,7 +63,7 @@ final class ReferenceResolver
         if ($viaPrefix !== null) {
             [$prefixAlias, $remainder] = $viaPrefix;
             return new Reference(
-                NamespacePath::join($prefixAlias, $remainder, $shortName),
+                NamespaceName::join($prefixAlias, $remainder, $shortName),
                 ReferenceKind::PrefixImport,
             );
         }
@@ -75,14 +75,14 @@ final class ReferenceResolver
             // import table (rule 3), so it matches on that table's terms —
             // case-insensitively — whatever the leaf symbol's kind.
             && !self::isShadowed(
-                NamespacePath::firstSegment($relative),
+                NamespaceName::firstSegment($relative),
                 $fqn,
                 $context->classImports,
                 NameKind::ClassLike,
             )
         ) {
             return new Reference(
-                NamespacePath::join($relative, $shortName),
+                NamespaceName::join($relative, $shortName),
                 ReferenceKind::SubNamespace,
             );
         }
@@ -165,11 +165,11 @@ final class ReferenceResolver
      */
     private static function relativeNamespace(string $namespace, string $ancestor, bool $allowExact = false): ?string
     {
-        if ($allowExact && NamespacePath::equals($namespace, $ancestor)) {
+        if ($allowExact && (new NamespaceName($namespace))->equals(new NamespaceName($ancestor))) {
             return '';
         }
 
-        return NamespacePath::relativeTo($namespace, $ancestor);
+        return (new NamespaceName($namespace))->relativeTo(new NamespaceName($ancestor));
     }
 
     private static function namesMatch(string $a, string $b, NameKind $kind): bool

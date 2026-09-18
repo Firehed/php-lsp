@@ -7,11 +7,10 @@ namespace Firehed\PhpLsp\Completion;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Knowledge\NamespaceName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
@@ -126,8 +125,8 @@ final class SymbolCandidates
         bool $snippets,
     ): array {
         return $this->offerContentsOf(
-            NamespacePath::namespaceOf($qualified),
-            NamespacePath::shortNameOf($qualified),
+            NamespaceName::namespaceOf($qualified),
+            NamespaceName::shortNameOf($qualified),
             $kinds,
             $classFilter,
             $range,
@@ -147,15 +146,15 @@ final class SymbolCandidates
         Range $range,
         bool $snippets,
     ): array {
-        $alias = NamespacePath::firstSegment($prefix);
+        $alias = NamespaceName::firstSegment($prefix);
         $base = array_key_exists($alias, $context->classImports)
             ? $context->classImports[$alias]
-            : NamespacePath::join($context->namespace, $alias);
+            : NamespaceName::join($context->namespace, $alias);
         $rest = substr($prefix, strlen($alias) + 1);
 
         return $this->offerContentsOf(
-            NamespacePath::join($base, NamespacePath::namespaceOf($rest)),
-            NamespacePath::shortNameOf($rest),
+            NamespaceName::join($base, NamespaceName::namespaceOf($rest)),
+            NamespaceName::shortNameOf($rest),
             $kinds,
             $classFilter,
             $range,
@@ -182,7 +181,7 @@ final class SymbolCandidates
 
         $items = [];
         foreach ($contents->childNamespaces as $child) {
-            $segment = NamespacePath::shortNameOf($child);
+            $segment = NamespaceName::shortNameOf($child);
             if (!PrefixMatcher::matches($segment, $short)) {
                 continue;
             }
@@ -228,7 +227,7 @@ final class SymbolCandidates
         foreach (
             $this->symbolSource->childrenOf(new NamespaceName($context->namespace))->childNamespaces as $child
         ) {
-            $targets[NamespacePath::shortNameOf($child)] = $child;
+            $targets[NamespaceName::shortNameOf($child)] = $child;
         }
         foreach ($context->classImports as $alias => $fqcn) {
             $targets[$alias] = $fqcn;
@@ -384,7 +383,7 @@ final class SymbolCandidates
 
         $items = [];
         foreach ($contents->childNamespaces as $grandchild) {
-            $reference = NamespacePath::join($segment, NamespacePath::shortNameOf($grandchild));
+            $reference = NamespaceName::join($segment, NamespaceName::shortNameOf($grandchild));
             $item = CompletionItemFactory::forNamespace($reference, $grandchild, $range);
             $item['sortText'] = '1_' . $item['label'];
             $items[] = $item;
@@ -393,7 +392,7 @@ final class SymbolCandidates
             if (!$this->kindAllowed($symbol->kind, $kinds)) {
                 continue;
             }
-            $reference = NamespacePath::join($segment, $symbol->shortName());
+            $reference = NamespaceName::join($segment, $symbol->shortName());
             $item = $this->offerLeaf($symbol, $reference, $reference, $classFilter, $range, $snippets);
             if ($item !== null) {
                 $items[] = $item;

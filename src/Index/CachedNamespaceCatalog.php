@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Psr\SimpleCache\CacheInterface;
 
 /**
@@ -42,7 +42,7 @@ final class CachedNamespaceCatalog implements NamespaceCatalogInterface, Invalid
     {
         // PHP namespaces are case-insensitive, so `Psr\Log` and `psr\log` are one
         // namespace and must not be two cache entries.
-        $key = CacheKey::from(NamespacePath::normalize($namespace));
+        $key = CacheKey::from((new NamespaceName($namespace))->normalize());
 
         $cached = $this->cache->get($key);
         if ($cached !== null) {
