@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Knowledge;
+namespace Firehed\PhpLsp\Domain;
 
 /**
- * The fully-qualified namespace path that {@see SymbolSourceInterface::childrenOf} enumerates,
- * as a typed identifier rather than a bare string (RFC 1 §5.1). The global namespace
+ * The fully-qualified namespace path that {@see \Firehed\PhpLsp\Knowledge\SymbolSourceInterface::childrenOf}
+ * enumerates, as a typed identifier rather than a bare string (RFC 1 §5.1). The global namespace
  * is the empty path.
  *
  * A namespace is not a symbol: it has no declaration site and no {@see \Firehed\PhpLsp\Domain\NameKind},
