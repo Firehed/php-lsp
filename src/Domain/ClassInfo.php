@@ -111,11 +111,10 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
                 fn($n) => !EnumImplicits::isImplicitInterface($n),
             ))
             : $this->interfaces;
-        $shortNames = array_map(fn($n) => $n->qualifiedName->shortName, $writtenInterfaces);
-        if ($this->kind === ClassKind::Interface_ && $writtenInterfaces !== []) {
-            $sig .= ' extends ' . implode(', ', $shortNames);
-        } elseif ($writtenInterfaces !== []) {
-            $sig .= ' implements ' . implode(', ', $shortNames);
+        if ($writtenInterfaces !== []) {
+            $keyword = $this->kind === ClassKind::Interface_ ? 'extends' : 'implements';
+            $shortNames = array_map(fn($n) => $n->qualifiedName->shortName, $writtenInterfaces);
+            $sig .= ' ' . $keyword . ' ' . implode(', ', $shortNames);
         }
 
         return $sig;
