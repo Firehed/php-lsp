@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use ReflectionClass;
 
 /**
@@ -54,7 +54,7 @@ final class ReflectionNamespaceSource implements NamespaceCatalogInterface, Pref
     {
         $this->byNamespace ??= NamespaceContents::indexByNamespace($this->internalSymbols());
 
-        return $this->byNamespace[NamespacePath::normalize($namespace)] ?? new NamespaceContents();
+        return $this->byNamespace[(new NamespaceName($namespace))->normalize()] ?? new NamespaceContents();
     }
 
     /**

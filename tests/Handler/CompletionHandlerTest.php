@@ -27,7 +27,6 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\NamespacePath;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -106,8 +105,8 @@ class CompletionHandlerTest extends TestCase
 
     private function seedClass(string $fqn): void
     {
-        $namespace = NamespacePath::namespaceOf($fqn);
-        $short = NamespacePath::shortNameOf($fqn);
+        $namespace = NamespaceName::namespaceOf($fqn);
+        $short = NamespaceName::shortNameOf($fqn);
         $source = $namespace === ''
             ? "<?php\nclass {$short} {}\n"
             : "<?php\nnamespace {$namespace};\nclass {$short} {}\n";

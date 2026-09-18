@@ -32,11 +32,11 @@ final readonly class QualifiedName
     {
         $fqn = ltrim($fullyQualifiedName, '\\');
 
-        return new self(NamespacePath::namespaceOf($fqn), NamespacePath::shortNameOf($fqn));
+        return new self(NamespaceName::namespaceOf($fqn), NamespaceName::shortNameOf($fqn));
     }
 
     public function fullyQualifiedName(): string
     {
-        return NamespacePath::join($this->namespace, $this->shortName);
+        return NamespaceName::join($this->namespace, $this->shortName);
     }
 }

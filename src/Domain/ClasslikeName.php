@@ -25,13 +25,13 @@ final readonly class ClasslikeName
 
     public function namespace(): ?string
     {
-        $namespace = NamespacePath::namespaceOf($this->fqn);
+        $namespace = NamespaceName::namespaceOf($this->fqn);
 
         return $namespace === '' ? null : $namespace;
     }
 
     public function shortName(): string
     {
-        return NamespacePath::shortNameOf($this->fqn);
+        return NamespaceName::shortNameOf($this->fqn);
     }
 }

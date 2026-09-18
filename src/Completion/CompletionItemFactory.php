@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespacePath;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Protocol\Range;
@@ -86,7 +86,7 @@ final class CompletionItemFactory
             'label' => $reference,
             'kind' => $itemKind->value,
             'detail' => $presented === null ? $fullyQualifiedName : $presented->signature,
-            'filterText' => $filterText ?? NamespacePath::shortNameOf($reference),
+            'filterText' => $filterText ?? NamespaceName::shortNameOf($reference),
             'textEdit' => [
                 'range' => $replaceRange->toArray(),
                 'newText' => $reference,

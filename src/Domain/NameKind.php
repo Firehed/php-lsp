@@ -62,7 +62,7 @@ enum NameKind
     public function normalize(QualifiedName $name): string
     {
         $shortName = $this->caseRule()->normalize($name->shortName);
-        $namespace = NamespacePath::normalize($name->namespace);
+        $namespace = (new NamespaceName($name->namespace))->normalize();
 
         return (new QualifiedName($namespace, $shortName))->fullyQualifiedName();
     }
