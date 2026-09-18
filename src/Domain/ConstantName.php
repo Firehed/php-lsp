@@ -14,7 +14,7 @@ namespace Firehed\PhpLsp\Domain;
  * Distinct from {@see ClasslikeConstantName}, which is the unqualified name
  * of a class constant member.
  */
-final readonly class ConstantName
+final readonly class ConstantName implements NamespaceOwnedNameInterface
 {
     public function __construct(
         public QualifiedName $qualifiedName,

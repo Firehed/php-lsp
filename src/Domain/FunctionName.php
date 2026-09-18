@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Domain;
  * taking one needs no separate kind argument. `Foo\bar` names a different symbol as
  * a function than as a constant, and the type is what says which.
  */
-final readonly class FunctionName
+final readonly class FunctionName implements NamespaceOwnedNameInterface
 {
     public function __construct(
         public QualifiedName $qualifiedName,
