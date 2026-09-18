@@ -16,7 +16,6 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
           coverage: pcov
 
       - name: Install dependencies
@@ -35,8 +34,6 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
 
       - name: Check baselines
         run: php bin/check-baseline-shrink
@@ -49,8 +46,6 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
