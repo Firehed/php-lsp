@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Domain;
 
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -19,8 +20,8 @@ final class NameKindTest extends TestCase
      */
     public static function normalizations(): iterable
     {
-        $namespaced = new QualifiedName('Fixtures\Helpers', 'HelperFormat');
-        $global = new QualifiedName('', 'HELPER_LIMIT');
+        $namespaced = new QualifiedName(new NamespaceName('Fixtures\Helpers'), 'HelperFormat');
+        $global = new QualifiedName(new NamespaceName(''), 'HELPER_LIMIT');
 
         yield 'class-like' => [NameKind::ClassLike, $namespaced, 'fixtures\helpers\helperformat'];
         yield 'function' => [NameKind::Function_, $namespaced, 'fixtures\helpers\helperformat'];
@@ -69,7 +70,7 @@ final class NameKindTest extends TestCase
 
     public function testKeyForCombinesKindNameAndNormalizedName(): void
     {
-        $name = new QualifiedName('Fixtures\Helpers', 'HelperFormat');
+        $name = new QualifiedName(new NamespaceName('Fixtures\Helpers'), 'HelperFormat');
 
         self::assertSame(
             'ClassLike|fixtures\helpers\helperformat',

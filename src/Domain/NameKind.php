@@ -61,10 +61,12 @@ enum NameKind
      */
     public function normalize(QualifiedName $name): string
     {
-        $shortName = $this->caseRule()->normalize($name->shortName);
-        $namespace = (new NamespaceName($name->namespace))->normalize();
+        $normalized = new QualifiedName(
+            new NamespaceName($name->namespace->normalize()),
+            $this->caseRule()->normalize($name->shortName),
+        );
 
-        return (new QualifiedName($namespace, $shortName))->fullyQualifiedName();
+        return $normalized->fullyQualifiedName();
     }
 
     public function isClassLike(): bool

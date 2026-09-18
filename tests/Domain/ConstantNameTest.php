@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Domain;
 
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -29,7 +30,7 @@ final class ConstantNameTest extends TestCase
         $name = ConstantName::fromFullyQualified('\Fixtures\Helpers\HELPER_LIMIT');
 
         self::assertEquals(
-            new QualifiedName('Fixtures\Helpers', 'HELPER_LIMIT'),
+            new QualifiedName(new NamespaceName('Fixtures\Helpers'), 'HELPER_LIMIT'),
             $name->qualifiedName,
             'the wrapped name should be split and normalized by QualifiedName',
         );
@@ -40,7 +41,7 @@ final class ConstantNameTest extends TestCase
     {
         $name = ConstantName::fromFullyQualified('PHP_VERSION');
 
-        self::assertSame('', $name->qualifiedName->namespace);
+        self::assertSame('', $name->qualifiedName->namespace->path);
         self::assertSame('PHP_VERSION', $name->fullyQualifiedName());
     }
 }

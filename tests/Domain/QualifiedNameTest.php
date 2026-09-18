@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Domain;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,7 +35,7 @@ final class QualifiedNameTest extends TestCase
     ): void {
         $name = QualifiedName::fromFullyQualified($fqn);
 
-        self::assertSame($expectedNamespace, $name->namespace);
+        self::assertSame($expectedNamespace, $name->namespace->path);
         self::assertSame($expectedShortName, $name->shortName);
         // A leading separator is spelling, not identity: the round-trip drops it.
         self::assertSame(ltrim($fqn, '\\'), $name->fullyQualifiedName());
@@ -44,13 +45,13 @@ final class QualifiedNameTest extends TestCase
     {
         $name = QualifiedName::fromClasslikeName(new ClasslikeName(QualifiedName::class));
 
-        self::assertSame('Firehed\PhpLsp\Domain', $name->namespace);
+        self::assertSame('Firehed\PhpLsp\Domain', $name->namespace->path);
         self::assertSame('QualifiedName', $name->shortName);
     }
 
     public function testGlobalNameHasAnEmptyNamespace(): void
     {
-        $name = new QualifiedName('', 'strlen');
+        $name = new QualifiedName(new NamespaceName(''), 'strlen');
 
         self::assertSame('strlen', $name->fullyQualifiedName());
     }

@@ -96,12 +96,12 @@ final class DeclarationScannerTest extends TestCase
 
         $qualified = array_values(array_filter(
             $declarations->constants,
-            static fn(Declaration $declaration): bool => $declaration->name->namespace !== '',
+            static fn(Declaration $declaration): bool => $declaration->name->namespace->path !== '',
         ));
 
         self::assertSame(
             ['Fixtures\Helpers', 'Fixtures\Helpers'],
-            array_map(static fn(Declaration $declaration): string => $declaration->name->namespace, $qualified),
+            array_map(static fn(Declaration $declaration): string => $declaration->name->namespace->path, $qualified),
             'a define() literal carrying a namespace is split like any other qualified name',
         );
     }
