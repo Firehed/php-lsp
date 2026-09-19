@@ -81,7 +81,7 @@ final class ExpressionResolver
             if ($enclosing === null) {
                 return null;
             }
-            return new ResolvedTypeOnly(new ClasslikeType(TypeFactory::className($enclosing)));
+            return new ResolvedTypeOnly(new ClasslikeType(ClasslikeName::fromFullyQualified($enclosing)));
         }
 
         if ($expr instanceof Variable && is_string($expr->name)) {
@@ -204,7 +204,7 @@ final class ExpressionResolver
             assert($parent->types !== [], 'PHP grammar requires at least one type in a catch clause');
             $classTypes = [];
             foreach ($parent->types as $type) {
-                $classTypes[] = new ClasslikeType(TypeFactory::className(ScopeFinder::resolveClasslikeName($type)));
+                $classTypes[] = new ClasslikeType(ClasslikeName::fromFullyQualified(ScopeFinder::resolveClasslikeName($type)));
             }
             return count($classTypes) === 1 ? $classTypes[0] : TypeFactory::union($classTypes);
         }
@@ -273,13 +273,13 @@ final class ExpressionResolver
         if (str_starts_with($shortOrFqn, '\\')) {
             $fqn = ltrim($shortOrFqn, '\\');
             /** @var class-string $fqn */
-            return new ClasslikeType(TypeFactory::className($fqn));
+            return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
         }
         $context = NameContextFactory::fromAst($ast, $atNode->getStartLine() - 1);
         $candidates = $context->candidates($shortOrFqn, NameKind::ClassLike);
         foreach ($candidates as $candidate) {
             /** @var class-string $candidate */
-            $name = TypeFactory::className($candidate);
+            $name = ClasslikeName::fromFullyQualified($candidate);
             if ($this->symbolSource->lookupClassLike($name) !== null) {
                 return new ClasslikeType($name);
             }
@@ -296,7 +296,7 @@ final class ExpressionResolver
         if ($className === null) {
             return null;
         }
-        $name = TypeFactory::className($className);
+        $name = ClasslikeName::fromFullyQualified($className);
         $classInfo = $this->symbolSource->lookupClassLike($name);
         if ($classInfo === null) {
             return new ResolvedTypeOnly(new ClasslikeType($name));
@@ -432,7 +432,7 @@ final class ExpressionResolver
             if ($classNameStr === null) {
                 return null;
             }
-            return $find(TypeFactory::className($classNameStr), $memberName);
+            return $find(ClasslikeName::fromFullyQualified($classNameStr), $memberName);
         }
         $receiverType = $this->resolve($receiver, $ast)?->getType();
         foreach (self::receiverClasslikeNames($receiverType) as $className) {
@@ -475,7 +475,7 @@ final class ExpressionResolver
         if ($classNameStr === null) {
             return null;
         }
-        $className = TypeFactory::className($classNameStr);
+        $className = ClasslikeName::fromFullyQualified($classNameStr);
         $enumCase = $this->memberResolver->findEnumCase($className, new EnumCaseName($expr->name->toString()));
         if ($enumCase !== null) {
             return $enumCase;

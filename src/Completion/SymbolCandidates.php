@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
@@ -416,7 +416,7 @@ final class SymbolCandidates
         $fqn = $symbol->fullyQualifiedName;
         if ($symbol->kind->isClassLike()) {
             /** @var class-string $fqn */
-            $className = TypeFactory::className($fqn);
+            $className = ClasslikeName::fromFullyQualified($fqn);
             if (!$this->codeResolver->isClassLike($className)) {
                 return null;
             }
@@ -463,7 +463,7 @@ final class SymbolCandidates
     private function acceptsClassLike(string $fqn, ClassCandidateFilter $filter): bool
     {
         /** @var class-string $fqn */
-        $className = TypeFactory::className($fqn);
+        $className = ClasslikeName::fromFullyQualified($fqn);
         return $filter->accepts($className, $this->codeResolver);
     }
 

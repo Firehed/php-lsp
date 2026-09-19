@@ -530,7 +530,7 @@ final readonly class DeclarationSymbolInfoFactory
             throw new InvalidArgumentException('Cannot create ClassInfo for anonymous class');
         }
         // @codeCoverageIgnoreEnd
-        return TypeFactory::className($fqn);
+        return ClasslikeName::fromFullyQualified($fqn);
     }
 
     private function resolveNameToClasslikeName(Node\Name $name): ClasslikeName
@@ -540,7 +540,7 @@ final readonly class DeclarationSymbolInfoFactory
         // toString() reads the resolved FQN.
         /** @var class-string $fqn */
         $fqn = $name->toString();
-        return TypeFactory::className($fqn);
+        return ClasslikeName::fromFullyQualified($fqn);
     }
 
     private function resolveParent(Stmt\ClassLike $node): ?ClasslikeName

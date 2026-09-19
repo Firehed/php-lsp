@@ -25,9 +25,9 @@ final class EnumImplicits
      */
     public static function interfaces(bool $isBacked): array
     {
-        $interfaces = [TypeFactory::className(\UnitEnum::class)];
+        $interfaces = [ClasslikeName::fromFullyQualified(\UnitEnum::class)];
         if ($isBacked) {
-            $interfaces[] = TypeFactory::className(\BackedEnum::class);
+            $interfaces[] = ClasslikeName::fromFullyQualified(\BackedEnum::class);
         }
 
         return $interfaces;

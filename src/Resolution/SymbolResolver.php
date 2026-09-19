@@ -249,7 +249,7 @@ final class SymbolResolver implements CodeResolverInterface
             return false;
         }
 
-        $throwable = TypeFactory::className(Throwable::class);
+        $throwable = ClasslikeName::fromFullyQualified(Throwable::class);
         if ($classInfo->name->equals($throwable)) {
             return true;
         }
@@ -470,7 +470,7 @@ final class SymbolResolver implements CodeResolverInterface
         // Class reference (new, instanceof, static call, type hint, etc.)
         $classNameStr = ScopeFinder::resolveClasslikeName($node);
 
-        $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($classNameStr));
+        $classInfo = $this->symbolSource->lookupClassLike(ClasslikeName::fromFullyQualified($classNameStr));
         if ($classInfo === null) {
             return null;
         }
@@ -554,7 +554,7 @@ final class SymbolResolver implements CodeResolverInterface
                 throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
-            $enclosingClass = TypeFactory::className($selfContext);
+            $enclosingClass = ClasslikeName::fromFullyQualified($selfContext);
             $classInfo = $this->symbolSource->lookupClassLike($enclosingClass);
             $parentContext = $classInfo?->parent?->qualifiedName->fullyQualifiedName();
         }
