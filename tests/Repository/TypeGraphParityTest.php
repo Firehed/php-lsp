@@ -57,6 +57,8 @@ final class TypeGraphParityTest extends TestCase
             'PSR-7 server request' => ['Psr\Http\Message\ServerRequestInterface'],
             'trait insteadof and as adaptations' => ['Fixtures\Hierarchy\TraitAdaptationUser'],
             'trait insteadof with excluded trait walked first' => ['Fixtures\Hierarchy\TraitAdaptationReversedUser'],
+            'trait insteadof naming the losing trait in a different case'
+                => ['Fixtures\Hierarchy\TraitAdaptationMixedCaseUser'],
             'trait alias whose new name collides with an inherited method'
                 => ['Fixtures\Hierarchy\TraitAliasCollidingUser'],
             'trait alias without an explicit source trait' => ['Fixtures\Hierarchy\TraitNamelessAliasUser'],
@@ -165,6 +167,11 @@ final class TypeGraphParityTest extends TestCase
             ],
             'excluded trait walked second' => [
                 'Fixtures\Hierarchy\TraitAdaptationUser',
+                'conflictMethod',
+                'Fixtures\Hierarchy\ConflictingTraitA',
+            ],
+            'insteadof clause names losing trait in different case' => [
+                'Fixtures\Hierarchy\TraitAdaptationMixedCaseUser',
                 'conflictMethod',
                 'Fixtures\Hierarchy\ConflictingTraitA',
             ],

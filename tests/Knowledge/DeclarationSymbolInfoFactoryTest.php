@@ -178,9 +178,12 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         );
 
         self::assertSame(
-            ['Fixtures\Hierarchy\ConflictingTraitB' => ['conflictMethod']],
+            [NameKind::ClassLike->normalize(
+                QualifiedName::fromFullyQualified('Fixtures\Hierarchy\ConflictingTraitB'),
+            ) => ['conflictMethod']],
             $info->traitExclusions,
-            'an insteadof adaptation must record the losing trait and the excluded method (RFC 1 §5.6)',
+            'an insteadof adaptation must record the losing trait under the class-like identity key, '
+                . 'so a case-different `use` still matches (RFC 1 §5.6)',
         );
     }
 

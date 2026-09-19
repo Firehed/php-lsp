@@ -416,8 +416,10 @@ final readonly class DeclarationSymbolInfoFactory
                 if ($adaptation instanceof Stmt\TraitUseAdaptation\Precedence) {
                     $method = $adaptation->method->toString();
                     foreach ($adaptation->insteadof as $loser) {
-                        $loserFqn = $this->resolveNameToClasslikeName($loser)->qualifiedName->fullyQualifiedName();
-                        $exclusions[$loserFqn][] = $method;
+                        $key = NameKind::ClassLike->normalize(
+                            $this->resolveNameToClasslikeName($loser)->qualifiedName,
+                        );
+                        $exclusions[$key][] = $method;
                     }
                     continue;
                 }

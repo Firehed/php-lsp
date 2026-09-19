@@ -20,7 +20,8 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
      * @param array<string, EnumCaseInfo> $enumCases Keyed by case name
      * @param array<string, list<string>> $traitExclusions Methods excluded from
      *     a used trait by an `A::method insteadof B` clause, keyed by the
-     *     losing trait's FQN.
+     *     losing trait's class-like identity (see {@see NameKind::normalize()})
+     *     so a case-different `use` and `insteadof` still match.
      * @param list<TraitAlias> $traitAliases `as` clauses declared in this
      *     class's `use TraitX { ... }` block.
      */
