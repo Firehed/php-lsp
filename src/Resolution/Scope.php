@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
-use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
@@ -70,7 +69,7 @@ final class Scope
         $parentContext = LateBindingKeyword::Parent->resolveIn($enclosingClassLike);
 
         $thisType = ($node instanceof Stmt\ClassMethod && $selfContext !== null)
-            ? TypeFactory::className($selfContext)
+            ? ClasslikeName::fromFullyQualified($selfContext)
             : null;
 
         // Arrow functions have an expression body, not a statement list; their

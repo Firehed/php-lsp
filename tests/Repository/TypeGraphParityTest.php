@@ -85,7 +85,7 @@ final class TypeGraphParityTest extends TestCase
     {
         $resolved = array_map(
             fn ($method) => $method->name->name,
-            $this->resolver->getMethods(new ClasslikeName($fqcn), Visibility::Public),
+            $this->resolver->getMethods(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public),
         );
 
         self::assertSame(
@@ -108,7 +108,7 @@ final class TypeGraphParityTest extends TestCase
 
         $resolved = array_map(
             fn ($property) => $property->name->name,
-            $this->resolver->getProperties(new ClasslikeName($fqcn), Visibility::Public),
+            $this->resolver->getProperties(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public),
         );
 
         self::assertSame(
@@ -136,11 +136,11 @@ final class TypeGraphParityTest extends TestCase
         // asserted against the union of both.
         $resolved = array_map(
             fn ($constant) => $constant->name->name,
-            $this->resolver->getConstants(new ClasslikeName($fqcn), Visibility::Public),
+            $this->resolver->getConstants(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public),
         );
         $resolved = array_merge($resolved, array_map(
             fn ($case) => $case->name->name,
-            $this->resolver->getEnumCases(new ClasslikeName($fqcn)),
+            $this->resolver->getEnumCases(ClasslikeName::fromFullyQualified($fqcn)),
         ));
 
         self::assertSame(
@@ -182,7 +182,7 @@ final class TypeGraphParityTest extends TestCase
     public function testInsteadofPicksTheWinningTraitOnFind(string $fqcn, string $method, string $expectedTrait): void
     {
         $resolved = $this->resolver->findMethod(
-            new ClasslikeName($fqcn),
+            ClasslikeName::fromFullyQualified($fqcn),
             new \Firehed\PhpLsp\Domain\MethodName($method),
             Visibility::Public,
         );
@@ -190,7 +190,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($resolved, 'the conflict method should resolve');
         self::assertSame(
             $expectedTrait,
-            $resolved->getDeclaringClass()->fqn,
+            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'insteadof must pick the winning trait, regardless of trait-use order',
         );
     }
@@ -204,7 +204,7 @@ final class TypeGraphParityTest extends TestCase
         string $method,
         string $expectedTrait,
     ): void {
-        $methods = $this->resolver->getMethods(new ClasslikeName($fqcn), Visibility::Public);
+        $methods = $this->resolver->getMethods(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public);
         $conflicting = null;
         foreach ($methods as $candidate) {
             if ($candidate->name->name === $method) {
@@ -216,7 +216,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($conflicting, 'the conflict method should appear in getMethods');
         self::assertSame(
             $expectedTrait,
-            $conflicting->getDeclaringClass()->fqn,
+            $conflicting->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'insteadof must pick the winning trait for enumerated members too',
         );
     }
@@ -224,7 +224,7 @@ final class TypeGraphParityTest extends TestCase
     public function testFindMethodResolvesAnAliasByItsNewName(): void
     {
         $resolved = $this->resolver->findMethod(
-            new ClasslikeName('Fixtures\Hierarchy\TraitAdaptationUser'),
+            ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAdaptationUser'),
             new \Firehed\PhpLsp\Domain\MethodName('conflictMethodFromB'),
             Visibility::Public,
         );
@@ -237,7 +237,7 @@ final class TypeGraphParityTest extends TestCase
         );
         self::assertSame(
             'Fixtures\Hierarchy\ConflictingTraitB',
-            $resolved->getDeclaringClass()->fqn,
+            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'the alias resolves to the source trait',
         );
     }
@@ -245,7 +245,7 @@ final class TypeGraphParityTest extends TestCase
     public function testAliasReplacesAnAlreadyWalkedInheritedMethod(): void
     {
         $methods = $this->resolver->getMethods(
-            new ClasslikeName('Fixtures\Hierarchy\TraitAliasCollidingUser'),
+            ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAliasCollidingUser'),
             Visibility::Public,
         );
         $collision = null;
@@ -259,7 +259,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($collision, 'the aliased method must appear exactly once');
         self::assertSame(
             'Fixtures\Hierarchy\ConflictingTraitA',
-            $collision->getDeclaringClass()->fqn,
+            $collision->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
             'the trait alias must replace the parent method the walk already collected',
         );
     }

@@ -52,7 +52,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
     {
-        $info = $this->lookup(QualifiedName::fromClasslikeName($name), NameKind::ClassLike);
+        $info = $this->lookup($name->qualifiedName, NameKind::ClassLike);
         assert($info === null || $info instanceof ClassInfo);
 
         return $info;
@@ -60,7 +60,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
 
     public function lookupConstant(ConstantName $name): ?ConstantInfo
     {
-        $info = $this->lookup($name->qualifiedName, $name->kind());
+        $info = $this->lookup($name->qualifiedName, $name->kind);
         assert($info === null || $info instanceof ConstantInfo);
 
         return $info;
@@ -68,7 +68,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
 
     public function lookupFunction(FunctionName $name): ?FunctionInfo
     {
-        $info = $this->lookup($name->qualifiedName, $name->kind());
+        $info = $this->lookup($name->qualifiedName, $name->kind);
         assert($info === null || $info instanceof FunctionInfo);
 
         return $info;

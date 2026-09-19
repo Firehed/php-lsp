@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -168,6 +169,22 @@ class MemberAccessDetectorTest extends TestCase
         $result = $this->detect('TopLevel/aliased_group_use.php', 6, 7);
         self::assertInstanceOf(MemberAccessContext::class, $result);
         self::assertSame('Vendor\\Package\\Something', $result->type->format());
+    }
+
+    public function testDetectSeesSameClassWhenTargetNameCasingDiffers(): void
+    {
+        $fixture = 'src/Resolution/CaseInsensitiveIdentity.php';
+        $content = $this->loadFixture($fixture);
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, 'case_identity');
+
+        $result = $this->detect($fixture, $line, $character);
+
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame(
+            Visibility::Private,
+            $result->minVisibility,
+            'A vantage that names the target class in different letter case still names the same class',
+        );
     }
 
     private function detect(string $fixture, int $line, int $character): ?MemberAccessContext

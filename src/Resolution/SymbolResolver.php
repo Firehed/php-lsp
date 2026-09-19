@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -249,7 +248,7 @@ final class SymbolResolver implements CodeResolverInterface
             return false;
         }
 
-        $throwable = TypeFactory::className(Throwable::class);
+        $throwable = ClasslikeName::fromFullyQualified(Throwable::class);
         if ($classInfo->name->equals($throwable)) {
             return true;
         }
@@ -470,7 +469,7 @@ final class SymbolResolver implements CodeResolverInterface
         // Class reference (new, instanceof, static call, type hint, etc.)
         $classNameStr = ScopeFinder::resolveClasslikeName($node);
 
-        $classInfo = $this->symbolSource->lookupClassLike(TypeFactory::className($classNameStr));
+        $classInfo = $this->symbolSource->lookupClassLike(ClasslikeName::fromFullyQualified($classNameStr));
         if ($classInfo === null) {
             return null;
         }
@@ -554,9 +553,9 @@ final class SymbolResolver implements CodeResolverInterface
                 throw new LogicException('ClassMethod always has enclosing class');
             }
             // @codeCoverageIgnoreEnd
-            $enclosingClass = TypeFactory::className($selfContext);
+            $enclosingClass = ClasslikeName::fromFullyQualified($selfContext);
             $classInfo = $this->symbolSource->lookupClassLike($enclosingClass);
-            $parentContext = $classInfo?->parent?->fqn;
+            $parentContext = $classInfo?->parent?->qualifiedName->fullyQualifiedName();
         }
         return ParameterTyping::resolve(
             $this->typeSource,

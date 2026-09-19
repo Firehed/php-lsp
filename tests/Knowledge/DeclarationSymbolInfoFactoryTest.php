@@ -50,7 +50,11 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         $info = $this->build('Fixtures\Helpers\HelperRegistry', NameKind::ClassLike);
 
         self::assertInstanceOf(ClassInfo::class, $info, 'a class-like must build ClassInfo, not another kind\'s type');
-        self::assertSame('Fixtures\Helpers\HelperRegistry', $info->name->fqn, 'the located declaration must be built');
+        self::assertSame(
+            'Fixtures\Helpers\HelperRegistry',
+            $info->name->qualifiedName->fullyQualifiedName(),
+            'the located declaration must be built',
+        );
     }
 
     public function testBuildsFunctionInfoForAFunctionDeclaration(): void

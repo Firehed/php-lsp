@@ -124,7 +124,7 @@ final class BuiltinBackend implements SymbolBackendInterface
      */
     private function classInfoFromReflection(ReflectionClass $class): ClassInfo
     {
-        $className = TypeFactory::className($class->getName());
+        $className = ClasslikeName::fromFullyQualified($class->getName());
         $parentClass = $class->getParentClass();
 
         return new ClassInfo(
@@ -135,7 +135,7 @@ final class BuiltinBackend implements SymbolBackendInterface
             isReadonly: $class->isReadOnly(),
             isAttribute: $class->getAttributes(Attribute::class) !== [],
             parent: $parentClass !== false
-                ? TypeFactory::className($parentClass->getName())
+                ? ClasslikeName::fromFullyQualified($parentClass->getName())
                 : null,
             interfaces: $this->extractInterfaces($class),
             // No built-in class uses traits; getTraitNames() would return [] anyway.
@@ -261,7 +261,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         foreach ($class->getInterfaceNames() as $interfaceName) {
             // Only include directly implemented interfaces, not inherited ones.
             if (!in_array($interfaceName, $parentInterfaces, true)) {
-                $interfaces[] = TypeFactory::className($interfaceName);
+                $interfaces[] = ClasslikeName::fromFullyQualified($interfaceName);
             }
         }
 

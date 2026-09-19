@@ -25,9 +25,9 @@ final class EnumImplicits
      */
     public static function interfaces(bool $isBacked): array
     {
-        $interfaces = [TypeFactory::className(\UnitEnum::class)];
+        $interfaces = [ClasslikeName::fromFullyQualified(\UnitEnum::class)];
         if ($isBacked) {
-            $interfaces[] = TypeFactory::className(\BackedEnum::class);
+            $interfaces[] = ClasslikeName::fromFullyQualified(\BackedEnum::class);
         }
 
         return $interfaces;
@@ -35,7 +35,8 @@ final class EnumImplicits
 
     public static function isImplicitInterface(ClasslikeName $name): bool
     {
-        return $name->fqn === \UnitEnum::class || $name->fqn === \BackedEnum::class;
+        $fqn = $name->qualifiedName->fullyQualifiedName();
+        return $fqn === \UnitEnum::class || $fqn === \BackedEnum::class;
     }
 
     /**
@@ -51,7 +52,7 @@ final class EnumImplicits
                 isAbstract: false,
                 isFinal: false,
                 parameters: [],
-                returnType: TypeFactory::primitive('array'),
+                returnType: new PrimitiveType('array'),
                 docblock: null,
                 file: null,
                 line: null,
@@ -91,7 +92,7 @@ final class EnumImplicits
             isAbstract: false,
             isFinal: false,
             parameters: [$valueParam],
-            returnType: TypeFactory::union([$enumType, TypeFactory::primitive('null')]),
+            returnType: TypeFactory::union([$enumType, new PrimitiveType('null')]),
             docblock: null,
             file: null,
             line: null,
@@ -113,7 +114,7 @@ final class EnumImplicits
                 isStatic: false,
                 isReadonly: true,
                 isPromoted: false,
-                type: TypeFactory::primitive('string'),
+                type: new PrimitiveType('string'),
                 docblock: null,
                 file: null,
                 line: null,

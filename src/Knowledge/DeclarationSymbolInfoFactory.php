@@ -182,7 +182,11 @@ final readonly class DeclarationSymbolInfoFactory
                     name: new ClasslikeConstantName($name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                    type: TypeFactory::fromNode(
+                        $stmt->type,
+                        $className->qualifiedName->fullyQualifiedName(),
+                        $parentClass?->qualifiedName->fullyQualifiedName(),
+                    ),
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),
@@ -285,8 +289,8 @@ final readonly class DeclarationSymbolInfoFactory
                 parameters: $this->extractParameters($stmt->params, $className, $parentClass),
                 returnType: TypeFactory::fromNode(
                     $stmt->returnType,
-                    $className->fqn,
-                    $parentClass?->fqn,
+                    $className->qualifiedName->fullyQualifiedName(),
+                    $parentClass?->qualifiedName->fullyQualifiedName(),
                     preserveLateBinding: true,
                 ),
                 docblock: $stmt->getDocComment()?->getText(),
@@ -311,7 +315,12 @@ final readonly class DeclarationSymbolInfoFactory
     {
         $result = [];
         foreach ($params as $position => $param) {
-            $info = $this->parameterFromNode($param, $position, $className->fqn, $parentClass?->fqn);
+            $info = $this->parameterFromNode(
+                $param,
+                $position,
+                $className->qualifiedName->fullyQualifiedName(),
+                $parentClass?->qualifiedName->fullyQualifiedName(),
+            );
             if ($info !== null) {
                 $result[] = $info;
             }
@@ -341,7 +350,11 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
-                        type: TypeFactory::fromNode($stmt->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::fromNode(
+                            $stmt->type,
+                            $className->qualifiedName->fullyQualifiedName(),
+                            $parentClass?->qualifiedName->fullyQualifiedName(),
+                        ),
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
                         line: $stmt->getStartLine(),
@@ -366,7 +379,11 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: false,
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
                         isPromoted: true,
-                        type: TypeFactory::fromNode($param->type, $className->fqn, $parentClass?->fqn),
+                        type: TypeFactory::fromNode(
+                            $param->type,
+                            $className->qualifiedName->fullyQualifiedName(),
+                            $parentClass?->qualifiedName->fullyQualifiedName(),
+                        ),
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
                         line: $param->getStartLine(),
@@ -399,7 +416,8 @@ final readonly class DeclarationSymbolInfoFactory
                 if ($adaptation instanceof Stmt\TraitUseAdaptation\Precedence) {
                     $method = $adaptation->method->toString();
                     foreach ($adaptation->insteadof as $loser) {
-                        $exclusions[$this->resolveNameToClasslikeName($loser)->fqn][] = $method;
+                        $loserFqn = $this->resolveNameToClasslikeName($loser)->qualifiedName->fullyQualifiedName();
+                        $exclusions[$loserFqn][] = $method;
                     }
                     continue;
                 }
@@ -427,7 +445,7 @@ final readonly class DeclarationSymbolInfoFactory
             return null;
         }
 
-        return TypeFactory::primitive($enum->scalarType->toString());
+        return new PrimitiveType($enum->scalarType->toString());
     }
 
     private function functionInfoFromNode(Stmt\Function_ $node, string $filePath): FunctionInfo
@@ -462,7 +480,8 @@ final readonly class DeclarationSymbolInfoFactory
 
         foreach ($node->attrGroups as $group) {
             foreach ($group->attrs as $attr) {
-                if ($this->resolveNameToClasslikeName($attr->name)->fqn === Attribute::class) {
+                $attrFqn = $this->resolveNameToClasslikeName($attr->name)->qualifiedName->fullyQualifiedName();
+                if ($attrFqn === Attribute::class) {
                     return true;
                 }
             }
@@ -511,7 +530,7 @@ final readonly class DeclarationSymbolInfoFactory
             throw new InvalidArgumentException('Cannot create ClassInfo for anonymous class');
         }
         // @codeCoverageIgnoreEnd
-        return TypeFactory::className($fqn);
+        return ClasslikeName::fromFullyQualified($fqn);
     }
 
     private function resolveNameToClasslikeName(Node\Name $name): ClasslikeName
@@ -521,7 +540,7 @@ final readonly class DeclarationSymbolInfoFactory
         // toString() reads the resolved FQN.
         /** @var class-string $fqn */
         $fqn = $name->toString();
-        return TypeFactory::className($fqn);
+        return ClasslikeName::fromFullyQualified($fqn);
     }
 
     private function resolveParent(Stmt\ClassLike $node): ?ClasslikeName

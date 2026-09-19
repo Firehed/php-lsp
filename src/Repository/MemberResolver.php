@@ -18,7 +18,6 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
-use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -155,8 +154,8 @@ final class MemberResolver implements MemberResolverInterface
         if ($origin === null) {
             return false;
         }
-        $originKey = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($class));
-        $targetKey = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($potentialParent));
+        $originKey = NameKind::ClassLike->normalize($class->qualifiedName);
+        $targetKey = NameKind::ClassLike->normalize($potentialParent->qualifiedName);
         if ($originKey === $targetKey) {
             return false;
         }
@@ -168,7 +167,7 @@ final class MemberResolver implements MemberResolverInterface
             if ($info->isTrait()) {
                 continue;
             }
-            $key = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($info->name));
+            $key = NameKind::ClassLike->normalize($info->name->qualifiedName);
             if ($key === $originKey) {
                 continue;
             }
@@ -288,7 +287,7 @@ final class MemberResolver implements MemberResolverInterface
      */
     private function descend(ClassInfo $classInfo, bool $isOriginClass, array $exclusions, array &$seen): iterable
     {
-        $key = NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($classInfo->name));
+        $key = NameKind::ClassLike->normalize($classInfo->name->qualifiedName);
         if (array_key_exists($key, $seen)) {
             return;
         }
@@ -346,7 +345,7 @@ final class MemberResolver implements MemberResolverInterface
     {
         $names = [];
         foreach ($classInfo->traits as $trait) {
-            $names[] = [$trait, true, $classInfo->traitExclusions[$trait->fqn] ?? []];
+            $names[] = [$trait, true, $classInfo->traitExclusions[$trait->qualifiedName->fullyQualifiedName()] ?? []];
         }
         if ($classInfo->parent !== null) {
             $names[] = [$classInfo->parent, false, []];
