@@ -445,7 +445,7 @@ final readonly class DeclarationSymbolInfoFactory
             return null;
         }
 
-        return TypeFactory::primitive($enum->scalarType->toString());
+        return new PrimitiveType($enum->scalarType->toString());
     }
 
     private function functionInfoFromNode(Stmt\Function_ $node, string $filePath): FunctionInfo
