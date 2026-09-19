@@ -272,9 +272,7 @@ final class ExpressionResolver
     private function resolveShortClasslikeName(string $shortOrFqn, Node $atNode, array $ast): ?TypeInterface
     {
         if (str_starts_with($shortOrFqn, '\\')) {
-            $fqn = ltrim($shortOrFqn, '\\');
-            /** @var class-string $fqn */
-            return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
+            return new ClasslikeType(ClasslikeName::fromFullyQualified($shortOrFqn));
         }
         $context = NameContextFactory::fromAst($ast, $atNode->getStartLine() - 1);
         $candidates = $context->candidates($shortOrFqn, NameKind::ClassLike);
