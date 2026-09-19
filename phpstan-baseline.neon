@@ -1,16 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 2
-			path: src/Completion/SymbolCandidates.php
-
-		-
 			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1
@@ -24,26 +14,6 @@ parameters:
 
 		-
 			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 2
-			path: src/Domain/EnumImplicits.php
-
-		-
-			message: '''
-				#^Call to method primitive\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 3
-			path: src/Domain/EnumImplicits.php
-
-		-
-			message: '''
 				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
@@ -59,14 +29,10 @@ parameters:
 			path: src/Domain/EnumImplicits.php
 
 		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
+			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
 			count: 3
-			path: src/Knowledge/BuiltinBackend.php
+			path: src/Domain/EnumImplicits.php
 
 		-
 			message: '''
@@ -80,16 +46,6 @@ parameters:
 
 		-
 			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 2
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
-			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
@@ -99,24 +55,10 @@ parameters:
 			path: src/Knowledge/DeclarationSymbolInfoFactory.php
 
 		-
-			message: '''
-				#^Call to method primitive\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
+			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 7
-			path: src/Resolution/ExpressionResolver.php
 
 		-
 			message: '''
@@ -133,16 +75,6 @@ parameters:
 			identifier: phpLsp.typeConstruction
 			count: 5
 			path: src/Resolution/ExpressionResolver.php
-
-		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 5
-			path: src/Resolution/MemberAccessDetector.php
 
 		-
 			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
@@ -159,26 +91,6 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 1
 			path: src/Resolution/ParameterTyping.php
-
-		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 1
-			path: src/Resolution/Scope.php
-
-		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 3
-			path: src/Resolution/SymbolResolver.php
 
 		-
 			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
@@ -245,16 +157,6 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 2
 			path: tests/Domain/TypeFactoryTest.php
-
-		-
-			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 4
-			path: tests/Resolution/ResolvedTypeOnlyTest.php
 
 		-
 			message: '''
