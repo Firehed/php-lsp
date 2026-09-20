@@ -106,7 +106,7 @@ final class EnumImplicits
     {
         $properties = [
             'name' => new PropertyInfo(
-                name: new PropertyName('name'),
+                name: new PropertyName($enum, 'name'),
                 visibility: Visibility::Public,
                 isStatic: false,
                 isReadonly: true,
@@ -115,12 +115,11 @@ final class EnumImplicits
                 docblock: null,
                 file: null,
                 line: null,
-                declaringClass: $enum,
             ),
         ];
         if ($scalarType !== null) {
             $properties['value'] = new PropertyInfo(
-                name: new PropertyName('value'),
+                name: new PropertyName($enum, 'value'),
                 visibility: Visibility::Public,
                 isStatic: false,
                 isReadonly: true,
@@ -129,7 +128,6 @@ final class EnumImplicits
                 docblock: null,
                 file: null,
                 line: null,
-                declaringClass: $enum,
             );
         }
 

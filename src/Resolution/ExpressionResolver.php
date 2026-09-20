@@ -19,7 +19,6 @@ use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
@@ -461,7 +460,7 @@ final class ExpressionResolver
 
     private function findProperty(ClasslikeName $className, string $name): ?PropertyInfo
     {
-        return $this->memberResolver->findProperty($className, new PropertyName($name), Visibility::Private);
+        return $this->memberResolver->findProperty($className, $name, Visibility::Private);
     }
 
     private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbolInterface

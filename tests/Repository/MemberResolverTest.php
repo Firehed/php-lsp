@@ -51,7 +51,7 @@ final class MemberResolverTest extends TestCase
 
         $result = $resolver->findProperty(
             ClasslikeName::fromFullyQualified(self::fakeClass()),
-            new PropertyName('foo'),
+            'foo',
             Visibility::Public,
         );
 
@@ -290,7 +290,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findProperty($className, new PropertyName('myProp'), Visibility::Public);
+        $result = $resolver->findProperty($className, 'myProp', Visibility::Public);
 
         self::assertSame($propInfo, $result);
     }
@@ -315,7 +315,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findProperty($childName, new PropertyName('parentProp'), Visibility::Public);
+        $result = $resolver->findProperty($childName, 'parentProp', Visibility::Public);
 
         self::assertSame($propInfo, $result);
     }
@@ -344,7 +344,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findProperty($className, new PropertyName('traitProp'), Visibility::Public);
+        $result = $resolver->findProperty($className, 'traitProp', Visibility::Public);
 
         self::assertSame($propInfo, $result);
     }
@@ -359,7 +359,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findProperty($className, new PropertyName('nonexistent'), Visibility::Public);
+        $result = $resolver->findProperty($className, 'nonexistent', Visibility::Public);
 
         self::assertNull($result);
     }
@@ -865,7 +865,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findProperty($childName, new PropertyName('nonexistent'), Visibility::Public);
+        $result = $resolver->findProperty($childName, 'nonexistent', Visibility::Public);
 
         self::assertNull($result);
     }
@@ -1277,7 +1277,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findProperty($className, new PropertyName('VALUE'), Visibility::Public);
+        $result = $resolver->findProperty($className, 'VALUE', Visibility::Public);
 
         self::assertNull($result);
     }
@@ -1810,7 +1810,7 @@ final class MemberResolverTest extends TestCase
         bool $isStatic = false,
     ): PropertyInfo {
         return new PropertyInfo(
-            name: new PropertyName($name),
+            name: new PropertyName($declaringClass, $name),
             visibility: $visibility,
             isStatic: $isStatic,
             isReadonly: false,
@@ -1819,7 +1819,6 @@ final class MemberResolverTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
     }
 
