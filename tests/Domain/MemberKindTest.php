@@ -139,7 +139,7 @@ class MemberKindTest extends TestCase
     private static function createMethodInfo(): MethodInfo
     {
         return new MethodInfo(
-            name: new MethodName('run'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'run'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -149,7 +149,6 @@ class MemberKindTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 

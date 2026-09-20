@@ -12,28 +12,40 @@ class MethodNameTest extends TestCase
 {
     public function testConstruction(): void
     {
-        $name = new MethodName('doSomething');
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $name = new MethodName($owner, 'doSomething');
         self::assertSame('doSomething', $name->name);
+        self::assertSame($owner, $name->owner);
     }
 
     public function testEqualsTrue(): void
     {
-        $a = new MethodName('doSomething');
-        $b = new MethodName('doSomething');
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $a = new MethodName($owner, 'doSomething');
+        $b = new MethodName($owner, 'doSomething');
         self::assertTrue($a->equals($b));
     }
 
-    public function testEqualsFalse(): void
+    public function testEqualsFalseForDifferentName(): void
     {
-        $a = new MethodName('doSomething');
-        $b = new MethodName('doOther');
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $a = new MethodName($owner, 'doSomething');
+        $b = new MethodName($owner, 'doOther');
         self::assertFalse($a->equals($b));
     }
 
-    public function testEqualsCaseInsensitive(): void
+    public function testEqualsFalseForDifferentOwner(): void
     {
-        $a = new MethodName('doSomething');
-        $b = new MethodName('DOSOMETHING');
+        $a = new MethodName(ClasslikeName::fromFullyQualified('Some\\ClsA'), 'doSomething');
+        $b = new MethodName(ClasslikeName::fromFullyQualified('Some\\ClsB'), 'doSomething');
+        self::assertFalse($a->equals($b), 'owner participates in method identity');
+    }
+
+    public function testEqualsCaseInsensitiveOnName(): void
+    {
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $a = new MethodName($owner, 'doSomething');
+        $b = new MethodName($owner, 'DOSOMETHING');
         self::assertTrue($a->equals($b));
     }
 }

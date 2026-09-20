@@ -285,7 +285,7 @@ final class BuiltinBackend implements SymbolBackendInterface
 
             $name = $method->getName();
             $methods[$name] = new MethodInfo(
-                name: new MethodName($name),
+                name: new MethodName($className, $name),
                 visibility: $this->visibilityFromReflectionMethod($method),
                 isStatic: $method->isStatic(),
                 isAbstract: $method->isAbstract(),
@@ -295,7 +295,6 @@ final class BuiltinBackend implements SymbolBackendInterface
                 docblock: $method->getDocComment() !== false ? $method->getDocComment() : null,
                 file: $method->getFileName() !== false ? $method->getFileName() : null,
                 line: $method->getStartLine() !== false ? $method->getStartLine() : null,
-                declaringClass: $className,
             );
         }
 

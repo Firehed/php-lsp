@@ -41,7 +41,7 @@ final class ParameterTyping
         if ($enclosingScope instanceof Stmt\ClassMethod && $enclosingClass !== null) {
             return $typeSource->forMethodParameter(
                 $enclosingClass,
-                new MethodName($enclosingScope->name->toString()),
+                new MethodName($enclosingClass, $enclosingScope->name->toString()),
                 $name,
             );
         }

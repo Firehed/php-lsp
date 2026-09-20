@@ -453,7 +453,7 @@ final class ExpressionResolver
 
     private function findMethod(ClasslikeName $className, string $name): ?MethodInfo
     {
-        $info = $this->memberResolver->findMethod($className, new MethodName($name), Visibility::Private);
+        $info = $this->memberResolver->findMethod($className, new MethodName($className, $name), Visibility::Private);
         if ($info === null) {
             return null;
         }
@@ -510,12 +510,18 @@ final class ExpressionResolver
 
     private function resolveLateBoundReturn(MethodInfo $methodInfo, ClasslikeName $callingClass): MethodInfo
     {
-        // Look up by the receiver, not by $methodInfo->declaringClass: a trait
-        // alias exposes a method name on the using class that the trait does
-        // not declare, so querying the trait directly with the alias name
-        // returns null and drops the type entirely.
+        // Look up by the receiver, not by the method's owner: a trait alias
+        // exposes a method name on the using class that the trait does not
+        // declare, so querying the trait directly with the alias name returns
+        // null and drops the type entirely.
         $declaredReturn = $this->typeSource->forMethodReturn($callingClass, $methodInfo->name);
-        $isFromTrait = $this->memberResolver->isTrait($methodInfo->declaringClass);
+        // An aliased method's owner is the aliasing class; its source-trait
+        // identity is on `aliasedFrom`, which is what the `self` binding rule
+        // needs to see.
+        $traitSubject = $methodInfo->aliasedFrom !== null
+            ? $methodInfo->aliasedFrom->owner
+            : $methodInfo->name->owner;
+        $isFromTrait = $this->memberResolver->isTrait($traitSubject);
         $return = $declaredReturn?->resolveLateBound($callingClass->qualifiedName->fullyQualifiedName(), $isFromTrait);
         if ($return === $declaredReturn) {
             return $methodInfo;
@@ -528,10 +534,10 @@ final class ExpressionResolver
             isFinal: $methodInfo->isFinal,
             parameters: $methodInfo->parameters,
             returnType: $return,
-            declaringClass: $methodInfo->declaringClass,
             docblock: $methodInfo->docblock,
             file: $methodInfo->file,
             line: $methodInfo->line,
+            aliasedFrom: $methodInfo->aliasedFrom,
         );
     }
 

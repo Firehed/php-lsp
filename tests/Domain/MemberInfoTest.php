@@ -56,7 +56,7 @@ class MemberInfoTest extends TestCase
         yield 'enum case' => [$enumCase, Visibility::Public, true];
 
         $method = new MethodInfo(
-            name: new MethodName('run'),
+            name: new MethodName($declaringClass, 'run'),
             visibility: Visibility::Private,
             isStatic: true,
             isAbstract: false,
@@ -66,7 +66,6 @@ class MemberInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
         yield 'static method' => [$method, Visibility::Private, true];
 
