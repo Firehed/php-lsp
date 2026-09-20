@@ -9,11 +9,11 @@ namespace Firehed\PhpLsp\Domain;
  * local name. `MethodName(C, "foo")` and `MethodName(D, "foo")` are distinct
  * identities; the `equals()` check compares both fields.
  */
-final class MethodName implements ClasslikeOwnedNameInterface
+final readonly class MethodName implements ClasslikeOwnedNameInterface
 {
     public function __construct(
-        public readonly ClasslikeName $owner,
-        public readonly string $name,
+        public ClasslikeName $owner,
+        public string $name,
     ) {
     }
 
