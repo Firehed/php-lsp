@@ -24,7 +24,7 @@ class ClasslikeConstantInfoTest extends TestCase
             docblock: '/** Maximum size */',
             file: '/path/to/file.php',
             line: 5,
-            declaringClass: new ClasslikeName(ClasslikeConstantInfo::class),
+            declaringClass: ClasslikeName::fromFullyQualified(ClasslikeConstantInfo::class),
         );
 
         self::assertSame('MAX_SIZE', $constant->name->name);
@@ -34,7 +34,7 @@ class ClasslikeConstantInfoTest extends TestCase
         self::assertSame('/** Maximum size */', $constant->docblock);
         self::assertSame('/path/to/file.php', $constant->file);
         self::assertSame(5, $constant->line);
-        self::assertSame(ClasslikeConstantInfo::class, $constant->declaringClass->fqn);
+        self::assertSame(ClasslikeConstantInfo::class, $constant->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFormatSimple(): void
@@ -47,7 +47,7 @@ class ClasslikeConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public const FOO', $constant->format());
@@ -63,7 +63,7 @@ class ClasslikeConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public const int MAX_SIZE', $constant->format());
@@ -79,7 +79,7 @@ class ClasslikeConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public final const string VERSION', $constant->format());
@@ -95,7 +95,7 @@ class ClasslikeConstantInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(self::class),
+            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('private const INTERNAL', $constant->format());
@@ -118,7 +118,10 @@ class ClasslikeConstantInfoTest extends TestCase
 
         self::assertSame(MemberKind::Constant, $constant->getMemberKind());
         self::assertSame('MAX_SIZE', $constant->getName()->name);
-        self::assertSame(ClasslikeConstantInfo::class, $constant->getDeclaringClass()->fqn);
+        self::assertSame(
+            ClasslikeConstantInfo::class,
+            $constant->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+        );
         self::assertSame('int', $constant->getType()?->format());
         self::assertSame(Visibility::Public, $constant->getVisibility());
         self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');
@@ -137,7 +140,7 @@ class ClasslikeConstantInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: new ClasslikeName(ClasslikeConstantInfo::class),
+            declaringClass: ClasslikeName::fromFullyQualified(ClasslikeConstantInfo::class),
         );
     }
 }

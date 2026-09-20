@@ -20,7 +20,8 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
      * @param array<string, EnumCaseInfo> $enumCases Keyed by case name
      * @param array<string, list<string>> $traitExclusions Methods excluded from
      *     a used trait by an `A::method insteadof B` clause, keyed by the
-     *     losing trait's FQN.
+     *     losing trait's class-like identity (see {@see NameKind::normalize()})
+     *     so a case-different `use` and `insteadof` still match.
      * @param list<TraitAlias> $traitAliases `as` clauses declared in this
      *     class's `use TraitX { ... }` block.
      */
@@ -98,12 +99,12 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
             ClassKind::Enum_ => 'enum',
             default => 'class',
         };
-        $parts[] = $this->name->shortName();
+        $parts[] = $this->name->qualifiedName->shortName;
 
         $sig = implode(' ', $parts);
 
         if ($this->kind === ClassKind::Class_ && $this->parent !== null) {
-            $sig .= ' extends ' . $this->parent->shortName();
+            $sig .= ' extends ' . $this->parent->qualifiedName->shortName;
         }
         $writtenInterfaces = $this->kind === ClassKind::Enum_
             ? array_values(array_filter(
@@ -111,10 +112,10 @@ final readonly class ClassInfo implements ResolvedSymbolInterface, SymbolInfoInt
                 fn($n) => !EnumImplicits::isImplicitInterface($n),
             ))
             : $this->interfaces;
-        if ($this->kind === ClassKind::Interface_ && $writtenInterfaces !== []) {
-            $sig .= ' extends ' . implode(', ', array_map(fn($n) => $n->shortName(), $writtenInterfaces));
-        } elseif ($writtenInterfaces !== []) {
-            $sig .= ' implements ' . implode(', ', array_map(fn($n) => $n->shortName(), $writtenInterfaces));
+        if ($writtenInterfaces !== []) {
+            $keyword = $this->kind === ClassKind::Interface_ ? 'extends' : 'implements';
+            $shortNames = array_map(fn($n) => $n->qualifiedName->shortName, $writtenInterfaces);
+            $sig .= ' ' . $keyword . ' ' . implode(', ', $shortNames);
         }
 
         return $sig;

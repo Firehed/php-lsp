@@ -5,33 +5,29 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * A fully-qualified name intended to be a class-like. Not a `class-string`:
- * text-derived names (RFC 1 §5.3), fixtures, and forward references all produce a
- * `ClasslikeName` before any lookup, so the runtime existence of the class is a
- * separate question the resolution tier answers.
+ * The fully-qualified name of a class-like (Plan 0002 §5.3): a {@see QualifiedName}
+ * that carries its {@see NameKind} intrinsically. Not a `class-string`: text-derived
+ * names (RFC 1 §5.3), fixtures, and forward references all produce a `ClasslikeName`
+ * before any lookup, so the runtime existence of the class is a separate question
+ * the resolution tier answers.
  */
-final readonly class ClasslikeName
+final class ClasslikeName implements NamespaceOwnedNameInterface
 {
+    public NameKind $kind { get => NameKind::ClassLike; }
+
     public function __construct(
-        public string $fqn,
+        public readonly QualifiedName $qualifiedName,
     ) {
+    }
+
+    public static function fromFullyQualified(string $fullyQualifiedName): self
+    {
+        return new self(QualifiedName::fromFullyQualified($fullyQualifiedName));
     }
 
     public function equals(self $other): bool
     {
-        return NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($this))
-            === NameKind::ClassLike->normalize(QualifiedName::fromClasslikeName($other));
-    }
-
-    public function namespace(): ?string
-    {
-        $namespace = NamespaceName::namespaceOf($this->fqn);
-
-        return $namespace === '' ? null : $namespace;
-    }
-
-    public function shortName(): string
-    {
-        return NamespaceName::shortNameOf($this->fqn);
+        return NameKind::ClassLike->normalize($this->qualifiedName)
+            === NameKind::ClassLike->normalize($other->qualifiedName);
     }
 }

@@ -19,7 +19,7 @@ class MemberAccessContextTest extends TestCase
 {
     private static function type(): ClasslikeType
     {
-        return new ClasslikeType(new ClasslikeName(self::class));
+        return new ClasslikeType(ClasslikeName::fromFullyQualified(self::class));
     }
 
     public function testForInstanceSetsExpectedValues(): void

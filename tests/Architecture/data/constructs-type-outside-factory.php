@@ -17,7 +17,7 @@ final class ConstructsTypeOutsideFactory
 {
     public function makeClasslikeType(): ClasslikeType
     {
-        return new ClasslikeType(new ClasslikeName('Foo\\Bar'));
+        return new ClasslikeType(ClasslikeName::fromFullyQualified('Foo\\Bar'));
     }
 
     public function makePrimitive(): PrimitiveType
@@ -27,6 +27,6 @@ final class ConstructsTypeOutsideFactory
 
     public function makeUnion(): UnionType
     {
-        return new UnionType([new ClasslikeType(new ClasslikeName('Foo')), new PrimitiveType('null')]);
+        return new UnionType([new ClasslikeType(ClasslikeName::fromFullyQualified('Foo')), new PrimitiveType('null')]);
     }
 }

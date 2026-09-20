@@ -21,7 +21,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 8,
-            declaringClass: new ClasslikeName(ClassKind::class),
+            declaringClass: ClasslikeName::fromFullyQualified(ClassKind::class),
         );
 
         self::assertSame('Active', $case->name->name);
@@ -29,7 +29,7 @@ class EnumCaseInfoTest extends TestCase
         self::assertNull($case->docblock);
         self::assertSame('/path/to/file.php', $case->file);
         self::assertSame(8, $case->line);
-        self::assertSame(ClassKind::class, $case->declaringClass->fqn);
+        self::assertSame(ClassKind::class, $case->declaringClass->qualifiedName->fullyQualifiedName());
     }
 
     public function testFormatUnitEnum(): void
@@ -40,7 +40,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(ClassKind::class),
+            declaringClass: ClasslikeName::fromFullyQualified(ClassKind::class),
         );
 
         self::assertSame('case Pending', $case->format());
@@ -54,7 +54,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(ClassKind::class),
+            declaringClass: ClasslikeName::fromFullyQualified(ClassKind::class),
         );
 
         self::assertSame('case Active = 1', $case->format());
@@ -68,7 +68,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: new ClasslikeName(ClassKind::class),
+            declaringClass: ClasslikeName::fromFullyQualified(ClassKind::class),
         );
 
         self::assertSame("case Draft = 'draft'", $case->format());
@@ -80,8 +80,8 @@ class EnumCaseInfoTest extends TestCase
 
         self::assertSame(MemberKind::EnumCase, $case->getMemberKind());
         self::assertSame('Active', $case->getName()->name);
-        self::assertSame(ClassKind::class, $case->getDeclaringClass()->fqn);
-        self::assertSame(ClassKind::class, $case->getType()->name->fqn);
+        self::assertSame(ClassKind::class, $case->getDeclaringClass()->qualifiedName->fullyQualifiedName());
+        self::assertSame(ClassKind::class, $case->getType()->name->qualifiedName->fullyQualifiedName());
         self::assertSame(Visibility::Public, $case->getVisibility());
         self::assertTrue($case->isStatic(), 'an enum case is reached on the enum');
     }
@@ -94,7 +94,7 @@ class EnumCaseInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: new ClasslikeName(ClassKind::class),
+            declaringClass: ClasslikeName::fromFullyQualified(ClassKind::class),
         );
     }
 }

@@ -58,7 +58,11 @@ final class FilesystemBackendTest extends TestCase
         $info = self::classLikeIn($this->backend(), 'Fixtures\Domain\User');
 
         self::assertNotNull($info, 'a class reachable through the autoload map must resolve');
-        self::assertSame('Fixtures\Domain\User', $info->name->fqn, 'the located class must be returned');
+        self::assertSame(
+            'Fixtures\Domain\User',
+            $info->name->qualifiedName->fullyQualifiedName(),
+            'the located class must be returned',
+        );
     }
 
     public function testLookupClassLikeReturnsNullForAnAbsentClass(): void

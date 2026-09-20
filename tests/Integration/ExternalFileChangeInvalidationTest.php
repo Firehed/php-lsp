@@ -254,6 +254,6 @@ class ExternalFileChangeInvalidationTest extends TestCase
 
     private function classNameFor(string $shortName): ClasslikeName
     {
-        return new ClasslikeName('Temp\\' . $shortName);
+        return ClasslikeName::fromFullyQualified('Temp\\' . $shortName);
     }
 }

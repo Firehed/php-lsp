@@ -108,6 +108,6 @@ trait BuildsSymbolInfoTrait
      */
     private static function className(string $fqn): ClasslikeName
     {
-        return new ClasslikeName($fqn);
+        return ClasslikeName::fromFullyQualified($fqn);
     }
 }

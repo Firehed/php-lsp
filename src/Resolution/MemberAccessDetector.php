@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
-use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -126,7 +125,7 @@ final class MemberAccessDetector
     {
         $classLike = Scope::atOffset($ast, $node->getStartFilePos())->getEnclosingClassLike();
         $enclosingName = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
-        return $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
+        return $enclosingName !== null ? ClasslikeName::fromFullyQualified($enclosingName) : null;
     }
 
     private function expressionResolver(TextDocument $document): ExpressionResolver
@@ -175,7 +174,7 @@ final class MemberAccessDetector
         if ($vantage === null) {
             return Visibility::Public;
         }
-        if ($vantage->fqn === $target->fqn) {
+        if ($vantage->equals($target)) {
             return Visibility::Private;
         }
         if ($this->memberResolver->isSubclassOf($vantage, $target)) {
@@ -202,14 +201,14 @@ final class MemberAccessDetector
         $keyword = LateBindingKeyword::tryFromName($rawName);
         $enclosingClassLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
         $enclosingName = LateBindingKeyword::Self->resolveIn($enclosingClassLike);
-        $vantage = $enclosingName !== null ? TypeFactory::className($enclosingName) : null;
+        $vantage = $enclosingName !== null ? ClasslikeName::fromFullyQualified($enclosingName) : null;
 
         if ($keyword === LateBindingKeyword::Parent) {
             $parentClasslikeName = $keyword->resolveIn($enclosingClassLike);
             if ($parentClasslikeName === null) {
                 return null;
             }
-            $targetName = TypeFactory::className($parentClasslikeName);
+            $targetName = ClasslikeName::fromFullyQualified($parentClasslikeName);
             return MemberAccessContext::forParent(
                 new ClasslikeType($targetName),
                 $this->visibilityBetween($vantage, $targetName),
@@ -221,7 +220,7 @@ final class MemberAccessDetector
             if ($enclosingName === null) {
                 return null;
             }
-            $targetName = TypeFactory::className($enclosingName);
+            $targetName = ClasslikeName::fromFullyQualified($enclosingName);
             return MemberAccessContext::forStatic(
                 new ClasslikeType($targetName),
                 $this->visibilityBetween($vantage, $targetName),
@@ -246,7 +245,7 @@ final class MemberAccessDetector
         }
         /** @var class-string $className */
 
-        $targetName = TypeFactory::className($className);
+        $targetName = ClasslikeName::fromFullyQualified($className);
         return MemberAccessContext::forStatic(
             new ClasslikeType($targetName),
             $this->visibilityBetween($vantage, $targetName),

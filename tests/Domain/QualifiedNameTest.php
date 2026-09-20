@@ -41,9 +41,9 @@ final class QualifiedNameTest extends TestCase
         self::assertSame(ltrim($fqn, '\\'), $name->fullyQualifiedName());
     }
 
-    public function testFromClasslikeNameConvertsTheClassLikeIdentifier(): void
+    public function testClasslikeNameExposesTheQualifiedNameComponents(): void
     {
-        $name = QualifiedName::fromClasslikeName(new ClasslikeName(QualifiedName::class));
+        $name = ClasslikeName::fromFullyQualified(QualifiedName::class)->qualifiedName;
 
         self::assertSame('Firehed\PhpLsp\Domain', $name->namespace->path);
         self::assertSame('QualifiedName', $name->shortName);

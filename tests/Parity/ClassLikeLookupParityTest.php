@@ -108,7 +108,11 @@ final class ClassLikeLookupParityTest extends TestCase
 
         $resolved = $this->knowledge->source->lookupClassLike(self::className('Virtual\Widget'));
         self::assertNotNull($resolved, 'an open-document class must resolve through lookupClassLike()');
-        self::assertSame('Virtual\Widget', $resolved->name->fqn, 'open-document lookup must win over disk');
+        self::assertSame(
+            'Virtual\Widget',
+            $resolved->name->qualifiedName->fullyQualifiedName(),
+            'open-document lookup must win over disk',
+        );
     }
 
     public function testUnresolvableLookupsReturnNull(): void
@@ -172,10 +176,14 @@ final class ClassLikeLookupParityTest extends TestCase
         // is asserted, so a regression that stops extracting reflected members —
         // whose lines still execute, but whose output the golden never sees —
         // goes red rather than passing silently.
-        $info = $this->knowledge->source->lookupClassLike(new ClasslikeName(\ArrayObject::class));
+        $info = $this->knowledge->source->lookupClassLike(ClasslikeName::fromFullyQualified(\ArrayObject::class));
 
         self::assertNotNull($info, 'a built-in class must resolve via the reflection fallback');
-        self::assertSame('ArrayObject', $info->name->shortName(), 'reflection fallback must report the built-in');
+        self::assertSame(
+            'ArrayObject',
+            $info->name->qualifiedName->shortName,
+            'reflection fallback must report the built-in',
+        );
 
         $methodNames = array_keys($info->methods);
         foreach (['append', 'count', 'getArrayCopy', 'getIterator', 'offsetGet', 'offsetSet'] as $method) {
@@ -209,7 +217,7 @@ final class ClassLikeLookupParityTest extends TestCase
         // that returned no interfaces goes red rather than surviving behind the
         // method check.
         $interfaceFqns = array_map(
-            static fn(ClasslikeName $name): string => $name->fqn,
+            static fn(ClasslikeName $name): string => $name->qualifiedName->fullyQualifiedName(),
             $info->interfaces,
         );
         foreach (['ArrayAccess', 'Countable', 'IteratorAggregate'] as $interface) {
@@ -228,7 +236,7 @@ final class ClassLikeLookupParityTest extends TestCase
      */
     private static function className(string $fqn): ClasslikeName
     {
-        return new ClasslikeName($fqn);
+        return ClasslikeName::fromFullyQualified($fqn);
     }
 
     /**
@@ -243,7 +251,7 @@ final class ClassLikeLookupParityTest extends TestCase
             'isFinal' => $info->isFinal,
             'isReadonly' => $info->isReadonly,
             'isAttribute' => $info->isAttribute,
-            'parent' => $info->parent?->fqn,
+            'parent' => $info->parent?->qualifiedName->fullyQualifiedName(),
             'interfaces' => self::sortedFqns($info->interfaces),
             'traits' => self::sortedFqns($info->traits),
             'methods' => self::formatted($info->methods),
@@ -266,7 +274,7 @@ final class ClassLikeLookupParityTest extends TestCase
      */
     private static function sortedFqns(array $names): array
     {
-        $fqns = array_map(static fn(ClasslikeName $name): string => $name->fqn, $names);
+        $fqns = array_map(static fn(ClasslikeName $name): string => $name->qualifiedName->fullyQualifiedName(), $names);
         sort($fqns);
 
         return $fqns;

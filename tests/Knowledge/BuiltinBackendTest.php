@@ -58,7 +58,11 @@ final class BuiltinBackendTest extends TestCase
         $info = self::classLikeIn($backend, \ArrayObject::class);
 
         self::assertNotNull($info, 'a loaded built-in class must resolve through reflection');
-        self::assertSame('ArrayObject', $info->name->fqn, 'the reflected class must be returned');
+        self::assertSame(
+            'ArrayObject',
+            $info->name->qualifiedName->fullyQualifiedName(),
+            'the reflected class must be returned',
+        );
     }
 
     public function testLookupClassLikeReturnsNullForAnUnknownClass(): void
@@ -216,7 +220,11 @@ final class BuiltinBackendTest extends TestCase
         $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), $fqn);
 
         self::assertNotNull($info, 'a class-like flavour reflection can describe must resolve');
-        self::assertSame($fqn, $info->name->fqn, 'the reflected class-like must be returned');
+        self::assertSame(
+            $fqn,
+            $info->name->qualifiedName->fullyQualifiedName(),
+            'the reflected class-like must be returned',
+        );
     }
 
     public function testLookupIgnoresClassLikesOnlyTheServerHasLoaded(): void
@@ -284,7 +292,7 @@ final class BuiltinBackendTest extends TestCase
         $info = self::classLikeIn($backend, \stdClass::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
-        self::assertSame(\stdClass::class, $info->name->fqn);
+        self::assertSame(\stdClass::class, $info->name->qualifiedName->fullyQualifiedName());
         self::assertSame(ClassKind::Class_, $info->kind);
     }
 
@@ -296,7 +304,7 @@ final class BuiltinBackendTest extends TestCase
         );
 
         self::assertInstanceOf(ClassInfo::class, $info);
-        self::assertSame(\Exception::class, $info->parent?->fqn);
+        self::assertSame(\Exception::class, $info->parent?->qualifiedName->fullyQualifiedName());
     }
 
     public function testClassInfoReportsInterfaceKindForABuiltinInterface(): void
