@@ -89,7 +89,7 @@ final class BuiltinBackendTest extends TestCase
         $info = self::functionIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'str_contains');
 
         self::assertNotNull($info, 'a built-in function must resolve through reflection');
-        self::assertSame('str_contains', $info->name);
+        self::assertSame('str_contains', $info->name->qualifiedName->fullyQualifiedName());
         self::assertCount(2, $info->parameters, 'the reflected signature must be carried');
     }
 

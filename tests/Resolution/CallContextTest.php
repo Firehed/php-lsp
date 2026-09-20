@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -43,7 +44,7 @@ final class CallContextTest extends TestCase
     private function createResolvedCallable(): FunctionInfo
     {
         return new FunctionInfo(
-            name: 'testFunc',
+            name: FunctionName::fromFullyQualified('testFunc'),
             returnType: new PrimitiveType('void'),
             parameters: [
                 new ParameterInfo(

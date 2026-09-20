@@ -16,7 +16,7 @@ final readonly class FunctionInfo implements ResolvedCallableInterface, SymbolIn
      * @param list<ParameterInfo> $parameters
      */
     public function __construct(
-        public string $name,
+        public FunctionName $name,
         public array $parameters,
         public ?TypeInterface $returnType,
         public ?string $docblock,
@@ -43,7 +43,7 @@ final readonly class FunctionInfo implements ResolvedCallableInterface, SymbolIn
     public function format(): string
     {
         $params = array_map(fn($p) => ParameterInfo::signature($p), $this->parameters);
-        $sig = 'function ' . $this->name . '(' . implode(', ', $params) . ')';
+        $sig = 'function ' . $this->name->qualifiedName->shortName . '(' . implode(', ', $params) . ')';
         if ($this->returnType !== null) {
             $sig .= ': ' . $this->returnType->format();
         }

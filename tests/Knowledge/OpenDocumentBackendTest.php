@@ -112,7 +112,11 @@ final class OpenDocumentBackendTest extends TestCase
         $info = self::functionIn($this->backend, 'V\format');
 
         self::assertNotNull($info, 'a registered function must resolve');
-        self::assertSame('format', $info->name, 'the registered function must be returned unchanged');
+        self::assertSame(
+            'V\format',
+            $info->name->qualifiedName->fullyQualifiedName(),
+            'the registered function must be returned unchanged',
+        );
     }
 
     public function testLookupFunctionIsCaseInsensitive(): void
