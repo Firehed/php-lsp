@@ -44,10 +44,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodReturnPrimitive(): void
     {
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('getName'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodReturn($class, new MethodName($class, 'getName'));
 
         self::assertNotNull($type, 'getName returns a declared string');
         self::assertSame('string', $type->format());
@@ -55,10 +53,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodReturnClasslikeName(): void
     {
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('getStatus'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodReturn($class, new MethodName($class, 'getStatus'));
 
         self::assertInstanceOf(ClasslikeType::class, $type, 'getStatus returns the Status enum');
         self::assertSame('Fixtures\\Enum\\Status', $type->name->qualifiedName->fullyQualifiedName());
@@ -66,10 +62,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodReturnNullableIsUnion(): void
     {
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('getTeam'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodReturn($class, new MethodName($class, 'getTeam'));
 
         self::assertInstanceOf(UnionType::class, $type, '?Team is stored as Team|null');
         self::assertSame('?Fixtures\\Domain\\Team', $type->format());
@@ -77,10 +71,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodReturnInheritedFromTrait(): void
     {
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('markCreated'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodReturn($class, new MethodName($class, 'markCreated'));
 
         self::assertInstanceOf(PrimitiveType::class, $type, 'trait method markCreated is reached via member walk');
         self::assertSame('void', $type->format());
@@ -92,10 +84,8 @@ final class NativeTypeSourceTest extends TestCase
         // using class must find it via MemberResolver's alias walk; querying
         // the trait with the alias name is blind (the trait doesn't declare
         // the alias). resolveLateBoundReturn depends on the former.
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Hierarchy\\TraitAliasSelfReturnUser'),
-            new MethodName('aliasedFluent'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Hierarchy\\TraitAliasSelfReturnUser');
+        $type = $this->source->forMethodReturn($class, new MethodName($class, 'aliasedFluent'));
 
         self::assertNotNull(
             $type,
@@ -105,10 +95,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodReturnLookupOnTraitByAliasedNameIsBlind(): void
     {
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Hierarchy\\AliasedSelfReturnTrait'),
-            new MethodName('aliasedFluent'),
-        );
+        $trait = ClasslikeName::fromFullyQualified('Fixtures\\Hierarchy\\AliasedSelfReturnTrait');
+        $type = $this->source->forMethodReturn($trait, new MethodName($trait, 'aliasedFluent'));
 
         self::assertNull(
             $type,
@@ -118,31 +106,24 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodReturnUnknownClass(): void
     {
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Does\\NotExist'),
-            new MethodName('anything'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Does\\NotExist');
+        $type = $this->source->forMethodReturn($class, new MethodName($class, 'anything'));
 
         self::assertNull($type, 'unknown class yields no type');
     }
 
     public function testMethodReturnUnknownMethod(): void
     {
-        $type = $this->source->forMethodReturn(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('nonexistent'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodReturn($class, new MethodName($class, 'nonexistent'));
 
         self::assertNull($type, 'unknown method on a known class yields no type');
     }
 
     public function testMethodParameterPrimitive(): void
     {
-        $type = $this->source->forMethodParameter(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('__construct'),
-            'age',
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodParameter($class, new MethodName($class, '__construct'), 'age');
 
         self::assertInstanceOf(PrimitiveType::class, $type, '$age is declared as int');
         self::assertSame('int', $type->format());
@@ -150,11 +131,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodParameterClass(): void
     {
-        $type = $this->source->forMethodParameter(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('__construct'),
-            'status',
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodParameter($class, new MethodName($class, '__construct'), 'status');
 
         self::assertInstanceOf(ClasslikeType::class, $type, '$status is declared as Status');
         self::assertSame('Fixtures\\Enum\\Status', $type->name->qualifiedName->fullyQualifiedName());
@@ -162,22 +140,16 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testMethodParameterUnknownName(): void
     {
-        $type = $this->source->forMethodParameter(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('__construct'),
-            'unknown',
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodParameter($class, new MethodName($class, '__construct'), 'unknown');
 
         self::assertNull($type, 'unknown parameter name yields no type');
     }
 
     public function testMethodParameterUnknownMethod(): void
     {
-        $type = $this->source->forMethodParameter(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new MethodName('nonexistent'),
-            'anything',
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forMethodParameter($class, new MethodName($class, 'nonexistent'), 'anything');
 
         self::assertNull($type, 'unknown method short-circuits before the parameter loop');
     }

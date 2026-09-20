@@ -14,6 +14,9 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
 
     /**
      * @param list<ParameterInfo> $parameters
+     * @param ?MethodName $aliasedFrom Identity of the trait method this alias
+     *   exposes; `null` for straight-declared methods. Populated for any
+     *   `use T { ... as ... }` adaptation (rename or visibility change).
      */
     public function __construct(
         public MethodName $name,
@@ -26,13 +29,13 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ClasslikeName $declaringClass,
+        public ?MethodName $aliasedFrom = null,
     ) {
     }
 
     public function getDeclaringClass(): ClasslikeName
     {
-        return $this->declaringClass;
+        return $this->name->owner;
     }
 
     public function getMemberKind(): MemberKind

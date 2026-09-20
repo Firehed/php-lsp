@@ -135,6 +135,36 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('setName', $result->format());
     }
 
+    public function testResolvesAliasedTraitMethodCallCarriesAliasedFromAndRebindsSelf(): void
+    {
+        $cursor = $this->openFixtureAtHoverMarker('src/Hover/TraitAliasSelfReturnCall.php', 'aliased_call');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(MethodInfo::class, $result);
+        self::assertNotNull(
+            $result->aliasedFrom,
+            'the rebuilt MethodInfo must keep the source-trait identity of the alias',
+        );
+        self::assertSame(
+            'Fixtures\\Hierarchy\\AliasedSelfReturnTrait',
+            $result->aliasedFrom->owner->qualifiedName->fullyQualifiedName(),
+            'aliasedFrom names the trait that declares fluent()',
+        );
+        self::assertInstanceOf(
+            ClasslikeType::class,
+            $result->returnType,
+            'self was late-bound to the using class through the aliasedFrom trait subject',
+        );
+        self::assertSame(
+            'Fixtures\\Hover\\TraitAliasSelfReturnCall',
+            $result->returnType->name->qualifiedName->fullyQualifiedName(),
+            'the trait method\'s self resolves to the using class, not the trait',
+        );
+    }
+
     public function testResolvesNullsafeMethodCall(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName_nullsafe');

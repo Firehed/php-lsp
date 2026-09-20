@@ -188,11 +188,8 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('insteadofResolutions')]
     public function testInsteadofPicksTheWinningTraitOnFind(string $fqcn, string $method, string $expectedTrait): void
     {
-        $resolved = $this->resolver->findMethod(
-            ClasslikeName::fromFullyQualified($fqcn),
-            new \Firehed\PhpLsp\Domain\MethodName($method),
-            Visibility::Public,
-        );
+        $class = ClasslikeName::fromFullyQualified($fqcn);
+        $resolved = $this->resolver->findMethod($class, $method, Visibility::Public);
 
         self::assertNotNull($resolved, 'the conflict method should resolve');
         self::assertSame(
@@ -230,11 +227,8 @@ final class TypeGraphParityTest extends TestCase
 
     public function testFindMethodResolvesAnAliasByItsNewName(): void
     {
-        $resolved = $this->resolver->findMethod(
-            ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAdaptationUser'),
-            new \Firehed\PhpLsp\Domain\MethodName('conflictMethodFromB'),
-            Visibility::Public,
-        );
+        $user = ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAdaptationUser');
+        $resolved = $this->resolver->findMethod($user, 'conflictMethodFromB', Visibility::Public);
 
         self::assertNotNull($resolved, 'an `as` alias must be reachable by findMethod');
         self::assertSame(
@@ -242,10 +236,20 @@ final class TypeGraphParityTest extends TestCase
             $resolved->getName()->name,
             'the returned method is exposed under the alias name',
         );
+        // The alias identity belongs to the aliasing class (the new name lives
+        // on the using class, not on the trait). The source trait is on
+        // aliasedFrom, which stays available for consumers such as
+        // resolveLateBoundReturn.
+        self::assertSame(
+            'Fixtures\Hierarchy\TraitAdaptationUser',
+            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+            'the aliasing class owns the aliased-method identity',
+        );
+        self::assertNotNull($resolved->aliasedFrom, 'aliasedFrom points at the source trait method');
         self::assertSame(
             'Fixtures\Hierarchy\ConflictingTraitB',
-            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
-            'the alias resolves to the source trait',
+            $resolved->aliasedFrom->owner->qualifiedName->fullyQualifiedName(),
+            'aliasedFrom carries the trait the alias exposes',
         );
     }
 
@@ -265,9 +269,15 @@ final class TypeGraphParityTest extends TestCase
 
         self::assertNotNull($collision, 'the aliased method must appear exactly once');
         self::assertSame(
-            'Fixtures\Hierarchy\ConflictingTraitA',
+            'Fixtures\Hierarchy\TraitAliasCollidingUser',
             $collision->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
-            'the trait alias must replace the parent method the walk already collected',
+            'the aliasing class owns the aliased-method identity',
+        );
+        self::assertNotNull($collision->aliasedFrom, 'aliasedFrom points at the source trait method');
+        self::assertSame(
+            'Fixtures\Hierarchy\ConflictingTraitA',
+            $collision->aliasedFrom->owner->qualifiedName->fullyQualifiedName(),
+            'aliasedFrom carries the trait the alias replaced with',
         );
     }
 

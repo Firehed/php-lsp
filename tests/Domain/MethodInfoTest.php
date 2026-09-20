@@ -15,8 +15,9 @@ class MethodInfoTest extends TestCase
 
     public function testConstruction(): void
     {
+        $owner = ClasslikeName::fromFullyQualified(MethodInfo::class);
         $method = new MethodInfo(
-            name: new MethodName('doSomething'),
+            name: new MethodName($owner, 'doSomething'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -26,7 +27,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 42,
-            declaringClass: ClasslikeName::fromFullyQualified(MethodInfo::class),
         );
 
         self::assertSame('doSomething', $method->name->name);
@@ -39,13 +39,16 @@ class MethodInfoTest extends TestCase
         self::assertNull($method->docblock);
         self::assertSame('/path/to/file.php', $method->file);
         self::assertSame(42, $method->line);
-        self::assertSame(MethodInfo::class, $method->declaringClass->qualifiedName->fullyQualifiedName());
+        self::assertSame(MethodInfo::class, $method->name->owner->qualifiedName->fullyQualifiedName());
+        self::assertNull($method->aliasedFrom, 'a straight-declared method has no alias source');
     }
 
-    public function testFormatNoParamsNoReturnType(): void
+    public function testAliasedFrom(): void
     {
+        $user = ClasslikeName::fromFullyQualified('Some\\Namespace\\User');
+        $trait = ClasslikeName::fromFullyQualified('Some\\Namespace\\NamedTrait');
         $method = new MethodInfo(
-            name: new MethodName('doSomething'),
+            name: new MethodName($user, 'exposedName'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -55,7 +58,28 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
+            aliasedFrom: new MethodName($trait, 'originalName'),
+        );
+
+        self::assertSame($user, $method->getDeclaringClass(), 'the aliasing class owns an aliased method identity');
+        self::assertNotNull($method->aliasedFrom);
+        self::assertSame($trait, $method->aliasedFrom->owner, 'aliasedFrom carries the source trait');
+        self::assertSame('originalName', $method->aliasedFrom->name);
+    }
+
+    public function testFormatNoParamsNoReturnType(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'doSomething'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
         );
 
         self::assertSame('public function doSomething()', $method->format());
@@ -64,7 +88,7 @@ class MethodInfoTest extends TestCase
     public function testFormatWithReturnType(): void
     {
         $method = new MethodInfo(
-            name: new MethodName('getName'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'getName'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -74,7 +98,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function getName(): string', $method->format());
@@ -83,7 +106,7 @@ class MethodInfoTest extends TestCase
     public function testFormatWithParameters(): void
     {
         $method = new MethodInfo(
-            name: new MethodName('setName'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'setName'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -95,7 +118,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function setName(string $name)', $method->format());
@@ -104,7 +126,7 @@ class MethodInfoTest extends TestCase
     public function testFormatWithMultipleParametersAndReturnType(): void
     {
         $method = new MethodInfo(
-            name: new MethodName('calculate'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'calculate'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -117,7 +139,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function calculate(int $a, int $b): int', $method->format());
@@ -126,7 +147,7 @@ class MethodInfoTest extends TestCase
     public function testFormatWithVariadicParameter(): void
     {
         $method = new MethodInfo(
-            name: new MethodName('merge'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'merge'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -138,7 +159,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public function merge(array ...$arrays): array', $method->format());
@@ -147,7 +167,7 @@ class MethodInfoTest extends TestCase
     public function testFormatWithReferenceParameter(): void
     {
         $method = new MethodInfo(
-            name: new MethodName('swap'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'swap'),
             visibility: Visibility::Public,
             isStatic: true,
             isAbstract: false,
@@ -160,7 +180,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public static function swap(mixed &$a, mixed &$b): void', $method->format());
@@ -169,7 +188,7 @@ class MethodInfoTest extends TestCase
     public function testFormatAbstractMethod(): void
     {
         $method = new MethodInfo(
-            name: new MethodName('handle'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'handle'),
             visibility: Visibility::Protected,
             isStatic: false,
             isAbstract: true,
@@ -179,7 +198,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('protected abstract function handle(): void', $method->format());
@@ -188,7 +206,7 @@ class MethodInfoTest extends TestCase
     public function testFormatFinalMethod(): void
     {
         $method = new MethodInfo(
-            name: new MethodName('getInstance'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'getInstance'),
             visibility: Visibility::Private,
             isStatic: true,
             isAbstract: false,
@@ -198,7 +216,6 @@ class MethodInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('private static final function getInstance(): self', $method->format());
@@ -247,7 +264,7 @@ class MethodInfoTest extends TestCase
         array $parameters = [],
     ): MethodInfo {
         return new MethodInfo(
-            name: new MethodName('doSomething'),
+            name: new MethodName(ClasslikeName::fromFullyQualified(MethodInfo::class), 'doSomething'),
             visibility: Visibility::Public,
             isStatic: false,
             isAbstract: false,
@@ -257,7 +274,6 @@ class MethodInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: ClasslikeName::fromFullyQualified(MethodInfo::class),
         );
     }
 }

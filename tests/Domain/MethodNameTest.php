@@ -12,28 +12,9 @@ class MethodNameTest extends TestCase
 {
     public function testConstruction(): void
     {
-        $name = new MethodName('doSomething');
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $name = new MethodName($owner, 'doSomething');
         self::assertSame('doSomething', $name->name);
-    }
-
-    public function testEqualsTrue(): void
-    {
-        $a = new MethodName('doSomething');
-        $b = new MethodName('doSomething');
-        self::assertTrue($a->equals($b));
-    }
-
-    public function testEqualsFalse(): void
-    {
-        $a = new MethodName('doSomething');
-        $b = new MethodName('doOther');
-        self::assertFalse($a->equals($b));
-    }
-
-    public function testEqualsCaseInsensitive(): void
-    {
-        $a = new MethodName('doSomething');
-        $b = new MethodName('DOSOMETHING');
-        self::assertTrue($a->equals($b));
+        self::assertSame($owner, $name->owner);
     }
 }

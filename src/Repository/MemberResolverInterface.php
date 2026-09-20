@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -36,7 +35,7 @@ interface MemberResolverInterface
 
     public function findMethod(
         ClasslikeName $class,
-        MethodName $method,
+        string $name,
         Visibility $minVisibility,
     ): ?MethodInfo;
 

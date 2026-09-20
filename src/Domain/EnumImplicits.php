@@ -46,7 +46,7 @@ final class EnumImplicits
     {
         $methods = [
             'cases' => new MethodInfo(
-                name: new MethodName('cases'),
+                name: new MethodName($enum, 'cases'),
                 visibility: Visibility::Public,
                 isStatic: true,
                 isAbstract: false,
@@ -56,7 +56,6 @@ final class EnumImplicits
                 docblock: null,
                 file: null,
                 line: null,
-                declaringClass: $enum,
             ),
         ];
         if ($scalarType === null) {
@@ -73,7 +72,7 @@ final class EnumImplicits
         );
         $enumType = new ClasslikeType($enum);
         $methods['from'] = new MethodInfo(
-            name: new MethodName('from'),
+            name: new MethodName($enum, 'from'),
             visibility: Visibility::Public,
             isStatic: true,
             isAbstract: false,
@@ -83,10 +82,9 @@ final class EnumImplicits
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $enum,
         );
         $methods['tryFrom'] = new MethodInfo(
-            name: new MethodName('tryFrom'),
+            name: new MethodName($enum, 'tryFrom'),
             visibility: Visibility::Public,
             isStatic: true,
             isAbstract: false,
@@ -96,7 +94,6 @@ final class EnumImplicits
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $enum,
         );
 
         return $methods;

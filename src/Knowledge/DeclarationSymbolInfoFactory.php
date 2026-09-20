@@ -282,7 +282,7 @@ final readonly class DeclarationSymbolInfoFactory
 
             $name = $stmt->name->toString();
             $methods[$name] = new MethodInfo(
-                name: new MethodName($name),
+                name: new MethodName($className, $name),
                 visibility: $this->visibilityFromFlags($stmt->flags),
                 isStatic: $stmt->isStatic(),
                 isAbstract: $stmt->isAbstract(),
@@ -297,7 +297,6 @@ final readonly class DeclarationSymbolInfoFactory
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
                 line: $stmt->getStartLine(),
-                declaringClass: $className,
             );
         }
 
