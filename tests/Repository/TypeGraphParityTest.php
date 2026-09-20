@@ -189,11 +189,7 @@ final class TypeGraphParityTest extends TestCase
     public function testInsteadofPicksTheWinningTraitOnFind(string $fqcn, string $method, string $expectedTrait): void
     {
         $class = ClasslikeName::fromFullyQualified($fqcn);
-        $resolved = $this->resolver->findMethod(
-            $class,
-            new \Firehed\PhpLsp\Domain\MethodName($class, $method),
-            Visibility::Public,
-        );
+        $resolved = $this->resolver->findMethod($class, $method, Visibility::Public);
 
         self::assertNotNull($resolved, 'the conflict method should resolve');
         self::assertSame(
@@ -232,11 +228,7 @@ final class TypeGraphParityTest extends TestCase
     public function testFindMethodResolvesAnAliasByItsNewName(): void
     {
         $user = ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAdaptationUser');
-        $resolved = $this->resolver->findMethod(
-            $user,
-            new \Firehed\PhpLsp\Domain\MethodName($user, 'conflictMethodFromB'),
-            Visibility::Public,
-        );
+        $resolved = $this->resolver->findMethod($user, 'conflictMethodFromB', Visibility::Public);
 
         self::assertNotNull($resolved, 'an `as` alias must be reachable by findMethod');
         self::assertSame(

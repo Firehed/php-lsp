@@ -37,7 +37,7 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
-        $result = $resolver->findMethod($className, new MethodName($className, 'foo'), Visibility::Public);
+        $result = $resolver->findMethod($className, 'foo', Visibility::Public);
 
         self::assertNull($result);
     }
@@ -150,7 +150,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($className, new MethodName($className, 'doSomething'), Visibility::Public);
+        $result = $resolver->findMethod($className, 'doSomething', Visibility::Public);
 
         self::assertSame($methodInfo, $result);
     }
@@ -175,7 +175,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($childName, new MethodName($childName, 'parentMethod'), Visibility::Public);
+        $result = $resolver->findMethod($childName, 'parentMethod', Visibility::Public);
 
         self::assertSame($methodInfo, $result);
     }
@@ -204,7 +204,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($className, new MethodName($className, 'traitMethod'), Visibility::Public);
+        $result = $resolver->findMethod($className, 'traitMethod', Visibility::Public);
 
         self::assertSame($methodInfo, $result);
     }
@@ -220,7 +220,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($className, new MethodName($className, 'privateMethod'), Visibility::Public);
+        $result = $resolver->findMethod($className, 'privateMethod', Visibility::Public);
 
         self::assertNull($result);
     }
@@ -245,7 +245,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($childName, new MethodName($childName, 'privateMethod'), Visibility::Private);
+        $result = $resolver->findMethod($childName, 'privateMethod', Visibility::Private);
 
         self::assertNull($result);
     }
@@ -274,7 +274,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($className, new MethodName($className, 'privateMethod'), Visibility::Private);
+        $result = $resolver->findMethod($className, 'privateMethod', Visibility::Private);
 
         self::assertSame($privateMethod, $result);
     }
@@ -835,7 +835,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($childName, new MethodName($childName, 'nonexistent'), Visibility::Public);
+        $result = $resolver->findMethod($childName, 'nonexistent', Visibility::Public);
 
         self::assertNull($result);
     }
@@ -916,7 +916,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($className, new MethodName($className, 'method2'), Visibility::Public);
+        $result = $resolver->findMethod($className, 'method2', Visibility::Public);
 
         self::assertSame($method2, $result);
     }
@@ -1116,7 +1116,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($childName, new MethodName($childName, 'method'), Visibility::Public);
+        $result = $resolver->findMethod($childName, 'method', Visibility::Public);
 
         self::assertSame($childMethod, $result);
     }
@@ -1148,7 +1148,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($childName, new MethodName($childName, 'deepMethod'), Visibility::Public);
+        $result = $resolver->findMethod($childName, 'deepMethod', Visibility::Public);
 
         self::assertSame($grandparentMethod, $result);
     }
@@ -1231,7 +1231,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findMethod($className, new MethodName($className, 'OVERRIDDENMETHOD'), Visibility::Public);
+        $result = $resolver->findMethod($className, 'OVERRIDDENMETHOD', Visibility::Public);
 
         self::assertSame($methodInfo, $result);
     }
@@ -1444,7 +1444,7 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         self::assertNull(
-            $resolver->findMethod($className, new MethodName($className, 'exposedName'), Visibility::Public),
+            $resolver->findMethod($className, 'exposedName', Visibility::Public),
             'an alias whose source method is missing must not surface a method',
         );
         self::assertSame(
@@ -1486,7 +1486,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $resolved = $resolver->findMethod($className, new MethodName($className, 'exposedName'), Visibility::Public);
+        $resolved = $resolver->findMethod($className, 'exposedName', Visibility::Public);
 
         self::assertNotNull($resolved, 'the alias with no explicit trait must resolve through the used-trait scan');
         self::assertSame(
@@ -1529,7 +1529,7 @@ final class MemberResolverTest extends TestCase
         $resolver = new MemberResolver($repo);
 
         self::assertNull(
-            $resolver->findMethod($className, new MethodName($className, 'exposedName'), Visibility::Public),
+            $resolver->findMethod($className, 'exposedName', Visibility::Public),
             'a nameless alias whose method is in no used trait must not surface',
         );
     }

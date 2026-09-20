@@ -56,19 +56,19 @@ final class MemberResolver implements MemberResolverInterface
 
     public function findMethod(
         ClasslikeName $class,
-        MethodName $method,
+        string $name,
         Visibility $minVisibility,
     ): ?MethodInfo {
         $origin = $this->source->lookupClassLike($class);
         if ($origin === null) {
             return null;
         }
-        $aliased = $this->findAliasedMethod($origin, $method->name, $minVisibility);
+        $aliased = $this->findAliasedMethod($origin, $name, $minVisibility);
         if ($aliased !== null) {
             return $aliased;
         }
 
-        return $this->findMember($class, MemberKind::Method, $method->name, $minVisibility, $origin);
+        return $this->findMember($class, MemberKind::Method, $name, $minVisibility, $origin);
     }
 
     public function findProperty(
@@ -463,10 +463,10 @@ final class MemberResolver implements MemberResolverInterface
     private function findAliasSource(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
     {
         if ($alias->trait !== null) {
-            return $this->findMethod($alias->trait, new MethodName($alias->trait, $alias->method), Visibility::Private);
+            return $this->findMethod($alias->trait, $alias->method, Visibility::Private);
         }
         foreach ($origin->traits as $trait) {
-            $method = $this->findMethod($trait, new MethodName($trait, $alias->method), Visibility::Private);
+            $method = $this->findMethod($trait, $alias->method, Visibility::Private);
             if ($method !== null) {
                 return $method;
             }

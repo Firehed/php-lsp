@@ -17,7 +17,6 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
@@ -453,7 +452,7 @@ final class ExpressionResolver
 
     private function findMethod(ClasslikeName $className, string $name): ?MethodInfo
     {
-        $info = $this->memberResolver->findMethod($className, new MethodName($className, $name), Visibility::Private);
+        $info = $this->memberResolver->findMethod($className, $name, Visibility::Private);
         if ($info === null) {
             return null;
         }
