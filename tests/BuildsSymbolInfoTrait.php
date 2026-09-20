@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 
@@ -52,7 +53,7 @@ trait BuildsSymbolInfoTrait
     {
         $name = QualifiedName::fromFullyQualified($fqn);
 
-        return new DeclaredSymbol($name, NameKind::Function_, self::functionInfo($name->shortName, $file));
+        return new DeclaredSymbol($name, NameKind::Function_, self::functionInfo($name, $file));
     }
 
     /**
@@ -96,9 +97,9 @@ trait BuildsSymbolInfoTrait
         );
     }
 
-    private static function functionInfo(string $shortName, ?string $file = null): FunctionInfo
+    private static function functionInfo(QualifiedName $name, ?string $file = null): FunctionInfo
     {
-        return new FunctionInfo($shortName, [], null, null, $file, 1);
+        return new FunctionInfo(new FunctionName($name), [], null, null, $file, 1);
     }
 
     /**

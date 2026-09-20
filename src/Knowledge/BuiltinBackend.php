@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -365,7 +366,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         }
 
         return new FunctionInfo(
-            name: $reflection->getName(),
+            name: FunctionName::fromFullyQualified($reflection->getName()),
             parameters: $parameters,
             returnType: TypeFactory::fromReflection($reflection->getReturnType()),
             docblock: $reflection->getDocComment() !== false ? $reflection->getDocComment() : null,

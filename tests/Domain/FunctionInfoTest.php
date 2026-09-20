@@ -16,7 +16,7 @@ class FunctionInfoTest extends TestCase
     public function testConstruction(): void
     {
         $func = new FunctionInfo(
-            name: 'myFunction',
+            name: FunctionName::fromFullyQualified('myFunction'),
             parameters: [],
             returnType: new PrimitiveType('void'),
             docblock: '/** Does something */',
@@ -24,7 +24,7 @@ class FunctionInfoTest extends TestCase
             line: 10,
         );
 
-        self::assertSame('myFunction', $func->name);
+        self::assertSame('myFunction', $func->name->qualifiedName->fullyQualifiedName());
         self::assertSame([], $func->parameters);
         self::assertSame('void', $func->returnType?->format());
         self::assertSame('/** Does something */', $func->docblock);
@@ -35,7 +35,7 @@ class FunctionInfoTest extends TestCase
     public function testFormatNoParamsNoReturnType(): void
     {
         $func = new FunctionInfo(
-            name: 'doSomething',
+            name: FunctionName::fromFullyQualified('doSomething'),
             parameters: [],
             returnType: null,
             docblock: null,
@@ -49,7 +49,7 @@ class FunctionInfoTest extends TestCase
     public function testFormatWithReturnType(): void
     {
         $func = new FunctionInfo(
-            name: 'getName',
+            name: FunctionName::fromFullyQualified('getName'),
             parameters: [],
             returnType: new PrimitiveType('string'),
             docblock: null,
@@ -63,7 +63,7 @@ class FunctionInfoTest extends TestCase
     public function testFormatWithParameters(): void
     {
         $func = new FunctionInfo(
-            name: 'greet',
+            name: FunctionName::fromFullyQualified('greet'),
             parameters: [
                 new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
             ],
@@ -79,7 +79,7 @@ class FunctionInfoTest extends TestCase
     public function testFormatWithMultipleParametersAndReturnType(): void
     {
         $func = new FunctionInfo(
-            name: 'add',
+            name: FunctionName::fromFullyQualified('add'),
             parameters: [
                 new ParameterInfo('a', new PrimitiveType('int'), false, null, 0, false, false),
                 new ParameterInfo('b', new PrimitiveType('int'), false, null, 1, false, false),
@@ -96,7 +96,7 @@ class FunctionInfoTest extends TestCase
     public function testFormatWithVariadicParameter(): void
     {
         $func = new FunctionInfo(
-            name: 'sum',
+            name: FunctionName::fromFullyQualified('sum'),
             parameters: [
                 new ParameterInfo('numbers', new PrimitiveType('int'), false, null, 0, true, false),
             ],
@@ -123,7 +123,7 @@ class FunctionInfoTest extends TestCase
     protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): FunctionInfo
     {
         return new FunctionInfo(
-            name: 'myFunction',
+            name: FunctionName::fromFullyQualified('myFunction'),
             parameters: [],
             returnType: new PrimitiveType('int'),
             docblock: $docblock,

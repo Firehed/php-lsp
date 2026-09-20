@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\EnumImplicits;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -69,7 +70,7 @@ final readonly class DeclarationSymbolInfoFactory
             self::collect($symbols, $seen, $declaration->name, NameKind::ClassLike, $info);
         }
         foreach ($declarations->functions as $declaration) {
-            $info = $this->functionInfoFromNode($declaration->node, $filePath);
+            $info = $this->functionInfoFromNode($declaration->node, $declaration->name, $filePath);
             self::collect($symbols, $seen, $declaration->name, NameKind::Function_, $info);
         }
         foreach ($declarations->constants as $declaration) {
@@ -450,8 +451,11 @@ final readonly class DeclarationSymbolInfoFactory
         return new PrimitiveType($enum->scalarType->toString());
     }
 
-    private function functionInfoFromNode(Stmt\Function_ $node, string $filePath): FunctionInfo
-    {
+    private function functionInfoFromNode(
+        Stmt\Function_ $node,
+        QualifiedName $name,
+        string $filePath,
+    ): FunctionInfo {
         $params = [];
         foreach ($node->params as $position => $param) {
             $paramInfo = $this->parameterFromNode($param, $position);
@@ -461,7 +465,7 @@ final readonly class DeclarationSymbolInfoFactory
         }
 
         return new FunctionInfo(
-            name: $node->name->toString(),
+            name: new FunctionName($name),
             parameters: $params,
             returnType: TypeFactory::fromNode($node->returnType),
             docblock: $node->getDocComment()?->getText(),
