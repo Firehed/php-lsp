@@ -236,12 +236,11 @@ final class BuiltinBackend implements SymbolBackendInterface
             $backingValue = $enumCase instanceof BackedEnum ? $enumCase->value : null;
 
             $cases[$name] = new EnumCaseInfo(
-                name: new EnumCaseName($name),
+                name: new EnumCaseName($className, $name),
                 backingValue: $backingValue,
                 docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
-                declaringClass: $className,
             );
         }
 

@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
-use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MemberKind;
@@ -49,9 +48,9 @@ final class MemberResolver implements MemberResolverInterface
         return $this->findMember($class, MemberKind::Constant, $constant->name, $minVisibility);
     }
 
-    public function findEnumCase(ClasslikeName $class, EnumCaseName $case): ?EnumCaseInfo
+    public function findEnumCase(ClasslikeName $class, string $name): ?EnumCaseInfo
     {
-        return $this->findMember($class, MemberKind::EnumCase, $case->name, Visibility::Public);
+        return $this->findMember($class, MemberKind::EnumCase, $name, Visibility::Public);
     }
 
     public function findMethod(

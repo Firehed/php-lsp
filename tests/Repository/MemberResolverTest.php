@@ -83,7 +83,7 @@ final class MemberResolverTest extends TestCase
 
         $result = $resolver->findEnumCase(
             ClasslikeName::fromFullyQualified(self::fakeClass()),
-            new EnumCaseName('Foo'),
+            'Foo',
         );
 
         self::assertNull($result);
@@ -753,7 +753,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findEnumCase($enumName, new EnumCaseName('Case2'));
+        $result = $resolver->findEnumCase($enumName, 'Case2');
 
         self::assertSame($case2, $result);
     }
@@ -768,7 +768,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->findEnumCase($enumName, new EnumCaseName('NonExistent'));
+        $result = $resolver->findEnumCase($enumName, 'NonExistent');
 
         self::assertNull($result);
     }
@@ -1309,7 +1309,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        self::assertNull($resolver->findEnumCase($enumName, new EnumCaseName('DRAFT')));
+        self::assertNull($resolver->findEnumCase($enumName, 'DRAFT'));
     }
 
     public function testGetConstantsKeepsCaseVariedNamesApart(): void
@@ -1843,12 +1843,11 @@ final class MemberResolverTest extends TestCase
     private function createEnumCaseInfo(string $name, ClasslikeName $declaringClass): EnumCaseInfo
     {
         return new EnumCaseInfo(
-            name: new EnumCaseName($name),
+            name: new EnumCaseName($declaringClass, $name),
             backingValue: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
     }
 
