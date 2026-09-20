@@ -12,7 +12,9 @@ class ClasslikeConstantNameTest extends TestCase
 {
     public function testConstruction(): void
     {
-        $name = new ClasslikeConstantName('MY_CONST');
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $name = new ClasslikeConstantName($owner, 'MY_CONST');
         self::assertSame('MY_CONST', $name->name);
+        self::assertSame($owner, $name->owner);
     }
 }

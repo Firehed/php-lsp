@@ -16,15 +16,15 @@ class ClasslikeConstantInfoTest extends TestCase
 
     public function testConstruction(): void
     {
+        $owner = ClasslikeName::fromFullyQualified(ClasslikeConstantInfo::class);
         $constant = new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('MAX_SIZE'),
+            name: new ClasslikeConstantName($owner, 'MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: true,
             type: new PrimitiveType('int'),
             docblock: '/** Maximum size */',
             file: '/path/to/file.php',
             line: 5,
-            declaringClass: ClasslikeName::fromFullyQualified(ClasslikeConstantInfo::class),
         );
 
         self::assertSame('MAX_SIZE', $constant->name->name);
@@ -34,20 +34,22 @@ class ClasslikeConstantInfoTest extends TestCase
         self::assertSame('/** Maximum size */', $constant->docblock);
         self::assertSame('/path/to/file.php', $constant->file);
         self::assertSame(5, $constant->line);
-        self::assertSame(ClasslikeConstantInfo::class, $constant->declaringClass->qualifiedName->fullyQualifiedName());
+        self::assertSame(
+            ClasslikeConstantInfo::class,
+            $constant->name->owner->qualifiedName->fullyQualifiedName(),
+        );
     }
 
     public function testFormatSimple(): void
     {
         $constant = new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('FOO'),
+            name: new ClasslikeConstantName(ClasslikeName::fromFullyQualified(self::class), 'FOO'),
             visibility: Visibility::Public,
             isFinal: false,
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public const FOO', $constant->format());
@@ -56,14 +58,13 @@ class ClasslikeConstantInfoTest extends TestCase
     public function testFormatWithType(): void
     {
         $constant = new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('MAX_SIZE'),
+            name: new ClasslikeConstantName(ClasslikeName::fromFullyQualified(self::class), 'MAX_SIZE'),
             visibility: Visibility::Public,
             isFinal: false,
             type: new PrimitiveType('int'),
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public const int MAX_SIZE', $constant->format());
@@ -72,14 +73,13 @@ class ClasslikeConstantInfoTest extends TestCase
     public function testFormatFinal(): void
     {
         $constant = new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('VERSION'),
+            name: new ClasslikeConstantName(ClasslikeName::fromFullyQualified(self::class), 'VERSION'),
             visibility: Visibility::Public,
             isFinal: true,
             type: new PrimitiveType('string'),
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public final const string VERSION', $constant->format());
@@ -88,14 +88,13 @@ class ClasslikeConstantInfoTest extends TestCase
     public function testFormatPrivate(): void
     {
         $constant = new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('INTERNAL'),
+            name: new ClasslikeConstantName(ClasslikeName::fromFullyQualified(self::class), 'INTERNAL'),
             visibility: Visibility::Private,
             isFinal: false,
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('private const INTERNAL', $constant->format());
@@ -133,14 +132,16 @@ class ClasslikeConstantInfoTest extends TestCase
         ?string $docblock = null,
     ): ClasslikeConstantInfo {
         return new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('MAX_SIZE'),
+            name: new ClasslikeConstantName(
+                ClasslikeName::fromFullyQualified(ClasslikeConstantInfo::class),
+                'MAX_SIZE',
+            ),
             visibility: Visibility::Public,
             isFinal: true,
             type: new PrimitiveType('int'),
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: ClasslikeName::fromFullyQualified(ClasslikeConstantInfo::class),
         );
     }
 }

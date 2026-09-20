@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
-use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -43,10 +42,10 @@ final class MemberResolver implements MemberResolverInterface
 
     public function findConstant(
         ClasslikeName $class,
-        ClasslikeConstantName $constant,
+        string $name,
         Visibility $minVisibility,
     ): ?ClasslikeConstantInfo {
-        return $this->findMember($class, MemberKind::Constant, $constant->name, $minVisibility);
+        return $this->findMember($class, MemberKind::Constant, $name, $minVisibility);
     }
 
     public function findEnumCase(ClasslikeName $class, EnumCaseName $case): ?EnumCaseInfo

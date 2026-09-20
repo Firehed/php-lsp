@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
-use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
@@ -27,7 +26,7 @@ interface MemberResolverInterface
 {
     public function findConstant(
         ClasslikeName $class,
-        ClasslikeConstantName $constant,
+        string $name,
         Visibility $minVisibility,
     ): ?ClasslikeConstantInfo;
 
