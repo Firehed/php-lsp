@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
@@ -154,6 +156,85 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertNull(
             $source->lookupConstant(ConstantName::fromFullyQualified('App\debug')),
             'constant names are case-sensitive, so a case mismatch must not resolve',
+        );
+    }
+
+    public function testLookupMethodReturnsMethodOnDeclaringClass(): void
+    {
+        $backend = new FakeSymbolBackend([self::declaredClass(
+            'App\Widget',
+            file: 'widget.php',
+            methods: ['render' => self::methodInfo('App\Widget', 'render', file: 'widget.php')],
+        )]);
+        $source = new CompositeSymbolSource([$backend]);
+
+        $method = $source->lookupMethod(new MethodName(ClasslikeName::fromFullyQualified('App\Widget'), 'render'));
+
+        self::assertNotNull($method, 'the declared method must resolve by canonical identity');
+        self::assertSame('render', $method->name->name, 'the returned method must be the one asked for');
+        self::assertSame('widget.php', $method->file, 'the metadata must come from the declaring class');
+    }
+
+    public function testLookupMethodTakesTheFirstBackendThatAnswers(): void
+    {
+        $open = new FakeSymbolBackend([self::declaredClass(
+            'App\Widget',
+            file: 'open.php',
+            methods: ['render' => self::methodInfo('App\Widget', 'render', file: 'open.php')],
+        )]);
+        $vendor = new FakeSymbolBackend([self::declaredClass(
+            'App\Widget',
+            file: 'vendor.php',
+            methods: ['render' => self::methodInfo('App\Widget', 'render', file: 'vendor.php')],
+        )]);
+        $source = new CompositeSymbolSource([$open, $vendor]);
+
+        $method = $source->lookupMethod(new MethodName(ClasslikeName::fromFullyQualified('App\Widget'), 'render'));
+
+        self::assertNotNull($method, 'the method is declared, so the lookup must resolve');
+        self::assertSame(
+            'open.php',
+            $method->file,
+            'the earlier backend must win: an unsaved edit overrides the file it shadows (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupMethodReturnsNullWhenTheOwnerIsUnknown(): void
+    {
+        $source = new CompositeSymbolSource([new FakeSymbolBackend()]);
+
+        self::assertNull(
+            $source->lookupMethod(new MethodName(ClasslikeName::fromFullyQualified('App\Absent'), 'render')),
+            'an unknown owner is absence, not an error (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupMethodReturnsNullWhenTheMethodIsAbsent(): void
+    {
+        $backend = new FakeSymbolBackend([self::declaredClass(
+            'App\Widget',
+            file: 'widget.php',
+            methods: ['render' => self::methodInfo('App\Widget', 'render')],
+        )]);
+        $source = new CompositeSymbolSource([$backend]);
+
+        self::assertNull(
+            $source->lookupMethod(new MethodName(ClasslikeName::fromFullyQualified('App\Widget'), 'absent')),
+            'a known class with no such method is absence, not an error',
+        );
+    }
+
+    public function testLookupMethodMatchesCaseInsensitively(): void
+    {
+        $backend = new FakeSymbolBackend([self::declaredClass(
+            'App\Widget',
+            methods: ['render' => self::methodInfo('App\Widget', 'render')],
+        )]);
+        $source = new CompositeSymbolSource([$backend]);
+
+        self::assertNotNull(
+            $source->lookupMethod(new MethodName(ClasslikeName::fromFullyQualified('App\Widget'), 'RENDER')),
+            'method names are case-insensitive in PHP, so a case mismatch must still resolve',
         );
     }
 
