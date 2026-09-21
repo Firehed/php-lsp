@@ -50,7 +50,7 @@ final readonly class ClasslikeConstantInfo implements MemberInfoInterface, Symbo
         return MemberKind::Constant;
     }
 
-    public function getName(): ClasslikeConstantName
+    public function getName(): ClasslikeOwnedNameInterface
     {
         return $this->name;
     }
