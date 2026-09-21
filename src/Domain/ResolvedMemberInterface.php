@@ -16,7 +16,7 @@ interface ResolvedMemberInterface extends ResolvedSymbolInterface
 
     public function getMemberKind(): MemberKind;
 
-    public function getName(): MethodName|PropertyName|ClasslikeConstantName|EnumCaseName;
+    public function getName(): ClasslikeOwnedNameInterface;
 
     public function getVisibility(): Visibility;
 
