@@ -15,8 +15,9 @@ class PropertyInfoTest extends TestCase
 
     public function testConstruction(): void
     {
+        $owner = ClasslikeName::fromFullyQualified(PropertyInfo::class);
         $property = new PropertyInfo(
-            name: new PropertyName('value'),
+            name: new PropertyName($owner, 'value'),
             visibility: Visibility::Private,
             isStatic: false,
             isReadonly: true,
@@ -25,7 +26,6 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: '/path/to/file.php',
             line: 10,
-            declaringClass: ClasslikeName::fromFullyQualified(PropertyInfo::class),
         );
 
         self::assertSame('value', $property->name->name);
@@ -37,13 +37,13 @@ class PropertyInfoTest extends TestCase
         self::assertNull($property->docblock);
         self::assertSame('/path/to/file.php', $property->file);
         self::assertSame(10, $property->line);
-        self::assertSame(PropertyInfo::class, $property->declaringClass->qualifiedName->fullyQualifiedName());
+        self::assertSame(PropertyInfo::class, $property->name->owner->qualifiedName->fullyQualifiedName());
     }
 
     public function testFormatSimple(): void
     {
         $property = new PropertyInfo(
-            name: new PropertyName('name'),
+            name: new PropertyName(ClasslikeName::fromFullyQualified(self::class), 'name'),
             visibility: Visibility::Public,
             isStatic: false,
             isReadonly: false,
@@ -52,7 +52,6 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public string $name', $property->format());
@@ -61,7 +60,7 @@ class PropertyInfoTest extends TestCase
     public function testFormatStatic(): void
     {
         $property = new PropertyInfo(
-            name: new PropertyName('instance'),
+            name: new PropertyName(ClasslikeName::fromFullyQualified(self::class), 'instance'),
             visibility: Visibility::Private,
             isStatic: true,
             isReadonly: false,
@@ -70,7 +69,6 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('private static self $instance', $property->format());
@@ -79,7 +77,7 @@ class PropertyInfoTest extends TestCase
     public function testFormatReadonly(): void
     {
         $property = new PropertyInfo(
-            name: new PropertyName('id'),
+            name: new PropertyName(ClasslikeName::fromFullyQualified(self::class), 'id'),
             visibility: Visibility::Public,
             isStatic: false,
             isReadonly: true,
@@ -88,7 +86,6 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('public readonly int $id', $property->format());
@@ -97,7 +94,7 @@ class PropertyInfoTest extends TestCase
     public function testFormatNoType(): void
     {
         $property = new PropertyInfo(
-            name: new PropertyName('data'),
+            name: new PropertyName(ClasslikeName::fromFullyQualified(self::class), 'data'),
             visibility: Visibility::Protected,
             isStatic: false,
             isReadonly: false,
@@ -106,7 +103,6 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('protected $data', $property->format());
@@ -115,7 +111,7 @@ class PropertyInfoTest extends TestCase
     public function testFormatAllModifiers(): void
     {
         $property = new PropertyInfo(
-            name: new PropertyName('cache'),
+            name: new PropertyName(ClasslikeName::fromFullyQualified(self::class), 'cache'),
             visibility: Visibility::Private,
             isStatic: true,
             isReadonly: true,
@@ -124,7 +120,6 @@ class PropertyInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
 
         self::assertSame('private static readonly array $cache', $property->format());
@@ -145,7 +140,7 @@ class PropertyInfoTest extends TestCase
     protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): PropertyInfo
     {
         return new PropertyInfo(
-            name: new PropertyName('value'),
+            name: new PropertyName(ClasslikeName::fromFullyQualified(PropertyInfo::class), 'value'),
             visibility: Visibility::Public,
             isStatic: false,
             isReadonly: false,
@@ -154,7 +149,6 @@ class PropertyInfoTest extends TestCase
             docblock: $docblock,
             file: $file,
             line: $line,
-            declaringClass: ClasslikeName::fromFullyQualified(PropertyInfo::class),
         );
     }
 }

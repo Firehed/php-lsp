@@ -8,9 +8,8 @@ namespace Firehed\PhpLsp\Domain;
  * Metadata about a class-owned constant.
  *
  * Class-owned means declared inside a class-like — a class, interface, trait,
- * or enum. It carries the declaring class as a required field, since a
- * constant reached through the member-resolver walk always has one; the
- * free-standing sibling is {@see ConstantInfo}.
+ * or enum. The declaring class is carried on the {@see ClasslikeConstantName}
+ * identity; the free-standing sibling is {@see ConstantInfo}.
  */
 final readonly class ClasslikeConstantInfo implements MemberInfoInterface, SymbolInfoInterface
 {
@@ -24,7 +23,6 @@ final readonly class ClasslikeConstantInfo implements MemberInfoInterface, Symbo
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ClasslikeName $declaringClass,
     ) {
     }
 
@@ -44,7 +42,7 @@ final readonly class ClasslikeConstantInfo implements MemberInfoInterface, Symbo
 
     public function getDeclaringClass(): ClasslikeName
     {
-        return $this->declaringClass;
+        return $this->name->owner;
     }
 
     public function getMemberKind(): MemberKind

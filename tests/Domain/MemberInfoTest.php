@@ -33,14 +33,13 @@ class MemberInfoTest extends TestCase
         $declaringClass = ClasslikeName::fromFullyQualified(self::class);
 
         $constant = new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('MAX'),
+            name: new ClasslikeConstantName($declaringClass, 'MAX'),
             visibility: Visibility::Protected,
             isFinal: false,
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
         // A constant is reached on the class, whatever its visibility says.
         yield 'constant' => [$constant, Visibility::Protected, true];
@@ -69,7 +68,7 @@ class MemberInfoTest extends TestCase
         yield 'static method' => [$method, Visibility::Private, true];
 
         $property = new PropertyInfo(
-            name: new PropertyName('value'),
+            name: new PropertyName($declaringClass, 'value'),
             visibility: Visibility::Public,
             isStatic: false,
             isReadonly: false,
@@ -78,7 +77,6 @@ class MemberInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
         yield 'instance property' => [$property, Visibility::Public, false];
     }

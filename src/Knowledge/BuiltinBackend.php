@@ -202,7 +202,7 @@ final class BuiltinBackend implements SymbolBackendInterface
 
             $name = $constant->getName();
             $constants[$name] = new ClasslikeConstantInfo(
-                name: new ClasslikeConstantName($name),
+                name: new ClasslikeConstantName($className, $name),
                 // No built-in class ships non-public constants; hard-code Public.
                 visibility: Visibility::Public,
                 isFinal: $constant->isFinal(),
@@ -210,7 +210,6 @@ final class BuiltinBackend implements SymbolBackendInterface
                 docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
-                declaringClass: $className,
             );
         }
 
@@ -328,7 +327,7 @@ final class BuiltinBackend implements SymbolBackendInterface
 
             $name = $property->getName();
             $properties[$name] = new PropertyInfo(
-                name: new PropertyName($name),
+                name: new PropertyName($className, $name),
                 visibility: $this->visibilityFromReflectionProperty($property),
                 isStatic: $property->isStatic(),
                 isReadonly: $property->isReadOnly(),
@@ -337,7 +336,6 @@ final class BuiltinBackend implements SymbolBackendInterface
                 docblock: $property->getDocComment() !== false ? $property->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
-                declaringClass: $className,
             );
         }
 

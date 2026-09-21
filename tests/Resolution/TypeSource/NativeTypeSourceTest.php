@@ -156,10 +156,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testPropertyPromoted(): void
     {
-        $type = $this->source->forProperty(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new PropertyName('name'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forProperty($class, new PropertyName($class, 'name'));
 
         self::assertInstanceOf(PrimitiveType::class, $type, 'promoted-property $name has an int type');
         self::assertSame('string', $type->format());
@@ -167,10 +165,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testPropertyStatic(): void
     {
-        $type = $this->source->forProperty(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new PropertyName('instanceCount'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forProperty($class, new PropertyName($class, 'instanceCount'));
 
         self::assertInstanceOf(PrimitiveType::class, $type, 'static $instanceCount is int');
         self::assertSame('int', $type->format());
@@ -178,10 +174,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testPropertyInheritedFromTrait(): void
     {
-        $type = $this->source->forProperty(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new PropertyName('displayName'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forProperty($class, new PropertyName($class, 'displayName'));
 
         self::assertInstanceOf(PrimitiveType::class, $type, 'trait property is reached via member walk');
         self::assertSame('string', $type->format());
@@ -189,10 +183,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testClassConstantUntypedReturnsNull(): void
     {
-        $type = $this->source->forClassConstant(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new ClasslikeConstantName('DEFAULT_ROLE'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forClassConstant($class, new ClasslikeConstantName($class, 'DEFAULT_ROLE'));
 
         self::assertNull($type, 'untyped class constants have no declared type');
     }

@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Repository;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
-use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\MemberFilter;
@@ -16,7 +15,6 @@ use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -42,10 +40,10 @@ final class MemberResolver implements MemberResolverInterface
 
     public function findConstant(
         ClasslikeName $class,
-        ClasslikeConstantName $constant,
+        string $name,
         Visibility $minVisibility,
     ): ?ClasslikeConstantInfo {
-        return $this->findMember($class, MemberKind::Constant, $constant->name, $minVisibility);
+        return $this->findMember($class, MemberKind::Constant, $name, $minVisibility);
     }
 
     public function findEnumCase(ClasslikeName $class, string $name): ?EnumCaseInfo
@@ -72,10 +70,10 @@ final class MemberResolver implements MemberResolverInterface
 
     public function findProperty(
         ClasslikeName $class,
-        PropertyName $property,
+        string $name,
         Visibility $minVisibility,
     ): ?PropertyInfo {
-        return $this->findMember($class, MemberKind::Property, $property->name, $minVisibility);
+        return $this->findMember($class, MemberKind::Property, $name, $minVisibility);
     }
 
     /**

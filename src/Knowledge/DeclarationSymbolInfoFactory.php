@@ -180,7 +180,7 @@ final readonly class DeclarationSymbolInfoFactory
             foreach ($stmt->consts as $const) {
                 $name = $const->name->toString();
                 $constants[$name] = new ClasslikeConstantInfo(
-                    name: new ClasslikeConstantName($name),
+                    name: new ClasslikeConstantName($className, $name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
                     type: TypeFactory::fromNode(
@@ -191,7 +191,6 @@ final readonly class DeclarationSymbolInfoFactory
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),
-                    declaringClass: $className,
                 );
             }
         }
@@ -344,7 +343,7 @@ final readonly class DeclarationSymbolInfoFactory
                 foreach ($stmt->props as $prop) {
                     $name = $prop->name->toString();
                     $properties[$name] = new PropertyInfo(
-                        name: new PropertyName($name),
+                        name: new PropertyName($className, $name),
                         visibility: $this->visibilityFromFlags($stmt->flags),
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
@@ -357,7 +356,6 @@ final readonly class DeclarationSymbolInfoFactory
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
                         line: $stmt->getStartLine(),
-                        declaringClass: $className,
                     );
                 }
             }
@@ -373,7 +371,7 @@ final readonly class DeclarationSymbolInfoFactory
 
                     $name = $param->var->name;
                     $properties[$name] = new PropertyInfo(
-                        name: new PropertyName($name),
+                        name: new PropertyName($className, $name),
                         visibility: $this->visibilityFromFlags($param->flags),
                         isStatic: false,
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
@@ -386,7 +384,6 @@ final readonly class DeclarationSymbolInfoFactory
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
                         line: $param->getStartLine(),
-                        declaringClass: $className,
                     );
                 }
             }
