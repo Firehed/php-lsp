@@ -41,7 +41,7 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
         return MemberKind::EnumCase;
     }
 
-    public function getName(): EnumCaseName
+    public function getName(): ClasslikeOwnedNameInterface
     {
         return $this->name;
     }

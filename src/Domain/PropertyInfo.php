@@ -50,7 +50,7 @@ final readonly class PropertyInfo implements MemberInfoInterface
         return MemberKind::Property;
     }
 
-    public function getName(): PropertyName
+    public function getName(): ClasslikeOwnedNameInterface
     {
         return $this->name;
     }
