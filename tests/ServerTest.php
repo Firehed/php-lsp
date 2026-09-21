@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ServerInfo;
@@ -261,7 +262,7 @@ class ServerTest extends TestCase
     public function testGatedMessageIsNeverDispatched(
         array $preamble,
         string $gated,
-        ?int $expectedErrorCode,
+        ?ErrorCode $expectedErrorCode,
     ): void {
         $spy = new class implements HandlerInterface {
             /** @var list<string> */
@@ -318,7 +319,7 @@ class ServerTest extends TestCase
      * The preamble carries the requests that produce a response frame, so the
      * notification cases can assert on the total frame count.
      *
-     * @return iterable<string, array{list<string>, string, ?int}>
+     * @return iterable<string, array{list<string>, string, ?ErrorCode}>
      *
      * @codeCoverageIgnore
      */
@@ -341,9 +342,9 @@ class ServerTest extends TestCase
 
         // Only the id-bearing preamble messages produce response frames, so the
         // expected frame count for the notification cases is the request count.
-        yield 'request before initialize' => [[], $request, -32002];
+        yield 'request before initialize' => [[], $request, ErrorCode::ServerNotInitialized];
         yield 'notification before initialize' => [[], $notification, null];
-        yield 'request after shutdown' => [[$initialize, $initialized, $shutdown], $request, -32600];
+        yield 'request after shutdown' => [[$initialize, $initialized, $shutdown], $request, ErrorCode::InvalidRequest];
         yield 'notification after shutdown' => [[$initialize, $initialized, $shutdown], $notification, null];
     }
 
@@ -996,14 +997,14 @@ class ServerTest extends TestCase
     /**
      * @param array<array-key, mixed> $response
      */
-    private function errorCode(array $response): int
+    private function errorCode(array $response): ErrorCode
     {
         $error = $response['error'] ?? null;
         self::assertIsArray($error, 'the response carries an error object');
         $code = $error['code'] ?? null;
         self::assertIsInt($code, 'the error carries an integer code');
 
-        return $code;
+        return ErrorCode::from($code);
     }
 
     /**

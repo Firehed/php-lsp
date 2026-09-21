@@ -9,7 +9,7 @@ use JsonSerializable;
 final readonly class ResponseError implements JsonSerializable
 {
     public function __construct(
-        public int $code,
+        public ErrorCode $code,
         public string $message,
         public mixed $data = null,
     ) {
@@ -17,17 +17,17 @@ final readonly class ResponseError implements JsonSerializable
 
     public static function parseError(?string $data = null): self
     {
-        return new self(-32700, 'Parse error', $data);
+        return new self(ErrorCode::ParseError, 'Parse error', $data);
     }
 
     public static function invalidRequest(?string $data = null): self
     {
-        return new self(-32600, 'Invalid Request', $data);
+        return new self(ErrorCode::InvalidRequest, 'Invalid Request', $data);
     }
 
     public static function serverNotInitialized(?string $data = null): self
     {
-        return new self(-32002, 'Server not initialized', $data);
+        return new self(ErrorCode::ServerNotInitialized, 'Server not initialized', $data);
     }
 
     public static function methodNotFound(?string $method = null): self
@@ -35,17 +35,17 @@ final readonly class ResponseError implements JsonSerializable
         $message = $method !== null
             ? "Method not found: $method"
             : 'Method not found';
-        return new self(-32601, $message);
+        return new self(ErrorCode::MethodNotFound, $message);
     }
 
     public static function invalidParams(?string $data = null): self
     {
-        return new self(-32602, 'Invalid params', $data);
+        return new self(ErrorCode::InvalidParams, 'Invalid params', $data);
     }
 
     public static function internalError(?string $data = null): self
     {
-        return new self(-32603, 'Internal error', $data);
+        return new self(ErrorCode::InternalError, 'Internal error', $data);
     }
 
     /**
@@ -54,7 +54,7 @@ final readonly class ResponseError implements JsonSerializable
     public function jsonSerialize(): array
     {
         $result = [
-            'code' => $this->code,
+            'code' => $this->code->value,
             'message' => $this->message,
         ];
         if ($this->data !== null) {

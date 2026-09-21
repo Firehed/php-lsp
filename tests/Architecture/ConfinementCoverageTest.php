@@ -38,6 +38,7 @@ final class ConfinementCoverageTest extends TestCase
         \Firehed\PhpLsp\Domain\LateBindingKeyword::class => 'the self/static/parent keywords',
         \Firehed\PhpLsp\Domain\NameCase::class => 'a case rule, applied rather than branched on',
         \Firehed\PhpLsp\Domain\Visibility::class => 'an ordering',
+        \Firehed\PhpLsp\Protocol\ErrorCode::class => 'JSON-RPC/LSP wire value',
         \Firehed\PhpLsp\Protocol\MarkupKind::class => 'LSP wire value',
         \Firehed\PhpLsp\Protocol\PositionEncoding::class => 'LSP wire value',
         \Firehed\PhpLsp\Resolution\ReferenceKind::class => 'how a name is reachable from the cursor',

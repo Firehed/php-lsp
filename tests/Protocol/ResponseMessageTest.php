@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Protocol;
 
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -51,7 +52,7 @@ class ResponseMessageTest extends TestCase
 
     public function testErrorResponseJsonFormat(): void
     {
-        $error = new ResponseError(-32601, 'Method not found');
+        $error = new ResponseError(ErrorCode::MethodNotFound, 'Method not found');
         $response = ResponseMessage::error(1, $error);
 
         $decoded = $this->encodeAndDecode($response);
@@ -67,7 +68,7 @@ class ResponseMessageTest extends TestCase
 
     public function testErrorResponseWithData(): void
     {
-        $error = new ResponseError(-32602, 'Invalid params', ['expected' => 'string']);
+        $error = new ResponseError(ErrorCode::InvalidParams, 'Invalid params', ['expected' => 'string']);
         $response = ResponseMessage::error(2, $error);
 
         $decoded = $this->encodeAndDecode($response);
@@ -80,7 +81,7 @@ class ResponseMessageTest extends TestCase
 
     public function testErrorResponseWithNullId(): void
     {
-        $error = new ResponseError(-32700, 'Parse error');
+        $error = new ResponseError(ErrorCode::ParseError, 'Parse error');
         $response = ResponseMessage::error(null, $error);
 
         $decoded = $this->encodeAndDecode($response);
@@ -91,23 +92,23 @@ class ResponseMessageTest extends TestCase
     }
 
     #[DataProvider('errorCodesProvider')]
-    public function testStandardErrorCodes(int $code, ResponseError $error): void
+    public function testStandardErrorCodes(ErrorCode $code, ResponseError $error): void
     {
         self::assertSame($code, $error->code);
     }
 
     /**
-     * @return array<string, array{int, ResponseError}>
+     * @return array<string, array{ErrorCode, ResponseError}>
      * @codeCoverageIgnore
      */
     public static function errorCodesProvider(): array
     {
         return [
-            'parseError' => [-32700, ResponseError::parseError()],
-            'invalidRequest' => [-32600, ResponseError::invalidRequest()],
-            'methodNotFound' => [-32601, ResponseError::methodNotFound()],
-            'invalidParams' => [-32602, ResponseError::invalidParams()],
-            'internalError' => [-32603, ResponseError::internalError()],
+            'parseError' => [ErrorCode::ParseError, ResponseError::parseError()],
+            'invalidRequest' => [ErrorCode::InvalidRequest, ResponseError::invalidRequest()],
+            'methodNotFound' => [ErrorCode::MethodNotFound, ResponseError::methodNotFound()],
+            'invalidParams' => [ErrorCode::InvalidParams, ResponseError::invalidParams()],
+            'internalError' => [ErrorCode::InternalError, ResponseError::internalError()],
         ];
     }
 

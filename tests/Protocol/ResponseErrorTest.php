@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Protocol;
 
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ResponseError::class)]
+#[CoversClass(ErrorCode::class)]
 class ResponseErrorTest extends TestCase
 {
     /**
@@ -22,7 +24,7 @@ class ResponseErrorTest extends TestCase
     #[DataProvider('errorFactories')]
     public function testFactoryUsesTheSpecifiedCode(int $expected, callable $factory): void
     {
-        self::assertSame($expected, $factory()->code, 'the factory must emit the specified error code');
+        self::assertSame($expected, $factory()->code->value, 'the factory must emit the specified error code');
     }
 
     /**
