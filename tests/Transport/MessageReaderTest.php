@@ -6,9 +6,9 @@ namespace Firehed\PhpLsp\Tests\Transport;
 
 use Amp\ByteStream\ReadableBuffer;
 use Amp\ByteStream\ReadableIterableStream;
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
-use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\MessageReader;
@@ -142,7 +142,7 @@ class MessageReaderTest extends TestCase
             $result,
             'a header block carrying no Content-Length is a malformed frame',
         );
-        self::assertSame(ResponseError::parseError()->code, $result->error->code);
+        self::assertSame(ErrorCode::ParseError, $result->error->code);
     }
 
     public function testUnterminatedHeaderIsNotEndOfStream(): void
@@ -248,7 +248,7 @@ class MessageReaderTest extends TestCase
 
         self::assertInstanceOf(MalformedFrame::class, $result, 'an unrecoverable body is a malformed frame');
         self::assertSame(
-            ResponseError::parseError()->code,
+            ErrorCode::ParseError,
             $result->error->code,
             'a body that does not parse yields ParseError',
         );
@@ -325,7 +325,7 @@ class MessageReaderTest extends TestCase
 
         self::assertInstanceOf(MalformedFrame::class, $result, 'a length no stream can satisfy is malformed');
         self::assertSame(
-            ResponseError::parseError()->code,
+            ErrorCode::ParseError,
             $result->error->code,
             'a body that never reaches its declared length yields ParseError',
         );
@@ -419,7 +419,7 @@ class MessageReaderTest extends TestCase
 
         self::assertInstanceOf(MalformedFrame::class, $result);
         self::assertSame(
-            ResponseError::parseError()->code,
+            ErrorCode::ParseError,
             $result->error->code,
             'unparseable JSON yields ParseError (RFC 1 §9)',
         );
@@ -439,7 +439,7 @@ class MessageReaderTest extends TestCase
 
         self::assertInstanceOf(MalformedFrame::class, $result, "should reject: $body");
         self::assertSame(
-            ResponseError::invalidRequest()->code,
+            ErrorCode::InvalidRequest,
             $result->error->code,
             "valid JSON that is not a JSON-RPC message yields InvalidRequest: $body",
         );

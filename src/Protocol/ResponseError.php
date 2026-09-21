@@ -8,44 +8,14 @@ use JsonSerializable;
 
 final readonly class ResponseError implements JsonSerializable
 {
+    public string $message;
+
     public function __construct(
-        public int $code,
-        public string $message,
+        public ErrorCode $code,
+        ?string $message = null,
         public mixed $data = null,
     ) {
-    }
-
-    public static function parseError(?string $data = null): self
-    {
-        return new self(-32700, 'Parse error', $data);
-    }
-
-    public static function invalidRequest(?string $data = null): self
-    {
-        return new self(-32600, 'Invalid Request', $data);
-    }
-
-    public static function serverNotInitialized(?string $data = null): self
-    {
-        return new self(-32002, 'Server not initialized', $data);
-    }
-
-    public static function methodNotFound(?string $method = null): self
-    {
-        $message = $method !== null
-            ? "Method not found: $method"
-            : 'Method not found';
-        return new self(-32601, $message);
-    }
-
-    public static function invalidParams(?string $data = null): self
-    {
-        return new self(-32602, 'Invalid params', $data);
-    }
-
-    public static function internalError(?string $data = null): self
-    {
-        return new self(-32603, 'Internal error', $data);
+        $this->message = $message ?? $code->defaultMessage();
     }
 
     /**
@@ -54,7 +24,7 @@ final readonly class ResponseError implements JsonSerializable
     public function jsonSerialize(): array
     {
         $result = [
-            'code' => $this->code,
+            'code' => $this->code->value,
             'message' => $this->message,
         ];
         if ($this->data !== null) {

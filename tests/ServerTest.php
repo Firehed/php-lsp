@@ -11,8 +11,8 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Server;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -192,7 +192,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::methodNotFound()->code,
+            ErrorCode::MethodNotFound,
             $this->errorCode($this->responseWithId($responses, 1)),
             'an unknown method gets MethodNotFound',
         );
@@ -214,7 +214,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::serverNotInitialized()->code,
+            ErrorCode::ServerNotInitialized,
             $this->errorCode($this->responseWithId($responses, 5)),
             'a request before initialize gets ServerNotInitialized (RFC 1 §4.8)',
         );
@@ -241,7 +241,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::invalidRequest()->code,
+            ErrorCode::InvalidRequest,
             $this->errorCode($this->responseWithId($responses, 5)),
             'a request after shutdown gets InvalidRequest (RFC 1 §4.8)',
         );
@@ -261,7 +261,7 @@ class ServerTest extends TestCase
     public function testGatedMessageIsNeverDispatched(
         array $preamble,
         string $gated,
-        ?int $expectedErrorCode,
+        ?ErrorCode $expectedErrorCode,
     ): void {
         $spy = new class implements HandlerInterface {
             /** @var list<string> */
@@ -318,7 +318,7 @@ class ServerTest extends TestCase
      * The preamble carries the requests that produce a response frame, so the
      * notification cases can assert on the total frame count.
      *
-     * @return iterable<string, array{list<string>, string, ?int}>
+     * @return iterable<string, array{list<string>, string, ?ErrorCode}>
      *
      * @codeCoverageIgnore
      */
@@ -341,9 +341,9 @@ class ServerTest extends TestCase
 
         // Only the id-bearing preamble messages produce response frames, so the
         // expected frame count for the notification cases is the request count.
-        yield 'request before initialize' => [[], $request, -32002];
+        yield 'request before initialize' => [[], $request, ErrorCode::ServerNotInitialized];
         yield 'notification before initialize' => [[], $notification, null];
-        yield 'request after shutdown' => [[$initialize, $initialized, $shutdown], $request, -32600];
+        yield 'request after shutdown' => [[$initialize, $initialized, $shutdown], $request, ErrorCode::InvalidRequest];
         yield 'notification after shutdown' => [[$initialize, $initialized, $shutdown], $notification, null];
     }
 
@@ -589,7 +589,7 @@ class ServerTest extends TestCase
         }
 
         self::assertSame(
-            ResponseError::internalError()->code,
+            ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
             'a throwing handler yields InternalError (RFC 1 §9)',
         );
@@ -637,7 +637,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::internalError()->code,
+            ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
             'a throwing supports() yields InternalError (RFC 1 §9)',
         );
@@ -690,7 +690,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::internalError()->code,
+            ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
             'a result that cannot be encoded yields InternalError (RFC 1 §9)',
         );
@@ -742,7 +742,7 @@ class ServerTest extends TestCase
         $parseErrors = array_filter(
             $responses,
             fn (array $response): bool => ($response['id'] ?? null) === null
-                && $this->errorCode($response) === ResponseError::parseError()->code,
+                && $this->errorCode($response) === ErrorCode::ParseError,
         );
         self::assertCount(1, $parseErrors, 'the malformed frame is answered with a null-id ParseError');
 
@@ -775,7 +775,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::invalidRequest()->code,
+            ErrorCode::InvalidRequest,
             $this->errorCode($this->responseWithId($responses, 6)),
             'the malformed frame is answered at the id the reader recovered from it',
         );
@@ -996,14 +996,14 @@ class ServerTest extends TestCase
     /**
      * @param array<array-key, mixed> $response
      */
-    private function errorCode(array $response): int
+    private function errorCode(array $response): ErrorCode
     {
         $error = $response['error'] ?? null;
         self::assertIsArray($error, 'the response carries an error object');
         $code = $error['code'] ?? null;
         self::assertIsInt($code, 'the error carries an integer code');
 
-        return $code;
+        return ErrorCode::from($code);
     }
 
     /**

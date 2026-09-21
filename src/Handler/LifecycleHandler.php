@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\InitializedListenerInterface;
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -65,13 +66,13 @@ final class LifecycleHandler implements HandlerInterface
             return null;
         }
         if ($this->shutdownRequested) {
-            return ResponseError::invalidRequest();
+            return new ResponseError(ErrorCode::InvalidRequest);
         }
         if ($message->method === 'initialize') {
-            return $this->initialized ? ResponseError::invalidRequest() : null;
+            return $this->initialized ? new ResponseError(ErrorCode::InvalidRequest) : null;
         }
         if (!$this->initialized) {
-            return ResponseError::serverNotInitialized();
+            return new ResponseError(ErrorCode::ServerNotInitialized);
         }
         return null;
     }
