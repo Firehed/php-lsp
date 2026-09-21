@@ -238,6 +238,25 @@ final class CompositeSymbolSourceTest extends TestCase
         );
     }
 
+    public function testLookupMethodResolvesTraitAliasOnComposingClass(): void
+    {
+        self::markTestSkipped(
+            'Trait alias handling for lookupMethod pending; see #611 phase 1 design decision. '
+            . 'Per #582: use T { foo as baz; } produces MethodName(C, "baz") as a first-class identity on C, '
+            . 'and lookupMethod(MethodName(C, "baz")) must return the synthesized alias entry '
+            . '(owner=C, aliasedFrom=MethodName(T, "foo")).',
+        );
+    }
+
+    public function testLookupMethodReturnsNullForOriginalNameOfAnAlias(): void
+    {
+        self::markTestSkipped(
+            'Trait alias handling for lookupMethod pending; see #611 phase 1 design decision. '
+            . 'Per #582: use T { foo as baz; } means MethodName(C, "foo") does not exist as an identity '
+            . 'on C, so lookupMethod(MethodName(C, "foo")) must return null even though T declares foo.',
+        );
+    }
+
     public function testChildrenOfMergesEveryBackendWithTheEarlierWinningAClash(): void
     {
         $open = new FakeSymbolBackend(namespaces: [
