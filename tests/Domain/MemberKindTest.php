@@ -113,14 +113,13 @@ class MemberKindTest extends TestCase
     private static function createConstantInfo(): ClasslikeConstantInfo
     {
         return new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('MAX'),
+            name: new ClasslikeConstantName(ClasslikeName::fromFullyQualified(self::class), 'MAX'),
             visibility: Visibility::Public,
             isFinal: false,
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 

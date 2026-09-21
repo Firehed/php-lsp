@@ -34,7 +34,7 @@ final readonly class NativeTypeSource implements TypeSourceInterface
 
     public function forClassConstant(ClasslikeName $class, ClasslikeConstantName $constant): ?TypeInterface
     {
-        return $this->members->findConstant($class, $constant, Visibility::Private)?->type;
+        return $this->members->findConstant($class, $constant->name, Visibility::Private)?->type;
     }
 
     public function forGlobalConstant(ConstantName $constant): ?TypeInterface

@@ -33,14 +33,13 @@ class MemberInfoTest extends TestCase
         $declaringClass = ClasslikeName::fromFullyQualified(self::class);
 
         $constant = new ClasslikeConstantInfo(
-            name: new ClasslikeConstantName('MAX'),
+            name: new ClasslikeConstantName($declaringClass, 'MAX'),
             visibility: Visibility::Protected,
             isFinal: false,
             type: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
         // A constant is reached on the class, whatever its visibility says.
         yield 'constant' => [$constant, Visibility::Protected, true];

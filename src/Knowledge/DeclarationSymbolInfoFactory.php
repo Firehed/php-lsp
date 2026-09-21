@@ -180,7 +180,7 @@ final readonly class DeclarationSymbolInfoFactory
             foreach ($stmt->consts as $const) {
                 $name = $const->name->toString();
                 $constants[$name] = new ClasslikeConstantInfo(
-                    name: new ClasslikeConstantName($name),
+                    name: new ClasslikeConstantName($className, $name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
                     type: TypeFactory::fromNode(
@@ -191,7 +191,6 @@ final readonly class DeclarationSymbolInfoFactory
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),
-                    declaringClass: $className,
                 );
             }
         }

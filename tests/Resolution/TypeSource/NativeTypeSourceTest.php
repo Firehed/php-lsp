@@ -183,10 +183,8 @@ final class NativeTypeSourceTest extends TestCase
 
     public function testClassConstantUntypedReturnsNull(): void
     {
-        $type = $this->source->forClassConstant(
-            ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User'),
-            new ClasslikeConstantName('DEFAULT_ROLE'),
-        );
+        $class = ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
+        $type = $this->source->forClassConstant($class, new ClasslikeConstantName($class, 'DEFAULT_ROLE'));
 
         self::assertNull($type, 'untyped class constants have no declared type');
     }
