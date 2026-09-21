@@ -16,7 +16,6 @@ use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -72,10 +71,10 @@ final class MemberResolver implements MemberResolverInterface
 
     public function findProperty(
         ClasslikeName $class,
-        PropertyName $property,
+        string $name,
         Visibility $minVisibility,
     ): ?PropertyInfo {
-        return $this->findMember($class, MemberKind::Property, $property->name, $minVisibility);
+        return $this->findMember($class, MemberKind::Property, $name, $minVisibility);
     }
 
     /**

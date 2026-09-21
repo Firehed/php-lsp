@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
 
 /**
@@ -40,7 +39,7 @@ interface MemberResolverInterface
 
     public function findProperty(
         ClasslikeName $class,
-        PropertyName $property,
+        string $name,
         Visibility $minVisibility,
     ): ?PropertyInfo;
 

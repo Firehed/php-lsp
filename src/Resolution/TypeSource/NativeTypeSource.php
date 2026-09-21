@@ -82,6 +82,6 @@ final readonly class NativeTypeSource implements TypeSourceInterface
 
     public function forProperty(ClasslikeName $class, PropertyName $property): ?TypeInterface
     {
-        return $this->members->findProperty($class, $property, Visibility::Private)?->type;
+        return $this->members->findProperty($class, $property->name, Visibility::Private)?->type;
     }
 }

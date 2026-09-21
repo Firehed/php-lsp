@@ -328,7 +328,7 @@ final class BuiltinBackend implements SymbolBackendInterface
 
             $name = $property->getName();
             $properties[$name] = new PropertyInfo(
-                name: new PropertyName($name),
+                name: new PropertyName($className, $name),
                 visibility: $this->visibilityFromReflectionProperty($property),
                 isStatic: $property->isStatic(),
                 isReadonly: $property->isReadOnly(),
@@ -337,7 +337,6 @@ final class BuiltinBackend implements SymbolBackendInterface
                 docblock: $property->getDocComment() !== false ? $property->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
-                declaringClass: $className,
             );
         }
 

@@ -69,7 +69,7 @@ class MemberInfoTest extends TestCase
         yield 'static method' => [$method, Visibility::Private, true];
 
         $property = new PropertyInfo(
-            name: new PropertyName('value'),
+            name: new PropertyName($declaringClass, 'value'),
             visibility: Visibility::Public,
             isStatic: false,
             isReadonly: false,
@@ -78,7 +78,6 @@ class MemberInfoTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
         yield 'instance property' => [$property, Visibility::Public, false];
     }
