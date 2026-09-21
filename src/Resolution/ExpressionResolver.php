@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DocblockParser;
-use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
@@ -472,7 +471,7 @@ final class ExpressionResolver
             return null;
         }
         $className = ClasslikeName::fromFullyQualified($classNameStr);
-        $enumCase = $this->memberResolver->findEnumCase($className, new EnumCaseName($expr->name->toString()));
+        $enumCase = $this->memberResolver->findEnumCase($className, $expr->name->toString());
         if ($enumCase !== null) {
             return $enumCase;
         }

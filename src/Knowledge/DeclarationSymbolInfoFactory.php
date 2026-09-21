@@ -216,12 +216,11 @@ final readonly class DeclarationSymbolInfoFactory
 
             $name = $stmt->name->toString();
             $cases[$name] = new EnumCaseInfo(
-                name: new EnumCaseName($name),
+                name: new EnumCaseName($className, $name),
                 backingValue: $this->extractEnumCaseBackingValue($stmt),
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
                 line: $stmt->getStartLine(),
-                declaringClass: $className,
             );
         }
 

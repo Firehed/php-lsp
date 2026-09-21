@@ -12,7 +12,9 @@ class EnumCaseNameTest extends TestCase
 {
     public function testConstruction(): void
     {
-        $name = new EnumCaseName('Active');
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $name = new EnumCaseName($owner, 'Active');
         self::assertSame('Active', $name->name);
+        self::assertSame($owner, $name->owner);
     }
 }

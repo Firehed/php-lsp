@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Repository;
 use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
-use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MemberKind;
@@ -29,7 +28,7 @@ interface MemberResolverInterface
         Visibility $minVisibility,
     ): ?ClasslikeConstantInfo;
 
-    public function findEnumCase(ClasslikeName $class, EnumCaseName $case): ?EnumCaseInfo;
+    public function findEnumCase(ClasslikeName $class, string $name): ?EnumCaseInfo;
 
     public function findMethod(
         ClasslikeName $class,

@@ -126,12 +126,11 @@ class MemberKindTest extends TestCase
     private static function createEnumCaseInfo(): EnumCaseInfo
     {
         return new EnumCaseInfo(
-            name: new EnumCaseName('Draft'),
+            name: new EnumCaseName(ClasslikeName::fromFullyQualified(self::class), 'Draft'),
             backingValue: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 

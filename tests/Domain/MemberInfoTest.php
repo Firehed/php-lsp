@@ -45,12 +45,11 @@ class MemberInfoTest extends TestCase
         yield 'constant' => [$constant, Visibility::Protected, true];
 
         $enumCase = new EnumCaseInfo(
-            name: new EnumCaseName('Draft'),
+            name: new EnumCaseName($declaringClass, 'Draft'),
             backingValue: null,
             docblock: null,
             file: null,
             line: null,
-            declaringClass: $declaringClass,
         );
         yield 'enum case' => [$enumCase, Visibility::Public, true];
 

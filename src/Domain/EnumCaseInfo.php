@@ -17,7 +17,6 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
         public ?string $docblock,
         public ?string $file,
         public ?int $line,
-        public ClasslikeName $declaringClass,
     ) {
     }
 
@@ -34,7 +33,7 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
 
     public function getDeclaringClass(): ClasslikeName
     {
-        return $this->declaringClass;
+        return $this->name->owner;
     }
 
     public function getMemberKind(): MemberKind
@@ -53,7 +52,7 @@ final readonly class EnumCaseInfo implements MemberInfoInterface
      */
     public function getType(): ClasslikeType
     {
-        return new ClasslikeType($this->declaringClass);
+        return new ClasslikeType($this->name->owner);
     }
 
     /**
