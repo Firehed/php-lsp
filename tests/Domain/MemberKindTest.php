@@ -155,7 +155,7 @@ class MemberKindTest extends TestCase
     private static function createPropertyInfo(): PropertyInfo
     {
         return new PropertyInfo(
-            name: new PropertyName('value'),
+            name: new PropertyName(ClasslikeName::fromFullyQualified(self::class), 'value'),
             visibility: Visibility::Public,
             isStatic: false,
             isReadonly: false,
@@ -164,7 +164,6 @@ class MemberKindTest extends TestCase
             docblock: null,
             file: null,
             line: null,
-            declaringClass: ClasslikeName::fromFullyQualified(self::class),
         );
     }
 }

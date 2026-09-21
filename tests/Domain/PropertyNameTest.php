@@ -12,7 +12,9 @@ class PropertyNameTest extends TestCase
 {
     public function testConstruction(): void
     {
-        $name = new PropertyName('myProperty');
+        $owner = ClasslikeName::fromFullyQualified('Some\\Cls');
+        $name = new PropertyName($owner, 'myProperty');
         self::assertSame('myProperty', $name->name);
+        self::assertSame($owner, $name->owner);
     }
 }
