@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution\TypeSource;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
-use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodName;
@@ -32,9 +31,9 @@ final readonly class NativeTypeSource implements TypeSourceInterface
     ) {
     }
 
-    public function forClassConstant(ClasslikeName $class, ClasslikeConstantName $constant): ?TypeInterface
+    public function forClassConstant(ClasslikeConstantName $constant): ?TypeInterface
     {
-        return $this->members->findConstant($class, $constant->name, Visibility::Private)?->type;
+        return $this->members->findConstant($constant->owner, $constant->name, Visibility::Private)?->type;
     }
 
     public function forGlobalConstant(ConstantName $constant): ?TypeInterface
@@ -61,9 +60,9 @@ final readonly class NativeTypeSource implements TypeSourceInterface
         return $this->symbols->lookupFunction($function)?->returnType;
     }
 
-    public function forMethodParameter(ClasslikeName $class, MethodName $method, string $parameter): ?TypeInterface
+    public function forMethodParameter(MethodName $method, string $parameter): ?TypeInterface
     {
-        $info = $this->members->findMethod($class, $method->name, Visibility::Private);
+        $info = $this->members->findMethod($method->owner, $method->name, Visibility::Private);
         if ($info === null) {
             return null;
         }
@@ -75,13 +74,13 @@ final readonly class NativeTypeSource implements TypeSourceInterface
         return null;
     }
 
-    public function forMethodReturn(ClasslikeName $class, MethodName $method): ?TypeInterface
+    public function forMethodReturn(MethodName $method): ?TypeInterface
     {
-        return $this->members->findMethod($class, $method->name, Visibility::Private)?->returnType;
+        return $this->members->findMethod($method->owner, $method->name, Visibility::Private)?->returnType;
     }
 
-    public function forProperty(ClasslikeName $class, PropertyName $property): ?TypeInterface
+    public function forProperty(PropertyName $property): ?TypeInterface
     {
-        return $this->members->findProperty($class, $property->name, Visibility::Private)?->type;
+        return $this->members->findProperty($property->owner, $property->name, Visibility::Private)?->type;
     }
 }
