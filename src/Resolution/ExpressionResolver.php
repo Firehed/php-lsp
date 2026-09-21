@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
@@ -510,7 +511,9 @@ final class ExpressionResolver
         // exposes a method name on the using class that the trait does not
         // declare, so querying the trait directly with the alias name returns
         // null and drops the type entirely.
-        $declaredReturn = $this->typeSource->forMethodReturn($callingClass, $methodInfo->name);
+        $declaredReturn = $this->typeSource->forMethodReturn(
+            new MethodName($callingClass, $methodInfo->name->name),
+        );
         // An aliased method's owner is the aliasing class; its source-trait
         // identity is on `aliasedFrom`, which is what the `self` binding rule
         // needs to see.

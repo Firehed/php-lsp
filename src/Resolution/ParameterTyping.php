@@ -40,7 +40,6 @@ final class ParameterTyping
     ): ?TypeInterface {
         if ($enclosingScope instanceof Stmt\ClassMethod && $enclosingClass !== null) {
             return $typeSource->forMethodParameter(
-                $enclosingClass,
                 new MethodName($enclosingClass, $enclosingScope->name->toString()),
                 $name,
             );
