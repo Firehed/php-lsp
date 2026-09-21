@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\Message;
-use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Server;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -193,7 +192,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::methodNotFound()->code,
+            ErrorCode::MethodNotFound,
             $this->errorCode($this->responseWithId($responses, 1)),
             'an unknown method gets MethodNotFound',
         );
@@ -215,7 +214,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::serverNotInitialized()->code,
+            ErrorCode::ServerNotInitialized,
             $this->errorCode($this->responseWithId($responses, 5)),
             'a request before initialize gets ServerNotInitialized (RFC 1 §4.8)',
         );
@@ -242,7 +241,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::invalidRequest()->code,
+            ErrorCode::InvalidRequest,
             $this->errorCode($this->responseWithId($responses, 5)),
             'a request after shutdown gets InvalidRequest (RFC 1 §4.8)',
         );
@@ -590,7 +589,7 @@ class ServerTest extends TestCase
         }
 
         self::assertSame(
-            ResponseError::internalError()->code,
+            ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
             'a throwing handler yields InternalError (RFC 1 §9)',
         );
@@ -638,7 +637,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::internalError()->code,
+            ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
             'a throwing supports() yields InternalError (RFC 1 §9)',
         );
@@ -691,7 +690,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::internalError()->code,
+            ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
             'a result that cannot be encoded yields InternalError (RFC 1 §9)',
         );
@@ -743,7 +742,7 @@ class ServerTest extends TestCase
         $parseErrors = array_filter(
             $responses,
             fn (array $response): bool => ($response['id'] ?? null) === null
-                && $this->errorCode($response) === ResponseError::parseError()->code,
+                && $this->errorCode($response) === ErrorCode::ParseError,
         );
         self::assertCount(1, $parseErrors, 'the malformed frame is answered with a null-id ParseError');
 
@@ -776,7 +775,7 @@ class ServerTest extends TestCase
         $responses = $this->decodeResponses($outputBuffer->buffer());
 
         self::assertSame(
-            ResponseError::invalidRequest()->code,
+            ErrorCode::InvalidRequest,
             $this->errorCode($this->responseWithId($responses, 6)),
             'the malformed frame is answered at the id the reader recovered from it',
         );

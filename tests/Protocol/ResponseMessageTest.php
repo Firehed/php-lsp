@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ResponseMessage::class)]
@@ -91,26 +90,6 @@ class ResponseMessageTest extends TestCase
         self::assertArrayHasKey('error', $decoded);
     }
 
-    #[DataProvider('errorCodesProvider')]
-    public function testStandardErrorCodes(ErrorCode $code, ResponseError $error): void
-    {
-        self::assertSame($code, $error->code);
-    }
-
-    /**
-     * @return array<string, array{ErrorCode, ResponseError}>
-     * @codeCoverageIgnore
-     */
-    public static function errorCodesProvider(): array
-    {
-        return [
-            'parseError' => [ErrorCode::ParseError, ResponseError::parseError()],
-            'invalidRequest' => [ErrorCode::InvalidRequest, ResponseError::invalidRequest()],
-            'methodNotFound' => [ErrorCode::MethodNotFound, ResponseError::methodNotFound()],
-            'invalidParams' => [ErrorCode::InvalidParams, ResponseError::invalidParams()],
-            'internalError' => [ErrorCode::InternalError, ResponseError::internalError()],
-        ];
-    }
 
     /**
      * @return array<array-key, mixed>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Transport;
 
 use Amp\ByteStream\ReadableStream;
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -37,7 +38,7 @@ final class MessageReader
             $body = $this->readBody($contentLength);
             if ($body === null) {
                 return new MalformedFrame(
-                    ResponseError::parseError('stream ended before the declared Content-Length'),
+                    new ResponseError(ErrorCode::ParseError, data: 'stream ended before the declared Content-Length'),
                 );
             }
 
@@ -82,7 +83,9 @@ final class MessageReader
                 // reports end of stream instead of looping on the same bytes.
                 $this->buffer = '';
 
-                return new MalformedFrame(ResponseError::parseError('incomplete header at end of stream'));
+                return new MalformedFrame(
+                    new ResponseError(ErrorCode::ParseError, data: 'incomplete header at end of stream'),
+                );
             }
             $this->buffer .= $chunk;
         }
@@ -164,11 +167,13 @@ final class MessageReader
         try {
             $data = json_decode($body, associative: true, flags: JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            return new MalformedFrame(ResponseError::parseError($e->getMessage()));
+            return new MalformedFrame(new ResponseError(ErrorCode::ParseError, data: $e->getMessage()));
         }
 
         if (!is_array($data)) {
-            return new MalformedFrame(ResponseError::invalidRequest('message must be a JSON object'));
+            return new MalformedFrame(
+                new ResponseError(ErrorCode::InvalidRequest, data: 'message must be a JSON object'),
+            );
         }
 
         $id = self::recoverId($data);
@@ -179,7 +184,10 @@ final class MessageReader
         // '2.0'" and defers the content part to JSON-RPC, so nothing here is
         // relaxed for LSP. Answered even with no id, for the reason below.
         if (($data['jsonrpc'] ?? null) !== '2.0') {
-            return new MalformedFrame(ResponseError::invalidRequest('jsonrpc must be exactly "2.0"'), $id);
+            return new MalformedFrame(
+                new ResponseError(ErrorCode::InvalidRequest, data: 'jsonrpc must be exactly "2.0"'),
+                $id,
+            );
         }
 
         // A frame that names no method but carries a result or error is a Response
@@ -201,7 +209,10 @@ final class MessageReader
         // to `{"jsonrpc":"2.0","method":1,"params":"bar"}` with a null id.
         $method = $data['method'] ?? null;
         if (!is_string($method)) {
-            return new MalformedFrame(ResponseError::invalidRequest('message has no string method'), $id);
+            return new MalformedFrame(
+                new ResponseError(ErrorCode::InvalidRequest, data: 'message has no string method'),
+                $id,
+            );
         }
 
         $params = $data['params'] ?? null;
@@ -210,7 +221,10 @@ final class MessageReader
                 return null;
             }
 
-            return new MalformedFrame(ResponseError::invalidRequest('params must be structured'), $id);
+            return new MalformedFrame(
+                new ResponseError(ErrorCode::InvalidRequest, data: 'params must be structured'),
+                $id,
+            );
         }
 
         if (!array_key_exists('id', $data)) {
@@ -218,7 +232,9 @@ final class MessageReader
         }
 
         if ($id === null) {
-            return new MalformedFrame(ResponseError::invalidRequest('id must be an integer or string'));
+            return new MalformedFrame(
+                new ResponseError(ErrorCode::InvalidRequest, data: 'id must be an integer or string'),
+            );
         }
 
         return RequestMessage::fromArray($data);

@@ -19,4 +19,16 @@ enum ErrorCode: int
     case InvalidParams = -32602;
     case InternalError = -32603;
     case ServerNotInitialized = -32002;
+
+    public function defaultMessage(): string
+    {
+        return match ($this) {
+            self::ParseError => 'Parse error',
+            self::InvalidRequest => 'Invalid Request',
+            self::MethodNotFound => 'Method not found',
+            self::InvalidParams => 'Invalid params',
+            self::InternalError => 'Internal error',
+            self::ServerNotInitialized => 'Server not initialized',
+        };
+    }
 }

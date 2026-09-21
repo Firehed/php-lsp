@@ -35,6 +35,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
@@ -206,7 +207,10 @@ final class Server
                         if ($handler !== null) {
                             $result = $handler->handle($message);
                         } elseif ($message instanceof RequestMessage) {
-                            $error = ResponseError::methodNotFound($message->method);
+                            $error = new ResponseError(
+                                ErrorCode::MethodNotFound,
+                                "Method not found: {$message->method}",
+                            );
                         }
                     } catch (\Throwable $e) {
                         // A failing handler must not take the read loop down with it
@@ -221,7 +225,7 @@ final class Server
                         // user's own LSP log, which is what makes an unreproducible
                         // crash diagnosable. `message` stays generic; per [LSP] "Base
                         // Protocol", ResponseError.data is where detail belongs.
-                        $error = ResponseError::internalError($e->getMessage());
+                        $error = new ResponseError(ErrorCode::InternalError, data: $e->getMessage());
                     }
                 }
             } finally {
@@ -278,7 +282,7 @@ final class Server
             $this->transport->write($response);
         } catch (\JsonException $e) {
             $this->transport->write(
-                ResponseMessage::error($id, ResponseError::internalError($e->getMessage())),
+                ResponseMessage::error($id, new ResponseError(ErrorCode::InternalError, data: $e->getMessage())),
             );
         }
     }

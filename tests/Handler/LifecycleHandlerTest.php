@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\InitializedListenerInterface;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
+use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
@@ -179,7 +180,7 @@ class LifecycleHandlerTest extends TestCase
 
         self::assertInstanceOf(ResponseError::class, $error, 'a request before initialize must be rejected');
         self::assertSame(
-            ResponseError::serverNotInitialized()->code,
+            ErrorCode::ServerNotInitialized,
             $error->code,
             'requests before initialize get ServerNotInitialized (RFC 1 §4.8)',
         );
@@ -226,7 +227,7 @@ class LifecycleHandlerTest extends TestCase
 
         self::assertInstanceOf(ResponseError::class, $error, 'a request after shutdown must be rejected');
         self::assertSame(
-            ResponseError::invalidRequest()->code,
+            ErrorCode::InvalidRequest,
             $error->code,
             'requests after shutdown get InvalidRequest (RFC 1 §4.8)',
         );
@@ -260,7 +261,7 @@ class LifecycleHandlerTest extends TestCase
 
         self::assertInstanceOf(ResponseError::class, $error, 'a second initialize must be rejected');
         self::assertSame(
-            ResponseError::invalidRequest()->code,
+            ErrorCode::InvalidRequest,
             $error->code,
             'a duplicate initialize gets InvalidRequest',
         );

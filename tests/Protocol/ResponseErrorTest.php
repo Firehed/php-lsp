@@ -7,50 +7,27 @@ namespace Firehed\PhpLsp\Tests\Protocol;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ResponseError::class)]
 #[CoversClass(ErrorCode::class)]
 class ResponseErrorTest extends TestCase
 {
-    /**
-     * The codes are fixed by JSON-RPC 2.0 and, for ServerNotInitialized, by
-     * [LSP] "Server lifecycle". They are asserted as literals rather than
-     * against the factories themselves so a typo cannot agree with itself.
-     *
-     * @param callable(): ResponseError $factory
-     */
-    #[DataProvider('errorFactories')]
-    public function testFactoryUsesTheSpecifiedCode(int $expected, callable $factory): void
+    public function testMessageDefaultsFromTheErrorCode(): void
     {
-        self::assertSame($expected, $factory()->code->value, 'the factory must emit the specified error code');
+        self::assertSame(
+            ErrorCode::ParseError->defaultMessage(),
+            (new ResponseError(ErrorCode::ParseError))->message,
+            'a caller that names only the code gets the spec-defined message for free',
+        );
     }
 
-    /**
-     * Factories are passed as first-class callables rather than invoked here:
-     * a data provider runs before coverage tracking starts.
-     *
-     * @return iterable<string, array{int, callable(): ResponseError}>
-     *
-     * @codeCoverageIgnore
-     */
-    public static function errorFactories(): iterable
+    public function testMessageOverrideWinsOverTheDefault(): void
     {
-        yield 'parse error' => [-32700, ResponseError::parseError(...)];
-        yield 'invalid request' => [-32600, ResponseError::invalidRequest(...)];
-        yield 'method not found' => [-32601, ResponseError::methodNotFound(...)];
-        yield 'invalid params' => [-32602, ResponseError::invalidParams(...)];
-        yield 'internal error' => [-32603, ResponseError::internalError(...)];
-        yield 'server not initialized' => [-32002, ResponseError::serverNotInitialized(...)];
-    }
-
-    public function testMethodNotFoundNamesTheMissingMethod(): void
-    {
-        self::assertStringContainsString(
-            'textDocument/hover',
-            ResponseError::methodNotFound('textDocument/hover')->message,
-            'the unsupported method is reported back to aid debugging',
+        self::assertSame(
+            'Method not found: textDocument/hover',
+            (new ResponseError(ErrorCode::MethodNotFound, 'Method not found: textDocument/hover'))->message,
+            'a caller that has more to say than the default may replace the message',
         );
     }
 
@@ -58,8 +35,8 @@ class ResponseErrorTest extends TestCase
     {
         self::assertSame(
             ['code' => -32603, 'message' => 'Internal error'],
-            ResponseError::internalError()->jsonSerialize(),
-            'an error carrying no data omits the key entirely',
+            (new ResponseError(ErrorCode::InternalError))->jsonSerialize(),
+            'an error carrying no data omits the key entirely (JSON-RPC 2.0 § 5.1)',
         );
     }
 
@@ -67,8 +44,15 @@ class ResponseErrorTest extends TestCase
     {
         self::assertSame(
             ['code' => -32603, 'message' => 'Internal error', 'data' => 'boom'],
-            ResponseError::internalError('boom')->jsonSerialize(),
-            'diagnostic detail is carried in the data member',
+            (new ResponseError(ErrorCode::InternalError, data: 'boom'))->jsonSerialize(),
+            'diagnostic detail is carried in the data member (JSON-RPC 2.0 § 5.1)',
         );
+    }
+
+    public function testSerializationEmitsTheIntegerCode(): void
+    {
+        $encoded = (new ResponseError(ErrorCode::ParseError))->jsonSerialize();
+
+        self::assertSame(-32700, $encoded['code'], 'the wire form is the integer, not the enum case name');
     }
 }
