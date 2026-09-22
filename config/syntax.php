@@ -15,4 +15,5 @@ return [
     MemoizingSyntaxSource::class => fn (TC $c) => new MemoizingSyntaxSource($c->get(CompositeSyntaxSource::class)),
 
     SyntaxSourceInterface::class => MemoizingSyntaxSource::class,
+    MessageScopedInterface::class => MemoizingSyntaxSource::class,
 ];
