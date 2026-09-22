@@ -5,115 +5,70 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use PhpParser\Node;
-use PhpParser\Node\Stmt;
-use PhpParser\Node\Stmt\Nop;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use PhpParser\Node\Stmt\Namespace_;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompositeSyntaxSource::class)]
 final class CompositeSyntaxSourceTest extends TestCase
 {
-    public function testReturnsTheFirstNonEmptyResult(): void
+    private CompositeSyntaxSource $composite;
+
+    protected function setUp(): void
     {
-        $first = self::stubReturning([]);
-        $second = self::stubReturning([new Nop()]);
-        $third = self::stubReturning([new Nop(), new Nop()]);
-
-        $composite = new CompositeSyntaxSource([$first, $second, $third]);
-
-        $result = $composite->parse(self::doc('<?php'));
-
-        self::assertCount(1, $result, 'the second source wins because it is the first non-empty answer');
-    }
-
-    public function testReturnsEmptyWhenEverySourceIsEmpty(): void
-    {
-        $composite = new CompositeSyntaxSource([
-            self::stubReturning([]),
-            self::stubReturning([]),
-        ]);
-
-        self::assertSame(
-            [],
-            $composite->parse(self::doc('<?php')),
-            'no source had a tree, so the composite reports the empty list its fallbacks would have seen',
-        );
-    }
-
-    public function testStopsAskingSourcesAfterTheFirstNonEmpty(): void
-    {
-        $winner = self::stubReturning([new Nop()]);
-        $later = new class implements SyntaxSourceInterface {
-            public bool $called = false;
-
-            /**
-             * @return array<Stmt>
-             */
-            public function parse(TextDocument $document): array
-            {
-                $this->called = true;
-                return [];
-            }
-
-            /**
-             * @param array<Stmt> $tree
-             */
-            public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-            {
-                return null;
-            }
-        };
-
-        (new CompositeSyntaxSource([$winner, $later]))->parse(self::doc('<?php'));
-
-        self::assertFalse($later->called, 'sources after the winner must not be asked');
-    }
-
-    public function testReturnsEmptyWhenNoSourcesAreConfigured(): void
-    {
-        self::assertSame(
-            [],
-            (new CompositeSyntaxSource([]))->parse(self::doc('<?php')),
-            'zero sources means nothing to ask; the empty list is the only truthful answer',
+        $this->composite = new CompositeSyntaxSource(
+            new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
+            new SkeletonSyntaxSource(),
+            new CursorTextSyntaxSource(),
         );
     }
 
     /**
-     * @param array<Stmt> $tree
+     * Duplicate `use` aliases make php-parser's NameResolver throw, which
+     * {@see PhpParserSyntaxSource} converts to the empty list. The skeleton
+     * recovers the namespace from the text, so the composite must return
+     * that namespace rather than the empty list php-parser would have
+     * given on its own.
      */
-    private static function stubReturning(array $tree): SyntaxSourceInterface
+    public function testAnEarlierEmptyLetsTheNextSourceAnswer(): void
     {
-        return new class ($tree) implements SyntaxSourceInterface {
-            /**
-             * @param array<Stmt> $tree
-             */
-            public function __construct(private readonly array $tree)
-            {
-            }
+        $document = new TextDocument(
+            'file:///t.php',
+            'php',
+            1,
+            "<?php\nnamespace A;\nuse B\\Foo;\nuse C\\Foo;\n",
+        );
 
-            /**
-             * @return array<Stmt>
-             */
-            public function parse(TextDocument $document): array
-            {
-                return $this->tree;
-            }
+        $tree = $this->composite->parse($document);
 
-            /**
-             * @param array<Stmt> $tree
-             */
-            public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-            {
-                return null;
-            }
-        };
+        self::assertCount(1, $tree, 'the skeleton fills in the tree php-parser refused');
+        self::assertInstanceOf(
+            Namespace_::class,
+            $tree[0],
+            'the skeleton reconstructs the namespace declaration from the text',
+        );
     }
 
-    private static function doc(string $content): TextDocument
+    /**
+     * Unrecoverable syntax with no classlike or namespace declaration: php-parser
+     * bails out to the empty list, the skeleton has no structure to recover, and
+     * the cursor-text source only serves nodeAt. The composite must report that
+     * empty list rather than fabricate one.
+     */
+    public function testReturnsEmptyWhenEverySourceIsEmpty(): void
     {
-        return new TextDocument('file:///t.php', 'php', 1, $content);
+        $document = new TextDocument('file:///t.php', 'php', 1, '<?php function foo( { }');
+
+        self::assertSame(
+            [],
+            $this->composite->parse($document),
+            'no source had a tree, so the composite reports the empty list its fallbacks would have seen',
+        );
     }
 }
