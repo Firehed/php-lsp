@@ -86,13 +86,6 @@ final class Server
         ServerInfo $serverInfo,
         TC $container,
         ?string $projectRoot = null,
-        SyntaxSourceInterface&MessageScopedInterface $parser = new MemoizingSyntaxSource(
-            new CompositeSyntaxSource(
-                new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
-                new SkeletonSyntaxSource(),
-                new CursorTextSyntaxSource(),
-            ),
-        ),
     ): self {
         $reader = new SourceFileReader();
         if ($projectRoot === null) {
@@ -107,6 +100,7 @@ final class Server
 
         $documentManager = $container->get(DocumentManagerInterface::class);
         $syntaxSource = $container->get(SyntaxSourceInterface::class);
+        $messageScope = $container->get(MessageScopedInterface::class);
 
         // The symbol-knowledge tier: one read composite over the fixed backend
         // precedence (open document › workspace › vendor › built-in) and one write
@@ -173,7 +167,7 @@ final class Server
             ),
         ];
 
-        return new self($transport, $lifecycleHandler, $handlers, $parser);
+        return new self($transport, $lifecycleHandler, $handlers, $messageScope);
     }
 
     public function run(): int

@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
+use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\Message;
@@ -392,22 +393,22 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $production = ProductionSyntaxSource::create();
+        $container = $this->buildContainer();
+        $metrics = $container->get(ParseMetrics::class);
         $transport = $this->createTransport($input, $outputBuffer);
         $server = Server::forProject(
             $transport,
             new ServerInfo('test', '1.0'),
-            $this->buildContainer(),
+            $container,
             __DIR__ . '/Fixtures',
-            $production->source,
         );
-        $atStartup = $production->metrics->getParseCount();
+        $atStartup = $metrics->getParseCount();
 
         $server->run();
 
         self::assertSame(
             3,
-            $production->metrics->getParseCount() - $atStartup,
+            $metrics->getParseCount() - $atStartup,
             'three sync messages, one parse each',
         );
     }
@@ -446,22 +447,22 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $production = ProductionSyntaxSource::create();
+        $container = $this->buildContainer();
+        $metrics = $container->get(ParseMetrics::class);
         $transport = $this->createTransport($input, $outputBuffer);
         $server = Server::forProject(
             $transport,
             new ServerInfo('test', '1.0'),
-            $this->buildContainer(),
+            $container,
             __DIR__ . '/Fixtures',
-            $production->source,
         );
-        $atStartup = $production->metrics->getParseCount();
+        $atStartup = $metrics->getParseCount();
 
         $server->run();
 
         self::assertSame(
             3,
-            $production->metrics->getParseCount() - $atStartup,
+            $metrics->getParseCount() - $atStartup,
             'one didOpen and two completion requests, one parse each',
         );
     }
