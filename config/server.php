@@ -13,6 +13,7 @@ return [
         return Server::forProject(
             $c->get(Transport\TransportInterface::class),
             $c->get(Protocol\ServerInfo::class),
+            $c,
         );
     },
 ];
