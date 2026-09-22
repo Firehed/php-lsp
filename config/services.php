@@ -7,4 +7,7 @@ namespace Firehed\PhpLsp;
 return [
     Document\DocumentManager::class,
     Document\DocumentManagerInterface::class => Document\DocumentManager::class,
+
+    Parser\ParseMetrics::class,
+    Parser\TreeAnnotator::class,
 ];
