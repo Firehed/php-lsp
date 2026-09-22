@@ -87,11 +87,11 @@ final class Server
         TC $container,
         ?string $projectRoot = null,
         SyntaxSourceInterface&MessageScopedInterface $parser = new MemoizingSyntaxSource(
-            new CompositeSyntaxSource([
+            new CompositeSyntaxSource(
                 new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
                 new SkeletonSyntaxSource(),
                 new CursorTextSyntaxSource(),
-            ]),
+            ),
         ),
     ): self {
         $reader = new SourceFileReader();

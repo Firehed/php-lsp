@@ -17,11 +17,20 @@ use PhpParser\Node;
 final class CompositeSyntaxSource implements SyntaxSourceInterface
 {
     /**
-     * @param list<SyntaxSourceInterface> $sources
+     * @var list<SyntaxSourceInterface> $sources
      */
+    private readonly array $sources;
+
     public function __construct(
-        private readonly array $sources,
+        PhpParserSyntaxSource $phpSource,
+        SkeletonSyntaxSource $skeletonSource,
+        CursorTextSyntaxSource $cursorTextSource,
     ) {
+        $this->sources = [
+            $phpSource,
+            $skeletonSource,
+            $cursorTextSource,
+        ];
     }
 
     /**
