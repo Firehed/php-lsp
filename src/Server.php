@@ -106,6 +106,7 @@ final class Server
         }
 
         $documentManager = $container->get(DocumentManagerInterface::class);
+        $syntaxSource = $container->get(SyntaxSourceInterface::class);
 
         // The symbol-knowledge tier: one read composite over the fixed backend
         // precedence (open document › workspace › vendor › built-in) and one write
@@ -115,7 +116,7 @@ final class Server
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($projectRoot),
             rtrim($projectRoot, '/') . '/vendor',
-            $parser,
+            $syntaxSource,
             $reader,
         );
         $symbolSource = $knowledge->source;
@@ -125,7 +126,7 @@ final class Server
         $typeSource = new NativeTypeSource($symbolSource, $memberResolver);
 
         $symbolResolver = new SymbolResolver(
-            $parser,
+            $syntaxSource,
             $symbolSource,
             $memberResolver,
             $typeSource,
