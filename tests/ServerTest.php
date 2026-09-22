@@ -28,6 +28,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Server::class)]
 class ServerTest extends TestCase
 {
+    use BuildsContainerTrait;
     use LoadsFixturesTrait;
 
     public function testFullLifecycle(): void
@@ -41,7 +42,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $exitCode = $server->run();
 
@@ -73,7 +74,11 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $server = Server::forProject($this->createTransport($input, $outputBuffer), new ServerInfo('test', '1.0'));
+        $server = Server::forProject(
+            $this->createTransport($input, $outputBuffer),
+            new ServerInfo('test', '1.0'),
+            $this->buildContainer(),
+        );
         $server->run();
 
         $methods = array_column($this->decodeResponses($outputBuffer->buffer()), 'method');
@@ -93,7 +98,11 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $server = Server::forProject($this->createTransport($input, $outputBuffer), new ServerInfo('test', '1.0'));
+        $server = Server::forProject(
+            $this->createTransport($input, $outputBuffer),
+            new ServerInfo('test', '1.0'),
+            $this->buildContainer(),
+        );
         $server->run();
 
         $methods = array_column($this->decodeResponses($outputBuffer->buffer()), 'method');
@@ -153,7 +162,7 @@ class ServerTest extends TestCase
                     );
                 }
             });
-            $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $root);
+            $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer(), $root);
 
             $server->run();
 
@@ -185,7 +194,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $server->run();
 
@@ -207,7 +216,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $server->run();
 
@@ -232,7 +241,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $exitCode = $server->run();
 
@@ -388,6 +397,7 @@ class ServerTest extends TestCase
         $server = Server::forProject(
             $transport,
             new ServerInfo('test', '1.0'),
+            $this->buildContainer(),
             __DIR__ . '/Fixtures',
             $production->source,
         );
@@ -441,6 +451,7 @@ class ServerTest extends TestCase
         $server = Server::forProject(
             $transport,
             new ServerInfo('test', '1.0'),
+            $this->buildContainer(),
             __DIR__ . '/Fixtures',
             $production->source,
         );
@@ -731,7 +742,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $exitCode = $server->run();
 
@@ -768,7 +779,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $server->run();
 
@@ -792,7 +803,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         self::assertSame(1, $server->run(), 'a disconnect without exit is not a clean shutdown');
     }
@@ -803,7 +814,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $exitCode = $server->run();
 
