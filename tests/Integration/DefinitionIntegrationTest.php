@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\OutgoingMessageInterface;
 use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Server;
+use Firehed\PhpLsp\Tests\BuildsContainerTrait;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\MessageReader;
@@ -21,6 +22,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Server::class)]
 class DefinitionIntegrationTest extends TestCase
 {
+    use BuildsContainerTrait;
+
     public function testGoToDefinitionEndToEnd(): void
     {
         // Simulate full LSP interaction:
@@ -72,7 +75,7 @@ class DefinitionIntegrationTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject($transport, new ServerInfo('test', '1.0'));
+        $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer());
 
         $exitCode = $server->run();
 

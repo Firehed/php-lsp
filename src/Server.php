@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
+use Firehed\Container\TypedContainerInterface as TC;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 use Firehed\PhpLsp\Client\TransportClientConnection;
@@ -14,7 +15,7 @@ use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
-use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\DocumentManagerInterface;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
@@ -76,10 +77,14 @@ final class Server
      * Construction lives here rather than in the constructor so the constructor
      * stays injectable: the dispatch loop can then be exercised against a
      * handler set a test chooses, without standing up the whole project.
+     *
+     * The container is used as a service locator, a known anti-pattern. It's
+     * transitional as part of #557 and #566.
      */
     public static function forProject(
         TransportInterface $transport,
         ServerInfo $serverInfo,
+        TC $container,
         ?string $projectRoot = null,
         SyntaxSourceInterface&MessageScopedInterface $parser = new MemoizingSyntaxSource(
             new CompositeSyntaxSource([
@@ -100,7 +105,7 @@ final class Server
             $projectRoot = $cwd;
         }
 
-        $documentManager = new DocumentManager();
+        $documentManager = $container->get(DocumentManagerInterface::class);
 
         // The symbol-knowledge tier: one read composite over the fixed backend
         // precedence (open document › workspace › vendor › built-in) and one write
