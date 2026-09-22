@@ -77,6 +77,9 @@ final class Server
      * Construction lives here rather than in the constructor so the constructor
      * stays injectable: the dispatch loop can then be exercised against a
      * handler set a test chooses, without standing up the whole project.
+     *
+     * The container is used as a service locator, a known anti-pattern. It's
+     * transitional as part of #557 and #566.
      */
     public static function forProject(
         TransportInterface $transport,
