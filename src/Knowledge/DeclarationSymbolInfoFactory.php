@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
-use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\EnumImplicits;
@@ -28,7 +27,6 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -43,14 +41,11 @@ use PhpParser\Node\Stmt;
 use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
 /**
- * The one place a {@see NameKind} picks a declaration list and a builder, which is
- * what lets {@see SymbolBackendInterface} carry a single lookup and a single registration
- * (Plan 0002 §5.6).
- *
- * Lookup is a filter over {@see allIn()} rather than its own scan: RFC 1 §5.1
- * forbids a derived verb forking from the one it derives from, and a second scan is
- * how the on-disk read path and the open-document write path came to disagree about
- * which declarations count.
+ * Builds concrete info values from parsed {@see FileDeclarations}: per-kind
+ * bulk builders for the open-document write path and per-name lookups for the
+ * filesystem backend. Each method touches only its own kind's declaration list,
+ * so a kind cannot answer for another and no route through a marker type is
+ * needed.
  */
 final readonly class DeclarationSymbolInfoFactory
 {
@@ -118,37 +113,6 @@ final readonly class DeclarationSymbolInfoFactory
         return $infos;
     }
 
-    /**
-     * Every symbol the file declares, at any depth. Of duplicates the first wins —
-     * the one PHP would define.
-     *
-     * @return list<DeclaredSymbol>
-     */
-    public function allIn(FileDeclarations $declarations, string $filePath): array
-    {
-        $symbols = [];
-        $seen = [];
-
-        foreach ($declarations->classLikes as $declaration) {
-            $info = $this->classInfoFromNode($declaration->node, FileUri::fromPath($filePath));
-            self::collect($symbols, $seen, $declaration->name, NameKind::ClassLike, $info);
-        }
-        foreach ($declarations->functions as $declaration) {
-            $info = $this->functionInfoFromNode($declaration->node, $declaration->name, $filePath);
-            self::collect($symbols, $seen, $declaration->name, NameKind::Function_, $info);
-        }
-        foreach ($declarations->constants as $declaration) {
-            $info = $this->constantInfoFromGlobalDeclaration(
-                $declaration->node,
-                $declaration->name,
-                $filePath,
-            );
-            self::collect($symbols, $seen, $declaration->name, NameKind::Constant, $info);
-        }
-
-        return $symbols;
-    }
-
     public function classInfoFrom(
         FileDeclarations $declarations,
         ClasslikeName $name,
@@ -173,23 +137,6 @@ final readonly class DeclarationSymbolInfoFactory
         foreach ($declarations->constants as $declaration) {
             if ($name->kind->normalize($declaration->name) === $target) {
                 return $this->constantInfoFromGlobalDeclaration($declaration->node, $declaration->name, $filePath);
-            }
-        }
-
-        return null;
-    }
-
-    public function fromDeclarations(
-        FileDeclarations $declarations,
-        QualifiedName $name,
-        NameKind $kind,
-        string $filePath,
-    ): ?SymbolInfoInterface {
-        $target = $kind->normalize($name);
-
-        foreach ($this->allIn($declarations, $filePath) as $symbol) {
-            if ($symbol->kind === $kind && $kind->normalize($symbol->name) === $target) {
-                return $symbol->info;
             }
         }
 
@@ -671,25 +618,5 @@ final readonly class DeclarationSymbolInfoFactory
             return Visibility::Protected;
         }
         return Visibility::Public;
-    }
-
-    /**
-     * @param list<DeclaredSymbol> $symbols
-     * @param array<string, true> $seen
-     */
-    private static function collect(
-        array &$symbols,
-        array &$seen,
-        QualifiedName $name,
-        NameKind $kind,
-        SymbolInfoInterface $info,
-    ): void {
-        $key = $kind->keyFor($name);
-        if (array_key_exists($key, $seen)) {
-            return;
-        }
-
-        $seen[$key] = true;
-        $symbols[] = new DeclaredSymbol($name, $kind, $info);
     }
 }

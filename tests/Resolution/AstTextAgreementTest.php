@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassKind;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
@@ -501,14 +500,7 @@ final class AstTextAgreementTest extends TestCase
         $factory = new DeclarationSymbolInfoFactory();
         $declarations = (new DeclarationScanner())->scan($stmts);
         $out = [];
-        foreach ($declarations->classLikes as $declaration) {
-            $info = $factory->fromDeclarations(
-                $declarations,
-                $declaration->name,
-                NameKind::ClassLike,
-                '/stub.php',
-            );
-            assert($info instanceof \Firehed\PhpLsp\Domain\ClassInfo);
+        foreach ($factory->allClassInfosIn($declarations, '/stub.php') as $info) {
             $out[] = [
                 'name' => $info->name->qualifiedName->fullyQualifiedName(),
                 'kind' => match ($info->kind) {
