@@ -308,7 +308,7 @@ final class BuiltinBackend implements SymbolSourceInterface
             $name = $method->getName();
             $methods[$name] = new MethodInfo(
                 name: new MethodName($className, $name),
-                visibility: $this->visibilityFromReflectionMethod($method),
+                visibility: $this->visibilityFromReflection($method),
                 isStatic: $method->isStatic(),
                 isAbstract: $method->isAbstract(),
                 isFinal: $method->isFinal(),
@@ -352,7 +352,7 @@ final class BuiltinBackend implements SymbolSourceInterface
             $name = $property->getName();
             $properties[$name] = new PropertyInfo(
                 name: new PropertyName($className, $name),
-                visibility: $this->visibilityFromReflectionProperty($property),
+                visibility: $this->visibilityFromReflection($property),
                 isStatic: $property->isStatic(),
                 isReadonly: $property->isReadOnly(),
                 isPromoted: $property->isPromoted(),
@@ -424,23 +424,12 @@ final class BuiltinBackend implements SymbolSourceInterface
         return var_export($value, true);
     }
 
-    private function visibilityFromReflectionMethod(ReflectionMethod $method): Visibility
+    private function visibilityFromReflection(ReflectionMethod|ReflectionProperty $member): Visibility
     {
-        if ($method->isPrivate()) {
+        if ($member->isPrivate()) {
             return Visibility::Private;
         }
-        if ($method->isProtected()) {
-            return Visibility::Protected;
-        }
-        return Visibility::Public;
-    }
-
-    private function visibilityFromReflectionProperty(ReflectionProperty $property): Visibility
-    {
-        if ($property->isPrivate()) {
-            return Visibility::Private;
-        }
-        if ($property->isProtected()) {
+        if ($member->isProtected()) {
             return Visibility::Protected;
         }
         return Visibility::Public;
