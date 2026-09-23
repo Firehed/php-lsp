@@ -33,7 +33,13 @@ final readonly class SymbolCache
     }
 
     /**
-     * @param callable(): ?SymbolInfoInterface $resolve Consulted only on a miss
+     * @template T of SymbolInfoInterface
+     * @param callable(): ?T $resolve Consulted only on a miss
+     * @return ?T
+     *
+     * The (name, kind) key is stable: the same key only ever roundtrips values
+     * from the same kind, and each kind maps to a single concrete info type,
+     * so the cached hit's runtime type matches the caller's ?T contract.
      */
     public function remember(QualifiedName $name, NameKind $kind, callable $resolve): ?SymbolInfoInterface
     {
@@ -42,6 +48,7 @@ final readonly class SymbolCache
         $cached = $this->cache->get($key);
         if ($cached !== null) {
             assert($cached instanceof SymbolInfoInterface);
+            /** @var T */
             return $cached;
         }
 
