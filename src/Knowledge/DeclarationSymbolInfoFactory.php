@@ -85,6 +85,36 @@ final readonly class DeclarationSymbolInfoFactory
         return $symbols;
     }
 
+    public function classInfoFrom(
+        FileDeclarations $declarations,
+        ClasslikeName $name,
+        string $filePath,
+    ): ?ClassInfo {
+        $target = NameKind::ClassLike->normalize($name->qualifiedName);
+        foreach ($declarations->classLikes as $declaration) {
+            if (NameKind::ClassLike->normalize($declaration->name) === $target) {
+                return $this->classInfoFromNode($declaration->node, FileUri::fromPath($filePath));
+            }
+        }
+
+        return null;
+    }
+
+    public function constantInfoFrom(
+        FileDeclarations $declarations,
+        ConstantName $name,
+        string $filePath,
+    ): ?ConstantInfo {
+        $target = $name->kind->normalize($name->qualifiedName);
+        foreach ($declarations->constants as $declaration) {
+            if ($name->kind->normalize($declaration->name) === $target) {
+                return $this->constantInfoFromGlobalDeclaration($declaration->node, $declaration->name, $filePath);
+            }
+        }
+
+        return null;
+    }
+
     public function fromDeclarations(
         FileDeclarations $declarations,
         QualifiedName $name,
@@ -96,6 +126,21 @@ final readonly class DeclarationSymbolInfoFactory
         foreach ($this->allIn($declarations, $filePath) as $symbol) {
             if ($symbol->kind === $kind && $kind->normalize($symbol->name) === $target) {
                 return $symbol->info;
+            }
+        }
+
+        return null;
+    }
+
+    public function functionInfoFrom(
+        FileDeclarations $declarations,
+        FunctionName $name,
+        string $filePath,
+    ): ?FunctionInfo {
+        $target = $name->kind->normalize($name->qualifiedName);
+        foreach ($declarations->functions as $declaration) {
+            if ($name->kind->normalize($declaration->name) === $target) {
+                return $this->functionInfoFromNode($declaration->node, $declaration->name, $filePath);
             }
         }
 
