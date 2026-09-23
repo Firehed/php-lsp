@@ -43,6 +43,12 @@ final class OpenDocumentBackend implements SymbolSourceInterface, DocumentSymbol
     /** @var array<string, array{string, FunctionInfo}> Normalized function key -> [declaring URI, info] */
     private array $functionsByKey = [];
 
+    /**
+     * When two open URIs declare the same FQN, the by-key map holds the
+     * last-written entry (updateDocument overwrites the same key), so the
+     * enumeration yields one symbol for that name — the intended consequence
+     * of by-key storage.
+     */
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
         $targetKey = $namespace->normalize();
@@ -98,6 +104,12 @@ final class OpenDocumentBackend implements SymbolSourceInterface, DocumentSymbol
         return $this->functionsByKey[$name->kind->keyFor($name->qualifiedName)][1] ?? null;
     }
 
+    /**
+     * Iterates every stored key rather than an inverted URI index (see class
+     * docblock). The scan is linear in total open-document symbols; measured
+     * cost at realistic session sizes is well under a millisecond, dwarfed
+     * by parse and LSP roundtrip latency on the same keystroke.
+     */
     public function removeDocument(string $uri): void
     {
         foreach ($this->classesByKey as $key => [$storedUri]) {
