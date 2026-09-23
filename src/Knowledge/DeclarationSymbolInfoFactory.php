@@ -55,6 +55,70 @@ use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 final readonly class DeclarationSymbolInfoFactory
 {
     /**
+     * @return list<ClassInfo>
+     */
+    public function allClassInfosIn(FileDeclarations $declarations, string $filePath): array
+    {
+        $target = NameKind::ClassLike;
+        $uri = FileUri::fromPath($filePath);
+        $seen = [];
+        $infos = [];
+
+        foreach ($declarations->classLikes as $declaration) {
+            $key = $target->normalize($declaration->name);
+            if (array_key_exists($key, $seen)) {
+                continue;
+            }
+            $seen[$key] = true;
+            $infos[] = $this->classInfoFromNode($declaration->node, $uri);
+        }
+
+        return $infos;
+    }
+
+    /**
+     * @return list<ConstantInfo>
+     */
+    public function allConstantInfosIn(FileDeclarations $declarations, string $filePath): array
+    {
+        $target = NameKind::Constant;
+        $seen = [];
+        $infos = [];
+
+        foreach ($declarations->constants as $declaration) {
+            $key = $target->normalize($declaration->name);
+            if (array_key_exists($key, $seen)) {
+                continue;
+            }
+            $seen[$key] = true;
+            $infos[] = $this->constantInfoFromGlobalDeclaration($declaration->node, $declaration->name, $filePath);
+        }
+
+        return $infos;
+    }
+
+    /**
+     * @return list<FunctionInfo>
+     */
+    public function allFunctionInfosIn(FileDeclarations $declarations, string $filePath): array
+    {
+        $target = NameKind::Function_;
+        $seen = [];
+        $infos = [];
+
+        foreach ($declarations->functions as $declaration) {
+            $key = $target->normalize($declaration->name);
+            if (array_key_exists($key, $seen)) {
+                continue;
+            }
+            $seen[$key] = true;
+            $infos[] = $this->functionInfoFromNode($declaration->node, $declaration->name, $filePath);
+        }
+
+        return $infos;
+    }
+
+    /**
      * Every symbol the file declares, at any depth. Of duplicates the first wins —
      * the one PHP would define.
      *
