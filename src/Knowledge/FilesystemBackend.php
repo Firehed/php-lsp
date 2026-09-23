@@ -47,6 +47,8 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  */
 final class FilesystemBackend implements SymbolBackendInterface, InvalidatableInterface
 {
+    use BuildsInfoFromDeclarationsTrait;
+
     /**
      * The symbols derived from each file, recorded so invalidation can evict them.
      *
@@ -59,7 +61,6 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
         private readonly NamespaceCatalogInterface $namespaces,
         private readonly SyntaxSourceInterface $parser,
         private readonly SourceFileReader $reader,
-        private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
         private readonly SymbolCache $cache,
         private readonly PrefixSearchableInterface $prefixSearch,
@@ -94,7 +95,7 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
                 }
 
                 $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-                $info = $this->infoFactory->classInfoFrom($declarations, $name, $filePath);
+                $info = $this->classInfoFrom($declarations, $name, $filePath);
                 if ($info !== null) {
                     $this->symbolsByPath[$filePath][] = [$name->qualifiedName, NameKind::ClassLike];
                 }
@@ -116,7 +117,7 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
                 }
 
                 $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-                $info = $this->infoFactory->constantInfoFrom($declarations, $name, $filePath);
+                $info = $this->constantInfoFrom($declarations, $name, $filePath);
                 if ($info !== null) {
                     $this->symbolsByPath[$filePath][] = [$name->qualifiedName, $name->kind];
                 }
@@ -138,7 +139,7 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
                 }
 
                 $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-                $info = $this->infoFactory->functionInfoFrom($declarations, $name, $filePath);
+                $info = $this->functionInfoFrom($declarations, $name, $filePath);
                 if ($info !== null) {
                     $this->symbolsByPath[$filePath][] = [$name->qualifiedName, $name->kind];
                 }

@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParseMetrics;
@@ -39,7 +38,6 @@ final class DocumentSymbolSinkTest extends TestCase
         $this->backend = new OpenDocumentBackend();
         $this->sink = new DocumentSymbolSink(
             $this->backend,
-            new DeclarationSymbolInfoFactory(),
             $parser,
             new DeclarationScanner(),
         );
@@ -295,7 +293,6 @@ final class DocumentSymbolSinkTest extends TestCase
 
         return new DocumentSymbolSink(
             $this->backend,
-            new DeclarationSymbolInfoFactory(),
             $parser,
             new DeclarationScanner(),
             array_values($onDiskBackends),

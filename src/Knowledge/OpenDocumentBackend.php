@@ -27,8 +27,8 @@ use Firehed\PhpLsp\Index\Symbol;
  *
  * Open documents change on every keystroke and are never cached (RFC 1 §5.3). Each
  * of PHP's three symbol namespaces has its own typed map, so a class-like lookup
- * never sees a function of the same name, and a stored info's own type matches the
- * typed lookup that returns it — no runtime narrow at the read boundary.
+ * never sees a function of the same name, and a stored info's own type matches
+ * the typed lookup that returns it — no runtime narrow at the read boundary.
  */
 final class OpenDocumentBackend implements SymbolBackendInterface, SymbolSourceInterface, DocumentSymbolStoreInterface
 {

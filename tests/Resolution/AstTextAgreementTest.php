@@ -7,10 +7,10 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Tests\Knowledge\InfoFromDeclarationsTraitHost;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node;
@@ -433,9 +433,9 @@ final class AstTextAgreementTest extends TestCase
      * The shape both producers must agree on: namespace, imports, class-like
      * names and kinds, and every member declaration's name, visibility, and
      * static-ness or readonly-ness — read through the same
-     * {@see DeclarationScanner} and {@see DeclarationSymbolInfoFactory} both
-     * sides feed into. Line numbers and byte spans are producer-specific and
-     * deliberately not compared.
+     * {@see DeclarationScanner} and {@see BuildsInfoFromDeclarationsTrait}
+     * both sides feed into. Line numbers and byte spans are producer-specific
+     * and deliberately not compared.
      *
      * @param array<Stmt> $tree
      * @return array<string, mixed>
@@ -497,7 +497,7 @@ final class AstTextAgreementTest extends TestCase
      */
     private static function classLikesOf(array $stmts): array
     {
-        $factory = new DeclarationSymbolInfoFactory();
+        $factory = new InfoFromDeclarationsTraitHost();
         $declarations = (new DeclarationScanner())->scan($stmts);
         $out = [];
         foreach ($factory->allClassInfosIn($declarations, '/stub.php') as $info) {

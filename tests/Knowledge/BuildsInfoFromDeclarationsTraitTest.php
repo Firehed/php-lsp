@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FileDeclarations;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -21,21 +20,22 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The single place a {@see NameKind} selects a declaration list and a builder.
+ * Exercised through a small test-only host that just uses the trait.
  */
-final class DeclarationSymbolInfoFactoryTest extends TestCase
+final class BuildsInfoFromDeclarationsTraitTest extends TestCase
 {
     use LoadsFixturesTrait;
 
     /** Declares all three kinds, so a lookup reading the wrong list is visible. */
     private const string FIXTURE = 'AutoloadFiles/helpers.php';
 
-    private DeclarationSymbolInfoFactory $factory;
+    private InfoFromDeclarationsTraitHost $factory;
     private FileDeclarations $declarations;
     private string $path;
 
     protected function setUp(): void
     {
-        $this->factory = new DeclarationSymbolInfoFactory();
+        $this->factory = new InfoFromDeclarationsTraitHost();
         $this->path = $this->fixturePath(self::FIXTURE);
 
         $production = ProductionSyntaxSource::create();

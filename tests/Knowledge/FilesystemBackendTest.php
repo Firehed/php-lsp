@@ -19,7 +19,6 @@ use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
@@ -42,7 +41,6 @@ final class FilesystemBackendTest extends TestCase
     private string $fixturesRoot;
     private MemoizingSyntaxSource $parser;
     private SourceFileReader $reader;
-    private DeclarationSymbolInfoFactory $infoFactory;
 
     protected function setUp(): void
     {
@@ -50,7 +48,6 @@ final class FilesystemBackendTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
         $this->reader = $production->reader;
-        $this->infoFactory = new DeclarationSymbolInfoFactory();
     }
 
     public function testLookupClassLikeResolvesAndParsesAFixtureClass(): void
@@ -405,7 +402,6 @@ final class FilesystemBackendTest extends TestCase
             $catalog,
             $this->parser,
             $this->reader,
-            $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
             self::createStub(PrefixSearchableInterface::class),
@@ -448,7 +444,6 @@ final class FilesystemBackendTest extends TestCase
             new ComposerNamespaceSource($map),
             $this->parser,
             $this->reader,
-            $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
             $autoloadFiles,
@@ -462,7 +457,6 @@ final class FilesystemBackendTest extends TestCase
             self::createStub(NamespaceCatalogInterface::class),
             $this->parser,
             $this->reader,
-            $this->infoFactory,
             new DeclarationScanner(),
             new SymbolCache(CacheFactory::inMemory()),
             self::createStub(PrefixSearchableInterface::class),

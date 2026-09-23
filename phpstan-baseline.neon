@@ -51,14 +51,38 @@ parameters:
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 6
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
+			count: 1
+			path: src/Knowledge/DocumentSymbolSink.php
 
 		-
-			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
-			identifier: phpLsp.typeConstruction
+			message: '''
+				#^Call to method primitive\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
 			count: 1
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
+			path: src/Knowledge/DocumentSymbolSink.php
+
+		-
+			message: '''
+				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 1
+			path: src/Knowledge/FilesystemBackend.php
+
+		-
+			message: '''
+				#^Call to method primitive\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 1
+			path: src/Knowledge/FilesystemBackend.php
 
 		-
 			message: '''
@@ -157,6 +181,26 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 2
 			path: tests/Domain/TypeFactoryTest.php
+
+		-
+			message: '''
+				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 1
+			path: tests/Knowledge/InfoFromDeclarationsTraitHost.php
+
+		-
+			message: '''
+				#^Call to method primitive\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
+				sweep\: source\-context factory; resolution should go through
+				TypeSourceInterface, construction primitives will migrate elsewhere$#
+			'''
+			identifier: staticMethod.deprecatedClass
+			count: 1
+			path: tests/Knowledge/InfoFromDeclarationsTraitHost.php
 
 		-
 			message: '''

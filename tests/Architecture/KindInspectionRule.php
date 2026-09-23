@@ -21,7 +21,6 @@ use PHPStan\Rules\RuleErrorBuilder;
  * Allowed locations:
  * - TypeInterface implementations (internal operations)
  * - TypeFactory (construction)
- * - Metadata factory (DeclarationSymbolInfoFactory)
  * - BuiltinBackend (inlined reflection-to-SymbolInfoInterface build)
  * - Classifiers (CompletionItemFactory - maps symbol to LSP kind)
  * - Tests

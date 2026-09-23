@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -52,7 +51,6 @@ final class PrefixSearchParityTest extends TestCase
         $this->backend = new OpenDocumentBackend();
         $this->sink = new DocumentSymbolSink(
             $this->backend,
-            new DeclarationSymbolInfoFactory(),
             $parser,
             new DeclarationScanner(),
         );

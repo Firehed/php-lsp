@@ -45,8 +45,6 @@ final readonly class KnowledgeStack
         SyntaxSourceInterface $parser,
         SourceFileReader $reader,
     ): self {
-        $declarationInfoFactory = new DeclarationSymbolInfoFactory();
-
         [$workspaceMap, $vendorMap] = $autoloadMap->partitionByVendorDirectory($vendorDirectory);
 
         $scanner = new DeclarationScanner();
@@ -56,14 +54,12 @@ final readonly class KnowledgeStack
             $workspaceMap,
             $parser,
             $reader,
-            $declarationInfoFactory,
             $scanner,
         );
         [$vendor, $vendorInvalidatables] = self::filesystemBackend(
             $vendorMap,
             $parser,
             $reader,
-            $declarationInfoFactory,
             $scanner,
         );
         // ReflectionNamespaceSource serves both enumeration (cached, via
@@ -83,7 +79,6 @@ final readonly class KnowledgeStack
 
         $sink = new DocumentSymbolSink(
             $openDocuments,
-            $declarationInfoFactory,
             $parser,
             $scanner,
             // External-change and close-after-edit invalidation drops the on-disk
@@ -103,7 +98,6 @@ final readonly class KnowledgeStack
         ComposerAutoloadMap $map,
         SyntaxSourceInterface $parser,
         SourceFileReader $reader,
-        DeclarationSymbolInfoFactory $infoFactory,
         DeclarationScanner $scanner,
     ): array {
         // AutoloadFilesLocator serves three roles: symbol location, namespace
@@ -127,7 +121,6 @@ final readonly class KnowledgeStack
             $cachedCatalog,
             $parser,
             $reader,
-            $infoFactory,
             $scanner,
             new SymbolCache(CacheFactory::inMemory()),
             $autoloadFiles,

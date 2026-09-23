@@ -19,6 +19,8 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  */
 final class DocumentSymbolSink implements SymbolSinkInterface
 {
+    use BuildsInfoFromDeclarationsTrait;
+
     /**
      * @param list<InvalidatableInterface> $onDiskBackends the cached on-disk backends
      *        (workspace, vendor) whose entry for a file must be dropped when that
@@ -26,7 +28,6 @@ final class DocumentSymbolSink implements SymbolSinkInterface
      */
     public function __construct(
         private readonly DocumentSymbolStoreInterface $store,
-        private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly SyntaxSourceInterface $parser,
         private readonly DeclarationScanner $scanner,
         private readonly array $onDiskBackends = [],
@@ -68,9 +69,9 @@ final class DocumentSymbolSink implements SymbolSinkInterface
 
         $this->store->updateDocument(
             $document->uri,
-            $this->infoFactory->allClassInfosIn($declarations, $filePath),
-            $this->infoFactory->allConstantInfosIn($declarations, $filePath),
-            $this->infoFactory->allFunctionInfosIn($declarations, $filePath),
+            $this->allClassInfosIn($declarations, $filePath),
+            $this->allConstantInfosIn($declarations, $filePath),
+            $this->allFunctionInfosIn($declarations, $filePath),
         );
     }
 }

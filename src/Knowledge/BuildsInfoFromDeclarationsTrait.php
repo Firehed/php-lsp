@@ -29,6 +29,7 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use InvalidArgumentException;
 use PhpParser\Modifiers;
@@ -41,13 +42,17 @@ use PhpParser\Node\Stmt;
 use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
 /**
- * Builds concrete info values from parsed {@see FileDeclarations}: per-kind
- * bulk builders for the open-document write path and per-name lookups for the
- * filesystem backend. Each method touches only its own kind's declaration list,
- * so a kind cannot answer for another and no route through a marker type is
- * needed.
+ * Builds concrete info values from parsed {@see FileDeclarations}: three
+ * bulk builders for the open-document write path, and three per-name lookups
+ * for the filesystem backend. Each method touches only its own kind's
+ * declaration list, so a kind cannot answer for another and no route through
+ * a marker type is needed.
+ *
+ * A trait rather than a class: the two consumers ({@see FilesystemBackend},
+ * {@see DocumentSymbolSink}) each own the construction they need, so the
+ * "factory" role need not be a separate service.
  */
-final readonly class DeclarationSymbolInfoFactory
+trait BuildsInfoFromDeclarationsTrait
 {
     /**
      * @return list<ClassInfo>
@@ -239,7 +244,7 @@ final readonly class DeclarationSymbolInfoFactory
                     name: new ClasslikeConstantName($className, $name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: TypeFactory::fromNode(
+                    type: self::typeOf(
                         $stmt->type,
                         $className->qualifiedName->fullyQualifiedName(),
                         $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -342,7 +347,7 @@ final readonly class DeclarationSymbolInfoFactory
                 isAbstract: $stmt->isAbstract(),
                 isFinal: $stmt->isFinal(),
                 parameters: $this->extractParameters($stmt->params, $className, $parentClass),
-                returnType: TypeFactory::fromNode(
+                returnType: self::typeOf(
                     $stmt->returnType,
                     $className->qualifiedName->fullyQualifiedName(),
                     $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -404,7 +409,7 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
-                        type: TypeFactory::fromNode(
+                        type: self::typeOf(
                             $stmt->type,
                             $className->qualifiedName->fullyQualifiedName(),
                             $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -432,7 +437,7 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: false,
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
                         isPromoted: true,
-                        type: TypeFactory::fromNode(
+                        type: self::typeOf(
                             $param->type,
                             $className->qualifiedName->fullyQualifiedName(),
                             $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -499,7 +504,7 @@ final readonly class DeclarationSymbolInfoFactory
             return null;
         }
 
-        return new PrimitiveType($enum->scalarType->toString());
+        return TypeFactory::primitive($enum->scalarType->toString());
     }
 
     private function functionInfoFromNode(
@@ -518,7 +523,7 @@ final readonly class DeclarationSymbolInfoFactory
         return new FunctionInfo(
             name: new FunctionName($name),
             parameters: $params,
-            returnType: TypeFactory::fromNode($node->returnType),
+            returnType: self::typeOf($node->returnType),
             docblock: $node->getDocComment()?->getText(),
             file: $filePath,
             line: $node->getStartLine(),
@@ -570,7 +575,7 @@ final readonly class DeclarationSymbolInfoFactory
 
         return new ParameterInfo(
             name: $param->var->name,
-            type: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
+            type: self::typeOf($param->type, $selfContext, $parentContext),
             hasDefault: $param->default !== null,
             defaultValue: $defaultValue,
             position: $position,
@@ -607,6 +612,19 @@ final readonly class DeclarationSymbolInfoFactory
         }
 
         return $this->resolveNameToClasslikeName($node->extends);
+    }
+
+    /**
+     * One place the trait touches the TypeFactory, so the deprecation surface
+     * stays fixed as the trait's using classes multiply.
+     */
+    private static function typeOf(
+        ?Node $node,
+        ?string $selfContext = null,
+        ?string $parentContext = null,
+        bool $preserveLateBinding = false,
+    ): ?TypeInterface {
+        return TypeFactory::fromNode($node, $selfContext, $parentContext, $preserveLateBinding);
     }
 
     private function visibilityFromFlags(int $flags): Visibility
