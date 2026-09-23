@@ -29,7 +29,6 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use InvalidArgumentException;
 use PhpParser\Modifiers;
@@ -59,13 +58,12 @@ trait BuildsInfoFromDeclarationsTrait
      */
     public function allClassInfosIn(FileDeclarations $declarations, string $filePath): array
     {
-        $target = NameKind::ClassLike;
         $uri = FileUri::fromPath($filePath);
         $seen = [];
         $infos = [];
 
         foreach ($declarations->classLikes as $declaration) {
-            $key = $target->normalize($declaration->name);
+            $key = NameKind::ClassLike->normalize($declaration->name);
             if (array_key_exists($key, $seen)) {
                 continue;
             }
@@ -81,12 +79,11 @@ trait BuildsInfoFromDeclarationsTrait
      */
     public function allConstantInfosIn(FileDeclarations $declarations, string $filePath): array
     {
-        $target = NameKind::Constant;
         $seen = [];
         $infos = [];
 
         foreach ($declarations->constants as $declaration) {
-            $key = $target->normalize($declaration->name);
+            $key = NameKind::Constant->normalize($declaration->name);
             if (array_key_exists($key, $seen)) {
                 continue;
             }
@@ -102,12 +99,11 @@ trait BuildsInfoFromDeclarationsTrait
      */
     public function allFunctionInfosIn(FileDeclarations $declarations, string $filePath): array
     {
-        $target = NameKind::Function_;
         $seen = [];
         $infos = [];
 
         foreach ($declarations->functions as $declaration) {
-            $key = $target->normalize($declaration->name);
+            $key = NameKind::Function_->normalize($declaration->name);
             if (array_key_exists($key, $seen)) {
                 continue;
             }
@@ -244,7 +240,7 @@ trait BuildsInfoFromDeclarationsTrait
                     name: new ClasslikeConstantName($className, $name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: self::typeOf(
+                    type: TypeFactory::fromNode(
                         $stmt->type,
                         $className->qualifiedName->fullyQualifiedName(),
                         $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -347,7 +343,7 @@ trait BuildsInfoFromDeclarationsTrait
                 isAbstract: $stmt->isAbstract(),
                 isFinal: $stmt->isFinal(),
                 parameters: $this->extractParameters($stmt->params, $className, $parentClass),
-                returnType: self::typeOf(
+                returnType: TypeFactory::fromNode(
                     $stmt->returnType,
                     $className->qualifiedName->fullyQualifiedName(),
                     $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -409,7 +405,7 @@ trait BuildsInfoFromDeclarationsTrait
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
-                        type: self::typeOf(
+                        type: TypeFactory::fromNode(
                             $stmt->type,
                             $className->qualifiedName->fullyQualifiedName(),
                             $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -437,7 +433,7 @@ trait BuildsInfoFromDeclarationsTrait
                         isStatic: false,
                         isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
                         isPromoted: true,
-                        type: self::typeOf(
+                        type: TypeFactory::fromNode(
                             $param->type,
                             $className->qualifiedName->fullyQualifiedName(),
                             $parentClass?->qualifiedName->fullyQualifiedName(),
@@ -523,7 +519,7 @@ trait BuildsInfoFromDeclarationsTrait
         return new FunctionInfo(
             name: new FunctionName($name),
             parameters: $params,
-            returnType: self::typeOf($node->returnType),
+            returnType: TypeFactory::fromNode($node->returnType),
             docblock: $node->getDocComment()?->getText(),
             file: $filePath,
             line: $node->getStartLine(),
@@ -575,7 +571,7 @@ trait BuildsInfoFromDeclarationsTrait
 
         return new ParameterInfo(
             name: $param->var->name,
-            type: self::typeOf($param->type, $selfContext, $parentContext),
+            type: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
             hasDefault: $param->default !== null,
             defaultValue: $defaultValue,
             position: $position,
@@ -612,19 +608,6 @@ trait BuildsInfoFromDeclarationsTrait
         }
 
         return $this->resolveNameToClasslikeName($node->extends);
-    }
-
-    /**
-     * One place the trait touches the TypeFactory, so the deprecation surface
-     * stays fixed as the trait's using classes multiply.
-     */
-    private static function typeOf(
-        ?Node $node,
-        ?string $selfContext = null,
-        ?string $parentContext = null,
-        bool $preserveLateBinding = false,
-    ): ?TypeInterface {
-        return TypeFactory::fromNode($node, $selfContext, $parentContext, $preserveLateBinding);
     }
 
     private function visibilityFromFlags(int $flags): Visibility

@@ -51,7 +51,7 @@ parameters:
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 1
+			count: 6
 			path: src/Knowledge/DocumentSymbolSink.php
 
 		-
@@ -71,7 +71,7 @@ parameters:
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 1
+			count: 6
 			path: src/Knowledge/FilesystemBackend.php
 
 		-
@@ -189,7 +189,7 @@ parameters:
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 1
+			count: 6
 			path: tests/Knowledge/InfoFromDeclarationsTraitHost.php
 
 		-
