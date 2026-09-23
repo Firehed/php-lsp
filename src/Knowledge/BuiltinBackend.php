@@ -77,11 +77,13 @@ final class BuiltinBackend implements SymbolBackendInterface
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
-        return $this->cache->remember(
-            $name,
-            $kind,
-            fn(): ?SymbolInfoInterface => $this->build($name, $kind),
-        );
+        if ($kind->isClassLike()) {
+            return $this->lookupClassLike(ClasslikeName::fromFullyQualified($name->fullyQualifiedName()));
+        }
+        if ($kind->isConstant()) {
+            return $this->lookupConstant(new ConstantName($name));
+        }
+        return $this->lookupFunction(new FunctionName($name));
     }
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
@@ -117,15 +119,6 @@ final class BuiltinBackend implements SymbolBackendInterface
     public function search(string $prefix, NameKind $kind): array
     {
         return $this->prefixSearch->searchByPrefix($prefix, $kind);
-    }
-
-    private function build(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
-    {
-        return match ($kind) {
-            NameKind::ClassLike => $this->classInfo($name),
-            NameKind::Constant => $this->constantInfo($name),
-            NameKind::Function_ => $this->functionInfo($name),
-        };
     }
 
     private function classInfo(QualifiedName $name): ?ClassInfo

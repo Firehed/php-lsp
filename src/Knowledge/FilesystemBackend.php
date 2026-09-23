@@ -73,20 +73,13 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
 
     public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
-        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfoInterface {
-            $filePath = $this->locator->locate($name, $kind);
-            if ($filePath === null) {
-                return null;
-            }
-
-            $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-            $info = $this->infoFactory->fromDeclarations($declarations, $name, $kind, $filePath);
-            if ($info !== null) {
-                $this->symbolsByPath[$filePath][] = [$name, $kind];
-            }
-
-            return $info;
-        });
+        if ($kind->isClassLike()) {
+            return $this->lookupClassLike(ClasslikeName::fromFullyQualified($name->fullyQualifiedName()));
+        }
+        if ($kind->isConstant()) {
+            return $this->lookupConstant(new ConstantName($name));
+        }
+        return $this->lookupFunction(new FunctionName($name));
     }
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
