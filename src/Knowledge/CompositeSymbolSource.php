@@ -10,6 +10,9 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\MemberKind;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -72,6 +75,22 @@ final class CompositeSymbolSource implements SymbolSourceInterface
         assert($info === null || $info instanceof FunctionInfo);
 
         return $info;
+    }
+
+    public function lookupMethod(MethodName $name): ?MethodInfo
+    {
+        $owner = $this->lookupClassLike($name->owner);
+        if ($owner === null) {
+            return null;
+        }
+        $wanted = MemberKind::Method->keyFor($name->name);
+        foreach ($owner->methods as $declared => $method) {
+            if (MemberKind::Method->keyFor($declared) === $wanted) {
+                return $method;
+            }
+        }
+
+        return null;
     }
 
     /**

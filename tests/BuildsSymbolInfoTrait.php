@@ -12,8 +12,11 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\Visibility;
 
 /**
  * Builds minimal domain value objects for tests that need symbols without a real
@@ -28,17 +31,19 @@ trait BuildsSymbolInfoTrait
 {
     /**
      * @param list<string> $interfaces
+     * @param array<string, MethodInfo> $methods Keyed by declared method name
      */
     private static function declaredClass(
         string $fqn,
         ?string $parent = null,
         array $interfaces = [],
         ?string $file = null,
+        array $methods = [],
     ): DeclaredSymbol {
         return new DeclaredSymbol(
             QualifiedName::fromFullyQualified($fqn),
             NameKind::ClassLike,
-            self::classInfo($fqn, parent: $parent, interfaces: $interfaces, file: $file),
+            self::classInfo($fqn, parent: $parent, interfaces: $interfaces, file: $file, methods: $methods),
         );
     }
 
@@ -58,6 +63,7 @@ trait BuildsSymbolInfoTrait
 
     /**
      * @param list<string> $interfaces
+     * @param array<string, MethodInfo> $methods Keyed by declared method name
      */
     private static function classInfo(
         string $fqn,
@@ -65,6 +71,7 @@ trait BuildsSymbolInfoTrait
         ?string $parent = null,
         array $interfaces = [],
         ?string $file = null,
+        array $methods = [],
     ): ClassInfo {
         return new ClassInfo(
             self::className($fqn),
@@ -76,13 +83,33 @@ trait BuildsSymbolInfoTrait
             parent: $parent === null ? null : self::className($parent),
             interfaces: array_map(self::className(...), $interfaces),
             traits: [],
-            methods: [],
+            methods: $methods,
             properties: [],
             constants: [],
             enumCases: [],
             docblock: null,
             file: $file,
             line: null,
+        );
+    }
+
+    private static function methodInfo(
+        string $ownerFqn,
+        string $name,
+        Visibility $visibility = Visibility::Public,
+        ?string $file = null,
+    ): MethodInfo {
+        return new MethodInfo(
+            name: new MethodName(self::className($ownerFqn), $name),
+            visibility: $visibility,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: null,
+            docblock: null,
+            file: $file,
+            line: 1,
         );
     }
 
