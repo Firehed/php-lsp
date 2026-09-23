@@ -84,6 +84,33 @@ final class BuiltinBackend implements SymbolBackendInterface
         );
     }
 
+    public function lookupClassLike(ClasslikeName $name): ?ClassInfo
+    {
+        return $this->cache->remember(
+            $name->qualifiedName,
+            NameKind::ClassLike,
+            fn(): ?ClassInfo => $this->classInfo($name->qualifiedName),
+        );
+    }
+
+    public function lookupConstant(ConstantName $name): ?ConstantInfo
+    {
+        return $this->cache->remember(
+            $name->qualifiedName,
+            $name->kind,
+            fn(): ?ConstantInfo => $this->constantInfo($name->qualifiedName),
+        );
+    }
+
+    public function lookupFunction(FunctionName $name): ?FunctionInfo
+    {
+        return $this->cache->remember(
+            $name->qualifiedName,
+            $name->kind,
+            fn(): ?FunctionInfo => $this->functionInfo($name->qualifiedName),
+        );
+    }
+
     /**
      * @return list<Symbol>
      */
@@ -101,7 +128,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         };
     }
 
-    private function classInfo(QualifiedName $name): ?SymbolInfoInterface
+    private function classInfo(QualifiedName $name): ?ClassInfo
     {
         $fqn = $name->fullyQualifiedName();
 
@@ -151,7 +178,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         );
     }
 
-    private function constantInfo(QualifiedName $name): ?SymbolInfoInterface
+    private function constantInfo(QualifiedName $name): ?ConstantInfo
     {
         $fqn = $name->fullyQualifiedName();
         if (!$this->constants->contains($fqn)) {
@@ -342,7 +369,7 @@ final class BuiltinBackend implements SymbolBackendInterface
         return $properties;
     }
 
-    private function functionInfo(QualifiedName $name): ?SymbolInfoInterface
+    private function functionInfo(QualifiedName $name): ?FunctionInfo
     {
         try {
             $reflection = new ReflectionFunction($name->fullyQualifiedName());
