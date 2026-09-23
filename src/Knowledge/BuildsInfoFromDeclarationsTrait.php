@@ -59,19 +59,12 @@ trait BuildsInfoFromDeclarationsTrait
     public function allClassInfosIn(FileDeclarations $declarations, string $filePath): array
     {
         $uri = FileUri::fromPath($filePath);
-        $seen = [];
-        $infos = [];
 
-        foreach ($declarations->classLikes as $declaration) {
-            $key = NameKind::ClassLike->normalize($declaration->name);
-            if (array_key_exists($key, $seen)) {
-                continue;
-            }
-            $seen[$key] = true;
-            $infos[] = $this->classInfoFromNode($declaration->node, $uri);
-        }
-
-        return $infos;
+        return $this->dedupAndBuild(
+            $declarations->classLikes,
+            NameKind::ClassLike,
+            fn($decl): ClassInfo => $this->classInfoFromNode($decl->node, $uri),
+        );
     }
 
     /**
@@ -79,19 +72,11 @@ trait BuildsInfoFromDeclarationsTrait
      */
     public function allConstantInfosIn(FileDeclarations $declarations, string $filePath): array
     {
-        $seen = [];
-        $infos = [];
-
-        foreach ($declarations->constants as $declaration) {
-            $key = NameKind::Constant->normalize($declaration->name);
-            if (array_key_exists($key, $seen)) {
-                continue;
-            }
-            $seen[$key] = true;
-            $infos[] = $this->constantInfoFromGlobalDeclaration($declaration->node, $declaration->name, $filePath);
-        }
-
-        return $infos;
+        return $this->dedupAndBuild(
+            $declarations->constants,
+            NameKind::Constant,
+            fn($decl): ConstantInfo => $this->constantInfoFromGlobalDeclaration($decl->node, $decl->name, $filePath),
+        );
     }
 
     /**
@@ -99,19 +84,11 @@ trait BuildsInfoFromDeclarationsTrait
      */
     public function allFunctionInfosIn(FileDeclarations $declarations, string $filePath): array
     {
-        $seen = [];
-        $infos = [];
-
-        foreach ($declarations->functions as $declaration) {
-            $key = NameKind::Function_->normalize($declaration->name);
-            if (array_key_exists($key, $seen)) {
-                continue;
-            }
-            $seen[$key] = true;
-            $infos[] = $this->functionInfoFromNode($declaration->node, $declaration->name, $filePath);
-        }
-
-        return $infos;
+        return $this->dedupAndBuild(
+            $declarations->functions,
+            NameKind::Function_,
+            fn($decl): FunctionInfo => $this->functionInfoFromNode($decl->node, $decl->name, $filePath),
+        );
     }
 
     public function classInfoFrom(
@@ -209,6 +186,30 @@ trait BuildsInfoFromDeclarationsTrait
             file: $filePath,
             line: $node->getStartLine(),
         );
+    }
+
+    /**
+     * @template TDecl of Declaration<Node>
+     * @template TInfo
+     * @param list<TDecl> $declarations
+     * @param \Closure(TDecl): TInfo $build
+     * @return list<TInfo>
+     */
+    private function dedupAndBuild(array $declarations, NameKind $kind, \Closure $build): array
+    {
+        $seen = [];
+        $infos = [];
+
+        foreach ($declarations as $declaration) {
+            $key = $kind->normalize($declaration->name);
+            if (array_key_exists($key, $seen)) {
+                continue;
+            }
+            $seen[$key] = true;
+            $infos[] = $build($declaration);
+        }
+
+        return $infos;
     }
 
     private function determineKind(Stmt\ClassLike $node): ClassKind
