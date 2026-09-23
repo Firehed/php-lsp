@@ -73,67 +73,28 @@ final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInt
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
     {
-        return $this->cache->remember(
+        return $this->lookup(
             $name->qualifiedName,
             NameKind::ClassLike,
-            function () use ($name): ?ClassInfo {
-                $filePath = $this->locator->locate($name->qualifiedName, NameKind::ClassLike);
-                if ($filePath === null) {
-                    return null;
-                }
-
-                $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-                $info = $this->classInfoFrom($declarations, $name, $filePath);
-                if ($info !== null) {
-                    $this->symbolsByPath[$filePath][] = [$name->qualifiedName, NameKind::ClassLike];
-                }
-
-                return $info;
-            },
+            fn(FileDeclarations $d, string $p): ?ClassInfo => $this->classInfoFrom($d, $name, $p),
         );
     }
 
     public function lookupConstant(ConstantName $name): ?ConstantInfo
     {
-        return $this->cache->remember(
+        return $this->lookup(
             $name->qualifiedName,
             $name->kind,
-            function () use ($name): ?ConstantInfo {
-                $filePath = $this->locator->locate($name->qualifiedName, $name->kind);
-                if ($filePath === null) {
-                    return null;
-                }
-
-                $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-                $info = $this->constantInfoFrom($declarations, $name, $filePath);
-                if ($info !== null) {
-                    $this->symbolsByPath[$filePath][] = [$name->qualifiedName, $name->kind];
-                }
-
-                return $info;
-            },
+            fn(FileDeclarations $d, string $p): ?ConstantInfo => $this->constantInfoFrom($d, $name, $p),
         );
     }
 
     public function lookupFunction(FunctionName $name): ?FunctionInfo
     {
-        return $this->cache->remember(
+        return $this->lookup(
             $name->qualifiedName,
             $name->kind,
-            function () use ($name): ?FunctionInfo {
-                $filePath = $this->locator->locate($name->qualifiedName, $name->kind);
-                if ($filePath === null) {
-                    return null;
-                }
-
-                $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-                $info = $this->functionInfoFrom($declarations, $name, $filePath);
-                if ($info !== null) {
-                    $this->symbolsByPath[$filePath][] = [$name->qualifiedName, $name->kind];
-                }
-
-                return $info;
-            },
+            fn(FileDeclarations $d, string $p): ?FunctionInfo => $this->functionInfoFrom($d, $name, $p),
         );
     }
 
@@ -172,5 +133,32 @@ final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInt
     public function searchFunctions(string $prefix): array
     {
         return $this->prefixSearch->searchByPrefix($prefix, NameKind::Function_);
+    }
+
+    /**
+     * @template T of ClassInfo|ConstantInfo|FunctionInfo
+     * @param \Closure(FileDeclarations, string): ?T $build
+     * @return ?T
+     */
+    private function lookup(QualifiedName $qname, NameKind $kind, \Closure $build): ?object
+    {
+        return $this->cache->remember(
+            $qname,
+            $kind,
+            function () use ($qname, $kind, $build) {
+                $filePath = $this->locator->locate($qname, $kind);
+                if ($filePath === null) {
+                    return null;
+                }
+
+                $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
+                $info = $build($declarations, $filePath);
+                if ($info !== null) {
+                    $this->symbolsByPath[$filePath][] = [$qname, $kind];
+                }
+
+                return $info;
+            },
+        );
     }
 }
