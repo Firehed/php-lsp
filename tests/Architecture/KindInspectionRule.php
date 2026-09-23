@@ -73,7 +73,6 @@ final class KindInspectionRule implements Rule
         'src/Domain/IntersectionType.php',
         'src/Domain/PrimitiveType.php',
         'src/Domain/LateStaticType.php',
-        'src/Knowledge/CompositeSymbolSource.php',
     ];
 
     public function getNodeType(): string

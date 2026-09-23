@@ -21,7 +21,7 @@ use PHPUnit\Framework\TestCase;
  * The composite is the single place symbol sources are composed (RFC 1 §4.2, §5.3):
  * these prove the fixed precedence — an earlier (more authoritative) backend wins a
  * lookup, a merge, and a name clash. Backend internals are faked
- * ({@see FakeSymbolBackend}); parity with the real surfaces is frozen by the Step P
+ * ({@see FakeSymbolBackend}); parity with the real surfaces is frozen by the golden
  * harness.
  */
 final class CompositeSymbolSourceTest extends TestCase
@@ -30,8 +30,8 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupClassLikeTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'open.php')]);
-        $vendor = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'vendor.php')]);
+        $open = new FakeSymbolBackend(classes: [self::classInfo('App\Widget', file: 'open.php')]);
+        $vendor = new FakeSymbolBackend(classes: [self::classInfo('App\Widget', file: 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupClassLike(self::className('App\Widget'));
@@ -47,7 +47,7 @@ final class CompositeSymbolSourceTest extends TestCase
     public function testLookupClassLikeFallsThroughToALaterBackend(): void
     {
         $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'vendor.php')]);
+        $vendor = new FakeSymbolBackend(classes: [self::classInfo('App\Widget', file: 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupClassLike(self::className('App\Widget'));
@@ -68,8 +68,8 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupFunctionTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend([self::declaredFunction('App\format', 'open.php')]);
-        $vendor = new FakeSymbolBackend([self::declaredFunction('App\format', 'vendor.php')]);
+        $open = new FakeSymbolBackend(functions: [self::functionInfo('App\format', 'open.php')]);
+        $vendor = new FakeSymbolBackend(functions: [self::functionInfo('App\format', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
@@ -85,7 +85,7 @@ final class CompositeSymbolSourceTest extends TestCase
     public function testLookupFunctionFallsThroughToALaterBackend(): void
     {
         $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend([self::declaredFunction('App\format', 'vendor.php')]);
+        $vendor = new FakeSymbolBackend(functions: [self::functionInfo('App\format', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
@@ -106,8 +106,8 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupConstantTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'open.php')]);
-        $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
+        $open = new FakeSymbolBackend(constants: [self::constantInfo('App\DEBUG', 'open.php')]);
+        $vendor = new FakeSymbolBackend(constants: [self::constantInfo('App\DEBUG', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG'));
@@ -123,7 +123,7 @@ final class CompositeSymbolSourceTest extends TestCase
     public function testLookupConstantFallsThroughToALaterBackend(): void
     {
         $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
+        $vendor = new FakeSymbolBackend(constants: [self::constantInfo('App\DEBUG', 'vendor.php')]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
         $info = $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG'));
@@ -144,7 +144,7 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupConstantIsCaseSensitive(): void
     {
-        $backend = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'file.php')]);
+        $backend = new FakeSymbolBackend(constants: [self::constantInfo('App\DEBUG', 'file.php')]);
         $source = new CompositeSymbolSource([$backend]);
 
         self::assertNotNull(

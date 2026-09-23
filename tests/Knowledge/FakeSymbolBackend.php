@@ -4,40 +4,56 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\DeclaredSymbol;
+use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
-use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 
 /**
- * An in-memory {@see SymbolBackendInterface} configured with fixed answers, so
- * {@see \Firehed\PhpLsp\Tests\Knowledge\CompositeSymbolSourceTest} can prove the
- * composite's precedence and merge behavior without standing up real sources.
- *
- * Kind-agnostic like the real backends: a symbol carries its own kind, so a kind this
- * file has never heard of is configurable without a new parameter (Plan 0002 §5.6).
+ * An in-memory {@see SymbolSourceInterface} configured with fixed answers, so
+ * {@see \Firehed\PhpLsp\Tests\Knowledge\CompositeSymbolSourceTest} can prove
+ * the composite's precedence and merge behavior without standing up real sources.
  */
-final class FakeSymbolBackend implements SymbolBackendInterface
+final class FakeSymbolBackend implements SymbolSourceInterface
 {
-    /** @var array<string, SymbolInfoInterface> Kind-qualified key -> info */
-    private array $byKey = [];
+    /** @var array<string, ClassInfo> */
+    private array $classesByKey = [];
+
+    /** @var array<string, ConstantInfo> */
+    private array $constantsByKey = [];
+
+    /** @var array<string, FunctionInfo> */
+    private array $functionsByKey = [];
 
     /**
-     * @param list<DeclaredSymbol> $symbols Keyed here by each one's own case rule
+     * @param list<ClassInfo> $classes
+     * @param list<ConstantInfo> $constants
+     * @param list<FunctionInfo> $functions
      * @param array<string, NamespaceContents> $namespaces Path -> contents
      * @param list<Symbol> $searchResults Returned (prefix-filtered on short name)
      */
     public function __construct(
-        array $symbols = [],
+        array $classes = [],
+        array $constants = [],
+        array $functions = [],
         private readonly array $namespaces = [],
         private readonly array $searchResults = [],
     ) {
-        foreach ($symbols as $symbol) {
-            $this->byKey[$symbol->kind->keyFor($symbol->name)] = $symbol->info;
+        foreach ($classes as $info) {
+            $this->classesByKey[NameKind::ClassLike->keyFor($info->name->qualifiedName)] = $info;
+        }
+        foreach ($constants as $info) {
+            $this->constantsByKey[NameKind::Constant->keyFor($info->name->qualifiedName)] = $info;
+        }
+        foreach ($functions as $info) {
+            $this->functionsByKey[NameKind::Function_->keyFor($info->name->qualifiedName)] = $info;
         }
     }
 
@@ -46,9 +62,19 @@ final class FakeSymbolBackend implements SymbolBackendInterface
         return $this->namespaces[$namespace->path] ?? new NamespaceContents();
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
+    public function lookupClassLike(ClasslikeName $name): ?ClassInfo
     {
-        return $this->byKey[$kind->keyFor($name)] ?? null;
+        return $this->classesByKey[NameKind::ClassLike->keyFor($name->qualifiedName)] ?? null;
+    }
+
+    public function lookupConstant(ConstantName $name): ?ConstantInfo
+    {
+        return $this->constantsByKey[$name->kind->keyFor($name->qualifiedName)] ?? null;
+    }
+
+    public function lookupFunction(FunctionName $name): ?FunctionInfo
+    {
+        return $this->functionsByKey[$name->kind->keyFor($name->qualifiedName)] ?? null;
     }
 
     /**

@@ -5,48 +5,33 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 
 /**
- * Typed lookups against a {@see SymbolBackendInterface}, narrowing as `CompositeSymbolSource`
- * does in production so every call site also pins the kind → info-type contract.
+ * String-FQN wrappers around the three typed lookups, so tests can name a
+ * symbol by its string form without repeating the ClasslikeName/ConstantName/
+ * FunctionName construction each time.
  */
 trait LooksUpBackendSymbolsTrait
 {
-    private static function classLikeIn(SymbolBackendInterface $backend, string $fqn): ?ClassInfo
+    private static function classLikeIn(SymbolSourceInterface $backend, string $fqn): ?ClassInfo
     {
-        $info = $backend->lookup(QualifiedName::fromFullyQualified($fqn), NameKind::ClassLike);
-        if ($info === null) {
-            return null;
-        }
-        self::assertInstanceOf(ClassInfo::class, $info, 'a class-like lookup must answer with ClassInfo');
-
-        return $info;
+        return $backend->lookupClassLike(ClasslikeName::fromFullyQualified($fqn));
     }
 
-    private static function constantIn(SymbolBackendInterface $backend, string $fqn): ?ConstantInfo
+    private static function constantIn(SymbolSourceInterface $backend, string $fqn): ?ConstantInfo
     {
-        $info = $backend->lookup(QualifiedName::fromFullyQualified($fqn), NameKind::Constant);
-        if ($info === null) {
-            return null;
-        }
-        self::assertInstanceOf(ConstantInfo::class, $info, 'a constant lookup must answer with ConstantInfo');
-
-        return $info;
+        return $backend->lookupConstant(new ConstantName(QualifiedName::fromFullyQualified($fqn)));
     }
 
-    private static function functionIn(SymbolBackendInterface $backend, string $fqn): ?FunctionInfo
+    private static function functionIn(SymbolSourceInterface $backend, string $fqn): ?FunctionInfo
     {
-        $info = $backend->lookup(QualifiedName::fromFullyQualified($fqn), NameKind::Function_);
-        if ($info === null) {
-            return null;
-        }
-        self::assertInstanceOf(FunctionInfo::class, $info, 'a function lookup must answer with FunctionInfo');
-
-        return $info;
+        return $backend->lookupFunction(new FunctionName(QualifiedName::fromFullyQualified($fqn)));
     }
 }

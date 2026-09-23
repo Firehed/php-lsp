@@ -15,7 +15,9 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
  *
  * The three typed lists match PHP's three symbol namespaces, so the store fills
  * one typed map per kind without a route from (name, kind) to a concrete info
- * type (RFC 1 §4.11, one route per fact).
+ * type (RFC 1 §4.11, one route per fact). Splitting the write seam from
+ * {@see SymbolSourceInterface} keeps the sink typed on the one route it drives
+ * rather than on a full source it does not read.
  */
 interface DocumentSymbolStoreInterface
 {

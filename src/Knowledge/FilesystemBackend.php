@@ -15,7 +15,6 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchableInterface;
@@ -24,11 +23,11 @@ use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
- * A {@see SymbolBackendInterface} over PHP files on disk, resolved through Composer's
- * autoload maps: the workspace's own code, and vendored dependencies. The same
- * class serves both roles — the difference is only which autoload map subset it is
- * given (Plan 0002 §3a: the workspace/vendor precedence split), so one lookup
- * mechanism covers both rather than two hand-written copies.
+ * A {@see SymbolSourceInterface} over PHP files on disk, resolved through
+ * Composer's autoload maps: the workspace's own code, and vendored dependencies.
+ * The same class serves both roles — the difference is only which autoload map
+ * subset it is given, so one lookup mechanism covers both rather than two
+ * hand-written copies.
  *
  * Lookup locates the file for a name and parses that one file — no
  * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
@@ -45,7 +44,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * autoload.files index ({@see PrefixSearchableInterface}), which is bounded and already in
  * memory.
  */
-final class FilesystemBackend implements SymbolBackendInterface, InvalidatableInterface
+final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInterface
 {
     use BuildsInfoFromDeclarationsTrait;
 
@@ -70,17 +69,6 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
         return $this->namespaces->childrenOf($namespace->path);
-    }
-
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
-    {
-        if ($kind->isClassLike()) {
-            return $this->lookupClassLike(ClasslikeName::fromFullyQualified($name->fullyQualifiedName()));
-        }
-        if ($kind->isConstant()) {
-            return $this->lookupConstant(new ConstantName($name));
-        }
-        return $this->lookupFunction(new FunctionName($name));
     }
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo

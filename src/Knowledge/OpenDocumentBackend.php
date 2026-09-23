@@ -14,23 +14,22 @@ use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
 /**
- * The highest-precedence {@see SymbolBackendInterface}: the documents the editor has open
- * (RFC 1 §5.3). Its answers override every on-disk backend, so a user's unsaved
- * edits are honored — including edits to a vendored file opened in the editor.
+ * The highest-precedence {@see SymbolSourceInterface}: the documents the editor
+ * has open (RFC 1 §5.3). Its answers override every on-disk backend, so a user's
+ * unsaved edits are honored — including edits to a vendored file opened in the
+ * editor.
  *
  * Open documents change on every keystroke and are never cached (RFC 1 §5.3). Each
  * of PHP's three symbol namespaces has its own typed map, so a class-like lookup
  * never sees a function of the same name, and a stored info's own type matches
  * the typed lookup that returns it — no runtime narrow at the read boundary.
  */
-final class OpenDocumentBackend implements SymbolBackendInterface, SymbolSourceInterface, DocumentSymbolStoreInterface
+final class OpenDocumentBackend implements SymbolSourceInterface, DocumentSymbolStoreInterface
 {
     /** @var array<string, ClassInfo> Normalized class-like key -> info */
     private array $classesByKey = [];
@@ -88,17 +87,6 @@ final class OpenDocumentBackend implements SymbolBackendInterface, SymbolSourceI
         }
 
         return new NamespaceContents(array_values($childNamespaces), $symbols);
-    }
-
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
-    {
-        if ($kind->isClassLike()) {
-            return $this->classesByKey[$kind->keyFor($name)] ?? null;
-        }
-        if ($kind->isConstant()) {
-            return $this->constantsByKey[$kind->keyFor($name)] ?? null;
-        }
-        return $this->functionsByKey[$kind->keyFor($name)] ?? null;
     }
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo

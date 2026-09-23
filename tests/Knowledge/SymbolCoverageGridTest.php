@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ConstantInfo;
-use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -68,20 +68,6 @@ final class SymbolCoverageGridTest extends TestCase
             'Function_' => ['name' => 'str_contains', 'namespace' => ''],
             'Constant' => ['name' => 'PHP_INT_MAX', 'namespace' => ''],
         ],
-    ];
-
-    /**
-     * The concrete type a lookup of each kind must answer with, so a cell counts as
-     * covered only when the backend answered for the kind it was asked about — §5.1
-     * requires a concrete return type, and the composite's narrowing `assert()` is
-     * gone in production.
-     *
-     * @var array<string, class-string>
-     */
-    private const array INFO_TYPES = [
-        'ClassLike' => ClassInfo::class,
-        'Constant' => ConstantInfo::class,
-        'Function_' => FunctionInfo::class,
     ];
 
     /** One name of each kind for the open-document row, which no on-disk file can stand in for. */
@@ -262,7 +248,7 @@ final class SymbolCoverageGridTest extends TestCase
     }
 
     /**
-     * @return array<string, SymbolBackendInterface> Backend short name -> the first of its class
+     * @return array<string, SymbolSourceInterface> Backend short name -> the first of its class
      */
     private function rows(): array
     {
@@ -275,7 +261,7 @@ final class SymbolCoverageGridTest extends TestCase
         return $rows;
     }
 
-    private function answers(SymbolBackendInterface $backend, string $row, NameKind $kind, GridQuery $query): bool
+    private function answers(SymbolSourceInterface $backend, string $row, NameKind $kind, GridQuery $query): bool
     {
         $probe = self::PROBES[$row][$kind->name] ?? null;
         self::assertNotNull($probe, "no probe is defined for the {$row} x {$kind->name} cells");
@@ -289,28 +275,19 @@ final class SymbolCoverageGridTest extends TestCase
         };
     }
 
-    private function looksUp(SymbolBackendInterface $backend, string $fqn, NameKind $kind): bool
+    private function looksUp(SymbolSourceInterface $backend, string $fqn, NameKind $kind): bool
     {
-        $info = $backend->lookup(QualifiedName::fromFullyQualified($fqn), $kind);
-        if ($info === null) {
-            return false;
+        $name = QualifiedName::fromFullyQualified($fqn);
+        if ($kind->isClassLike()) {
+            return $backend->lookupClassLike(ClasslikeName::fromFullyQualified($fqn)) !== null;
         }
-
-        self::assertArrayHasKey(
-            $kind->name,
-            self::INFO_TYPES,
-            "{$kind->name} has no info type declared, so no backend may answer a lookup of it",
-        );
-        self::assertInstanceOf(
-            self::INFO_TYPES[$kind->name],
-            $info,
-            "a {$kind->name} lookup must answer with that kind's own metadata type (RFC 1 §5.1)",
-        );
-
-        return true;
+        if ($kind->isConstant()) {
+            return $backend->lookupConstant(new ConstantName($name)) !== null;
+        }
+        return $backend->lookupFunction(new FunctionName($name)) !== null;
     }
 
-    private function searchFinds(SymbolBackendInterface $backend, string $fqn, NameKind $kind): bool
+    private function searchFinds(SymbolSourceInterface $backend, string $fqn, NameKind $kind): bool
     {
         $prefix = QualifiedName::fromFullyQualified($fqn)->shortName;
 
@@ -323,7 +300,7 @@ final class SymbolCoverageGridTest extends TestCase
         return false;
     }
 
-    private function enumerates(SymbolBackendInterface $backend, string $namespace, NameKind $kind, string $fqn): bool
+    private function enumerates(SymbolSourceInterface $backend, string $namespace, NameKind $kind, string $fqn): bool
     {
         foreach ($backend->childrenOf(new NamespaceName($namespace))->symbols as $symbol) {
             if ($symbol->kind === $kind && $symbol->fullyQualifiedName === $fqn) {

@@ -7,10 +7,8 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
-use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
@@ -235,26 +233,23 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
-    /**
-     * @return iterable<string, array{string, NameKind}>
-     */
-    public static function absentNames(): iterable
+    public function testLookupClassLikeReturnsNullForAFunctionName(): void
     {
-        // The kind selects which reflection is consulted, so a name that exists in
-        // one of PHP's symbol namespaces is not answered for another.
-        yield 'a function asked for as a class' => ['str_contains', NameKind::ClassLike];
-        yield 'a class asked for as a function' => [\ArrayObject::class, NameKind::Function_];
-    }
-
-    #[DataProvider('absentNames')]
-    public function testLookupReturnsNullWhenReflectionCannotDescribeTheNameForThatKind(
-        string $fqn,
-        NameKind $kind,
-    ): void {
+        // The kind selects which reflection is consulted, so a name that exists
+        // in one of PHP's symbol namespaces is not answered for another.
         $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
         self::assertNull(
-            $backend->lookup(QualifiedName::fromFullyQualified($fqn), $kind),
-            'a name reflection cannot load for this kind is absent (RFC 1 §5.3)',
+            self::classLikeIn($backend, 'str_contains'),
+            'a function name asked for as a class-like is absent (RFC 1 §5.3)',
+        );
+    }
+
+    public function testLookupFunctionReturnsNullForAClassName(): void
+    {
+        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
+        self::assertNull(
+            self::functionIn($backend, \ArrayObject::class),
+            'a class name asked for as a function is absent (RFC 1 §5.3)',
         );
     }
 
@@ -262,11 +257,8 @@ final class BuiltinBackendTest extends TestCase
     {
         $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
 
-        $info = $backend->lookup(QualifiedName::fromFullyQualified('PHP_INT_MAX'), NameKind::Constant);
-
-        self::assertInstanceOf(
-            ConstantInfo::class,
-            $info,
+        self::assertNotNull(
+            self::constantIn($backend, 'PHP_INT_MAX'),
             'a built-in constant must resolve to ConstantInfo',
         );
     }
@@ -281,7 +273,7 @@ final class BuiltinBackendTest extends TestCase
         $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
 
         self::assertNull(
-            $backend->lookup(QualifiedName::fromFullyQualified('TEST_USER_CONSTANT'), NameKind::Constant),
+            self::constantIn($backend, 'TEST_USER_CONSTANT'),
             'a user-defined constant is not a built-in, so it must not resolve',
         );
     }
