@@ -5,7 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
+use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FileUri;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -81,6 +87,72 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
 
             return $info;
         });
+    }
+
+    public function lookupClassLike(ClasslikeName $name): ?ClassInfo
+    {
+        return $this->cache->remember(
+            $name->qualifiedName,
+            NameKind::ClassLike,
+            function () use ($name): ?ClassInfo {
+                $filePath = $this->locator->locate($name->qualifiedName, NameKind::ClassLike);
+                if ($filePath === null) {
+                    return null;
+                }
+
+                $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
+                $info = $this->infoFactory->classInfoFrom($declarations, $name, $filePath);
+                if ($info !== null) {
+                    $this->symbolsByPath[$filePath][] = [$name->qualifiedName, NameKind::ClassLike];
+                }
+
+                return $info;
+            },
+        );
+    }
+
+    public function lookupConstant(ConstantName $name): ?ConstantInfo
+    {
+        return $this->cache->remember(
+            $name->qualifiedName,
+            $name->kind,
+            function () use ($name): ?ConstantInfo {
+                $filePath = $this->locator->locate($name->qualifiedName, $name->kind);
+                if ($filePath === null) {
+                    return null;
+                }
+
+                $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
+                $info = $this->infoFactory->constantInfoFrom($declarations, $name, $filePath);
+                if ($info !== null) {
+                    $this->symbolsByPath[$filePath][] = [$name->qualifiedName, $name->kind];
+                }
+
+                return $info;
+            },
+        );
+    }
+
+    public function lookupFunction(FunctionName $name): ?FunctionInfo
+    {
+        return $this->cache->remember(
+            $name->qualifiedName,
+            $name->kind,
+            function () use ($name): ?FunctionInfo {
+                $filePath = $this->locator->locate($name->qualifiedName, $name->kind);
+                if ($filePath === null) {
+                    return null;
+                }
+
+                $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
+                $info = $this->infoFactory->functionInfoFrom($declarations, $name, $filePath);
+                if ($info !== null) {
+                    $this->symbolsByPath[$filePath][] = [$name->qualifiedName, $name->kind];
+                }
+
+                return $info;
+            },
+        );
     }
 
     /**
