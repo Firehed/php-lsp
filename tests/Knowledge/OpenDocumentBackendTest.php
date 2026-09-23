@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
@@ -224,7 +223,7 @@ final class OpenDocumentBackendTest extends TestCase
             [self::functionInfo('App\Userland')],
         );
 
-        $results = $this->backend->search('User', NameKind::ClassLike);
+        $results = $this->backend->searchClassLikes('User');
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains('App\User', $fqns, 'a class-like matching the prefix must be found');
@@ -248,7 +247,7 @@ final class OpenDocumentBackendTest extends TestCase
             [self::functionInfo('App\format')],
         );
 
-        $results = $this->backend->search('format', NameKind::Function_);
+        $results = $this->backend->searchFunctions('format');
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains('App\format', $fqns, 'a function matching the prefix must be found');
@@ -268,7 +267,7 @@ final class OpenDocumentBackendTest extends TestCase
             [],
         );
 
-        $results = $this->backend->search('D', NameKind::Constant);
+        $results = $this->backend->searchConstants('D');
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains('App\DEBUG', $fqns, 'a constant matching the prefix must be found');

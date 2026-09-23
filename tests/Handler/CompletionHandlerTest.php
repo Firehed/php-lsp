@@ -25,7 +25,6 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -778,7 +777,17 @@ class CompletionHandlerTest extends TestCase
                 return null;
             }
 
-            public function search(string $prefix, NameKind $kind): array
+            public function searchClassLikes(string $prefix): array
+            {
+                return [];
+            }
+
+            public function searchConstants(string $prefix): array
+            {
+                return [];
+            }
+
+            public function searchFunctions(string $prefix): array
             {
                 return [];
             }

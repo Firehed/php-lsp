@@ -278,20 +278,23 @@ final class SymbolCoverageGridTest extends TestCase
     private function looksUp(SymbolSourceInterface $backend, string $fqn, NameKind $kind): bool
     {
         $name = QualifiedName::fromFullyQualified($fqn);
-        if ($kind->isClassLike()) {
-            return $backend->lookupClassLike(ClasslikeName::fromFullyQualified($fqn)) !== null;
-        }
-        if ($kind->isConstant()) {
-            return $backend->lookupConstant(new ConstantName($name)) !== null;
-        }
-        return $backend->lookupFunction(new FunctionName($name)) !== null;
+        return match ($kind) {
+            NameKind::ClassLike => $backend->lookupClassLike(ClasslikeName::fromFullyQualified($fqn)) !== null,
+            NameKind::Constant => $backend->lookupConstant(new ConstantName($name)) !== null,
+            NameKind::Function_ => $backend->lookupFunction(new FunctionName($name)) !== null,
+        };
     }
 
     private function searchFinds(SymbolSourceInterface $backend, string $fqn, NameKind $kind): bool
     {
         $prefix = QualifiedName::fromFullyQualified($fqn)->shortName;
+        $results = match ($kind) {
+            NameKind::ClassLike => $backend->searchClassLikes($prefix),
+            NameKind::Constant => $backend->searchConstants($prefix),
+            NameKind::Function_ => $backend->searchFunctions($prefix),
+        };
 
-        foreach ($backend->search($prefix, $kind) as $symbol) {
+        foreach ($results as $symbol) {
             if ($symbol->fullyQualifiedName === $fqn) {
                 return true;
             }

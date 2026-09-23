@@ -192,14 +192,14 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testSearchMergesAndDeduplicatesByFqnEarlierWinning(): void
     {
-        $open = new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'open.php')]);
-        $vendor = new FakeSymbolBackend(searchResults: [
+        $open = new FakeSymbolBackend(classLikeSearchResults: [self::symbol('App\Log', 'open.php')]);
+        $vendor = new FakeSymbolBackend(classLikeSearchResults: [
             self::symbol('APP\LOG', 'vendor.php'),
             self::symbol('App\Logger', 'vendor.php'),
         ]);
         $source = new CompositeSymbolSource([$open, $vendor]);
 
-        $results = $source->search('Log', NameKind::ClassLike);
+        $results = $source->searchClassLikes('Log');
 
         $byFqn = [];
         foreach ($results as $symbol) {

@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
@@ -24,10 +23,10 @@ use Firehed\PhpLsp\Index\Symbol;
  * a cursor position or a syntax tree. Turning "`Foo` in this namespace with these
  * imports" into a candidate FQN is the positional layer's job, not this interface's.
  *
- * Lookup is per-kind, because PHP's three symbol namespaces are independent: the
- * name type says which is meant, so no separate kind argument travels with it.
- * Constant lookup and a kind-parameterized search arrive with the slices that first
- * need them (Plan 0002 §5.2); a method with no caller is not carried ahead.
+ * Lookup and search are both per-kind, because PHP's three symbol namespaces are
+ * independent: the method name says which kind is meant, so no separate kind
+ * argument travels with the query and no runtime narrow is needed at the read
+ * boundary.
  */
 interface SymbolSourceInterface
 {
@@ -70,11 +69,25 @@ interface SymbolSourceInterface
     public function lookupFunction(FunctionName $name): ?FunctionInfo;
 
     /**
-     * The symbols of $kind whose short name begins with $prefix. The prefix is
-     * the partial fragment the user is typing, not a complete identifier, so a
+     * The class-likes whose short name begins with $prefix. The prefix is the
+     * partial fragment the user is typing, not a complete identifier, so a
      * bare string is correct here (Plan 0002 §5.3).
      *
      * @return list<Symbol>
      */
-    public function search(string $prefix, NameKind $kind): array;
+    public function searchClassLikes(string $prefix): array;
+
+    /**
+     * The global constants whose short name begins with $prefix (Plan 0002 §5.3).
+     *
+     * @return list<Symbol>
+     */
+    public function searchConstants(string $prefix): array;
+
+    /**
+     * The standalone functions whose short name begins with $prefix (Plan 0002 §5.3).
+     *
+     * @return list<Symbol>
+     */
+    public function searchFunctions(string $prefix): array;
 }

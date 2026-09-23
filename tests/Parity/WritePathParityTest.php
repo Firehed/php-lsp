@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
@@ -182,13 +181,11 @@ final class WritePathParityTest extends TestCase
      */
     private function allSymbols(): array
     {
-        $all = [];
-        foreach (NameKind::cases() as $kind) {
-            foreach ($this->backend->search('', $kind) as $symbol) {
-                $all[] = $symbol;
-            }
-        }
-        return $all;
+        return [
+            ...$this->backend->searchClassLikes(''),
+            ...$this->backend->searchConstants(''),
+            ...$this->backend->searchFunctions(''),
+        ];
     }
 
     /**

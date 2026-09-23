@@ -62,6 +62,7 @@ final class KindBranchRule implements Rule
         'src/Resolution/NameContext.php',
         'src/Knowledge/BuiltinBackend.php',
         'src/Completion/CompletionItemFactory.php',
+        'src/Completion/SymbolCandidates.php',
     ];
 
     /**

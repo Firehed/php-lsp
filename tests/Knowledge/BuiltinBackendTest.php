@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -156,14 +155,14 @@ final class BuiltinBackendTest extends TestCase
     {
         self::assertSame(
             [],
-            $this->backend(self::createStub(NamespaceCatalogInterface::class))->search('Array', NameKind::ClassLike),
+            $this->backend(self::createStub(NamespaceCatalogInterface::class))->searchClassLikes('Array'),
             'a bare prefix must not surface built-ins that do not resolve unqualified',
         );
     }
 
     public function testSearchFindsBuiltinFunctions(): void
     {
-        $results = $this->backendWithSearch()->search('str_contains', NameKind::Function_);
+        $results = $this->backendWithSearch()->searchFunctions('str_contains');
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -175,7 +174,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testSearchFindsBuiltinConstants(): void
     {
-        $results = $this->backendWithSearch()->search('PHP_INT_M', NameKind::Constant);
+        $results = $this->backendWithSearch()->searchConstants('PHP_INT_M');
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -187,7 +186,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testSearchReturnsCorrectSymbolKindForFunctions(): void
     {
-        $results = $this->backendWithSearch()->search('str_contains', NameKind::Function_);
+        $results = $this->backendWithSearch()->searchFunctions('str_contains');
 
         self::assertNotEmpty($results, 'the prefix must match at least one function');
         foreach ($results as $symbol) {

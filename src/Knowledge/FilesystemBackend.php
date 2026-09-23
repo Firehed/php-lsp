@@ -153,8 +153,24 @@ final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInt
     /**
      * @return list<Symbol>
      */
-    public function search(string $prefix, NameKind $kind): array
+    public function searchClassLikes(string $prefix): array
     {
-        return $this->prefixSearch->searchByPrefix($prefix, $kind);
+        return $this->prefixSearch->searchByPrefix($prefix, NameKind::ClassLike);
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    public function searchConstants(string $prefix): array
+    {
+        return $this->prefixSearch->searchByPrefix($prefix, NameKind::Constant);
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    public function searchFunctions(string $prefix): array
+    {
+        return $this->prefixSearch->searchByPrefix($prefix, NameKind::Function_);
     }
 }

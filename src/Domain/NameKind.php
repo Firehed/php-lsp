@@ -74,11 +74,6 @@ enum NameKind
         return $this === self::ClassLike;
     }
 
-    public function isConstant(): bool
-    {
-        return $this === self::Constant;
-    }
-
     public function isFunction(): bool
     {
         return $this === self::Function_;

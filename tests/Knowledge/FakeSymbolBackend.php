@@ -37,14 +37,18 @@ final class FakeSymbolBackend implements SymbolSourceInterface
      * @param list<ConstantInfo> $constants
      * @param list<FunctionInfo> $functions
      * @param array<string, NamespaceContents> $namespaces Path -> contents
-     * @param list<Symbol> $searchResults Returned (prefix-filtered on short name)
+     * @param list<Symbol> $classLikeSearchResults Returned (prefix-filtered on short name) by searchClassLikes
+     * @param list<Symbol> $constantSearchResults Returned (prefix-filtered on short name) by searchConstants
+     * @param list<Symbol> $functionSearchResults Returned (prefix-filtered on short name) by searchFunctions
      */
     public function __construct(
         array $classes = [],
         array $constants = [],
         array $functions = [],
         private readonly array $namespaces = [],
-        private readonly array $searchResults = [],
+        private readonly array $classLikeSearchResults = [],
+        private readonly array $constantSearchResults = [],
+        private readonly array $functionSearchResults = [],
     ) {
         foreach ($classes as $info) {
             $this->classesByKey[NameKind::ClassLike->keyFor($info->name->qualifiedName)] = $info;
@@ -80,10 +84,35 @@ final class FakeSymbolBackend implements SymbolSourceInterface
     /**
      * @return list<Symbol>
      */
-    public function search(string $prefix, NameKind $kind): array
+    public function searchClassLikes(string $prefix): array
+    {
+        return self::filterByPrefix($this->classLikeSearchResults, $prefix);
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    public function searchConstants(string $prefix): array
+    {
+        return self::filterByPrefix($this->constantSearchResults, $prefix);
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    public function searchFunctions(string $prefix): array
+    {
+        return self::filterByPrefix($this->functionSearchResults, $prefix);
+    }
+
+    /**
+     * @param list<Symbol> $symbols
+     * @return list<Symbol>
+     */
+    private static function filterByPrefix(array $symbols, string $prefix): array
     {
         return array_values(array_filter(
-            $this->searchResults,
+            $symbols,
             static fn(Symbol $symbol): bool => str_starts_with(
                 strtolower($symbol->name),
                 strtolower($prefix),

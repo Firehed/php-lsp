@@ -261,7 +261,12 @@ final class SymbolCandidates
         array &$seen,
     ): array {
         $items = [];
-        foreach ($this->symbolSource->search($prefix, $kind) as $symbol) {
+        $symbols = match ($kind) {
+            NameKind::ClassLike => $this->symbolSource->searchClassLikes($prefix),
+            NameKind::Constant => $this->symbolSource->searchConstants($prefix),
+            NameKind::Function_ => $this->symbolSource->searchFunctions($prefix),
+        };
+        foreach ($symbols as $symbol) {
             $fqn = $symbol->fullyQualifiedName;
             if (array_key_exists($fqn, $seen)) {
                 continue;

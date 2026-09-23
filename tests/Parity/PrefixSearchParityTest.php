@@ -37,6 +37,7 @@ final class PrefixSearchParityTest extends TestCase
         'src/Domain/User.php',
         'src/Enum/Status.php',
         'src/Repository/UserRepository.php',
+        'src/Resolution/NamespacedConstant.php',
         'src/Traits/HasTimestamps.php',
     ];
 
@@ -70,6 +71,7 @@ final class PrefixSearchParityTest extends TestCase
             'get|Function' => ['get', NameKind::Function_],
             'Status|ClassLike' => ['Status', NameKind::ClassLike],
             'noop|Function' => ['noop', NameKind::Function_],
+            'NAMESPACED|Constant' => ['NAMESPACED', NameKind::Constant],
             // A prefix nothing matches.
             'Zzz|none' => ['Zzz', NameKind::ClassLike],
             // A lowercase prefix that matches differently-cased symbol names:
@@ -85,7 +87,11 @@ final class PrefixSearchParityTest extends TestCase
 
         $captured = [];
         foreach ($queries as $label => [$prefix, $kind]) {
-            $results = $this->backend->search($prefix, $kind);
+            $results = match ($kind) {
+                NameKind::ClassLike => $this->backend->searchClassLikes($prefix),
+                NameKind::Constant => $this->backend->searchConstants($prefix),
+                NameKind::Function_ => $this->backend->searchFunctions($prefix),
+            };
             $captured[$label] = array_map($this->serialize(...), $results);
             usort(
                 $captured[$label],

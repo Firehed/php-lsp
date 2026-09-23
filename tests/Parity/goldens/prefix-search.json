@@ -34,6 +34,15 @@
             "uri": "tests/Fixtures/src/Catalog/functions.php"
         }
     ],
+    "NAMESPACED|Constant": [
+        {
+            "fqn": "Fixtures\\Resolution\\NAMESPACED_CONSTANT",
+            "name": "NAMESPACED_CONSTANT",
+            "kind": "Constant",
+            "containerName": null,
+            "uri": "tests/Fixtures/src/Resolution/NamespacedConstant.php"
+        }
+    ],
     "Zzz|none": [],
     "user|lowercase": [
         {

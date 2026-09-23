@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
@@ -345,14 +344,14 @@ final class FilesystemBackendTest extends TestCase
     {
         self::assertSame(
             [],
-            $this->backend()->search('User', NameKind::ClassLike),
+            $this->backend()->searchClassLikes('User'),
             'project-wide prefix search over disk is the deferred workspace-index scope (RFC 1 §3)',
         );
     }
 
     public function testSearchFindsFunctionsFromAutoloadFiles(): void
     {
-        $results = $this->backend()->search('helperF', NameKind::Function_);
+        $results = $this->backend()->searchFunctions('helperF');
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -364,7 +363,7 @@ final class FilesystemBackendTest extends TestCase
 
     public function testSearchFindsConstantsFromAutoloadFiles(): void
     {
-        $results = $this->backend()->search('HELPER_L', NameKind::Constant);
+        $results = $this->backend()->searchConstants('HELPER_L');
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -376,7 +375,7 @@ final class FilesystemBackendTest extends TestCase
 
     public function testSearchReturnsCorrectSymbolKindForFunctions(): void
     {
-        $results = $this->backend()->search('helperF', NameKind::Function_);
+        $results = $this->backend()->searchFunctions('helperF');
 
         self::assertNotEmpty($results, 'the prefix must match at least one function');
         foreach ($results as $symbol) {
