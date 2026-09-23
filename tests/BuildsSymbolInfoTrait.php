@@ -44,16 +44,20 @@ trait BuildsSymbolInfoTrait
 
     private static function declaredConstant(string $fqn, ?string $file = null): DeclaredSymbol
     {
-        $name = QualifiedName::fromFullyQualified($fqn);
-
-        return new DeclaredSymbol($name, NameKind::Constant, self::constantInfo($name, $file));
+        return new DeclaredSymbol(
+            QualifiedName::fromFullyQualified($fqn),
+            NameKind::Constant,
+            self::constantInfo($fqn, $file),
+        );
     }
 
     private static function declaredFunction(string $fqn, ?string $file = null): DeclaredSymbol
     {
-        $name = QualifiedName::fromFullyQualified($fqn);
-
-        return new DeclaredSymbol($name, NameKind::Function_, self::functionInfo($name, $file));
+        return new DeclaredSymbol(
+            QualifiedName::fromFullyQualified($fqn),
+            NameKind::Function_,
+            self::functionInfo($fqn, $file),
+        );
     }
 
     /**
@@ -86,10 +90,10 @@ trait BuildsSymbolInfoTrait
         );
     }
 
-    private static function constantInfo(QualifiedName $name, ?string $file = null): ConstantInfo
+    private static function constantInfo(string $fqn, ?string $file = null): ConstantInfo
     {
         return new ConstantInfo(
-            name: new ConstantName($name),
+            name: new ConstantName(QualifiedName::fromFullyQualified($fqn)),
             type: null,
             docblock: null,
             file: $file,
@@ -97,9 +101,16 @@ trait BuildsSymbolInfoTrait
         );
     }
 
-    private static function functionInfo(QualifiedName $name, ?string $file = null): FunctionInfo
+    private static function functionInfo(string $fqn, ?string $file = null): FunctionInfo
     {
-        return new FunctionInfo(new FunctionName($name), [], null, null, $file, 1);
+        return new FunctionInfo(
+            new FunctionName(QualifiedName::fromFullyQualified($fqn)),
+            [],
+            null,
+            null,
+            $file,
+            1,
+        );
     }
 
     /**

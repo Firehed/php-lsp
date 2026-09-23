@@ -65,8 +65,12 @@ final class DocumentSymbolSink implements SymbolSinkInterface
         $ast = $this->parser->parse($document);
         $declarations = $this->scanner->scan($ast);
         $filePath = FileUri::toPath($document->uri);
-        $symbols = $this->infoFactory->allIn($declarations, $filePath);
 
-        $this->store->updateDocument($document->uri, ...$symbols);
+        $this->store->updateDocument(
+            $document->uri,
+            $this->infoFactory->allClassInfosIn($declarations, $filePath),
+            $this->infoFactory->allConstantInfosIn($declarations, $filePath),
+            $this->infoFactory->allFunctionInfosIn($declarations, $filePath),
+        );
     }
 }

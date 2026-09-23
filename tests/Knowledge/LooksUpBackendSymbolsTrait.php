@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -23,6 +24,17 @@ trait LooksUpBackendSymbolsTrait
             return null;
         }
         self::assertInstanceOf(ClassInfo::class, $info, 'a class-like lookup must answer with ClassInfo');
+
+        return $info;
+    }
+
+    private static function constantIn(SymbolBackendInterface $backend, string $fqn): ?ConstantInfo
+    {
+        $info = $backend->lookup(QualifiedName::fromFullyQualified($fqn), NameKind::Constant);
+        if ($info === null) {
+            return null;
+        }
+        self::assertInstanceOf(ConstantInfo::class, $info, 'a constant lookup must answer with ConstantInfo');
 
         return $info;
     }

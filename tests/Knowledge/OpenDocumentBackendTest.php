@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\DeclaredSymbol;
+use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfoInterface;
-use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -17,10 +16,9 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The open-document backend is the highest-precedence source (RFC 1 §5.3): the
- * lookup store, namespace enumeration and prefix search all answer from one map
- * of {@see DeclaredSymbol}s per document (build-manifest step-46). These prove
- * each query and that a document's registration is replaced on update and dropped
- * on close.
+ * lookup store, namespace enumeration and prefix search all answer from three
+ * typed maps per document. These prove each query and that a document's
+ * registration is replaced on update and dropped on close.
  */
 final class OpenDocumentBackendTest extends TestCase
 {
@@ -36,7 +34,7 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupClassLikeReturnsARegisteredClass(): void
     {
-        $this->backend->updateDocument('file:///Widget.php', self::declaredClass('V\Widget'));
+        $this->writeClasses('file:///Widget.php', self::classInfo('V\Widget'));
 
         $info = self::classLikeIn($this->backend, 'V\Widget');
 
@@ -50,7 +48,7 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupClassLikeIsCaseInsensitive(): void
     {
-        $this->backend->updateDocument('file:///Widget.php', self::declaredClass('V\Widget'));
+        $this->writeClasses('file:///Widget.php', self::classInfo('V\Widget'));
 
         self::assertNotNull(
             self::classLikeIn($this->backend, 'v\WIDGET'),
@@ -69,8 +67,8 @@ final class OpenDocumentBackendTest extends TestCase
     public function testUpdateDocumentReplacesThePriorClassesForThatUri(): void
     {
         $uri = 'file:///Doc.php';
-        $this->backend->updateDocument($uri, self::declaredClass('V\Alpha'));
-        $this->backend->updateDocument($uri, self::declaredClass('V\Beta'));
+        $this->writeClasses($uri, self::classInfo('V\Alpha'));
+        $this->writeClasses($uri, self::classInfo('V\Beta'));
 
         self::assertNull(
             self::classLikeIn($this->backend, 'V\Alpha'),
@@ -85,7 +83,7 @@ final class OpenDocumentBackendTest extends TestCase
     public function testRemoveDocumentDropsItsClasses(): void
     {
         $uri = 'file:///Ephemeral.php';
-        $this->backend->updateDocument($uri, self::declaredClass('V\Ephemeral'));
+        $this->writeClasses($uri, self::classInfo('V\Ephemeral'));
 
         $this->backend->removeDocument($uri);
 
@@ -107,7 +105,7 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupFunctionReturnsARegisteredFunction(): void
     {
-        $this->backend->updateDocument('file:///helpers.php', self::declaredFunction('V\format'));
+        $this->writeFunctions('file:///helpers.php', self::functionInfo('V\format'));
 
         $info = self::functionIn($this->backend, 'V\format');
 
@@ -121,7 +119,7 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupFunctionIsCaseInsensitive(): void
     {
-        $this->backend->updateDocument('file:///helpers.php', self::declaredFunction('V\format'));
+        $this->writeFunctions('file:///helpers.php', self::functionInfo('V\format'));
 
         self::assertNotNull(
             self::functionIn($this->backend, 'V\FORMAT'),
@@ -137,40 +135,29 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    public function testRegistrationCarriesAKindItKnowsNothingAbout(): void
+    public function testConstantLookupHonorsCaseRules(): void
     {
-        // The point of the kind-parameterized write path: a kind whose metadata type
-        // this backend has never heard of round-trips, so adding one is a change to
-        // the info factories alone (Plan 0002 §5.6).
-        $info = new class implements SymbolInfoInterface {
-            public function symbolKind(): SymbolKind
-            {
-                return SymbolKind::Constant;
-            }
-        };
-        $name = QualifiedName::fromFullyQualified('V\LIMIT');
-
         $this->backend->updateDocument(
             'file:///consts.php',
-            new DeclaredSymbol($name, NameKind::Constant, $info),
+            [],
+            [self::constantInfo('V\LIMIT')],
+            [],
         );
 
-        self::assertSame(
-            $info,
-            $this->backend->lookup($name, NameKind::Constant),
-            'a registered symbol of any kind must resolve for that kind',
+        self::assertNotNull(
+            self::constantIn($this->backend, 'V\LIMIT'),
+            'a registered constant must resolve for its kind',
         );
         self::assertNull(
-            $this->backend->lookup($name, NameKind::Function_),
+            self::functionIn($this->backend, 'V\LIMIT'),
             'and must not answer for another symbol namespace',
         );
-        self::assertSame(
-            $info,
-            $this->backend->lookup(QualifiedName::fromFullyQualified('v\LIMIT'), NameKind::Constant),
+        self::assertNotNull(
+            self::constantIn($this->backend, 'v\LIMIT'),
             'the namespace of a constant is still matched case-insensitively',
         );
         self::assertNull(
-            $this->backend->lookup(QualifiedName::fromFullyQualified('V\limit'), NameKind::Constant),
+            self::constantIn($this->backend, 'V\limit'),
             'but its own name is not: constants are the one kind PHP matches case-sensitively',
         );
     }
@@ -179,8 +166,9 @@ final class OpenDocumentBackendTest extends TestCase
     {
         $this->backend->updateDocument(
             'file:///Dual.php',
-            self::declaredClass('V\Dual'),
-            self::declaredFunction('V\Dual'),
+            [self::classInfo('V\Dual')],
+            [],
+            [self::functionInfo('V\Dual')],
         );
 
         self::assertNotNull(
@@ -196,8 +184,8 @@ final class OpenDocumentBackendTest extends TestCase
     public function testUpdateDocumentReplacesThePriorFunctionsForThatUri(): void
     {
         $uri = 'file:///helpers.php';
-        $this->backend->updateDocument($uri, self::declaredFunction('V\alpha'));
-        $this->backend->updateDocument($uri, self::declaredFunction('V\beta'));
+        $this->writeFunctions($uri, self::functionInfo('V\alpha'));
+        $this->writeFunctions($uri, self::functionInfo('V\beta'));
 
         self::assertNull(
             self::functionIn($this->backend, 'V\alpha'),
@@ -212,7 +200,7 @@ final class OpenDocumentBackendTest extends TestCase
     public function testRemoveDocumentDropsItsFunctions(): void
     {
         $uri = 'file:///helpers.php';
-        $this->backend->updateDocument($uri, self::declaredFunction('V\ephemeral'));
+        $this->writeFunctions($uri, self::functionInfo('V\ephemeral'));
 
         $this->backend->removeDocument($uri);
 
@@ -226,12 +214,15 @@ final class OpenDocumentBackendTest extends TestCase
     {
         $this->backend->updateDocument(
             'file:///doc.php',
-            self::declaredClass('App\User'),
-            self::declaredClass('App\UserEnum'),
-            self::declaredClass('App\UserInterface'),
-            self::declaredClass('App\UserTrait'),
-            self::declaredClass('App\Entity'),
-            self::declaredFunction('App\Userland'),
+            [
+                self::classInfo('App\User'),
+                self::classInfo('App\UserEnum'),
+                self::classInfo('App\UserInterface'),
+                self::classInfo('App\UserTrait'),
+                self::classInfo('App\Entity'),
+            ],
+            [],
+            [self::functionInfo('App\Userland')],
         );
 
         $results = $this->backend->search('User', NameKind::ClassLike);
@@ -253,8 +244,9 @@ final class OpenDocumentBackendTest extends TestCase
     {
         $this->backend->updateDocument(
             'file:///doc.php',
-            self::declaredFunction('App\format'),
-            self::declaredClass('App\Formatter'),
+            [self::classInfo('App\Formatter')],
+            [],
+            [self::functionInfo('App\format')],
         );
 
         $results = $this->backend->search('format', NameKind::Function_);
@@ -272,8 +264,9 @@ final class OpenDocumentBackendTest extends TestCase
     {
         $this->backend->updateDocument(
             'file:///doc.php',
-            self::declaredConstant('App\DEBUG'),
-            self::declaredClass('App\Debugger'),
+            [self::classInfo('App\Debugger')],
+            [self::constantInfo('App\DEBUG')],
+            [],
         );
 
         $results = $this->backend->search('D', NameKind::Constant);
@@ -289,8 +282,8 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testChildrenOfEnumeratesTheOpenDocumentNamespace(): void
     {
-        $this->backend->updateDocument('file:///User.php', self::declaredClass('App\User'));
-        $this->backend->updateDocument('file:///Thing.php', self::declaredClass('App\Sub\Thing'));
+        $this->writeClasses('file:///User.php', self::classInfo('App\User'));
+        $this->writeClasses('file:///Thing.php', self::classInfo('App\Sub\Thing'));
 
         $contents = $this->backend->childrenOf(new NamespaceName('App'));
 
@@ -304,5 +297,15 @@ final class OpenDocumentBackendTest extends TestCase
             $contents->childNamespaces,
             'a namespace with a deeper declaration must be listed as a child',
         );
+    }
+
+    private function writeClasses(string $uri, ClassInfo ...$classes): void
+    {
+        $this->backend->updateDocument($uri, array_values($classes), [], []);
+    }
+
+    private function writeFunctions(string $uri, FunctionInfo ...$functions): void
+    {
+        $this->backend->updateDocument($uri, [], [], array_values($functions));
     }
 }
