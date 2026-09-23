@@ -96,14 +96,12 @@ trait BuildsInfoFromDeclarationsTrait
         ClasslikeName $name,
         string $filePath,
     ): ?ClassInfo {
-        $target = NameKind::ClassLike->normalize($name->qualifiedName);
-        foreach ($declarations->classLikes as $declaration) {
-            if (NameKind::ClassLike->normalize($declaration->name) === $target) {
-                return $this->classInfoFromNode($declaration->node, FileUri::fromPath($filePath));
-            }
-        }
-
-        return null;
+        return $this->firstMatch(
+            $declarations->classLikes,
+            NameKind::ClassLike,
+            $name->qualifiedName,
+            fn($decl): ClassInfo => $this->classInfoFromNode($decl->node, FileUri::fromPath($filePath)),
+        );
     }
 
     public function constantInfoFrom(
@@ -111,14 +109,12 @@ trait BuildsInfoFromDeclarationsTrait
         ConstantName $name,
         string $filePath,
     ): ?ConstantInfo {
-        $target = $name->kind->normalize($name->qualifiedName);
-        foreach ($declarations->constants as $declaration) {
-            if ($name->kind->normalize($declaration->name) === $target) {
-                return $this->constantInfoFromGlobalDeclaration($declaration->node, $declaration->name, $filePath);
-            }
-        }
-
-        return null;
+        return $this->firstMatch(
+            $declarations->constants,
+            $name->kind,
+            $name->qualifiedName,
+            fn($decl): ConstantInfo => $this->constantInfoFromGlobalDeclaration($decl->node, $decl->name, $filePath),
+        );
     }
 
     public function functionInfoFrom(
@@ -126,14 +122,12 @@ trait BuildsInfoFromDeclarationsTrait
         FunctionName $name,
         string $filePath,
     ): ?FunctionInfo {
-        $target = $name->kind->normalize($name->qualifiedName);
-        foreach ($declarations->functions as $declaration) {
-            if ($name->kind->normalize($declaration->name) === $target) {
-                return $this->functionInfoFromNode($declaration->node, $declaration->name, $filePath);
-            }
-        }
-
-        return null;
+        return $this->firstMatch(
+            $declarations->functions,
+            $name->kind,
+            $name->qualifiedName,
+            fn($decl): FunctionInfo => $this->functionInfoFromNode($decl->node, $decl->name, $filePath),
+        );
     }
 
     private function classInfoFromNode(Stmt\ClassLike $node, string $uri): ClassInfo
@@ -186,6 +180,29 @@ trait BuildsInfoFromDeclarationsTrait
             file: $filePath,
             line: $node->getStartLine(),
         );
+    }
+
+    /**
+     * @template TDecl of Declaration<Node>
+     * @template TInfo
+     * @param list<TDecl> $declarations
+     * @param \Closure(TDecl): TInfo $build
+     * @return ?TInfo
+     */
+    private function firstMatch(
+        array $declarations,
+        NameKind $kind,
+        QualifiedName $target,
+        \Closure $build,
+    ): mixed {
+        $key = $kind->normalize($target);
+        foreach ($declarations as $declaration) {
+            if ($kind->normalize($declaration->name) === $key) {
+                return $build($declaration);
+            }
+        }
+
+        return null;
     }
 
     /**
