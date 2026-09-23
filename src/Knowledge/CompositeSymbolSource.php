@@ -51,38 +51,17 @@ final class CompositeSymbolSource implements SymbolSourceInterface
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
     {
-        foreach ($this->backends as $backend) {
-            $info = $backend->lookupClassLike($name);
-            if ($info !== null) {
-                return $info;
-            }
-        }
-
-        return null;
+        return $this->firstAnswer(static fn(SymbolSourceInterface $b): ?ClassInfo => $b->lookupClassLike($name));
     }
 
     public function lookupConstant(ConstantName $name): ?ConstantInfo
     {
-        foreach ($this->backends as $backend) {
-            $info = $backend->lookupConstant($name);
-            if ($info !== null) {
-                return $info;
-            }
-        }
-
-        return null;
+        return $this->firstAnswer(static fn(SymbolSourceInterface $b): ?ConstantInfo => $b->lookupConstant($name));
     }
 
     public function lookupFunction(FunctionName $name): ?FunctionInfo
     {
-        foreach ($this->backends as $backend) {
-            $info = $backend->lookupFunction($name);
-            if ($info !== null) {
-                return $info;
-            }
-        }
-
-        return null;
+        return $this->firstAnswer(static fn(SymbolSourceInterface $b): ?FunctionInfo => $b->lookupFunction($name));
     }
 
     /**
@@ -90,12 +69,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
      */
     public function searchClassLikes(string $prefix): array
     {
-        return $this->mergeSearches(
-            array_map(
-                static fn(SymbolSourceInterface $backend): array => $backend->searchClassLikes($prefix),
-                $this->backends,
-            ),
-        );
+        return $this->mergeSearches(static fn(SymbolSourceInterface $b): array => $b->searchClassLikes($prefix));
     }
 
     /**
@@ -103,12 +77,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
      */
     public function searchConstants(string $prefix): array
     {
-        return $this->mergeSearches(
-            array_map(
-                static fn(SymbolSourceInterface $backend): array => $backend->searchConstants($prefix),
-                $this->backends,
-            ),
-        );
+        return $this->mergeSearches(static fn(SymbolSourceInterface $b): array => $b->searchConstants($prefix));
     }
 
     /**
@@ -116,23 +85,35 @@ final class CompositeSymbolSource implements SymbolSourceInterface
      */
     public function searchFunctions(string $prefix): array
     {
-        return $this->mergeSearches(
-            array_map(
-                static fn(SymbolSourceInterface $backend): array => $backend->searchFunctions($prefix),
-                $this->backends,
-            ),
-        );
+        return $this->mergeSearches(static fn(SymbolSourceInterface $b): array => $b->searchFunctions($prefix));
     }
 
     /**
-     * @param list<list<Symbol>> $perBackend
+     * @template T of ClassInfo|ConstantInfo|FunctionInfo
+     * @param \Closure(SymbolSourceInterface): ?T $probe
+     * @return ?T
+     */
+    private function firstAnswer(\Closure $probe): ?object
+    {
+        foreach ($this->backends as $backend) {
+            $info = $probe($backend);
+            if ($info !== null) {
+                return $info;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param \Closure(SymbolSourceInterface): list<Symbol> $probe
      * @return list<Symbol>
      */
-    private function mergeSearches(array $perBackend): array
+    private function mergeSearches(\Closure $probe): array
     {
         $byFqn = [];
-        foreach ($perBackend as $results) {
-            foreach ($results as $symbol) {
+        foreach ($this->backends as $backend) {
+            foreach ($probe($backend) as $symbol) {
                 $byFqn[self::normalizeKey($symbol->fullyQualifiedName)] ??= $symbol;
             }
         }
