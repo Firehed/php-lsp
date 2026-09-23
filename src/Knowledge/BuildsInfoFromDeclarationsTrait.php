@@ -286,14 +286,11 @@ trait BuildsInfoFromDeclarationsTrait
 
     private function extractEnumCaseBackingValue(Stmt\EnumCase $case): int|string|null
     {
-        $expr = $case->expr;
-        if ($expr instanceof Scalar\Int_) {
-            return $expr->value;
-        }
-        if ($expr instanceof Scalar\String_) {
-            return $expr->value;
-        }
-        return null;
+        return match (true) {
+            $case->expr instanceof Scalar\Int_,
+            $case->expr instanceof Scalar\String_ => $case->expr->value,
+            default => null,
+        };
     }
 
     /**
