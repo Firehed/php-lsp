@@ -481,10 +481,10 @@ final class AutoloadFilesBackendTest extends TestCase
 
         self::assertNotEmpty($results, 'the prefix must match at least one function');
         foreach ($results as $symbol) {
-            self::assertNotSame(
-                '',
+            self::assertStringStartsWith(
+                'file://',
                 $symbol->location->uri,
-                'a symbol from an autoload.files entry must carry its declaring file',
+                'a symbol from an autoload.files entry must carry its declaring file as a URI, not a path',
             );
         }
     }

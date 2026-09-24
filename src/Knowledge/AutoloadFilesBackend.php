@@ -62,7 +62,7 @@ final class AutoloadFilesBackend implements SymbolSourceInterface, Invalidatable
         $this->symbolsBySource = [];
         foreach ($this->map->autoloadFiles() as $path) {
             $declarations = $this->scanner->scanFile($path, $this->reader, $this->parser);
-            $this->setSymbolsFor($path, ...$this->infoFactory->allIn($declarations, $path));
+            $this->setSymbolsFor(FileUri::fromPath($path), ...$this->infoFactory->allIn($declarations, $path));
         }
     }
 }
