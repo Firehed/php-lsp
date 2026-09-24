@@ -39,8 +39,8 @@ use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -63,6 +63,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(VariableCandidates::class)]
 class CompletionHandlerTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
     use OpensDocumentsTrait;
     use WiresCompletionSourceTrait;
 
@@ -82,7 +83,7 @@ class CompletionHandlerTest extends TestCase
         $this->metrics = $production->metrics;
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
-        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $this->symbolSource = $knowledge->source;
 
         $memberResolver = new MemberResolver($knowledge->source);
