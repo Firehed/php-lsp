@@ -3,11 +3,11 @@
     "allow": [
       "Bash(bin/check-baseline-shrink)",
       "Bash(composer deptrac *)",
-      "Bash(composer install:*)",
-      "Bash(composer phpcs:*)",
-      "Bash(composer phpstan:*)",
-      "Bash(composer test:*)",
-      "Bash(composer unit:*)",
+      "Bash(composer install)",
+      "Bash(composer phpcs *)",
+      "Bash(composer phpstan *)",
+      "Bash(composer test *)",
+      "Bash(composer unit *)",
       "Bash(php -l *)",
       "Bash(XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-clover coverage.xml)"
     ],

@@ -73,8 +73,8 @@ is correct. Recapture is deliberate, not a way to make a red run pass.
 
 ## Determinism
 
-Goldens are frozen only over inputs that are identical across the CI PHP matrix
-(8.3 / 8.4 / 8.5): in-repo fixtures and the locked `psr/http-message` dependency.
+Goldens are frozen only over inputs that are identical across the CI PHP matrix:
+in-repo fixtures and the locked `psr/http-message` dependency.
 Built-in symbols (reflection) are version-fragile, so they are covered by
 stable-subset assertions instead of being frozen. Each surface picks the queries
 that keep that true: `children-of` enumerates only namespaces holding no reflected
