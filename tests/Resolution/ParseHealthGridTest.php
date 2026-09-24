@@ -6,8 +6,6 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
@@ -16,6 +14,7 @@ use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
+use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use LogicException;
 use PhpParser\ErrorHandler\Collecting;
@@ -117,12 +116,7 @@ final class ParseHealthGridTest extends TestCase
         $this->documents = new DocumentManager();
 
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $this->parser,
-            $production->reader,
-        );
+        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
