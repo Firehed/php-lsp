@@ -159,7 +159,6 @@ class ExternalFileChangeInvalidationTest extends TestCase
 
         $stack = $this->knowledgeStackForMap(
             new ComposerAutoloadMap(files: [$path]),
-            $this->workspace,
             $this->syntax,
         );
         $handler = new DidChangeWatchedFilesHandler($stack->sink);
@@ -210,7 +209,6 @@ class ExternalFileChangeInvalidationTest extends TestCase
     {
         return $this->knowledgeStackForMap(
             new ComposerAutoloadMap(psr4: [self::NAMESPACE => [$this->workspace]]),
-            $this->workspace,
             $this->syntax,
         );
     }

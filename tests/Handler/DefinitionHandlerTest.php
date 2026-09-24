@@ -41,7 +41,7 @@ class DefinitionHandlerTest extends TestCase
 
         // No autoload map: classes referenced but not opened resolve through the
         // built-in reflection backend, as they did under the prior stub locator.
-        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $symbolResolver = new SymbolResolver(

@@ -55,7 +55,7 @@ class VariableDefinitionTest extends TestCase
         $this->documents = new DocumentManager();
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
-        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $symbolResolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);

@@ -108,13 +108,12 @@ final class Server
         $documentManager = $container->get(DocumentManagerInterface::class);
 
         // The symbol-knowledge tier: one read composite over the fixed backend
-        // precedence (open document › workspace › vendor › built-in) and one write
-        // path, sharing an open-document backend and index (RFC 1 §4.2, §4.3, §5.3).
-        // Every knowledge consumer — SymbolResolver, the completion sources, and
+        // precedence (open document › disk › built-in) and one write path, sharing
+        // an open-document backend and index (RFC 1 §4.2, §4.3, §5.3). Every
+        // knowledge consumer — SymbolResolver, the completion sources, and
         // MemberResolver — reads through this one composite.
         $knowledge = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($projectRoot),
-            rtrim($projectRoot, '/') . '/vendor',
             $parser,
             $reader,
         );

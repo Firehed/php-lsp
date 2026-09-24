@@ -33,11 +33,7 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->manager = new DocumentManager();
         $production = ProductionSyntaxSource::create();
         $this->metrics = $production->metrics;
-        $knowledge = $this->knowledgeStackForMap(
-            new ComposerAutoloadMap(),
-            dirname(__DIR__) . '/Fixtures',
-            $production,
-        );
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $this->source = $knowledge->source;
         $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink);
     }

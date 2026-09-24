@@ -16,14 +16,11 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 trait BuildsKnowledgeStackTrait
 {
     /**
-     * Over a hand-built or empty map, for a project rooted at $projectRoot.
+     * Over a hand-built or empty map.
      */
-    private function knowledgeStackForMap(
-        ComposerAutoloadMap $map,
-        string $projectRoot,
-        ProductionSyntaxSource $syntax,
-    ): KnowledgeStack {
-        return KnowledgeStack::forProject($map, $projectRoot . '/vendor', $syntax->source, $syntax->reader);
+    private function knowledgeStackForMap(ComposerAutoloadMap $map, ProductionSyntaxSource $syntax): KnowledgeStack
+    {
+        return KnowledgeStack::forProject($map, $syntax->source, $syntax->reader);
     }
 
     /**
@@ -31,6 +28,6 @@ trait BuildsKnowledgeStackTrait
      */
     private function knowledgeStackForProjectRoot(string $projectRoot, ProductionSyntaxSource $syntax): KnowledgeStack
     {
-        return $this->knowledgeStackForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot), $projectRoot, $syntax);
+        return $this->knowledgeStackForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot), $syntax);
     }
 }

@@ -43,7 +43,6 @@ final class KnowledgeStackTest extends TestCase
     {
         $stack = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
             $this->parser,
             $this->reader,
         );
@@ -76,7 +75,6 @@ final class KnowledgeStackTest extends TestCase
     {
         $stack = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
             $this->parser,
             $this->reader,
         );
@@ -102,7 +100,6 @@ final class KnowledgeStackTest extends TestCase
     {
         $stack = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
             $this->parser,
             $this->reader,
         );
@@ -134,7 +131,6 @@ final class KnowledgeStackTest extends TestCase
     {
         $stack = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
             $this->parser,
             $this->reader,
         );
@@ -162,7 +158,6 @@ final class KnowledgeStackTest extends TestCase
     {
         $stack = KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
             $this->parser,
             $this->reader,
         );
@@ -188,7 +183,6 @@ final class KnowledgeStackTest extends TestCase
     {
         KnowledgeStack::forProject(
             ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
             $this->parser,
             $this->reader,
         );
@@ -204,7 +198,6 @@ final class KnowledgeStackTest extends TestCase
     {
         $stack = KnowledgeStack::forProject(
             new ComposerAutoloadMap(),
-            $this->fixturesRoot . '/vendor',
             $this->parser,
             $this->reader,
         );

@@ -30,7 +30,6 @@ final class AutoloadPrecedenceTest extends TestCase
                 psr4: ['Prec\\' => [$root . '/src']],
                 classMap: ['Prec\\Thing' => $root . '/vendor/Thing.php'],
             ),
-            $root,
             ProductionSyntaxSource::create(),
         );
 
