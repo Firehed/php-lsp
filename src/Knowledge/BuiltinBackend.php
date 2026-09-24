@@ -46,8 +46,8 @@ use ReflectionProperty;
  * open-document and disk backends, so a name either of them can resolve never
  * reaches reflection (RFC 1 §5.3).
  *
- * Built-ins are fixed for a given target environment, so a resolved symbol is cached
- * (RFC 1 §5.3). This backend is reflection-backed and therefore describes the
+ * Built-ins are fixed for a given target environment, so a {@see CachingSymbolSource}
+ * in front of this backend remembers them (RFC 1 §5.3). This backend is reflection-backed and therefore describes the
  * *server's* runtime, not the project's target — a known §4.7 gap deferred to Step 5
  * (Plan 0002 §5); the interim treats every reflected built-in as available.
  *
@@ -66,9 +66,8 @@ final class BuiltinBackend implements SymbolSourceInterface
 
     public function __construct(
         private readonly NamespaceCatalogInterface $namespaces,
-        private readonly SymbolCache $cache,
         private readonly PrefixSearchableInterface $prefixSearch,
-        private readonly InternalConstantSet $constants = new InternalConstantSet(),
+        private readonly InternalConstantSet $constants,
     ) {
     }
 
@@ -83,15 +82,6 @@ final class BuiltinBackend implements SymbolSourceInterface
     public function search(string $prefix, NameKind $kind): array
     {
         return $this->prefixSearch->searchByPrefix($prefix, $kind);
-    }
-
-    private function build(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
-    {
-        return match ($kind) {
-            NameKind::ClassLike => $this->classInfo($name),
-            NameKind::Constant => $this->constantInfo($name),
-            NameKind::Function_ => $this->functionInfo($name),
-        };
     }
 
     private function classInfo(QualifiedName $name): ?SymbolInfoInterface
@@ -366,11 +356,11 @@ final class BuiltinBackend implements SymbolSourceInterface
 
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
-        return $this->cache->remember(
-            $name,
-            $kind,
-            fn(): ?SymbolInfoInterface => $this->build($name, $kind),
-        );
+        return match ($kind) {
+            NameKind::ClassLike => $this->classInfo($name),
+            NameKind::Constant => $this->constantInfo($name),
+            NameKind::Function_ => $this->functionInfo($name),
+        };
     }
 
     private function parameterFromReflection(ReflectionParameter $param): ParameterInfo

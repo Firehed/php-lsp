@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -12,13 +11,13 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
-use Firehed\PhpLsp\Knowledge\SymbolCache;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -36,19 +35,16 @@ final class BuiltinBackendTest extends TestCase
     {
         return new BuiltinBackend(
             $namespaces,
-            new SymbolCache(CacheFactory::inMemory()),
             self::createStub(PrefixSearchableInterface::class),
+            new InternalConstantSet(),
         );
     }
 
     private function backendWithSearch(): BuiltinBackend
     {
-        $reflectionSource = new ReflectionNamespaceSource();
-        return new BuiltinBackend(
-            $reflectionSource,
-            new SymbolCache(CacheFactory::inMemory()),
-            $reflectionSource,
-        );
+        $constants = new InternalConstantSet();
+        $reflectionSource = new ReflectionNamespaceSource($constants);
+        return new BuiltinBackend($reflectionSource, $reflectionSource, $constants);
     }
 
     public function testLookupClassLikeReflectsABuiltinClass(): void
@@ -70,17 +66,6 @@ final class BuiltinBackendTest extends TestCase
             self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'No\Such\Builtin'),
             'a name reflection cannot load is absent from this backend (RFC 1 §5.3)',
         );
-    }
-
-    public function testLookupClassLikeCachesAResolvedClass(): void
-    {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-
-        $first = self::classLikeIn($backend, \ArrayObject::class);
-        $second = self::classLikeIn($backend, \ArrayObject::class);
-
-        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
-        self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-reflect');
     }
 
     public function testLookupFunctionReflectsABuiltinFunction(): void
@@ -124,32 +109,6 @@ final class BuiltinBackendTest extends TestCase
         self::assertNull(
             self::functionIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'no_such_builtin'),
             'a name reflection cannot load is absent from this backend (RFC 1 §5.3)',
-        );
-    }
-
-    public function testLookupFunctionCachesAResolvedFunction(): void
-    {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-
-        $first = self::functionIn($backend, 'str_contains');
-        $second = self::functionIn($backend, 'str_contains');
-
-        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
-        self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-reflect');
-    }
-
-    public function testFunctionAndClassLikeCachesDoNotCollide(): void
-    {
-        // PHP's three symbol namespaces are independent, so one name can be both a
-        // class and a function. A cache keyed on the name alone would serve a
-        // ClassInfo to a function lookup.
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-
-        self::classLikeIn($backend, \ArrayObject::class);
-
-        self::assertNull(
-            self::functionIn($backend, 'ArrayObject'),
-            'a cached class-like must not answer a function lookup of the same name',
         );
     }
 

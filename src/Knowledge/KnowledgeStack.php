@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
 use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
+use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -62,31 +63,37 @@ final readonly class KnowledgeStack
             ]),
             CacheFactory::inMemory(),
         );
-        $disk = new FilesystemBackend(
-            new CompositeSymbolLocator([
+        $disk = new CachingSymbolSource(
+            new FilesystemBackend(
+                new CompositeSymbolLocator([
+                    $autoloadFiles,
+                    new ComposerSymbolLocator($autoloadMap),
+                ]),
+                $cachedCatalog,
+                $parser,
+                $reader,
+                $declarationInfoFactory,
+                $scanner,
                 $autoloadFiles,
-                new ComposerSymbolLocator($autoloadMap),
-            ]),
-            $cachedCatalog,
-            $parser,
-            $reader,
-            $declarationInfoFactory,
-            $scanner,
-            new SymbolCache(CacheFactory::inMemory()),
-            $autoloadFiles,
+            ),
+            CacheFactory::inMemory(),
         );
 
         // ReflectionNamespaceSource serves both enumeration (cached, via
         // NamespaceCatalogInterface) and prefix search (uncached, via PrefixSearchableInterface).
         // Both must draw on the same source so coverage is identical (§4.2).
-        $reflectionSource = new ReflectionNamespaceSource();
+        $constants = new InternalConstantSet();
+        $reflectionSource = new ReflectionNamespaceSource($constants);
         $source = new CompositeSymbolSource([
             $openDocuments,
             $disk,
-            new BuiltinBackend(
-                new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
-                new SymbolCache(CacheFactory::inMemory()),
-                $reflectionSource,
+            new CachingSymbolSource(
+                new BuiltinBackend(
+                    new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
+                    $reflectionSource,
+                    $constants,
+                ),
+                CacheFactory::inMemory(),
             ),
         ]);
 
