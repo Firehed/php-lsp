@@ -12,8 +12,8 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
 /**
- * One source of symbol knowledge (RFC 1 §5.3): open documents, the workspace on
- * disk, a vendored dependency, or the language's built-ins. Every backend answers
+ * One source of symbol knowledge (RFC 1 §5.3): open documents, files on disk, or
+ * the language's built-ins. Every backend answers
  * the same queries, so *where* a symbol comes from is a matter of which backends
  * the {@see CompositeSymbolSource} composes — not a change to any consumer (§4.2).
  *
@@ -22,8 +22,8 @@ use Firehed\PhpLsp\Index\Symbol;
  * search a backend cannot answer returns an empty collection (RFC 1 §5.3). A
  * backend never returns a partial answer presented as complete.
  *
- * Precedence between backends — an open document overrides the workspace, a
- * vendored file, and the built-ins — is the composite's concern, not the
+ * Precedence between backends — an open document overrides disk, and disk
+ * overrides the built-ins — is the composite's concern, not the
  * backend's: each answers only for its own source.
  *
  * Lookup is kind-parameterized here but per-kind at the facade, because the kind

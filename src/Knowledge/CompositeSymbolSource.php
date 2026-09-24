@@ -24,8 +24,8 @@ use Firehed\PhpLsp\Index\Symbol;
  * the backend list here, with no change to any consumer.
  *
  * Precedence is fixed and positional — the backends are passed in authority order
- * (open documents, then the workspace, then vendored dependencies, then the
- * built-ins), so for any symbol an open-document answer overrides the rest
+ * (open documents, then disk, then the built-ins), so for any symbol an
+ * open-document answer overrides the rest
  * (RFC 1 §5.3). A lookup takes the first backend that answers; an enumeration or
  * search merges every backend, letting the earlier (more authoritative) one win a
  * name clash — a user's unsaved edit is honored over the cached file it shadows.

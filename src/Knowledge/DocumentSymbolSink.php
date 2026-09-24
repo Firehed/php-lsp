@@ -21,8 +21,8 @@ final class DocumentSymbolSink implements SymbolSinkInterface
 {
     /**
      * @param list<InvalidatableInterface> $onDiskBackends the cached on-disk backends
-     *        (workspace, vendor) whose entry for a file must be dropped when that
-     *        file changes on disk or is closed after being edited (RFC 1 §5.2, §5.3)
+     *        whose entry for a file must be dropped when that file changes on disk
+     *        or is closed after being edited (RFC 1 §5.2, §5.3)
      */
     public function __construct(
         private readonly DocumentSymbolStoreInterface $store,

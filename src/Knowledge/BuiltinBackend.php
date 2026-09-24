@@ -43,8 +43,8 @@ use ReflectionProperty;
 /**
  * The lowest-precedence {@see SymbolBackendInterface}: the symbols built into PHP and its
  * loaded extensions, described through reflection. It is consulted only after the
- * open-document, workspace, and vendor backends, so a name any of them can resolve
- * never reaches reflection (RFC 1 §5.3).
+ * open-document and disk backends, so a name either of them can resolve never
+ * reaches reflection (RFC 1 §5.3).
  *
  * Built-ins are fixed for a given target environment, so a resolved symbol is cached
  * (RFC 1 §5.3). This backend is reflection-backed and therefore describes the
