@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
@@ -35,7 +34,6 @@ final class BuiltinBackendTest extends TestCase
     {
         return new BuiltinBackend(
             $namespaces,
-            self::createStub(PrefixSearchableInterface::class),
             new InternalConstantSet(),
         );
     }
@@ -43,8 +41,7 @@ final class BuiltinBackendTest extends TestCase
     private function backendWithSearch(): BuiltinBackend
     {
         $constants = new InternalConstantSet();
-        $reflectionSource = new ReflectionNamespaceSource($constants);
-        return new BuiltinBackend($reflectionSource, $reflectionSource, $constants);
+        return new BuiltinBackend(new ReflectionNamespaceSource($constants), $constants);
     }
 
     public function testLookupClassLikeReflectsABuiltinClass(): void

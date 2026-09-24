@@ -264,6 +264,26 @@ class ComposerNamespaceSourceTest extends TestCase
     }
 
     /**
+     * The autoload maps address symbols by full name, so a short-name prefix
+     * has no name→file index to consult; the filesystem backend inherits this
+     * empty answer for class-likes (RFC 1 §3).
+     */
+    public function testSearchByPrefixIsEmpty(): void
+    {
+        self::assertSame(
+            [],
+            $this->source->searchByPrefix('Fixt', NameKind::ClassLike),
+            'class-like prefix search over composer maps returns nothing; '
+                . 'project-wide search is the deferred workspace-index scope',
+        );
+        self::assertSame(
+            [],
+            $this->source->searchByPrefix('helper', NameKind::Function_),
+            'functions and constants declared in autoload.files are indexed by AutoloadFilesLocator, not this source',
+        );
+    }
+
+    /**
      * @return list<string>
      */
     private static function fqns(NamespaceContents $contents): array

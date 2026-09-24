@@ -43,6 +43,19 @@ final class ComposerNamespaceSource implements NamespaceCatalogInterface
     }
 
     /**
+     * A bare prefix has no name→file map here — the PSR-4, PSR-0 and classmap
+     * routes address symbols by full name, so nothing can be filtered by
+     * short-name prefix without walking `vendor/`, which is the deferred
+     * workspace-index scope (RFC 1 §3).
+     *
+     * @return list<Symbol>
+     */
+    public function searchByPrefix(string $prefix, NameKind $kind): array
+    {
+        return [];
+    }
+
+    /**
      * PSR-4 strips the prefix from the path (`App\Model` under prefix `App\` is
      * `<dir>/Model`); PSR-0 does not (`Psr0\Sub` under prefix `Psr0` is
      * `<dir>/Psr0/Sub`).

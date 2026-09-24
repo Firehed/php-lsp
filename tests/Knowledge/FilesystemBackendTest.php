@@ -11,9 +11,9 @@ use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
+use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
@@ -257,7 +257,6 @@ final class FilesystemBackendTest extends TestCase
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
-            self::createStub(PrefixSearchableInterface::class),
         );
 
         self::assertSame(
@@ -294,12 +293,14 @@ final class FilesystemBackendTest extends TestCase
                 new ComposerSymbolLocator($map),
                 $autoloadFiles,
             ]),
-            new ComposerNamespaceSource($map),
+            new CompositeNamespaceCatalog([
+                $autoloadFiles,
+                new ComposerNamespaceSource($map),
+            ]),
             $this->parser,
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
-            $autoloadFiles,
         );
     }
 
@@ -312,7 +313,6 @@ final class FilesystemBackendTest extends TestCase
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
-            self::createStub(PrefixSearchableInterface::class),
         );
     }
 

@@ -42,7 +42,6 @@ use PhpParser\Node;
 final class AutoloadFilesLocator implements
     SymbolLocatorInterface,
     NamespaceCatalogInterface,
-    PrefixSearchableInterface,
     InvalidatableInterface
 {
     /**

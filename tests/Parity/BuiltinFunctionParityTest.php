@@ -49,8 +49,7 @@ final class BuiltinFunctionParityTest extends TestCase
         // Assembled exactly as `KnowledgeStack::forProject` assembles the lowest-
         // precedence backend, so the oracle measures the shipped configuration.
         $constants = new InternalConstantSet();
-        $reflectionSource = new ReflectionNamespaceSource($constants);
-        $this->backend = new BuiltinBackend($reflectionSource, $reflectionSource, $constants);
+        $this->backend = new BuiltinBackend(new ReflectionNamespaceSource($constants), $constants);
     }
 
     public function testEnumeratedFunctionsMatchReflection(): void

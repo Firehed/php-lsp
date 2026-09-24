@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Index;
 
+use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Index\Symbol;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -89,6 +92,75 @@ final class CompositeNamespaceCatalogTest extends TestCase
 
         self::assertSame([], $contents->childNamespaces, 'no route means no children');
         self::assertSame([], $contents->symbols, 'no route means no symbols');
+    }
+
+    public function testSearchByPrefixMergesEveryCatalog(): void
+    {
+        $first = self::functionSymbol('helperOne');
+        $second = self::functionSymbol('helperTwo');
+        $catalog = new CompositeNamespaceCatalog([
+            self::catalogSearchingReturns([$first]),
+            self::catalogSearchingReturns([$second]),
+        ]);
+
+        $results = $catalog->searchByPrefix('helper', NameKind::Function_);
+
+        self::assertSame(
+            [$first, $second],
+            $results,
+            'a hit reported by any catalog must appear in the merged result',
+        );
+    }
+
+    public function testTheEarlierCatalogWinsAClashingSearchResult(): void
+    {
+        // Same function under PHP's case-insensitive rule, spelled differently:
+        // the spelling identifies which catalog's report survived the merge.
+        $first = self::functionSymbol('helper');
+        $second = self::functionSymbol('HELPER');
+        $catalog = new CompositeNamespaceCatalog([
+            self::catalogSearchingReturns([$first]),
+            self::catalogSearchingReturns([$second]),
+        ]);
+
+        $results = $catalog->searchByPrefix('help', NameKind::Function_);
+
+        self::assertSame(
+            [$first],
+            $results,
+            'catalogs are passed in order of authority, so the earlier one settles a search clash',
+        );
+    }
+
+    public function testSearchByPrefixOverNoCatalogsIsEmpty(): void
+    {
+        self::assertSame(
+            [],
+            (new CompositeNamespaceCatalog([]))->searchByPrefix('helper', NameKind::Function_),
+            'no route means no hits',
+        );
+    }
+
+    private static function functionSymbol(string $shortName): Symbol
+    {
+        return new Symbol(
+            name: $shortName,
+            fullyQualifiedName: $shortName,
+            kind: SymbolKind::Function_,
+            location: new Location('', 0, 0, 0, 0),
+            nameKind: NameKind::Function_,
+        );
+    }
+
+    /**
+     * @param list<Symbol> $results
+     */
+    private static function catalogSearchingReturns(array $results): NamespaceCatalogInterface
+    {
+        $catalog = self::createStub(NamespaceCatalogInterface::class);
+        $catalog->method('searchByPrefix')->willReturn($results);
+
+        return $catalog;
     }
 
     /**
