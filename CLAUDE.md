@@ -20,8 +20,9 @@ Two routes drift, and the drift shows up as a feature that works in hover but no
 
 A data type is a `readonly` structure over one or more values.
 It carries no logic beyond formatting and simple checks.
+
 Application-wide data types live in `src/Domain/`.
-A data type that only one service uses lives next to that service.
+A data type that only one service uses lives next to that service, and should not be referenced outside of that service.
 
 A service produces or exposes facts: which symbols a file declares, which file defines a symbol, what type an expression has.
 Every service is used through an interface, even when it has one implementation.
@@ -30,17 +31,26 @@ It never says where the answer comes from, and it never takes a parser node or a
 
 ### One wiring place
 
-Implementations are named in one wiring place.
-Today that place is the two `forProject` methods on `Server` and `KnowledgeStack`.
-A consumer holds the interface and never names an implementation.
-`new SomeDataType` is fine anywhere.
-`new SomeService`, or a branch on a service's concrete class, belongs only in the wiring place or a composite.
+Instantiating services is to occur in one wiring place: a PSR-11 container.
 
-When an interface gains a second implementation, a composite joins the family.
-The composite implements the interface, takes its members as constructor arguments, and holds the dispatch logic between them.
-The wiring place hands the composite to consumers where the interface is typed.
-Dispatch can be first answer wins, or it can combine the members' answers.
-Either way, that logic lives in the composite or nowhere.
+The `::forProject` static methods that exist are legacy and not the standard.
+However, until PSR-11 conversion is complete, it may be necessary to build on it.
+
+### Interfaces, Implementations, and Composites
+
+Where services rely on other services, the references are to be named by interface only, never an implementation.
+
+Concrete implementations may be referenced in exactly two places:
+1) the interface-to-implementation mapping in the PSR-11 container
+2) the constructor arguments for a composite service.
+
+A composite is defined as an implementation of an interface that wires together two or more other implementations of the same interface.
+
+A composite MUST be added once an interface gains a second implementation and MUST be the only place that contains logic of how to switch between the implementations.
+Stated directly: there should never be only two implementations of an interface; there's a single one wired directly, or 2+ functional implementations with a composite with the composite wired.
+Composites SHOULD name the other concrete classes as their constructor arguments.
+
+Note: applying decorators to the wired class (example: caching) is still permitted, and this should also be done in the PSR-11 wiring.
 
 ### Factories
 
@@ -79,6 +89,28 @@ Every decision that shapes output by client support reads `SessionCapabilities`.
 Completion must keep working on code that does not parse mid-edit.
 Do not convert them to tree analysis.
 
+
+### Caching
+
+A service may hold an index it derives from its whole source and rebuilds on invalidation.
+A service never remembers the answer to a query.
+Answers are remembered by one PSR-16 decorator per backend, applied in wiring, never around open documents.
+
+#### Invalidation
+
+The server never decides on its own that an answer is stale.
+The editor is the only source of change events.
+Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
+Both flow through `SymbolSinkInterface::invalidate`, which fans out to every invalidatable in the wiring.
+An open buffer is not an invalidation; it wins by composite order while it is open.
+Built-ins are never invalidated until the target environment can change.
+
+## Handling Design or Specification Tensions
+
+This codebase is in flux, and the current state may not reflect the intended design.
+Issues may have been written prior to the intended structure, and may be in tension with the goal.
+If you encounter this scenario, stop and ask the human.
+
 ## Enforcement tools
 
 PHPStan rules under `tests/Architecture/`, the allowlists in `phpstan.neon`, and the layer ruleset in `deptrac.yaml` were written before the design above settled.
@@ -87,6 +119,8 @@ When one fires against a change that follows the design above, stop and ask the 
 Do not route around the rule, and do not bend the design to satisfy it.
 Never edit a rule, an allowlist, a baseline, or `bin/check-baseline-shrink` yourself.
 `docs/architecture/enforcement-edits.md` classifies every such edit.
+
+When considering edits (or avoiding them), remember: the project and architecture goals are more important.
 
 ## Development Workflow
 
@@ -97,6 +131,7 @@ Never edit a rule, an allowlist, a baseline, or `bin/check-baseline-shrink` your
 - Run `composer test` before commits.
 - `composer.lock` is gitignored. Do not stage or commit it.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
+- When creating a new issue, add the `ai-authored` label.
 
 ## Testing
 
