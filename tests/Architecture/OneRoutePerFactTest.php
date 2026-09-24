@@ -223,7 +223,6 @@ final class OneRoutePerFactTest extends TestCase
 
         self::assertSame(
             [
-                'Firehed\\PhpLsp\\Index\\AutoloadFilesLocator',
                 'Firehed\\PhpLsp\\Index\\ComposerSymbolLocator',
                 'Firehed\\PhpLsp\\Knowledge\\CompositeSymbolLocator',
             ],

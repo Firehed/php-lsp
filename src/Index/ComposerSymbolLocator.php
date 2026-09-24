@@ -13,9 +13,9 @@ use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
  * Locates a declaration through Composer's autoload maps, which address class-likes
  * and nothing else: PSR-4, PSR-0 and the classmap all map a class name to a file, so
  * a lookup is arithmetic on the name. Functions and constants are reachable only by
- * parsing the `autoload.files` set, which {@see AutoloadFilesLocator} derives an
- * index from; the two are chained by
- * {@see \Firehed\PhpLsp\Knowledge\CompositeSymbolLocator}.
+ * parsing the `autoload.files` set, which
+ * {@see \Firehed\PhpLsp\Knowledge\AutoloadFilesBackend} derives an index from in
+ * its own row of the symbol-source composite.
  *
  * The lookup runs on Composer's own {@see ClassLoader} so the runtime's precedence
  * applies verbatim. The loader is built from the map on every call rather than held:
