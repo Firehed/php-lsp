@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\VariableBinding;
 use Firehed\PhpLsp\Resolution\VariableBindings;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -42,6 +42,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(VariableBindings::class)]
 class VariableDefinitionTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
     use OpensDocumentsTrait;
 
@@ -54,7 +55,7 @@ class VariableDefinitionTest extends TestCase
         $this->documents = new DocumentManager();
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
-        $knowledge = ProductionKnowledgeStack::forMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $symbolResolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
