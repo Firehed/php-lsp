@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Index;
 
+use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
+
 /**
  * The union of what several catalogs report about a namespace.
  *
@@ -32,5 +35,20 @@ final class CompositeNamespaceCatalog implements NamespaceCatalogInterface
             static fn(NamespaceCatalogInterface $catalog): NamespaceContents => $catalog->childrenOf($namespace),
             $this->catalogs,
         ));
+    }
+
+    /**
+     * @return list<Symbol>
+     */
+    public function searchByPrefix(string $prefix, NameKind $kind): array
+    {
+        $byKey = [];
+        foreach ($this->catalogs as $catalog) {
+            foreach ($catalog->searchByPrefix($prefix, $kind) as $symbol) {
+                $byKey[$kind->normalize(QualifiedName::fromFullyQualified($symbol->fullyQualifiedName))] ??= $symbol;
+            }
+        }
+
+        return array_values($byKey);
     }
 }
