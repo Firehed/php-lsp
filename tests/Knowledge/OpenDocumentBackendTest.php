@@ -322,6 +322,31 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
+    public function testUpdatingTheFirstOfTwoDocumentsThatShareANameKeepsItsPrecedence(): void
+    {
+        $this->backend->updateDocument(
+            'file:///First.php',
+            self::declaredClass('V\Shared', file: '/first'),
+        );
+        $this->backend->updateDocument(
+            'file:///Second.php',
+            self::declaredClass('V\Shared', file: '/second'),
+        );
+
+        $this->backend->updateDocument(
+            'file:///First.php',
+            self::declaredClass('V\Shared', file: '/first-edited'),
+        );
+
+        $info = self::classLikeIn($this->backend, 'V\Shared');
+        self::assertNotNull($info, 'a name two documents declare must still resolve after an edit');
+        self::assertSame(
+            '/first-edited',
+            $info->file,
+            'editing a document keeps its place in map order, so it still wins over a later-opened document',
+        );
+    }
+
     public function testSearchReportsASharedNameOnceAcrossDocuments(): void
     {
         $this->backend->updateDocument(
@@ -355,7 +380,7 @@ final class OpenDocumentBackendTest extends TestCase
         );
         $this->backend->updateDocument(
             'file:///b.php',
-            self::declaredClass('App\Widget', file: '/b'),
+            self::declaredClass('App\WIDGET', file: '/b'),
         );
 
         $contents = $this->backend->childrenOf(new NamespaceName('App'));
@@ -367,7 +392,8 @@ final class OpenDocumentBackendTest extends TestCase
         self::assertSame(
             ['App\Widget'],
             $fqns,
-            'a name two documents declare must appear once when the namespace is enumerated',
+            'a name two documents declare must appear once when the namespace is enumerated, '
+                . 'spelled as the first-declaring document spells it, matching lookup and search',
         );
     }
 
