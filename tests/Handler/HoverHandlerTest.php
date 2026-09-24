@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -29,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedTypeOnly::class)]
 class HoverHandlerTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
     use OpensDocumentsTrait;
 
     private DocumentManager $documents;
@@ -45,7 +46,7 @@ class HoverHandlerTest extends TestCase
 
         // No autoload map: classes referenced but not opened resolve through the
         // built-in reflection backend, as they did under the prior stub locator.
-        $knowledge = ProductionKnowledgeStack::forMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $this->symbolResolver = new SymbolResolver(
