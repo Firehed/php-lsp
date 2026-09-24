@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -28,10 +29,10 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\InternalConstantSet;
-use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchableInterface;
+use Firehed\PhpLsp\Index\PrefixSearch;
 use Firehed\PhpLsp\Index\Symbol;
 use ReflectionClass;
 use ReflectionException;
@@ -51,29 +52,45 @@ use ReflectionProperty;
  * *server's* runtime, not the project's target — a known §4.7 gap deferred to Step 5
  * (Plan 0002 §5); the interim treats every reflected built-in as available.
  *
+ * Enumeration draws on one derived index of the internal symbols, built once on
+ * first use and shared by every read: `childrenOf` reads its namespace grouping
+ * and `search` reads its per-kind grouping, so the two answers can never disagree
+ * about which names count as built-in (RFC 1 §4.2).
+ *
+ * Two things make that index less obvious than it looks:
+ *
+ * - `get_declared_classes()` reports every class loaded in *this* process, which
+ *   includes the language server and its own vendored dependencies. Only the
+ *   internal ones are built-ins.
+ * - Built-ins are not all global. `Random\Randomizer` and classes contributed by
+ *   extensions live in namespaces, so each symbol is filed under the namespace
+ *   its reflected name actually carries.
+ *
  * Prefix search for class-likes is empty: a bare prefix would surface built-ins
  * that do not resolve unqualified in the file's namespace, which is auto-import,
- * a separate concern. Functions and constants are searched through the reflection
- * enumeration ({@see PrefixSearchableInterface}), which is bounded and already in memory.
- *
- * Symbol construction is inlined rather than delegated: the sole caller of the
- * reflection-to-SymbolInfoInterface build is this backend, so a separate class only
- * duplicated the source-picking that {@see CompositeSymbolSource} already owns.
+ * a separate concern. Functions and constants are searched through the same
+ * derived index, which is bounded and already in memory.
  */
 final class BuiltinBackend implements SymbolSourceInterface
 {
     use LooksUpByKindTrait;
 
+    /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
+    private ?array $byNamespace = null;
+
+    /** @var array<string, list<CatalogSymbol>>|null Kind name -> symbols */
+    private ?array $symbolsByKind = null;
+
     public function __construct(
-        private readonly NamespaceCatalogInterface $namespaces,
-        private readonly PrefixSearchableInterface $prefixSearch,
         private readonly InternalConstantSet $constants,
     ) {
     }
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
-        return $this->namespaces->childrenOf($namespace->path);
+        $this->byNamespace ??= NamespaceContents::indexByNamespace($this->internalSymbols());
+
+        return $this->byNamespace[$namespace->normalize()] ?? new NamespaceContents();
     }
 
     /**
@@ -81,7 +98,12 @@ final class BuiltinBackend implements SymbolSourceInterface
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return $this->prefixSearch->searchByPrefix($prefix, $kind);
+        return PrefixSearch::filter(
+            $this->symbolsOfKind($kind),
+            $prefix,
+            $kind,
+            static fn(): Location => new Location('', 0, 0, 0, 0),
+        );
     }
 
     private function classInfo(QualifiedName $name): ?SymbolInfoInterface
@@ -354,6 +376,35 @@ final class BuiltinBackend implements SymbolSourceInterface
         );
     }
 
+    /**
+     * @return list<CatalogSymbol>
+     */
+    private function internalSymbols(): array
+    {
+        $symbols = [];
+
+        $classLikes = [
+            ...get_declared_classes(),
+            ...get_declared_interfaces(),
+            ...get_declared_traits(),
+        ];
+        foreach ($classLikes as $classLike) {
+            if ((new ReflectionClass($classLike))->isInternal()) {
+                $symbols[] = new CatalogSymbol($classLike, NameKind::ClassLike);
+            }
+        }
+
+        foreach (get_defined_functions()['internal'] as $function) {
+            $symbols[] = new CatalogSymbol($function, NameKind::Function_);
+        }
+
+        foreach (array_keys($this->constants->all()) as $constant) {
+            $symbols[] = new CatalogSymbol($constant, NameKind::Constant);
+        }
+
+        return $symbols;
+    }
+
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
         return match ($kind) {
@@ -379,6 +430,23 @@ final class BuiltinBackend implements SymbolSourceInterface
             isVariadic: $param->isVariadic(),
             isPassedByReference: $param->isPassedByReference(),
         );
+    }
+
+    /**
+     * @return list<CatalogSymbol>
+     */
+    private function symbolsOfKind(NameKind $kind): array
+    {
+        if ($this->symbolsByKind === null) {
+            $this->symbolsByKind = [];
+            foreach (NameKind::cases() as $k) {
+                $this->symbolsByKind[$k->name] = [];
+            }
+            foreach ($this->internalSymbols() as $symbol) {
+                $this->symbolsByKind[$symbol->kind->name][] = $symbol;
+            }
+        }
+        return $this->symbolsByKind[$kind->name];
     }
 
     private static function formatReflectionDefault(mixed $value): string

@@ -36,10 +36,9 @@ parameters:
                 - tests/*
         -
             namespace: 'Reflection*'
-            message: 'runtime reflection is confined: ReflectionNamespaceSource, BuiltinBackend, and the fromReflection factories'
+            message: 'runtime reflection is confined: BuiltinBackend and the fromReflection factories'
             allowIn:
                 - src/Knowledge/BuiltinBackend.php
-                - src/Index/ReflectionNamespaceSource.php
                 - src/Domain/TypeFactory.php
                 - src/Domain/FunctionInfo.php
                 - src/Domain/ParameterInfo.php
@@ -131,9 +130,9 @@ parameters:
                 - 'get_object_vars()'
                 - 'get_included_files()'
                 - 'spl_autoload_functions()'
-            message: 'asking the runtime what it has loaded is enumeration, confined to ReflectionNamespaceSource'
+            message: 'asking the runtime what it has loaded is enumeration, confined to BuiltinBackend'
             allowIn:
-                - src/Index/ReflectionNamespaceSource.php
+                - src/Knowledge/BuiltinBackend.php
                 - tests/*
         -
             function:
