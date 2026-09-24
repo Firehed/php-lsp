@@ -212,7 +212,7 @@ final class CompositeSymbolSourceTest extends TestCase
         );
     }
 
-    public function testSearchDeduplicatesConstantsCaseSensitively(): void
+    public function testSearchReturnsEveryDeclaredConstantEvenWhenAnotherDiffersOnlyByCase(): void
     {
         $open = new FakeSymbolBackend(searchResults: [
             self::symbol('App\DEBUG', 'open.php', SymbolKind::Constant),
@@ -228,7 +228,7 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertEqualsCanonicalizing(
             ['App\DEBUG', 'App\debug'],
             $fqns,
-            'constants are case-sensitive, so names differing only by case must not collapse into one result',
+            'App\\DEBUG and App\\debug are two different constants; the caller must be able to find both',
         );
     }
 
