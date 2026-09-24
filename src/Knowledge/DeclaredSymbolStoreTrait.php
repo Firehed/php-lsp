@@ -44,7 +44,7 @@ trait DeclaredSymbolStoreTrait
                 $ns = new NamespaceName(NamespaceName::namespaceOf($fqn));
                 if ($ns->normalize() === $targetKey) {
                     $key = $symbol->kind->keyFor($symbol->name);
-                    if (isset($seenSymbolKey[$key])) {
+                    if (array_key_exists($key, $seenSymbolKey)) {
                         continue;
                     }
                     $seenSymbolKey[$key] = true;
