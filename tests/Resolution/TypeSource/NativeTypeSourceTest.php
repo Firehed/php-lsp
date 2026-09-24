@@ -13,10 +13,9 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\UnionType;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -30,12 +29,7 @@ final class NativeTypeSourceTest extends TestCase
     {
         $production = ProductionSyntaxSource::create();
         $fixturesRoot = dirname(__DIR__, 2) . '/Fixtures';
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $production->source,
-            $production->reader,
-        );
+        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
         $this->source = new NativeTypeSource(
             $knowledge->source,
             new MemberResolver($knowledge->source),
