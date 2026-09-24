@@ -8,11 +8,10 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParseMetrics;
-use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
+use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -24,7 +23,6 @@ class TextDocumentSyncHandlerTest extends TestCase
     use LoadsFixturesTrait;
 
     private DocumentManager $manager;
-    private MemoizingSyntaxSource $parser;
     private ParseMetrics $metrics;
     private SymbolSourceInterface $source;
     private TextDocumentSyncHandler $handler;
@@ -33,13 +31,11 @@ class TextDocumentSyncHandlerTest extends TestCase
     {
         $this->manager = new DocumentManager();
         $production = ProductionSyntaxSource::create();
-        $this->parser = $production->source;
         $this->metrics = $production->metrics;
-        $knowledge = KnowledgeStack::forProject(
+        $knowledge = ProductionKnowledgeStack::forMap(
             new ComposerAutoloadMap(),
-            dirname(__DIR__) . '/Fixtures/vendor',
-            $this->parser,
-            $production->reader,
+            dirname(__DIR__) . '/Fixtures',
+            $production,
         );
         $this->source = $knowledge->source;
         $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink);
