@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
-use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
@@ -56,20 +55,17 @@ final readonly class KnowledgeStack
         // composites because the runtime requires every files entry before the
         // autoloader is ever asked, so a declaration there wins.
         $autoloadFiles = new AutoloadFilesLocator($autoloadMap, $parser, $reader, $scanner);
-        $cachedCatalog = new CachedNamespaceCatalog(
-            new CompositeNamespaceCatalog([
-                $autoloadFiles,
-                new ComposerNamespaceSource($autoloadMap),
-            ]),
-            CacheFactory::inMemory(),
-        );
+        $catalog = new CompositeNamespaceCatalog([
+            $autoloadFiles,
+            new ComposerNamespaceSource($autoloadMap),
+        ]);
         $disk = new CachingSymbolSource(
             new FilesystemBackend(
                 new CompositeSymbolLocator([
                     $autoloadFiles,
                     new ComposerSymbolLocator($autoloadMap),
                 ]),
-                $cachedCatalog,
+                $catalog,
                 $parser,
                 $reader,
                 $declarationInfoFactory,
@@ -79,20 +75,17 @@ final readonly class KnowledgeStack
             CacheFactory::inMemory(),
         );
 
-        // ReflectionNamespaceSource serves both enumeration (cached, via
-        // NamespaceCatalogInterface) and prefix search (uncached, via PrefixSearchableInterface).
-        // Both must draw on the same source so coverage is identical (§4.2).
+        // ReflectionNamespaceSource serves both enumeration (via NamespaceCatalogInterface)
+        // and prefix search (via PrefixSearchableInterface). Both must draw on the same
+        // source so coverage is identical (§4.2). The source memoizes per namespace, and
+        // the CachingSymbolSource decorator caches its childrenOf lookups.
         $constants = new InternalConstantSet();
         $reflectionSource = new ReflectionNamespaceSource($constants);
         $source = new CompositeSymbolSource([
             $openDocuments,
             $disk,
             new CachingSymbolSource(
-                new BuiltinBackend(
-                    new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
-                    $reflectionSource,
-                    $constants,
-                ),
+                new BuiltinBackend($reflectionSource, $reflectionSource, $constants),
                 CacheFactory::inMemory(),
             ),
         ]);
@@ -106,7 +99,7 @@ final readonly class KnowledgeStack
             // cache for a file so the next query re-reads disk (RFC 1 §5.2, §5.3).
             // The open-document backend is authoritative and never cached, so it is
             // not invalidated; the built-in backend does not read workspace files.
-            [$disk, $cachedCatalog, $autoloadFiles],
+            [$disk, $autoloadFiles],
         );
 
         return new self($source, $sink);
