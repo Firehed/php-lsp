@@ -11,13 +11,12 @@ use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -75,12 +74,7 @@ final class FunctionSurfaceParityTest extends TestCase
 
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
-            $parser,
-            $production->reader,
-        );
+        $knowledge = ProductionKnowledgeStack::forProjectRoot($this->fixturesRoot, $production);
 
         $this->symbolSource = $knowledge->source;
         $this->sink = $knowledge->sink;
