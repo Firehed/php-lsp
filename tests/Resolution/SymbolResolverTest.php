@@ -21,8 +21,6 @@ use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
@@ -37,6 +35,7 @@ use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
+use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -66,12 +65,7 @@ final class SymbolResolverTest extends TestCase
         $this->documents = new DocumentManager();
 
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $this->parser,
-            $production->reader,
-        );
+        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
 
         $this->resolver = new SymbolResolver(
