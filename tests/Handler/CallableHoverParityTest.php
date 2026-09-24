@@ -41,7 +41,7 @@ class CallableHoverParityTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
 
-        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $this->symbolResolver = new SymbolResolver(

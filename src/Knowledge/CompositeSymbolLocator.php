@@ -8,13 +8,13 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
 
 /**
- * Chains the routes to a declaration, in order of cost and authority.
+ * Chains the routes to a declaration, in the order the runtime consults them.
  *
  * Composer addresses class-likes by arithmetic on the name and everything in the
  * `autoload.files` set by no name at all, so the two are separate locators rather
- * than one: the map lookup is cheap and answers most names, and the derived index
- * covers what the maps structurally cannot (Plan 0002 §3). Chaining keeps the
- * cheaper route first and leaves each locator responsible for one mechanism.
+ * than one, each responsible for one mechanism (Plan 0002 §3). The runtime
+ * requires every files entry before the autoloader is ever asked, so the derived
+ * index answers first and the maps answer what it does not declare.
  */
 final class CompositeSymbolLocator implements SymbolLocatorInterface
 {

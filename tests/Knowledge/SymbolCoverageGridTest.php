@@ -24,9 +24,6 @@ use PHPUnit\Framework\TestCase;
  * answers over the fixtures or names a blocker in
  * {@see NOT_APPLICABLE}; an unregistered cell fails, so does a registration on a cell
  * that answers, and so does a blocker naming no row of the slice registry.
- *
- * One row per backend class: the workspace and vendor {@see FilesystemBackend}s
- * differ only in autoload-map subset, so their coverage cannot diverge.
  */
 final class SymbolCoverageGridTest extends TestCase
 {

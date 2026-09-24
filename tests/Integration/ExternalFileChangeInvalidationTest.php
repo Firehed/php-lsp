@@ -123,6 +123,25 @@ class ExternalFileChangeInvalidationTest extends TestCase
         );
     }
 
+    public function testAClassCreatedAfterAFailedLookupResolvesOnTheNextQuery(): void
+    {
+        $stack = $this->stack();
+        $handler = new DidChangeWatchedFilesHandler($stack->sink);
+
+        self::assertNull(
+            $stack->source->lookupClassLike($this->classNameFor('Late')),
+            'the class does not exist yet',
+        );
+
+        $this->writeClass('Late', '');
+        $handler->handle($this->changed('Late'));
+
+        self::assertNotNull(
+            $stack->source->lookupClassLike($this->classNameFor('Late')),
+            'a file created after a miss must resolve on the next query, not stay remembered as missing',
+        );
+    }
+
     public function testClosingAnEditedFileReReadsFromDiskRatherThanRestoringThePreEditCache(): void
     {
         $this->writeClass('Widget', '');
@@ -159,7 +178,6 @@ class ExternalFileChangeInvalidationTest extends TestCase
 
         $stack = $this->knowledgeStackForMap(
             new ComposerAutoloadMap(files: [$path]),
-            $this->workspace,
             $this->syntax,
         );
         $handler = new DidChangeWatchedFilesHandler($stack->sink);
@@ -210,7 +228,6 @@ class ExternalFileChangeInvalidationTest extends TestCase
     {
         return $this->knowledgeStackForMap(
             new ComposerAutoloadMap(psr4: [self::NAMESPACE => [$this->workspace]]),
-            $this->workspace,
             $this->syntax,
         );
     }

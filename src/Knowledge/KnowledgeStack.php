@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
@@ -34,46 +33,56 @@ final readonly class KnowledgeStack
     }
 
     /**
-     * Build the stack for a project. The autoload map is split into the project's
-     * own code and its dependencies (RFC 1 §5.3): an open document overrides the
-     * workspace, which overrides vendored code, which overrides the built-ins.
-     * On-disk and built-in enumeration is cached; open documents never are.
+     * Build the stack for a project: an open document overrides the file on disk,
+     * which overrides the built-ins (RFC 1 §5.3). On disk, a name resolves to the
+     * file Composer's own autoloader would load. On-disk and built-in enumeration
+     * is cached; open documents never are.
      */
     public static function forProject(
         ComposerAutoloadMap $autoloadMap,
-        string $vendorDirectory,
         SyntaxSourceInterface $parser,
         SourceFileReader $reader,
     ): self {
         $declarationInfoFactory = new DeclarationSymbolInfoFactory();
-
-        [$workspaceMap, $vendorMap] = $autoloadMap->partitionByVendorDirectory($vendorDirectory);
-
         $scanner = new DeclarationScanner();
 
         $openDocuments = new OpenDocumentBackend();
-        [$workspace, $workspaceInvalidatables] = self::filesystemBackend(
-            $workspaceMap,
+
+        // AutoloadFilesLocator serves three roles: symbol location, namespace
+        // enumeration (composed into the catalog), and prefix search. All three
+        // must be the same instance so coverage is identical (§4.2) and
+        // invalidation propagates to search results. It precedes the maps in both
+        // composites because the runtime requires every files entry before the
+        // autoloader is ever asked, so a declaration there wins.
+        $autoloadFiles = new AutoloadFilesLocator($autoloadMap, $parser, $reader, $scanner);
+        $cachedCatalog = new CachedNamespaceCatalog(
+            new CompositeNamespaceCatalog([
+                $autoloadFiles,
+                new ComposerNamespaceSource($autoloadMap),
+            ]),
+            CacheFactory::inMemory(),
+        );
+        $disk = new FilesystemBackend(
+            new CompositeSymbolLocator([
+                $autoloadFiles,
+                new ComposerSymbolLocator($autoloadMap),
+            ]),
+            $cachedCatalog,
             $parser,
             $reader,
             $declarationInfoFactory,
             $scanner,
+            new SymbolCache(CacheFactory::inMemory()),
+            $autoloadFiles,
         );
-        [$vendor, $vendorInvalidatables] = self::filesystemBackend(
-            $vendorMap,
-            $parser,
-            $reader,
-            $declarationInfoFactory,
-            $scanner,
-        );
+
         // ReflectionNamespaceSource serves both enumeration (cached, via
         // NamespaceCatalogInterface) and prefix search (uncached, via PrefixSearchableInterface).
         // Both must draw on the same source so coverage is identical (§4.2).
         $reflectionSource = new ReflectionNamespaceSource();
         $source = new CompositeSymbolSource([
             $openDocuments,
-            $workspace,
-            $vendor,
+            $disk,
             new BuiltinBackend(
                 new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
                 new SymbolCache(CacheFactory::inMemory()),
@@ -90,49 +99,9 @@ final readonly class KnowledgeStack
             // cache for a file so the next query re-reads disk (RFC 1 §5.2, §5.3).
             // The open-document backend is authoritative and never cached, so it is
             // not invalidated; the built-in backend does not read workspace files.
-            [...$workspaceInvalidatables, ...$vendorInvalidatables],
+            [$disk, $cachedCatalog, $autoloadFiles],
         );
 
         return new self($source, $sink);
-    }
-
-    /**
-     * @return array{FilesystemBackend, list<InvalidatableInterface>}
-     */
-    private static function filesystemBackend(
-        ComposerAutoloadMap $map,
-        SyntaxSourceInterface $parser,
-        SourceFileReader $reader,
-        DeclarationSymbolInfoFactory $infoFactory,
-        DeclarationScanner $scanner,
-    ): array {
-        // AutoloadFilesLocator serves three roles: symbol location, namespace
-        // enumeration (composed into the catalog), and prefix search. All three
-        // must be the same instance so coverage is identical (§4.2) and
-        // invalidation propagates to search results.
-        $autoloadFiles = new AutoloadFilesLocator($map, $parser, $reader, $scanner);
-        $cachedCatalog = new CachedNamespaceCatalog(
-            new CompositeNamespaceCatalog([
-                new ComposerNamespaceSource($map),
-                $autoloadFiles,
-            ]),
-            CacheFactory::inMemory(),
-        );
-
-        $backend = new FilesystemBackend(
-            new CompositeSymbolLocator([
-                new ComposerSymbolLocator($map),
-                $autoloadFiles,
-            ]),
-            $cachedCatalog,
-            $parser,
-            $reader,
-            $infoFactory,
-            $scanner,
-            new SymbolCache(CacheFactory::inMemory()),
-            $autoloadFiles,
-        );
-
-        return [$backend, [$backend, $cachedCatalog, $autoloadFiles]];
     }
 }

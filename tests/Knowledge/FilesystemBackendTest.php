@@ -30,10 +30,9 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The filesystem backend resolves symbols by locating and parsing one file, and
- * enumerates namespaces through the autoload map — the workspace and vendor roles
- * both run this code, differing only in the map subset they are given. These prove
- * lookup, its caching, the not-found paths, the empty prefix search, and that
- * enumeration forwards to the injected catalog.
+ * enumerates namespaces through the autoload map. These prove lookup, its caching,
+ * the not-found paths, the empty prefix search, and that enumeration forwards to
+ * the injected catalog.
  */
 final class FilesystemBackendTest extends TestCase
 {
