@@ -10,15 +10,16 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Psr\SimpleCache\CacheInterface;
 
 /**
- * Remembers what a namespace contains, for sources whose answers cannot change.
+ * Remembers what a namespace contains, for sources that read disk or reflection.
  *
  * Completion re-queries on every keystroke, so without this, navigating into
  * `Psr\Http\Message\` would re-read the directory once per character typed.
  * Caching per namespace preserves laziness: an entry appears only for a
  * namespace someone actually looked at.
  *
- * Only wrap sources that are stable for the life of the process — `vendor/` and
- * the language's built-ins. The workspace is not one of them.
+ * A wrapped source may change on disk: {@see invalidate()} drops every listing
+ * so the next enumeration re-reads. Open documents are never wrapped, because
+ * they change on every keystroke.
  */
 final class CachedNamespaceCatalog implements NamespaceCatalogInterface, InvalidatableInterface
 {
