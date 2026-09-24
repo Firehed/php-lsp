@@ -129,6 +129,51 @@ final class CachingSymbolSourceTest extends TestCase
         $this->source->lookupClassLike($beta);
     }
 
+    public function testInvalidationDecodesAPercentEncodedUriToMatchTheDeclaringFile(): void
+    {
+        $name = ClasslikeName::fromFullyQualified('Spaced');
+        // A client URI percent-encodes a space; the declaring path does not.
+        $this->inner->expects(self::exactly(2))
+            ->method('lookupClassLike')
+            ->willReturn(self::classInfo('Spaced', file: '/ws/with space/Spaced.php'));
+
+        $this->source->lookupClassLike($name);
+        $this->source->invalidate('file:///ws/with%20space/Spaced.php');
+        $this->source->lookupClassLike($name);
+    }
+
+    public function testInvalidatingANonFileUriKeepsEveryHit(): void
+    {
+        $name = ClasslikeName::fromFullyQualified('App\Alpha');
+        // An unsaved-buffer URI names no path on disk, so it can match no declaring file.
+        $this->inner->expects(self::once())
+            ->method('lookupClassLike')
+            ->willReturn(self::classInfo('App\Alpha', file: '/ws/Alpha.php'));
+
+        $this->source->lookupClassLike($name);
+        $this->source->invalidate('untitled:Untitled-1');
+        $this->source->lookupClassLike($name);
+    }
+
+    public function testAClassAndAFunctionOfOneNameAreRememberedApart(): void
+    {
+        // PHP's symbol namespaces are independent, so one name can be both a class
+        // and a function; the kind is part of the key.
+        $class = self::classInfo('Dual', file: '/ws/Dual.php');
+        $function = self::functionInfo(FunctionName::fromFullyQualified('Dual')->qualifiedName, '/ws/Dual.php');
+        $this->inner->expects(self::once())->method('lookupClassLike')->willReturn($class);
+        $this->inner->expects(self::once())->method('lookupFunction')->willReturn($function);
+
+        $this->source->lookupClassLike(ClasslikeName::fromFullyQualified('Dual'));
+        $this->source->lookupFunction(FunctionName::fromFullyQualified('Dual'));
+
+        self::assertSame(
+            $function,
+            $this->source->lookupFunction(FunctionName::fromFullyQualified('Dual')),
+            'a remembered class must not answer a function lookup of the same name',
+        );
+    }
+
     public function testASymbolWithNoFileSurvivesInvalidation(): void
     {
         $name = ClasslikeName::fromFullyQualified('ArrayObject');

@@ -194,6 +194,29 @@ final class KnowledgeStackTest extends TestCase
         );
     }
 
+    public function testARepeatedLookupIsServedWithoutReParsing(): void
+    {
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            $this->parser,
+            $this->reader,
+        );
+        $name = self::className('Fixtures\Domain\User');
+
+        self::assertNotNull($stack->source->lookupClassLike($name));
+        $afterFirst = $this->metrics->getParseCount();
+        // The parser's own memo lasts one message; only the stack's cache can
+        // answer across messages.
+        $this->parser->endMessage();
+        $stack->source->lookupClassLike($name);
+
+        self::assertSame(
+            $afterFirst,
+            $this->metrics->getParseCount(),
+            'a repeated lookup across messages is remembered, not re-parsed from disk',
+        );
+    }
+
     public function testADocumentOpenedThroughTheSinkIsVisibleToTheSource(): void
     {
         $stack = KnowledgeStack::forProject(
