@@ -18,8 +18,8 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
 /**
- * The {@see SymbolSourceInterface} read seam over a fixed-precedence list of
- * {@see SymbolBackendInterface}s (RFC 1 §4.2, §5.3). This is the single place symbol
+ * The {@see SymbolSourceInterface} composite over a fixed-precedence list of
+ * {@see SymbolSourceInterface}s (RFC 1 §4.2, §5.3). This is the single place symbol
  * sources are composed: adding, removing, or reordering a source is a change to
  * the backend list here, with no change to any consumer.
  *
@@ -33,7 +33,7 @@ use Firehed\PhpLsp\Index\Symbol;
 final class CompositeSymbolSource implements SymbolSourceInterface
 {
     /**
-     * @param list<SymbolBackendInterface> $backends In descending precedence: the first
+     * @param list<SymbolSourceInterface> $backends In descending precedence: the first
      *        that answers a lookup wins, and the first to report a name wins a
      *        merge. Readable so the §5.1 coverage grid derives its rows from it.
      */
@@ -45,33 +45,30 @@ final class CompositeSymbolSource implements SymbolSourceInterface
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
         return NamespaceContents::merge(array_map(
-            static fn(SymbolBackendInterface $backend): NamespaceContents => $backend->childrenOf($namespace),
+            static fn(SymbolSourceInterface $backend): NamespaceContents => $backend->childrenOf($namespace),
             $this->backends,
         ));
     }
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
     {
-        $info = $this->lookup($name->qualifiedName, NameKind::ClassLike);
-        assert($info === null || $info instanceof ClassInfo);
-
-        return $info;
+        return $this->firstAnswer(
+            static fn(SymbolSourceInterface $backend): ?ClassInfo => $backend->lookupClassLike($name),
+        );
     }
 
     public function lookupConstant(ConstantName $name): ?ConstantInfo
     {
-        $info = $this->lookup($name->qualifiedName, $name->kind);
-        assert($info === null || $info instanceof ConstantInfo);
-
-        return $info;
+        return $this->firstAnswer(
+            static fn(SymbolSourceInterface $backend): ?ConstantInfo => $backend->lookupConstant($name),
+        );
     }
 
     public function lookupFunction(FunctionName $name): ?FunctionInfo
     {
-        $info = $this->lookup($name->qualifiedName, $name->kind);
-        assert($info === null || $info instanceof FunctionInfo);
-
-        return $info;
+        return $this->firstAnswer(
+            static fn(SymbolSourceInterface $backend): ?FunctionInfo => $backend->lookupFunction($name),
+        );
     }
 
     /**
@@ -90,14 +87,14 @@ final class CompositeSymbolSource implements SymbolSourceInterface
     }
 
     /**
-     * Answers with the marker type; each caller above narrows it back to a concrete
-     * one. That is the O(kinds) narrowing Plan 0002 §5.6 trades against a lookup
-     * method per kind on every backend.
+     * @template T of SymbolInfoInterface
+     * @param callable(SymbolSourceInterface): ?T $lookup
+     * @return ?T
      */
-    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
+    private function firstAnswer(callable $lookup): ?SymbolInfoInterface
     {
         foreach ($this->backends as $backend) {
-            $info = $backend->lookup($name, $kind);
+            $info = $lookup($backend);
             if ($info !== null) {
                 return $info;
             }
