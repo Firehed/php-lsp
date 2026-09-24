@@ -79,7 +79,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
         $byFqn = [];
         foreach ($this->backends as $backend) {
             foreach ($backend->search($prefix, $kind) as $symbol) {
-                $byFqn[self::normalizeKey($symbol->fullyQualifiedName)] ??= $symbol;
+                $byFqn[self::normalizeKey($symbol->fullyQualifiedName, $kind)] ??= $symbol;
             }
         }
 
@@ -103,8 +103,8 @@ final class CompositeSymbolSource implements SymbolSourceInterface
         return null;
     }
 
-    private static function normalizeKey(string $fqn): string
+    private static function normalizeKey(string $fqn, NameKind $kind): string
     {
-        return NameKind::ClassLike->normalize(QualifiedName::fromFullyQualified($fqn));
+        return $kind->normalize(QualifiedName::fromFullyQualified($fqn));
     }
 }

@@ -212,7 +212,26 @@ final class CompositeSymbolSourceTest extends TestCase
         );
     }
 
-    private static function symbol(string $fqn, string $file): Symbol
+    public function testSearchReturnsEveryDeclaredConstantEvenWhenAnotherDiffersOnlyByCase(): void
+    {
+        $upper = self::symbol('App\DEBUG', 'open.php', SymbolKind::Constant);
+        $lower = self::symbol('App\debug', 'vendor.php', SymbolKind::Constant);
+        $source = new CompositeSymbolSource([
+            new FakeSymbolBackend(searchResults: [$upper]),
+            new FakeSymbolBackend(searchResults: [$lower]),
+        ]);
+
+        $results = $source->search('D', NameKind::Constant);
+
+        self::assertContains($upper, $results, 'the App\\DEBUG constant must be returned to the caller');
+        self::assertContains(
+            $lower,
+            $results,
+            'App\\debug is a separate constant and must be returned alongside App\\DEBUG, not merged with it',
+        );
+    }
+
+    private static function symbol(string $fqn, string $file, SymbolKind $kind = SymbolKind::Class_): Symbol
     {
         $shortName = strrchr($fqn, '\\');
         $shortName = $shortName === false ? $fqn : substr($shortName, 1);
@@ -220,7 +239,7 @@ final class CompositeSymbolSourceTest extends TestCase
         return new Symbol(
             $shortName,
             $fqn,
-            SymbolKind::Class_,
+            $kind,
             new Location('file://' . $file, 0, 0, 0, 0),
         );
     }
