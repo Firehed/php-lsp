@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +24,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SymbolCandidates::class)]
 final class SymbolCandidatesTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
+
     private string $fixturesRoot;
     private SymbolSourceInterface $symbolSource;
     private SymbolSinkInterface $sink;
@@ -35,7 +37,7 @@ final class SymbolCandidatesTest extends TestCase
 
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
-        $knowledge = ProductionKnowledgeStack::forProjectRoot($this->fixturesRoot, $production);
+        $knowledge = $this->knowledgeStackForProjectRoot($this->fixturesRoot, $production);
 
         $this->symbolSource = $knowledge->source;
         $this->sink = $knowledge->sink;
