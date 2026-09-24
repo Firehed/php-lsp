@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
@@ -18,6 +17,7 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\VariableBinding;
 use Firehed\PhpLsp\Resolution\VariableBindings;
+use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -54,12 +54,7 @@ class VariableDefinitionTest extends TestCase
         $this->documents = new DocumentManager();
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
-        $knowledge = KnowledgeStack::forProject(
-            new ComposerAutoloadMap(),
-            __DIR__ . '/../Fixtures/vendor',
-            $parser,
-            $production->reader,
-        );
+        $knowledge = ProductionKnowledgeStack::forMap(new ComposerAutoloadMap(), __DIR__ . '/../Fixtures', $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $symbolResolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
