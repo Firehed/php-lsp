@@ -13,8 +13,8 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use LogicException;
 use PhpParser\ErrorHandler\Collecting;
@@ -53,6 +53,7 @@ use ReflectionMethod;
 #[CoversNothing]
 final class ParseHealthGridTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
     use OpensDocumentsTrait;
 
     /**
@@ -116,7 +117,7 @@ final class ParseHealthGridTest extends TestCase
         $this->documents = new DocumentManager();
 
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
-        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
