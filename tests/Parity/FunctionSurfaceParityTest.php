@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -45,6 +45,7 @@ use PHPUnit\Framework\TestCase;
 final class FunctionSurfaceParityTest extends TestCase
 {
     use AssertsGoldenTrait;
+    use BuildsKnowledgeStackTrait;
 
     /**
      * The fixture whose top-level functions the surface should report: one with a
@@ -74,7 +75,7 @@ final class FunctionSurfaceParityTest extends TestCase
 
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
-        $knowledge = ProductionKnowledgeStack::forProjectRoot($this->fixturesRoot, $production);
+        $knowledge = $this->knowledgeStackForProjectRoot($this->fixturesRoot, $production);
 
         $this->symbolSource = $knowledge->source;
         $this->sink = $knowledge->sink;
