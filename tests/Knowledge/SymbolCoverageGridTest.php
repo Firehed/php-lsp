@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Knowledge\CachingSymbolSource;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
@@ -245,11 +246,28 @@ final class SymbolCoverageGridTest extends TestCase
     {
         $rows = [];
         foreach ($this->source->backends as $backend) {
+            $backend = self::behindAnyCache($backend);
             $parts = explode('\\', $backend::class);
             $rows[end($parts)] ??= $backend;
         }
 
         return $rows;
+    }
+
+    /**
+     * A cache decorator answers whatever its backend answers, so the grid
+     * measures the backend behind it. The decorator keeps that backend private
+     * on purpose; only this derivation looks through it.
+     */
+    private static function behindAnyCache(SymbolSourceInterface $member): SymbolSourceInterface
+    {
+        while ($member instanceof CachingSymbolSource) {
+            $inner = new \ReflectionProperty(CachingSymbolSource::class, 'inner')->getValue($member);
+            self::assertInstanceOf(SymbolSourceInterface::class, $inner, 'a cache wraps one source');
+            $member = $inner;
+        }
+
+        return $member;
     }
 
     private function answers(SymbolSourceInterface $backend, string $row, NameKind $kind, GridQuery $query): bool
