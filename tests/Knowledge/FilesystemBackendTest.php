@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
@@ -21,7 +19,6 @@ use Firehed\PhpLsp\Knowledge\CompositeSymbolLocator;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
-use Firehed\PhpLsp\Knowledge\SymbolCache;
 use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
@@ -70,17 +67,6 @@ final class FilesystemBackendTest extends TestCase
             self::classLikeIn($this->backend(), 'Fixtures\Does\Not\Exist'),
             'a name the autoload map cannot locate is absent from this backend (RFC 1 §5.3)',
         );
-    }
-
-    public function testLookupClassLikeCachesAResolvedClass(): void
-    {
-        $backend = $this->backend();
-
-        $first = self::classLikeIn($backend, 'Fixtures\Domain\User');
-        $second = self::classLikeIn($backend, 'Fixtures\Domain\User');
-
-        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
-        self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-parse');
     }
 
     public function testLookupClassLikeReturnsNullWhenTheLocatedFileIsUnreadable(): void
@@ -208,141 +194,6 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    public function testLookupFunctionCachesAResolvedFunction(): void
-    {
-        $backend = $this->backend();
-
-        $first = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
-        $second = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
-
-        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
-        self::assertSame($first, $second, 'a second lookup must return the cached instance, not re-parse');
-    }
-
-    public function testFunctionAndClassLikeCachesDoNotCollide(): void
-    {
-        // PHP's symbol namespaces are independent, so one file may declare a class
-        // and a function of the same name. A cache keyed on the name alone would
-        // serve whichever was resolved first to both queries.
-        $path = tempnam(sys_get_temp_dir(), 'php-lsp-fsb-dual-');
-        self::assertNotFalse($path, 'a temp file must be creatable');
-
-        try {
-            self::assertNotFalse(
-                file_put_contents($path, "<?php\nclass Dual {}\nfunction Dual(): void {}\n"),
-                'the temp file must be writable',
-            );
-
-            $backend = $this->backendWithLocator($this->locatorReturning($path));
-
-            $class = self::classLikeIn($backend, 'Dual');
-            $function = self::functionIn($backend, 'Dual');
-
-            self::assertNotNull($class, 'the class-like must resolve');
-            self::assertNotNull($function, 'the function must resolve rather than hit the class entry');
-        } finally {
-            unlink($path);
-        }
-    }
-
-    public function testInvalidateEvictsTheCachedFunctionSoTheNextLookupReParses(): void
-    {
-        $backend = $this->backend();
-
-        $first = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
-        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
-
-        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/AutoloadFiles/helpers.php'));
-        $second = self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
-
-        self::assertNotNull($second, 'the function must resolve again after invalidation');
-        self::assertNotSame(
-            $first,
-            $second,
-            'invalidate must evict cached functions too, or an edited file is served stale (RFC 1 §5.3)',
-        );
-    }
-
-    public function testInvalidateEvictsTheCachedClassSoTheNextLookupReParses(): void
-    {
-        $backend = $this->backend();
-
-        $first = self::classLikeIn($backend, 'Fixtures\Domain\User');
-        self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
-
-        $backend->invalidate('file://' . $this->fixturesRoot . '/src/Domain/User.php');
-        $second = self::classLikeIn($backend, 'Fixtures\Domain\User');
-
-        self::assertNotNull($second, 'the class must resolve again after invalidation');
-        self::assertNotSame(
-            $first,
-            $second,
-            'invalidate must evict the cached class so the changed file is re-parsed from disk (RFC 1 §5.3)',
-        );
-    }
-
-    public function testInvalidateDecodesAPercentEncodedUriToMatchTheCachedPath(): void
-    {
-        // A client URI percent-encodes reserved characters (a space becomes %20),
-        // but the locator path {@see $cacheKeysByPath} is keyed by does not. The
-        // URI must be decoded before matching, or a workspace path with a space —
-        // common on macOS — never evicts and the pre-change class is served stale.
-        $dir = sys_get_temp_dir() . '/php-lsp fsb ' . getmypid();
-        self::assertTrue(mkdir($dir), 'the temp directory with a space must be created');
-        $path = $dir . '/Spaced.php';
-
-        try {
-            self::assertNotFalse(
-                file_put_contents($path, "<?php\nclass Spaced {}\n"),
-                'the spaced-path fixture must be writable',
-            );
-
-            $backend = $this->backendWithLocator($this->locatorReturning($path));
-
-            $first = self::classLikeIn($backend, 'Spaced');
-            self::assertNotNull($first, 'the first lookup must resolve so the cache is populated');
-
-            $backend->invalidate('file://' . str_replace(' ', '%20', $path));
-            $second = self::classLikeIn($backend, 'Spaced');
-
-            self::assertNotNull($second, 'the class must resolve again after invalidation');
-            self::assertNotSame(
-                $first,
-                $second,
-                'the percent-encoded URI must be decoded to match the cached path so the entry is evicted',
-            );
-        } finally {
-            unlink($path);
-            rmdir($dir);
-        }
-    }
-
-    public function testInvalidateAnUncachedFileIsHarmless(): void
-    {
-        $backend = $this->backend();
-
-        $backend->invalidate('file:///never/looked/up.php');
-
-        self::assertNotNull(
-            self::classLikeIn($backend, 'Fixtures\Domain\User'),
-            'invalidating a file that was never cached must not disturb later lookups',
-        );
-    }
-
-    public function testInvalidateToleratesANonFileUri(): void
-    {
-        $backend = $this->backend();
-
-        // An unsaved-buffer or other-scheme URI has no on-disk path to match; it is
-        // used verbatim, matches no cached entry, and must not disturb later lookups.
-        $backend->invalidate('untitled:Untitled-1');
-
-        self::assertNotNull(
-            self::classLikeIn($backend, 'Fixtures\Domain\User'),
-            'a non-file:// URI must be handled without error',
-        );
-    }
-
     public function testSearchClassLikeIsEmpty(): void
     {
         self::assertSame(
@@ -406,7 +257,6 @@ final class FilesystemBackendTest extends TestCase
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
-            new SymbolCache(CacheFactory::inMemory()),
             self::createStub(PrefixSearchableInterface::class),
         );
 
@@ -449,7 +299,6 @@ final class FilesystemBackendTest extends TestCase
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
-            new SymbolCache(CacheFactory::inMemory()),
             $autoloadFiles,
         );
     }
@@ -463,7 +312,6 @@ final class FilesystemBackendTest extends TestCase
             $this->reader,
             $this->infoFactory,
             new DeclarationScanner(),
-            new SymbolCache(CacheFactory::inMemory()),
             self::createStub(PrefixSearchableInterface::class),
         );
     }

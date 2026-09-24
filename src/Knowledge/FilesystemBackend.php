@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
-use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -23,12 +21,9 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * precedence Composer's own autoloader applies between them.
  *
  * Lookup locates the file for a name and parses that one file — no
- * `vendor/` pre-index (RFC 1 §3, lazy-first). Results are held behind the
- * replaceable cache seam (RFC 1 §5.3): a file on disk is stable while unchanged, so
- * a resolved symbol is memoized. An on-disk change to a file is signalled through
- * {@see invalidate()} ({@see InvalidatableInterface}), which evicts that file's cached
- * symbols and drops cached namespace listings so the next query reflects disk
- * (RFC 1 §5.2, §5.3).
+ * `vendor/` pre-index (RFC 1 §3, lazy-first). Nothing is remembered here: a
+ * {@see CachingSymbolSource} in front of this backend holds an answer while its
+ * file is unchanged and drops it when the file changes.
  *
  * Namespace enumeration is a directory listing through the same autoload map
  * ({@see NamespaceCatalogInterface}). Prefix search for class-likes is empty: a bare prefix
@@ -37,16 +32,9 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * autoload.files index ({@see PrefixSearchableInterface}), which is bounded and already in
  * memory.
  */
-final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInterface
+final class FilesystemBackend implements SymbolSourceInterface
 {
     use LooksUpByKindTrait;
-
-    /**
-     * The symbols derived from each file, recorded so invalidation can evict them.
-     *
-     * @var array<string, list<array{QualifiedName, NameKind}>>
-     */
-    private array $symbolsByPath = [];
 
     public function __construct(
         private readonly SymbolLocatorInterface $locator,
@@ -55,7 +43,6 @@ final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInt
         private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
-        private readonly SymbolCache $cache,
         private readonly PrefixSearchableInterface $prefixSearch,
     ) {
     }
@@ -63,19 +50,6 @@ final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInt
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
         return $this->namespaces->childrenOf($namespace->path);
-    }
-
-    /**
-     * Evict the file's cached symbols, so the next query re-reads disk and the
-     * pre-change value is not restored (RFC 1 §5.2, §5.3).
-     */
-    public function invalidate(string $uri): void
-    {
-        $path = FileUri::toPath($uri);
-        foreach ($this->symbolsByPath[$path] ?? [] as [$name, $kind]) {
-            $this->cache->forget($name, $kind);
-        }
-        unset($this->symbolsByPath[$path]);
     }
 
     /**
@@ -88,19 +62,13 @@ final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInt
 
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
     {
-        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfoInterface {
-            $filePath = $this->locator->locate($name, $kind);
-            if ($filePath === null) {
-                return null;
-            }
+        $filePath = $this->locator->locate($name, $kind);
+        if ($filePath === null) {
+            return null;
+        }
 
-            $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-            $info = $this->infoFactory->fromDeclarations($declarations, $name, $kind, $filePath);
-            if ($info !== null) {
-                $this->symbolsByPath[$filePath][] = [$name, $kind];
-            }
+        $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
 
-            return $info;
-        });
+        return $this->infoFactory->fromDeclarations($declarations, $name, $kind, $filePath);
     }
 }
