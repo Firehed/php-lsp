@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -23,13 +23,15 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NativeTypeSource::class)]
 final class NativeTypeSourceTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
+
     private NativeTypeSource $source;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
         $fixturesRoot = dirname(__DIR__, 2) . '/Fixtures';
-        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $this->source = new NativeTypeSource(
             $knowledge->source,
             new MemberResolver($knowledge->source),
