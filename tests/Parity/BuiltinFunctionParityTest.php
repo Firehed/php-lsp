@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parity;
 
-use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Index\CachedNamespaceCatalog;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
@@ -52,11 +50,7 @@ final class BuiltinFunctionParityTest extends TestCase
         // precedence backend, so the oracle measures the shipped configuration.
         $constants = new InternalConstantSet();
         $reflectionSource = new ReflectionNamespaceSource($constants);
-        $this->backend = new BuiltinBackend(
-            new CachedNamespaceCatalog($reflectionSource, CacheFactory::inMemory()),
-            $reflectionSource,
-            $constants,
-        );
+        $this->backend = new BuiltinBackend($reflectionSource, $reflectionSource, $constants);
     }
 
     public function testEnumeratedFunctionsMatchReflection(): void

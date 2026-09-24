@@ -63,11 +63,19 @@ final class CompositeNamespaceCatalogTest extends TestCase
 
     public function testEveryCatalogIsAskedAboutTheSameNamespace(): void
     {
-        $counting = new CountingNamespaceCatalog();
+        $first = $this->createMock(NamespaceCatalogInterface::class);
+        $first->expects(self::once())
+            ->method('childrenOf')
+            ->with('Psr\Log')
+            ->willReturn(new NamespaceContents(['Psr\Log\Child'], []));
+        $second = $this->createMock(NamespaceCatalogInterface::class);
+        $second->expects(self::once())
+            ->method('childrenOf')
+            ->with('Psr\Log')
+            ->willReturn(new NamespaceContents([], []));
 
-        $contents = (new CompositeNamespaceCatalog([$counting, $counting]))->childrenOf('Psr\Log');
+        $contents = (new CompositeNamespaceCatalog([$first, $second]))->childrenOf('Psr\Log');
 
-        self::assertSame(2, $counting->calls, 'each catalog is consulted, not just the first to answer');
         self::assertSame(
             ['Psr\Log\Child'],
             $contents->childNamespaces,
