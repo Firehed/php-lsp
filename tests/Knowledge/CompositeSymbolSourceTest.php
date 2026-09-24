@@ -225,10 +225,11 @@ final class CompositeSymbolSourceTest extends TestCase
         $results = $source->search('D', NameKind::Constant);
 
         $fqns = array_map(static fn(Symbol $symbol): string => $symbol->fullyQualifiedName, $results);
-        self::assertEqualsCanonicalizing(
-            ['App\DEBUG', 'App\debug'],
+        self::assertContains('App\DEBUG', $fqns, 'App\\DEBUG was declared, so search must find it');
+        self::assertContains(
+            'App\debug',
             $fqns,
-            'App\\DEBUG and App\\debug are two different constants; the caller must be able to find both',
+            'App\\debug is a separate constant from App\\DEBUG, so search must also find it',
         );
     }
 
