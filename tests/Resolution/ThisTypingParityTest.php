@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,6 +25,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SymbolResolver::class)]
 final class ThisTypingParityTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
 
     private SymbolResolver $resolver;
@@ -34,7 +35,7 @@ final class ThisTypingParityTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
         $fixturesRoot = __DIR__ . '/../Fixtures';
-        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $this->resolver = new SymbolResolver(
             $parser,
