@@ -11,10 +11,9 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolBackendInterface;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -31,6 +30,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class SymbolCoverageGridTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
+
     /** The forms a blocker may take when no slice owns the gap: an issue, or a section. */
     private const string UNOWNED_BLOCKER = '/^(#\d+|(RFC 1|Plan 0002) §\d+(\.\d+)*)$/u';
 
@@ -107,12 +108,7 @@ final class SymbolCoverageGridTest extends TestCase
     {
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
         $production = ProductionSyntaxSource::create();
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $production->source,
-            $production->reader,
-        );
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $knowledge->sink->openDocument(
             new TextDocument('file:///virtual/Grid.php', 'php', 1, self::OPEN_DOCUMENT),
         );

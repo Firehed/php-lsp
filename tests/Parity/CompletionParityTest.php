@@ -9,12 +9,11 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -33,6 +32,7 @@ use PHPUnit\Framework\TestCase;
 final class CompletionParityTest extends TestCase
 {
     use AssertsGoldenTrait;
+    use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
     use WiresCompletionSourceTrait;
 
@@ -197,12 +197,7 @@ final class CompletionParityTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $parser,
-            $production->reader,
-        );
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);

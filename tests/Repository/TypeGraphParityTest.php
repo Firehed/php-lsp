@@ -6,9 +6,8 @@ namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -27,6 +26,8 @@ use ReflectionProperty;
 #[CoversClass(MemberResolver::class)]
 final class TypeGraphParityTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
+
     private MemberResolver $resolver;
 
     public static function setUpBeforeClass(): void
@@ -70,12 +71,7 @@ final class TypeGraphParityTest extends TestCase
     {
         $fixturesRoot = dirname(__DIR__) . '/Fixtures';
         $production = ProductionSyntaxSource::create();
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $production->source,
-            $production->reader,
-        );
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $this->resolver = new MemberResolver($knowledge->source);
     }
 

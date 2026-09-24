@@ -7,10 +7,9 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -26,6 +25,7 @@ use PHPUnit\Framework\TestCase;
 final class ChildrenOfParityTest extends TestCase
 {
     use AssertsGoldenTrait;
+    use BuildsKnowledgeStackTrait;
 
     /**
      * A fixed set of workspace documents indexed before enumeration, so the
@@ -80,14 +80,7 @@ final class ChildrenOfParityTest extends TestCase
         $this->fixturesRoot = dirname(__DIR__) . '/Fixtures';
 
         $production = ProductionSyntaxSource::create();
-        $parser = $production->source;
-
-        $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
-            $this->fixturesRoot . '/vendor',
-            $parser,
-            $production->reader,
-        );
+        $stack = $this->knowledgeStackForProjectRoot($this->fixturesRoot, $production);
         foreach (self::INDEXED_DOCUMENTS as $relative) {
             $path = $this->fixturesRoot . '/' . $relative;
             $content = file_get_contents($path);

@@ -12,9 +12,8 @@ use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
@@ -31,11 +30,12 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 class ExternalFileChangeInvalidationTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
+
     private const string NAMESPACE = 'Temp\\';
 
     private string $workspace;
-    private MemoizingSyntaxSource $parser;
-    private SourceFileReader $reader;
+    private ProductionSyntaxSource $syntax;
 
     protected function setUp(): void
     {
@@ -45,9 +45,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
         self::assertTrue(mkdir($workspace), 'the temp workspace directory must be created');
 
         $this->workspace = $workspace;
-        $production = ProductionSyntaxSource::create();
-        $this->parser = $production->source;
-        $this->reader = $production->reader;
+        $this->syntax = ProductionSyntaxSource::create();
     }
 
     protected function tearDown(): void
@@ -159,11 +157,10 @@ class ExternalFileChangeInvalidationTest extends TestCase
         $path = $this->workspace . '/bootstrap.php';
         $this->writeFile($path, "<?php\nnamespace Temp;\nclass FilesBefore {}\n");
 
-        $stack = KnowledgeStack::forProject(
+        $stack = $this->knowledgeStackForMap(
             new ComposerAutoloadMap(files: [$path]),
-            $this->workspace . '/vendor',
-            $this->parser,
-            $this->reader,
+            $this->workspace,
+            $this->syntax,
         );
         $handler = new DidChangeWatchedFilesHandler($stack->sink);
 
@@ -211,11 +208,10 @@ class ExternalFileChangeInvalidationTest extends TestCase
 
     private function stack(): KnowledgeStack
     {
-        return KnowledgeStack::forProject(
+        return $this->knowledgeStackForMap(
             new ComposerAutoloadMap(psr4: [self::NAMESPACE => [$this->workspace]]),
-            $this->workspace . '/vendor',
-            $this->parser,
-            $this->reader,
+            $this->workspace,
+            $this->syntax,
         );
     }
 
