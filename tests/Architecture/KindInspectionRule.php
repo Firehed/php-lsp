@@ -74,7 +74,7 @@ final class KindInspectionRule implements Rule
         'src/Domain/IntersectionType.php',
         'src/Domain/PrimitiveType.php',
         'src/Domain/LateStaticType.php',
-        'src/Knowledge/CompositeSymbolSource.php',
+        'src/Knowledge/LooksUpByKindTrait.php',
     ];
 
     public function getNodeType(): string
@@ -84,7 +84,7 @@ final class KindInspectionRule implements Rule
 
     public function processNode(Node $node, Scope $scope): array
     {
-        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
+        if (ConfinedFile::isExempt(ConfinedFile::analysedFile($scope), self::ALLOWED_FILES)) {
             return [];
         }
 

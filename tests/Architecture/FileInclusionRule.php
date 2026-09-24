@@ -41,7 +41,7 @@ final class FileInclusionRule implements Rule
 
     public function processNode(Node $node, Scope $scope): array
     {
-        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
+        if (ConfinedFile::isExempt(ConfinedFile::analysedFile($scope), self::ALLOWED_FILES)) {
             return [];
         }
 

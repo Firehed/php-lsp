@@ -49,7 +49,7 @@ final class DynamicClassReferenceRule implements Rule
             return [];
         }
 
-        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
+        if (ConfinedFile::isExempt(ConfinedFile::analysedFile($scope), self::ALLOWED_FILES)) {
             return [];
         }
 

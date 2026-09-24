@@ -41,7 +41,7 @@ use ReflectionParameter;
 use ReflectionProperty;
 
 /**
- * The lowest-precedence {@see SymbolBackendInterface}: the symbols built into PHP and its
+ * The lowest-precedence {@see SymbolSourceInterface}: the symbols built into PHP and its
  * loaded extensions, described through reflection. It is consulted only after the
  * open-document and disk backends, so a name either of them can resolve never
  * reaches reflection (RFC 1 §5.3).
@@ -60,8 +60,10 @@ use ReflectionProperty;
  * reflection-to-SymbolInfoInterface build is this backend, so a separate class only
  * duplicated the source-picking that {@see CompositeSymbolSource} already owns.
  */
-final class BuiltinBackend implements SymbolBackendInterface
+final class BuiltinBackend implements SymbolSourceInterface
 {
+    use LooksUpByKindTrait;
+
     public function __construct(
         private readonly NamespaceCatalogInterface $namespaces,
         private readonly SymbolCache $cache,
@@ -73,15 +75,6 @@ final class BuiltinBackend implements SymbolBackendInterface
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
         return $this->namespaces->childrenOf($namespace->path);
-    }
-
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
-    {
-        return $this->cache->remember(
-            $name,
-            $kind,
-            fn(): ?SymbolInfoInterface => $this->build($name, $kind),
-        );
     }
 
     /**
@@ -368,6 +361,15 @@ final class BuiltinBackend implements SymbolBackendInterface
             docblock: $reflection->getDocComment() !== false ? $reflection->getDocComment() : null,
             file: $reflection->getFileName() !== false ? $reflection->getFileName() : null,
             line: $reflection->getStartLine() !== false ? $reflection->getStartLine() : null,
+        );
+    }
+
+    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
+    {
+        return $this->cache->remember(
+            $name,
+            $kind,
+            fn(): ?SymbolInfoInterface => $this->build($name, $kind),
         );
     }
 

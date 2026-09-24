@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 
 /**
- * The highest-precedence {@see SymbolBackendInterface}: the documents the editor has open
+ * The highest-precedence {@see SymbolSourceInterface}: the documents the editor has open
  * (RFC 1 §5.3). Its answers override every on-disk backend, so a user's unsaved
  * edits are honored — including edits to a vendored file opened in the editor.
  *
@@ -26,8 +26,10 @@ use Firehed\PhpLsp\Index\Symbol;
  * and `search` all derive from it, so there is no way for the surfaces to disagree
  * about what an open document declares (build-manifest step-46).
  */
-final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbolStoreInterface
+final class OpenDocumentBackend implements SymbolSourceInterface, DocumentSymbolStoreInterface
 {
+    use LooksUpByKindTrait;
+
     /** @var array<string, list<DeclaredSymbol>> URI -> the symbols it declares */
     private array $symbolsByUri = [];
 
@@ -58,11 +60,6 @@ final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbo
         }
 
         return new NamespaceContents(array_values($childNamespaces), $symbols);
-    }
-
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
-    {
-        return $this->byKey[$kind->keyFor($name)] ?? null;
     }
 
     /**
@@ -111,5 +108,10 @@ final class OpenDocumentBackend implements SymbolBackendInterface, DocumentSymbo
             unset($this->byKey[$symbol->kind->keyFor($symbol->name)]);
         }
         unset($this->symbolsByUri[$uri]);
+    }
+
+    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
+    {
+        return $this->byKey[$kind->keyFor($name)] ?? null;
     }
 }

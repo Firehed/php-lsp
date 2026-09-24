@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
- * A {@see SymbolBackendInterface} over PHP files on disk, resolved through Composer's
+ * A {@see SymbolSourceInterface} over PHP files on disk, resolved through Composer's
  * autoload maps: the workspace's own code and vendored dependencies alike, with the
  * precedence Composer's own autoloader applies between them.
  *
@@ -37,8 +37,10 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * autoload.files index ({@see PrefixSearchableInterface}), which is bounded and already in
  * memory.
  */
-final class FilesystemBackend implements SymbolBackendInterface, InvalidatableInterface
+final class FilesystemBackend implements SymbolSourceInterface, InvalidatableInterface
 {
+    use LooksUpByKindTrait;
+
     /**
      * The symbols derived from each file, recorded so invalidation can evict them.
      *
@@ -63,24 +65,6 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
         return $this->namespaces->childrenOf($namespace->path);
     }
 
-    public function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
-    {
-        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfoInterface {
-            $filePath = $this->locator->locate($name, $kind);
-            if ($filePath === null) {
-                return null;
-            }
-
-            $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
-            $info = $this->infoFactory->fromDeclarations($declarations, $name, $kind, $filePath);
-            if ($info !== null) {
-                $this->symbolsByPath[$filePath][] = [$name, $kind];
-            }
-
-            return $info;
-        });
-    }
-
     /**
      * Evict the file's cached symbols, so the next query re-reads disk and the
      * pre-change value is not restored (RFC 1 §5.2, §5.3).
@@ -100,5 +84,23 @@ final class FilesystemBackend implements SymbolBackendInterface, InvalidatableIn
     public function search(string $prefix, NameKind $kind): array
     {
         return $this->prefixSearch->searchByPrefix($prefix, $kind);
+    }
+
+    private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
+    {
+        return $this->cache->remember($name, $kind, function () use ($name, $kind): ?SymbolInfoInterface {
+            $filePath = $this->locator->locate($name, $kind);
+            if ($filePath === null) {
+                return null;
+            }
+
+            $declarations = $this->scanner->scanFile($filePath, $this->reader, $this->parser);
+            $info = $this->infoFactory->fromDeclarations($declarations, $name, $kind, $filePath);
+            if ($info !== null) {
+                $this->symbolsByPath[$filePath][] = [$name, $kind];
+            }
+
+            return $info;
+        });
     }
 }

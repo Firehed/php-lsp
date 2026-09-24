@@ -84,7 +84,7 @@ final class KindBranchRule implements Rule
         }
         [$form, $operands] = $branch;
 
-        if (ConfinedFile::isExempt($scope->getFile(), self::ALLOWED_FILES)) {
+        if (ConfinedFile::isExempt(ConfinedFile::analysedFile($scope), self::ALLOWED_FILES)) {
             return [];
         }
 

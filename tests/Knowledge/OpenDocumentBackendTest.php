@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Domain\DeclaredSymbol;
+use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\SymbolInfoInterface;
-use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -18,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * The open-document backend is the highest-precedence source (RFC 1 §5.3): the
  * lookup store, namespace enumeration and prefix search all answer from one map
- * of {@see DeclaredSymbol}s per document (build-manifest step-46). These prove
+ * of {@see \Firehed\PhpLsp\Domain\DeclaredSymbol}s per document (build-manifest step-46). These prove
  * each query and that a document's registration is replaced on update and dropped
  * on close.
  */
@@ -142,35 +140,26 @@ final class OpenDocumentBackendTest extends TestCase
         // The point of the kind-parameterized write path: a kind whose metadata type
         // this backend has never heard of round-trips, so adding one is a change to
         // the info factories alone (Plan 0002 §5.6).
-        $info = new class implements SymbolInfoInterface {
-            public function symbolKind(): SymbolKind
-            {
-                return SymbolKind::Constant;
-            }
-        };
-        $name = QualifiedName::fromFullyQualified('V\LIMIT');
+        $symbol = self::declaredConstant('V\LIMIT');
 
-        $this->backend->updateDocument(
-            'file:///consts.php',
-            new DeclaredSymbol($name, NameKind::Constant, $info),
-        );
+        $this->backend->updateDocument('file:///consts.php', $symbol);
 
         self::assertSame(
-            $info,
-            $this->backend->lookup($name, NameKind::Constant),
+            $symbol->info,
+            $this->backend->lookupConstant(ConstantName::fromFullyQualified('V\LIMIT')),
             'a registered symbol of any kind must resolve for that kind',
         );
         self::assertNull(
-            $this->backend->lookup($name, NameKind::Function_),
+            $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\LIMIT')),
             'and must not answer for another symbol namespace',
         );
         self::assertSame(
-            $info,
-            $this->backend->lookup(QualifiedName::fromFullyQualified('v\LIMIT'), NameKind::Constant),
+            $symbol->info,
+            $this->backend->lookupConstant(ConstantName::fromFullyQualified('v\LIMIT')),
             'the namespace of a constant is still matched case-insensitively',
         );
         self::assertNull(
-            $this->backend->lookup(QualifiedName::fromFullyQualified('V\limit'), NameKind::Constant),
+            $this->backend->lookupConstant(ConstantName::fromFullyQualified('V\limit')),
             'but its own name is not: constants are the one kind PHP matches case-sensitively',
         );
     }
