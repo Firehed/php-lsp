@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -20,6 +20,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
 
     private DocumentManager $manager;
@@ -32,7 +33,7 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->manager = new DocumentManager();
         $production = ProductionSyntaxSource::create();
         $this->metrics = $production->metrics;
-        $knowledge = ProductionKnowledgeStack::forMap(
+        $knowledge = $this->knowledgeStackForMap(
             new ComposerAutoloadMap(),
             dirname(__DIR__) . '/Fixtures',
             $production,
