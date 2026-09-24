@@ -212,7 +212,27 @@ final class CompositeSymbolSourceTest extends TestCase
         );
     }
 
-    private static function symbol(string $fqn, string $file): Symbol
+    public function testSearchDeduplicatesConstantsCaseSensitively(): void
+    {
+        $open = new FakeSymbolBackend(searchResults: [
+            self::symbol('App\DEBUG', 'open.php', SymbolKind::Constant),
+        ]);
+        $vendor = new FakeSymbolBackend(searchResults: [
+            self::symbol('App\debug', 'vendor.php', SymbolKind::Constant),
+        ]);
+        $source = new CompositeSymbolSource([$open, $vendor]);
+
+        $results = $source->search('D', NameKind::Constant);
+
+        $fqns = array_map(static fn(Symbol $symbol): string => $symbol->fullyQualifiedName, $results);
+        self::assertEqualsCanonicalizing(
+            ['App\DEBUG', 'App\debug'],
+            $fqns,
+            'constants are case-sensitive, so names differing only by case must not collapse into one result',
+        );
+    }
+
+    private static function symbol(string $fqn, string $file, SymbolKind $kind = SymbolKind::Class_): Symbol
     {
         $shortName = strrchr($fqn, '\\');
         $shortName = $shortName === false ? $fqn : substr($shortName, 1);
@@ -220,7 +240,7 @@ final class CompositeSymbolSourceTest extends TestCase
         return new Symbol(
             $shortName,
             $fqn,
-            SymbolKind::Class_,
+            $kind,
             new Location('file://' . $file, 0, 0, 0, 0),
         );
     }
