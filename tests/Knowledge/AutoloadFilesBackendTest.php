@@ -2,18 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Index;
+namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
-use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
+use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,95 +23,78 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The `autoload.files` set is the one place Composer addresses a declaration by no
- * name at all, so the only route to it is to parse the set and derive a name -> file
- * map. These prove the derived index reaches all three symbol namespaces, applies
- * PHP's per-kind case rules, and does not overreach into names it never saw
- * (Plan 0002 §3, Step 3b).
+ * name at all, so the only route to it is to parse the set and derive a name ->
+ * declaration map. These prove the derived index reaches all three symbol
+ * namespaces, applies PHP's per-kind case rules, and does not overreach into
+ * names it never saw (Plan 0002 §3).
  *
- * The index answers both reads of it: `locate` for a known name, and `childrenOf`
- * for what a namespace contains. Enumerating it is what keeps a `files`-declared
- * name from resolving on hover while staying invisible to completion (RFC 1 §4.2).
+ * The index answers all three reads of it: lookup for a known name, `childrenOf`
+ * for what a namespace contains, and `search` for a bare short-name prefix.
+ * Coverage across the three is identical — a `files`-declared name that resolved
+ * on hover while staying invisible to completion is exactly the per-surface
+ * split RFC 1 §4.2 forbids.
  */
-#[CoversClass(AutoloadFilesLocator::class)]
-final class AutoloadFilesLocatorTest extends TestCase
+#[CoversClass(AutoloadFilesBackend::class)]
+final class AutoloadFilesBackendTest extends TestCase
 {
+    use LooksUpBackendSymbolsTrait;
+
     private const string FIXTURES_ROOT = __DIR__ . '/../Fixtures';
 
     /**
-     * @return iterable<string, array{string, NameKind, ?non-empty-string}>
+     * @return iterable<string, array{string, NameKind, bool}>
      * @codeCoverageIgnore data provider runs before coverage begins
      */
     public static function declaredNames(): iterable
     {
         // Every class-like flavour: Composer's maps address none of these, because
         // the file is reached only through `files`.
-        yield 'interface' => ['Fixtures\Helpers\HelperContract', NameKind::ClassLike, 'AutoloadFiles/helpers.php'];
-        yield 'trait' => ['Fixtures\Helpers\HelperFallback', NameKind::ClassLike, 'AutoloadFiles/helpers.php'];
-        yield 'enum' => ['Fixtures\Helpers\HelperMode', NameKind::ClassLike, 'AutoloadFiles/helpers.php'];
-        yield 'class' => ['Fixtures\Helpers\HelperRegistry', NameKind::ClassLike, 'AutoloadFiles/helpers.php'];
-        yield 'global class' => ['FixtureGlobalRegistry', NameKind::ClassLike, 'AutoloadFiles/globals.php'];
+        yield 'interface' => ['Fixtures\Helpers\HelperContract', NameKind::ClassLike, true];
+        yield 'trait' => ['Fixtures\Helpers\HelperFallback', NameKind::ClassLike, true];
+        yield 'enum' => ['Fixtures\Helpers\HelperMode', NameKind::ClassLike, true];
+        yield 'class' => ['Fixtures\Helpers\HelperRegistry', NameKind::ClassLike, true];
+        yield 'global class' => ['FixtureGlobalRegistry', NameKind::ClassLike, true];
 
-        yield 'namespaced function' => [
-            'Fixtures\Helpers\helperFormat',
-            NameKind::Function_,
-            'AutoloadFiles/helpers.php',
-        ];
-        yield 'global function' => ['fixtureGlobalHelper', NameKind::Function_, 'AutoloadFiles/globals.php'];
-        yield 'conditional function' => ['fixtureConditionalHelper', NameKind::Function_, 'AutoloadFiles/globals.php'];
-        yield 'nested function' => ['fixtureNestedHelper', NameKind::Function_, 'AutoloadFiles/globals.php'];
+        yield 'namespaced function' => ['Fixtures\Helpers\helperFormat', NameKind::Function_, true];
+        yield 'global function' => ['fixtureGlobalHelper', NameKind::Function_, true];
+        yield 'conditional function' => ['fixtureConditionalHelper', NameKind::Function_, true];
+        yield 'nested function' => ['fixtureNestedHelper', NameKind::Function_, true];
 
-        yield 'namespaced const' => ['Fixtures\Helpers\HELPER_LIMIT', NameKind::Constant, 'AutoloadFiles/helpers.php'];
-        yield 'global const' => ['FIXTURE_GLOBAL_LIMIT', NameKind::Constant, 'AutoloadFiles/globals.php'];
-        yield 'second declarator' => ['FIXTURE_GLOBAL_BETA', NameKind::Constant, 'AutoloadFiles/globals.php'];
-        yield 'literal define' => ['FIXTURE_DEFINED_LIMIT', NameKind::Constant, 'AutoloadFiles/globals.php'];
-        yield 'define inside a body' => ['FIXTURE_BODY_LIMIT', NameKind::Constant, 'AutoloadFiles/globals.php'];
-        yield 'qualified define' => [
-            'Fixtures\Helpers\HELPER_DEFINED_QUALIFIED',
-            NameKind::Constant,
-            'AutoloadFiles/helpers.php',
-        ];
+        yield 'namespaced const' => ['Fixtures\Helpers\HELPER_LIMIT', NameKind::Constant, true];
+        yield 'global const' => ['FIXTURE_GLOBAL_LIMIT', NameKind::Constant, true];
+        yield 'second declarator' => ['FIXTURE_GLOBAL_BETA', NameKind::Constant, true];
+        yield 'literal define' => ['FIXTURE_DEFINED_LIMIT', NameKind::Constant, true];
+        yield 'define inside a body' => ['FIXTURE_BODY_LIMIT', NameKind::Constant, true];
+        yield 'qualified define' => ['Fixtures\Helpers\HELPER_DEFINED_QUALIFIED', NameKind::Constant, true];
         // `define()` takes its whole name from the literal, so this one is global
         // despite being written under a namespace — and must be found as such.
-        yield 'define ignores its namespace' => [
-            'FIXTURE_HELPER_DEFINED',
-            NameKind::Constant,
-            'AutoloadFiles/helpers.php',
-        ];
+        yield 'define ignores its namespace' => ['FIXTURE_HELPER_DEFINED', NameKind::Constant, true];
 
-        yield 'leading separator' => [
-            '\Fixtures\Helpers\HelperRegistry',
-            NameKind::ClassLike,
-            'AutoloadFiles/helpers.php',
-        ];
+        yield 'leading separator' => ['\Fixtures\Helpers\HelperRegistry', NameKind::ClassLike, true];
 
         // Out of reach, each for its own reason.
-        yield 'computed define name' => ['FIXTURE_COMPUTED_LIMIT', NameKind::Constant, null];
-        yield 'a define value is not a name' => ['FIXTURE_NOT_A_CONSTANT_NAME', NameKind::Constant, null];
-        yield 'undeclared name' => ['Fixtures\Helpers\absentHelper', NameKind::Function_, null];
-        // A PSR-4 class is reachable, but not by *this* locator: it addresses only
+        yield 'computed define name' => ['FIXTURE_COMPUTED_LIMIT', NameKind::Constant, false];
+        yield 'a define value is not a name' => ['FIXTURE_NOT_A_CONSTANT_NAME', NameKind::Constant, false];
+        yield 'undeclared name' => ['Fixtures\Helpers\absentHelper', NameKind::Function_, false];
+        // A PSR-4 class is reachable, but not by *this* backend: it addresses only
         // what the `files` set declares, and the autoload maps cover the rest.
-        yield 'psr-4 class' => ['Fixtures\Domain\User', NameKind::ClassLike, null];
+        yield 'psr-4 class' => ['Fixtures\Domain\User', NameKind::ClassLike, false];
     }
 
-    /**
-     * @param ?non-empty-string $expectedPathSuffix
-     */
     #[DataProvider('declaredNames')]
-    public function testLocateResolvesWhatTheAutoloadFilesSetDeclares(
+    public function testLookupResolvesWhatTheAutoloadFilesSetDeclares(
         string $fullyQualifiedName,
         NameKind $kind,
-        ?string $expectedPathSuffix,
+        bool $shouldResolve,
     ): void {
-        $path = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->locate(QualifiedName::fromFullyQualified($fullyQualifiedName), $kind);
+        $info = self::symbolOfKindIn(self::backendForRoot(self::FIXTURES_ROOT), $fullyQualifiedName, $kind);
 
-        if ($expectedPathSuffix === null) {
-            self::assertNull($path, 'a name the files set does not declare has no declaring file');
+        if ($shouldResolve) {
+            self::assertNotNull($info, "a name declared in the files set must resolve: {$fullyQualifiedName}");
             return;
         }
 
-        self::assertNotNull($path, "a name declared in the files set must resolve: {$fullyQualifiedName}");
-        self::assertStringEndsWith($expectedPathSuffix, $path);
+        self::assertNull($info, "a name the files set does not declare has no declaring info: {$fullyQualifiedName}");
     }
 
     /**
@@ -124,33 +109,24 @@ final class AutoloadFilesLocatorTest extends TestCase
         // different constant, so resolving it would be a false positive.
         yield 'constant' => ['fixture_global_limit', NameKind::Constant, false];
         // The exact match applies to the short name only; the namespace is not.
-        yield 'constant under a recased namespace' => [
-            'FIXTURES\HELPERS\HELPER_LIMIT',
-            NameKind::Constant,
-            true,
-        ];
-        yield 'constant with a recased short name' => [
-            'Fixtures\Helpers\helper_limit',
-            NameKind::Constant,
-            false,
-        ];
+        yield 'constant under a recased namespace' => ['FIXTURES\HELPERS\HELPER_LIMIT', NameKind::Constant, true];
+        yield 'constant with a recased short name' => ['Fixtures\Helpers\helper_limit', NameKind::Constant, false];
     }
 
     #[DataProvider('caseVariants')]
-    public function testLocateAppliesThePerKindCaseRule(
+    public function testLookupAppliesThePerKindCaseRule(
         string $fullyQualifiedName,
         NameKind $kind,
         bool $shouldResolve,
     ): void {
-        $path = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->locate(QualifiedName::fromFullyQualified($fullyQualifiedName), $kind);
+        $info = self::symbolOfKindIn(self::backendForRoot(self::FIXTURES_ROOT), $fullyQualifiedName, $kind);
 
         if ($shouldResolve) {
-            self::assertNotNull($path, 'only a constant short name is matched case-sensitively');
+            self::assertNotNull($info, 'only a constant short name is matched case-sensitively');
             return;
         }
 
-        self::assertNull($path, 'a constant short name in another case is another constant');
+        self::assertNull($info, 'a constant short name in another case is another constant');
     }
 
     /**
@@ -167,25 +143,26 @@ final class AutoloadFilesLocatorTest extends TestCase
 
     /**
      * PHP has three symbol namespaces, so one spelling can name three different
-     * things. An index that ignored the kind would answer with the wrong file.
+     * things. An index that ignored the kind would answer with the wrong info.
      */
     #[DataProvider('mismatchedKinds')]
-    public function testLocateResolvesOnlyForTheKindThatDeclaredTheName(
+    public function testLookupResolvesOnlyForTheKindThatDeclaredTheName(
         string $fullyQualifiedName,
         NameKind $kind,
     ): void {
-        $path = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->locate(QualifiedName::fromFullyQualified($fullyQualifiedName), $kind);
-
-        self::assertNull($path, 'a name declared in one symbol namespace must not resolve in another');
+        self::assertNull(
+            self::symbolOfKindIn(self::backendForRoot(self::FIXTURES_ROOT), $fullyQualifiedName, $kind),
+            'a name declared in one symbol namespace must not resolve in another',
+        );
     }
 
     public function testAProjectWithNoAutoloadFilesResolvesNothing(): void
     {
-        $path = self::locatorForRoot('/nonexistent/path')
-            ->locate(QualifiedName::fromFullyQualified('FIXTURE_GLOBAL_LIMIT'), NameKind::Constant);
-
-        self::assertNull($path, 'a project with no autoload.files map indexes nothing, and is not an error');
+        self::assertNull(
+            self::backendForRoot('/nonexistent/path')
+                ->lookupConstant(ConstantName::fromFullyQualified('FIXTURE_GLOBAL_LIMIT')),
+            'a project with no autoload.files map indexes nothing, and is not an error',
+        );
     }
 
     public function testAnEntryThatCannotBeReadIsSkippedWithoutAbandoningTheRest(): void
@@ -194,16 +171,18 @@ final class AutoloadFilesLocatorTest extends TestCase
         $readable = self::tempFile('<?php const SURVIVES_A_BAD_ENTRY = 1;');
 
         try {
-            $locator = self::locatorForMap(
+            $backend = self::backendForMap(
                 new ComposerAutoloadMap([], [], [], [self::FIXTURES_ROOT . '/no-such-entry.php', $readable]),
             );
 
             self::assertNull(
-                $locator->locate(QualifiedName::fromFullyQualified('Whatever'), NameKind::ClassLike),
+                self::classLikeIn($backend, 'Whatever'),
                 'an unreadable files entry contributes nothing rather than throwing',
             );
             self::assertNotNull(
-                $locator->locate(QualifiedName::fromFullyQualified('SURVIVES_A_BAD_ENTRY'), NameKind::Constant),
+                $backend->lookupConstant(
+                    ConstantName::fromFullyQualified('SURVIVES_A_BAD_ENTRY'),
+                ),
                 'indexing must resume at the next entry rather than stop at the first unreadable one',
             );
         } finally {
@@ -215,19 +194,22 @@ final class AutoloadFilesLocatorTest extends TestCase
     {
         // The shape that puts one name in two files without breaking the project:
         // competing polyfills, each declaring only if nothing else already has.
-        // Two *unconditional* declarations of one name is a project that does not
-        // run, so it is not what this rule is for. Composer requires the entries in
-        // order, so the first file's guard is the one that passes.
+        // Composer requires the entries in order, so the first file's guard is
+        // the one that passes.
         $polyfill = '<?php if (!function_exists("dupeTarget")) { function dupeTarget(): int { return %d; } }';
         $first = self::tempFile(sprintf($polyfill, 1));
         $second = self::tempFile(sprintf($polyfill, 2));
 
         try {
-            $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$first, $second]));
+            $info = self::functionIn(
+                self::backendForMap(new ComposerAutoloadMap([], [], [], [$first, $second])),
+                'dupeTarget',
+            );
 
+            self::assertNotNull($info, 'the guarded polyfill must resolve');
             self::assertSame(
                 $first,
-                $locator->locate(QualifiedName::fromFullyQualified('dupeTarget'), NameKind::Function_),
+                $info->file,
                 'the earlier files entry declares the name that takes effect',
             );
         } finally {
@@ -241,21 +223,21 @@ final class AutoloadFilesLocatorTest extends TestCase
         $path = self::tempFile('<?php const BEFORE_CHANGE = 1;');
 
         try {
-            $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$path]));
+            $backend = self::backendForMap(new ComposerAutoloadMap([], [], [], [$path]));
             self::assertNotNull(
-                $locator->locate(QualifiedName::fromFullyQualified('BEFORE_CHANGE'), NameKind::Constant),
+                $backend->lookupConstant(ConstantName::fromFullyQualified('BEFORE_CHANGE')),
                 'the eagerly built index must reflect the file as it was read',
             );
 
             self::assertNotFalse(file_put_contents($path, '<?php const AFTER_CHANGE = 2;'), 'rewrite must succeed');
-            $locator->invalidate(FileUri::fromPath($path));
+            $backend->invalidate(FileUri::fromPath($path));
 
             self::assertNotNull(
-                $locator->locate(QualifiedName::fromFullyQualified('AFTER_CHANGE'), NameKind::Constant),
+                $backend->lookupConstant(ConstantName::fromFullyQualified('AFTER_CHANGE')),
                 'a name added by an external edit must resolve after invalidation (RFC 1 §5.2)',
             );
             self::assertNull(
-                $locator->locate(QualifiedName::fromFullyQualified('BEFORE_CHANGE'), NameKind::Constant),
+                $backend->lookupConstant(ConstantName::fromFullyQualified('BEFORE_CHANGE')),
                 'a name the edit removed must stop resolving, not be served from the stale index',
             );
         } finally {
@@ -268,14 +250,14 @@ final class AutoloadFilesLocatorTest extends TestCase
         $path = self::tempFile('<?php const UNTOUCHED = 1;');
 
         try {
-            $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$path]));
+            $backend = self::backendForMap(new ComposerAutoloadMap([], [], [], [$path]));
 
             // Delete first: from here a rebuild can only drop the name.
             unlink($path);
-            $locator->invalidate('file:///some/other/file.php');
+            $backend->invalidate('file:///some/other/file.php');
 
             self::assertNotNull(
-                $locator->locate(QualifiedName::fromFullyQualified('UNTOUCHED'), NameKind::Constant),
+                $backend->lookupConstant(ConstantName::fromFullyQualified('UNTOUCHED')),
                 'a change outside the files set must not cost a rebuild of the whole index',
             );
         } finally {
@@ -286,10 +268,10 @@ final class AutoloadFilesLocatorTest extends TestCase
     }
 
     /**
-     * The exact contents of each namespace the fixture `files` entries reach. Exact
-     * rather than containment, so a name the scan must *not* reach — a computed
-     * `define()`, a `define()` value mistaken for its name, an anonymous class —
-     * fails here as loudly as a missing one.
+     * The exact contents of each namespace the fixture `files` entries reach.
+     * Exact rather than containment, so a name the scan must *not* reach — a
+     * computed `define()`, a `define()` value mistaken for its name, an
+     * anonymous class — fails here as loudly as a missing one.
      *
      * @return iterable<string, array{string, list<string>, list<array{string, string}>}>
      * @codeCoverageIgnore data provider runs before coverage begins
@@ -311,8 +293,6 @@ final class AutoloadFilesLocatorTest extends TestCase
             ],
         ];
 
-        // A namespace the set declares nothing directly in is still reachable,
-        // because the namespace on the way to a declaration is a child of its parent.
         yield 'an intermediate namespace' => ['Fixtures', ['Fixtures\Helpers'], []];
 
         yield 'the global namespace' => [
@@ -332,8 +312,6 @@ final class AutoloadFilesLocatorTest extends TestCase
                 ['fixtureConditionalHelper', 'Function_'],
                 ['fixtureBootstrap', 'Function_'],
                 ['fixtureNestedHelper', 'Function_'],
-                // `define()` takes its whole name from the literal, so this one is
-                // global despite being written under a namespace.
                 ['FIXTURE_HELPER_DEFINED', 'Constant'],
             ],
         ];
@@ -342,11 +320,6 @@ final class AutoloadFilesLocatorTest extends TestCase
     }
 
     /**
-     * Enumeration must cover exactly what lookup covers: a name the `files` set
-     * declares resolves by hover and definition, so it must also appear in the
-     * namespace it is declared in (RFC 1 §4.2 — lookup and enumeration draw on the
-     * same backends so their coverage is identical).
-     *
      * @param list<string> $expectedChildNamespaces
      * @param list<array{string, string}> $expectedSymbols
      */
@@ -356,7 +329,7 @@ final class AutoloadFilesLocatorTest extends TestCase
         array $expectedChildNamespaces,
         array $expectedSymbols,
     ): void {
-        $contents = self::locatorForRoot(self::FIXTURES_ROOT)->childrenOf($namespace);
+        $contents = self::backendForRoot(self::FIXTURES_ROOT)->childrenOf(new NamespaceName($namespace));
 
         self::assertSame(
             self::sorted($expectedChildNamespaces),
@@ -377,7 +350,7 @@ final class AutoloadFilesLocatorTest extends TestCase
      */
     public function testChildrenOfReportsNamesAsDeclaredRatherThanNormalized(): void
     {
-        $contents = self::locatorForRoot(self::FIXTURES_ROOT)->childrenOf('Fixtures\Helpers');
+        $contents = self::backendForRoot(self::FIXTURES_ROOT)->childrenOf(new NamespaceName('Fixtures\Helpers'));
 
         $fqns = array_map(
             static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
@@ -389,11 +362,11 @@ final class AutoloadFilesLocatorTest extends TestCase
 
     public function testChildrenOfMatchesANamespaceInAnyCase(): void
     {
-        $locator = self::locatorForRoot(self::FIXTURES_ROOT);
+        $backend = self::backendForRoot(self::FIXTURES_ROOT);
 
         self::assertEquals(
-            $locator->childrenOf('Fixtures\Helpers'),
-            $locator->childrenOf('FIXTURES\helpers'),
+            $backend->childrenOf(new NamespaceName('Fixtures\Helpers')),
+            $backend->childrenOf(new NamespaceName('FIXTURES\helpers')),
             'PHP namespaces are case-insensitive, so one namespace is not two listings',
         );
     }
@@ -403,10 +376,10 @@ final class AutoloadFilesLocatorTest extends TestCase
         $path = self::tempFile('<?php namespace Rebuilt; class Before {}');
 
         try {
-            $locator = self::locatorForMap(new ComposerAutoloadMap([], [], [], [$path]));
+            $backend = self::backendForMap(new ComposerAutoloadMap([], [], [], [$path]));
             self::assertSame(
                 [['Rebuilt\Before', 'ClassLike']],
-                self::asPairs($locator->childrenOf('Rebuilt')),
+                self::asPairs($backend->childrenOf(new NamespaceName('Rebuilt'))),
                 'the eagerly built index must enumerate the file as it was read',
             );
 
@@ -414,11 +387,11 @@ final class AutoloadFilesLocatorTest extends TestCase
                 file_put_contents($path, '<?php namespace Rebuilt; class After {}'),
                 'rewrite must succeed',
             );
-            $locator->invalidate(FileUri::fromPath($path));
+            $backend->invalidate(FileUri::fromPath($path));
 
             self::assertSame(
                 [['Rebuilt\After', 'ClassLike']],
-                self::asPairs($locator->childrenOf('Rebuilt')),
+                self::asPairs($backend->childrenOf(new NamespaceName('Rebuilt'))),
                 'enumeration must reflect the rebuilt index, not a memo of the pre-change one',
             );
         } finally {
@@ -426,10 +399,9 @@ final class AutoloadFilesLocatorTest extends TestCase
         }
     }
 
-    public function testSearchByPrefixFindsFunctionsByShortNamePrefix(): void
+    public function testSearchFindsFunctionsByShortNamePrefix(): void
     {
-        $results = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->searchByPrefix('helperF', NameKind::Function_);
+        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('helperF', NameKind::Function_);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -439,10 +411,9 @@ final class AutoloadFilesLocatorTest extends TestCase
         );
     }
 
-    public function testSearchByPrefixFindsConstantsByShortNamePrefix(): void
+    public function testSearchFindsConstantsByShortNamePrefix(): void
     {
-        $results = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->searchByPrefix('HELPER_L', NameKind::Constant);
+        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('HELPER_L', NameKind::Constant);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -452,10 +423,26 @@ final class AutoloadFilesLocatorTest extends TestCase
         );
     }
 
-    public function testSearchByPrefixIsCaseInsensitive(): void
+    /**
+     * Class-likes declared in `files` entries are indexed alongside functions and
+     * constants, so a bare-prefix search over the same store returns them too —
+     * the reach of every read is the same set.
+     */
+    public function testSearchFindsClassLikesFromAutoloadFiles(): void
     {
-        $results = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->searchByPrefix('HELPERF', NameKind::Function_);
+        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('HelperR', NameKind::ClassLike);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'Fixtures\Helpers\HelperRegistry',
+            $fqns,
+            'a class-like declared in an autoload.files entry must be found by prefix search',
+        );
+    }
+
+    public function testSearchIsCaseInsensitive(): void
+    {
+        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('HELPERF', NameKind::Function_);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -465,19 +452,18 @@ final class AutoloadFilesLocatorTest extends TestCase
         );
     }
 
-    public function testSearchByPrefixReturnsEmptyForNoMatch(): void
+    public function testSearchReturnsEmptyForNoMatch(): void
     {
         self::assertSame(
             [],
-            self::locatorForRoot(self::FIXTURES_ROOT)->searchByPrefix('zzNoMatch', NameKind::Function_),
+            self::backendForRoot(self::FIXTURES_ROOT)->search('zzNoMatch', NameKind::Function_),
             'a prefix that matches nothing must return an empty list',
         );
     }
 
-    public function testSearchByPrefixReturnsSymbolsWithCorrectKind(): void
+    public function testSearchReturnsSymbolsWithCorrectKind(): void
     {
-        $results = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->searchByPrefix('helperF', NameKind::Function_);
+        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('helperF', NameKind::Function_);
 
         self::assertNotEmpty($results, 'the prefix must match at least one function');
         foreach ($results as $symbol) {
@@ -489,25 +475,23 @@ final class AutoloadFilesLocatorTest extends TestCase
         }
     }
 
-    public function testSearchByPrefixReturnsSymbolsWithFileLocation(): void
+    public function testSearchReturnsSymbolsWithFileLocation(): void
     {
-        $results = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->searchByPrefix('helperF', NameKind::Function_);
+        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('helperF', NameKind::Function_);
 
         self::assertNotEmpty($results, 'the prefix must match at least one function');
         foreach ($results as $symbol) {
-            self::assertNotSame(
-                '',
+            self::assertStringStartsWith(
+                'file://',
                 $symbol->location->uri,
-                'a symbol from an autoload.files entry must carry its declaring file',
+                'a symbol from an autoload.files entry must carry its declaring file as a URI, not a path',
             );
         }
     }
 
-    public function testSearchByPrefixDoesNotCrossKindBoundaries(): void
+    public function testSearchDoesNotCrossKindBoundaries(): void
     {
-        $results = self::locatorForRoot(self::FIXTURES_ROOT)
-            ->searchByPrefix('Helper', NameKind::Function_);
+        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('Helper', NameKind::Function_);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertNotContains(
@@ -550,15 +534,22 @@ final class AutoloadFilesLocatorTest extends TestCase
         return $symbols;
     }
 
-    private static function locatorForRoot(string $projectRoot): AutoloadFilesLocator
+    private static function backendForRoot(string $projectRoot): AutoloadFilesBackend
     {
-        return self::locatorForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot));
+        return self::backendForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot));
     }
 
-    private static function locatorForMap(ComposerAutoloadMap $map): AutoloadFilesLocator
+    private static function backendForMap(ComposerAutoloadMap $map): AutoloadFilesBackend
     {
         $production = ProductionSyntaxSource::create();
-        return new AutoloadFilesLocator($map, $production->source, $production->reader, new DeclarationScanner());
+
+        return new AutoloadFilesBackend(
+            $map,
+            new DeclarationSymbolInfoFactory(),
+            new DeclarationScanner(),
+            $production->reader,
+            $production->source,
+        );
     }
 
     /**

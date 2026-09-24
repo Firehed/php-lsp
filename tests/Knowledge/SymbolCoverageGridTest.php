@@ -39,6 +39,12 @@ final class SymbolCoverageGridTest extends TestCase
      */
     private const array NOT_APPLICABLE = [
         'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
+        'FilesystemBackend|Function_|lookup' => 'RFC 1 §3',
+        'FilesystemBackend|Function_|search' => 'RFC 1 §3',
+        'FilesystemBackend|Function_|childrenOf' => 'RFC 1 §3',
+        'FilesystemBackend|Constant|lookup' => 'RFC 1 §3',
+        'FilesystemBackend|Constant|search' => 'RFC 1 §3',
+        'FilesystemBackend|Constant|childrenOf' => 'RFC 1 §3',
         'BuiltinBackend|ClassLike|search' => '#23',
     ];
 
@@ -54,6 +60,11 @@ final class SymbolCoverageGridTest extends TestCase
             'ClassLike' => ['name' => 'Grid\GridWidget', 'namespace' => 'Grid'],
             'Function_' => ['name' => 'Grid\gridHelper', 'namespace' => 'Grid'],
             'Constant' => ['name' => 'Grid\GRID_LIMIT', 'namespace' => 'Grid'],
+        ],
+        'AutoloadFilesBackend' => [
+            'ClassLike' => ['name' => 'Fixtures\Helpers\HelperRegistry', 'namespace' => 'Fixtures\Helpers'],
+            'Function_' => ['name' => 'Fixtures\Helpers\helperFormat', 'namespace' => 'Fixtures\Helpers'],
+            'Constant' => ['name' => 'Fixtures\Helpers\HELPER_LIMIT', 'namespace' => 'Fixtures\Helpers'],
         ],
         'FilesystemBackend' => [
             'ClassLike' => ['name' => 'Fixtures\Domain\User', 'namespace' => 'Fixtures\Domain'],

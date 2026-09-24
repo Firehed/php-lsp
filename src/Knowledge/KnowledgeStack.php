@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Index\AutoloadFilesLocator;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
-use Firehed\PhpLsp\Index\CompositeNamespaceCatalog;
 use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Parser\SourceFileReader;
@@ -33,10 +31,13 @@ final readonly class KnowledgeStack
     }
 
     /**
-     * Build the stack for a project: an open document overrides the file on disk,
-     * which overrides the built-ins (RFC 1 §5.3). On disk, a name resolves to the
-     * file Composer's own autoloader would load. On-disk and built-in enumeration
-     * is cached; open documents never are.
+     * Build the stack for a project. Precedence in the composite: an open
+     * document overrides the autoload.files set, which overrides the file on
+     * disk resolved through Composer's maps, which overrides the built-ins
+     * (RFC 1 §5.3). Composer requires the files entries before the autoloader
+     * is ever asked, so a name declared there wins over the name -> file map.
+     * On-disk and built-in enumeration is cached; open documents and the
+     * files-set index never are.
      */
     public static function forProject(
         ComposerAutoloadMap $autoloadMap,
@@ -47,30 +48,21 @@ final readonly class KnowledgeStack
         $scanner = new DeclarationScanner();
 
         $openDocuments = new OpenDocumentBackend();
-
-        // AutoloadFilesLocator serves three roles: symbol location, namespace
-        // enumeration (composed into the catalog), and prefix search. All three
-        // must be the same instance so coverage is identical (§4.2) and
-        // invalidation propagates to search results. It precedes the maps in both
-        // composites because the runtime requires every files entry before the
-        // autoloader is ever asked, so a declaration there wins.
-        $autoloadFiles = new AutoloadFilesLocator($autoloadMap, $parser, $reader, $scanner);
-        $catalog = new CompositeNamespaceCatalog([
-            $autoloadFiles,
-            new ComposerNamespaceSource($autoloadMap),
-        ]);
+        $autoloadFiles = new AutoloadFilesBackend(
+            $autoloadMap,
+            $declarationInfoFactory,
+            $scanner,
+            $reader,
+            $parser,
+        );
         $disk = new CachingSymbolSource(
             new FilesystemBackend(
-                new CompositeSymbolLocator([
-                    $autoloadFiles,
-                    new ComposerSymbolLocator($autoloadMap),
-                ]),
-                $catalog,
+                new ComposerSymbolLocator($autoloadMap),
+                new ComposerNamespaceSource($autoloadMap),
                 $parser,
                 $reader,
                 $declarationInfoFactory,
                 $scanner,
-                $autoloadFiles,
             ),
             CacheFactory::inMemory(),
         );
@@ -83,6 +75,7 @@ final readonly class KnowledgeStack
         $reflectionSource = new ReflectionNamespaceSource($constants);
         $source = new CompositeSymbolSource([
             $openDocuments,
+            $autoloadFiles,
             $disk,
             new CachingSymbolSource(
                 new BuiltinBackend($reflectionSource, $reflectionSource, $constants),
@@ -96,9 +89,10 @@ final readonly class KnowledgeStack
             $parser,
             $scanner,
             // External-change and close-after-edit invalidation drops the on-disk
-            // cache for a file so the next query re-reads disk (RFC 1 §5.2, §5.3).
-            // The open-document backend is authoritative and never cached, so it is
-            // not invalidated; the built-in backend does not read workspace files.
+            // cache for a file and rebuilds the files-set index when a member of
+            // it changed (RFC 1 §5.2, §5.3). The open-document backend is
+            // authoritative and never cached, so it is not invalidated; the
+            // built-in backend does not read workspace files.
             [$disk, $autoloadFiles],
         );
 
