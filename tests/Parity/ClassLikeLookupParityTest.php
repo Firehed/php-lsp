@@ -7,8 +7,9 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -25,6 +26,7 @@ use PHPUnit\Framework\TestCase;
 final class ClassLikeLookupParityTest extends TestCase
 {
     use AssertsGoldenTrait;
+    use BuildsKnowledgeStackTrait;
 
     /**
      * Corpus of class-like names whose full `ClassInfo` is deterministic and
@@ -71,14 +73,14 @@ final class ClassLikeLookupParityTest extends TestCase
     ];
 
     private string $projectRoot;
-    private ProductionKnowledgeStack $knowledge;
+    private KnowledgeStack $knowledge;
 
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
         $fixturesRoot = $this->projectRoot . '/tests/Fixtures';
         $production = ProductionSyntaxSource::create();
-        $this->knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
+        $this->knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
     }
 
     public function testClassLikeLookupMatchesGolden(): void
