@@ -48,12 +48,12 @@ final readonly class KnowledgeStack
 
         $openDocuments = new OpenDocumentBackend();
 
-        // AutoloadFilesLocator serves three roles: symbol location, namespace
-        // enumeration (composed into the catalog), and prefix search. All three
-        // must be the same instance so coverage is identical (§4.2) and
-        // invalidation propagates to search results. It precedes the maps in both
-        // composites because the runtime requires every files entry before the
-        // autoloader is ever asked, so a declaration there wins.
+        // AutoloadFilesLocator serves two roles: symbol location and namespace
+        // enumeration (composed into the catalog, which also answers the prefix
+        // search over the same index). Both must be the same instance so coverage
+        // is identical (§4.2) and invalidation propagates. It precedes the maps
+        // in both composites because the runtime requires every files entry
+        // before the autoloader is ever asked, so a declaration there wins.
         $autoloadFiles = new AutoloadFilesLocator($autoloadMap, $parser, $reader, $scanner);
         $catalog = new CompositeNamespaceCatalog([
             $autoloadFiles,
@@ -70,22 +70,21 @@ final readonly class KnowledgeStack
                 $reader,
                 $declarationInfoFactory,
                 $scanner,
-                $autoloadFiles,
             ),
             CacheFactory::inMemory(),
         );
 
-        // ReflectionNamespaceSource serves both enumeration (via NamespaceCatalogInterface)
-        // and prefix search (via PrefixSearchableInterface). Both must draw on the same
-        // source so coverage is identical (§4.2). The source memoizes per namespace, and
-        // the CachingSymbolSource decorator caches its childrenOf lookups.
+        // ReflectionNamespaceSource answers both enumeration and prefix search
+        // through its own index, so the built-in backend takes it once and
+        // reads both from it (§4.2). The source memoizes per namespace, and the
+        // CachingSymbolSource decorator caches its childrenOf lookups.
         $constants = new InternalConstantSet();
         $reflectionSource = new ReflectionNamespaceSource($constants);
         $source = new CompositeSymbolSource([
             $openDocuments,
             $disk,
             new CachingSymbolSource(
-                new BuiltinBackend($reflectionSource, $reflectionSource, $constants),
+                new BuiltinBackend($reflectionSource, $constants),
                 CacheFactory::inMemory(),
             ),
         ]);

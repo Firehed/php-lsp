@@ -31,7 +31,6 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
 use ReflectionClass;
 use ReflectionException;
@@ -54,7 +53,7 @@ use ReflectionProperty;
  * Prefix search for class-likes is empty: a bare prefix would surface built-ins
  * that do not resolve unqualified in the file's namespace, which is auto-import,
  * a separate concern. Functions and constants are searched through the reflection
- * enumeration ({@see PrefixSearchableInterface}), which is bounded and already in memory.
+ * catalog itself, which is bounded and already in memory.
  *
  * Symbol construction is inlined rather than delegated: the sole caller of the
  * reflection-to-SymbolInfoInterface build is this backend, so a separate class only
@@ -66,7 +65,6 @@ final class BuiltinBackend implements SymbolSourceInterface
 
     public function __construct(
         private readonly NamespaceCatalogInterface $namespaces,
-        private readonly PrefixSearchableInterface $prefixSearch,
         private readonly InternalConstantSet $constants,
     ) {
     }
@@ -81,7 +79,7 @@ final class BuiltinBackend implements SymbolSourceInterface
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return $this->prefixSearch->searchByPrefix($prefix, $kind);
+        return $this->namespaces->searchByPrefix($prefix, $kind);
     }
 
     private function classInfo(QualifiedName $name): ?SymbolInfoInterface
