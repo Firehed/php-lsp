@@ -51,19 +51,21 @@ final readonly class KnowledgeStack
         // AutoloadFilesLocator serves three roles: symbol location, namespace
         // enumeration (composed into the catalog), and prefix search. All three
         // must be the same instance so coverage is identical (§4.2) and
-        // invalidation propagates to search results.
+        // invalidation propagates to search results. It precedes the maps in both
+        // composites because the runtime requires every files entry before the
+        // autoloader is ever asked, so a declaration there wins.
         $autoloadFiles = new AutoloadFilesLocator($autoloadMap, $parser, $reader, $scanner);
         $cachedCatalog = new CachedNamespaceCatalog(
             new CompositeNamespaceCatalog([
-                new ComposerNamespaceSource($autoloadMap),
                 $autoloadFiles,
+                new ComposerNamespaceSource($autoloadMap),
             ]),
             CacheFactory::inMemory(),
         );
         $disk = new FilesystemBackend(
             new CompositeSymbolLocator([
-                new ComposerSymbolLocator($autoloadMap),
                 $autoloadFiles,
+                new ComposerSymbolLocator($autoloadMap),
             ]),
             $cachedCatalog,
             $parser,
