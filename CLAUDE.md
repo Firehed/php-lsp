@@ -13,8 +13,11 @@ composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ## Design
 
 The project is a language server for PHP.
-Every design rule below exists to stop one problem: two routes to one fact.
-Two routes drift, and the drift shows up as a feature that works in hover but not in completion, or a member kind that inherits while another does not.
+Every design rule below exists to stop one problem: multiple routes to one fact.
+Routes drift, and the drift shows up as a feature that works in hover but not in completion, or a member kind that inherits while another does not.
+
+The codebase is undergoing structural transition to eliminate this issue.
+This document's guidance should override matching existing structure.
 
 ### Services and data types
 
