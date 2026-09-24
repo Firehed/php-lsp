@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture;
 
+use PHPStan\Analyser\Scope;
+
 /**
  * Where a confinement rule does not apply: tests (except the rule-test data,
  * which exists to violate), and the rule's named homes, matched as exact
@@ -14,6 +16,15 @@ final class ConfinedFile
 {
     private const string DATA_PREFIX = 'tests/Architecture/data/';
     private const string TESTS_PREFIX = 'tests/';
+
+    /**
+     * The file whose confinement applies. Inside a trait, PHPStan's scope names
+     * the class using it; the code under judgement lives in the trait's own file.
+     */
+    public static function analysedFile(Scope $scope): string
+    {
+        return $scope->getTraitReflection()?->getFileName() ?? $scope->getFile();
+    }
 
     /**
      * @param list<string> $allowedFiles repo-relative paths
