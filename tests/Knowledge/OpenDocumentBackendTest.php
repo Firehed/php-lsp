@@ -276,6 +276,101 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
+    public function testLookupResolvesToTheFirstDeclarationWhenTwoDocumentsShareAName(): void
+    {
+        $this->backend->updateDocument(
+            'file:///First.php',
+            self::declaredClass('V\Shared', file: '/first'),
+        );
+        $this->backend->updateDocument(
+            'file:///Second.php',
+            self::declaredClass('V\Shared', file: '/second'),
+        );
+
+        $info = self::classLikeIn($this->backend, 'V\Shared');
+
+        self::assertNotNull($info, 'a name two documents declare must still resolve');
+        self::assertSame(
+            '/first',
+            $info->file,
+            'the first document to declare the name in map order wins lookup, matching search and childrenOf',
+        );
+    }
+
+    public function testClosingOneOfTwoDocumentsThatShareANameKeepsTheOtherReachable(): void
+    {
+        $this->backend->updateDocument(
+            'file:///First.php',
+            self::declaredClass('V\Shared', file: '/first'),
+        );
+        $this->backend->updateDocument(
+            'file:///Second.php',
+            self::declaredClass('V\Shared', file: '/second'),
+        );
+
+        $this->backend->removeDocument('file:///Second.php');
+
+        $info = self::classLikeIn($this->backend, 'V\Shared');
+        self::assertNotNull(
+            $info,
+            'the still-open document keeps declaring the name; closing another must not drop lookup',
+        );
+        self::assertSame(
+            '/first',
+            $info->file,
+            'the surviving declaration is the one the still-open document holds',
+        );
+    }
+
+    public function testSearchReportsASharedNameOnceAcrossDocuments(): void
+    {
+        $this->backend->updateDocument(
+            'file:///a.php',
+            self::declaredClass('App\Widget', file: '/a'),
+        );
+        $this->backend->updateDocument(
+            'file:///b.php',
+            self::declaredClass('App\Widget', file: '/b'),
+        );
+
+        $results = $this->backend->search('Widget', NameKind::ClassLike);
+
+        self::assertCount(
+            1,
+            $results,
+            'a name two documents declare must appear once in search, matching lookup',
+        );
+        self::assertSame(
+            'file:///a.php',
+            $results[0]->location->uri,
+            'the first-declaring document wins the merged entry, matching lookup',
+        );
+    }
+
+    public function testChildrenOfReportsASharedNameOnceAcrossDocuments(): void
+    {
+        $this->backend->updateDocument(
+            'file:///a.php',
+            self::declaredClass('App\Widget', file: '/a'),
+        );
+        $this->backend->updateDocument(
+            'file:///b.php',
+            self::declaredClass('App\Widget', file: '/b'),
+        );
+
+        $contents = $this->backend->childrenOf(new NamespaceName('App'));
+
+        $fqns = array_map(
+            static fn($symbol): string => $symbol->fullyQualifiedName,
+            $contents->symbols,
+        );
+        self::assertSame(
+            ['App\Widget'],
+            $fqns,
+            'a name two documents declare must appear once when the namespace is enumerated',
+        );
+    }
+
     public function testChildrenOfEnumeratesTheOpenDocumentNamespace(): void
     {
         $this->backend->updateDocument('file:///User.php', self::declaredClass('App\User'));
