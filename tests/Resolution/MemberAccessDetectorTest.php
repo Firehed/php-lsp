@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,6 +25,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedTypeOnly::class)]
 class MemberAccessDetectorTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
 
     private MemberAccessDetector $detector;
@@ -48,7 +49,7 @@ class MemberAccessDetectorTest extends TestCase
         );
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
-        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
+        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $this->detectorWithReflection = new MemberAccessDetector(
