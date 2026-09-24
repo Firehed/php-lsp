@@ -214,22 +214,20 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testSearchReturnsEveryDeclaredConstantEvenWhenAnotherDiffersOnlyByCase(): void
     {
-        $open = new FakeSymbolBackend(searchResults: [
-            self::symbol('App\DEBUG', 'open.php', SymbolKind::Constant),
+        $upper = self::symbol('App\DEBUG', 'open.php', SymbolKind::Constant);
+        $lower = self::symbol('App\debug', 'vendor.php', SymbolKind::Constant);
+        $source = new CompositeSymbolSource([
+            new FakeSymbolBackend(searchResults: [$upper]),
+            new FakeSymbolBackend(searchResults: [$lower]),
         ]);
-        $vendor = new FakeSymbolBackend(searchResults: [
-            self::symbol('App\debug', 'vendor.php', SymbolKind::Constant),
-        ]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
 
         $results = $source->search('D', NameKind::Constant);
 
-        $fqns = array_map(static fn(Symbol $symbol): string => $symbol->fullyQualifiedName, $results);
-        self::assertContains('App\DEBUG', $fqns, 'App\\DEBUG was declared, so search must find it');
+        self::assertContains($upper, $results, 'the App\\DEBUG constant must be returned to the caller');
         self::assertContains(
-            'App\debug',
-            $fqns,
-            'App\\debug is a separate constant from App\\DEBUG, so search must also find it',
+            $lower,
+            $results,
+            'App\\debug is a separate constant and must be returned alongside App\\DEBUG, not merged with it',
         );
     }
 
