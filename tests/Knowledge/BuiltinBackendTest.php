@@ -7,10 +7,9 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
-use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
@@ -253,7 +252,7 @@ final class BuiltinBackendTest extends TestCase
     ): void {
         $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
         self::assertNull(
-            $backend->lookup(QualifiedName::fromFullyQualified($fqn), $kind),
+            self::symbolOfKindIn($backend, $fqn, $kind),
             'a name reflection cannot load for this kind is absent (RFC 1 §5.3)',
         );
     }
@@ -262,12 +261,9 @@ final class BuiltinBackendTest extends TestCase
     {
         $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
 
-        $info = $backend->lookup(QualifiedName::fromFullyQualified('PHP_INT_MAX'), NameKind::Constant);
-
-        self::assertInstanceOf(
-            ConstantInfo::class,
-            $info,
-            'a built-in constant must resolve to ConstantInfo',
+        self::assertNotNull(
+            $backend->lookupConstant(ConstantName::fromFullyQualified('PHP_INT_MAX')),
+            'a built-in constant must resolve',
         );
     }
 
@@ -281,7 +277,7 @@ final class BuiltinBackendTest extends TestCase
         $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
 
         self::assertNull(
-            $backend->lookup(QualifiedName::fromFullyQualified('TEST_USER_CONSTANT'), NameKind::Constant),
+            $backend->lookupConstant(ConstantName::fromFullyQualified('TEST_USER_CONSTANT')),
             'a user-defined constant is not a built-in, so it must not resolve',
         );
     }
