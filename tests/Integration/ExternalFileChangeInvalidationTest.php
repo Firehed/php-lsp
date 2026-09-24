@@ -10,9 +10,10 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
-use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
@@ -29,6 +30,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 class ExternalFileChangeInvalidationTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
+
     private const string NAMESPACE = 'Temp\\';
 
     private string $workspace;
@@ -154,7 +157,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
         $path = $this->workspace . '/bootstrap.php';
         $this->writeFile($path, "<?php\nnamespace Temp;\nclass FilesBefore {}\n");
 
-        $stack = ProductionKnowledgeStack::forMap(
+        $stack = $this->knowledgeStackForMap(
             new ComposerAutoloadMap(files: [$path]),
             $this->workspace,
             $this->syntax,
@@ -203,9 +206,9 @@ class ExternalFileChangeInvalidationTest extends TestCase
         }
     }
 
-    private function stack(): ProductionKnowledgeStack
+    private function stack(): KnowledgeStack
     {
-        return ProductionKnowledgeStack::forMap(
+        return $this->knowledgeStackForMap(
             new ComposerAutoloadMap(psr4: [self::NAMESPACE => [$this->workspace]]),
             $this->workspace,
             $this->syntax,
