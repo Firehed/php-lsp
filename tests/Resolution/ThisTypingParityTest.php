@@ -6,11 +6,10 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\Knowledge\ProductionKnowledgeStack;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -35,12 +34,7 @@ final class ThisTypingParityTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
         $fixturesRoot = __DIR__ . '/../Fixtures';
-        $knowledge = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($fixturesRoot),
-            $fixturesRoot . '/vendor',
-            $parser,
-            $production->reader,
-        );
+        $knowledge = ProductionKnowledgeStack::forProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $this->resolver = new SymbolResolver(
             $parser,
