@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Index;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Index\CatalogSymbol;
+use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\Symbol;
@@ -22,7 +23,7 @@ class ReflectionNamespaceSourceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->source = new ReflectionNamespaceSource();
+        $this->source = new ReflectionNamespaceSource(new InternalConstantSet());
     }
 
     public function testGlobalNamespaceContainsBuiltinClassesFunctionsAndConstants(): void

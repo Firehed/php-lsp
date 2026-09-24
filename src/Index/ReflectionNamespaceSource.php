@@ -33,7 +33,7 @@ final class ReflectionNamespaceSource implements NamespaceCatalogInterface, Pref
     private ?array $symbolsByKind = null;
 
     public function __construct(
-        private readonly InternalConstantSet $constants = new InternalConstantSet(),
+        private readonly InternalConstantSet $constants,
     ) {
     }
 
