@@ -378,6 +378,8 @@ final class OpenDocumentBackendTest extends TestCase
             'file:///a.php',
             self::declaredClass('App\Widget', file: '/a'),
         );
+        // Same class under PHP's case-insensitive rule; the spelling is the only
+        // way to see which document's declaration survived the merge.
         $this->backend->updateDocument(
             'file:///b.php',
             self::declaredClass('App\WIDGET', file: '/b'),
