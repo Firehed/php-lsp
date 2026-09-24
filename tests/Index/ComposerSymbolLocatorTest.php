@@ -99,7 +99,8 @@ final class ComposerSymbolLocatorTest extends TestCase
     {
         $autoloadersBefore = spl_autoload_functions();
 
-        self::locatorForRoot(self::PROJECT_ROOT);
+        self::locatorForRoot(self::PROJECT_ROOT)
+            ->locate(QualifiedName::fromFullyQualified(TestCase::class), NameKind::ClassLike);
 
         $autoloadersAfter = spl_autoload_functions();
 

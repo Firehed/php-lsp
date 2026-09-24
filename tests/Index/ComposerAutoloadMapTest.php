@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Index;
 
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -97,17 +96,6 @@ class ComposerAutoloadMapTest extends TestCase
             $map->psr4Prefixes(),
             'Composer routes a root-namespace mapping to a fallback dir; enumeration needs it as the empty prefix',
         );
-    }
-
-    public function testTheLoaderResolvesAClassToItsFile(): void
-    {
-        $map = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures');
-
-        // @phpstan-ignore class.notFound
-        $file = $map->classLoader()->findFile(ClassmapFixture::class);
-
-        self::assertIsString($file, 'The map holds the same ClassLoader Composer uses for name -> file lookup');
-        self::assertStringEndsWith('Fixtures/Autoload/Classmap/ClassmapFixture.php', $file);
     }
 
     /**
