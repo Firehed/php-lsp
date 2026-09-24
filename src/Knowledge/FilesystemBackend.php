@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchableInterface;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -26,11 +25,11 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * file is unchanged and drops it when the file changes.
  *
  * Namespace enumeration is a directory listing through the same autoload map
- * ({@see NamespaceCatalogInterface}). Prefix search for class-likes is empty: a bare prefix
- * has no name→file map, so project-wide search over disk is the deferred
- * workspace-index scope (RFC 1 §3). Functions and constants are searched through the
- * autoload.files index ({@see PrefixSearchableInterface}), which is bounded and already in
- * memory.
+ * ({@see NamespaceCatalogInterface}). Prefix search is empty: PSR-4, PSR-0 and
+ * the classmap have no name -> file map for a bare prefix, so project-wide
+ * search over disk is the deferred workspace-index scope (RFC 1 §3). Names
+ * declared in `autoload.files` entries — where a bare-prefix search *is*
+ * affordable — are covered by {@see AutoloadFilesBackend} in its own row.
  */
 final class FilesystemBackend implements SymbolSourceInterface
 {
@@ -43,7 +42,6 @@ final class FilesystemBackend implements SymbolSourceInterface
         private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
-        private readonly PrefixSearchableInterface $prefixSearch,
     ) {
     }
 
@@ -57,7 +55,7 @@ final class FilesystemBackend implements SymbolSourceInterface
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        return $this->prefixSearch->searchByPrefix($prefix, $kind);
+        return [];
     }
 
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
