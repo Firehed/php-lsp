@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Cache\CompositeInvalidatable;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -75,20 +74,12 @@ final readonly class KnowledgeStack
             ),
         ]);
 
-        // External-change and close-after-edit invalidation drops the on-disk
-        // cache for a file, adjusts the Composer-map index for that one path,
-        // and rebuilds the files-set index when a member of it changed (RFC 1
-        // §5.2, §5.3). The open-document backend is authoritative and never
-        // cached, so it is not invalidated; the built-in backend does not read
-        // workspace files.
-        $onDiskInvalidator = new CompositeInvalidatable([$disk, $composerMap, $autoloadFiles]);
-
         $sink = new DocumentSymbolSink(
             $openDocuments,
             $declarationInfoFactory,
             $parser,
             $scanner,
-            $onDiskInvalidator,
+            new CompositeInvalidatable($disk, $composerMap, $autoloadFiles),
         );
 
         return new self($source, $sink);
