@@ -133,6 +133,10 @@ final class OpenDocumentBackendTest extends TestCase
             $info->name->qualifiedName->fullyQualifiedName(),
             'the registered function must be returned unchanged',
         );
+        self::assertNull(
+            self::functionIn($this->backend, 'format'),
+            'a namespaced function must not be registered under its short name',
+        );
     }
 
     public function testLookupFunctionIsCaseInsensitive(): void
