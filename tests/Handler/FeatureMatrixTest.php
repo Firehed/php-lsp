@@ -264,7 +264,8 @@ final class FeatureMatrixTest extends TestCase
             }
             /** @var class-string */
             $class = 'Firehed\\PhpLsp\\Handler\\' . $file->getBasename('.php');
-            if (class_exists($class) && is_a($class, DocumentFeatureHandlerInterface::class, true)) {
+            require_once $file->getPathname();
+            if (class_exists($class, autoload: false) && is_a($class, DocumentFeatureHandlerInterface::class, true)) {
                 $implementations[] = $class;
             }
         }
