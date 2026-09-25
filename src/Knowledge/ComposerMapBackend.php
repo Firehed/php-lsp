@@ -156,10 +156,21 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         }
 
         $loader = $this->buildLoader();
-        foreach ($this->map->psr4Prefixes() as $prefix => $directories) {
+
+        // Prefixes are walked longest-first so a file reachable through
+        // several prefixes (overlapping PSR-4 layouts like
+        // `App\Tests\ => tests` and `App\ => [src, tests]`) is filed once,
+        // under the most specific prefix — the one Composer itself resolves
+        // first (`findFile` iterates prefixes in reverse-length order).
+        // The base-prefix candidate would name a file whose class the file
+        // does not declare, so it must not enter the index.
+        foreach (self::orderedByPrefixLength($this->map->psr4Prefixes()) as $prefix => $directories) {
             $prefixTrimmed = trim($prefix, '\\');
             foreach ($directories as $directory) {
                 foreach (self::walkPhpFiles($directory) as $file) {
+                    if (array_key_exists($file, $this->fqnByWalkedPath)) {
+                        continue;
+                    }
                     $candidate = self::psr4Candidate($prefixTrimmed, $directory, $file);
                     if ($candidate !== null && $loader->findFile($candidate) === $file) {
                         $this->addToCatalog($candidate, $file);
@@ -168,10 +179,13 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
                 }
             }
         }
-        foreach ($this->map->psr0Prefixes() as $prefix => $directories) {
+        foreach (self::orderedByPrefixLength($this->map->psr0Prefixes()) as $prefix => $directories) {
             $prefixTrimmed = trim($prefix, '\\');
             foreach ($directories as $directory) {
                 foreach (self::walkPhpFiles($directory) as $file) {
+                    if (array_key_exists($file, $this->fqnByWalkedPath)) {
+                        continue;
+                    }
                     $candidate = self::psr0Candidate($prefixTrimmed, $directory, $file);
                     if ($candidate !== null && $loader->findFile($candidate) === $file) {
                         $this->addToCatalog($candidate, $file);
@@ -182,6 +196,17 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         }
 
         $this->byNamespace = NamespaceContents::indexByNamespace($this->catalog);
+    }
+
+    /**
+     * @param array<string, list<string>> $prefixes
+     * @return array<string, list<string>>
+     */
+    private static function orderedByPrefixLength(array $prefixes): array
+    {
+        uksort($prefixes, static fn(string $a, string $b): int => strlen($b) <=> strlen($a));
+
+        return $prefixes;
     }
 
     /**

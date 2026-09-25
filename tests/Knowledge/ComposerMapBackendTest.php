@@ -343,6 +343,39 @@ final class ComposerMapBackendTest extends TestCase
         }
     }
 
+    public function testBuildIndexDedupesFileAlreadyIndexedThroughAPsr4PrefixFromPsr0Walk(): void
+    {
+        // A PSR-4 root and a PSR-0 root that overlap on disk: `File.php` under
+        // the shared directory is indexable through both. The longer PSR-4
+        // prefix owns it first, so the PSR-0 walk must skip the file.
+        $base = sys_get_temp_dir() . '/php-lsp-psr0-overlap-' . bin2hex(random_bytes(6));
+        self::assertTrue(mkdir($base . '/App/Sub', 0777, true), 'the overlap directory must be creatable');
+        file_put_contents(
+            $base . '/App/Sub/Thing.php',
+            "<?php\n\nnamespace App\\Sub;\n\nclass Thing {}\n",
+        );
+
+        try {
+            $backend = $this->backendForMap(new ComposerAutoloadMap(
+                psr4: ['App\\Sub\\' => [$base . '/App/Sub']],
+                psr0: ['App' => [$base]],
+            ));
+
+            $enumerated = self::fqns($backend->childrenOf(new NamespaceName('App\Sub')));
+
+            self::assertSame(
+                ['App\Sub\Thing'],
+                $enumerated,
+                'a file the longer PSR-4 prefix already indexed must not be re-added by a PSR-0 walk',
+            );
+        } finally {
+            unlink($base . '/App/Sub/Thing.php');
+            rmdir($base . '/App/Sub');
+            rmdir($base . '/App');
+            rmdir($base);
+        }
+    }
+
     public function testBuildIndexDedupesClassmapAgainstPsr4Walk(): void
     {
         // A classmap entry and a PSR-4 walked file can both point at the same
