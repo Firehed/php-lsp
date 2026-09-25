@@ -149,7 +149,8 @@ final class CompletionAutoloadIsolationTest extends TestCase
         self::assertSame(
             [],
             $this->autoloaded,
-            'no `Trap\` FQN may be autoloaded during completion — the walker`s bogus PSR-4 candidate must not reach a class_exists probe',
+            'no `Trap\` FQN may be autoloaded during completion — the walker`s bogus PSR-4'
+            . ' candidate must not reach a class_exists probe',
         );
     }
 }
