@@ -318,6 +318,7 @@ parameters:
             allowIn:
                 - src/Knowledge/DocumentSymbolSink.php
                 - src/Handler/DidChangeWatchedFilesHandler.php # the watched-file trigger, which calls the sink
+                - src/Cache/CompositeInvalidatable.php # the fan-out itself
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::updateDocument()'
