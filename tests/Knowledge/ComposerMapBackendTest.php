@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
@@ -142,13 +143,125 @@ final class ComposerMapBackendTest extends TestCase
         );
     }
 
-    public function testSearchIsEmpty(): void
+    public function testSearchFindsClassLikesFromPsr4Roots(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('User', NameKind::ClassLike));
+
+        self::assertContains(
+            'Fixtures\Domain\User',
+            $fqns,
+            'a class-like reachable through a PSR-4 prefix must be found by short-name prefix',
+        );
+    }
+
+    public function testSearchFindsClassLikesFromPsr0Roots(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('Psr0F', NameKind::ClassLike));
+
+        self::assertContains(
+            'Psr0\Psr0Fixture',
+            $fqns,
+            'a class-like reachable through a PSR-0 prefix must be found by short-name prefix',
+        );
+    }
+
+    public function testSearchFindsClassLikesFromTheClassmap(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('Classmap', NameKind::ClassLike));
+
+        self::assertContains(
+            'Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture',
+            $fqns,
+            'a class-like reachable only through the classmap must be found by short-name prefix',
+        );
+    }
+
+    public function testSearchIsCaseInsensitive(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('user', NameKind::ClassLike));
+
+        self::assertContains(
+            'Fixtures\Domain\User',
+            $fqns,
+            'PHP matches class-like names case-insensitively, so search must too',
+        );
+    }
+
+    public function testSearchHasNoReachForFunctions(): void
     {
         self::assertSame(
             [],
-            $this->backend()->search('User', NameKind::ClassLike),
-            'project-wide prefix search over disk is the deferred workspace-index scope (RFC 1 §3)',
+            $this->backend()->search('help', NameKind::Function_),
+            'no autoload map addresses a function by name outside the files set',
         );
+    }
+
+    public function testSearchHasNoReachForConstants(): void
+    {
+        self::assertSame(
+            [],
+            $this->backend()->search('HELPER', NameKind::Constant),
+            'no autoload map addresses a constant by name outside the files set',
+        );
+    }
+
+    public function testInvalidateAddsANewFileToTheIndex(): void
+    {
+        $newFile = $this->fixturesRoot . '/src/Domain/Ephemeral.php';
+        self::assertFileDoesNotExist($newFile, 'the fixture must not shadow a real file');
+
+        $backend = $this->backend();
+        self::assertNotContains(
+            'Fixtures\Domain\Ephemeral',
+            self::fqnsOfSearch($backend->search('Ephemeral', NameKind::ClassLike)),
+            'the pre-invalidate index must not know about the file',
+        );
+
+        file_put_contents($newFile, "<?php\n\nnamespace Fixtures\\Domain;\n\nclass Ephemeral {}\n");
+        try {
+            $backend->invalidate(FileUri::fromPath($newFile));
+
+            self::assertContains(
+                'Fixtures\Domain\Ephemeral',
+                self::fqnsOfSearch($backend->search('Ephemeral', NameKind::ClassLike)),
+                'a file added after the walk must appear after invalidation (RFC 1 §5.2)',
+            );
+            self::assertContains(
+                'Fixtures\Domain\Ephemeral',
+                self::fqns($backend->childrenOf(new NamespaceName('Fixtures\Domain'))),
+                'enumeration must reflect the same index that search reads',
+            );
+        } finally {
+            unlink($newFile);
+        }
+    }
+
+    public function testInvalidateRemovesAFileTheLoaderNoLongerConfirms(): void
+    {
+        $newFile = $this->fixturesRoot . '/src/Domain/Transient.php';
+        file_put_contents($newFile, "<?php\n\nnamespace Fixtures\\Domain;\n\nclass Transient {}\n");
+
+        try {
+            $backend = $this->backend();
+            self::assertContains(
+                'Fixtures\Domain\Transient',
+                self::fqnsOfSearch($backend->search('Transient', NameKind::ClassLike)),
+                'sanity: the initial walk must see the file we just created',
+            );
+
+            unlink($newFile);
+            $backend->invalidate(FileUri::fromPath($newFile));
+
+            self::assertNotContains(
+                'Fixtures\Domain\Transient',
+                self::fqnsOfSearch($backend->search('Transient', NameKind::ClassLike)),
+                'a file removed on disk must stop appearing after invalidation',
+            );
+        } finally {
+            if (is_file($newFile)) {
+                unlink($newFile);
+            }
+        }
     }
 
     public function testChildrenOfEnumeratesPsr4ContentsFromTheDirectoryListing(): void
@@ -416,6 +529,18 @@ final class ComposerMapBackendTest extends TestCase
         return array_map(
             static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
             $contents->symbols,
+        );
+    }
+
+    /**
+     * @param list<\Firehed\PhpLsp\Index\Symbol> $results
+     * @return list<string>
+     */
+    private static function fqnsOfSearch(array $results): array
+    {
+        return array_map(
+            static fn(\Firehed\PhpLsp\Index\Symbol $symbol): string => $symbol->fullyQualifiedName,
+            $results,
         );
     }
 }

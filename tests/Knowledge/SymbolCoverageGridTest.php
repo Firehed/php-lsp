@@ -38,7 +38,6 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        'ComposerMapBackend|ClassLike|search' => 'RFC 1 §3',
         'ComposerMapBackend|Function_|lookup' => 'RFC 1 §3',
         'ComposerMapBackend|Function_|search' => 'RFC 1 §3',
         'ComposerMapBackend|Function_|childrenOf' => 'RFC 1 §3',
