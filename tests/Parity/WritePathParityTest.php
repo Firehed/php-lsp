@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -19,10 +18,10 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Golden parity for the document write path — the symbol state a document
- * open/update/close produces, which builds on top of {@see DocumentSymbolSink}.
- * The golden freezes the symbol state for a fixed corpus spanning every extracted
- * kind; a companion test freezes the open → update → close lifecycle so
- * re-indexing and clearing are proven, not assumed. All inputs are in-repo.
+ * open/update/close produces on the {@see OpenDocumentBackend}. The golden freezes
+ * the symbol state for a fixed corpus spanning every extracted kind; a companion
+ * test freezes the open → update → close lifecycle so re-indexing and clearing are
+ * proven, not assumed. All inputs are in-repo.
  *
  * See RFC 1 §4.3, §5.2.
  */
@@ -48,25 +47,22 @@ final class WritePathParityTest extends TestCase
 
     private string $projectRoot;
     private OpenDocumentBackend $backend;
-    private DocumentSymbolSink $sink;
 
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
         $parser = ProductionSyntaxSource::create()->source;
-        $this->backend = new OpenDocumentBackend();
-        $this->sink = new DocumentSymbolSink(
-            $this->backend,
-            new DeclarationSymbolInfoFactory(),
+        $this->backend = new OpenDocumentBackend(
             $parser,
             new DeclarationScanner(),
+            new DeclarationSymbolInfoFactory(),
         );
     }
 
     public function testWritePathSymbolStateMatchesGolden(): void
     {
         foreach (self::INDEXED_DOCUMENTS as $relative) {
-            $this->sink->openDocument($this->document($relative));
+            $this->backend->openDocument($this->document($relative));
         }
 
         $this->assertGoldenMatches('write-path', $this->stateByUri());
@@ -77,7 +73,7 @@ final class WritePathParityTest extends TestCase
         $uri = 'file:///virtual/Document.php';
 
         $opened = new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Alpha {}\n");
-        $this->sink->openDocument($opened);
+        $this->backend->openDocument($opened);
         self::assertSame(
             ['V\Alpha'],
             $this->fqnsFor($uri),
@@ -85,14 +81,14 @@ final class WritePathParityTest extends TestCase
         );
 
         $updated = new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nclass Beta {}\ninterface Gamma {}\n");
-        $this->sink->updateDocument($updated);
+        $this->backend->updateDocument($updated);
         self::assertSame(
             ['V\Beta', 'V\Gamma'],
             $this->fqnsFor($uri),
             'updating a document must replace the prior symbols, not accumulate them',
         );
 
-        $this->sink->closeDocument($uri);
+        $this->backend->closeDocument($uri);
         self::assertSame(
             [],
             $this->fqnsFor($uri),
@@ -123,7 +119,7 @@ final class WritePathParityTest extends TestCase
             'php-parser alone must yield nothing on this fixture, or the test proves nothing about the skeleton',
         );
 
-        $this->sink->openDocument($document);
+        $this->backend->openDocument($document);
 
         self::assertSame(
             ['Fixtures\IncompleteCode\VeryBroken'],

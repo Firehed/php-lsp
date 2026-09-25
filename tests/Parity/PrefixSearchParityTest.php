@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Knowledge\DocumentSymbolSink;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
@@ -43,25 +42,22 @@ final class PrefixSearchParityTest extends TestCase
 
     private string $projectRoot;
     private OpenDocumentBackend $backend;
-    private DocumentSymbolSink $sink;
 
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
         $parser = ProductionSyntaxSource::create()->source;
-        $this->backend = new OpenDocumentBackend();
-        $this->sink = new DocumentSymbolSink(
-            $this->backend,
-            new DeclarationSymbolInfoFactory(),
+        $this->backend = new OpenDocumentBackend(
             $parser,
             new DeclarationScanner(),
+            new DeclarationSymbolInfoFactory(),
         );
 
         foreach (self::INDEXED_DOCUMENTS as $relative) {
             $path = $this->projectRoot . '/tests/Fixtures/' . $relative;
             $content = file_get_contents($path);
             self::assertNotFalse($content, "fixture document should be readable: {$relative}");
-            $this->sink->openDocument(new TextDocument('file://' . $path, 'php', 0, $content));
+            $this->backend->openDocument(new TextDocument('file://' . $path, 'php', 0, $content));
         }
     }
 
