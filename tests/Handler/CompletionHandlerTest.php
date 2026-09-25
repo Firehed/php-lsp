@@ -95,7 +95,7 @@ class CompletionHandlerTest extends TestCase
             $typeSource,
         );
         $this->handler = $this->makeHandler($this->symbolSource);
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     private function seedClass(string $fqn): void

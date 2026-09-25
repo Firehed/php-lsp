@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
-use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +15,7 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
 {
     public function testSupportsOnlyTheWatchedFilesMethod(): void
     {
-        $handler = new DidChangeWatchedFilesHandler(self::createStub(SymbolSinkInterface::class));
+        $handler = new DidChangeWatchedFilesHandler(self::createStub(InvalidatableInterface::class));
 
         self::assertTrue($handler->supports('workspace/didChangeWatchedFiles'));
         self::assertFalse($handler->supports('textDocument/didChange'));
@@ -23,10 +23,10 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
 
     public function testInvalidatesEveryChangedFileRegardlessOfChangeType(): void
     {
-        $sink = $this->createMock(SymbolSinkInterface::class);
+        $invalidator = $this->createMock(InvalidatableInterface::class);
         // Created, changed, and deleted alike drop the cached entry (RFC 1 §5.2).
         $matcher = $this->exactly(3);
-        $sink->expects($matcher)
+        $invalidator->expects($matcher)
             ->method('invalidate')
             ->willReturnCallback(function (string $uri) use ($matcher): void {
                 $expected = [
@@ -41,7 +41,7 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
                 );
             });
 
-        $handler = new DidChangeWatchedFilesHandler($sink);
+        $handler = new DidChangeWatchedFilesHandler($invalidator);
         $result = $handler->handle(NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'workspace/didChangeWatchedFiles',
@@ -59,10 +59,10 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
 
     public function testAnEmptyChangeSetInvalidatesNothing(): void
     {
-        $sink = $this->createMock(SymbolSinkInterface::class);
-        $sink->expects($this->never())->method('invalidate');
+        $invalidator = $this->createMock(InvalidatableInterface::class);
+        $invalidator->expects($this->never())->method('invalidate');
 
-        $handler = new DidChangeWatchedFilesHandler($sink);
+        $handler = new DidChangeWatchedFilesHandler($invalidator);
         $handler->handle(NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'workspace/didChangeWatchedFiles',

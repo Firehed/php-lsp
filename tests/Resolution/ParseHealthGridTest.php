@@ -125,7 +125,7 @@ final class ParseHealthGridTest extends TestCase
             memberResolver: $memberResolver,
             typeSource: new NativeTypeSource($knowledge->source, $memberResolver),
         );
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     /**

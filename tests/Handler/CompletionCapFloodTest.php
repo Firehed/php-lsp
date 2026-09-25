@@ -70,7 +70,7 @@ final class CompletionCapFloodTest extends TestCase
             $this->documents,
             self::completionSourceFor($knowledge->source, $resolver, $capabilities),
         );
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     /**

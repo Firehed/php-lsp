@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentManagerInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
@@ -20,6 +21,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
     public function __construct(
         private readonly DocumentManagerInterface $documentManager,
         private readonly SymbolSinkInterface $symbols,
+        private readonly InvalidatableInterface $invalidator,
     ) {
     }
 
@@ -103,7 +105,10 @@ final class TextDocumentSyncHandler implements HandlerInterface
         $uri = $textDocument['uri'] ?? '';
         assert(is_string($uri));
 
+        // Closing a file that was edited in the editor must drop the on-disk cache
+        // so the next query reflects disk rather than the pre-edit value (RFC 1 §5.3).
         $this->symbols->closeDocument($uri);
+        $this->invalidator->invalidate($uri);
         $this->documentManager->close($uri);
 
         return null;

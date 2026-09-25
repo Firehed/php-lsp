@@ -69,7 +69,7 @@ class CompositeReceiverParityTest extends TestCase
             $this->documents,
             self::completionSourceFor($knowledge->source, $symbolResolver, $capabilities),
         );
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
 
         $this->entityUri = $this->openFixture('src/Domain/Entity.php');
         $this->personUri = $this->openFixture('src/Domain/Person.php');

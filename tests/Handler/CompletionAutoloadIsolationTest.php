@@ -68,7 +68,7 @@ final class CompletionAutoloadIsolationTest extends TestCase
             $this->documents,
             self::completionSourceFor($knowledge->source, $symbolResolver, $capabilities),
         );
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
 
         // Only `Trap\` probes are significant: no other registered autoloader
         // knows the prefix, so anything the tracker sees came from the LSP.

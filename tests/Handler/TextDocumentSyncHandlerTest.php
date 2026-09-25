@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
@@ -35,7 +36,7 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->metrics = $production->metrics;
         $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $this->source = $knowledge->source;
-        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink);
+        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $knowledge->invalidator);
     }
 
     public function testSupports(): void
@@ -206,6 +207,31 @@ class TextDocumentSyncHandlerTest extends TestCase
         $newClass = $this->source->lookupClassLike(ClasslikeName::fromFullyQualified($newClasslikeName));
         self::assertNotNull($newClass);
         self::assertSame('NewClass', $newClass->name->qualifiedName->shortName);
+    }
+
+    public function testDidCloseInvalidatesTheOnDiskCacheSoTheNextQueryReReadsDisk(): void
+    {
+        // Closing an edited file must drop the on-disk cache so the next query
+        // reflects disk rather than the pre-edit cached value (RFC 1 §5.3).
+        $uri = 'file:///workspace/src/Widget.php';
+        $this->manager->open($uri, 'php', 1, '<?php');
+
+        $invalidator = $this->createMock(InvalidatableInterface::class);
+        $invalidator->expects($this->once())
+            ->method('invalidate')
+            ->with($uri);
+
+        $production = ProductionSyntaxSource::create();
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
+        $handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $invalidator);
+
+        $handler->handle(NotificationMessage::fromArray([
+            'jsonrpc' => '2.0',
+            'method' => 'textDocument/didClose',
+            'params' => [
+                'textDocument' => ['uri' => $uri],
+            ],
+        ]));
     }
 
     public function testDidCloseRemovesClasses(): void

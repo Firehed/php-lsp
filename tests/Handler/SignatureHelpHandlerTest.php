@@ -51,7 +51,7 @@ class SignatureHelpHandlerTest extends TestCase
             $this->documents,
             $symbolResolver,
         );
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     public function testSupports(): void

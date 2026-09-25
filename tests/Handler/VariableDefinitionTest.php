@@ -60,7 +60,7 @@ class VariableDefinitionTest extends TestCase
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $symbolResolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
         $this->handler = new DefinitionHandler($this->documents, $symbolResolver);
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     /**

@@ -104,7 +104,7 @@ Answers are remembered by one PSR-16 decorator per backend, applied in wiring, n
 The server never decides on its own that an answer is stale.
 The editor is the only source of change events.
 Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
-Both flow through `SymbolSinkInterface::invalidate`, which fans out to every invalidatable in the wiring.
+Both flow through `InvalidatableInterface::invalidate`, which fans out to every invalidatable in the wiring.
 An open buffer is not an invalidation; it wins by composite order while it is open.
 Built-ins are never invalidated until the target environment can change.
 
