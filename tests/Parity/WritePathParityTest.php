@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parity;
 
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Symbol;
@@ -60,6 +61,7 @@ final class WritePathParityTest extends TestCase
             new DeclarationSymbolInfoFactory(),
             $parser,
             new DeclarationScanner(),
+            self::createStub(InvalidatableInterface::class),
         );
     }
 

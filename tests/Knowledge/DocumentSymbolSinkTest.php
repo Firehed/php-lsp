@@ -35,14 +35,8 @@ final class DocumentSymbolSinkTest extends TestCase
 
     protected function setUp(): void
     {
-        $parser = ProductionSyntaxSource::create()->source;
         $this->backend = new OpenDocumentBackend();
-        $this->sink = new DocumentSymbolSink(
-            $this->backend,
-            new DeclarationSymbolInfoFactory(),
-            $parser,
-            new DeclarationScanner(),
-        );
+        $this->sink = $this->sinkWithOnDiskInvalidator(self::createStub(InvalidatableInterface::class));
     }
 
     public function testOpenDocumentRegistersDocumentSymbols(): void
