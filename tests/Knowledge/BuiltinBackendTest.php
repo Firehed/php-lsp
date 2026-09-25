@@ -11,11 +11,8 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Index\InternalConstantSet;
-use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
+use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearchableInterface;
-use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -24,33 +21,24 @@ use PHPUnit\Framework\TestCase;
 /**
  * The built-in backend is the lowest-precedence source (RFC 1 §5.3): it reflects the
  * symbols the server runtime has loaded. These prove lookup via reflection, its
- * caching, absence for an unknown name, the empty prefix search, and that
- * enumeration forwards to the reflection catalog.
+ * caching, absence for an unknown name, the empty class-like prefix search, and
+ * that namespace enumeration reads the same internal-symbol index the prefix
+ * search does.
  */
 final class BuiltinBackendTest extends TestCase
 {
     use LooksUpBackendSymbolsTrait;
 
-    private function backend(NamespaceCatalogInterface $namespaces): BuiltinBackend
-    {
-        return new BuiltinBackend(
-            $namespaces,
-            self::createStub(PrefixSearchableInterface::class),
-            new InternalConstantSet(),
-        );
-    }
+    private BuiltinBackend $backend;
 
-    private function backendWithSearch(): BuiltinBackend
+    protected function setUp(): void
     {
-        $constants = new InternalConstantSet();
-        $reflectionSource = new ReflectionNamespaceSource($constants);
-        return new BuiltinBackend($reflectionSource, $reflectionSource, $constants);
+        $this->backend = new BuiltinBackend();
     }
 
     public function testLookupClassLikeReflectsABuiltinClass(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \ArrayObject::class);
+        $info = self::classLikeIn($this->backend, \ArrayObject::class);
 
         self::assertNotNull($info, 'a loaded built-in class must resolve through reflection');
         self::assertSame(
@@ -63,14 +51,14 @@ final class BuiltinBackendTest extends TestCase
     public function testLookupClassLikeReturnsNullForAnUnknownClass(): void
     {
         self::assertNull(
-            self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'No\Such\Builtin'),
+            self::classLikeIn($this->backend, 'No\Such\Builtin'),
             'a name reflection cannot load is absent from this backend (RFC 1 §5.3)',
         );
     }
 
     public function testLookupFunctionReflectsABuiltinFunction(): void
     {
-        $info = self::functionIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'str_contains');
+        $info = self::functionIn($this->backend, 'str_contains');
 
         self::assertNotNull($info, 'a built-in function must resolve through reflection');
         self::assertSame('str_contains', $info->name->qualifiedName->fullyQualifiedName());
@@ -80,7 +68,7 @@ final class BuiltinBackendTest extends TestCase
     public function testLookupFunctionIsCaseInsensitive(): void
     {
         self::assertNotNull(
-            self::functionIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'STR_CONTAINS'),
+            self::functionIn($this->backend, 'STR_CONTAINS'),
             'PHP matches function names case-insensitively',
         );
     }
@@ -96,10 +84,7 @@ final class BuiltinBackendTest extends TestCase
         require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
 
         self::assertNull(
-            self::functionIn(
-                $this->backend(self::createStub(NamespaceCatalogInterface::class)),
-                'testDocumentedFunction',
-            ),
+            self::functionIn($this->backend, 'testDocumentedFunction'),
             'a userland function loaded in the server process is not a built-in',
         );
     }
@@ -107,7 +92,7 @@ final class BuiltinBackendTest extends TestCase
     public function testLookupFunctionReturnsNullForAnUnknownFunction(): void
     {
         self::assertNull(
-            self::functionIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'no_such_builtin'),
+            self::functionIn($this->backend, 'no_such_builtin'),
             'a name reflection cannot load is absent from this backend (RFC 1 §5.3)',
         );
     }
@@ -116,14 +101,14 @@ final class BuiltinBackendTest extends TestCase
     {
         self::assertSame(
             [],
-            $this->backend(self::createStub(NamespaceCatalogInterface::class))->search('Array', NameKind::ClassLike),
+            $this->backend->search('Array', NameKind::ClassLike),
             'a bare prefix must not surface built-ins that do not resolve unqualified',
         );
     }
 
     public function testSearchFindsBuiltinFunctions(): void
     {
-        $results = $this->backendWithSearch()->search('str_contains', NameKind::Function_);
+        $results = $this->backend->search('str_contains', NameKind::Function_);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -135,7 +120,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testSearchFindsBuiltinConstants(): void
     {
-        $results = $this->backendWithSearch()->search('PHP_INT_M', NameKind::Constant);
+        $results = $this->backend->search('PHP_INT_M', NameKind::Constant);
 
         $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
         self::assertContains(
@@ -145,9 +130,56 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
+    public function testSearchIsCaseInsensitive(): void
+    {
+        $results = $this->backend->search('STR_CONTAINS', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertContains(
+            'str_contains',
+            $fqns,
+            'prefix matching is case-insensitive because the user has not finished typing',
+        );
+    }
+
+    public function testSearchDoesNotCrossKindBoundaries(): void
+    {
+        $results = $this->backend->search('Array', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertNotContains(
+            'ArrayObject',
+            $fqns,
+            'a class-like must not appear in a function search',
+        );
+    }
+
+    public function testSearchReturnsEmptyForNoMatch(): void
+    {
+        self::assertSame(
+            [],
+            $this->backend->search('zzNoMatch', NameKind::Function_),
+            'a prefix that matches nothing must return an empty list',
+        );
+    }
+
+    public function testSearchExcludesUserlandFunctions(): void
+    {
+        require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
+
+        $results = $this->backend->search('testDocumented', NameKind::Function_);
+
+        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        self::assertNotContains(
+            'testDocumentedFunction',
+            $fqns,
+            'a userland function loaded in the server process must not appear in built-in search',
+        );
+    }
+
     public function testSearchReturnsCorrectSymbolKindForFunctions(): void
     {
-        $results = $this->backendWithSearch()->search('str_contains', NameKind::Function_);
+        $results = $this->backend->search('str_contains', NameKind::Function_);
 
         self::assertNotEmpty($results, 'the prefix must match at least one function');
         foreach ($results as $symbol) {
@@ -175,7 +207,7 @@ final class BuiltinBackendTest extends TestCase
     #[DataProvider('loadedClassLikes')]
     public function testLookupBuildsClassInfoForEveryClassLikeFlavour(string $fqn): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), $fqn);
+        $info = self::classLikeIn($this->backend, $fqn);
 
         self::assertNotNull($info, 'a class-like flavour reflection can describe must resolve');
         self::assertSame(
@@ -188,7 +220,7 @@ final class BuiltinBackendTest extends TestCase
     public function testLookupIgnoresClassLikesOnlyTheServerHasLoaded(): void
     {
         self::assertNull(
-            self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), self::class),
+            self::classLikeIn($this->backend, self::class),
             'a userland class loaded in the server process is not a built-in',
         );
     }
@@ -209,19 +241,16 @@ final class BuiltinBackendTest extends TestCase
         string $fqn,
         NameKind $kind,
     ): void {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
         self::assertNull(
-            self::symbolOfKindIn($backend, $fqn, $kind),
+            self::symbolOfKindIn($this->backend, $fqn, $kind),
             'a name reflection cannot load for this kind is absent (RFC 1 §5.3)',
         );
     }
 
     public function testLookupResolvesABuiltinConstant(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-
         self::assertNotNull(
-            $backend->lookupConstant(ConstantName::fromFullyQualified('PHP_INT_MAX')),
+            $this->backend->lookupConstant(ConstantName::fromFullyQualified('PHP_INT_MAX')),
             'a built-in constant must resolve',
         );
     }
@@ -233,18 +262,15 @@ final class BuiltinBackendTest extends TestCase
             define('TEST_USER_CONSTANT', 'value');
         }
 
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-
         self::assertNull(
-            $backend->lookupConstant(ConstantName::fromFullyQualified('TEST_USER_CONSTANT')),
+            $this->backend->lookupConstant(ConstantName::fromFullyQualified('TEST_USER_CONSTANT')),
             'a user-defined constant is not a built-in, so it must not resolve',
         );
     }
 
     public function testClassInfoCarriesBasicMetadataForAPlainClass(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \stdClass::class);
+        $info = self::classLikeIn($this->backend, \stdClass::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(\stdClass::class, $info->name->qualifiedName->fullyQualifiedName());
@@ -253,10 +279,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoCapturesTheParentClass(): void
     {
-        $info = self::classLikeIn(
-            $this->backend(self::createStub(NamespaceCatalogInterface::class)),
-            \RuntimeException::class,
-        );
+        $info = self::classLikeIn($this->backend, \RuntimeException::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(\Exception::class, $info->parent?->qualifiedName->fullyQualifiedName());
@@ -264,7 +287,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoReportsInterfaceKindForABuiltinInterface(): void
     {
-        $info = self::classLikeIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), \Iterator::class);
+        $info = self::classLikeIn($this->backend, \Iterator::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(ClassKind::Interface_, $info->kind);
@@ -272,10 +295,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoReportsEnumKindAndEnumCases(): void
     {
-        $info = self::classLikeIn(
-            $this->backend(self::createStub(NamespaceCatalogInterface::class)),
-            \Random\IntervalBoundary::class,
-        );
+        $info = self::classLikeIn($this->backend, \Random\IntervalBoundary::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(ClassKind::Enum_, $info->kind);
@@ -284,8 +304,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoDetectsTheBuiltinAttributeClass(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \Attribute::class);
+        $info = self::classLikeIn($this->backend, \Attribute::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertTrue($info->isAttribute, 'the built-in Attribute class is itself an attribute');
@@ -293,8 +312,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testPlainClassIsNotMarkedAsAttribute(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \stdClass::class);
+        $info = self::classLikeIn($this->backend, \stdClass::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertFalse($info->isAttribute);
@@ -302,8 +320,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoCarriesMethodsPropertiesAndInterfaces(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \ArrayObject::class);
+        $info = self::classLikeIn($this->backend, \ArrayObject::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertNotEmpty($info->methods, 'a built-in class must report its methods');
@@ -312,8 +329,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testClassInfoCarriesConstants(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \ArrayObject::class);
+        $info = self::classLikeIn($this->backend, \ArrayObject::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertArrayHasKey('STD_PROP_LIST', $info->constants);
@@ -321,10 +337,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testInheritedConstantsAreFilteredFromDeclaringClass(): void
     {
-        $info = self::classLikeIn(
-            $this->backend(self::createStub(NamespaceCatalogInterface::class)),
-            \RecursiveDirectoryIterator::class,
-        );
+        $info = self::classLikeIn($this->backend, \RecursiveDirectoryIterator::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(
@@ -336,7 +349,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testNullDefaultParameterFormats(): void
     {
-        $info = self::functionIn($this->backend(self::createStub(NamespaceCatalogInterface::class)), 'str_replace');
+        $info = self::functionIn($this->backend, 'str_replace');
 
         self::assertNotNull($info, 'str_replace must resolve so its parameters can be inspected');
         $paramsByName = [];
@@ -355,8 +368,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testExceptionPropertyVisibilitiesAreMapped(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \Exception::class);
+        $info = self::classLikeIn($this->backend, \Exception::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(
@@ -373,8 +385,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testProtectedMethodVisibilityIsMapped(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \SplHeap::class);
+        $info = self::classLikeIn($this->backend, \SplHeap::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(
@@ -386,8 +397,7 @@ final class BuiltinBackendTest extends TestCase
 
     public function testPrivateMethodVisibilityIsMapped(): void
     {
-        $backend = $this->backend(self::createStub(NamespaceCatalogInterface::class));
-        $info = self::classLikeIn($backend, \Exception::class);
+        $info = self::classLikeIn($this->backend, \Exception::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
         self::assertSame(
@@ -397,19 +407,107 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
-    public function testChildrenOfForwardsToTheReflectionCatalog(): void
+    public function testGlobalNamespaceContainsBuiltinClassesFunctionsAndConstants(): void
     {
-        $expected = new NamespaceContents(['Random'], []);
-        $catalog = $this->createMock(NamespaceCatalogInterface::class);
-        $catalog->expects($this->once())
-            ->method('childrenOf')
-            ->with('')
-            ->willReturn($expected);
+        $contents = $this->backend->childrenOf(new NamespaceName(''));
 
-        self::assertSame(
-            $expected,
-            $this->backend($catalog)->childrenOf(new NamespaceName('')),
-            'enumeration must forward the namespace path to the catalog and return its result',
+        self::assertContains(
+            'Exception',
+            self::symbolNames($contents, NameKind::ClassLike),
+            'Built-in classes are in the global namespace and must be discoverable',
+        );
+        self::assertContains(
+            'strlen',
+            self::symbolNames($contents, NameKind::Function_),
+            'Built-in functions must be discoverable',
+        );
+        self::assertContains(
+            'PHP_EOL',
+            self::symbolNames($contents, NameKind::Constant),
+            'Built-in constants must be discoverable',
+        );
+    }
+
+    public function testBuiltinInterfacesAreDiscoverable(): void
+    {
+        $contents = $this->backend->childrenOf(new NamespaceName(''));
+
+        self::assertContains(
+            'SessionHandlerInterface',
+            self::symbolNames($contents, NameKind::ClassLike),
+            'The interface from #308 that could never be offered before',
+        );
+    }
+
+    public function testInternalSymbolsAreNotAssumedToBeGlobal(): void
+    {
+        $global = $this->backend->childrenOf(new NamespaceName(''));
+
+        self::assertContains(
+            'Random',
+            $global->childNamespaces,
+            'Random\ is an internal namespace, so the global namespace has a child',
+        );
+        self::assertNotContains(
+            'Randomizer',
+            self::symbolNames($global, NameKind::ClassLike),
+            'Random\Randomizer is internal but namespaced; it does not belong to global',
+        );
+
+        self::assertContains(
+            'Random\Randomizer',
+            self::fqns($this->backend->childrenOf(new NamespaceName('Random'))),
+            'An internal namespaced class is filed under its real namespace',
+        );
+    }
+
+    public function testUserlandSymbolsAreExcludedFromChildrenOf(): void
+    {
+        $contents = $this->backend->childrenOf(new NamespaceName(''));
+
+        self::assertNotContains(
+            'Firehed',
+            $contents->childNamespaces,
+            'The language server\'s own classes are loaded in this process but are not built-ins',
+        );
+        self::assertNotContains(
+            'PhpParser',
+            $contents->childNamespaces,
+            'Vendored dependencies of the server are not built-ins either',
+        );
+    }
+
+    public function testUnknownNamespaceIsEmpty(): void
+    {
+        $contents = $this->backend->childrenOf(new NamespaceName('No\Such\Namespace'));
+
+        self::assertSame([], $contents->childNamespaces, 'An unknown namespace has no children');
+        self::assertSame([], $contents->symbols, 'An unknown namespace has no symbols');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function symbolNames(NamespaceContents $contents, NameKind $kind): array
+    {
+        $names = [];
+        foreach ($contents->symbols as $symbol) {
+            if ($symbol->kind === $kind) {
+                $names[] = $symbol->shortName();
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function fqns(NamespaceContents $contents): array
+    {
+        return array_map(
+            static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
+            $contents->symbols,
         );
     }
 }

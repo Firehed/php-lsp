@@ -8,8 +8,6 @@ use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
-use Firehed\PhpLsp\Index\InternalConstantSet;
-use Firehed\PhpLsp\Index\ReflectionNamespaceSource;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
@@ -67,18 +65,16 @@ final readonly class KnowledgeStack
             CacheFactory::inMemory(),
         );
 
-        // ReflectionNamespaceSource serves both enumeration (via NamespaceCatalogInterface)
-        // and prefix search (via PrefixSearchableInterface). Both must draw on the same
-        // source so coverage is identical (§4.2). The source memoizes per namespace, and
-        // the CachingSymbolSource decorator caches its childrenOf lookups.
-        $constants = new InternalConstantSet();
-        $reflectionSource = new ReflectionNamespaceSource($constants);
+        // The built-in backend owns its own derived index of internal symbols, so
+        // enumeration and prefix search draw on the same source and cannot disagree
+        // about which names count as built-in (§4.2). The CachingSymbolSource
+        // decorator caches its childrenOf lookups.
         $source = new CompositeSymbolSource([
             $openDocuments,
             $autoloadFiles,
             $disk,
             new CachingSymbolSource(
-                new BuiltinBackend($reflectionSource, $reflectionSource, $constants),
+                new BuiltinBackend(),
                 CacheFactory::inMemory(),
             ),
         ]);
