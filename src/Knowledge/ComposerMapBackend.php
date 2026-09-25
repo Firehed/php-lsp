@@ -22,9 +22,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * precedence Composer's own autoloader applies between them.
  *
  * Lookup locates the file for a name and parses that one file — no
- * `vendor/` pre-index (RFC 1 §3, lazy-first). Nothing is remembered here: a
- * {@see CachingSymbolSource} in front of this backend holds an answer while its
- * file is unchanged and drops it when the file changes.
+ * `vendor/` pre-index (RFC 1 §3, lazy-first). Nothing is remembered here.
  *
  * Namespace enumeration is a directory listing through the same autoload map:
  * PSR-4 and PSR-0 prefixes map a namespace to a directory whose contents are
@@ -148,8 +146,7 @@ final class ComposerMapBackend implements SymbolSourceInterface
     /**
      * Composer's own `ClassLoader` is rebuilt from the map on every lookup: it
      * remembers every miss for its whole lifetime and has no reset, so a held
-     * instance would never see a file created after the first miss. Memoizing
-     * hits is the caching decorator's job.
+     * instance would never see a file created after the first miss.
      */
     private function locate(QualifiedName $name, NameKind $kind): ?string
     {
