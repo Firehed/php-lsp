@@ -6,8 +6,6 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerNamespaceSource;
-use Firehed\PhpLsp\Index\ComposerSymbolLocator;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
@@ -55,8 +53,7 @@ final readonly class KnowledgeStack
         );
         $disk = new CachingSymbolSource(
             new FilesystemBackend(
-                new ComposerSymbolLocator($autoloadMap),
-                new ComposerNamespaceSource($autoloadMap),
+                $autoloadMap,
                 $parser,
                 $reader,
                 $declarationInfoFactory,

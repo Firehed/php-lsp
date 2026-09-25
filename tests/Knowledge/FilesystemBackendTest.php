@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\ComposerNamespaceSource;
-use Firehed\PhpLsp\Index\ComposerSymbolLocator;
-use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FilesystemBackend;
-use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -23,9 +21,9 @@ use PHPUnit\Framework\TestCase;
 /**
  * The filesystem backend resolves class-likes by locating and parsing one file
  * through Composer's PSR-4, PSR-0 and classmap entries, and enumerates
- * namespaces through the autoload map. These prove lookup, the not-found
- * paths, the empty prefix search, and that enumeration forwards to the
- * injected catalog. Names declared in `autoload.files` entries are the
+ * namespaces through the same maps. These prove lookup, the not-found paths,
+ * the empty prefix search, and directory-listing enumeration through every
+ * autoload strategy. Names declared in `autoload.files` entries are the
  * separate {@see \Firehed\PhpLsp\Knowledge\AutoloadFilesBackend}'s concern.
  */
 final class FilesystemBackendTest extends TestCase
@@ -68,7 +66,9 @@ final class FilesystemBackendTest extends TestCase
 
     public function testLookupClassLikeReturnsNullWhenTheLocatedFileIsUnreadable(): void
     {
-        $backend = $this->backendWithLocator($this->locatorReturning('/no/such/file/Ghost.php'));
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            classMap: ['Ghost' => '/no/such/file/Ghost.php'],
+        ));
 
         self::assertNull(
             self::classLikeIn($backend, 'Ghost'),
@@ -80,9 +80,10 @@ final class FilesystemBackendTest extends TestCase
     {
         // The located file declares a different named class and, nested in a method, an
         // anonymous class: the AST scan skips the unnamed declaration and finds no match.
-        $backend = $this->backendWithLocator(
-            $this->locatorReturning($this->fixturesRoot . '/src/TypeInference/AnonymousClass.php'),
-        );
+        $file = $this->fixturesRoot . '/src/TypeInference/AnonymousClass.php';
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            classMap: ['Fixtures\TypeInference\NotDeclaredHere' => $file],
+        ));
 
         self::assertNull(
             self::classLikeIn($backend, 'Fixtures\TypeInference\NotDeclaredHere'),
@@ -95,9 +96,11 @@ final class FilesystemBackendTest extends TestCase
         // The class-like half of the same rule the function path follows: a
         // `class_exists`-guarded declaration is a name the file declares, so a scan
         // narrowed to top-level statements would lose it.
-        $backend = $this->backendWithLocator(
-            $this->locatorReturning($this->fixturesRoot . '/MultiClass/MultiClass.php'),
-        );
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            classMap: [
+                'Fixtures\Completion\ConditionalInMultiFile' => $this->fixturesRoot . '/MultiClass/MultiClass.php',
+            ],
+        ));
 
         self::assertNotNull(
             self::classLikeIn($backend, 'Fixtures\Completion\ConditionalInMultiFile'),
@@ -107,24 +110,48 @@ final class FilesystemBackendTest extends TestCase
 
     public function testLookupClassLikeIsCaseInsensitive(): void
     {
-        $backend = $this->backendWithLocator(
-            $this->locatorReturning($this->fixturesRoot . '/src/Domain/User.php'),
-        );
+        // The classmap entry uses the requested casing (Composer looks up its
+        // classmap as a literal string), and the file declares the class with
+        // canonical casing. The scanner must match the two case-insensitively,
+        // as PHP does for every class-like at runtime.
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            classMap: ['fixtures\domain\user' => $this->fixturesRoot . '/src/Domain/User.php'],
+        ));
 
         self::assertNotNull(
             self::classLikeIn($backend, 'fixtures\domain\user'),
-            'PHP matches class names case-insensitively, as the function path already does',
+            'PHP matches class names case-insensitively',
         );
     }
 
-    public function testLookupFunctionReturnsNullForAFunctionOnlyAPsr4FileDeclares(): void
+    public function testLookupHasNoReachForFunctions(): void
     {
         // Composer's PSR-4, PSR-0 and classmap entries all address class-likes, so a
-        // function in an unopened PSR-4 file has no name -> file route at all. That
-        // is Plan 0002 §3's locate-only limitation, not a gap in the backend.
+        // function in an unopened PSR-4 file has no name -> file route at all.
         self::assertNull(
             self::functionIn($this->backend(), 'Fixtures\Completion\calculateSum'),
             'no autoload map addresses a function by name outside the files set',
+        );
+    }
+
+    public function testLookupHasNoReachForConstants(): void
+    {
+        self::assertNull(
+            $this->backend()->lookupConstant(ConstantName::fromFullyQualified('Fixtures\SOME_CONSTANT')),
+            'no autoload map addresses a constant by name outside the files set',
+        );
+    }
+
+    public function testLookupDoesNotRegisterAdditionalAutoloaders(): void
+    {
+        $before = spl_autoload_functions();
+
+        self::classLikeIn($this->backend(), 'Fixtures\Domain\User');
+
+        self::assertSame(
+            count($before),
+            count(spl_autoload_functions()),
+            'the backend must not leave its Composer loader registered globally',
         );
     }
 
@@ -137,54 +164,256 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    public function testChildrenOfForwardsToTheInjectedCatalog(): void
-    {
-        $expected = new NamespaceContents(['Fixtures\Domain\Sub'], []);
-        $catalog = $this->createMock(NamespaceCatalogInterface::class);
-        $catalog->expects($this->once())
-            ->method('childrenOf')
-            ->with('Fixtures\Domain')
-            ->willReturn($expected);
-
-        $backend = new FilesystemBackend(
-            self::createStub(SymbolLocatorInterface::class),
-            $catalog,
-            $this->parser,
-            $this->reader,
-            $this->infoFactory,
-            new DeclarationScanner(),
-        );
-
-        self::assertSame(
-            $expected,
-            $backend->childrenOf(new NamespaceName('Fixtures\Domain')),
-            'enumeration must forward the namespace path to the catalog and return its result',
-        );
-    }
-
-    public function testChildrenOfEnumeratesRealAutoloadContents(): void
+    public function testChildrenOfEnumeratesPsr4ContentsFromTheDirectoryListing(): void
     {
         $contents = $this->backend()->childrenOf(new NamespaceName('Fixtures\Domain'));
 
-        $fqns = array_map(static fn($symbol): string => $symbol->fullyQualifiedName, $contents->symbols);
         self::assertContains(
             'Fixtures\Domain\User',
-            $fqns,
+            self::fqns($contents),
             'a class declared under a PSR-4 prefix must be enumerated from the directory listing',
         );
     }
 
+    public function testChildrenOfListsPsr4PrefixesAsChildrenOfTheGlobalNamespace(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName(''));
+
+        self::assertContains(
+            'Fixtures',
+            $contents->childNamespaces,
+            'a PSR-4 prefix is a child of the global namespace',
+        );
+        self::assertContains(
+            'Psr',
+            $contents->childNamespaces,
+            "a vendor package's prefix is discoverable without indexing vendor/",
+        );
+    }
+
+    public function testChildrenOfIntermediateNamespacesComeFromThePrefixItself(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('Psr'));
+
+        self::assertSame(
+            ['Psr\Http'],
+            $contents->childNamespaces,
+            'the intermediate segments of a PSR-4 prefix are known without touching the disk',
+        );
+        self::assertSame([], $contents->symbols, 'no files map to this namespace');
+    }
+
+    public function testChildrenOfEnumeratesVendorSymbolsFromTheDirectory(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('Psr\Http\Message'));
+
+        self::assertContains(
+            'Psr\Http\Message\RequestInterface',
+            self::fqns($contents),
+            'a PSR-4 namespace maps to a directory, so its contents are a directory listing',
+        );
+        self::assertContains(
+            'Psr\Http\Message\ServerRequestInterface',
+            self::fqns($contents),
+            'all files in the directory are symbols of that namespace',
+        );
+    }
+
+    public function testChildrenOfSymbolsFromADirectoryAreClassLikes(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('Psr\Http\Message'));
+
+        foreach ($contents->symbols as $symbol) {
+            self::assertSame(
+                NameKind::ClassLike,
+                $symbol->kind,
+                'a file in an autoloaded directory declares a class-like; which one it is takes parsing',
+            );
+        }
+    }
+
+    public function testChildrenOfSubdirectoriesBecomeChildNamespaces(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('Fixtures'));
+
+        self::assertContains(
+            'Fixtures\Domain',
+            $contents->childNamespaces,
+            'a subdirectory of a PSR-4 root is a child namespace',
+        );
+    }
+
+    public function testChildrenOfEnumeratesPsr0Contents(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('Psr0'));
+
+        self::assertContains(
+            'Psr0\Psr0Fixture',
+            self::fqns($contents),
+            'PSR-0 nests the whole namespace under the base directory, unlike PSR-4',
+        );
+    }
+
+    public function testChildrenOfEnumeratesClassmapEntries(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('Firehed\PhpLsp\Tests\Fixtures\Autoload'));
+
+        self::assertContains(
+            'Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture',
+            self::fqns($contents),
+            'a classmapped class is discoverable even though no prefix maps its namespace',
+        );
+    }
+
+    public function testChildrenOfListsClassmapEntriesInTheGlobalNamespace(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName(''));
+
+        self::assertContains(
+            'GlobalConfig',
+            self::fqns($contents),
+            'a classmapped class with no namespace belongs to the global namespace',
+        );
+    }
+
+    public function testChildrenOfMatchingIsCaseInsensitive(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('psr\http\message'));
+
+        self::assertContains(
+            'Psr\Http\Message\RequestInterface',
+            self::fqns($contents),
+            'namespaces are case-insensitive in PHP',
+        );
+    }
+
+    public function testChildrenOfUnknownNamespaceIsEmpty(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('No\Such\Namespace'));
+
+        self::assertSame([], $contents->childNamespaces, 'an unknown namespace has no children');
+        self::assertSame([], $contents->symbols, 'an unknown namespace has no symbols');
+    }
+
+    public function testChildrenOfRootNamespacePrefixEnumeratesFromItsDirectory(): void
+    {
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['' => [$this->fixturesRoot . '/src']],
+        ));
+
+        self::assertContains(
+            'Domain',
+            $backend->childrenOf(new NamespaceName(''))->childNamespaces,
+            'a root-namespace ("": [dir]) mapping lists its directory as children of the global namespace',
+        );
+    }
+
+    public function testChildrenOfWithoutComposerYieldsNothing(): void
+    {
+        $backend = $this->backendForMap(ComposerAutoloadMap::fromProjectRoot('/nonexistent'));
+
+        $contents = $backend->childrenOf(new NamespaceName(''));
+
+        self::assertSame([], $contents->childNamespaces, 'a project with no vendor/ still works');
+        self::assertSame([], $contents->symbols, 'a project with no vendor/ still works');
+    }
+
+    public function testChildrenOfPrefixWhoseDirectoryIsMissingYieldsNothing(): void
+    {
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['Stale\\' => ['/nonexistent/src']],
+        ));
+
+        self::assertSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Stale'))->symbols,
+            'an autoload map can outlive the directory it points at; that is not a crash',
+        );
+        self::assertSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Stale\Sub'))->symbols,
+            'nor when the walk into the missing directory has segments left to match',
+        );
+    }
+
+    public function testChildrenOfNamespaceWithNoDirectoryUnderItsPrefixYieldsNothing(): void
+    {
+        $contents = $this->backend()->childrenOf(new NamespaceName('Fixtures\NotADirectory'));
+
+        self::assertSame(
+            [],
+            $contents->symbols,
+            'the prefix matches but nothing on disk does',
+        );
+        self::assertSame([], $contents->childNamespaces, 'the prefix matches but nothing on disk does');
+    }
+
+    public function testChildrenOfSkipsNonPhpFiles(): void
+    {
+        // The fixtures root holds composer.json and a vendor/ directory beside
+        // its PHP, so pointing a prefix at it exercises both skips.
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['Root\\' => [$this->fixturesRoot]],
+        ));
+
+        $contents = $backend->childrenOf(new NamespaceName('Root'));
+
+        self::assertNotContains(
+            'Root\composer',
+            self::fqns($contents),
+            'composer.json is not a class-like; only .php files are',
+        );
+        self::assertContains(
+            'Root\NoNamespace',
+            self::fqns($contents),
+            'the .php files beside it still are',
+        );
+        self::assertContains(
+            'Root\src',
+            $contents->childNamespaces,
+            'directories are child namespaces',
+        );
+    }
+
+    public function testChildrenOfMergesMultipleDirectoriesForOnePrefix(): void
+    {
+        $base = sys_get_temp_dir() . '/php-lsp-multi-dir-' . getmypid();
+        @mkdir($base . '/src', recursive: true);
+        @mkdir($base . '/tests', recursive: true);
+        file_put_contents($base . '/src/Foo.php', "<?php\n");
+        file_put_contents($base . '/tests/Bar.php', "<?php\n");
+
+        try {
+            $backend = $this->backendForMap(new ComposerAutoloadMap(
+                psr4: ['App\\' => [$base . '/src', $base . '/tests']],
+            ));
+
+            $fqns = self::fqns($backend->childrenOf(new NamespaceName('App')));
+
+            self::assertContains('App\Foo', $fqns, 'symbol from first directory is listed');
+            self::assertContains('App\Bar', $fqns, 'symbol from second directory is listed');
+        } finally {
+            @unlink($base . '/src/Foo.php');
+            @unlink($base . '/tests/Bar.php');
+            @rmdir($base . '/src');
+            @rmdir($base . '/tests');
+            @rmdir($base);
+        }
+    }
+
     /**
-     * Wired with the composer locator that answers by name — the autoload maps
-     * address class-likes, and nothing else reaches this backend.
+     * Wired against the fixtures project so lookups run through the same
+     * Composer maps every fixture-based test uses.
      */
     private function backend(): FilesystemBackend
     {
-        $map = ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot);
+        return $this->backendForMap(ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot));
+    }
 
+    private function backendForMap(ComposerAutoloadMap $map): FilesystemBackend
+    {
         return new FilesystemBackend(
-            new ComposerSymbolLocator($map),
-            new ComposerNamespaceSource($map),
+            $map,
             $this->parser,
             $this->reader,
             $this->infoFactory,
@@ -192,23 +421,14 @@ final class FilesystemBackendTest extends TestCase
         );
     }
 
-    private function backendWithLocator(SymbolLocatorInterface $locator): FilesystemBackend
+    /**
+     * @return list<string>
+     */
+    private static function fqns(NamespaceContents $contents): array
     {
-        return new FilesystemBackend(
-            $locator,
-            self::createStub(NamespaceCatalogInterface::class),
-            $this->parser,
-            $this->reader,
-            $this->infoFactory,
-            new DeclarationScanner(),
+        return array_map(
+            static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
+            $contents->symbols,
         );
-    }
-
-    private function locatorReturning(string $path): SymbolLocatorInterface
-    {
-        $locator = self::createStub(SymbolLocatorInterface::class);
-        $locator->method('locate')->willReturn($path);
-
-        return $locator;
     }
 }
