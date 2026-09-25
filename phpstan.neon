@@ -317,21 +317,8 @@ parameters:
             message: 'single invalidation fan-out (RFC 1 §5.3): every cached on-disk holder forgets a changed file together, which is the invalidation composite; evicting one leaves the others stale'
             allowIn:
                 - src/Handler/DidChangeWatchedFilesHandler.php # the watched-file trigger
-                - src/Handler/TextDocumentSyncHandler.php # the close-after-edit trigger, paired with the sink
+                - src/Handler/TextDocumentSyncHandler.php # the close-after-edit trigger
                 - src/Knowledge/CompositeInvalidatable.php # the fan-out itself
-                - tests/*
-        -
-            method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::updateDocument()'
-            message: 'single write path (RFC 1 §4.3/§5.2): document symbol registration goes through DocumentSymbolSink'
-            allowIn:
-                - src/Knowledge/DocumentSymbolSink.php
-                - tests/*
-        -
-            method: 'Firehed\PhpLsp\Knowledge\OpenDocumentBackend::removeDocument()'
-            message: 'single write path (RFC 1 §4.3/§5.2): document symbol registration goes through DocumentSymbolSink'
-            allowIn:
-                - src/Knowledge/DocumentSymbolSink.php
-                - src/Knowledge/OpenDocumentBackend.php
                 - tests/*
         -
             method:

@@ -4,37 +4,47 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
-use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
+use Firehed\PhpLsp\Parser\ParseMetrics;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The open-document backend is the highest-precedence source (RFC 1 §5.3): the
- * lookup store, namespace enumeration and prefix search all answer from one map
- * of {@see \Firehed\PhpLsp\Domain\DeclaredSymbol}s per document (build-manifest step-46). These prove
- * each query and that a document's registration is replaced on update and dropped
- * on close.
+ * The open-document backend is the highest-precedence source (RFC 1 §5.3): a
+ * document event parses the buffer and registers its declarations, and the lookup
+ * store, namespace enumeration and prefix search all answer from one map of
+ * {@see \Firehed\PhpLsp\Domain\DeclaredSymbol}s per document. These prove each
+ * query, that a document's registration is replaced on update and dropped on
+ * close, and that a malformed document contributes nothing rather than crashing
+ * (RFC 1 §9).
  */
 final class OpenDocumentBackendTest extends TestCase
 {
-    use BuildsSymbolInfoTrait;
+    use LoadsFixturesTrait;
     use LooksUpBackendSymbolsTrait;
 
     private OpenDocumentBackend $backend;
 
     protected function setUp(): void
     {
-        $this->backend = new OpenDocumentBackend();
+        $this->backend = self::buildBackend();
     }
 
     public function testLookupClassLikeReturnsARegisteredClass(): void
     {
-        $this->backend->updateDocument('file:///Widget.php', self::declaredClass('V\Widget'));
+        $this->backend->openDocument($this->widgetDocument('file:///Widget.php'));
 
         $info = self::classLikeIn($this->backend, 'V\Widget');
 
@@ -48,7 +58,7 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupClassLikeIsCaseInsensitive(): void
     {
-        $this->backend->updateDocument('file:///Widget.php', self::declaredClass('V\Widget'));
+        $this->backend->openDocument($this->widgetDocument('file:///Widget.php'));
 
         self::assertNotNull(
             self::classLikeIn($this->backend, 'v\WIDGET'),
@@ -67,8 +77,12 @@ final class OpenDocumentBackendTest extends TestCase
     public function testUpdateDocumentReplacesThePriorClassesForThatUri(): void
     {
         $uri = 'file:///Doc.php';
-        $this->backend->updateDocument($uri, self::declaredClass('V\Alpha'));
-        $this->backend->updateDocument($uri, self::declaredClass('V\Beta'));
+        $this->backend->openDocument(
+            new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Alpha {}\n"),
+        );
+        $this->backend->updateDocument(
+            new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nclass Beta {}\n"),
+        );
 
         self::assertNull(
             self::classLikeIn($this->backend, 'V\Alpha'),
@@ -80,12 +94,14 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    public function testRemoveDocumentDropsItsClasses(): void
+    public function testCloseDocumentDropsItsClasses(): void
     {
         $uri = 'file:///Ephemeral.php';
-        $this->backend->updateDocument($uri, self::declaredClass('V\Ephemeral'));
+        $this->backend->openDocument(
+            new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Ephemeral {}\n"),
+        );
 
-        $this->backend->removeDocument($uri);
+        $this->backend->closeDocument($uri);
 
         self::assertNull(
             self::classLikeIn($this->backend, 'V\Ephemeral'),
@@ -93,19 +109,21 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    public function testRemoveDocumentIsANoOpForAnUnknownUri(): void
+    public function testCloseDocumentIsANoOpForAnUnknownUri(): void
     {
-        $this->backend->removeDocument('file:///never-opened.php');
+        $this->backend->closeDocument('file:///never-opened.php');
 
         self::assertNull(
             self::classLikeIn($this->backend, 'V\Nothing'),
-            'removing a document that was never registered must not error',
+            'closing a document that was never registered must not error',
         );
     }
 
     public function testLookupFunctionReturnsARegisteredFunction(): void
     {
-        $this->backend->updateDocument('file:///helpers.php', self::declaredFunction('V\format'));
+        $this->backend->openDocument(
+            new TextDocument('file:///helpers.php', 'php', 1, "<?php\nnamespace V;\nfunction format(): void {}\n"),
+        );
 
         $info = self::functionIn($this->backend, 'V\format');
 
@@ -115,11 +133,17 @@ final class OpenDocumentBackendTest extends TestCase
             $info->name->qualifiedName->fullyQualifiedName(),
             'the registered function must be returned unchanged',
         );
+        self::assertNull(
+            self::functionIn($this->backend, 'format'),
+            'a namespaced function must not be registered under its short name',
+        );
     }
 
     public function testLookupFunctionIsCaseInsensitive(): void
     {
-        $this->backend->updateDocument('file:///helpers.php', self::declaredFunction('V\format'));
+        $this->backend->openDocument(
+            new TextDocument('file:///helpers.php', 'php', 1, "<?php\nnamespace V;\nfunction format(): void {}\n"),
+        );
 
         self::assertNotNull(
             self::functionIn($this->backend, 'V\FORMAT'),
@@ -135,26 +159,25 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    public function testRegistrationCarriesAKindItKnowsNothingAbout(): void
+    public function testRegistrationCarriesEveryKind(): void
     {
-        // The point of the kind-parameterized write path: a kind whose metadata type
-        // this backend has never heard of round-trips, so adding one is a change to
-        // the info factories alone (Plan 0002 §5.6).
-        $symbol = self::declaredConstant('V\LIMIT');
+        // The point of the kind-parameterized write path: registering a document with
+        // a constant answers for that kind and not for another. Constants are the one
+        // kind PHP matches case-sensitively on the name itself; the namespace is still
+        // case-insensitive.
+        $this->backend->openDocument(
+            new TextDocument('file:///consts.php', 'php', 1, "<?php\nnamespace V;\nconst LIMIT = 1;\n"),
+        );
 
-        $this->backend->updateDocument('file:///consts.php', $symbol);
-
-        self::assertSame(
-            $symbol->info,
+        self::assertNotNull(
             $this->backend->lookupConstant(ConstantName::fromFullyQualified('V\LIMIT')),
-            'a registered symbol of any kind must resolve for that kind',
+            'a registered constant must resolve for the constant kind',
         );
         self::assertNull(
             $this->backend->lookupFunction(FunctionName::fromFullyQualified('V\LIMIT')),
             'and must not answer for another symbol namespace',
         );
-        self::assertSame(
-            $symbol->info,
+        self::assertNotNull(
             $this->backend->lookupConstant(ConstantName::fromFullyQualified('v\LIMIT')),
             'the namespace of a constant is still matched case-insensitively',
         );
@@ -166,11 +189,12 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testFunctionAndClassLikeRegistrationsDoNotCollide(): void
     {
-        $this->backend->updateDocument(
+        $this->backend->openDocument(new TextDocument(
             'file:///Dual.php',
-            self::declaredClass('V\Dual'),
-            self::declaredFunction('V\Dual'),
-        );
+            'php',
+            1,
+            "<?php\nnamespace V;\nclass Dual {}\nfunction Dual(): void {}\n",
+        ));
 
         self::assertNotNull(
             self::classLikeIn($this->backend, 'V\Dual'),
@@ -185,8 +209,12 @@ final class OpenDocumentBackendTest extends TestCase
     public function testUpdateDocumentReplacesThePriorFunctionsForThatUri(): void
     {
         $uri = 'file:///helpers.php';
-        $this->backend->updateDocument($uri, self::declaredFunction('V\alpha'));
-        $this->backend->updateDocument($uri, self::declaredFunction('V\beta'));
+        $this->backend->openDocument(
+            new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nfunction alpha(): void {}\n"),
+        );
+        $this->backend->updateDocument(
+            new TextDocument($uri, 'php', 2, "<?php\nnamespace V;\nfunction beta(): void {}\n"),
+        );
 
         self::assertNull(
             self::functionIn($this->backend, 'V\alpha'),
@@ -198,12 +226,14 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
-    public function testRemoveDocumentDropsItsFunctions(): void
+    public function testCloseDocumentDropsItsFunctions(): void
     {
         $uri = 'file:///helpers.php';
-        $this->backend->updateDocument($uri, self::declaredFunction('V\ephemeral'));
+        $this->backend->openDocument(
+            new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nfunction ephemeral(): void {}\n"),
+        );
 
-        $this->backend->removeDocument($uri);
+        $this->backend->closeDocument($uri);
 
         self::assertNull(
             self::functionIn($this->backend, 'V\ephemeral'),
@@ -211,17 +241,83 @@ final class OpenDocumentBackendTest extends TestCase
         );
     }
 
+    public function testOpenDocumentRegistersADeclarationBelowTheTopLevel(): void
+    {
+        // A conditionally declared polyfill is a name the file validly declares, and
+        // the on-disk backends resolve one. An open document must agree, or opening
+        // a file would make a name that already resolved disappear (RFC 1 §4.2).
+        $content = "<?php\nif (!function_exists('polyfill')) {\n    function polyfill(): void {}\n}\n";
+
+        $this->backend->openDocument(new TextDocument('file:///polyfill.php', 'php', 1, $content));
+
+        self::assertNotNull(
+            self::functionIn($this->backend, 'polyfill'),
+            'a conditionally declared function must be registered like any other declaration',
+        );
+    }
+
+    public function testOpenDocumentRegistersAClassLikeBelowTheTopLevel(): void
+    {
+        // The class-like half of the same rule: the on-disk backends resolve a
+        // `class_exists`-guarded declaration, so an open document must too.
+        $uri = 'file:///MultiClass.php';
+        $this->backend->openDocument(
+            new TextDocument($uri, 'php', 1, $this->loadFixture('MultiClass/MultiClass.php')),
+        );
+
+        self::assertNotNull(
+            self::classLikeIn($this->backend, 'Fixtures\Completion\ConditionalInMultiFile'),
+            'a conditionally declared class must be registered like any other declaration',
+        );
+    }
+
+    public function testTheFirstOfDuplicateClassLikeDeclarationsWins(): void
+    {
+        // A file may declare one name twice (an unguarded declaration plus a guarded
+        // twin). PHP defines the first one executed, and the on-disk backends return
+        // the first declaration found — the open document must agree (RFC 1 §4.2).
+        $uri = 'file:///DuplicateDeclarations.php';
+        $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
+        $this->backend->openDocument(new TextDocument($uri, 'php', 1, $content));
+
+        $classInfo = self::classLikeIn($this->backend, 'Fixtures\MultiClass\Duplicated');
+        self::assertNotNull($classInfo, 'the duplicated class must still resolve');
+        self::assertTrue(
+            $classInfo->isFinal,
+            'the first declaration (final) must win, matching runtime and the on-disk backends',
+        );
+    }
+
+    public function testTheFirstOfDuplicateFunctionDeclarationsWins(): void
+    {
+        // The function half of the same rule.
+        $uri = 'file:///DuplicateDeclarations.php';
+        $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
+        $this->backend->openDocument(new TextDocument($uri, 'php', 1, $content));
+
+        $functionInfo = self::functionIn($this->backend, 'Fixtures\MultiClass\duplicated');
+        self::assertNotNull($functionInfo, 'the duplicated function must still resolve');
+        self::assertSame(
+            'string',
+            $functionInfo->returnType?->format(),
+            'the first declaration (returning string) must win, matching runtime and the on-disk backends',
+        );
+    }
+
     public function testSearchClassLikeFiltersByPrefixAndToClassLikeKindsOnly(): void
     {
-        $this->backend->updateDocument(
+        $this->backend->openDocument(new TextDocument(
             'file:///doc.php',
-            self::declaredClass('App\User'),
-            self::declaredClass('App\UserEnum'),
-            self::declaredClass('App\UserInterface'),
-            self::declaredClass('App\UserTrait'),
-            self::declaredClass('App\Entity'),
-            self::declaredFunction('App\Userland'),
-        );
+            'php',
+            1,
+            "<?php\nnamespace App;\n"
+                . "class User {}\n"
+                . "class UserEnum {}\n"
+                . "interface UserInterface {}\n"
+                . "trait UserTrait {}\n"
+                . "class Entity {}\n"
+                . "function Userland(): void {}\n",
+        ));
 
         $results = $this->backend->search('User', NameKind::ClassLike);
 
@@ -240,11 +336,12 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testSearchFunctionFiltersByPrefixAndToFunctionKindOnly(): void
     {
-        $this->backend->updateDocument(
+        $this->backend->openDocument(new TextDocument(
             'file:///doc.php',
-            self::declaredFunction('App\format'),
-            self::declaredClass('App\Formatter'),
-        );
+            'php',
+            1,
+            "<?php\nnamespace App;\nfunction format(): void {}\nclass Formatter {}\n",
+        ));
 
         $results = $this->backend->search('format', NameKind::Function_);
 
@@ -259,11 +356,12 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testSearchConstantFiltersByPrefixAndToConstantKindOnly(): void
     {
-        $this->backend->updateDocument(
+        $this->backend->openDocument(new TextDocument(
             'file:///doc.php',
-            self::declaredConstant('App\DEBUG'),
-            self::declaredClass('App\Debugger'),
-        );
+            'php',
+            1,
+            "<?php\nnamespace App;\nconst DEBUG = 1;\nclass Debugger {}\n",
+        ));
 
         $results = $this->backend->search('D', NameKind::Constant);
 
@@ -278,20 +376,20 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testLookupResolvesToTheFirstDeclarationWhenTwoDocumentsShareAName(): void
     {
-        $this->backend->updateDocument(
-            'file:///First.php',
-            self::declaredClass('V\Shared', file: '/first'),
+        $firstUri = 'file:///first/Shared.php';
+        $secondUri = 'file:///second/Shared.php';
+        $this->backend->openDocument(
+            new TextDocument($firstUri, 'php', 1, "<?php\nnamespace V;\nclass Shared {}\n"),
         );
-        $this->backend->updateDocument(
-            'file:///Second.php',
-            self::declaredClass('V\Shared', file: '/second'),
+        $this->backend->openDocument(
+            new TextDocument($secondUri, 'php', 1, "<?php\nnamespace V;\nclass Shared {}\n"),
         );
 
         $info = self::classLikeIn($this->backend, 'V\Shared');
 
         self::assertNotNull($info, 'a name two documents declare must still resolve');
         self::assertSame(
-            '/first',
+            '/first/Shared.php',
             $info->file,
             'the first document to declare the name in map order wins lookup, matching search and childrenOf',
         );
@@ -299,16 +397,16 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testClosingOneOfTwoDocumentsThatShareANameKeepsTheOtherReachable(): void
     {
-        $this->backend->updateDocument(
-            'file:///First.php',
-            self::declaredClass('V\Shared', file: '/first'),
+        $firstUri = 'file:///first/Shared.php';
+        $secondUri = 'file:///second/Shared.php';
+        $this->backend->openDocument(
+            new TextDocument($firstUri, 'php', 1, "<?php\nnamespace V;\nclass Shared {}\n"),
         );
-        $this->backend->updateDocument(
-            'file:///Second.php',
-            self::declaredClass('V\Shared', file: '/second'),
+        $this->backend->openDocument(
+            new TextDocument($secondUri, 'php', 1, "<?php\nnamespace V;\nclass Shared {}\n"),
         );
 
-        $this->backend->removeDocument('file:///Second.php');
+        $this->backend->closeDocument($secondUri);
 
         $info = self::classLikeIn($this->backend, 'V\Shared');
         self::assertNotNull(
@@ -316,7 +414,7 @@ final class OpenDocumentBackendTest extends TestCase
             'the still-open document keeps declaring the name; closing another must not drop lookup',
         );
         self::assertSame(
-            '/first',
+            '/first/Shared.php',
             $info->file,
             'the surviving declaration is the one the still-open document holds',
         );
@@ -324,38 +422,34 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testUpdatingTheFirstOfTwoDocumentsThatShareANameKeepsItsPrecedence(): void
     {
-        $this->backend->updateDocument(
-            'file:///First.php',
-            self::declaredClass('V\Shared', file: '/first'),
+        $firstUri = 'file:///first/Shared.php';
+        $secondUri = 'file:///second/Shared.php';
+        $this->backend->openDocument(
+            new TextDocument($firstUri, 'php', 1, "<?php\nnamespace V;\nclass Shared {}\n"),
         );
-        $this->backend->updateDocument(
-            'file:///Second.php',
-            self::declaredClass('V\Shared', file: '/second'),
+        $this->backend->openDocument(
+            new TextDocument($secondUri, 'php', 1, "<?php\nnamespace V;\nclass Shared {}\n"),
         );
 
         $this->backend->updateDocument(
-            'file:///First.php',
-            self::declaredClass('V\Shared', file: '/first-edited'),
+            new TextDocument($firstUri, 'php', 2, "<?php\nnamespace V;\nfinal class Shared {}\n"),
         );
 
         $info = self::classLikeIn($this->backend, 'V\Shared');
         self::assertNotNull($info, 'a name two documents declare must still resolve after an edit');
-        self::assertSame(
-            '/first-edited',
-            $info->file,
+        self::assertTrue(
+            $info->isFinal,
             'editing a document keeps its place in map order, so it still wins over a later-opened document',
         );
     }
 
     public function testSearchReportsASharedNameOnceAcrossDocuments(): void
     {
-        $this->backend->updateDocument(
-            'file:///a.php',
-            self::declaredClass('App\Widget', file: '/a'),
+        $this->backend->openDocument(
+            new TextDocument('file:///a.php', 'php', 1, "<?php\nnamespace App;\nclass Widget {}\n"),
         );
-        $this->backend->updateDocument(
-            'file:///b.php',
-            self::declaredClass('App\Widget', file: '/b'),
+        $this->backend->openDocument(
+            new TextDocument('file:///b.php', 'php', 1, "<?php\nnamespace App;\nclass Widget {}\n"),
         );
 
         $results = $this->backend->search('Widget', NameKind::ClassLike);
@@ -374,15 +468,13 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testChildrenOfReportsASharedNameOnceAcrossDocuments(): void
     {
-        $this->backend->updateDocument(
-            'file:///a.php',
-            self::declaredClass('App\Widget', file: '/a'),
+        $this->backend->openDocument(
+            new TextDocument('file:///a.php', 'php', 1, "<?php\nnamespace App;\nclass Widget {}\n"),
         );
         // Same class under PHP's case-insensitive rule; the spelling is the only
         // way to see which document's declaration survived the merge.
-        $this->backend->updateDocument(
-            'file:///b.php',
-            self::declaredClass('App\WIDGET', file: '/b'),
+        $this->backend->openDocument(
+            new TextDocument('file:///b.php', 'php', 1, "<?php\nnamespace App;\nclass WIDGET {}\n"),
         );
 
         $contents = $this->backend->childrenOf(new NamespaceName('App'));
@@ -401,8 +493,12 @@ final class OpenDocumentBackendTest extends TestCase
 
     public function testChildrenOfEnumeratesTheOpenDocumentNamespace(): void
     {
-        $this->backend->updateDocument('file:///User.php', self::declaredClass('App\User'));
-        $this->backend->updateDocument('file:///Thing.php', self::declaredClass('App\Sub\Thing'));
+        $this->backend->openDocument(
+            new TextDocument('file:///User.php', 'php', 1, "<?php\nnamespace App;\nclass User {}\n"),
+        );
+        $this->backend->openDocument(
+            new TextDocument('file:///Thing.php', 'php', 1, "<?php\nnamespace App\\Sub;\nclass Thing {}\n"),
+        );
 
         $contents = $this->backend->childrenOf(new NamespaceName('App'));
 
@@ -415,6 +511,84 @@ final class OpenDocumentBackendTest extends TestCase
             'App\Sub',
             $contents->childNamespaces,
             'a namespace with a deeper declaration must be listed as a child',
+        );
+    }
+
+    public function testOpeningABrokenFileRegistersTheShapeTheSkeletonRecovers(): void
+    {
+        // The skeleton source in the composite recovers a mid-edit document's
+        // structural shape, so the write path feeds `DeclarationScanner` a tree even
+        // when php-parser alone would produce none (RFC 1 §5.3). Completion of
+        // `$this->` on a class the user is still typing must still find its members.
+        $uri = 'file:///Broken.php';
+        $content = $this->loadFixture('src/IncompleteCode/VeryBroken.php');
+        $document = new TextDocument($uri, 'php', 1, $content);
+
+        // Precondition that separates the composite's two arms: php-parser alone
+        // yields nothing on this fixture, so a class registered after the write can
+        // only have come from the skeleton.
+        $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics());
+        self::assertSame(
+            [],
+            $phpParserOnly->parse($document),
+            'php-parser alone must yield nothing on this fixture, or the test proves nothing about the skeleton',
+        );
+
+        $this->backend->openDocument($document);
+
+        $classInfo = self::classLikeIn($this->backend, 'Fixtures\\IncompleteCode\\VeryBroken');
+        self::assertNotNull(
+            $classInfo,
+            'the skeleton must recover the class so member lookup still answers',
+        );
+        self::assertArrayHasKey(
+            'getName',
+            $classInfo->methods,
+            'the skeleton must reach the class body for member lookup',
+        );
+    }
+
+    #[DataProvider('classLikeFixtures')]
+    public function testEveryClassLikeKindIsRegistered(string $fixture, string $fqn): void
+    {
+        // The one store answers for every class-like kind; a name registered for
+        // lookup must be reachable for every consumer.
+        $uri = 'file:///' . $fixture;
+        $this->backend->openDocument(new TextDocument($uri, 'php', 1, $this->loadFixture($fixture)));
+
+        self::assertNotNull(
+            self::classLikeIn($this->backend, $fqn),
+            "{$fqn} must be registered for lookup",
+        );
+    }
+
+    /**
+     * A fixture per class-like kind, each with the FQN it declares.
+     *
+     * @codeCoverageIgnore
+     * @return array<string, array{string, string}>
+     */
+    public static function classLikeFixtures(): array
+    {
+        return [
+            'class' => ['src/Domain/User.php', 'Fixtures\Domain\User'],
+            'interface' => ['src/Domain/Entity.php', 'Fixtures\Domain\Entity'],
+            'trait' => ['src/Traits/HasTimestamps.php', 'Fixtures\Traits\HasTimestamps'],
+            'enum' => ['src/Enum/Status.php', 'Fixtures\Enum\Status'],
+        ];
+    }
+
+    private function widgetDocument(string $uri): TextDocument
+    {
+        return new TextDocument($uri, 'php', 1, "<?php\nnamespace V;\nclass Widget {}\n");
+    }
+
+    private static function buildBackend(): OpenDocumentBackend
+    {
+        return new OpenDocumentBackend(
+            ProductionSyntaxSource::create()->source,
+            new DeclarationScanner(),
+            new DeclarationSymbolInfoFactory(),
         );
     }
 }

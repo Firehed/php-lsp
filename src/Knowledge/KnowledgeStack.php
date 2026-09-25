@@ -46,7 +46,7 @@ final readonly class KnowledgeStack
         $declarationInfoFactory = new DeclarationSymbolInfoFactory();
         $scanner = new DeclarationScanner();
 
-        $openDocuments = new OpenDocumentBackend();
+        $openDocuments = new OpenDocumentBackend($parser, $scanner, $declarationInfoFactory);
         $autoloadFiles = new AutoloadFilesBackend(
             $autoloadMap,
             $declarationInfoFactory,
@@ -77,16 +77,9 @@ final readonly class KnowledgeStack
             ),
         ]);
 
-        $sink = new DocumentSymbolSink(
-            $openDocuments,
-            $declarationInfoFactory,
-            $parser,
-            $scanner,
-        );
-
         return new self(
             $source,
-            $sink,
+            $openDocuments,
             new CompositeInvalidatable($disk, $composerMap, $autoloadFiles),
         );
     }

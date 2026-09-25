@@ -26,7 +26,7 @@ use PHPUnit\Framework\TestCase;
  * a broken file (no last-good registration to preserve) still offers members
  * through the `SkeletonSyntaxSource` and `CursorTextSyntaxSource` composite
  * members, and a good open followed by a broken change offers them through the
- * `DocumentSymbolSink` preserved AST. A step that removes any of these paths
+ * `OpenDocumentBackend` preserved AST. A step that removes any of these paths
  * must first land a replacement that keeps this golden green.
  */
 final class CompletionParityTest extends TestCase
