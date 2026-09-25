@@ -10,23 +10,23 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Knowledge\FilesystemBackend;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The filesystem backend resolves class-likes by locating and parsing one file
- * through Composer's PSR-4, PSR-0 and classmap entries, and enumerates
+ * The Composer-map backend resolves class-likes by locating and parsing one
+ * file through Composer's PSR-4, PSR-0 and classmap entries, and enumerates
  * namespaces through the same maps. These prove lookup, the not-found paths,
  * the empty prefix search, and directory-listing enumeration through every
  * autoload strategy. Names declared in `autoload.files` entries are the
  * separate {@see \Firehed\PhpLsp\Knowledge\AutoloadFilesBackend}'s concern.
  */
-final class FilesystemBackendTest extends TestCase
+final class ComposerMapBackendTest extends TestCase
 {
     use LooksUpBackendSymbolsTrait;
 
@@ -405,14 +405,14 @@ final class FilesystemBackendTest extends TestCase
      * Wired against the fixtures project so lookups run through the same
      * Composer maps every fixture-based test uses.
      */
-    private function backend(): FilesystemBackend
+    private function backend(): ComposerMapBackend
     {
         return $this->backendForMap(ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot));
     }
 
-    private function backendForMap(ComposerAutoloadMap $map): FilesystemBackend
+    private function backendForMap(ComposerAutoloadMap $map): ComposerMapBackend
     {
-        return new FilesystemBackend(
+        return new ComposerMapBackend(
             $map,
             $this->parser,
             $this->reader,

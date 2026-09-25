@@ -35,7 +35,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * entries — where a bare-prefix search *is* affordable — are covered by
  * {@see AutoloadFilesBackend} in its own row.
  */
-final class FilesystemBackend implements SymbolSourceInterface
+final class ComposerMapBackend implements SymbolSourceInterface
 {
     use LooksUpByKindTrait;
 

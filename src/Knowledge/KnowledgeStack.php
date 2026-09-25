@@ -52,7 +52,7 @@ final readonly class KnowledgeStack
             $parser,
         );
         $disk = new CachingSymbolSource(
-            new FilesystemBackend(
+            new ComposerMapBackend(
                 $autoloadMap,
                 $parser,
                 $reader,

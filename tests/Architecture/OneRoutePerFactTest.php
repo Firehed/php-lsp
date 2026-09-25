@@ -208,7 +208,7 @@ final class OneRoutePerFactTest extends TestCase
         sort($found);
 
         self::assertContains(
-            'Firehed\\PhpLsp\\Knowledge\\FilesystemBackend',
+            'Firehed\\PhpLsp\\Knowledge\\ComposerMapBackend',
             $found,
             'the implementation scan must see a class that implements the interface',
         );
