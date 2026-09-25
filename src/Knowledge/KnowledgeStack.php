@@ -51,16 +51,14 @@ final readonly class KnowledgeStack
             $reader,
             $parser,
         );
-        $disk = new CachingSymbolSource(
-            new ComposerMapBackend(
-                $autoloadMap,
-                $parser,
-                $reader,
-                $declarationInfoFactory,
-                $scanner,
-            ),
-            CacheFactory::inMemory(),
+        $composerMap = new ComposerMapBackend(
+            $autoloadMap,
+            $parser,
+            $reader,
+            $declarationInfoFactory,
+            $scanner,
         );
+        $disk = new CachingSymbolSource($composerMap, CacheFactory::inMemory());
 
         // The built-in backend owns its own derived index of internal symbols, so
         // enumeration and prefix search draw on the same source and cannot disagree
@@ -82,11 +80,12 @@ final readonly class KnowledgeStack
             $parser,
             $scanner,
             // External-change and close-after-edit invalidation drops the on-disk
-            // cache for a file and rebuilds the files-set index when a member of
-            // it changed (RFC 1 §5.2, §5.3). The open-document backend is
+            // cache for a file, adjusts the Composer-map index for that one
+            // path, and rebuilds the files-set index when a member of it
+            // changed (RFC 1 §5.2, §5.3). The open-document backend is
             // authoritative and never cached, so it is not invalidated; the
             // built-in backend does not read workspace files.
-            [$disk, $autoloadFiles],
+            [$disk, $composerMap, $autoloadFiles],
         );
 
         return new self($source, $sink);

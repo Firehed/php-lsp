@@ -132,9 +132,14 @@ final class BuiltinBackend implements SymbolSourceInterface
     {
         $fqn = $name->fullyQualifiedName();
 
-        // All three probes narrow the name to a `class-string`, which is why
-        // this kind cannot use the sibling's try/catch.
-        if (!class_exists($fqn) && !interface_exists($fqn) && !trait_exists($fqn)) {
+        // `autoload: false` keeps the probe from executing user code; internal
+        // class-likes are always considered loaded, so the answer is unchanged
+        // for names this backend is responsible for.
+        if (
+            !class_exists($fqn, autoload: false)
+            && !interface_exists($fqn, autoload: false)
+            && !trait_exists($fqn, autoload: false)
+        ) {
             return null;
         }
 

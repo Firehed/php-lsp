@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
@@ -142,12 +143,284 @@ final class ComposerMapBackendTest extends TestCase
         );
     }
 
-    public function testSearchIsEmpty(): void
+    public function testSearchFindsClassLikesFromPsr4Roots(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('User', NameKind::ClassLike));
+
+        self::assertContains(
+            'Fixtures\Domain\User',
+            $fqns,
+            'a class-like reachable through a PSR-4 prefix must be found by short-name prefix',
+        );
+    }
+
+    public function testSearchFindsClassLikesFromPsr0Roots(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('Psr0F', NameKind::ClassLike));
+
+        self::assertContains(
+            'Psr0\Psr0Fixture',
+            $fqns,
+            'a class-like reachable through a PSR-0 prefix must be found by short-name prefix',
+        );
+    }
+
+    public function testSearchFindsClassLikesFromTheClassmap(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('Classmap', NameKind::ClassLike));
+
+        self::assertContains(
+            'Firehed\PhpLsp\Tests\Fixtures\Autoload\ClassmapFixture',
+            $fqns,
+            'a class-like reachable only through the classmap must be found by short-name prefix',
+        );
+    }
+
+    public function testSearchIsCaseInsensitive(): void
+    {
+        $fqns = self::fqnsOfSearch($this->backend()->search('user', NameKind::ClassLike));
+
+        self::assertContains(
+            'Fixtures\Domain\User',
+            $fqns,
+            'PHP matches class-like names case-insensitively, so search must too',
+        );
+    }
+
+    public function testSearchHasNoReachForFunctions(): void
     {
         self::assertSame(
             [],
-            $this->backend()->search('User', NameKind::ClassLike),
-            'project-wide prefix search over disk is the deferred workspace-index scope (RFC 1 §3)',
+            $this->backend()->search('help', NameKind::Function_),
+            'no autoload map addresses a function by name outside the files set',
+        );
+    }
+
+    public function testSearchHasNoReachForConstants(): void
+    {
+        self::assertSame(
+            [],
+            $this->backend()->search('HELPER', NameKind::Constant),
+            'no autoload map addresses a constant by name outside the files set',
+        );
+    }
+
+    public function testInvalidateAddsANewFileToTheIndex(): void
+    {
+        $newFile = $this->fixturesRoot . '/src/Domain/Ephemeral.php';
+        self::assertFileDoesNotExist($newFile, 'the fixture must not shadow a real file');
+
+        $backend = $this->backend();
+        self::assertNotContains(
+            'Fixtures\Domain\Ephemeral',
+            self::fqnsOfSearch($backend->search('Ephemeral', NameKind::ClassLike)),
+            'the pre-invalidate index must not know about the file',
+        );
+
+        file_put_contents($newFile, "<?php\n\nnamespace Fixtures\\Domain;\n\nclass Ephemeral {}\n");
+        try {
+            $backend->invalidate(FileUri::fromPath($newFile));
+
+            self::assertContains(
+                'Fixtures\Domain\Ephemeral',
+                self::fqnsOfSearch($backend->search('Ephemeral', NameKind::ClassLike)),
+                'a file added after the walk must appear after invalidation (RFC 1 §5.2)',
+            );
+            self::assertContains(
+                'Fixtures\Domain\Ephemeral',
+                self::fqns($backend->childrenOf(new NamespaceName('Fixtures\Domain'))),
+                'enumeration must reflect the same index that search reads',
+            );
+        } finally {
+            unlink($newFile);
+        }
+    }
+
+    public function testInvalidateRemovesAFileTheLoaderNoLongerConfirms(): void
+    {
+        $newFile = $this->fixturesRoot . '/src/Domain/Transient.php';
+        file_put_contents($newFile, "<?php\n\nnamespace Fixtures\\Domain;\n\nclass Transient {}\n");
+
+        try {
+            $backend = $this->backend();
+            self::assertContains(
+                'Fixtures\Domain\Transient',
+                self::fqnsOfSearch($backend->search('Transient', NameKind::ClassLike)),
+                'sanity: the initial walk must see the file we just created',
+            );
+
+            unlink($newFile);
+            $backend->invalidate(FileUri::fromPath($newFile));
+
+            self::assertNotContains(
+                'Fixtures\Domain\Transient',
+                self::fqnsOfSearch($backend->search('Transient', NameKind::ClassLike)),
+                'a file removed on disk must stop appearing after invalidation',
+            );
+        } finally {
+            if (is_file($newFile)) {
+                unlink($newFile);
+            }
+        }
+    }
+
+    public function testInvalidateIsANoOpWhenTheFileStillResolvesToTheSameName(): void
+    {
+        $backend = $this->backend();
+        $before = self::fqnsOfSearch($backend->search('User', NameKind::ClassLike));
+        self::assertContains('Fixtures\Domain\User', $before, 'sanity: the walk sees User');
+
+        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php'));
+
+        self::assertSame(
+            $before,
+            self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+            'a file whose walked name is unchanged must leave the index alone',
+        );
+    }
+
+    public function testInvalidateIgnoresAPathOutsideEveryPrefix(): void
+    {
+        // An existing `.php` file outside every prefix must walk through the
+        // PSR-4 and PSR-0 loops in the derive step and land on the null-return
+        // rather than a match, so nothing is added.
+        $orphan = tempnam(sys_get_temp_dir(), 'php-lsp-orphan-') . '.php';
+        file_put_contents($orphan, "<?php\n");
+
+        try {
+            $backend = $this->backend();
+            $before = self::fqnsOfSearch($backend->search('User', NameKind::ClassLike));
+
+            $backend->invalidate(FileUri::fromPath($orphan));
+
+            self::assertSame(
+                $before,
+                self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+                'a path no prefix maps must leave the index alone',
+            );
+        } finally {
+            unlink($orphan);
+        }
+    }
+
+    public function testInvalidateBeforeTheFirstReadIsANoOp(): void
+    {
+        // The index is built lazily on the first read: a stray invalidate that
+        // preceded any query has nothing to adjust and must not force a walk.
+        $backend = $this->backend();
+        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php'));
+
+        self::assertContains(
+            'Fixtures\Domain\User',
+            self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+            'the first read builds the index from disk regardless of prior invalidations',
+        );
+    }
+
+    public function testInvalidateAddsANewPsr0File(): void
+    {
+        $newFile = $this->fixturesRoot . '/Autoload/Psr0/Psr0New.php';
+        self::assertFileDoesNotExist($newFile, 'the fixture must not shadow a real file');
+
+        $backend = $this->backend();
+        self::assertNotContains(
+            'Psr0\Psr0New',
+            self::fqnsOfSearch($backend->search('Psr0New', NameKind::ClassLike)),
+            'sanity: the pre-invalidate index does not know about the file',
+        );
+
+        file_put_contents($newFile, "<?php\n\nclass Psr0_Psr0New {}\n");
+        try {
+            $backend->invalidate(FileUri::fromPath($newFile));
+
+            self::assertContains(
+                'Psr0\Psr0New',
+                self::fqnsOfSearch($backend->search('Psr0New', NameKind::ClassLike)),
+                'a PSR-0 file added after the walk must appear after invalidation',
+            );
+        } finally {
+            unlink($newFile);
+        }
+    }
+
+    public function testBuildIndexSkipsAFileAlreadyIndexedByALongerPsr4Prefix(): void
+    {
+        // Two PSR-4 prefixes overlap on disk: the longer prefix walks first
+        // and files the class; the shorter prefix's walk must skip the same
+        // path rather than adding a false-positive candidate under its own
+        // namespace.
+        $overlapRoot = $this->fixturesRoot . '/Psr4Overlap';
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: [
+                'Root\\Sub\\' => [$overlapRoot . '/Sub'],
+                'Root\\' => [$overlapRoot],
+            ],
+        ));
+
+        $enumerated = self::fqns($backend->childrenOf(new NamespaceName('Root\Sub')));
+
+        self::assertSame(
+            ['Root\Sub\Thing'],
+            $enumerated,
+            'the shorter PSR-4 prefix walk must skip the file the longer one already indexed',
+        );
+        self::assertSame(
+            [],
+            self::fqns($backend->childrenOf(new NamespaceName('Root'))),
+            'the base prefix must not gain a false-positive candidate for the walked file',
+        );
+    }
+
+    public function testBuildIndexDedupesFileAlreadyIndexedThroughAPsr4PrefixFromPsr0Walk(): void
+    {
+        // A PSR-4 root and a PSR-0 root that overlap on disk: `File.php` under
+        // the shared directory is indexable through both. The longer PSR-4
+        // prefix owns it first, so the PSR-0 walk must skip the file.
+        $base = sys_get_temp_dir() . '/php-lsp-psr0-overlap-' . bin2hex(random_bytes(6));
+        self::assertTrue(mkdir($base . '/App/Sub', 0777, true), 'the overlap directory must be creatable');
+        file_put_contents(
+            $base . '/App/Sub/Thing.php',
+            "<?php\n\nnamespace App\\Sub;\n\nclass Thing {}\n",
+        );
+
+        try {
+            $backend = $this->backendForMap(new ComposerAutoloadMap(
+                psr4: ['App\\Sub\\' => [$base . '/App/Sub']],
+                psr0: ['App' => [$base]],
+            ));
+
+            $enumerated = self::fqns($backend->childrenOf(new NamespaceName('App\Sub')));
+
+            self::assertSame(
+                ['App\Sub\Thing'],
+                $enumerated,
+                'a file the longer PSR-4 prefix already indexed must not be re-added by a PSR-0 walk',
+            );
+        } finally {
+            unlink($base . '/App/Sub/Thing.php');
+            rmdir($base . '/App/Sub');
+            rmdir($base . '/App');
+            rmdir($base);
+        }
+    }
+
+    public function testBuildIndexDedupesClassmapAgainstPsr4Walk(): void
+    {
+        // A classmap entry and a PSR-4 walked file can both point at the same
+        // FQN: e.g. a project's own classmap listing a class it also autoloads
+        // through a prefix. The second write to the catalog must be dropped so
+        // that childrenOf returns one row rather than two.
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['Fixtures\\' => [$this->fixturesRoot . '/src']],
+            classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
+        ));
+
+        $enumerated = self::fqns($backend->childrenOf(new NamespaceName('Fixtures\Domain')));
+
+        self::assertSame(
+            1,
+            count(array_filter($enumerated, static fn(string $fqn): bool => $fqn === 'Fixtures\Domain\User')),
+            'a name reachable both ways must appear once in the enumeration',
         );
     }
 
@@ -416,6 +689,18 @@ final class ComposerMapBackendTest extends TestCase
         return array_map(
             static fn(CatalogSymbol $symbol): string => $symbol->fullyQualifiedName,
             $contents->symbols,
+        );
+    }
+
+    /**
+     * @param list<\Firehed\PhpLsp\Index\Symbol> $results
+     * @return list<string>
+     */
+    private static function fqnsOfSearch(array $results): array
+    {
+        return array_map(
+            static fn(\Firehed\PhpLsp\Index\Symbol $symbol): string => $symbol->fullyQualifiedName,
+            $results,
         );
     }
 }

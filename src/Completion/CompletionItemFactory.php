@@ -153,6 +153,10 @@ final class CompletionItemFactory
             'label' => $type,
             'kind' => CompletionItemKind::Keyword->value,
             'detail' => 'builtin type',
+            // The list of builtins is short and every entry is broadly
+            // relevant in the position; a `!` prefix keeps them ahead of
+            // class-likes when a wide prefix caps the response.
+            'sortText' => '!' . $type,
         ];
     }
 

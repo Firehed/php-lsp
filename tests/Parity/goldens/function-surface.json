@@ -18,7 +18,8 @@
                 },
                 "newText": "calculateSum"
             },
-            "documentation": "Adds two numbers."
+            "documentation": "Adds two numbers.",
+            "sortText": "0_calculateSum"
         },
         {
             "label": "calculateProduct",
@@ -38,7 +39,8 @@
                 },
                 "newText": "calculateProduct"
             },
-            "documentation": "Multiplies two numbers."
+            "documentation": "Multiplies two numbers.",
+            "sortText": "0_calculateProduct"
         }
     ],
     "document|calc+snippet": [
@@ -62,7 +64,8 @@
             },
             "documentation": "Adds two numbers.",
             "insertText": "calculateSum($0)",
-            "insertTextFormat": 2
+            "insertTextFormat": 2,
+            "sortText": "0_calculateSum"
         },
         {
             "label": "calculateProduct",
@@ -84,7 +87,8 @@
             },
             "documentation": "Multiplies two numbers.",
             "insertText": "calculateProduct($0)",
-            "insertTextFormat": 2
+            "insertTextFormat": 2,
+            "sortText": "0_calculateProduct"
         }
     ],
     "document|CALCULATE": [
@@ -106,7 +110,8 @@
                 },
                 "newText": "calculateSum"
             },
-            "documentation": "Adds two numbers."
+            "documentation": "Adds two numbers.",
+            "sortText": "0_calculateSum"
         },
         {
             "label": "calculateProduct",
@@ -126,7 +131,8 @@
                 },
                 "newText": "calculateProduct"
             },
-            "documentation": "Multiplies two numbers."
+            "documentation": "Multiplies two numbers.",
+            "sortText": "0_calculateProduct"
         }
     ],
     "document|getConfig": [
@@ -147,7 +153,8 @@
                     }
                 },
                 "newText": "getConfig"
-            }
+            },
+            "sortText": "0_getConfig"
         }
     ],
     "builtin|str_contains": [
@@ -168,7 +175,8 @@
                     }
                 },
                 "newText": "str_contains"
-            }
+            },
+            "sortText": "3_str_contains"
         }
     ],
     "builtin|str_contains+snippet": [
@@ -191,7 +199,8 @@
                 "newText": "str_contains"
             },
             "insertText": "str_contains($0)",
-            "insertTextFormat": 2
+            "insertTextFormat": 2,
+            "sortText": "3_str_contains"
         }
     ],
     "builtin|array_map": [
@@ -212,7 +221,8 @@
                     }
                 },
                 "newText": "array_map"
-            }
+            },
+            "sortText": "3_array_map"
         }
     ],
     "other-document|calc": [],

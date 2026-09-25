@@ -114,7 +114,11 @@ final class OneRoutePerFactTest extends TestCase
         $waitingOn = [];
 
         if ($fact->interface !== null) {
-            self::assertTrue(interface_exists($fact->interface), "fact '{$fact->name}': interface does not exist");
+            self::preload($fact->interface);
+            self::assertTrue(
+                interface_exists($fact->interface, autoload: false),
+                "fact '{$fact->name}': interface does not exist",
+            );
             $implementations = self::implementationsOf($fact->interface);
             self::assertGreaterThanOrEqual(
                 2,
@@ -131,8 +135,9 @@ final class OneRoutePerFactTest extends TestCase
         }
 
         foreach ([...$fact->holders, ...$fact->roots] as $class) {
+            self::preload($class);
             self::assertTrue(
-                class_exists($class),
+                class_exists($class, autoload: false),
                 "fact '{$fact->name}' names {$class}, which does not exist; update the row with the code",
             );
         }
@@ -391,6 +396,17 @@ final class OneRoutePerFactTest extends TestCase
     private static function pathOf(string $class): string
     {
         return 'src/' . str_replace('\\', '/', substr($class, strlen(self::PROJECT_NAMESPACE))) . '.php';
+    }
+
+    private static function preload(string $class): void
+    {
+        if (!self::isProjectClass($class)) {
+            return;
+        }
+        $file = self::root() . '/' . self::pathOf($class);
+        if (is_file($file)) {
+            require_once $file;
+        }
     }
 
     private static function namespaceOf(string $class): string

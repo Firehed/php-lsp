@@ -19,21 +19,12 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The LSP reads code; it must never execute it. Completion is the widest read
- * seam — a single keystroke can reach every backend — so an accidental
- * `class_exists($fqn)` (autoload on) or `new ReflectionClass($fqn)` on a user
- * FQN executes arbitrary top-level code from the serviced project: framework
- * bootstrappers, fixture files with intentionally malformed PHP, side-effect
- * initializers. The LSP process crashes silently and the client sees no
- * completion at all.
- *
- * This isolation is a property of the whole stack, not of one backend. It
- * holds on every path a completion can take.
- *
- * The workspace under test is the static fixture at
- * {@see \tests/Fixtures/AutoloadTrap/}: one file whose namespace matches its
- * PSR-4 candidate (`Trap\RealType`), one whose does not (walker mints
- * `Trap\RealTrap`; the file actually declares `Elsewhere\RealTrap`).
+ * Completion must not autoload user code — no backend, no filter, no code
+ * path. The workspace's PSR-4 layout in `tests/Fixtures/AutoloadTrap/`
+ * includes a file whose declared namespace differs from its PSR-4 candidate,
+ * so the walker mints `Trap\RealTrap` under prefix `Trap\` while the file
+ * declares `Elsewhere\RealTrap`; downstream lookup on that FQN falls through
+ * every backend and reaches the reflection probe.
  */
 final class CompletionAutoloadIsolationTest extends TestCase
 {
@@ -79,13 +70,11 @@ final class CompletionAutoloadIsolationTest extends TestCase
         );
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
 
+        // Only `Trap\` probes are significant: no other registered autoloader
+        // knows the prefix, so anything the tracker sees came from the LSP.
         $this->autoloaded = [];
-        $trapPrefix = 'Trap\\';
-        $this->tracker = function (string $class) use ($trapPrefix): void {
-            // Composer's real autoloader has no `Trap\` prefix, so a probe on
-            // that namespace can only come from the LSP itself — anything the
-            // tracker captures is the invariant this test is protecting.
-            if (str_starts_with($class, $trapPrefix)) {
+        $this->tracker = function (string $class): void {
+            if (str_starts_with($class, 'Trap\\')) {
                 $this->autoloaded[] = $class;
             }
         };
@@ -110,18 +99,16 @@ final class CompletionAutoloadIsolationTest extends TestCase
             'character' => $cursor['character'],
         ]));
 
-        self::assertIsArray($result, 'the handler must answer a real response, not crash the process');
-        self::assertNotEmpty($result['items'], 'a legitimate imported type must be offered');
+        self::assertIsArray($result, 'the handler must answer, not crash the process');
         self::assertContains(
             'RealType',
             array_column($result['items'], 'label'),
-            'the imported class must complete',
+            'the imported class must reach the response',
         );
         self::assertSame(
             [],
             $this->autoloaded,
-            'no `Trap\` FQN may be autoloaded during completion — the walker`s bogus PSR-4'
-            . ' candidate must not reach a class_exists probe',
+            'the bogus PSR-4 candidate must not reach an autoloading probe',
         );
     }
 }

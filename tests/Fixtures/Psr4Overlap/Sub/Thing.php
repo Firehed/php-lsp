@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-namespace Trap;
+namespace Root\Sub;
 
-class RealType
+class Thing
 {
 }
