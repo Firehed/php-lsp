@@ -343,6 +343,34 @@ final class ComposerMapBackendTest extends TestCase
         }
     }
 
+    public function testBuildIndexSkipsAFileAlreadyIndexedByALongerPsr4Prefix(): void
+    {
+        // Two PSR-4 prefixes overlap on disk: the longer prefix walks first
+        // and files the class; the shorter prefix's walk must skip the same
+        // path rather than adding a false-positive candidate under its own
+        // namespace.
+        $overlapRoot = $this->fixturesRoot . '/Psr4Overlap';
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: [
+                'Root\\Sub\\' => [$overlapRoot . '/Sub'],
+                'Root\\' => [$overlapRoot],
+            ],
+        ));
+
+        $enumerated = self::fqns($backend->childrenOf(new NamespaceName('Root\Sub')));
+
+        self::assertSame(
+            ['Root\Sub\Thing'],
+            $enumerated,
+            'the shorter PSR-4 prefix walk must skip the file the longer one already indexed',
+        );
+        self::assertSame(
+            [],
+            self::fqns($backend->childrenOf(new NamespaceName('Root'))),
+            'the base prefix must not gain a false-positive candidate for the walked file',
+        );
+    }
+
     public function testBuildIndexDedupesFileAlreadyIndexedThroughAPsr4PrefixFromPsr0Walk(): void
     {
         // A PSR-4 root and a PSR-0 root that overlap on disk: `File.php` under
