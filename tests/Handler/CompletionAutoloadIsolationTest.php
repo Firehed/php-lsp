@@ -29,14 +29,17 @@ use PHPUnit\Framework\TestCase;
  *
  * This isolation is a property of the whole stack, not of one backend. It
  * holds on every path a completion can take.
+ *
+ * The workspace under test is the static fixture at
+ * {@see \tests/Fixtures/AutoloadTrap/}: one file whose namespace matches its
+ * PSR-4 candidate (`Trap\RealType`), one whose does not (walker mints
+ * `Trap\RealTrap`; the file actually declares `Elsewhere\RealTrap`).
  */
 final class CompletionAutoloadIsolationTest extends TestCase
 {
     use BuildsKnowledgeStackTrait;
     use OpensDocumentsTrait;
     use WiresCompletionSourceTrait;
-
-    private string $workspace = '';
 
     /** @var callable(string): void */
     private $tracker;
@@ -50,25 +53,9 @@ final class CompletionAutoloadIsolationTest extends TestCase
 
     protected function setUp(): void
     {
-        // A minimal workspace whose PSR-4 layout mints a "candidate" FQN that
-        // no file actually declares. The walker cannot verify content through
-        // Composer's file resolver alone; downstream lookup on that candidate
-        // falls through every real backend and lands on BuiltinBackend, which
-        // is the seam under test.
-        $this->workspace = sys_get_temp_dir() . '/php-lsp-completion-autoload-' . getmypid();
-        @mkdir($this->workspace . '/src', recursive: true);
-        file_put_contents(
-            $this->workspace . '/src/RealType.php',
-            "<?php\nnamespace Trap;\nclass RealType {}\n",
-        );
-        // PSR-4 candidate would be `Trap\RealTrap`; the file's real namespace
-        // is elsewhere, so this FQN corresponds to no actual class.
-        file_put_contents(
-            $this->workspace . '/src/RealTrap.php',
-            "<?php\nnamespace Elsewhere;\nclass RealTrap {}\n",
-        );
+        $trapRoot = dirname(__DIR__) . '/Fixtures/AutoloadTrap';
 
-        $map = new ComposerAutoloadMap(psr4: ['Trap\\' => [$this->workspace . '/src']]);
+        $map = new ComposerAutoloadMap(psr4: ['Trap\\' => [$trapRoot]]);
         $production = ProductionSyntaxSource::create();
         $knowledge = $this->knowledgeStackForMap($map, $production);
 
@@ -108,35 +95,19 @@ final class CompletionAutoloadIsolationTest extends TestCase
     protected function tearDown(): void
     {
         spl_autoload_unregister($this->tracker);
-
-        @unlink($this->workspace . '/src/RealType.php');
-        @unlink($this->workspace . '/src/RealTrap.php');
-        @rmdir($this->workspace . '/src');
-        @rmdir($this->workspace);
     }
 
     public function testCompletionDoesNotAutoloadBogusPsr4Candidates(): void
     {
-        // A parameter-type position with prefix `Real` — narrow enough that
-        // the search backend's response is bounded to the workspace's own
-        // matches, but wide enough that the bogus PSR-4 candidate is in it.
-        $source = "<?php\n"
-            . "namespace Editing;\n"
-            . "\n"
-            . "use Trap\\RealType;\n"
-            . "\n"
-            . "final class Editor\n"
-            . "{\n"
-            . "    public function __construct(Real";
+        $source = $this->loadFixture('src/Completion/AutoloadTrapEditor.php');
         $uri = 'file:///editor.php';
         $this->openDocument($uri, $source);
 
-        $line = 7;
-        $character = strlen("    public function __construct(Real");
+        $cursor = $this->locateCursor($source, 'type_prefix');
         $result = $this->handler->handle($this->completionRequestAt([
             'uri' => $uri,
-            'line' => $line,
-            'character' => $character,
+            'line' => $cursor['line'],
+            'character' => $cursor['character'],
         ]));
 
         self::assertIsArray($result, 'the handler must answer a real response, not crash the process');
