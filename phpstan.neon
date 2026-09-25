@@ -144,16 +144,27 @@ parameters:
         -
             function:
                 - 'class_exists()'
-                - 'constant()'
-                - 'defined()'
                 - 'enum_exists()'
-                - 'function_exists()'
                 - 'interface_exists()'
                 - 'trait_exists()'
+            message: 'the runtime existence check must not autoload user code: pass `autoload: false`; BuiltinBackend is the one place this check may be the server''s own runtime'
+            allowIn:
+                - src/Knowledge/BuiltinBackend.php
+                - tests/*
+            allowParamsInAllowed:
+                -
+                    position: 2
+                    name: 'autoload'
+                    value: false
+        -
+            function:
+                - 'constant()'
+                - 'defined()'
+                - 'function_exists()'
                 - 'method_exists()'
                 - 'property_exists()'
                 - 'is_callable()'
-            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSourceInterface query (RFC 1 §4.2); BuiltinBackend is the one place it may be the server''s own runtime'
+            message: 'asking the runtime whether a symbol exists, or what it holds, is a SymbolSourceInterface query; BuiltinBackend is the one place it may be the server''s own runtime'
             allowIn:
                 - src/Knowledge/BuiltinBackend.php
                 - tests/*
