@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
@@ -34,7 +33,7 @@ final class BuiltinBackendTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->backend = new BuiltinBackend(new InternalConstantSet());
+        $this->backend = new BuiltinBackend();
     }
 
     public function testLookupClassLikeReflectsABuiltinClass(): void

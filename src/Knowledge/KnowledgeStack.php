@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\ComposerNamespaceSource;
 use Firehed\PhpLsp\Index\ComposerSymbolLocator;
-use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
@@ -75,7 +74,7 @@ final readonly class KnowledgeStack
             $autoloadFiles,
             $disk,
             new CachingSymbolSource(
-                new BuiltinBackend(new InternalConstantSet()),
+                new BuiltinBackend(),
                 CacheFactory::inMemory(),
             ),
         ]);

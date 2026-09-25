@@ -30,7 +30,6 @@ use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\PrefixSearch;
 use Firehed\PhpLsp\Index\Symbol;
@@ -75,20 +74,20 @@ final class BuiltinBackend implements SymbolSourceInterface
 {
     use LooksUpByKindTrait;
 
-    /** @var array<string, NamespaceContents>|null Lowercase namespace -> contents */
-    private ?array $byNamespace = null;
+    /** @var array<string, NamespaceContents> Lowercase namespace -> contents */
+    private array $byNamespace;
 
-    /** @var array<string, list<CatalogSymbol>>|null Kind name -> symbols */
-    private ?array $symbolsByKind = null;
+    /** @var array<string, true> FQN -> true, for O(1) constant membership */
+    private array $internalConstants;
 
-    public function __construct(
-        private readonly InternalConstantSet $constants,
-    ) {
-    }
+    /** @var array<string, list<CatalogSymbol>> Kind name -> symbols */
+    private array $symbolsByKind;
+
+    private bool $indexed = false;
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
-        $this->byNamespace ??= NamespaceContents::indexByNamespace($this->internalSymbols());
+        $this->buildIndex();
 
         return $this->byNamespace[$namespace->normalize()] ?? new NamespaceContents();
     }
@@ -98,8 +97,10 @@ final class BuiltinBackend implements SymbolSourceInterface
      */
     public function search(string $prefix, NameKind $kind): array
     {
+        $this->buildIndex();
+
         return PrefixSearch::filter(
-            $this->symbolsOfKind($kind),
+            $this->symbolsByKind[$kind->name],
             $prefix,
             $kind,
             static fn(): Location => new Location('', 0, 0, 0, 0),
@@ -158,8 +159,8 @@ final class BuiltinBackend implements SymbolSourceInterface
 
     private function constantInfo(QualifiedName $name): ?SymbolInfoInterface
     {
-        $fqn = $name->fullyQualifiedName();
-        if (!$this->constants->contains($fqn)) {
+        $this->buildIndex();
+        if (!array_key_exists($name->fullyQualifiedName(), $this->internalConstants)) {
             return null;
         }
 
@@ -377,11 +378,26 @@ final class BuiltinBackend implements SymbolSourceInterface
     }
 
     /**
-     * @return list<CatalogSymbol>
+     * Walks the runtime once and fills every derived index the reads use:
+     * the namespace grouping for {@see childrenOf}, the per-kind list for
+     * {@see search}, and the FQN set for constant lookup. The three cannot
+     * disagree because one walk feeds them all.
+     *
+     * PHP provides no `ReflectionConstant::isInternal`, so internal constants
+     * are gathered by exclusion: `get_defined_constants(categorize: true)`
+     * files user-defined ones under the `user` category.
      */
-    private function internalSymbols(): array
+    private function buildIndex(): void
     {
+        if ($this->indexed) {
+            return;
+        }
+
         $symbols = [];
+        $symbolsByKind = [];
+        foreach (NameKind::cases() as $kind) {
+            $symbolsByKind[$kind->name] = [];
+        }
 
         $classLikes = [
             ...get_declared_classes(),
@@ -390,19 +406,34 @@ final class BuiltinBackend implements SymbolSourceInterface
         ];
         foreach ($classLikes as $classLike) {
             if ((new ReflectionClass($classLike))->isInternal()) {
-                $symbols[] = new CatalogSymbol($classLike, NameKind::ClassLike);
+                $symbol = new CatalogSymbol($classLike, NameKind::ClassLike);
+                $symbols[] = $symbol;
+                $symbolsByKind[NameKind::ClassLike->name][] = $symbol;
             }
         }
 
         foreach (get_defined_functions()['internal'] as $function) {
-            $symbols[] = new CatalogSymbol($function, NameKind::Function_);
+            $symbol = new CatalogSymbol($function, NameKind::Function_);
+            $symbols[] = $symbol;
+            $symbolsByKind[NameKind::Function_->name][] = $symbol;
         }
 
-        foreach (array_keys($this->constants->all()) as $constant) {
-            $symbols[] = new CatalogSymbol($constant, NameKind::Constant);
+        $internalConstants = [];
+        $constants = get_defined_constants(categorize: true);
+        unset($constants['user']);
+        foreach ($constants as $category) {
+            foreach (array_keys($category) as $name) {
+                $internalConstants[$name] = true;
+                $symbol = new CatalogSymbol($name, NameKind::Constant);
+                $symbols[] = $symbol;
+                $symbolsByKind[NameKind::Constant->name][] = $symbol;
+            }
         }
 
-        return $symbols;
+        $this->byNamespace = NamespaceContents::indexByNamespace($symbols);
+        $this->symbolsByKind = $symbolsByKind;
+        $this->internalConstants = $internalConstants;
+        $this->indexed = true;
     }
 
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface
@@ -430,23 +461,6 @@ final class BuiltinBackend implements SymbolSourceInterface
             isVariadic: $param->isVariadic(),
             isPassedByReference: $param->isPassedByReference(),
         );
-    }
-
-    /**
-     * @return list<CatalogSymbol>
-     */
-    private function symbolsOfKind(NameKind $kind): array
-    {
-        if ($this->symbolsByKind === null) {
-            $this->symbolsByKind = [];
-            foreach (NameKind::cases() as $k) {
-                $this->symbolsByKind[$k->name] = [];
-            }
-            foreach ($this->internalSymbols() as $symbol) {
-                $this->symbolsByKind[$symbol->kind->name][] = $symbol;
-            }
-        }
-        return $this->symbolsByKind[$kind->name];
     }
 
     private static function formatReflectionDefault(mixed $value): string

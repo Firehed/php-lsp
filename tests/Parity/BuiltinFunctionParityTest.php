@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\InternalConstantSet;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use PHPUnit\Framework\TestCase;
 
@@ -47,7 +46,7 @@ final class BuiltinFunctionParityTest extends TestCase
     {
         // Assembled exactly as `KnowledgeStack::forProject` assembles the lowest-
         // precedence backend, so the oracle measures the shipped configuration.
-        $this->backend = new BuiltinBackend(new InternalConstantSet());
+        $this->backend = new BuiltinBackend();
     }
 
     public function testEnumeratedFunctionsMatchReflection(): void
