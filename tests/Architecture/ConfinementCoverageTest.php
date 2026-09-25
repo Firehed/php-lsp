@@ -50,7 +50,7 @@ final class ConfinementCoverageTest extends TestCase
 
         $unregistered = [];
         foreach (self::sourceClasslikeNames() as $className) {
-            if (!enum_exists($className)) {
+            if (!enum_exists($className, autoload: false)) {
                 continue;
             }
             if (in_array($className, $confined, true) || array_key_exists($className, self::NOT_A_SYMBOL_KIND)) {
@@ -111,7 +111,7 @@ final class ConfinementCoverageTest extends TestCase
     {
         $implementations = [];
         foreach (self::sourceClasslikeNames() as $className) {
-            if (!class_exists($className)) {
+            if (!class_exists($className, autoload: false)) {
                 continue;
             }
             $reflection = new ReflectionClass($className);
@@ -143,9 +143,15 @@ final class ConfinementCoverageTest extends TestCase
             }
             $relative = substr($file->getPathname(), strlen($root) + 1, -strlen('.php'));
             $className = 'Firehed\PhpLsp\\' . str_replace('/', '\\', $relative);
+            // Explicit require, then autoload-free existence check: the LSP
+            // process must never resolve a name through the SPL autoload
+            // chain, and tests hold the same invariant.
+            require_once $file->getPathname();
             self::assertTrue(
-                class_exists($className) || interface_exists($className)
-                    || enum_exists($className) || trait_exists($className),
+                class_exists($className, autoload: false)
+                    || interface_exists($className, autoload: false)
+                    || enum_exists($className, autoload: false)
+                    || trait_exists($className, autoload: false),
                 "{$file->getPathname()} does not declare {$className}",
             );
             $names[] = $className;
