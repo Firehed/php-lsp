@@ -296,15 +296,12 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
     /**
      * The path of $file below $directory, with `.php` stripped, or null when
-     * $file does not sit inside $directory.
+     * $file does not sit inside $directory. Callers guarantee the extension.
      */
     private static function relativePhpPath(string $directory, string $file): ?string
     {
         $normalized = rtrim($directory, '/') . '/';
         if (!str_starts_with($file, $normalized)) {
-            return null;
-        }
-        if (!str_ends_with($file, '.php')) {
             return null;
         }
 

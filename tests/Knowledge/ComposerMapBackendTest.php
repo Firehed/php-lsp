@@ -264,6 +264,105 @@ final class ComposerMapBackendTest extends TestCase
         }
     }
 
+    public function testInvalidateIsANoOpWhenTheFileStillResolvesToTheSameName(): void
+    {
+        $backend = $this->backend();
+        $before = self::fqnsOfSearch($backend->search('User', NameKind::ClassLike));
+        self::assertContains('Fixtures\Domain\User', $before, 'sanity: the walk sees User');
+
+        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php'));
+
+        self::assertSame(
+            $before,
+            self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+            'a file whose walked name is unchanged must leave the index alone',
+        );
+    }
+
+    public function testInvalidateIgnoresAPathOutsideEveryPrefix(): void
+    {
+        // An existing `.php` file outside every prefix must walk through the
+        // PSR-4 and PSR-0 loops in the derive step and land on the null-return
+        // rather than a match, so nothing is added.
+        $orphan = tempnam(sys_get_temp_dir(), 'php-lsp-orphan-') . '.php';
+        file_put_contents($orphan, "<?php\n");
+
+        try {
+            $backend = $this->backend();
+            $before = self::fqnsOfSearch($backend->search('User', NameKind::ClassLike));
+
+            $backend->invalidate(FileUri::fromPath($orphan));
+
+            self::assertSame(
+                $before,
+                self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+                'a path no prefix maps must leave the index alone',
+            );
+        } finally {
+            unlink($orphan);
+        }
+    }
+
+    public function testInvalidateBeforeTheFirstReadIsANoOp(): void
+    {
+        // The index is built lazily on the first read: a stray invalidate that
+        // preceded any query has nothing to adjust and must not force a walk.
+        $backend = $this->backend();
+        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php'));
+
+        self::assertContains(
+            'Fixtures\Domain\User',
+            self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+            'the first read builds the index from disk regardless of prior invalidations',
+        );
+    }
+
+    public function testInvalidateAddsANewPsr0File(): void
+    {
+        $newFile = $this->fixturesRoot . '/Autoload/Psr0/Psr0New.php';
+        self::assertFileDoesNotExist($newFile, 'the fixture must not shadow a real file');
+
+        $backend = $this->backend();
+        self::assertNotContains(
+            'Psr0\Psr0New',
+            self::fqnsOfSearch($backend->search('Psr0New', NameKind::ClassLike)),
+            'sanity: the pre-invalidate index does not know about the file',
+        );
+
+        file_put_contents($newFile, "<?php\n\nclass Psr0_Psr0New {}\n");
+        try {
+            $backend->invalidate(FileUri::fromPath($newFile));
+
+            self::assertContains(
+                'Psr0\Psr0New',
+                self::fqnsOfSearch($backend->search('Psr0New', NameKind::ClassLike)),
+                'a PSR-0 file added after the walk must appear after invalidation',
+            );
+        } finally {
+            unlink($newFile);
+        }
+    }
+
+    public function testBuildIndexDedupesClassmapAgainstPsr4Walk(): void
+    {
+        // A classmap entry and a PSR-4 walked file can both point at the same
+        // FQN: e.g. a project's own classmap listing a class it also autoloads
+        // through a prefix. The second write to the catalog must be dropped so
+        // that childrenOf returns one row rather than two.
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['Fixtures\\' => [$this->fixturesRoot . '/src']],
+            classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
+        ));
+
+        $enumerated = self::fqns($backend->childrenOf(new NamespaceName('Fixtures\Domain')));
+
+        self::assertSame(
+            1,
+            count(array_filter($enumerated, static fn(string $fqn): bool => $fqn === 'Fixtures\Domain\User')),
+            'a name reachable both ways must appear once in the enumeration',
+        );
+    }
+
     public function testChildrenOfEnumeratesPsr4ContentsFromTheDirectoryListing(): void
     {
         $contents = $this->backend()->childrenOf(new NamespaceName('Fixtures\Domain'));
