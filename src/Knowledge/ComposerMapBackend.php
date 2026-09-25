@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
+use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Index\Symbol;
@@ -137,8 +138,7 @@ final class ComposerMapBackend implements SymbolSourceInterface
     private function fromClassMap(string $namespace): NamespaceContents
     {
         $this->classMapIndex ??= NamespaceContents::indexByNamespace(array_map(
-            static fn(string $fqn): \Firehed\PhpLsp\Index\CatalogSymbol
-                => new \Firehed\PhpLsp\Index\CatalogSymbol($fqn, NameKind::ClassLike),
+            static fn(string $fqn): CatalogSymbol => new CatalogSymbol($fqn, NameKind::ClassLike),
             array_keys($this->map->classMap()),
         ));
 
