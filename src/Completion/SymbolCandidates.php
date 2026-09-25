@@ -17,7 +17,6 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\Reference;
-use Firehed\PhpLsp\Resolution\ReferenceKind;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
@@ -284,29 +283,17 @@ final class SymbolCandidates
     }
 
     /**
-     * When the completion cap sorts by `sortText ?? label`, a wide prefix at
-     * global scope lets long-qualified workspace names (e.g. long-qualified
-     * class-likes reached via {@see ReferenceKind::SubNamespace}) crowd out
-     * shorter, more relevant matches like a built-in function reached in the
-     * current namespace. The reference-kind ordering encodes exactly this
-     * ranking — nearer references outrank farther ones — so a `<n>_` prefix
-     * on the sortText makes the cap sort agree.
+     * A `<n>_` prefix on `sortText` makes the response cap's `sortText ?? label`
+     * sort agree with {@see \Firehed\PhpLsp\Resolution\ReferenceKind::priority()},
+     * so a wide prefix at global scope cannot let long-qualified workspace names
+     * crowd out shorter, more relevant matches.
      *
      * @param CompletionItem $item
      * @return CompletionItem
      */
     private static function withReferencePriority(array $item, Reference $reference): array
     {
-        $priorityByKind = [
-            ReferenceKind::CurrentNamespace->name => 0,
-            ReferenceKind::Import->name => 1,
-            ReferenceKind::PrefixImport->name => 2,
-            ReferenceKind::GlobalFallback->name => 3,
-            ReferenceKind::SubNamespace->name => 4,
-            ReferenceKind::Unreachable->name => 5,
-        ];
-        $priority = $priorityByKind[$reference->kind->name];
-        $item['sortText'] = $priority . '_' . ($item['sortText'] ?? $item['label']);
+        $item['sortText'] = $reference->kind->priority() . '_' . ($item['sortText'] ?? $item['label']);
 
         return $item;
     }

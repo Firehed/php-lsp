@@ -10,14 +10,13 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Protocol\NotificationMessage;
-use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -28,6 +27,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class CompletionCapFloodTest extends TestCase
 {
+    use BuildsKnowledgeStackTrait;
+    use OpensDocumentsTrait;
     use WiresCompletionSourceTrait;
 
     // Cap is 100; exceeding it is what makes the ranking observable.
@@ -48,9 +49,8 @@ final class CompletionCapFloodTest extends TestCase
             $classmap[self::FLOOD_NAMESPACE . '\\Str' . sprintf('%03d', $i)] = __FILE__;
         }
 
-        $map = new ComposerAutoloadMap(classMap: $classmap);
         $production = ProductionSyntaxSource::create();
-        $knowledge = KnowledgeStack::forProject($map, $production->source, $production->reader);
+        $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(classMap: $classmap), $production);
 
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
@@ -73,52 +73,39 @@ final class CompletionCapFloodTest extends TestCase
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
     }
 
-    public function testBuiltinStringFunctionsSurviveClassLikeFloodAtGlobalScope(): void
+    /**
+     * @return iterable<string, array{string, int, int}>
+     */
+    public static function scopes(): iterable
     {
-        $labels = $this->completeAt("<?php\n\$x = str", line: 1, character: 8);
+        yield 'global scope' => ["<?php\n\$x = str", 1, 8];
+        yield 'namespaced scope' => ["<?php\nnamespace App\\Controllers;\n\$x = str", 2, 8];
+        yield 'call context' => ["<?php\nfunction consume(callable \$c): void {}\nconsume(str", 2, 11];
+    }
+
+    #[DataProvider('scopes')]
+    public function testBuiltinStringFunctionsSurviveClassLikeFlood(string $source, int $line, int $character): void
+    {
+        $this->openDocument(self::PROBE_URI, $source);
+        $result = $this->handler->handle($this->completionRequestAt([
+            'uri' => self::PROBE_URI,
+            'line' => $line,
+            'character' => $character,
+        ]));
+        self::assertIsArray($result);
+        self::assertArrayHasKey('items', $result);
+        $labels = array_column($result['items'], 'label');
 
         self::assertGreaterThanOrEqual(
             5,
             count(self::stringFunctionsIn($labels)),
-            'the str_* family must reach the global-scope response under the class-like flood',
+            'the str_* family must reach the response under the class-like flood',
         );
         self::assertContains(
             'str_contains',
             $labels,
             'str_contains is a long-stable member of the family; its absence signals a total collapse',
         );
-    }
-
-    public function testBuiltinStringFunctionsSurviveClassLikeFloodInNamespacedScope(): void
-    {
-        $labels = $this->completeAt(
-            "<?php\nnamespace App\\Controllers;\n\$x = str",
-            line: 2,
-            character: 8,
-        );
-
-        self::assertGreaterThanOrEqual(
-            5,
-            count(self::stringFunctionsIn($labels)),
-            'the str_* family must reach the response even from an unrelated namespace',
-        );
-        self::assertContains('str_contains', $labels);
-    }
-
-    public function testBuiltinStringFunctionsSurviveClassLikeFloodInsideCallContext(): void
-    {
-        $labels = $this->completeAt(
-            "<?php\nfunction consume(callable \$c): void {}\nconsume(str",
-            line: 2,
-            character: 11,
-        );
-
-        self::assertGreaterThanOrEqual(
-            5,
-            count(self::stringFunctionsIn($labels)),
-            'the str_* family must reach the call-context response under the flood',
-        );
-        self::assertContains('str_contains', $labels);
     }
 
     /**
@@ -132,44 +119,5 @@ final class CompletionCapFloodTest extends TestCase
             static fn(string $label): bool => str_starts_with($label, 'str_')
                 && function_exists($label),
         ));
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function completeAt(string $probeSource, int $line, int $character): array
-    {
-        $this->openDocument(self::PROBE_URI, $probeSource);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => self::PROBE_URI],
-                'position' => ['line' => $line, 'character' => $character],
-            ],
-        ]);
-        $result = $this->handler->handle($request);
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-
-        return array_column($result['items'], 'label');
-    }
-
-    private function openDocument(string $uri, string $code): void
-    {
-        $this->syncHandler->handle(NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didOpen',
-            'params' => [
-                'textDocument' => [
-                    'uri' => $uri,
-                    'languageId' => 'php',
-                    'version' => 1,
-                    'text' => $code,
-                ],
-            ],
-        ]));
     }
 }
