@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Index;
+namespace Firehed\PhpLsp\Tests\Domain;
 
+use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\NamespaceContents;
+use Firehed\PhpLsp\Domain\NamespaceContents;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

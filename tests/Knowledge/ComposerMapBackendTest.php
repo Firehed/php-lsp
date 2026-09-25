@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Domain\CatalogSymbol;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
-use Firehed\PhpLsp\Index\NamespaceContents;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -649,13 +649,13 @@ final class ComposerMapBackendTest extends TestCase
     }
 
     /**
-     * @param list<\Firehed\PhpLsp\Index\Symbol> $results
+     * @param list<\Firehed\PhpLsp\Domain\Symbol> $results
      * @return list<string>
      */
     private static function fqnsOfSearch(array $results): array
     {
         return array_map(
-            static fn(\Firehed\PhpLsp\Index\Symbol $symbol): string => $symbol->fullyQualifiedName,
+            static fn(\Firehed\PhpLsp\Domain\Symbol $symbol): string => $symbol->fullyQualifiedName,
             $results,
         );
     }

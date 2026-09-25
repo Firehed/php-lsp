@@ -14,11 +14,11 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\NamespaceOwnedNameInterface;
+use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
-use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\Symbol;
 use Psr\SimpleCache\CacheInterface;
 
 /**

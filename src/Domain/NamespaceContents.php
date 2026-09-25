@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Index;
-
-use Firehed\PhpLsp\Domain\NamespaceName;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * The immediate children of a namespace: the namespaces directly beneath it and

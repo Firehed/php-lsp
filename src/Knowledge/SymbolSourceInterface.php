@@ -11,9 +11,9 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\Symbol;
+use Firehed\PhpLsp\Domain\Symbol;
 
 /**
  * The read contract for symbol knowledge (RFC 1 §4.2, §5.1): every query for symbol

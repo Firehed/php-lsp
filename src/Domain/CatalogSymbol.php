@@ -2,11 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Index;
-
-use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\QualifiedName;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * A symbol discovered in a namespace.
