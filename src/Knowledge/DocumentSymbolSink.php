@@ -14,12 +14,6 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * {@see DocumentSymbolStoreInterface}, so lookup, enumeration and prefix search all draw
  * from one map. The skeleton source in the composite recovers the structural shape
  * of a document php-parser drops, so a mid-edit still yields declarations (RFC 1 §5.3).
- *
- * On close the sink drops the open-document entry only. The on-disk cache is
- * invalidated by the sync handler on the same event, so the two invalidation
- * paths (`didChangeWatchedFiles` and close-after-edit) share one seam through
- * {@see \Firehed\PhpLsp\Cache\InvalidatableInterface} rather than routing through
- * this write path.
  */
 final class DocumentSymbolSink implements SymbolSinkInterface
 {
