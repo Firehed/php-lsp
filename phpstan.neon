@@ -270,7 +270,7 @@ parameters:
             message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
             allowIn:
                 - src/Parser/SourceFileReader.php
-                - src/Index/ComposerAutoloadMap.php
+                - src/Domain/ComposerAutoloadMap.php
                 - src/Knowledge/ComposerMapBackend.php
                 - src/Transport/*
                 - tests/*

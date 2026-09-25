@@ -24,7 +24,7 @@ final class FileInclusionRule implements Rule
      * docs/architecture/enforcement-edits.md.
      */
     private const array ALLOWED_FILES = [
-        'src/Index/ComposerAutoloadMap.php', // Composer writes its maps as PHP
+        'src/Domain/ComposerAutoloadMap.php', // Composer writes its maps as PHP
     ];
 
     private const array KEYWORDS = [
