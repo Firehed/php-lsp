@@ -119,6 +119,7 @@ final class Server
         );
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;
+        $invalidator = $knowledge->invalidator;
 
         $memberResolver = new MemberResolver($symbolSource);
         $typeSource = new NativeTypeSource($symbolSource, $memberResolver);
@@ -142,8 +143,9 @@ final class Server
             new TextDocumentSyncHandler(
                 $documentManager,
                 $symbolSink,
+                $invalidator,
             ),
-            new DidChangeWatchedFilesHandler($symbolSink),
+            new DidChangeWatchedFilesHandler($invalidator),
             new DefinitionHandler(
                 $documentManager,
                 $symbolResolver,

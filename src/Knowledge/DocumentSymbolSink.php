@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -13,9 +12,14 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * The single write path for open-document symbol state (RFC 1 §4.3, §5.2): document
  * lifecycle events register the document's declared symbols with the
  * {@see DocumentSymbolStoreInterface}, so lookup, enumeration and prefix search all draw
- * from one map (build-manifest step-46). The skeleton source in the composite
- * recovers the structural shape of a document php-parser drops, so a mid-edit
- * still yields declarations (RFC 1 §5.3).
+ * from one map. The skeleton source in the composite recovers the structural shape
+ * of a document php-parser drops, so a mid-edit still yields declarations (RFC 1 §5.3).
+ *
+ * On close the sink drops the open-document entry only. The on-disk cache is
+ * invalidated by the sync handler on the same event, so the two invalidation
+ * paths (`didChangeWatchedFiles` and close-after-edit) share one seam through
+ * {@see \Firehed\PhpLsp\Cache\InvalidatableInterface} rather than routing through
+ * this write path.
  */
 final class DocumentSymbolSink implements SymbolSinkInterface
 {
@@ -24,26 +28,12 @@ final class DocumentSymbolSink implements SymbolSinkInterface
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly SyntaxSourceInterface $parser,
         private readonly DeclarationScanner $scanner,
-        // Cached on-disk state has to forget a changed or closed-after-edit file
-        // on the same event the sink handles, or the next query serves stale data
-        // (RFC 1 §5.2, §5.3).
-        private readonly InvalidatableInterface $onDiskInvalidator,
     ) {
     }
 
     public function closeDocument(string $uri): void
     {
         $this->store->removeDocument($uri);
-
-        // Closing a file that was edited in the editor must re-read from disk on
-        // the next query rather than restore the pre-edit cached value (RFC 1 §5.3):
-        // the open-document answer is gone, so drop any stale on-disk cache too.
-        $this->invalidate($uri);
-    }
-
-    public function invalidate(string $uri): void
-    {
-        $this->onDiskInvalidator->invalidate($uri);
     }
 
     public function openDocument(TextDocument $document): void

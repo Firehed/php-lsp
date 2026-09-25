@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
- * Assembles the symbol-knowledge tier: the {@see SymbolSourceInterface} read composite over
- * its fixed backend precedence, and the {@see SymbolSinkInterface} write path, sharing one
- * open-document backend (RFC 1 §4.2, §4.3, §5.3).
+ * Assembles the symbol-knowledge tier: the {@see SymbolSourceInterface} read composite
+ * over its fixed backend precedence, the {@see SymbolSinkInterface} write path for open
+ * documents, and the {@see InvalidatableInterface} fan-out that drops cached on-disk
+ * state (RFC 1 §4.2, §4.3, §5.2, §5.3).
  *
  * The wiring lives here, in one place, so the composition root ({@see \Firehed\PhpLsp\Server})
  * and the tests that exercise the surfaces (parity, handlers) build the same stack
@@ -23,6 +25,7 @@ final readonly class KnowledgeStack
     public function __construct(
         public SymbolSourceInterface $source,
         public SymbolSinkInterface $sink,
+        public InvalidatableInterface $invalidator,
     ) {
     }
 
@@ -79,9 +82,12 @@ final readonly class KnowledgeStack
             $declarationInfoFactory,
             $parser,
             $scanner,
-            new CompositeInvalidatable($disk, $composerMap, $autoloadFiles),
         );
 
-        return new self($source, $sink);
+        return new self(
+            $source,
+            $sink,
+            new CompositeInvalidatable($disk, $composerMap, $autoloadFiles),
+        );
     }
 }

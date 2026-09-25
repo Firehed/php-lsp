@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -36,7 +35,7 @@ final class DocumentSymbolSinkTest extends TestCase
     protected function setUp(): void
     {
         $this->backend = new OpenDocumentBackend();
-        $this->sink = $this->sinkWithOnDiskInvalidator(self::createStub(InvalidatableInterface::class));
+        $this->sink = $this->buildSink();
     }
 
     public function testOpenDocumentRegistersDocumentSymbols(): void
@@ -193,30 +192,6 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
-    public function testInvalidateDelegatesToTheOnDiskInvalidator(): void
-    {
-        $uri = 'file:///workspace/src/Changed.php';
-        $onDisk = $this->createMock(InvalidatableInterface::class);
-        $onDisk->expects($this->once())
-            ->method('invalidate')
-            ->with($uri);
-
-        $this->sinkWithOnDiskInvalidator($onDisk)->invalidate($uri);
-    }
-
-    public function testCloseDocumentInvalidatesTheOnDiskInvalidatorSoItReReadsFromDisk(): void
-    {
-        $uri = 'file:///workspace/src/Widget.php';
-        $onDisk = $this->createMock(InvalidatableInterface::class);
-        // Closing a file that was edited in the editor must drop the on-disk cache
-        // so the next query reflects disk rather than the pre-edit value (RFC 1 §5.3).
-        $onDisk->expects($this->once())
-            ->method('invalidate')
-            ->with($uri);
-
-        $this->sinkWithOnDiskInvalidator($onDisk)->closeDocument($uri);
-    }
-
     public function testOpeningABrokenFileRegistersTheShapeTheSkeletonRecovers(): void
     {
         // The skeleton source in the composite (step-37) recovers a mid-edit
@@ -283,7 +258,7 @@ final class DocumentSymbolSinkTest extends TestCase
         ];
     }
 
-    private function sinkWithOnDiskInvalidator(InvalidatableInterface $onDiskInvalidator): DocumentSymbolSink
+    private function buildSink(): DocumentSymbolSink
     {
         $parser = ProductionSyntaxSource::create()->source;
 
@@ -292,7 +267,6 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationSymbolInfoFactory(),
             $parser,
             new DeclarationScanner(),
-            $onDiskInvalidator,
         );
     }
 }

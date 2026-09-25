@@ -59,7 +59,7 @@ class HoverHandlerTest extends TestCase
         // minimal client is served); the fenced-markdown path is exercised
         // explicitly below.
         $this->handler = $this->handlerFor(MarkupKind::PlainText);
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     public function testSupports(): void

@@ -64,6 +64,7 @@ deptrac:
       - Resolution
       - Transport
     Handler:
+      - Cache # InvalidatableInterface: watched-file changes and close-after-edit drop cached on-disk state
       - Capability
       - Completion
       - Document

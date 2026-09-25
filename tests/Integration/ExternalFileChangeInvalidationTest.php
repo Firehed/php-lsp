@@ -24,8 +24,8 @@ use PHPUnit\Framework\TestCase;
  * checkout, and a deletion are each reflected on the next query, and closing an
  * edited file re-reads from disk rather than restoring the pre-edit cache.
  *
- * The change notifications drive the real handler → {@see \Firehed\PhpLsp\Knowledge\SymbolSinkInterface}
- * → backend chain; the workspace is a temp directory mutated between queries.
+ * The change notifications drive the real handler → {@see \Firehed\PhpLsp\Cache\InvalidatableInterface}
+ * fan-out → backend chain; the workspace is a temp directory mutated between queries.
  */
 #[CoversNothing]
 class ExternalFileChangeInvalidationTest extends TestCase
@@ -63,7 +63,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
     {
         $this->writeClass('Widget', '');
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->sink);
+        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
 
         $before = $stack->source->lookupClassLike($this->classNameFor('Widget'));
         self::assertNotNull($before, 'the unopened workspace class must resolve from disk');
@@ -87,7 +87,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
         $this->writeClass('Alpha', '');
         $this->writeClass('Beta', '');
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->sink);
+        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
 
         $this->warm($stack->source, 'Alpha', 'Beta');
 
@@ -107,7 +107,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
     {
         $this->writeClass('Widget', '');
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->sink);
+        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
 
         self::assertNotNull(
             $stack->source->lookupClassLike($this->classNameFor('Widget')),
@@ -126,7 +126,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
     public function testAClassCreatedAfterAFailedLookupResolvesOnTheNextQuery(): void
     {
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->sink);
+        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
 
         self::assertNull(
             $stack->source->lookupClassLike($this->classNameFor('Late')),
@@ -154,7 +154,11 @@ class ExternalFileChangeInvalidationTest extends TestCase
         $stack->sink->openDocument(new TextDocument($uri, 'php', 1, $this->classSource('Widget', '')));
         $this->writeClass('Widget', 'public function saved(): void {}');
 
+        // The sync handler drops the open-document entry and then invalidates the
+        // on-disk cache so the next query reflects disk rather than the pre-edit
+        // cached class (RFC 1 §5.3).
         $stack->sink->closeDocument($uri);
+        $stack->invalidator->invalidate($uri);
 
         $reopened = $stack->source->lookupClassLike($this->classNameFor('Widget'));
         self::assertNotNull($reopened, 'the class still resolves from disk after close');
@@ -180,7 +184,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
             new ComposerAutoloadMap(files: [$path]),
             $this->syntax,
         );
-        $handler = new DidChangeWatchedFilesHandler($stack->sink);
+        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
 
         self::assertSame(
             ['Temp\FilesBefore'],

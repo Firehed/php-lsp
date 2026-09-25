@@ -210,7 +210,7 @@ final class CompletionParityTest extends TestCase
             $documents,
             self::completionSourceFor($knowledge->source, $resolver, $capabilities),
         );
-        $sync = new TextDocumentSyncHandler($documents, $knowledge->sink);
+        $sync = new TextDocumentSyncHandler($documents, $knowledge->sink, $knowledge->invalidator);
 
         return new CompletionHarness($handler, $sync);
     }

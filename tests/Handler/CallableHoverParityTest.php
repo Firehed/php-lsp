@@ -56,7 +56,7 @@ class CallableHoverParityTest extends TestCase
             ->willReturn(new SessionCapabilities(hoverMarkupKind: MarkupKind::PlainText));
 
         $this->handler = new HoverHandler($this->documents, $this->symbolResolver, $capabilities);
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     /**

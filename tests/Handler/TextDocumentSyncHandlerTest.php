@@ -35,7 +35,7 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->metrics = $production->metrics;
         $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $this->source = $knowledge->source;
-        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink);
+        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $knowledge->invalidator);
     }
 
     public function testSupports(): void

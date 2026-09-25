@@ -314,10 +314,10 @@ parameters:
     disallowedMethodCalls:
         -
             method: 'Firehed\PhpLsp\Cache\InvalidatableInterface::invalidate()'
-            message: 'single write path (RFC 1 §5.2/§5.3): every cached on-disk holder forgets a changed file together, which is DocumentSymbolSink''s fan-out; evicting one leaves the others stale'
+            message: 'single write path (RFC 1 §5.2/§5.3): every cached on-disk holder forgets a changed file together, which is the invalidation composite''s fan-out; evicting one leaves the others stale'
             allowIn:
-                - src/Knowledge/DocumentSymbolSink.php
-                - src/Handler/DidChangeWatchedFilesHandler.php # the watched-file trigger, which calls the sink
+                - src/Handler/DidChangeWatchedFilesHandler.php # the watched-file trigger
+                - src/Handler/TextDocumentSyncHandler.php # the close-after-edit trigger, paired with the sink
                 - src/Knowledge/CompositeInvalidatable.php # the fan-out itself
                 - tests/*
         -
