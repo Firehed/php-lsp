@@ -23,15 +23,16 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
+use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Index\CatalogSymbol;
 use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\PrefixSearch;
 use Firehed\PhpLsp\Index\Symbol;
 use ReflectionClass;
 use ReflectionException;
@@ -93,18 +94,38 @@ final class BuiltinBackend implements SymbolSourceInterface
     }
 
     /**
+     * Class-likes are excluded: a bare prefix would surface built-ins that do
+     * not resolve unqualified in the file's namespace, which is auto-import,
+     * a separate concern.
+     *
      * @return list<Symbol>
      */
     public function search(string $prefix, NameKind $kind): array
     {
         $this->buildIndex();
 
-        return PrefixSearch::filter(
-            $this->symbolsByKind[$kind->name],
-            $prefix,
-            $kind,
-            static fn(): Location => new Location('', 0, 0, 0, 0),
-        );
+        $symbolKind = match ($kind) {
+            NameKind::Function_ => SymbolKind::Function_,
+            NameKind::Constant => SymbolKind::Constant,
+            NameKind::ClassLike => null,
+        };
+        if ($symbolKind === null) {
+            return [];
+        }
+
+        $results = [];
+        foreach ($this->symbolsByKind[$kind->name] as $catalogSymbol) {
+            if (PrefixMatcher::matches($catalogSymbol->shortName(), $prefix)) {
+                $results[] = new Symbol(
+                    name: $catalogSymbol->shortName(),
+                    fullyQualifiedName: $catalogSymbol->fullyQualifiedName,
+                    kind: $symbolKind,
+                    location: new Location('', 0, 0, 0, 0),
+                    nameKind: $kind,
+                );
+            }
+        }
+        return $results;
     }
 
     private function classInfo(QualifiedName $name): ?SymbolInfoInterface

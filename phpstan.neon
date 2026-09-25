@@ -256,11 +256,11 @@ parameters:
                 - 'disk_total_space()'
                 - 'parse_ini_file()'
                 - 'move_uploaded_file()'
-            message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap/ComposerNamespaceSource read Composer metadata, transport owns its streams'
+            message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
             allowIn:
                 - src/Parser/SourceFileReader.php
                 - src/Index/ComposerAutoloadMap.php
-                - src/Index/ComposerNamespaceSource.php
+                - src/Knowledge/ComposerMapBackend.php
                 - src/Transport/*
                 - tests/*
 
@@ -296,7 +296,7 @@ parameters:
                 - 'SplFileInfo'
                 - 'SplFileObject'
                 - 'SplTempFileObject'
-            message: 'filesystem access is confined, and its readers (SourceFileReader, ComposerAutoloadMap, ComposerNamespaceSource, transport) reach the disk through functions rather than through a file object'
+            message: 'filesystem access is confined, and its readers (SourceFileReader, ComposerAutoloadMap, ComposerMapBackend, transport) reach the disk through functions rather than through a file object'
             allowIn:
                 - tests/*
 

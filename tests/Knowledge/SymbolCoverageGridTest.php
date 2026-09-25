@@ -38,13 +38,13 @@ final class SymbolCoverageGridTest extends TestCase
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        'FilesystemBackend|ClassLike|search' => 'RFC 1 §3',
-        'FilesystemBackend|Function_|lookup' => 'RFC 1 §3',
-        'FilesystemBackend|Function_|search' => 'RFC 1 §3',
-        'FilesystemBackend|Function_|childrenOf' => 'RFC 1 §3',
-        'FilesystemBackend|Constant|lookup' => 'RFC 1 §3',
-        'FilesystemBackend|Constant|search' => 'RFC 1 §3',
-        'FilesystemBackend|Constant|childrenOf' => 'RFC 1 §3',
+        'ComposerMapBackend|ClassLike|search' => 'RFC 1 §3',
+        'ComposerMapBackend|Function_|lookup' => 'RFC 1 §3',
+        'ComposerMapBackend|Function_|search' => 'RFC 1 §3',
+        'ComposerMapBackend|Function_|childrenOf' => 'RFC 1 §3',
+        'ComposerMapBackend|Constant|lookup' => 'RFC 1 §3',
+        'ComposerMapBackend|Constant|search' => 'RFC 1 §3',
+        'ComposerMapBackend|Constant|childrenOf' => 'RFC 1 §3',
         'BuiltinBackend|ClassLike|search' => '#23',
     ];
 
@@ -66,7 +66,7 @@ final class SymbolCoverageGridTest extends TestCase
             'Function_' => ['name' => 'Fixtures\Helpers\helperFormat', 'namespace' => 'Fixtures\Helpers'],
             'Constant' => ['name' => 'Fixtures\Helpers\HELPER_LIMIT', 'namespace' => 'Fixtures\Helpers'],
         ],
-        'FilesystemBackend' => [
+        'ComposerMapBackend' => [
             'ClassLike' => ['name' => 'Fixtures\Domain\User', 'namespace' => 'Fixtures\Domain'],
             'Function_' => ['name' => 'Fixtures\Helpers\helperFormat', 'namespace' => 'Fixtures\Helpers'],
             'Constant' => ['name' => 'Fixtures\Helpers\HELPER_LIMIT', 'namespace' => 'Fixtures\Helpers'],

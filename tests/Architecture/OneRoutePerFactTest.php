@@ -6,9 +6,7 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
-use Firehed\PhpLsp\Index\NamespaceCatalogInterface;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Knowledge\SymbolLocatorInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -73,18 +71,6 @@ final class OneRoutePerFactTest extends TestCase
     public static function facts(): iterable
     {
         $rows = [
-            Fact::family(
-                name: 'namespace catalog',
-                interface: NamespaceCatalogInterface::class,
-                roots: [KnowledgeStack::class],
-                layoutPending: 'step-52',
-            ),
-            Fact::family(
-                name: 'symbol locator',
-                interface: SymbolLocatorInterface::class,
-                roots: [KnowledgeStack::class],
-                layoutPending: 'step-52',
-            ),
             Fact::family(
                 name: 'symbol source',
                 interface: SymbolSourceInterface::class,
@@ -218,16 +204,13 @@ final class OneRoutePerFactTest extends TestCase
 
     public function testImplementationScanFindsTheKnownFamily(): void
     {
-        $found = array_keys(self::implementationsOf(SymbolLocatorInterface::class));
+        $found = array_keys(self::implementationsOf(SymbolSourceInterface::class));
         sort($found);
 
-        self::assertSame(
-            [
-                'Firehed\\PhpLsp\\Index\\ComposerSymbolLocator',
-                'Firehed\\PhpLsp\\Knowledge\\CompositeSymbolLocator',
-            ],
+        self::assertContains(
+            'Firehed\\PhpLsp\\Knowledge\\ComposerMapBackend',
             $found,
-            'the implementation scan must see a class that implements the interface among others',
+            'the implementation scan must see a class that implements the interface',
         );
     }
 

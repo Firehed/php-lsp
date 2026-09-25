@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Index;
 
 /**
  * The autoload maps Composer generates for a project, as data. Resolving a name
- * through them is {@see ComposerSymbolLocator}'s job, which runs Composer's own
+ * through them is the on-disk symbol backend's job, which runs Composer's own
  * loader over these arrays so the runtime's rules apply verbatim.
  *
  * These are what make enumerating `vendor/` affordable. A PSR-4 prefix maps a

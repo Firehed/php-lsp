@@ -14,8 +14,8 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Golden parity for the namespace-enumeration surface — `NamespaceCatalogInterface::
- * childrenOf()`, which Step 2 migrates onto `SymbolSourceInterface::childrenOf`. The
+ * Golden parity for the namespace-enumeration surface —
+ * `SymbolSourceInterface::childrenOf()`. The
  * golden queries only namespaces with no internal (reflected) symbols, whose
  * output is therefore stable across the 8.3/8.4/8.5 CI matrix; the built-in
  * reflection source is version-fragile and is covered by a subset assertion.
@@ -89,7 +89,7 @@ final class ChildrenOfParityTest extends TestCase
         }
 
         // A class that lives only in an open, unsaved document: its namespace has no
-        // on-disk PSR-4 backing, so ComposerNamespaceSource cannot see it and the
+        // on-disk PSR-4 backing, so the on-disk backend cannot see it and the
         // open-document backend is its sole provider. Every *other* workspace symbol
         // and derived child namespace in this corpus is also produced by the composer
         // source (the indexed files exist on disk under a PSR-4 prefix), so without
