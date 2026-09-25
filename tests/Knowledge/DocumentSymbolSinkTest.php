@@ -199,7 +199,7 @@ final class DocumentSymbolSinkTest extends TestCase
         );
     }
 
-    public function testInvalidateFansOutToTheOnDiskBackends(): void
+    public function testInvalidateDelegatesToTheOnDiskInvalidator(): void
     {
         $uri = 'file:///workspace/src/Changed.php';
         $onDisk = $this->createMock(InvalidatableInterface::class);
@@ -207,10 +207,10 @@ final class DocumentSymbolSinkTest extends TestCase
             ->method('invalidate')
             ->with($uri);
 
-        $this->sinkWithOnDiskBackends($onDisk)->invalidate($uri);
+        $this->sinkWithOnDiskInvalidator($onDisk)->invalidate($uri);
     }
 
-    public function testCloseDocumentInvalidatesTheOnDiskBackendsSoTheyReReadFromDisk(): void
+    public function testCloseDocumentInvalidatesTheOnDiskInvalidatorSoItReReadsFromDisk(): void
     {
         $uri = 'file:///workspace/src/Widget.php';
         $onDisk = $this->createMock(InvalidatableInterface::class);
@@ -220,7 +220,7 @@ final class DocumentSymbolSinkTest extends TestCase
             ->method('invalidate')
             ->with($uri);
 
-        $this->sinkWithOnDiskBackends($onDisk)->closeDocument($uri);
+        $this->sinkWithOnDiskInvalidator($onDisk)->closeDocument($uri);
     }
 
     public function testOpeningABrokenFileRegistersTheShapeTheSkeletonRecovers(): void
@@ -289,7 +289,7 @@ final class DocumentSymbolSinkTest extends TestCase
         ];
     }
 
-    private function sinkWithOnDiskBackends(InvalidatableInterface ...$onDiskBackends): DocumentSymbolSink
+    private function sinkWithOnDiskInvalidator(InvalidatableInterface $onDiskInvalidator): DocumentSymbolSink
     {
         $parser = ProductionSyntaxSource::create()->source;
 
@@ -298,7 +298,7 @@ final class DocumentSymbolSinkTest extends TestCase
             new DeclarationSymbolInfoFactory(),
             $parser,
             new DeclarationScanner(),
-            array_values($onDiskBackends),
+            $onDiskInvalidator,
         );
     }
 }
