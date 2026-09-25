@@ -19,17 +19,15 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  */
 final class DocumentSymbolSink implements SymbolSinkInterface
 {
-    /**
-     * @param list<InvalidatableInterface> $onDiskBackends the cached on-disk backends
-     *        whose entry for a file must be dropped when that file changes on disk
-     *        or is closed after being edited (RFC 1 §5.2, §5.3)
-     */
     public function __construct(
         private readonly DocumentSymbolStoreInterface $store,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly SyntaxSourceInterface $parser,
         private readonly DeclarationScanner $scanner,
-        private readonly array $onDiskBackends = [],
+        // Cached on-disk state has to forget a changed or closed-after-edit file
+        // on the same event the sink handles, or the next query serves stale data
+        // (RFC 1 §5.2, §5.3).
+        private readonly InvalidatableInterface $onDiskInvalidator,
     ) {
     }
 
@@ -45,9 +43,7 @@ final class DocumentSymbolSink implements SymbolSinkInterface
 
     public function invalidate(string $uri): void
     {
-        foreach ($this->onDiskBackends as $backend) {
-            $backend->invalidate($uri);
-        }
+        $this->onDiskInvalidator->invalidate($uri);
     }
 
     public function openDocument(TextDocument $document): void

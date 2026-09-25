@@ -79,13 +79,7 @@ final readonly class KnowledgeStack
             $declarationInfoFactory,
             $parser,
             $scanner,
-            // External-change and close-after-edit invalidation drops the on-disk
-            // cache for a file, adjusts the Composer-map index for that one
-            // path, and rebuilds the files-set index when a member of it
-            // changed (RFC 1 §5.2, §5.3). The open-document backend is
-            // authoritative and never cached, so it is not invalidated; the
-            // built-in backend does not read workspace files.
-            [$disk, $composerMap, $autoloadFiles],
+            new CompositeInvalidatable($disk, $composerMap, $autoloadFiles),
         );
 
         return new self($source, $sink);

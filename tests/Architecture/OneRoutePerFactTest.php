@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Knowledge\CompositeInvalidatable;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -74,7 +75,7 @@ final class OneRoutePerFactTest extends TestCase
             Fact::family(
                 name: 'symbol source',
                 interface: SymbolSourceInterface::class,
-                roots: [KnowledgeStack::class],
+                roots: [KnowledgeStack::class, CompositeInvalidatable::class],
                 layoutPending: 'step-52',
             ),
             Fact::confined(
