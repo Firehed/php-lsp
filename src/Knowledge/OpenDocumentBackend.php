@@ -13,12 +13,8 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * (RFC 1 §5.3). Its answers override every on-disk backend, so a user's unsaved
  * edits are honored — including edits to a vendored file opened in the editor.
  *
- * Owns the single write path for open-document symbol state (RFC 1 §4.3, §5.2): a
- * document lifecycle event parses the buffer, extracts its declarations, and
- * registers them in the {@see DeclaredSymbolStoreTrait} store the three read
- * surfaces share, so lookup, `childrenOf` and `search` can never disagree about
- * what an open document declares. Open documents change on every keystroke and
- * are never cached (RFC 1 §5.3).
+ * Also owns the write path for open-document symbol state (RFC 1 §4.3, §5.2).
+ * Open documents change on every keystroke and are never cached (RFC 1 §5.3).
  */
 final class OpenDocumentBackend implements SymbolSourceInterface, SymbolSinkInterface
 {
