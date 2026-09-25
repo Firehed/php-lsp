@@ -56,6 +56,45 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
+    public function testLookupClassLikeDoesNotAutoloadUserCode(): void
+    {
+        // The LSP reads code; it must never execute it. A class-like lookup on
+        // a user FQN — reached through the composite when higher-precedence
+        // backends have all declined — must not trigger the SPL autoload
+        // chain. Any registered autoloader (Composer's, a framework's) can
+        // read files with arbitrary top-level side effects, including
+        // fixtures with intentionally malformed PHP; a completion request
+        // triggering that chain is unbounded code execution against the
+        // serviced project.
+        $trap = 'PhpLspAutoloadTrap\NotABuiltin';
+        $observed = [];
+        // Only the trap FQN is significant; unrelated autoloads (e.g. of the
+        // test's own domain classes triggered by ClasslikeName construction)
+        // are irrelevant noise.
+        $tracker = static function (string $class) use ($trap, &$observed): void {
+            if ($class === $trap) {
+                $observed[] = $class;
+            }
+        };
+        spl_autoload_register($tracker, prepend: true);
+
+        try {
+            $info = self::classLikeIn($this->backend, $trap);
+
+            self::assertNull(
+                $info,
+                'the backend has no answer for a user FQN whatever autoload flag it used',
+            );
+            self::assertSame(
+                [],
+                $observed,
+                'no autoloader may be invoked for the user FQN passed to this backend',
+            );
+        } finally {
+            spl_autoload_unregister($tracker);
+        }
+    }
+
     public function testLookupFunctionReflectsABuiltinFunction(): void
     {
         $info = self::functionIn($this->backend, 'str_contains');
