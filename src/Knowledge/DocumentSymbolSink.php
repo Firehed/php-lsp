@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
-use Firehed\PhpLsp\Cache\CompositeInvalidatable;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FileUri;
@@ -20,17 +19,15 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  */
 final class DocumentSymbolSink implements SymbolSinkInterface
 {
-    /**
-     * @param InvalidatableInterface $onDiskInvalidator the composite over every cached
-     *        on-disk holder for a file, whose entry must be dropped when that file
-     *        changes on disk or is closed after being edited (RFC 1 §5.2, §5.3)
-     */
     public function __construct(
         private readonly DocumentSymbolStoreInterface $store,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly SyntaxSourceInterface $parser,
         private readonly DeclarationScanner $scanner,
-        private readonly InvalidatableInterface $onDiskInvalidator = new CompositeInvalidatable([]),
+        // Cached on-disk state has to forget a changed or closed-after-edit file
+        // on the same event the sink handles, or the next query serves stale data
+        // (RFC 1 §5.2, §5.3).
+        private readonly InvalidatableInterface $onDiskInvalidator,
     ) {
     }
 
