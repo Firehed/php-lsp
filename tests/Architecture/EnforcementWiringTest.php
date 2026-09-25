@@ -33,7 +33,11 @@ final class EnforcementWiringTest extends TestCase
         foreach (self::glob(self::root() . '/tests/Architecture/*Rule.php') as $file) {
             $shortName = basename($file, '.php');
             $className = 'Firehed\PhpLsp\Tests\Architecture\\' . $shortName;
-            self::assertTrue(class_exists($className), "{$file} does not declare {$className}");
+            require_once $file;
+            self::assertTrue(
+                class_exists($className, autoload: false),
+                "{$file} does not declare {$className}",
+            );
             yield $shortName => [$className];
         }
     }
@@ -48,11 +52,21 @@ final class EnforcementWiringTest extends TestCase
         );
     }
 
+    /**
+     * @param class-string $rule
+     */
     #[DataProvider('rules')]
     public function testRuleHasItsOwnTest(string $rule): void
     {
+        $testClass = $rule . 'Test';
+        $testFile = (new ReflectionClass($rule))->getFileName();
+        self::assertIsString($testFile);
+        $candidate = substr($testFile, 0, -strlen('.php')) . 'Test.php';
+        if (is_file($candidate)) {
+            require_once $candidate;
+        }
         self::assertTrue(
-            class_exists($rule . 'Test'),
+            class_exists($testClass, autoload: false),
             'a rule with no RuleTestCase can stop reporting without any test failing',
         );
     }
