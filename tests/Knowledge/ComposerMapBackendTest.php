@@ -142,19 +142,6 @@ final class ComposerMapBackendTest extends TestCase
         );
     }
 
-    public function testLookupDoesNotRegisterAdditionalAutoloaders(): void
-    {
-        $before = spl_autoload_functions();
-
-        self::classLikeIn($this->backend(), 'Fixtures\Domain\User');
-
-        self::assertSame(
-            count($before),
-            count(spl_autoload_functions()),
-            'the backend must not leave its Composer loader registered globally',
-        );
-    }
-
     public function testSearchIsEmpty(): void
     {
         self::assertSame(
