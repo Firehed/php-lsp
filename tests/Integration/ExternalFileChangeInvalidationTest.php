@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
-use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\NotificationMessage;

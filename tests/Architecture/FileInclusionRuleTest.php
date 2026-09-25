@@ -27,7 +27,7 @@ class FileInclusionRuleTest extends RuleTestCase
 
     public function testTheComposerMetadataReaderIsAllowed(): void
     {
-        $this->analyse([__DIR__ . '/../../src/Index/ComposerAutoloadMap.php'], []);
+        $this->analyse([__DIR__ . '/../../src/Domain/ComposerAutoloadMap.php'], []);
     }
 
     protected function getRule(): Rule

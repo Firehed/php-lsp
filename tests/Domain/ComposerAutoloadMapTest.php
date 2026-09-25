@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Index;
+namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 

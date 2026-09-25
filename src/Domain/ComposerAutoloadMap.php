@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Index;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * The autoload maps Composer generates for a project, as data. Resolving a name

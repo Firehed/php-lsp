@@ -30,9 +30,6 @@ deptrac:
     - name: Handler
       collectors:
         - { type: directory, value: src/Handler/.* }
-    - name: Index
-      collectors:
-        - { type: directory, value: src/Index/.* }
     - name: Knowledge
       collectors:
         - { type: directory, value: src/Knowledge/.* }
@@ -58,8 +55,8 @@ deptrac:
       - Client
       - Completion
       - Document
+      - Domain
       - Handler
-      - Index
       - Knowledge
       - Parser
       - Protocol
@@ -78,14 +75,12 @@ deptrac:
       - Capability
       - Document
       - Domain
-      - Index
       - Knowledge
       - Protocol
       - Resolution
     Resolution:
       - Document
       - Domain
-      - Index
       - Knowledge
       - Parser
       - Repository
@@ -93,19 +88,12 @@ deptrac:
       - Cache
       - Document
       - Domain
-      - Index
       - Parser
       - Repository
     Repository:
       - Document # FileUri, the path/URI conversion authority
       - Domain
       - Knowledge
-    Index:
-      - Cache
-      - Document
-      - Domain
-      - Knowledge
-      - Parser
     Parser:
       - Document
     Document:

@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
+use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
-use Firehed\PhpLsp\Index\CatalogSymbol;
-use Firehed\PhpLsp\Index\NamespaceContents;
-use Firehed\PhpLsp\Index\Symbol;
 
 /**
  * The store the {@see SymbolSourceInterface} backends whose answers come from an

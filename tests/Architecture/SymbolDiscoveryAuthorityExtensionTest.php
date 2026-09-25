@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Architecture;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\ClassNameUsageLocation;
 use PHPStan\Testing\PHPStanTestCase;
@@ -97,10 +97,10 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
      */
     public static function provideAllowedReferences(): iterable
     {
-        yield 'autoload map from the Index backend' => [ComposerAutoloadMap::class, 'Firehed\PhpLsp\Index'];
-        yield 'autoload map from a nested Index backend' => [
+        yield 'autoload map from the Domain namespace' => [ComposerAutoloadMap::class, 'Firehed\PhpLsp\Domain'];
+        yield 'autoload map from a nested Domain namespace' => [
             ComposerAutoloadMap::class,
-            'Firehed\PhpLsp\Index\Sub',
+            'Firehed\PhpLsp\Domain\Sub',
         ];
         yield 'autoload map from the Knowledge backend' => [
             ComposerAutoloadMap::class,

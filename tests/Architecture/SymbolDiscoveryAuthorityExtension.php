@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Architecture;
 
-use Firehed\PhpLsp\Index\ComposerAutoloadMap;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use PHPStan\Analyser\Scope;
 use PHPStan\Reflection\ClassReflection;
 use PHPStan\Rules\ClassNameUsageLocation;
@@ -69,7 +69,7 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
      * @var list<string>
      */
     private const array EXEMPT_NAMESPACE_PREFIXES = [
-        'Firehed\PhpLsp\Index',
+        'Firehed\PhpLsp\Domain',
         'Firehed\PhpLsp\Knowledge',
         'Firehed\PhpLsp\Repository',
         'Firehed\PhpLsp\Tests',
