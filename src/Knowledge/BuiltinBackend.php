@@ -133,11 +133,22 @@ final class BuiltinBackend implements SymbolSourceInterface
         $fqn = $name->fullyQualifiedName();
 
         // All three probes narrow the name to a `class-string`, which is why
-        // this kind cannot use the sibling's try/catch.
-        if (!class_exists($fqn) && !interface_exists($fqn) && !trait_exists($fqn)) {
+        // this kind cannot use the sibling's try/catch. `autoload: false` on
+        // each keeps the LSP process from executing user code the serviced
+        // project happens to have registered under the FQN; internal
+        // class-likes are always considered loaded, so the probe still
+        // answers for the names this backend is responsible for.
+        if (
+            !class_exists($fqn, autoload: false)
+            && !interface_exists($fqn, autoload: false)
+            && !trait_exists($fqn, autoload: false)
+        ) {
             return null;
         }
 
+        // `new ReflectionClass($fqn)` would autoload on a miss, but the
+        // preceding autoload-free existence check has already confirmed the
+        // name is loaded, so no autoload can fire here.
         $rc = new ReflectionClass($fqn);
         if (!$rc->isInternal()) {
             return null;
