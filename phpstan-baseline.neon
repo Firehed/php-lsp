@@ -106,16 +106,6 @@ parameters:
 			'''
 			identifier: classConstant.deprecatedClass
 			count: 1
-			path: tests/Architecture/OneRoutePerFactTest.php
-
-		-
-			message: '''
-				#^Access to constant on deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: classConstant.deprecatedClass
-			count: 1
 			path: tests/Domain/TypeFactoryTest.php
 
 		-
