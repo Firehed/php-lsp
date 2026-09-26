@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -544,7 +545,7 @@ final class AutoloadFilesBackendTest extends TestCase
         $production = ProductionSyntaxSource::create();
 
         return new AutoloadFilesBackend(
-            $map,
+            ComposerAutoloadMapReader::fromMap($map),
             new DeclarationSymbolInfoFactory(),
             new DeclarationScanner(),
             $production->reader,
