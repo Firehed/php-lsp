@@ -32,11 +32,11 @@ final readonly class ProductionSyntaxSource
     {
         $this->metrics = new ParseMetrics();
         $this->source = new MemoizingSyntaxSource(
-            new CompositeSyntaxSource([
+            new CompositeSyntaxSource(
                 new PhpParserSyntaxSource(new TreeAnnotator(), $this->metrics),
                 new SkeletonSyntaxSource(),
                 new CursorTextSyntaxSource(),
-            ]),
+            ),
         );
         $this->reader = new SourceFileReader();
     }
