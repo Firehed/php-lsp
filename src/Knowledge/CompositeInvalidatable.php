@@ -29,9 +29,8 @@ final readonly class CompositeInvalidatable implements InvalidatableInterface
 
     public function invalidate(string $uri): void
     {
-        $composerChange = $this->mapReader->isComposerAutoloadFile($uri);
-        $this->mapReader->invalidate($uri);
-        if ($composerChange) {
+        if ($this->mapReader->isComposerAutoloadFile($uri)) {
+            $this->mapReader->invalidate($uri);
             $this->mapsDecorator->flush();
         } else {
             $this->mapsDecorator->invalidate($uri);

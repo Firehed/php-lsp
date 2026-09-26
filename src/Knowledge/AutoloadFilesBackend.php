@@ -58,12 +58,7 @@ final class AutoloadFilesBackend implements SymbolSourceInterface, Invalidatable
     public function invalidate(string $uri): void
     {
         $map = $this->mapReader->current();
-        if ($map !== $this->mapAtBuild) {
-            $this->buildIndex($map);
-
-            return;
-        }
-        if (!in_array(FileUri::toPath($uri), $map->autoloadFiles(), true)) {
+        if ($map === $this->mapAtBuild && !in_array(FileUri::toPath($uri), $map->autoloadFiles(), true)) {
             return;
         }
 
