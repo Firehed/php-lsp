@@ -59,6 +59,41 @@ final class CompositeInvalidatableTest extends TestCase
         );
     }
 
+    public function testInvalidateForAComposerAutoloadFileFlushesTheDecoratorAndRoutesPastPerPathInvalidation(): void
+    {
+        // A `composer install` regenerates every autoload file under vendor/composer,
+        // and every remembered lookup on the disk decorator can point at a name the
+        // regenerated map no longer addresses. The composite has to route past the
+        // per-path accounting through a wholesale flush.
+        $classInfo = self::classInfo('App\\Widget', file: '/workspace/src/Widget.php');
+        $inner = $this->createMock(SymbolSourceInterface::class);
+        $inner->expects($this->exactly(2))
+            ->method('lookupClassLike')
+            ->willReturn($classInfo);
+
+        $projectRoot = dirname(__DIR__) . '/Fixtures';
+        $mapReader = new ComposerAutoloadMapReader($projectRoot);
+        $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory());
+        $mapsBackend = self::composerMapBackend($mapReader);
+        $filesBackend = self::autoloadFilesBackend($mapReader);
+        $composite = new CompositeInvalidatable($mapReader, $mapsDecorator, $mapsBackend, $filesBackend);
+
+        $name = ClasslikeName::fromFullyQualified('App\\Widget');
+        self::assertSame(
+            $classInfo,
+            $mapsDecorator->lookupClassLike($name),
+            'first lookup populates the decorator cache from the inner source',
+        );
+
+        $composite->invalidate(FileUri::fromPath($projectRoot . '/vendor/composer/autoload_psr4.php'));
+
+        self::assertSame(
+            $classInfo,
+            $mapsDecorator->lookupClassLike($name),
+            'the decorator was flushed wholesale, so the second lookup must consult the inner again',
+        );
+    }
+
     private static function composerMapBackend(ComposerAutoloadMapReader $mapReader): ComposerMapBackend
     {
         $production = ProductionSyntaxSource::create();

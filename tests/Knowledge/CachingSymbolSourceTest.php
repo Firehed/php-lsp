@@ -216,4 +216,34 @@ final class CachingSymbolSourceTest extends TestCase
         $this->source->search('Al', NameKind::ClassLike);
         $this->source->search('Al', NameKind::ClassLike);
     }
+
+    public function testFlushDropsEveryCachedEntry(): void
+    {
+        // A regenerated Composer map means every remembered lookup, hit or miss,
+        // and every cached listing is derived from a map the inner no longer
+        // uses. Flush is the wholesale drop the per-path accounting can't express.
+        $alpha = ClasslikeName::fromFullyQualified('App\Alpha');
+        $missing = ClasslikeName::fromFullyQualified('App\Missing');
+        // Each read runs twice: once to populate the cache, once after flush.
+        $this->inner->expects(self::exactly(4))
+            ->method('lookupClassLike')
+            ->willReturnMap([
+                [$alpha, self::classInfo('App\Alpha', file: '/ws/Alpha.php')],
+                [$missing, null],
+            ]);
+        $this->inner->expects(self::exactly(2))
+            ->method('childrenOf')
+            ->willReturn(new NamespaceContents());
+
+        $this->source->lookupClassLike($alpha);
+        $this->source->lookupClassLike($missing);
+        $this->source->childrenOf(new NamespaceName('App'));
+
+        $this->source->flush();
+
+        // Every cached read must consult the inner again.
+        $this->source->lookupClassLike($alpha);
+        $this->source->lookupClassLike($missing);
+        $this->source->childrenOf(new NamespaceName('App'));
+    }
 }
