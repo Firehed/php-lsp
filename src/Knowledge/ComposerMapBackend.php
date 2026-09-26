@@ -94,9 +94,6 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         $map = $this->mapReader->current();
         if ($map !== $this->mapAtBuild) {
             $this->byNamespace = null;
-            $this->catalog = [];
-            $this->pathByKey = [];
-            $this->fqnByWalkedPath = [];
 
             return;
         }
