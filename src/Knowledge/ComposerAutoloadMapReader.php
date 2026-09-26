@@ -29,7 +29,7 @@ final class ComposerAutoloadMapReader implements InvalidatableInterface
 
     public function __construct(private readonly string $projectRoot)
     {
-        $this->composerDir = rtrim($projectRoot, '/') . '/vendor/composer/';
+        $this->composerDir = ComposerAutoloadMap::composerDirFor($projectRoot) . '/';
     }
 
     /**
