@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -629,7 +630,7 @@ final class ComposerMapBackendTest extends TestCase
     private function backendForMap(ComposerAutoloadMap $map): ComposerMapBackend
     {
         return new ComposerMapBackend(
-            $map,
+            ComposerAutoloadMapReader::fromMap($map),
             $this->parser,
             $this->reader,
             $this->infoFactory,

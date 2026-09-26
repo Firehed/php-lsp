@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
-use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
@@ -39,7 +38,7 @@ final readonly class KnowledgeStack
      * files-set index never are.
      */
     public static function forProject(
-        ComposerAutoloadMap $autoloadMap,
+        ComposerAutoloadMapReader $mapReader,
         SyntaxSourceInterface $parser,
         SourceFileReader $reader,
     ): self {
@@ -48,14 +47,14 @@ final readonly class KnowledgeStack
 
         $openDocuments = new OpenDocumentBackend($parser, $scanner, $declarationInfoFactory);
         $autoloadFiles = new AutoloadFilesBackend(
-            $autoloadMap,
+            $mapReader,
             $declarationInfoFactory,
             $scanner,
             $reader,
             $parser,
         );
         $composerMap = new ComposerMapBackend(
-            $autoloadMap,
+            $mapReader,
             $parser,
             $reader,
             $declarationInfoFactory,
@@ -80,7 +79,7 @@ final readonly class KnowledgeStack
         return new self(
             $source,
             $openDocuments,
-            new CompositeInvalidatable($disk, $composerMap, $autoloadFiles),
+            new CompositeInvalidatable($mapReader, $disk, $composerMap, $autoloadFiles),
         );
     }
 }

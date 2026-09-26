@@ -6,10 +6,10 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\CachingSymbolSource;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\CompositeInvalidatable;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
@@ -34,10 +34,11 @@ final class CompositeInvalidatableTest extends TestCase
             ->method('lookupClassLike')
             ->willReturn($classInfo);
 
+        $mapReader = new ComposerAutoloadMapReader(dirname(__DIR__) . '/Fixtures');
         $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory());
-        $mapsBackend = self::composerMapBackend();
-        $filesBackend = self::autoloadFilesBackend();
-        $composite = new CompositeInvalidatable($mapsDecorator, $mapsBackend, $filesBackend);
+        $mapsBackend = self::composerMapBackend($mapReader);
+        $filesBackend = self::autoloadFilesBackend($mapReader);
+        $composite = new CompositeInvalidatable($mapReader, $mapsDecorator, $mapsBackend, $filesBackend);
 
         $name = ClasslikeName::fromFullyQualified('App\\Widget');
         self::assertSame(
@@ -46,8 +47,9 @@ final class CompositeInvalidatableTest extends TestCase
             'first lookup populates the decorator cache from the inner source',
         );
 
-        // Fans out to all three: the decorator drops its entry for this file, and
-        // the two backends (which do not know this path) still receive the call.
+        // Fans out to all four: the decorator drops its entry for this file, and
+        // the reader and two backends (which do not know this path) still receive
+        // the call.
         $composite->invalidate(FileUri::fromPath($file));
 
         self::assertSame(
@@ -57,13 +59,12 @@ final class CompositeInvalidatableTest extends TestCase
         );
     }
 
-    private static function composerMapBackend(): ComposerMapBackend
+    private static function composerMapBackend(ComposerAutoloadMapReader $mapReader): ComposerMapBackend
     {
         $production = ProductionSyntaxSource::create();
-        $map = ComposerAutoloadMap::fromProjectRoot(dirname(__DIR__) . '/Fixtures');
 
         return new ComposerMapBackend(
-            $map,
+            $mapReader,
             $production->source,
             $production->reader,
             new DeclarationSymbolInfoFactory(),
@@ -71,13 +72,12 @@ final class CompositeInvalidatableTest extends TestCase
         );
     }
 
-    private static function autoloadFilesBackend(): AutoloadFilesBackend
+    private static function autoloadFilesBackend(ComposerAutoloadMapReader $mapReader): AutoloadFilesBackend
     {
         $production = ProductionSyntaxSource::create();
-        $map = ComposerAutoloadMap::fromProjectRoot(dirname(__DIR__) . '/Fixtures');
 
         return new AutoloadFilesBackend(
-            $map,
+            $mapReader,
             new DeclarationSymbolInfoFactory(),
             new DeclarationScanner(),
             $production->reader,

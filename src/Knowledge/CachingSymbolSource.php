@@ -68,6 +68,20 @@ final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableI
         return $contents;
     }
 
+    /**
+     * Drops every cached entry, for events whose blast radius the per-path
+     * accounting does not model — a regenerated Composer autoload map, where
+     * every remembered lookup is now derived from data the inner source no
+     * longer holds.
+     */
+    public function flush(): void
+    {
+        $this->keysByPath = [];
+        $this->listingKeys = [];
+        $this->missKeys = [];
+        $this->cache->clear();
+    }
+
     public function invalidate(string $uri): void
     {
         $path = FileUri::toPath($uri);
