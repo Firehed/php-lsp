@@ -53,21 +53,9 @@ final class ComposerAutoloadMapReader implements InvalidatableInterface
         return $this->map ??= ComposerAutoloadMap::fromProjectRoot($this->projectRoot);
     }
 
-    /**
-     * Whether $uri names a file under this project's `vendor/composer/`
-     * directory — the paths a `composer install` regenerates. Used by the
-     * invalidation composite to route those events past the per-path cache
-     * decorator, which would otherwise retain answers derived from the
-     * pre-install map.
-     */
-    public function isComposerAutoloadFile(string $uri): bool
-    {
-        return str_starts_with(FileUri::toPath($uri), $this->composerDir);
-    }
-
     public function invalidate(string $uri): void
     {
-        if ($this->isComposerAutoloadFile($uri)) {
+        if (str_starts_with(FileUri::toPath($uri), $this->composerDir)) {
             $this->map = null;
         }
     }

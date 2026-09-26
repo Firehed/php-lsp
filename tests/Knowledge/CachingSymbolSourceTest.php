@@ -8,12 +8,14 @@ use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Knowledge\CachingSymbolSource;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -217,14 +219,19 @@ final class CachingSymbolSourceTest extends TestCase
         $this->source->search('Al', NameKind::ClassLike);
     }
 
-    public function testFlushDropsEveryCachedEntry(): void
+    public function testAMapRegenerationDropsEveryCachedEntry(): void
     {
         // A regenerated Composer map means every remembered lookup, hit or miss,
         // and every cached listing is derived from a map the inner no longer
-        // uses. Flush is the wholesale drop the per-path accounting can't express.
+        // uses. The decorator observes the reader's identity change on
+        // invalidate and drops every cached entry — the wholesale drop the
+        // per-path accounting can't express through a single URI.
+        $workspace = self::makeWorkspace();
+        self::writePsr4Map($workspace, ['App\\' => ['/tmp/app']]);
+        $mapReader = new ComposerAutoloadMapReader($workspace);
+
         $alpha = ClasslikeName::fromFullyQualified('App\Alpha');
         $missing = ClasslikeName::fromFullyQualified('App\Missing');
-        // Each read runs twice: once to populate the cache, once after flush.
         $this->inner->expects(self::exactly(4))
             ->method('lookupClassLike')
             ->willReturnMap([
@@ -235,15 +242,54 @@ final class CachingSymbolSourceTest extends TestCase
             ->method('childrenOf')
             ->willReturn(new NamespaceContents());
 
-        $this->source->lookupClassLike($alpha);
-        $this->source->lookupClassLike($missing);
-        $this->source->childrenOf(new NamespaceName('App'));
+        $source = new CachingSymbolSource($this->inner, CacheFactory::inMemory(), $mapReader);
 
-        $this->source->flush();
+        $source->lookupClassLike($alpha);
+        $source->lookupClassLike($missing);
+        $source->childrenOf(new NamespaceName('App'));
+
+        self::writePsr4Map($workspace, ['App\\' => ['/tmp/app'], 'Lib\\' => ['/tmp/lib']]);
+        $mapReader->invalidate(FileUri::fromPath($workspace . '/vendor/composer/autoload_psr4.php'));
+        $source->invalidate(FileUri::fromPath($workspace . '/vendor/composer/autoload_psr4.php'));
 
         // Every cached read must consult the inner again.
-        $this->source->lookupClassLike($alpha);
-        $this->source->lookupClassLike($missing);
-        $this->source->childrenOf(new NamespaceName('App'));
+        $source->lookupClassLike($alpha);
+        $source->lookupClassLike($missing);
+        $source->childrenOf(new NamespaceName('App'));
+
+        self::cleanWorkspace($workspace);
+    }
+
+    private static function makeWorkspace(): string
+    {
+        $workspace = tempnam(sys_get_temp_dir(), 'php-lsp-caching-');
+        self::assertNotFalse($workspace, 'a temp workspace path must be obtainable');
+        unlink($workspace);
+        self::assertTrue(mkdir($workspace . '/vendor/composer', 0777, true), 'vendor/composer must be creatable');
+
+        return $workspace;
+    }
+
+    /**
+     * @param array<string, list<string>> $prefixes
+     */
+    private static function writePsr4Map(string $workspace, array $prefixes): void
+    {
+        $path = $workspace . '/vendor/composer/autoload_psr4.php';
+        self::assertNotFalse(
+            file_put_contents($path, "<?php\nreturn " . var_export($prefixes, true) . ";\n"),
+            'the generated PSR-4 map must be writable',
+        );
+    }
+
+    private static function cleanWorkspace(string $workspace): void
+    {
+        $entries = glob($workspace . '/vendor/composer/*');
+        foreach ($entries === false ? [] : $entries as $file) {
+            unlink($file);
+        }
+        @rmdir($workspace . '/vendor/composer');
+        @rmdir($workspace . '/vendor');
+        @rmdir($workspace);
     }
 }

@@ -60,7 +60,7 @@ final readonly class KnowledgeStack
             $declarationInfoFactory,
             $scanner,
         );
-        $disk = new CachingSymbolSource($composerMap, CacheFactory::inMemory());
+        $disk = new CachingSymbolSource($composerMap, CacheFactory::inMemory(), $mapReader);
 
         // The built-in backend owns its own derived index of internal symbols, so
         // enumeration and prefix search draw on the same source and cannot disagree

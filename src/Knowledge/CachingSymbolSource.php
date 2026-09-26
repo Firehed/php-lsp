@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Cache\CacheKey;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FileUri;
@@ -46,10 +47,14 @@ final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableI
     /** @var list<string> */
     private array $missKeys = [];
 
+    private ?ComposerAutoloadMap $mapAtLastCheck = null;
+
     public function __construct(
         private readonly SymbolSourceInterface $inner,
         private readonly CacheInterface $cache,
+        private readonly ?ComposerAutoloadMapReader $mapReader = null,
     ) {
+        $this->mapAtLastCheck = $this->mapReader?->current();
     }
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
@@ -68,22 +73,18 @@ final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableI
         return $contents;
     }
 
-    /**
-     * Drops every cached entry, for events whose blast radius the per-path
-     * accounting does not model — a regenerated Composer autoload map, where
-     * every remembered lookup is now derived from data the inner source no
-     * longer holds.
-     */
-    public function flush(): void
-    {
-        $this->keysByPath = [];
-        $this->listingKeys = [];
-        $this->missKeys = [];
-        $this->cache->clear();
-    }
-
     public function invalidate(string $uri): void
     {
+        if ($this->mapReader !== null && $this->mapReader->current() !== $this->mapAtLastCheck) {
+            $this->keysByPath = [];
+            $this->listingKeys = [];
+            $this->missKeys = [];
+            $this->cache->clear();
+            $this->mapAtLastCheck = $this->mapReader->current();
+
+            return;
+        }
+
         $path = FileUri::toPath($uri);
         $keys = [...($this->keysByPath[$path] ?? []), ...$this->listingKeys, ...$this->missKeys];
         unset($this->keysByPath[$path]);

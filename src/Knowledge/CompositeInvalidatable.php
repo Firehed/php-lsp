@@ -12,10 +12,8 @@ use Firehed\PhpLsp\Cache\InvalidatableInterface;
  * is one edit here (CLAUDE.md Caching/Invalidation).
  *
  * The autoload-map reader runs first: a `vendor/composer/` change drops its
- * cached map before the disk backends read it, so their identity check against
- * the map they last built from fires and rebuilds the derived index. The maps
- * cache decorator's per-path accounting cannot describe that blast radius, so
- * it is flushed wholesale instead.
+ * cached map before every other member reads it, so each one's identity check
+ * against the map it last observed sees the new instance and reacts.
  */
 final readonly class CompositeInvalidatable implements InvalidatableInterface
 {
@@ -29,12 +27,8 @@ final readonly class CompositeInvalidatable implements InvalidatableInterface
 
     public function invalidate(string $uri): void
     {
-        if ($this->mapReader->isComposerAutoloadFile($uri)) {
-            $this->mapReader->invalidate($uri);
-            $this->mapsDecorator->flush();
-        } else {
-            $this->mapsDecorator->invalidate($uri);
-        }
+        $this->mapReader->invalidate($uri);
+        $this->mapsDecorator->invalidate($uri);
         $this->mapsBackend->invalidate($uri);
         $this->filesBackend->invalidate($uri);
     }

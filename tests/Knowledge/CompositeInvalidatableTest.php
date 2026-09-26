@@ -35,7 +35,7 @@ final class CompositeInvalidatableTest extends TestCase
             ->willReturn($classInfo);
 
         $mapReader = new ComposerAutoloadMapReader(dirname(__DIR__) . '/Fixtures');
-        $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory());
+        $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory(), $mapReader);
         $mapsBackend = self::composerMapBackend($mapReader);
         $filesBackend = self::autoloadFilesBackend($mapReader);
         $composite = new CompositeInvalidatable($mapReader, $mapsDecorator, $mapsBackend, $filesBackend);
@@ -59,12 +59,13 @@ final class CompositeInvalidatableTest extends TestCase
         );
     }
 
-    public function testInvalidateForAComposerAutoloadFileFlushesTheDecoratorAndRoutesPastPerPathInvalidation(): void
+    public function testInvalidateForAComposerAutoloadFileDropsEveryDecoratorEntry(): void
     {
         // A `composer install` regenerates every autoload file under vendor/composer,
         // and every remembered lookup on the disk decorator can point at a name the
-        // regenerated map no longer addresses. The composite has to route past the
-        // per-path accounting through a wholesale flush.
+        // regenerated map no longer addresses. The reader fans out first and drops
+        // its cached map; the decorator's own invalidate sees the reader return a
+        // new map instance and drops every cached entry wholesale.
         $classInfo = self::classInfo('App\\Widget', file: '/workspace/src/Widget.php');
         $inner = $this->createMock(SymbolSourceInterface::class);
         $inner->expects($this->exactly(2))
@@ -73,7 +74,7 @@ final class CompositeInvalidatableTest extends TestCase
 
         $projectRoot = dirname(__DIR__) . '/Fixtures';
         $mapReader = new ComposerAutoloadMapReader($projectRoot);
-        $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory());
+        $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory(), $mapReader);
         $mapsBackend = self::composerMapBackend($mapReader);
         $filesBackend = self::autoloadFilesBackend($mapReader);
         $composite = new CompositeInvalidatable($mapReader, $mapsDecorator, $mapsBackend, $filesBackend);
@@ -90,7 +91,7 @@ final class CompositeInvalidatableTest extends TestCase
         self::assertSame(
             $classInfo,
             $mapsDecorator->lookupClassLike($name),
-            'the decorator was flushed wholesale, so the second lookup must consult the inner again',
+            'the decorator dropped every entry, so the second lookup must consult the inner again',
         );
     }
 
