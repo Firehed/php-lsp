@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use PhpParser\Node;
-use PhpParser\Node\Stmt;
-use PhpParser\Node\Stmt\Nop;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use PhpParser\Node\Stmt\Function_;
+use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -18,23 +21,23 @@ final class CompositeSyntaxSourceTest extends TestCase
 {
     public function testReturnsTheFirstNonEmptyResult(): void
     {
-        $first = self::stubReturning([]);
-        $second = self::stubReturning([new Nop()]);
-        $third = self::stubReturning([new Nop(), new Nop()]);
+        $composite = self::composite();
 
-        $composite = new CompositeSyntaxSource([$first, $second, $third]);
+        // A function declaration is a node the skeleton never fabricates
+        // (it reconstructs namespaces and class-likes only), so finding one
+        // proves the tree came from php-parser and reached the caller.
+        $tree = $composite->parse(self::doc('<?php function foo() {}'));
 
-        $result = $composite->parse(self::doc('<?php'));
-
-        self::assertCount(1, $result, 'the second source wins because it is the first non-empty answer');
+        self::assertNotSame(
+            [],
+            (new NodeFinder())->findInstanceOf($tree, Function_::class),
+            'the winning tree came from php-parser and must carry its function node',
+        );
     }
 
     public function testReturnsEmptyWhenEverySourceIsEmpty(): void
     {
-        $composite = new CompositeSyntaxSource([
-            self::stubReturning([]),
-            self::stubReturning([]),
-        ]);
+        $composite = self::composite();
 
         self::assertSame(
             [],
@@ -43,73 +46,13 @@ final class CompositeSyntaxSourceTest extends TestCase
         );
     }
 
-    public function testStopsAskingSourcesAfterTheFirstNonEmpty(): void
+    private static function composite(): CompositeSyntaxSource
     {
-        $winner = self::stubReturning([new Nop()]);
-        $later = new class implements SyntaxSourceInterface {
-            public bool $called = false;
-
-            /**
-             * @return array<Stmt>
-             */
-            public function parse(TextDocument $document): array
-            {
-                $this->called = true;
-                return [];
-            }
-
-            /**
-             * @param array<Stmt> $tree
-             */
-            public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-            {
-                return null;
-            }
-        };
-
-        (new CompositeSyntaxSource([$winner, $later]))->parse(self::doc('<?php'));
-
-        self::assertFalse($later->called, 'sources after the winner must not be asked');
-    }
-
-    public function testReturnsEmptyWhenNoSourcesAreConfigured(): void
-    {
-        self::assertSame(
-            [],
-            (new CompositeSyntaxSource([]))->parse(self::doc('<?php')),
-            'zero sources means nothing to ask; the empty list is the only truthful answer',
+        return new CompositeSyntaxSource(
+            new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
+            new SkeletonSyntaxSource(),
+            new CursorTextSyntaxSource(),
         );
-    }
-
-    /**
-     * @param array<Stmt> $tree
-     */
-    private static function stubReturning(array $tree): SyntaxSourceInterface
-    {
-        return new class ($tree) implements SyntaxSourceInterface {
-            /**
-             * @param array<Stmt> $tree
-             */
-            public function __construct(private readonly array $tree)
-            {
-            }
-
-            /**
-             * @return array<Stmt>
-             */
-            public function parse(TextDocument $document): array
-            {
-                return $this->tree;
-            }
-
-            /**
-             * @param array<Stmt> $tree
-             */
-            public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-            {
-                return null;
-            }
-        };
     }
 
     private static function doc(string $content): TextDocument

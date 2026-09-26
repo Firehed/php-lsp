@@ -18,28 +18,35 @@ use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 
 /**
- * The {@see SymbolSourceInterface} composite over a fixed-precedence list of
- * {@see SymbolSourceInterface}s (RFC 1 §4.2, §5.3). This is the single place symbol
- * sources are composed: adding, removing, or reordering a source is a change to
- * the backend list here, with no change to any consumer.
+ * The {@see SymbolSourceInterface} composite over a fixed backend precedence
+ * (RFC 1 §4.2, §5.3). Adding, removing, or reordering a backend is a change to
+ * this constructor, with no change to any consumer.
  *
- * Precedence is fixed and positional — the backends are passed in authority order
- * (open documents, then disk, then the built-ins), so for any symbol an
- * open-document answer overrides the rest
- * (RFC 1 §5.3). A lookup takes the first backend that answers; an enumeration or
- * search merges every backend, letting the earlier (more authoritative) one win a
- * name clash — a user's unsaved edit is honored over the cached file it shadows.
+ * Precedence is fixed and positional: an open-document answer overrides the
+ * autoload.files set, which overrides the file on disk resolved through
+ * Composer's maps, which overrides the built-ins. A lookup takes the first
+ * backend that answers; an enumeration or search merges every backend, letting
+ * the earlier (more authoritative) one win a name clash — a user's unsaved
+ * edit is honored over the cached file it shadows.
+ *
+ * The disk and built-in slots are typed on the interface because a cache
+ * decorator arrives there in wiring; the composite has no business knowing.
  */
 final class CompositeSymbolSource implements SymbolSourceInterface
 {
     /**
-     * @param list<SymbolSourceInterface> $backends In descending precedence: the first
-     *        that answers a lookup wins, and the first to report a name wins a
-     *        merge. Readable so the §5.1 coverage grid derives its rows from it.
+     * @var list<SymbolSourceInterface> Backends in descending precedence.
+     *      Readable so the §5.1 coverage grid derives its rows from it.
      */
+    public readonly array $backends;
+
     public function __construct(
-        public readonly array $backends,
+        OpenDocumentBackend $openDocuments,
+        AutoloadFilesBackend $autoloadFiles,
+        SymbolSourceInterface $disk,
+        SymbolSourceInterface $builtin,
     ) {
+        $this->backends = [$openDocuments, $autoloadFiles, $disk, $builtin];
     }
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
