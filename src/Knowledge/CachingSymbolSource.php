@@ -75,12 +75,13 @@ final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableI
 
     public function invalidate(string $uri): void
     {
-        if ($this->mapReader !== null && $this->mapReader->current() !== $this->mapAtLastCheck) {
+        $currentMap = $this->mapReader?->current();
+        if ($currentMap !== null && $currentMap !== $this->mapAtLastCheck) {
             $this->keysByPath = [];
             $this->listingKeys = [];
             $this->missKeys = [];
             $this->cache->clear();
-            $this->mapAtLastCheck = $this->mapReader->current();
+            $this->mapAtLastCheck = $currentMap;
 
             return;
         }
