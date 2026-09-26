@@ -111,6 +111,17 @@ trait DeclaredSymbolStoreTrait
         $this->rebuildLookupIndex();
     }
 
+    /**
+     * Drop every recorded symbol. One rebuild replaces the per-source loop
+     * a caller would otherwise run, which repeats {@see rebuildLookupIndex}
+     * for every remaining entry.
+     */
+    private function clearAllSymbols(): void
+    {
+        $this->symbolsBySource = [];
+        $this->byKey = [];
+    }
+
     private function rebuildLookupIndex(): void
     {
         $this->byKey = [];

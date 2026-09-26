@@ -67,9 +67,7 @@ final class AutoloadFilesBackend implements SymbolSourceInterface, Invalidatable
 
     private function buildIndex(ComposerAutoloadMap $map): void
     {
-        foreach (array_keys($this->symbolsBySource) as $source) {
-            $this->removeSymbolsFor($source);
-        }
+        $this->clearAllSymbols();
         foreach ($map->autoloadFiles() as $path) {
             $declarations = $this->scanner->scanFile($path, $this->reader, $this->parser);
             $this->setSymbolsFor(FileUri::fromPath($path), ...$this->infoFactory->allIn($declarations, $path));
