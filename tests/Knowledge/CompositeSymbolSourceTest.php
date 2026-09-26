@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\CatalogSymbol;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
@@ -13,16 +14,23 @@ use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
+use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
  * The composite is the single place symbol sources are composed (RFC 1 §4.2, §5.3):
  * these prove the fixed precedence — an earlier (more authoritative) backend wins a
- * lookup, a merge, and a name clash. Backend internals are faked
- * ({@see FakeSymbolBackend}); parity with the real surfaces is frozen by the Step P
- * harness.
+ * lookup, a merge, and a name clash. The concrete slots (openDocuments,
+ * autoloadFiles) start empty so the fake-backed disk and built-in slots — the two
+ * the composite types on the interface — carry every assertion. Parity with the
+ * real backends is frozen by the Step P harness.
  */
 final class CompositeSymbolSourceTest extends TestCase
 {
@@ -30,35 +38,37 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupClassLikeTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'open.php')]);
-        $vendor = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'vendor.php')]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'disk.php')]),
+            builtin: new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'builtin.php')]),
+        );
 
         $info = $source->lookupClassLike(self::className('App\Widget'));
 
         self::assertNotNull($info, 'the class is declared, so the lookup must resolve');
         self::assertSame(
-            'open.php',
+            'disk.php',
             $info->file,
-            'the earlier backend must win: an open document overrides the vendored copy (RFC 1 §5.3)',
+            'the earlier backend must win: disk overrides the built-in copy (RFC 1 §5.3)',
         );
     }
 
     public function testLookupClassLikeFallsThroughToALaterBackend(): void
     {
-        $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'vendor.php')]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend(),
+            builtin: new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'builtin.php')]),
+        );
 
         $info = $source->lookupClassLike(self::className('App\Widget'));
 
         self::assertNotNull($info, 'a later backend must answer when an earlier one cannot');
-        self::assertSame('vendor.php', $info->file, 'the answer must come from the backend that declares it');
+        self::assertSame('builtin.php', $info->file, 'the answer must come from the backend that declares it');
     }
 
     public function testLookupClassLikeReturnsNullWhenNoBackendAnswers(): void
     {
-        $source = new CompositeSymbolSource([new FakeSymbolBackend(), new FakeSymbolBackend()]);
+        $source = self::compose(disk: new FakeSymbolBackend(), builtin: new FakeSymbolBackend());
 
         self::assertNull(
             $source->lookupClassLike(self::className('App\Absent')),
@@ -68,35 +78,37 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupFunctionTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend([self::declaredFunction('App\format', 'open.php')]);
-        $vendor = new FakeSymbolBackend([self::declaredFunction('App\format', 'vendor.php')]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend([self::declaredFunction('App\format', 'disk.php')]),
+            builtin: new FakeSymbolBackend([self::declaredFunction('App\format', 'builtin.php')]),
+        );
 
         $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
 
         self::assertNotNull($info, 'the function is declared, so the lookup must resolve');
         self::assertSame(
-            'open.php',
+            'disk.php',
             $info->file,
-            'the earlier backend must win: an unsaved edit overrides the file it shadows (RFC 1 §5.3)',
+            'the earlier backend must win: disk overrides the built-in copy (RFC 1 §5.3)',
         );
     }
 
     public function testLookupFunctionFallsThroughToALaterBackend(): void
     {
-        $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend([self::declaredFunction('App\format', 'vendor.php')]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend(),
+            builtin: new FakeSymbolBackend([self::declaredFunction('App\format', 'builtin.php')]),
+        );
 
         $info = $source->lookupFunction(FunctionName::fromFullyQualified('App\format'));
 
         self::assertNotNull($info, 'a later backend must answer when an earlier one cannot');
-        self::assertSame('vendor.php', $info->file, 'the answer must come from the backend that declares it');
+        self::assertSame('builtin.php', $info->file, 'the answer must come from the backend that declares it');
     }
 
     public function testLookupFunctionReturnsNullWhenNoBackendAnswers(): void
     {
-        $source = new CompositeSymbolSource([new FakeSymbolBackend(), new FakeSymbolBackend()]);
+        $source = self::compose(disk: new FakeSymbolBackend(), builtin: new FakeSymbolBackend());
 
         self::assertNull(
             $source->lookupFunction(FunctionName::fromFullyQualified('App\absent')),
@@ -106,35 +118,37 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupConstantTakesTheFirstBackendThatAnswers(): void
     {
-        $open = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'open.php')]);
-        $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'disk.php')]),
+            builtin: new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'builtin.php')]),
+        );
 
         $info = $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG'));
 
         self::assertNotNull($info, 'the constant is declared, so the lookup must resolve');
         self::assertSame(
-            'open.php',
+            'disk.php',
             $info->file,
-            'the earlier backend must win: an unsaved edit overrides the file it shadows (RFC 1 §5.3)',
+            'the earlier backend must win: disk overrides the built-in copy (RFC 1 §5.3)',
         );
     }
 
     public function testLookupConstantFallsThroughToALaterBackend(): void
     {
-        $open = new FakeSymbolBackend();
-        $vendor = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'vendor.php')]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend(),
+            builtin: new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'builtin.php')]),
+        );
 
         $info = $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG'));
 
         self::assertNotNull($info, 'a later backend must answer when an earlier one cannot');
-        self::assertSame('vendor.php', $info->file, 'the answer must come from the backend that declares it');
+        self::assertSame('builtin.php', $info->file, 'the answer must come from the backend that declares it');
     }
 
     public function testLookupConstantReturnsNullWhenNoBackendAnswers(): void
     {
-        $source = new CompositeSymbolSource([new FakeSymbolBackend(), new FakeSymbolBackend()]);
+        $source = self::compose(disk: new FakeSymbolBackend(), builtin: new FakeSymbolBackend());
 
         self::assertNull(
             $source->lookupConstant(ConstantName::fromFullyQualified('App\ABSENT')),
@@ -144,8 +158,10 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testLookupConstantIsCaseSensitive(): void
     {
-        $backend = new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'file.php')]);
-        $source = new CompositeSymbolSource([$backend]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend([self::declaredConstant('App\DEBUG', 'file.php')]),
+            builtin: new FakeSymbolBackend(),
+        );
 
         self::assertNotNull(
             $source->lookupConstant(ConstantName::fromFullyQualified('App\DEBUG')),
@@ -159,21 +175,21 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testChildrenOfMergesEveryBackendWithTheEarlierWinningAClash(): void
     {
-        $open = new FakeSymbolBackend(namespaces: [
+        $disk = new FakeSymbolBackend(namespaces: [
             'App' => new NamespaceContents(
                 ['App\Sub'],
                 [new CatalogSymbol('App\Shared', NameKind::ClassLike)],
             ),
         ]);
-        $vendor = new FakeSymbolBackend(namespaces: [
+        $builtin = new FakeSymbolBackend(namespaces: [
             'App' => new NamespaceContents(
                 ['App\Other'],
                 // The same class-like under its case rule, spelled differently:
-                // the open document's spelling must win the merge.
+                // the earlier backend's spelling must win the merge.
                 [new CatalogSymbol('APP\SHARED', NameKind::ClassLike)],
             ),
         ]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(disk: $disk, builtin: $builtin);
 
         $contents = $source->childrenOf(new NamespaceName('App'));
 
@@ -186,18 +202,19 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertSame(
             'App\Shared',
             $contents->symbols[0]->fullyQualifiedName,
-            'the earlier backend must win the clash: the open document overrides the vendored listing',
+            'the earlier backend must win the clash: the disk spelling overrides the built-in listing',
         );
     }
 
     public function testSearchMergesAndDeduplicatesByFqnEarlierWinning(): void
     {
-        $open = new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'open.php')]);
-        $vendor = new FakeSymbolBackend(searchResults: [
-            self::symbol('APP\LOG', 'vendor.php'),
-            self::symbol('App\Logger', 'vendor.php'),
-        ]);
-        $source = new CompositeSymbolSource([$open, $vendor]);
+        $source = self::compose(
+            disk: new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'disk.php')]),
+            builtin: new FakeSymbolBackend(searchResults: [
+                self::symbol('APP\LOG', 'builtin.php'),
+                self::symbol('App\Logger', 'builtin.php'),
+            ]),
+        );
 
         $results = $source->search('Log', NameKind::ClassLike);
 
@@ -206,7 +223,7 @@ final class CompositeSymbolSourceTest extends TestCase
             $byFqn[$symbol->fullyQualifiedName] = $symbol->location->uri;
         }
         self::assertSame(
-            ['App\Log' => 'file://open.php', 'App\Logger' => 'file://vendor.php'],
+            ['App\Log' => 'file://disk.php', 'App\Logger' => 'file://builtin.php'],
             $byFqn,
             'results merge across backends, deduplicated by FQN with the earlier backend winning the clash',
         );
@@ -214,12 +231,12 @@ final class CompositeSymbolSourceTest extends TestCase
 
     public function testSearchReturnsEveryDeclaredConstantEvenWhenAnotherDiffersOnlyByCase(): void
     {
-        $upper = self::symbol('App\DEBUG', 'open.php', SymbolKind::Constant);
-        $lower = self::symbol('App\debug', 'vendor.php', SymbolKind::Constant);
-        $source = new CompositeSymbolSource([
-            new FakeSymbolBackend(searchResults: [$upper]),
-            new FakeSymbolBackend(searchResults: [$lower]),
-        ]);
+        $upper = self::symbol('App\DEBUG', 'disk.php', SymbolKind::Constant);
+        $lower = self::symbol('App\debug', 'builtin.php', SymbolKind::Constant);
+        $source = self::compose(
+            disk: new FakeSymbolBackend(searchResults: [$upper]),
+            builtin: new FakeSymbolBackend(searchResults: [$lower]),
+        );
 
         $results = $source->search('D', NameKind::Constant);
 
@@ -228,6 +245,26 @@ final class CompositeSymbolSourceTest extends TestCase
             $lower,
             $results,
             'App\\debug is a separate constant and must be returned alongside App\\DEBUG, not merged with it',
+        );
+    }
+
+    /**
+     * The concrete slots are populated with a real backend in empty state, so the
+     * fake-backed disk and built-in slots — the ones the composite types on the
+     * interface — carry the precedence assertions.
+     */
+    private static function compose(SymbolSourceInterface $disk, SymbolSourceInterface $builtin): CompositeSymbolSource
+    {
+        $production = ProductionSyntaxSource::create();
+        $scanner = new DeclarationScanner();
+        $infoFactory = new DeclarationSymbolInfoFactory();
+        $emptyMap = new ComposerAutoloadMap();
+
+        return new CompositeSymbolSource(
+            new OpenDocumentBackend($production->source, $scanner, $infoFactory),
+            new AutoloadFilesBackend($emptyMap, $infoFactory, $scanner, $production->reader, $production->source),
+            $disk,
+            $builtin,
         );
     }
 

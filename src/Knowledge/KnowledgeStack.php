@@ -67,7 +67,7 @@ final readonly class KnowledgeStack
         // enumeration and prefix search draw on the same source and cannot disagree
         // about which names count as built-in (§4.2). The CachingSymbolSource
         // decorator caches its childrenOf lookups.
-        $source = new CompositeSymbolSource([
+        $source = new CompositeSymbolSource(
             $openDocuments,
             $autoloadFiles,
             $disk,
@@ -75,7 +75,7 @@ final readonly class KnowledgeStack
                 new BuiltinBackend(),
                 CacheFactory::inMemory(),
             ),
-        ]);
+        );
 
         return new self(
             $source,
