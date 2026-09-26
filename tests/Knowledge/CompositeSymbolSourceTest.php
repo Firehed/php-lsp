@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
@@ -35,6 +37,49 @@ use PHPUnit\Framework\TestCase;
 final class CompositeSymbolSourceTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
+
+    /**
+     * Pins the constructor's positional contract: an open document is the top of
+     * the precedence chain, so a class it declares must win over the same name
+     * resolved from any later slot. A regression that swapped the argument order
+     * (openDocuments moved past disk, say) would silently pass every disk-only
+     * test above; this one would fail.
+     */
+    public function testOpenDocumentsWinsOverEveryLaterBackend(): void
+    {
+        $production = ProductionSyntaxSource::create();
+        $scanner = new DeclarationScanner();
+        $infoFactory = new DeclarationSymbolInfoFactory();
+        $openDocuments = new OpenDocumentBackend($production->source, $scanner, $infoFactory);
+        $openDocuments->openDocument(new TextDocument(
+            'file:///open.php',
+            'php',
+            1,
+            '<?php namespace App; class Widget {}',
+        ));
+
+        $source = new CompositeSymbolSource(
+            $openDocuments,
+            new AutoloadFilesBackend(
+                new ComposerAutoloadMap(),
+                $infoFactory,
+                $scanner,
+                $production->reader,
+                $production->source,
+            ),
+            new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'disk.php')]),
+            new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'builtin.php')]),
+        );
+
+        $info = $source->lookupClassLike(ClasslikeName::fromFullyQualified('App\Widget'));
+
+        self::assertNotNull($info, 'the open document declares the class, so the lookup must resolve');
+        self::assertSame(
+            '/open.php',
+            $info->file,
+            'the open-document slot must win over disk and built-in, pinning constructor arg order',
+        );
+    }
 
     public function testLookupClassLikeTakesTheFirstBackendThatAnswers(): void
     {

@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
-use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node\Stmt\Function_;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -23,13 +23,15 @@ final class CompositeSyntaxSourceTest extends TestCase
     {
         $composite = self::composite();
 
-        $tree = $composite->parse(self::doc('<?php class Foo {}'));
+        // A function declaration is a node the skeleton never fabricates
+        // (it reconstructs namespaces and class-likes only), so finding one
+        // proves the tree came from php-parser and reached the caller.
+        $tree = $composite->parse(self::doc('<?php function foo() {}'));
 
-        self::assertNotSame([], $tree, 'php-parser produced a tree, so that must reach the caller');
         self::assertNotSame(
             [],
-            (new NodeFinder())->findInstanceOf($tree, Class_::class),
-            'the winning tree came from php-parser and must carry its class node',
+            (new NodeFinder())->findInstanceOf($tree, Function_::class),
+            'the winning tree came from php-parser and must carry its function node',
         );
     }
 
