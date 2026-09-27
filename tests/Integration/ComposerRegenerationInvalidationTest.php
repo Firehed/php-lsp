@@ -62,7 +62,7 @@ final class ComposerRegenerationInvalidationTest extends TestCase
         $this->writePsr4(['App\\' => [$this->projectRoot . '/src']]);
         file_put_contents($this->projectRoot . '/src/Widget.php', "<?php\nnamespace App;\nclass Widget {}\n");
         $stack = $this->knowledgeStackForProjectRoot($this->projectRoot, ProductionSyntaxSource::create());
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         self::assertNotNull(
             $stack->source->lookupClassLike(ClasslikeName::fromFullyQualified('App\\Widget')),
@@ -92,7 +92,7 @@ final class ComposerRegenerationInvalidationTest extends TestCase
         $this->writePsr4(['Before\\' => [$this->projectRoot . '/src']]);
         file_put_contents($this->projectRoot . '/src/Widget.php', "<?php\nnamespace Before;\nclass Widget {}\n");
         $stack = $this->knowledgeStackForProjectRoot($this->projectRoot, ProductionSyntaxSource::create());
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         // Warm the derived index by enumerating before the regeneration.
         self::assertSame(
@@ -126,7 +126,7 @@ final class ComposerRegenerationInvalidationTest extends TestCase
         file_put_contents($entry, "<?php\nnamespace Boot;\nclass Before {}\n");
         $this->writeAutoloadFiles([$entry]);
         $stack = $this->knowledgeStackForProjectRoot($this->projectRoot, ProductionSyntaxSource::create());
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         self::assertNotNull(
             $stack->source->lookupClassLike(ClasslikeName::fromFullyQualified('Boot\\Before')),

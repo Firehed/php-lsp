@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Composer\Autoload\ClassLoader;
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
@@ -18,6 +17,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Events\WatchedFileChangedEvent;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
@@ -31,18 +31,17 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * through Composer's own loader so runtime rules apply verbatim. The index is
  * built once on first use — a project without a `vendor/` never pays for it —
  * and adjusted one name at a time when a watched file changes (RFC 1 §5.2,
- * §5.3). The map itself is read through {@see ComposerAutoloadMapReader}: when
- * `composer install` regenerates the autoload files the reader returns a new
- * map instance, the derived index is dropped, and the next query rebuilds it
- * against the new map. Names declared in `autoload.files` entries are the
- * separate {@see AutoloadFilesBackend}'s concern.
+ * §5.3). A regenerated Composer map arrives as an event carrying the new map;
+ * the derived index is dropped so the next query rebuilds against it. Names
+ * declared in `autoload.files` entries are the separate
+ * {@see AutoloadFilesBackend}'s concern.
  *
  * Lookup is a name-to-file resolve through Composer, then a parse of that one
  * file. It stays out of the index because the index has only names (RFC 1 §3,
  * lazy-first). Only class-likes are addressable through Composer's maps;
  * functions and constants have no name -> file route here.
  */
-final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableInterface
+final class ComposerMapBackend implements SymbolSourceInterface
 {
     use LooksUpByKindTrait;
 
@@ -58,15 +57,16 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
     /** @var array<string, string> Real path -> the FQN the walk derived for it, so a change on that path can adjust one name */
     private array $fqnByWalkedPath = [];
 
-    private ?ComposerAutoloadMap $mapAtBuild = null;
+    private ComposerAutoloadMap $map;
 
     public function __construct(
-        private readonly ComposerAutoloadMapReader $mapReader,
+        ComposerAutoloadMap $initialMap,
         private readonly SyntaxSourceInterface $parser,
         private readonly SourceFileReader $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
     ) {
+        $this->map = $initialMap;
     }
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
@@ -76,31 +76,27 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         return $this->byNamespace[$namespace->normalize()] ?? new NamespaceContents();
     }
 
+    public function onAutoloadMapRegeneratedEvent(AutoloadMapRegeneratedEvent $event): void
+    {
+        $this->map = $event->map;
+        $this->byNamespace = null;
+    }
+
     /**
      * A watched-file event adjusts one name rather than dropping the whole
      * index. The path's previously walked name (if any) is removed, and the
      * name Composer's loader now confirms at that path (if any) is added
-     * (RFC 1 §5.2, §5.3). Classmap entries change with the map itself: a
-     * regenerated autoload map (a fresh instance from
-     * {@see ComposerAutoloadMapReader::current()}) drops the whole derived
-     * index so the next query rebuilds against the new map.
+     * (RFC 1 §5.2, §5.3). Classmap entries change with the map itself.
      */
-    public function invalidate(string $uri): void
+    public function onWatchedFileChanged(WatchedFileChangedEvent $event): void
     {
         if ($this->byNamespace === null) {
             return;
         }
 
-        $map = $this->mapReader->current();
-        if ($map !== $this->mapAtBuild) {
-            $this->byNamespace = null;
-
-            return;
-        }
-
-        $path = FileUri::toPath($uri);
+        $path = FileUri::toPath($event->uri);
         $prior = $this->fqnByWalkedPath[$path] ?? null;
-        $current = $this->deriveWalkedName($path, $this->buildLoader($map), $map);
+        $current = $this->deriveWalkedName($path, $this->buildLoader($this->map), $this->map);
 
         if ($prior === $current) {
             return;
@@ -159,17 +155,17 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         $this->pathByKey[$key] = $path;
     }
 
-    private function buildIndex(ComposerAutoloadMap $map): void
+    private function buildIndex(): void
     {
         $this->catalog = [];
         $this->pathByKey = [];
         $this->fqnByWalkedPath = [];
 
-        foreach ($map->classMap() as $fqn => $path) {
+        foreach ($this->map->classMap() as $fqn => $path) {
             $this->addToCatalog($fqn, $path);
         }
 
-        $loader = $this->buildLoader($map);
+        $loader = $this->buildLoader($this->map);
 
         // Prefixes are walked longest-first so a file reachable through
         // several prefixes (overlapping PSR-4 layouts like
@@ -178,7 +174,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         // first (`findFile` iterates prefixes in reverse-length order).
         // The base-prefix candidate would name a file whose class the file
         // does not declare, so it must not enter the index.
-        foreach (self::orderedByPrefixLength($map->psr4Prefixes()) as $prefix => $directories) {
+        foreach (self::orderedByPrefixLength($this->map->psr4Prefixes()) as $prefix => $directories) {
             $prefixTrimmed = trim($prefix, '\\');
             foreach ($directories as $directory) {
                 foreach (self::walkPhpFiles($directory) as $file) {
@@ -193,7 +189,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
                 }
             }
         }
-        foreach (self::orderedByPrefixLength($map->psr0Prefixes()) as $prefix => $directories) {
+        foreach (self::orderedByPrefixLength($this->map->psr0Prefixes()) as $prefix => $directories) {
             $prefixTrimmed = trim($prefix, '\\');
             foreach ($directories as $directory) {
                 foreach (self::walkPhpFiles($directory) as $file) {
@@ -210,7 +206,6 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         }
 
         $this->byNamespace = NamespaceContents::indexByNamespace($this->catalog);
-        $this->mapAtBuild = $map;
     }
 
     /**
@@ -274,9 +269,8 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
     private function ensureIndex(): void
     {
-        $map = $this->mapReader->current();
-        if ($this->byNamespace === null || $map !== $this->mapAtBuild) {
-            $this->buildIndex($map);
+        if ($this->byNamespace === null) {
+            $this->buildIndex();
         }
     }
 
@@ -286,8 +280,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
             return null;
         }
 
-        $map = $this->mapReader->current();
-        $file = $this->buildLoader($map)->findFile($name->fullyQualifiedName());
+        $file = $this->buildLoader($this->map)->findFile($name->fullyQualifiedName());
         if ($file === false) {
             return null;
         }

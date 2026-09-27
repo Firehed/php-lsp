@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
+use Firehed\PhpLsp\Events\OpenDocumentClosedEvent;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParseMetrics;
@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 #[CoversClass(TextDocumentSyncHandler::class)]
 class TextDocumentSyncHandlerTest extends TestCase
@@ -36,7 +37,7 @@ class TextDocumentSyncHandlerTest extends TestCase
         $this->metrics = $production->metrics;
         $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $this->source = $knowledge->source;
-        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $knowledge->invalidator);
+        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $knowledge->dispatcher);
     }
 
     public function testSupports(): void
@@ -209,21 +210,22 @@ class TextDocumentSyncHandlerTest extends TestCase
         self::assertSame('NewClass', $newClass->name->qualifiedName->shortName);
     }
 
-    public function testDidCloseInvalidatesTheOnDiskCacheSoTheNextQueryReReadsDisk(): void
+    public function testDidClosePublishesAnEventSoTheNextQueryReReadsDisk(): void
     {
         // Closing an edited file must drop the on-disk cache so the next query
         // reflects disk rather than the pre-edit cached value (RFC 1 §5.3).
         $uri = 'file:///workspace/src/Widget.php';
         $this->manager->open($uri, 'php', 1, '<?php');
 
-        $invalidator = $this->createMock(InvalidatableInterface::class);
-        $invalidator->expects($this->once())
-            ->method('invalidate')
-            ->with($uri);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects($this->once())
+            ->method('dispatch')
+            ->with(new OpenDocumentClosedEvent($uri))
+            ->willReturnArgument(0);
 
         $production = ProductionSyntaxSource::create();
         $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
-        $handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $invalidator);
+        $handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $dispatcher);
 
         $handler->handle(NotificationMessage::fromArray([
             'jsonrpc' => '2.0',

@@ -108,7 +108,7 @@ final class FeatureMatrixTest extends TestCase
             ),
         ];
 
-        $this->syncHandler = new TextDocumentSyncHandler($documents, $knowledge->sink, $knowledge->invalidator);
+        $this->syncHandler = new TextDocumentSyncHandler($documents, $knowledge->sink, $knowledge->dispatcher);
     }
 
     public function testEveryCellAnswersOrNamesItsBlocker(): void

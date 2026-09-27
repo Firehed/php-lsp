@@ -74,7 +74,7 @@ class PresenterParityTest extends TestCase
             $this->documents,
             self::completionSourceFor($knowledge->source, $symbolResolver, $capabilities),
         );
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->dispatcher);
     }
 
     public function testHoverSurfaceUsesTheDescription(): void

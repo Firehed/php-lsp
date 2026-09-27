@@ -4,44 +4,48 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Handler;
 
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
+use Firehed\PhpLsp\Events\WatchedFileChangedEvent;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 #[CoversClass(DidChangeWatchedFilesHandler::class)]
 class DidChangeWatchedFilesHandlerTest extends TestCase
 {
     public function testSupportsOnlyTheWatchedFilesMethod(): void
     {
-        $handler = new DidChangeWatchedFilesHandler(self::createStub(InvalidatableInterface::class));
+        $handler = new DidChangeWatchedFilesHandler(self::createStub(EventDispatcherInterface::class));
 
         self::assertTrue($handler->supports('workspace/didChangeWatchedFiles'));
         self::assertFalse($handler->supports('textDocument/didChange'));
     }
 
-    public function testInvalidatesEveryChangedFileRegardlessOfChangeType(): void
+    public function testEveryChangedFilePublishesAnEventRegardlessOfChangeType(): void
     {
-        $invalidator = $this->createMock(InvalidatableInterface::class);
-        // Created, changed, and deleted alike drop the cached entry (RFC 1 §5.2).
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        // Created, changed, and deleted alike publish a WatchedFileChangedEvent (RFC 1 §5.2).
         $matcher = $this->exactly(3);
-        $invalidator->expects($matcher)
-            ->method('invalidate')
-            ->willReturnCallback(function (string $uri) use ($matcher): void {
+        $dispatcher->expects($matcher)
+            ->method('dispatch')
+            ->willReturnCallback(function (object $event) use ($matcher): object {
                 $expected = [
                     'file:///workspace/src/Created.php',
                     'file:///workspace/src/Changed.php',
                     'file:///workspace/src/Deleted.php',
                 ];
+                self::assertInstanceOf(WatchedFileChangedEvent::class, $event);
                 self::assertSame(
                     $expected[$matcher->numberOfInvocations() - 1],
-                    $uri,
-                    'each reported change must be invalidated in order',
+                    $event->uri,
+                    'each reported change must be published in order',
                 );
+
+                return $event;
             });
 
-        $handler = new DidChangeWatchedFilesHandler($invalidator);
+        $handler = new DidChangeWatchedFilesHandler($dispatcher);
         $result = $handler->handle(NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'workspace/didChangeWatchedFiles',
@@ -57,12 +61,12 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
         self::assertNull($result, 'a notification handler returns nothing to send');
     }
 
-    public function testAnEmptyChangeSetInvalidatesNothing(): void
+    public function testAnEmptyChangeSetPublishesNothing(): void
     {
-        $invalidator = $this->createMock(InvalidatableInterface::class);
-        $invalidator->expects($this->never())->method('invalidate');
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects($this->never())->method('dispatch');
 
-        $handler = new DidChangeWatchedFilesHandler($invalidator);
+        $handler = new DidChangeWatchedFilesHandler($dispatcher);
         $handler->handle(NotificationMessage::fromArray([
             'jsonrpc' => '2.0',
             'method' => 'workspace/didChangeWatchedFiles',
