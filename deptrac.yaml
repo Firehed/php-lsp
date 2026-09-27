@@ -27,6 +27,9 @@ deptrac:
     - name: Domain
       collectors:
         - { type: directory, value: src/Domain/.* }
+    - name: Events
+      collectors:
+        - { type: directory, value: src/Events/.* }
     - name: Handler
       collectors:
         - { type: directory, value: src/Handler/.* }
@@ -56,6 +59,7 @@ deptrac:
       - Completion
       - Document
       - Domain
+      - Events
       - Handler
       - Knowledge
       - Parser
@@ -64,11 +68,11 @@ deptrac:
       - Resolution
       - Transport
     Handler:
-      - Cache # InvalidatableInterface: watched-file changes and close-after-edit drop cached on-disk state
       - Capability
       - Completion
       - Document
       - Domain
+      - Events # publishes WatchedFileChangedEvent and OpenDocumentClosedEvent to drive invalidation
       - Knowledge # write path only (SymbolSinkInterface); the SymbolSourceInterface read-side ban is held by the PHPStan rules
       - Protocol
       - Resolution
@@ -89,6 +93,7 @@ deptrac:
       - Cache
       - Document
       - Domain
+      - Events # subscribes to file events and publishes AutoloadMapRegeneratedEvent
       - Parser
       - Repository
     Repository:
