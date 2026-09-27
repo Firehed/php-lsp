@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SourceFileReader;
@@ -42,7 +43,7 @@ final class KnowledgeStackTest extends TestCase
     public function testSourceResolvesAWorkspaceClassThroughTheBackends(): void
     {
         $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            new ComposerAutoloadMapReader($this->fixturesRoot),
             $this->parser,
             $this->reader,
         );
@@ -74,7 +75,7 @@ final class KnowledgeStackTest extends TestCase
     public function testSourceResolvesAClassLikeDeclaredInAnAutoloadFilesEntry(string $fqn): void
     {
         $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            new ComposerAutoloadMapReader($this->fixturesRoot),
             $this->parser,
             $this->reader,
         );
@@ -99,7 +100,7 @@ final class KnowledgeStackTest extends TestCase
     public function testAClassLikeInAnAutoloadFilesEntryIsEnumeratedWhereverItResolves(string $fqn): void
     {
         $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            new ComposerAutoloadMapReader($this->fixturesRoot),
             $this->parser,
             $this->reader,
         );
@@ -130,7 +131,7 @@ final class KnowledgeStackTest extends TestCase
     public function testAnAutoloadFilesNamespaceIsReachableAlongsideThePsr4Tree(): void
     {
         $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            new ComposerAutoloadMapReader($this->fixturesRoot),
             $this->parser,
             $this->reader,
         );
@@ -157,7 +158,7 @@ final class KnowledgeStackTest extends TestCase
     public function testEnumeratingTheAutoloadFilesSetCostsNoFurtherParse(): void
     {
         $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            new ComposerAutoloadMapReader($this->fixturesRoot),
             $this->parser,
             $this->reader,
         );
@@ -182,7 +183,7 @@ final class KnowledgeStackTest extends TestCase
     public function testTheAutoloadFilesIndexIsBuiltOnceAtConstruction(): void
     {
         KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            new ComposerAutoloadMapReader($this->fixturesRoot),
             $this->parser,
             $this->reader,
         );
@@ -197,7 +198,7 @@ final class KnowledgeStackTest extends TestCase
     public function testARepeatedLookupIsServedWithoutReParsing(): void
     {
         $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot),
+            new ComposerAutoloadMapReader($this->fixturesRoot),
             $this->parser,
             $this->reader,
         );
@@ -220,7 +221,7 @@ final class KnowledgeStackTest extends TestCase
     public function testADocumentOpenedThroughTheSinkIsVisibleToTheSource(): void
     {
         $stack = KnowledgeStack::forProject(
-            new ComposerAutoloadMap(),
+            ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap()),
             $this->parser,
             $this->reader,
         );

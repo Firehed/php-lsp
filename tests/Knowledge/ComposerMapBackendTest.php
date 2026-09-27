@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -290,6 +291,41 @@ final class ComposerMapBackendTest extends TestCase
         } finally {
             unlink($orphan);
         }
+    }
+
+    public function testInvalidateDropsTheDerivedIndexWhenTheAutoloadMapChanged(): void
+    {
+        // A `composer install` regenerates the autoload files, which the reader
+        // detects and re-reads. The next invalidate the backend sees carries a
+        // map instance different from the one it built the index against; the
+        // derived index is wholly dropped so the next query re-derives it.
+        $mapReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(
+            classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
+        ));
+        $backend = new ComposerMapBackend(
+            $mapReader,
+            $this->parser,
+            $this->reader,
+            $this->infoFactory,
+            new DeclarationScanner(),
+        );
+
+        self::assertContains(
+            'Fixtures\Domain\User',
+            self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+            'sanity: the initial index carries the classmap entry',
+        );
+
+        // Drop the reader's cache; the next reader->current() re-reads and, since
+        // the empty root has no vendor/composer files, returns a fresh, empty map.
+        $mapReader->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
+        $backend->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
+
+        self::assertSame(
+            [],
+            self::fqnsOfSearch($backend->search('User', NameKind::ClassLike)),
+            'the pre-regeneration classmap entry must not survive a map change',
+        );
     }
 
     public function testInvalidateBeforeTheFirstReadIsANoOp(): void
@@ -629,7 +665,7 @@ final class ComposerMapBackendTest extends TestCase
     private function backendForMap(ComposerAutoloadMap $map): ComposerMapBackend
     {
         return new ComposerMapBackend(
-            $map,
+            ComposerAutoloadMapReader::fromMap($map),
             $this->parser,
             $this->reader,
             $this->infoFactory,

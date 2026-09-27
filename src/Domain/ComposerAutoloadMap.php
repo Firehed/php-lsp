@@ -33,9 +33,14 @@ final readonly class ComposerAutoloadMap
     ) {
     }
 
+    public static function composerDirFor(string $projectRoot): string
+    {
+        return rtrim($projectRoot, '/') . '/vendor/composer';
+    }
+
     public static function fromProjectRoot(string $projectRoot): self
     {
-        $composerDir = rtrim($projectRoot, '/') . '/vendor/composer';
+        $composerDir = self::composerDirFor($projectRoot);
 
         return new self(
             self::loadPrefixes($composerDir . '/autoload_psr4.php'),
