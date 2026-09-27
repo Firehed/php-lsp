@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests;
 
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
-use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 
@@ -21,7 +20,7 @@ trait BuildsKnowledgeStackTrait
      */
     private function knowledgeStackForMap(ComposerAutoloadMap $map, ProductionSyntaxSource $syntax): KnowledgeStack
     {
-        return KnowledgeStack::forProject(ComposerAutoloadMapReader::fromMap($map), $syntax->source, $syntax->reader);
+        return KnowledgeStack::forMap($map, $syntax->source, $syntax->reader);
     }
 
     /**
@@ -29,10 +28,6 @@ trait BuildsKnowledgeStackTrait
      */
     private function knowledgeStackForProjectRoot(string $projectRoot, ProductionSyntaxSource $syntax): KnowledgeStack
     {
-        return KnowledgeStack::forProject(
-            new ComposerAutoloadMapReader($projectRoot),
-            $syntax->source,
-            $syntax->reader,
-        );
+        return KnowledgeStack::forProject($projectRoot, $syntax->source, $syntax->reader);
     }
 }

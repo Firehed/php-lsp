@@ -13,8 +13,8 @@ use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Events\WatchedFileChangedEvent;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
-use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -231,7 +231,7 @@ final class AutoloadFilesBackendTest extends TestCase
             );
 
             self::assertNotFalse(file_put_contents($path, '<?php const AFTER_CHANGE = 2;'), 'rewrite must succeed');
-            $backend->invalidate(FileUri::fromPath($path));
+            $backend->onWatchedFileChanged(new WatchedFileChangedEvent(FileUri::fromPath($path)));
 
             self::assertNotNull(
                 $backend->lookupConstant(ConstantName::fromFullyQualified('AFTER_CHANGE')),
@@ -255,7 +255,7 @@ final class AutoloadFilesBackendTest extends TestCase
 
             // Delete first: from here a rebuild can only drop the name.
             unlink($path);
-            $backend->invalidate('file:///some/other/file.php');
+            $backend->onWatchedFileChanged(new WatchedFileChangedEvent('file:///some/other/file.php'));
 
             self::assertNotNull(
                 $backend->lookupConstant(ConstantName::fromFullyQualified('UNTOUCHED')),
@@ -388,7 +388,7 @@ final class AutoloadFilesBackendTest extends TestCase
                 file_put_contents($path, '<?php namespace Rebuilt; class After {}'),
                 'rewrite must succeed',
             );
-            $backend->invalidate(FileUri::fromPath($path));
+            $backend->onWatchedFileChanged(new WatchedFileChangedEvent(FileUri::fromPath($path)));
 
             self::assertSame(
                 [['Rebuilt\After', 'ClassLike']],
@@ -545,7 +545,7 @@ final class AutoloadFilesBackendTest extends TestCase
         $production = ProductionSyntaxSource::create();
 
         return new AutoloadFilesBackend(
-            ComposerAutoloadMapReader::fromMap($map),
+            $map,
             new DeclarationSymbolInfoFactory(),
             new DeclarationScanner(),
             $production->reader,

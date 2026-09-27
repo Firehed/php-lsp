@@ -4,22 +4,23 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
+use Firehed\PhpLsp\Events\WatchedFileChangedEvent;
 use Firehed\PhpLsp\Protocol\Message;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Handles `workspace/didChangeWatchedFiles`: the client reports on-disk changes to
  * files it watches for the server. Every change — created, changed, or deleted —
- * invalidates that file's cached workspace state (RFC 1 §5.2) so the next query
- * re-reads disk. The change type is not inspected because the response to all
- * three is the same drop.
+ * publishes a {@see WatchedFileChangedEvent} whose subscribers drop derived state
+ * for the URI so the next query re-reads disk (RFC 1 §5.2). The change type is
+ * not inspected because the response to all three is the same drop.
  */
 final class DidChangeWatchedFilesHandler implements HandlerInterface
 {
     private const string METHOD = 'workspace/didChangeWatchedFiles';
 
     public function __construct(
-        private readonly InvalidatableInterface $invalidator,
+        private readonly EventDispatcherInterface $dispatcher,
     ) {
     }
 
@@ -40,7 +41,7 @@ final class DidChangeWatchedFilesHandler implements HandlerInterface
             $uri = $change['uri'] ?? '';
             assert(is_string($uri));
 
-            $this->invalidator->invalidate($uri);
+            $this->dispatcher->dispatch(new WatchedFileChangedEvent($uri));
         }
 
         return null;

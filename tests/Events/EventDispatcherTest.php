@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Events\EventDispatcher;
 use Firehed\PhpLsp\Events\ListenerProvider;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\EventDispatcher\StoppableEventInterface;
 
 #[CoversClass(EventDispatcher::class)]
 final class EventDispatcherTest extends TestCase
@@ -46,9 +45,9 @@ final class EventDispatcherTest extends TestCase
         $dispatcher = new EventDispatcher($provider);
         $reached = false;
         $provider->addListener(SampleEvent::class, static function () use ($dispatcher): void {
-            $dispatcher->dispatch(new SampleImplementation());
+            $dispatcher->dispatch(new OtherSampleEvent());
         });
-        $provider->addListener(SampleInterface::class, static function () use (&$reached): void {
+        $provider->addListener(OtherSampleEvent::class, static function () use (&$reached): void {
             $reached = true;
         });
 
@@ -72,6 +71,10 @@ final class EventDispatcherTest extends TestCase
 
         $dispatcher->dispatch(new StoppableSample());
 
-        self::assertSame(['first'], $order, 'a listener that stops propagation must prevent later listeners from firing');
+        self::assertSame(
+            ['first'],
+            $order,
+            'a listener that stops propagation must prevent later listeners from firing',
+        );
     }
 }

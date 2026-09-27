@@ -17,7 +17,6 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
-use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -62,7 +61,7 @@ final class CompositeSymbolSourceTest extends TestCase
         $source = new CompositeSymbolSource(
             $openDocuments,
             new AutoloadFilesBackend(
-                ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap()),
+                new ComposerAutoloadMap(),
                 $infoFactory,
                 $scanner,
                 $production->reader,
@@ -304,11 +303,11 @@ final class CompositeSymbolSourceTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $scanner = new DeclarationScanner();
         $infoFactory = new DeclarationSymbolInfoFactory();
-        $emptyReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap());
+        $emptyMap = new ComposerAutoloadMap();
 
         return new CompositeSymbolSource(
             new OpenDocumentBackend($production->source, $scanner, $infoFactory),
-            new AutoloadFilesBackend($emptyReader, $infoFactory, $scanner, $production->reader, $production->source),
+            new AutoloadFilesBackend($emptyMap, $infoFactory, $scanner, $production->reader, $production->source),
             $disk,
             $builtin,
         );

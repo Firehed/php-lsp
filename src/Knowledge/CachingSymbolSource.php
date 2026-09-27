@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheKey;
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FileUri;
@@ -20,6 +18,7 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\NamespaceOwnedNameInterface;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
+use Firehed\PhpLsp\Events\FileEventInterface;
 use Psr\SimpleCache\CacheInterface;
 
 /**
@@ -30,10 +29,12 @@ use Psr\SimpleCache\CacheInterface;
  * A lookup is remembered by name and kind, hit or miss. A hit is dropped when the
  * file that declares it is invalidated. A miss names no file, and a namespace
  * listing is keyed by namespace rather than by file, so both are dropped on any
- * invalidation. Search is passed through: the prefix changes on every keystroke,
- * so a remembered answer is rarely asked for twice.
+ * file event. Search is passed through: the prefix changes on every keystroke,
+ * so a remembered answer is rarely asked for twice. An autoload-map regeneration
+ * drops every remembered entry — the wholesale flush the per-path accounting
+ * cannot express through a single URI.
  */
-final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableInterface
+final class CachingSymbolSource implements SymbolSourceInterface
 {
     /** A remembered miss is stored as null, so absence needs a marker of its own. */
     private const string UNCACHED = 'uncached';
@@ -47,14 +48,10 @@ final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableI
     /** @var list<string> */
     private array $missKeys = [];
 
-    private ?ComposerAutoloadMap $mapAtLastCheck = null;
-
     public function __construct(
         private readonly SymbolSourceInterface $inner,
         private readonly CacheInterface $cache,
-        private readonly ?ComposerAutoloadMapReader $mapReader = null,
     ) {
-        $this->mapAtLastCheck = $this->mapReader?->current();
     }
 
     public function childrenOf(NamespaceName $namespace): NamespaceContents
@@ -71,28 +68,6 @@ final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableI
         $this->listingKeys[] = $key;
 
         return $contents;
-    }
-
-    public function invalidate(string $uri): void
-    {
-        $currentMap = $this->mapReader?->current();
-        if ($currentMap !== null && $currentMap !== $this->mapAtLastCheck) {
-            $this->keysByPath = [];
-            $this->listingKeys = [];
-            $this->missKeys = [];
-            $this->cache->clear();
-            $this->mapAtLastCheck = $currentMap;
-
-            return;
-        }
-
-        $path = FileUri::toPath($uri);
-        $keys = [...($this->keysByPath[$path] ?? []), ...$this->listingKeys, ...$this->missKeys];
-        unset($this->keysByPath[$path]);
-        $this->listingKeys = [];
-        $this->missKeys = [];
-
-        $this->cache->deleteMultiple($keys);
     }
 
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo
@@ -120,6 +95,25 @@ final class CachingSymbolSource implements SymbolSourceInterface, InvalidatableI
             fn(): ?FunctionInfo => $this->inner->lookupFunction($name),
             static fn(FunctionInfo $info): ?string => $info->file,
         );
+    }
+
+    public function onAutoloadMapRegeneratedEvent(AutoloadMapRegeneratedEvent $event): void
+    {
+        $this->keysByPath = [];
+        $this->listingKeys = [];
+        $this->missKeys = [];
+        $this->cache->clear();
+    }
+
+    public function onFileEvent(FileEventInterface $event): void
+    {
+        $path = FileUri::toPath($event->uri);
+        $keys = [...($this->keysByPath[$path] ?? []), ...$this->listingKeys, ...$this->missKeys];
+        unset($this->keysByPath[$path]);
+        $this->listingKeys = [];
+        $this->missKeys = [];
+
+        $this->cache->deleteMultiple($keys);
     }
 
     /**

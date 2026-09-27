@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Events;
 
 use Firehed\PhpLsp\Events\EventInterface;
 
-final readonly class SampleEvent implements EventInterface
+final readonly class OtherSampleEvent implements EventInterface
 {
     public string $type;
 

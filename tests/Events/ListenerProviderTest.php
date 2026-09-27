@@ -15,10 +15,7 @@ final class ListenerProviderTest extends TestCase
     public function testRegisteredListenersReceiveMatchingEventTypes(): void
     {
         $provider = new ListenerProvider();
-        $seen = [];
-        $provider->addListener(SampleEvent::class, static function (object $event) use (&$seen): void {
-            $seen[] = $event;
-        });
+        $provider->addListener(SampleEvent::class, static fn(SampleEvent $event): null => null);
 
         $listeners = iterator_to_array($provider->getListenersForEvent(new SampleEvent()), false);
 
@@ -28,25 +25,21 @@ final class ListenerProviderTest extends TestCase
     public function testNonMatchingEventTypesReceiveNoListeners(): void
     {
         $provider = new ListenerProvider();
-        $provider->addListener(SampleEvent::class, static fn(object $event): null => null);
+        $provider->addListener(SampleEvent::class, static fn(SampleEvent $event): null => null);
 
-        $listeners = iterator_to_array($provider->getListenersForEvent(new stdClass()), false);
+        $listeners = iterator_to_array($provider->getListenersForEvent(new OtherSampleEvent()), false);
 
-        self::assertSame([], $listeners, 'a listener bound to another class must not fire for an unrelated event');
+        self::assertSame([], $listeners, 'a listener bound to another type must not fire for an unrelated event');
     }
 
-    public function testInterfaceRegistrationMatchesEveryImplementingConcreteEvent(): void
+    public function testEventsWithoutEventInterfaceReceiveNoListeners(): void
     {
         $provider = new ListenerProvider();
-        $provider->addListener(SampleInterface::class, static fn(object $event): null => null);
+        // A PSR-14 dispatcher may accept any object; the provider matches only
+        // events that carry a type string, so plain objects yield no listeners.
+        $listeners = iterator_to_array($provider->getListenersForEvent(new stdClass()), false);
 
-        $listeners = iterator_to_array($provider->getListenersForEvent(new SampleImplementation()), false);
-
-        self::assertCount(
-            1,
-            $listeners,
-            'a listener bound to an interface must fire for every concrete event implementing it',
-        );
+        self::assertSame([], $listeners, 'plain objects must yield no listeners');
     }
 
     public function testMultipleListenersFireInRegistrationOrder(): void

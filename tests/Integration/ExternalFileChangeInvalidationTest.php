@@ -64,7 +64,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
     {
         $this->writeClass('Widget', '');
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         $before = $stack->source->lookupClassLike($this->classNameFor('Widget'));
         self::assertNotNull($before, 'the unopened workspace class must resolve from disk');
@@ -88,7 +88,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
         $this->writeClass('Alpha', '');
         $this->writeClass('Beta', '');
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         $this->warm($stack->source, 'Alpha', 'Beta');
 
@@ -108,7 +108,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
     {
         $this->writeClass('Widget', '');
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         self::assertNotNull(
             $stack->source->lookupClassLike($this->classNameFor('Widget')),
@@ -127,7 +127,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
     public function testAClassCreatedAfterAFailedLookupResolvesOnTheNextQuery(): void
     {
         $stack = $this->stack();
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         self::assertNull(
             $stack->source->lookupClassLike($this->classNameFor('Late')),
@@ -149,7 +149,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
         $stack = $this->stack();
         $uri = $this->uriFor('Widget');
         $documents = new DocumentManager();
-        $sync = new TextDocumentSyncHandler($documents, $stack->sink, $stack->invalidator);
+        $sync = new TextDocumentSyncHandler($documents, $stack->sink, $stack->dispatcher);
 
         // The file is cached from disk, then opened and edited in the editor and
         // saved to disk with a new method.
@@ -183,7 +183,7 @@ class ExternalFileChangeInvalidationTest extends TestCase
             new ComposerAutoloadMap(files: [$path]),
             $this->syntax,
         );
-        $handler = new DidChangeWatchedFilesHandler($stack->invalidator);
+        $handler = new DidChangeWatchedFilesHandler($stack->dispatcher);
 
         self::assertSame(
             ['Temp\FilesBefore'],

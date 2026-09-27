@@ -11,7 +11,8 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
+use Firehed\PhpLsp\Events\WatchedFileChangedEvent;
+use Firehed\PhpLsp\Knowledge\AutoloadMapRegeneratedEvent;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -209,7 +210,7 @@ final class ComposerMapBackendTest extends TestCase
 
         file_put_contents($newFile, "<?php\n\nnamespace Fixtures\\Domain;\n\nclass Ephemeral {}\n");
         try {
-            $backend->invalidate(FileUri::fromPath($newFile));
+            $backend->onWatchedFileChanged(new WatchedFileChangedEvent(FileUri::fromPath($newFile)));
 
             self::assertContains(
                 'Fixtures\Domain\Ephemeral',
@@ -240,7 +241,7 @@ final class ComposerMapBackendTest extends TestCase
             );
 
             unlink($newFile);
-            $backend->invalidate(FileUri::fromPath($newFile));
+            $backend->onWatchedFileChanged(new WatchedFileChangedEvent(FileUri::fromPath($newFile)));
 
             self::assertNotContains(
                 'Fixtures\Domain\Transient',
@@ -260,7 +261,9 @@ final class ComposerMapBackendTest extends TestCase
         $before = self::fqnsOfSearch($backend->search('User', NameKind::ClassLike));
         self::assertContains('Fixtures\Domain\User', $before, 'sanity: the walk sees User');
 
-        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php'));
+        $backend->onWatchedFileChanged(
+            new WatchedFileChangedEvent(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php')),
+        );
 
         self::assertSame(
             $before,
@@ -281,7 +284,7 @@ final class ComposerMapBackendTest extends TestCase
             $backend = $this->backend();
             $before = self::fqnsOfSearch($backend->search('User', NameKind::ClassLike));
 
-            $backend->invalidate(FileUri::fromPath($orphan));
+            $backend->onWatchedFileChanged(new WatchedFileChangedEvent(FileUri::fromPath($orphan)));
 
             self::assertSame(
                 $before,
@@ -293,17 +296,16 @@ final class ComposerMapBackendTest extends TestCase
         }
     }
 
-    public function testInvalidateDropsTheDerivedIndexWhenTheAutoloadMapChanged(): void
+    public function testAnAutoloadMapRegenerationDropsTheDerivedIndex(): void
     {
-        // A `composer install` regenerates the autoload files, which the reader
-        // detects and re-reads. The next invalidate the backend sees carries a
-        // map instance different from the one it built the index against; the
-        // derived index is wholly dropped so the next query re-derives it.
-        $mapReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(
-            classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
-        ));
+        // A `composer install` regenerates the autoload files; the reader
+        // detects it and publishes an AutoloadMapRegeneratedEvent that carries
+        // the fresh map. The backend replaces its map and drops the derived
+        // index so the next query re-derives against the new set.
         $backend = new ComposerMapBackend(
-            $mapReader,
+            new ComposerAutoloadMap(
+                classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
+            ),
             $this->parser,
             $this->reader,
             $this->infoFactory,
@@ -316,10 +318,7 @@ final class ComposerMapBackendTest extends TestCase
             'sanity: the initial index carries the classmap entry',
         );
 
-        // Drop the reader's cache; the next reader->current() re-reads and, since
-        // the empty root has no vendor/composer files, returns a fresh, empty map.
-        $mapReader->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
-        $backend->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
+        $backend->onAutoloadMapRegeneratedEvent(new AutoloadMapRegeneratedEvent(new ComposerAutoloadMap()));
 
         self::assertSame(
             [],
@@ -333,7 +332,9 @@ final class ComposerMapBackendTest extends TestCase
         // The index is built lazily on the first read: a stray invalidate that
         // preceded any query has nothing to adjust and must not force a walk.
         $backend = $this->backend();
-        $backend->invalidate(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php'));
+        $backend->onWatchedFileChanged(
+            new WatchedFileChangedEvent(FileUri::fromPath($this->fixturesRoot . '/src/Domain/User.php')),
+        );
 
         self::assertContains(
             'Fixtures\Domain\User',
@@ -356,7 +357,7 @@ final class ComposerMapBackendTest extends TestCase
 
         file_put_contents($newFile, "<?php\n\nclass Psr0_Psr0New {}\n");
         try {
-            $backend->invalidate(FileUri::fromPath($newFile));
+            $backend->onWatchedFileChanged(new WatchedFileChangedEvent(FileUri::fromPath($newFile)));
 
             self::assertContains(
                 'Psr0\Psr0New',
@@ -665,7 +666,7 @@ final class ComposerMapBackendTest extends TestCase
     private function backendForMap(ComposerAutoloadMap $map): ComposerMapBackend
     {
         return new ComposerMapBackend(
-            ComposerAutoloadMapReader::fromMap($map),
+            $map,
             $this->parser,
             $this->reader,
             $this->infoFactory,

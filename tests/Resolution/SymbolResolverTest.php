@@ -76,7 +76,7 @@ final class SymbolResolverTest extends TestCase
             typeSource: new NativeTypeSource($knowledge->source, $memberResolver),
         );
 
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->dispatcher);
     }
 
     public function testResolveAtPositionReturnsNullWhenNoNodeFound(): void

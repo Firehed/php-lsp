@@ -24,7 +24,6 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SourceFileReader;
@@ -112,14 +111,10 @@ final class Server
         // an open-document backend and index (RFC 1 §4.2, §4.3, §5.3). Every
         // knowledge consumer — SymbolResolver, the completion sources, and
         // MemberResolver — reads through this one composite.
-        $knowledge = KnowledgeStack::forProject(
-            new ComposerAutoloadMapReader($projectRoot),
-            $parser,
-            $reader,
-        );
+        $knowledge = KnowledgeStack::forProject($projectRoot, $parser, $reader);
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;
-        $invalidator = $knowledge->invalidator;
+        $dispatcher = $knowledge->dispatcher;
 
         $memberResolver = new MemberResolver($symbolSource);
         $typeSource = new NativeTypeSource($symbolSource, $memberResolver);
@@ -143,9 +138,9 @@ final class Server
             new TextDocumentSyncHandler(
                 $documentManager,
                 $symbolSink,
-                $invalidator,
+                $dispatcher,
             ),
-            new DidChangeWatchedFilesHandler($invalidator),
+            new DidChangeWatchedFilesHandler($dispatcher),
             new DefinitionHandler(
                 $documentManager,
                 $symbolResolver,
