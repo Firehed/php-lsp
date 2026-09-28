@@ -267,11 +267,11 @@ final class SymbolCandidates
             if (array_key_exists($fqn, $seen)) {
                 continue;
             }
-            if ($kind->isClassLike() && !$this->acceptsClassLike($fqn, $classFilter)) {
-                continue;
-            }
             $reference = ReferenceResolver::resolve($fqn, $kind, $context);
             if (!$reference->isReachable()) {
+                continue;
+            }
+            if ($kind->isClassLike() && !$this->acceptsClassLike($fqn, $classFilter)) {
                 continue;
             }
             $seen[$fqn] = true;
@@ -359,11 +359,11 @@ final class SymbolCandidates
             if (array_key_exists($fqn, $seen)) {
                 continue;
             }
-            if ($kind->isClassLike() && !$this->acceptsClassLike($fqn, $classFilter)) {
-                continue;
-            }
             $reference = ReferenceResolver::resolve($fqn, $kind, $context);
             if (!$reference->isReachable()) {
+                continue;
+            }
+            if ($kind->isClassLike() && !$this->acceptsClassLike($fqn, $classFilter)) {
                 continue;
             }
             $seen[$fqn] = true;
