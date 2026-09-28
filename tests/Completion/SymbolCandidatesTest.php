@@ -10,10 +10,13 @@ use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
@@ -107,6 +110,43 @@ final class SymbolCandidatesTest extends TestCase
             1,
             $allLabels,
             'cross-kind FQN collision deduplicates: the first kind wins',
+        );
+    }
+
+    public function testReachabilityGatesClassLikePredicate(): void
+    {
+        $this->openFixture('src/Completion/Builder.php');
+
+        $hits = $this->symbolSource->search('Buil', NameKind::ClassLike);
+        self::assertNotEmpty(
+            $hits,
+            'sanity: search must return at least one namespaced class-like for the assertion below to be meaningful',
+        );
+
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
+        $capabilities->method('getSessionCapabilities')
+            ->willReturn(new SessionCapabilities());
+
+        $isInstantiableCalls = [];
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getNameContext')
+            ->willReturn(new NameContext('Elsewhere'));
+        $codeResolver->method('isInstantiable')
+            ->willReturnCallback(function (ClasslikeName $className) use (&$isInstantiableCalls): bool {
+                $isInstantiableCalls[] = $className->qualifiedName->fullyQualifiedName();
+                return true;
+            });
+
+        $candidates = new SymbolCandidates($this->symbolSource, $codeResolver, $capabilities);
+
+        $request = $this->probe("<?php\nnamespace Elsewhere;\nBuil");
+        $candidates->find($request, [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
+
+        self::assertSame(
+            [],
+            $isInstantiableCalls,
+            'isInstantiable must not run on unreachable search hits — the ' .
+            'cheap reachability check should short-circuit before the class-info build',
         );
     }
 
