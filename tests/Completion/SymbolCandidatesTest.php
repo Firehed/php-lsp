@@ -145,7 +145,8 @@ final class SymbolCandidatesTest extends TestCase
         self::assertSame(
             [],
             $isInstantiableCalls,
-            'isInstantiable must not run on unreachable search hits — the cheap reachability check should short-circuit before the class-info build',
+            'isInstantiable must not run on unreachable search hits — the ' .
+            'cheap reachability check should short-circuit before the class-info build',
         );
     }
 
