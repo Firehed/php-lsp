@@ -95,7 +95,10 @@ class DefinitionIntegrationTest extends TestCase
         $root = dirname(__DIR__) . '/Fixtures';
         $path = $root . '/src/Domain/User.php';
         $lines = explode("\n", (string) file_get_contents($path));
-        $declaration = array_find_key($lines, static fn(string $line): bool => str_contains($line, 'implements Entity'));
+        $declaration = array_find_key(
+            $lines,
+            static fn(string $line): bool => str_contains($line, 'implements Entity'),
+        );
         self::assertIsInt($declaration, 'the fixture must still implement Entity for this test to mean anything');
 
         $messages = [

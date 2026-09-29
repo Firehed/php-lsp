@@ -105,6 +105,7 @@ final class Server
         }
 
         $documentManager = $container->get(DocumentManagerInterface::class);
+        $documents = $container->get(DocumentSourceInterface::class);
 
         // The symbol-knowledge tier: one read composite over the fixed backend
         // precedence (open document › disk › built-in) and one write path, sharing
@@ -114,7 +115,7 @@ final class Server
         $knowledge = KnowledgeStack::forProject(
             new ComposerAutoloadMapReader($projectRoot),
             $parser,
-            $container->get(DocumentSourceInterface::class),
+            $documents,
         );
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;
@@ -146,20 +147,20 @@ final class Server
             ),
             new DidChangeWatchedFilesHandler($invalidator),
             new DefinitionHandler(
-                $documentManager,
+                $documents,
                 $symbolResolver,
             ),
             new HoverHandler(
-                $documentManager,
+                $documents,
                 $symbolResolver,
                 $negotiator,
             ),
             new SignatureHelpHandler(
-                $documentManager,
+                $documents,
                 $symbolResolver,
             ),
             new CompletionHandler(
-                $documentManager,
+                $documents,
                 new CompositeCompletionSource(
                     $symbolResolver,
                     new SymbolCandidates($symbolSource, $symbolResolver, $negotiator),
