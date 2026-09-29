@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\CompositeDocumentSource;
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -17,7 +18,6 @@ use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;

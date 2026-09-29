@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Parser;
+namespace Firehed\PhpLsp\Document;
 
-use Firehed\PhpLsp\Document\DocumentSourceInterface;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FileUri;
 
 /**

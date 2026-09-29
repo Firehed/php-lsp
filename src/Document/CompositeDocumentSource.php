@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Document;
 
-use Firehed\PhpLsp\Parser\SourceFileReader;
-
 /**
  * An open document's content is the client's, and the server must not read it
  * from the URI; once closed, its content is whatever the URI points to

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser;
 
+use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Parser\ParseMetrics;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Parser;
+namespace Firehed\PhpLsp\Tests\Document;
 
+use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
