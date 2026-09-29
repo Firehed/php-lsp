@@ -346,7 +346,6 @@ parameters:
                 - src/Resolution/ExpressionResolver.php # resolveConstFetch: the candidate-loop caller
                 - src/Resolution/TypeSource/NativeTypeSource.php # identity-keyed type authority (issue #519)
                 - src/Knowledge/CompositeSymbolSource.php # composite delegates to backends
-                - src/Knowledge/CachingSymbolSource.php # decorator delegates to the wrapped source
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Domain\ResolvedSymbolInterface::format()'
