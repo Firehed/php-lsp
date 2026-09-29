@@ -37,8 +37,6 @@ final readonly class KnowledgeStack
      * disk resolved through Composer's maps, which overrides the built-ins
      * (RFC 1 §5.3). Composer requires the files entries before the autoloader
      * is ever asked, so a name declared there wins over the name -> file map.
-     * On-disk and built-in enumeration is cached; open documents and the
-     * files-set index never are.
      */
     public static function forProject(
         ComposerAutoloadMapReader $mapReader,
@@ -57,26 +55,11 @@ final readonly class KnowledgeStack
         $openDocuments = new OpenDocumentBackend($declarations);
         $autoloadFiles = new AutoloadFilesBackend($mapReader, $reader, $declarations);
         $composerMap = new ComposerMapBackend($mapReader, $reader, $declarations);
-        $disk = new CachingSymbolSource($composerMap, CacheFactory::inMemory(), $mapReader);
-
-        // The built-in backend owns its own derived index of internal symbols, so
-        // enumeration and prefix search draw on the same source and cannot disagree
-        // about which names count as built-in (§4.2). The CachingSymbolSource
-        // decorator caches its childrenOf lookups.
-        $source = new CompositeSymbolSource(
-            $openDocuments,
-            $autoloadFiles,
-            $disk,
-            new CachingSymbolSource(
-                new BuiltinBackend(),
-                CacheFactory::inMemory(),
-            ),
-        );
 
         return new self(
-            $source,
+            new CompositeSymbolSource($openDocuments, $autoloadFiles, $composerMap, new BuiltinBackend()),
             $openDocuments,
-            new CompositeInvalidatable($mapReader, $disk, $composerMap, $autoloadFiles),
+            new CompositeInvalidatable($mapReader, $composerMap, $autoloadFiles),
         );
     }
 }
