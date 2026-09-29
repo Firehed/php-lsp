@@ -51,6 +51,9 @@ deptrac:
     - name: Transport
       collectors:
         - { type: directory, value: src/Transport/.* }
+    - name: Watch
+      collectors:
+        - { type: directory, value: src/Watch/.* }
   ruleset:
     Root:
       - Cache
@@ -95,6 +98,7 @@ deptrac:
       - Filesystem # PhpDirectoryReader: the one directory walk
       - Parser
       - Repository
+      - Watch # WatchedPathsSourceInterface: holders name the paths they depend on
     Repository:
       - Document # FileUri, the path/URI conversion authority
       - Domain
