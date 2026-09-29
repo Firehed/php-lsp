@@ -685,6 +685,24 @@ final class ComposerMapBackendTest extends TestCase
      * Wired against the fixtures project so lookups run through the same
      * Composer maps every fixture-based test uses.
      */
+    public function testItNeedsItsAutoloadRootsWatched(): void
+    {
+        $watched = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['Fixtures\\' => [$this->fixturesRoot . '/src']],
+            psr0: ['Legacy_' => [$this->fixturesRoot . '/Autoload']],
+            classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
+        ))->watchedPaths();
+
+        // Named before the name list is built: a watch that began afterwards
+        // would take a file added in between as having always been there.
+        self::assertSame(
+            [$this->fixturesRoot . '/src', $this->fixturesRoot . '/Autoload'],
+            $watched->roots,
+            'the name list is stale exactly when a file appears or disappears under a root it walks',
+        );
+        self::assertSame([], $watched->files, 'a lookup reads its file each time, so no file\'s content is watched');
+    }
+
     private function backend(): ComposerMapBackend
     {
         return $this->backendForMap(ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot));
