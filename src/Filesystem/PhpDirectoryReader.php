@@ -14,6 +14,7 @@ final class PhpDirectoryReader
 
     public function __construct()
     {
+        // Future scope: allow other extensions via constructor injection
         $this->extensions = ['php'];
     }
 
