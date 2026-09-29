@@ -357,17 +357,14 @@ class ServerTest extends TestCase
     }
 
     /**
-     * Parse dedup is scoped to one handled LSP message, notifications included
-     * (0002-execution-plan.md, Section 8.5). Each of the three sync messages
-     * below costs exactly one parse: not the two the sync path used to spend on
-     * every keystroke, and not one in total, which is the standing cache the
-     * Step 0 spike declined to add.
+     * What a document declares is remembered for its text, so the sync path
+     * parses a given text once however many messages carry it.
      *
-     * Measured across `run()` rather than the process, because construction now
+     * Measured across `run()` rather than the process, because construction
      * eagerly indexes the `autoload.files` set; that cost is gated separately by
      * KnowledgeStackTest, not folded in here where it would blur this bound.
      */
-    public function testParsesAreScopedToOneMessage(): void
+    public function testTheSyncPathParsesATextOnce(): void
     {
         $uri = 'file:///fixtures/src/Domain/User.php';
         $text = $this->loadFixture('src/Domain/User.php');
@@ -375,8 +372,6 @@ class ServerTest extends TestCase
         $didOpen = $this->notificationJson('textDocument/didOpen', [
             'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
         ]);
-        // Re-sending identical text is what separates a message-scoped memo from
-        // a standing one: the memo must have been discarded, so this parses again.
         $didChange = $this->notificationJson('textDocument/didChange', [
             'textDocument' => ['uri' => $uri, 'version' => 2],
             'contentChanges' => [['text' => $text]],
@@ -406,20 +401,16 @@ class ServerTest extends TestCase
         $server->run();
 
         self::assertSame(
-            3,
+            1,
             $production->metrics->getParseCount() - $atStartup,
-            'three sync messages, one parse each',
+            'three sync messages carrying one text, one parse',
         );
     }
 
     /**
-     * The same boundary, exercised by a *request* rather than a notification.
-     *
-     * The sibling test above drives notifications only, so it cannot tell
-     * whether the discard runs for requests: guarding the discard on
-     * `!$message instanceof RequestMessage` leaves it green. Two identical
-     * completion requests separate the cases — the second re-parses only if the
-     * first message's memo was discarded.
+     * A request needs the tree, and trees are kept for one message only. Two
+     * identical completion requests separate that from a standing tree cache:
+     * the second re-parses only if the first message's memo was discarded.
      */
     public function testParsesAreScopedToOneMessageOnTheRequestPath(): void
     {
