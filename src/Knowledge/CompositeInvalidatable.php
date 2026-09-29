@@ -19,7 +19,6 @@ final readonly class CompositeInvalidatable implements InvalidatableInterface
 {
     public function __construct(
         private ComposerAutoloadMapReader $mapReader,
-        private CachingSymbolSource $mapsDecorator,
         private ComposerMapBackend $mapsBackend,
         private AutoloadFilesBackend $filesBackend,
     ) {
@@ -28,7 +27,6 @@ final readonly class CompositeInvalidatable implements InvalidatableInterface
     public function invalidate(string $uri): void
     {
         $this->mapReader->invalidate($uri);
-        $this->mapsDecorator->invalidate($uri);
         $this->mapsBackend->invalidate($uri);
         $this->filesBackend->invalidate($uri);
     }

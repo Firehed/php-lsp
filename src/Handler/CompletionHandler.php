@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Handler;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\CompletionSourceInterface;
-use Firehed\PhpLsp\Document\DocumentManagerInterface;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 
@@ -24,7 +24,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
     private const RESULT_LIMIT = 100;
 
     public function __construct(
-        private readonly DocumentManagerInterface $documentManager,
+        private readonly DocumentSourceInterface $documents,
         private readonly CompletionSourceInterface $completionSource,
     ) {
     }
@@ -47,7 +47,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
             return null;
         }
 
-        $document = $this->documentManager->get($position->uri);
+        $document = $this->documents->read($position->uri);
         if ($document === null) {
             return null;
         }

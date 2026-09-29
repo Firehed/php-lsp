@@ -6,8 +6,10 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Composer\Autoload\ClassLoader;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -18,8 +20,9 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
-use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
+use Firehed\PhpLsp\Watch\WatchedPaths;
+use Firehed\PhpLsp\Watch\WatchedPathsSourceInterface;
 
 /**
  * A {@see SymbolSourceInterface} over PHP files on disk, resolved through
@@ -42,7 +45,10 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * lazy-first). Only class-likes are addressable through Composer's maps;
  * functions and constants have no name -> file route here.
  */
-final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableInterface
+final class ComposerMapBackend implements
+    SymbolSourceInterface,
+    InvalidatableInterface,
+    WatchedPathsSourceInterface
 {
     use LooksUpByKindTrait;
 
@@ -62,10 +68,9 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
     public function __construct(
         private readonly ComposerAutoloadMapReader $mapReader,
-        private readonly SyntaxSourceInterface $parser,
-        private readonly SourceFileReader $reader,
-        private readonly DeclarationSymbolInfoFactory $infoFactory,
-        private readonly DeclarationScanner $scanner,
+        private readonly DocumentSourceInterface $documents,
+        private readonly DeclarationSourceInterface $declarations,
+        private readonly PhpDirectoryReader $directories,
     ) {
     }
 
@@ -117,6 +122,16 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         }
 
         $this->byNamespace = NamespaceContents::indexByNamespace($this->catalog);
+    }
+
+    public function watchedPaths(): WatchedPaths
+    {
+        $map = $this->mapReader->current();
+
+        return new WatchedPaths(roots: array_values(array_unique(array_merge(
+            ...array_values($map->psr4Prefixes()),
+            ...array_values($map->psr0Prefixes()),
+        ))));
     }
 
     /**
@@ -181,7 +196,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         foreach (self::orderedByPrefixLength($map->psr4Prefixes()) as $prefix => $directories) {
             $prefixTrimmed = trim($prefix, '\\');
             foreach ($directories as $directory) {
-                foreach (self::walkPhpFiles($directory) as $file) {
+                foreach ($this->walkPhpFiles($directory) as $file) {
                     if (array_key_exists($file, $this->fqnByWalkedPath)) {
                         continue;
                     }
@@ -196,7 +211,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         foreach (self::orderedByPrefixLength($map->psr0Prefixes()) as $prefix => $directories) {
             $prefixTrimmed = trim($prefix, '\\');
             foreach ($directories as $directory) {
-                foreach (self::walkPhpFiles($directory) as $file) {
+                foreach ($this->walkPhpFiles($directory) as $file) {
                     if (array_key_exists($file, $this->fqnByWalkedPath)) {
                         continue;
                     }
@@ -292,9 +307,15 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
             return null;
         }
 
-        $declarations = $this->scanner->scanFile($file, $this->reader, $this->parser);
+        $document = $this->documents->read($file);
+        if ($document === null) {
+            return null;
+        }
 
-        return $this->infoFactory->fromDeclarations($declarations, $name, $kind, $file);
+        return array_find(
+            $this->declarations->declarationsIn($document),
+            static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, $kind),
+        )?->info;
     }
 
     /**
@@ -353,31 +374,10 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
     /**
      * @return iterable<string> Real paths of every `.php` file under $directory.
      */
-    private static function walkPhpFiles(string $directory): iterable
+    private function walkPhpFiles(string $directory): iterable
     {
-        if (!is_dir($directory)) {
-            return;
-        }
-
-        $entries = scandir($directory);
-        if ($entries === false) {
-            // @codeCoverageIgnoreStart
-            return;
-            // @codeCoverageIgnoreEnd
-        }
-
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $directory . '/' . $entry;
-            if (is_dir($path)) {
-                yield from self::walkPhpFiles($path);
-                continue;
-            }
-            if (str_ends_with($entry, '.php') && is_file($path)) {
-                yield $path;
-            }
+        foreach ($this->directories->walk($directory) as $listing) {
+            yield from $listing->files;
         }
     }
 }

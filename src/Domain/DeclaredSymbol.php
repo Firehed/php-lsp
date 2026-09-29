@@ -17,4 +17,9 @@ final readonly class DeclaredSymbol
         public SymbolInfoInterface $info,
     ) {
     }
+
+    public function declares(QualifiedName $name, NameKind $kind): bool
+    {
+        return $this->kind->keyFor($this->name) === $kind->keyFor($name);
+    }
 }

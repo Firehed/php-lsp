@@ -93,19 +93,28 @@ Completion must keep working on code that does not parse mid-edit.
 Do not convert them to tree analysis.
 
 
+### Source text
+
+Every read of a document's text goes through `DocumentSourceInterface`.
+Its composite answers from the editor's buffer while the document is open and from disk otherwise.
+While a document is open the server must not read it from disk ([LSP] `textDocument/didOpen`).
+
 ### Caching
 
 A service may hold an index it derives from its whole source and rebuilds on invalidation.
 A service never remembers the answer to a query.
-Answers are remembered by one PSR-16 decorator per backend, applied in wiring, never around open documents.
+What a document declares is remembered by one PSR-16 decorator on `DeclarationSourceInterface`, applied in wiring.
+Its key is the document's path and text together, so an entry describes one state of one file and is never invalidated.
+The cache's size limit evicts.
 
 #### Invalidation
 
-The server never decides on its own that an answer is stale.
-The editor is the only source of change events.
+A change to a file's text needs no event, because the text is read when it is asked for.
+An index over which files exist does need one.
 Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
 Both flow through `InvalidatableInterface::invalidate`, which fans out to every invalidatable in the wiring.
-An open buffer is not an invalidation; it wins by composite order while it is open.
+A client may not support `workspace/didChangeWatchedFiles`.
+`PollingFileWatcher` stands in for that client only, and reports the same events through the same fan-out.
 Built-ins are never invalidated until the target environment can change.
 
 ## Handling Design or Specification Tensions

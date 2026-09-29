@@ -6,8 +6,10 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
-use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Watch\WatchedPathsSourceInterface;
 
 /**
  * Assembles the symbol-knowledge tier: the {@see SymbolSourceInterface} read composite
@@ -21,10 +23,14 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  */
 final readonly class KnowledgeStack
 {
+    // Every edit to an open document is a new entry, so the count must be bounded.
+    private const int REMEMBERED_DOCUMENTS = 2000;
+
     public function __construct(
         public SymbolSourceInterface $source,
         public SymbolSinkInterface $sink,
         public InvalidatableInterface $invalidator,
+        public WatchedPathsSourceInterface $watched,
     ) {
     }
 
@@ -34,52 +40,30 @@ final readonly class KnowledgeStack
      * disk resolved through Composer's maps, which overrides the built-ins
      * (RFC 1 §5.3). Composer requires the files entries before the autoloader
      * is ever asked, so a name declared there wins over the name -> file map.
-     * On-disk and built-in enumeration is cached; open documents and the
-     * files-set index never are.
      */
     public static function forProject(
         ComposerAutoloadMapReader $mapReader,
         SyntaxSourceInterface $parser,
-        SourceFileReader $reader,
+        DocumentSourceInterface $reader,
     ): self {
-        $declarationInfoFactory = new DeclarationSymbolInfoFactory();
-        $scanner = new DeclarationScanner();
-
-        $openDocuments = new OpenDocumentBackend($parser, $scanner, $declarationInfoFactory);
-        $autoloadFiles = new AutoloadFilesBackend(
-            $mapReader,
-            $declarationInfoFactory,
-            $scanner,
-            $reader,
-            $parser,
-        );
-        $composerMap = new ComposerMapBackend(
-            $mapReader,
-            $parser,
-            $reader,
-            $declarationInfoFactory,
-            $scanner,
-        );
-        $disk = new CachingSymbolSource($composerMap, CacheFactory::inMemory(), $mapReader);
-
-        // The built-in backend owns its own derived index of internal symbols, so
-        // enumeration and prefix search draw on the same source and cannot disagree
-        // about which names count as built-in (§4.2). The CachingSymbolSource
-        // decorator caches its childrenOf lookups.
-        $source = new CompositeSymbolSource(
-            $openDocuments,
-            $autoloadFiles,
-            $disk,
-            new CachingSymbolSource(
-                new BuiltinBackend(),
-                CacheFactory::inMemory(),
+        $declarations = new CachingDeclarationSource(
+            new ParsedDeclarationSource(
+                $parser,
+                new DeclarationScanner(),
+                new DeclarationSymbolInfoFactory(),
             ),
+            CacheFactory::inMemory(self::REMEMBERED_DOCUMENTS),
         );
+
+        $openDocuments = new OpenDocumentBackend($declarations);
+        $autoloadFiles = new AutoloadFilesBackend($mapReader, $reader, $declarations);
+        $composerMap = new ComposerMapBackend($mapReader, $reader, $declarations, new PhpDirectoryReader());
 
         return new self(
-            $source,
+            new CompositeSymbolSource($openDocuments, $autoloadFiles, $composerMap, new BuiltinBackend()),
             $openDocuments,
-            new CompositeInvalidatable($mapReader, $disk, $composerMap, $autoloadFiles),
+            new CompositeInvalidatable($mapReader, $composerMap, $autoloadFiles),
+            new CompositeWatchedPaths($mapReader, $composerMap, $autoloadFiles),
         );
     }
 }

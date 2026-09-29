@@ -15,8 +15,6 @@ use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -535,6 +533,16 @@ final class AutoloadFilesBackendTest extends TestCase
         return $symbols;
     }
 
+    public function testItNeedsItsEntriesWatched(): void
+    {
+        $entries = ['/project/bootstrap.php', '/project/helpers.php'];
+
+        $watched = self::backendForMap(new ComposerAutoloadMap(files: $entries))->watchedPaths();
+
+        self::assertSame($entries, $watched->files, 'the index is stale exactly when an entry changes');
+        self::assertSame([], $watched->roots, 'the index depends on no directory listing');
+    }
+
     private static function backendForRoot(string $projectRoot): AutoloadFilesBackend
     {
         return self::backendForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot));
@@ -546,10 +554,8 @@ final class AutoloadFilesBackendTest extends TestCase
 
         return new AutoloadFilesBackend(
             ComposerAutoloadMapReader::fromMap($map),
-            new DeclarationSymbolInfoFactory(),
-            new DeclarationScanner(),
             $production->reader,
-            $production->source,
+            $production->declarations,
         );
     }
 

@@ -182,6 +182,69 @@ class ServerTest extends TestCase
         }
     }
 
+    /**
+     * [LSP] leaves `workspace/didChangeWatchedFiles` optional for a client. With
+     * one that never sends it, a class created on disk must still reach
+     * completion: the composed server stands in for the missing notification.
+     */
+    public function testAFileCreatedOnDiskIsSeenWithoutWatchedFilesSupport(): void
+    {
+        $root = $this->createProject('');
+        $consumerUri = 'file://' . $root . '/src/consumer.php';
+        $sprocket = $root . '/src/Sprocket.php';
+
+        try {
+            $input = $this->buildMessages(
+                $this->initializeJson(1),
+                $this->initializedJson(),
+                $this->notificationJson('textDocument/didOpen', [
+                    'textDocument' => [
+                        'uri' => $consumerUri,
+                        'languageId' => 'php',
+                        'version' => 1,
+                        'text' => "<?php\nnamespace Temp;\n\$w = new Wid",
+                    ],
+                ]),
+                $this->classCompletionAt(2, $consumerUri),
+                $this->notificationJson('textDocument/didChange', [
+                    'textDocument' => ['uri' => $consumerUri, 'version' => 2],
+                    'contentChanges' => [['text' => "<?php\nnamespace Temp;\n\$w = new Spr"]],
+                ]),
+                $this->classCompletionAt(3, $consumerUri),
+                $this->requestJson(4, 'shutdown'),
+                $this->notificationJson('exit'),
+            );
+
+            $outputBuffer = new WritableBuffer();
+            // The class appears on disk after the first completion has built the
+            // name list, and nothing tells the server.
+            $appear = static function (Message $message) use ($sprocket): void {
+                if ($message->method === 'textDocument/didChange') {
+                    file_put_contents($sprocket, "<?php\nnamespace Temp;\nclass Sprocket {}\n");
+                }
+            };
+            $transport = $this->createTransport($input, $outputBuffer, $appear);
+            $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer(), $root);
+
+            $server->run();
+
+            $responses = $this->decodeResponses($outputBuffer->buffer());
+            self::assertContains(
+                'Widget',
+                $this->completionLabels($this->responseWithId($responses, 2)),
+                'the first completion must build the name list for it to be able to go stale',
+            );
+            self::assertContains(
+                'Sprocket',
+                $this->completionLabels($this->responseWithId($responses, 3)),
+                'a class created on disk is offered on the next request',
+            );
+        } finally {
+            @unlink($sprocket);
+            $this->removeProject($root);
+        }
+    }
+
     public function testUnknownMethodReturnsError(): void
     {
         $input = $this->buildMessages(
@@ -357,17 +420,14 @@ class ServerTest extends TestCase
     }
 
     /**
-     * Parse dedup is scoped to one handled LSP message, notifications included
-     * (0002-execution-plan.md, Section 8.5). Each of the three sync messages
-     * below costs exactly one parse: not the two the sync path used to spend on
-     * every keystroke, and not one in total, which is the standing cache the
-     * Step 0 spike declined to add.
+     * What a document declares is remembered for its text, so the sync path
+     * parses a given text once however many messages carry it.
      *
-     * Measured across `run()` rather than the process, because construction now
+     * Measured across `run()` rather than the process, because construction
      * eagerly indexes the `autoload.files` set; that cost is gated separately by
      * KnowledgeStackTest, not folded in here where it would blur this bound.
      */
-    public function testParsesAreScopedToOneMessage(): void
+    public function testTheSyncPathParsesATextOnce(): void
     {
         $uri = 'file:///fixtures/src/Domain/User.php';
         $text = $this->loadFixture('src/Domain/User.php');
@@ -375,8 +435,6 @@ class ServerTest extends TestCase
         $didOpen = $this->notificationJson('textDocument/didOpen', [
             'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
         ]);
-        // Re-sending identical text is what separates a message-scoped memo from
-        // a standing one: the memo must have been discarded, so this parses again.
         $didChange = $this->notificationJson('textDocument/didChange', [
             'textDocument' => ['uri' => $uri, 'version' => 2],
             'contentChanges' => [['text' => $text]],
@@ -406,20 +464,16 @@ class ServerTest extends TestCase
         $server->run();
 
         self::assertSame(
-            3,
+            1,
             $production->metrics->getParseCount() - $atStartup,
-            'three sync messages, one parse each',
+            'three sync messages carrying one text, one parse',
         );
     }
 
     /**
-     * The same boundary, exercised by a *request* rather than a notification.
-     *
-     * The sibling test above drives notifications only, so it cannot tell
-     * whether the discard runs for requests: guarding the discard on
-     * `!$message instanceof RequestMessage` leaves it green. Two identical
-     * completion requests separate the cases — the second re-parses only if the
-     * first message's memo was discarded.
+     * A request needs the tree, and trees are kept for one message only. Two
+     * identical completion requests separate that from a standing tree cache:
+     * the second re-parses only if the first message's memo was discarded.
      */
     public function testParsesAreScopedToOneMessageOnTheRequestPath(): void
     {
@@ -893,6 +947,15 @@ class ServerTest extends TestCase
         return $this->requestJson($id, 'textDocument/completion', [
             'textDocument' => ['uri' => $uri],
             'position' => ['line' => 3, 'character' => 4],
+        ]);
+    }
+
+    private function classCompletionAt(int $id, string $uri): string
+    {
+        // The consumer's `$w = new Xxx` sits at line 2; the cursor follows the prefix.
+        return $this->requestJson($id, 'textDocument/completion', [
+            'textDocument' => ['uri' => $uri],
+            'position' => ['line' => 2, 'character' => strlen('$w = new Xxx')],
         ]);
     }
 

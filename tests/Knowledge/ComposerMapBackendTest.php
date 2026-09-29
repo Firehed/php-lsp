@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Document\CompositeDocumentSource;
+use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -11,12 +14,10 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -33,17 +34,15 @@ final class ComposerMapBackendTest extends TestCase
     use LooksUpBackendSymbolsTrait;
 
     private string $fixturesRoot;
-    private MemoizingSyntaxSource $parser;
     private SourceFileReader $reader;
-    private DeclarationSymbolInfoFactory $infoFactory;
+    private ParsedDeclarationSource $declarations;
 
     protected function setUp(): void
     {
         $this->fixturesRoot = dirname(__DIR__, 2) . '/tests/Fixtures';
         $production = ProductionSyntaxSource::create();
-        $this->parser = $production->source;
         $this->reader = $production->reader;
-        $this->infoFactory = new DeclarationSymbolInfoFactory();
+        $this->declarations = $production->declarations;
     }
 
     public function testLookupClassLikeResolvesAndParsesAFixtureClass(): void
@@ -55,6 +54,36 @@ final class ComposerMapBackendTest extends TestCase
             'Fixtures\Domain\User',
             $info->name->qualifiedName->fullyQualifiedName(),
             'the located class must be returned',
+        );
+    }
+
+    public function testLookupClassLikeReadsAnOpenFileFromItsBuffer(): void
+    {
+        // The buffer holds what another fixture declares, so the two answers
+        // below can only come from the buffer and never from the file on disk.
+        $file = $this->fixturesRoot . '/src/Domain/User.php';
+        $buffer = (string) file_get_contents($this->fixturesRoot . '/src/Domain/Entity.php');
+
+        $open = new DocumentManager();
+        $open->open(FileUri::fromPath($file), 'php', 1, $buffer);
+
+        $backend = new ComposerMapBackend(
+            ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(classMap: [
+                'Fixtures\Domain\User' => $file,
+                'Fixtures\Domain\Entity' => $file,
+            ])),
+            new CompositeDocumentSource($open, $this->reader),
+            $this->declarations,
+            new PhpDirectoryReader(),
+        );
+
+        self::assertNotNull(
+            self::classLikeIn($backend, 'Fixtures\Domain\Entity'),
+            'a declaration that exists only in the buffer must resolve',
+        );
+        self::assertNull(
+            self::classLikeIn($backend, 'Fixtures\Domain\User'),
+            'a declaration the buffer no longer holds must not resolve from disk',
         );
     }
 
@@ -304,10 +333,9 @@ final class ComposerMapBackendTest extends TestCase
         ));
         $backend = new ComposerMapBackend(
             $mapReader,
-            $this->parser,
             $this->reader,
-            $this->infoFactory,
-            new DeclarationScanner(),
+            $this->declarations,
+            new PhpDirectoryReader(),
         );
 
         self::assertContains(
@@ -657,6 +685,24 @@ final class ComposerMapBackendTest extends TestCase
      * Wired against the fixtures project so lookups run through the same
      * Composer maps every fixture-based test uses.
      */
+    public function testItNeedsItsAutoloadRootsWatched(): void
+    {
+        $watched = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['Fixtures\\' => [$this->fixturesRoot . '/src']],
+            psr0: ['Legacy_' => [$this->fixturesRoot . '/Autoload']],
+            classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
+        ))->watchedPaths();
+
+        // Named before the name list is built: a watch that began afterwards
+        // would take a file added in between as having always been there.
+        self::assertSame(
+            [$this->fixturesRoot . '/src', $this->fixturesRoot . '/Autoload'],
+            $watched->roots,
+            'the name list is stale exactly when a file appears or disappears under a root it walks',
+        );
+        self::assertSame([], $watched->files, 'a lookup reads its file each time, so no file\'s content is watched');
+    }
+
     private function backend(): ComposerMapBackend
     {
         return $this->backendForMap(ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot));
@@ -666,10 +712,9 @@ final class ComposerMapBackendTest extends TestCase
     {
         return new ComposerMapBackend(
             ComposerAutoloadMapReader::fromMap($map),
-            $this->parser,
             $this->reader,
-            $this->infoFactory,
-            new DeclarationScanner(),
+            $this->declarations,
+            new PhpDirectoryReader(),
         );
     }
 

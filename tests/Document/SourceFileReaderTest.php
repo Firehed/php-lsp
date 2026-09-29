@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Parser;
+namespace Firehed\PhpLsp\Tests\Document;
 
+use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Domain\FileUri;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +25,17 @@ final class SourceFileReaderTest extends TestCase
             (string) file_get_contents($path),
             $doc->getContent(),
             'the returned document must carry the file contents verbatim',
+        );
+    }
+
+    public function testReadAcceptsAFileUri(): void
+    {
+        $path = dirname(__DIR__) . '/Fixtures/src/Domain/User.php';
+
+        self::assertSame(
+            (string) file_get_contents($path),
+            (new SourceFileReader())->read(FileUri::fromPath($path))?->getContent(),
+            'a caller holding a URI reads the same file as one holding its path',
         );
     }
 

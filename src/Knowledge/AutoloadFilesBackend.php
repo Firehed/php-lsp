@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Parser\SourceFileReader;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Watch\WatchedPaths;
+use Firehed\PhpLsp\Watch\WatchedPathsSourceInterface;
 
 /**
  * The {@see SymbolSourceInterface} over Composer's `autoload.files` set — the one
@@ -32,19 +33,20 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * would leave a class-like declared in the set reachable at runtime but invisible
  * here (RFC 1 §4.2).
  */
-final class AutoloadFilesBackend implements SymbolSourceInterface, InvalidatableInterface
+final class AutoloadFilesBackend implements
+    SymbolSourceInterface,
+    InvalidatableInterface,
+    WatchedPathsSourceInterface
 {
     use DeclaredSymbolStoreTrait;
     use LooksUpByKindTrait;
 
-    private ?ComposerAutoloadMap $mapAtBuild = null;
+    private ComposerAutoloadMap $mapAtBuild;
 
     public function __construct(
         private readonly ComposerAutoloadMapReader $mapReader,
-        private readonly DeclarationSymbolInfoFactory $infoFactory,
-        private readonly DeclarationScanner $scanner,
-        private readonly SourceFileReader $reader,
-        private readonly SyntaxSourceInterface $parser,
+        private readonly DocumentSourceInterface $documents,
+        private readonly DeclarationSourceInterface $declarations,
     ) {
         $this->buildIndex($this->mapReader->current());
     }
@@ -65,12 +67,18 @@ final class AutoloadFilesBackend implements SymbolSourceInterface, Invalidatable
         $this->buildIndex($map);
     }
 
+    public function watchedPaths(): WatchedPaths
+    {
+        return new WatchedPaths(files: $this->mapAtBuild->autoloadFiles());
+    }
+
     private function buildIndex(ComposerAutoloadMap $map): void
     {
         $this->clearAllSymbols();
         foreach ($map->autoloadFiles() as $path) {
-            $declarations = $this->scanner->scanFile($path, $this->reader, $this->parser);
-            $this->setSymbolsFor(FileUri::fromPath($path), ...$this->infoFactory->allIn($declarations, $path));
+            $document = $this->documents->read($path);
+            $declared = $document === null ? [] : $this->declarations->declarationsIn($document);
+            $this->setSymbolsFor(FileUri::fromPath($path), ...$declared);
         }
         $this->mapAtBuild = $map;
     }
