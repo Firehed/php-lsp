@@ -21,6 +21,9 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  */
 final readonly class KnowledgeStack
 {
+    // Every edit to an open document is a new entry, so the count must be bounded.
+    private const int REMEMBERED_DOCUMENTS = 2000;
+
     public function __construct(
         public SymbolSourceInterface $source,
         public SymbolSinkInterface $sink,
@@ -42,10 +45,13 @@ final readonly class KnowledgeStack
         SyntaxSourceInterface $parser,
         DocumentSourceInterface $reader,
     ): self {
-        $declarations = new ParsedDeclarationSource(
-            $parser,
-            new DeclarationScanner(),
-            new DeclarationSymbolInfoFactory(),
+        $declarations = new CachingDeclarationSource(
+            new ParsedDeclarationSource(
+                $parser,
+                new DeclarationScanner(),
+                new DeclarationSymbolInfoFactory(),
+            ),
+            CacheFactory::inMemory(self::REMEMBERED_DOCUMENTS),
         );
 
         $openDocuments = new OpenDocumentBackend($declarations);
