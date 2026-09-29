@@ -267,9 +267,11 @@ parameters:
                 - 'disk_total_space()'
                 - 'parse_ini_file()'
                 - 'move_uploaded_file()'
-            message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
+            message: 'filesystem access is confined: SourceFileReader reads source, PhpDirectoryReader lists directories, StatReader reads modification times, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
             allowIn:
-                - src/Parser/SourceFileReader.php
+                - src/Document/SourceFileReader.php
+                - src/Filesystem/PhpDirectoryReader.php
+                - src/Filesystem/StatReader.php
                 - src/Domain/ComposerAutoloadMap.php
                 - src/Knowledge/ComposerMapBackend.php
                 - src/Transport/*
@@ -319,6 +321,7 @@ parameters:
                 - src/Handler/DidChangeWatchedFilesHandler.php # the watched-file trigger
                 - src/Handler/TextDocumentSyncHandler.php # the close-after-edit trigger
                 - src/Knowledge/CompositeInvalidatable.php # the fan-out itself
+                - src/Watch/PollingFileWatcher.php # the trigger for a client without watched-file support
                 - tests/*
         -
             method:
@@ -346,7 +349,6 @@ parameters:
                 - src/Resolution/ExpressionResolver.php # resolveConstFetch: the candidate-loop caller
                 - src/Resolution/TypeSource/NativeTypeSource.php # identity-keyed type authority (issue #519)
                 - src/Knowledge/CompositeSymbolSource.php # composite delegates to backends
-                - src/Knowledge/CachingSymbolSource.php # decorator delegates to the wrapped source
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Domain\ResolvedSymbolInterface::format()'
