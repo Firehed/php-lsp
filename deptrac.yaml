@@ -59,7 +59,6 @@ deptrac:
       - Completion
       - Document
       - Domain
-      - Filesystem
       - Handler
       - Knowledge
       - Parser
