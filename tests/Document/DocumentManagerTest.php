@@ -30,6 +30,22 @@ class DocumentManagerTest extends TestCase
         self::assertSame('<?php echo "test";', $doc->getContent());
     }
 
+    public function testReadAnswersForOpenDocumentsOnly(): void
+    {
+        $manager = new DocumentManager();
+        $manager->open('file:///test.php', 'php', 1, '<?php');
+
+        self::assertSame(
+            $manager->get('file:///test.php'),
+            $manager->read('file:///test.php'),
+            'an open document is read from its buffer',
+        );
+        self::assertNull(
+            $manager->read('file:///unknown.php'),
+            'a document that is not open has no buffer to read',
+        );
+    }
+
     public function testGetReturnsNullForUnknown(): void
     {
         $manager = new DocumentManager();
