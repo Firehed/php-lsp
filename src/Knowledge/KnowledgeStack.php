@@ -21,8 +21,10 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  */
 final readonly class KnowledgeStack
 {
-    // Every edit to an open document is a new entry, so the count must be bounded.
-    private const int REMEMBERED_DOCUMENTS = 2000;
+    // Working-set target: a typical editing session touches fewer files than
+    // this, so nothing evicts. Not derived from measurement; picked as a
+    // comfortable bound above the observed working set.
+    private const int WORKING_SET_FILES = 2000;
 
     public function __construct(
         public SymbolSourceInterface $source,
@@ -49,7 +51,7 @@ final readonly class KnowledgeStack
                 new DeclarationScanner(),
                 new DeclarationSymbolInfoFactory(),
             ),
-            CacheFactory::inMemory(maxItems: self::REMEMBERED_DOCUMENTS),
+            CacheFactory::inMemory(maxItems: self::WORKING_SET_FILES),
         );
 
         $openDocuments = new OpenDocumentBackend($declarations);
