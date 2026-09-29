@@ -9,5 +9,5 @@ return [
     Document\DocumentManager::class,
     Document\DocumentManagerInterface::class => Document\DocumentManager::class,
     Document\DocumentSourceInterface::class => Document\CompositeDocumentSource::class,
-    Parser\SourceFileReader::class,
+    Document\SourceFileReader::class,
 ];

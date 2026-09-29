@@ -6,8 +6,8 @@ namespace Firehed\PhpLsp\Tests\Document;
 
 use Firehed\PhpLsp\Document\CompositeDocumentSource;
 use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
