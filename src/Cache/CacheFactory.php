@@ -28,6 +28,11 @@ final class CacheFactory
         // ArrayAdapter's second argument disables its copy-on-read (named
         // `storeSerialized` in symfony/cache 7, `deepClone` in 8), so a hit
         // returns the cached instance rather than a clone.
-        return new Psr16Cache(new ArrayAdapter(0, false, 0, $maxItems));
+        return new Psr16Cache(new ArrayAdapter(
+            defaultLifetime: 0,
+            deepClone: false,
+            maxLifetime: 0,
+            maxItems: $maxItems,
+        ));
     }
 }

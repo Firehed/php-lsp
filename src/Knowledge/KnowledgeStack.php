@@ -49,7 +49,7 @@ final readonly class KnowledgeStack
                 new DeclarationScanner(),
                 new DeclarationSymbolInfoFactory(),
             ),
-            CacheFactory::inMemory(self::REMEMBERED_DOCUMENTS),
+            CacheFactory::inMemory(maxItems: self::REMEMBERED_DOCUMENTS),
         );
 
         $openDocuments = new OpenDocumentBackend($declarations);
