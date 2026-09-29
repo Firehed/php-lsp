@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Composer\Autoload\ClassLoader;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
@@ -18,7 +19,6 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
@@ -63,7 +63,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
     public function __construct(
         private readonly ComposerAutoloadMapReader $mapReader,
         private readonly SyntaxSourceInterface $parser,
-        private readonly SourceFileReader $reader,
+        private readonly DocumentSourceInterface $reader,
         private readonly DeclarationSymbolInfoFactory $infoFactory,
         private readonly DeclarationScanner $scanner,
     ) {
