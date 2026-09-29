@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Watch\WatchedPathsSourceInterface;
 
 /**
  * Assembles the symbol-knowledge tier: the {@see SymbolSourceInterface} read composite
@@ -29,6 +30,7 @@ final readonly class KnowledgeStack
         public SymbolSourceInterface $source,
         public SymbolSinkInterface $sink,
         public InvalidatableInterface $invalidator,
+        public WatchedPathsSourceInterface $watched,
     ) {
     }
 
@@ -61,6 +63,7 @@ final readonly class KnowledgeStack
             new CompositeSymbolSource($openDocuments, $autoloadFiles, $composerMap, new BuiltinBackend()),
             $openDocuments,
             new CompositeInvalidatable($mapReader, $composerMap, $autoloadFiles),
+            new CompositeWatchedPaths($mapReader, $composerMap, $autoloadFiles),
         );
     }
 }

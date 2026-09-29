@@ -218,11 +218,12 @@ class ServerTest extends TestCase
             $outputBuffer = new WritableBuffer();
             // The class appears on disk after the first completion has built the
             // name list, and nothing tells the server.
-            $transport = $this->createTransport($input, $outputBuffer, static function (Message $message) use ($sprocket): void {
+            $appear = static function (Message $message) use ($sprocket): void {
                 if ($message->method === 'textDocument/didChange') {
                     file_put_contents($sprocket, "<?php\nnamespace Temp;\nclass Sprocket {}\n");
                 }
-            });
+            };
+            $transport = $this->createTransport($input, $outputBuffer, $appear);
             $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer(), $root);
 
             $server->run();

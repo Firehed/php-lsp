@@ -17,6 +17,8 @@ use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManagerInterface;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
+use Firehed\PhpLsp\Filesystem\StatReader;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
@@ -47,6 +49,7 @@ use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\TransportInterface;
+use Firehed\PhpLsp\Watch\PollingFileWatcher;
 
 final class Server
 {
@@ -67,6 +70,7 @@ final class Server
         private readonly LifecycleHandler $lifecycleHandler,
         array $handlers,
         private readonly MessageScopedInterface $messageScope,
+        private readonly ?BeforeMessageInterface $beforeMessage = null,
     ) {
         $this->handlers = [$lifecycleHandler, ...$handlers];
     }
@@ -137,7 +141,14 @@ final class Server
         // is no static server capability for them), gated on the client declaring
         // support; the events invalidate cached workspace state (RFC 1 §5.2, §5.3).
         $watchedFilesRegistrar = new WatchedFilesRegistrar(new TransportClientConnection($transport));
-        $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar]);
+        $fileWatcher = new PollingFileWatcher(
+            $knowledge->watched,
+            $invalidator,
+            new PhpDirectoryReader(),
+            new StatReader(),
+            time(...),
+        );
+        $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar, $fileWatcher]);
 
         $handlers = [
             new TextDocumentSyncHandler(
@@ -173,7 +184,7 @@ final class Server
             ),
         ];
 
-        return new self($transport, $lifecycleHandler, $handlers, $parser);
+        return new self($transport, $lifecycleHandler, $handlers, $parser, $fileWatcher);
     }
 
     public function run(): int
@@ -204,6 +215,8 @@ final class Server
 
                 if ($error === null) {
                     try {
+                        $this->beforeMessage?->beforeMessage();
+
                         // Inside the try because `supports()` is part of the
                         // handler contract: a failure selecting a handler is a
                         // handler failure, and must be answered rather than
