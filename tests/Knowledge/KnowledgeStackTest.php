@@ -218,6 +218,36 @@ final class KnowledgeStackTest extends TestCase
         );
     }
 
+    public function testTwoNamesInOneFileCostOneParse(): void
+    {
+        $file = $this->fixturesRoot . '/MultiClass/MultiClass.php';
+        $stack = KnowledgeStack::forProject(
+            ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(classMap: [
+                'Fixtures\Completion\FirstUnrelated' => $file,
+                'Fixtures\Completion\SecondUnrelated' => $file,
+            ])),
+            $this->parser,
+            $this->reader,
+        );
+
+        self::assertNotNull(
+            $stack->source->lookupClassLike(self::className('Fixtures\Completion\FirstUnrelated')),
+            'the first name must resolve for the parse count to mean anything',
+        );
+        $afterFirst = $this->metrics->getParseCount();
+        $this->parser->endMessage();
+
+        self::assertNotNull(
+            $stack->source->lookupClassLike(self::className('Fixtures\Completion\SecondUnrelated')),
+            'the second name is declared in the same file',
+        );
+        self::assertSame(
+            $afterFirst,
+            $this->metrics->getParseCount(),
+            'what a file declares is remembered for the file, not for the name that was asked',
+        );
+    }
+
     public function testADocumentOpenedThroughTheSinkIsVisibleToTheSource(): void
     {
         $stack = KnowledgeStack::forProject(
