@@ -109,11 +109,12 @@ The cache's size limit evicts.
 
 #### Invalidation
 
-The server never decides on its own that an answer is stale.
-The editor is the only source of change events.
+A change to a file's text needs no event, because the text is read when it is asked for.
+An index over which files exist does need one.
 Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
 Both flow through `InvalidatableInterface::invalidate`, which fans out to every invalidatable in the wiring.
-An open buffer is not an invalidation; it wins by composite order while it is open.
+A client may not support `workspace/didChangeWatchedFiles`.
+`PollingFileWatcher` stands in for that client only, and reports the same events through the same fan-out.
 Built-ins are never invalidated until the target environment can change.
 
 ## Handling Design or Specification Tensions

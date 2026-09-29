@@ -36,6 +36,10 @@ deptrac:
     - name: Knowledge
       collectors:
         - { type: directory, value: src/Knowledge/.* }
+    - name: Message
+      collectors:
+        - type: classLike
+          value: ^Firehed\\PhpLsp\\BeforeMessageInterface$
     - name: Parser
       collectors:
         - { type: directory, value: src/Parser/.* }
@@ -62,13 +66,16 @@ deptrac:
       - Completion
       - Document
       - Domain
+      - Filesystem
       - Handler
       - Knowledge
+      - Message
       - Parser
       - Protocol
       - Repository
       - Resolution
       - Transport
+      - Watch
     Handler:
       - Cache # InvalidatableInterface: watched-file changes and close-after-edit drop cached on-disk state
       - Capability
@@ -99,6 +106,12 @@ deptrac:
       - Parser
       - Repository
       - Watch # WatchedPathsSourceInterface: holders name the paths they depend on
+    Watch:
+      - Cache # InvalidatableInterface: the stand-in reports through the same fan-out
+      - Capability
+      - Domain
+      - Filesystem
+      - Message
     Repository:
       - Document # FileUri, the path/URI conversion authority
       - Domain
