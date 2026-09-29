@@ -4,106 +4,166 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Cache\CacheFactory;
-use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
+use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
-use Firehed\PhpLsp\Knowledge\CachingSymbolSource;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\CompositeInvalidatable;
-use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * One invalidation must reach every member: each test changes the disk under
+ * one member and asks that member, having told only the composite.
+ */
 #[CoversClass(CompositeInvalidatable::class)]
 final class CompositeInvalidatableTest extends TestCase
 {
-    use BuildsSymbolInfoTrait;
+    use LoadsFixturesTrait;
 
-    public function testInvalidateReachesEveryNamedMember(): void
+    private string $workspace;
+
+    protected function setUp(): void
     {
-        $file = '/workspace/src/Widget.php';
-        $classInfo = self::classInfo('App\\Widget', file: $file);
-        $inner = $this->createMock(SymbolSourceInterface::class);
-        $inner->expects($this->exactly(2))
-            ->method('lookupClassLike')
-            ->willReturn($classInfo);
+        $workspace = tempnam(sys_get_temp_dir(), 'php-lsp-fanout-');
+        self::assertNotFalse($workspace, 'a temp workspace path must be obtainable');
+        unlink($workspace);
+        self::assertTrue(mkdir($workspace . '/src/Domain', 0777, true), 'the source tree must be creatable');
+        self::assertTrue(mkdir($workspace . '/vendor/composer', 0777, true), 'vendor/composer must be creatable');
 
-        $mapReader = new ComposerAutoloadMapReader(dirname(__DIR__) . '/Fixtures');
-        $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory(), $mapReader);
-        $mapsBackend = self::composerMapBackend($mapReader);
-        $filesBackend = self::autoloadFilesBackend($mapReader);
-        $composite = new CompositeInvalidatable($mapReader, $mapsDecorator, $mapsBackend, $filesBackend);
+        $this->workspace = $workspace;
+    }
 
-        $name = ClasslikeName::fromFullyQualified('App\\Widget');
-        self::assertSame(
-            $classInfo,
-            $mapsDecorator->lookupClassLike($name),
-            'first lookup populates the decorator cache from the inner source',
+    protected function tearDown(): void
+    {
+        foreach (
+            [
+                '/src/Domain/User.php',
+                '/src/Domain/Entity.php',
+                '/bootstrap.php',
+                '/vendor/composer/autoload_psr4.php',
+            ] as $file
+        ) {
+            @unlink($this->workspace . $file);
+        }
+        foreach (['/src/Domain', '/src', '/vendor/composer', '/vendor', ''] as $directory) {
+            rmdir($this->workspace . $directory);
+        }
+    }
+
+    public function testInvalidateReachesTheMapReader(): void
+    {
+        $this->writePsr4(['Fixtures\\' => [$this->workspace . '/src']]);
+        $mapReader = new ComposerAutoloadMapReader($this->workspace);
+        $before = $mapReader->current();
+
+        $this->composite($mapReader)->invalidate(
+            FileUri::fromPath($this->workspace . '/vendor/composer/autoload_psr4.php'),
         );
 
-        // Fans out to all four: the decorator drops its entry for this file, and
-        // the reader and two backends (which do not know this path) still receive
-        // the call.
-        $composite->invalidate(FileUri::fromPath($file));
+        self::assertNotSame($before, $mapReader->current(), 'a regenerated map must be read again');
+    }
+
+    public function testInvalidateReachesTheComposerMapBackend(): void
+    {
+        $this->place('src/Domain/User.php', 'src/Domain/User.php');
+        $mapReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(
+            psr4: ['Fixtures\\' => [$this->workspace . '/src']],
+        ));
+        $maps = $this->composerMapBackend($mapReader);
+        self::assertSame(
+            ['Fixtures\Domain\User'],
+            self::names($maps->search('', NameKind::ClassLike)),
+            'the name list must be built for it to be able to go stale',
+        );
+
+        $this->place('src/Domain/Entity.php', 'src/Domain/Entity.php');
+        $this->composite($mapReader, maps: $maps)->invalidate(
+            FileUri::fromPath($this->workspace . '/src/Domain/Entity.php'),
+        );
 
         self::assertSame(
-            $classInfo,
-            $mapsDecorator->lookupClassLike($name),
-            'the decorator must consult the inner again — proving the fan-out reached it',
+            ['Fixtures\Domain\User', 'Fixtures\Domain\Entity'],
+            self::names($maps->search('', NameKind::ClassLike)),
+            'a file created under an autoload root must join the name list',
         );
     }
 
-    public function testInvalidateForAComposerAutoloadFileDropsEveryDecoratorEntry(): void
+    public function testInvalidateReachesTheAutoloadFilesBackend(): void
     {
-        // A `composer install` regenerates every autoload file under vendor/composer,
-        // and every remembered lookup on the disk decorator can point at a name the
-        // regenerated map no longer addresses. The reader fans out first and drops
-        // its cached map; the decorator's own invalidate sees the reader return a
-        // new map instance and drops every cached entry wholesale.
-        $classInfo = self::classInfo('App\\Widget', file: '/workspace/src/Widget.php');
-        $inner = $this->createMock(SymbolSourceInterface::class);
-        $inner->expects($this->exactly(2))
-            ->method('lookupClassLike')
-            ->willReturn($classInfo);
+        $entry = $this->workspace . '/bootstrap.php';
+        $this->place('src/Catalog/functions.php', 'bootstrap.php');
+        $mapReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(files: [$entry]));
+        $files = $this->autoloadFilesBackend($mapReader);
+        $added = FunctionName::fromFullyQualified('Fixtures\Helpers\helperFormat');
+        self::assertNull($files->lookupFunction($added), 'the entry does not declare the function yet');
 
-        $projectRoot = dirname(__DIR__) . '/Fixtures';
-        $mapReader = new ComposerAutoloadMapReader($projectRoot);
-        $mapsDecorator = new CachingSymbolSource($inner, CacheFactory::inMemory(), $mapReader);
-        $mapsBackend = self::composerMapBackend($mapReader);
-        $filesBackend = self::autoloadFilesBackend($mapReader);
-        $composite = new CompositeInvalidatable($mapReader, $mapsDecorator, $mapsBackend, $filesBackend);
+        $this->place('AutoloadFiles/helpers.php', 'bootstrap.php');
+        $this->composite($mapReader, files: $files)->invalidate(FileUri::fromPath($entry));
 
-        $name = ClasslikeName::fromFullyQualified('App\\Widget');
-        self::assertSame(
-            $classInfo,
-            $mapsDecorator->lookupClassLike($name),
-            'first lookup populates the decorator cache from the inner source',
-        );
+        self::assertNotNull($files->lookupFunction($added), 'a changed entry must be read again');
+    }
 
-        $composite->invalidate(FileUri::fromPath($projectRoot . '/vendor/composer/autoload_psr4.php'));
-
-        self::assertSame(
-            $classInfo,
-            $mapsDecorator->lookupClassLike($name),
-            'the decorator dropped every entry, so the second lookup must consult the inner again',
+    private function composite(
+        ComposerAutoloadMapReader $mapReader,
+        ?ComposerMapBackend $maps = null,
+        ?AutoloadFilesBackend $files = null,
+    ): CompositeInvalidatable {
+        return new CompositeInvalidatable(
+            $mapReader,
+            $maps ?? $this->composerMapBackend($mapReader),
+            $files ?? $this->autoloadFilesBackend($mapReader),
         );
     }
 
-    private static function composerMapBackend(ComposerAutoloadMapReader $mapReader): ComposerMapBackend
+    private function composerMapBackend(ComposerAutoloadMapReader $mapReader): ComposerMapBackend
     {
         $production = ProductionSyntaxSource::create();
 
         return new ComposerMapBackend($mapReader, $production->reader, $production->declarations);
     }
 
-    private static function autoloadFilesBackend(ComposerAutoloadMapReader $mapReader): AutoloadFilesBackend
+    private function autoloadFilesBackend(ComposerAutoloadMapReader $mapReader): AutoloadFilesBackend
     {
         $production = ProductionSyntaxSource::create();
 
         return new AutoloadFilesBackend($mapReader, $production->reader, $production->declarations);
+    }
+
+    private function place(string $fixture, string $relative): void
+    {
+        self::assertTrue(
+            copy($this->fixturePath($fixture), $this->workspace . '/' . $relative),
+            "{$relative} must be writable",
+        );
+    }
+
+    /**
+     * @param array<string, list<string>> $prefixes
+     */
+    private function writePsr4(array $prefixes): void
+    {
+        self::assertNotFalse(
+            file_put_contents(
+                $this->workspace . '/vendor/composer/autoload_psr4.php',
+                "<?php\nreturn " . var_export($prefixes, true) . ";\n",
+            ),
+            'the generated PSR-4 map must be writable',
+        );
+    }
+
+    /**
+     * @param list<Symbol> $symbols
+     * @return list<string>
+     */
+    private static function names(array $symbols): array
+    {
+        return array_map(static fn(Symbol $symbol): string => $symbol->fullyQualifiedName, $symbols);
     }
 }
