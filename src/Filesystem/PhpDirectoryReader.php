@@ -6,6 +6,14 @@ namespace Firehed\PhpLsp\Filesystem;
 
 final class PhpDirectoryReader
 {
+    /** @var list<non-empty-string> */
+    private array $extensions;
+
+    public function __construct()
+    {
+        $this->extensions = ['php'];
+    }
+
     public function read(string $directory): ?DirectoryListing
     {
         if (!is_dir($directory)) {
@@ -28,12 +36,22 @@ final class PhpDirectoryReader
             $path = $directory . '/' . $entry;
             if (is_dir($path)) {
                 $directories[] = $path;
-            } elseif (str_ends_with($entry, '.php') && is_file($path)) {
+            } elseif ($this->hasWatchedExtension($entry) && is_file($path)) {
                 $files[] = $path;
             }
         }
 
         return new DirectoryListing($directory, $files, $directories);
+    }
+
+    private function hasWatchedExtension(string $entry): bool
+    {
+        foreach ($this->extensions as $extension) {
+            if (str_ends_with($entry, '.' . $extension)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
