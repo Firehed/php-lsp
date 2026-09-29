@@ -27,6 +27,9 @@ deptrac:
     - name: Domain
       collectors:
         - { type: directory, value: src/Domain/.* }
+    - name: Filesystem
+      collectors:
+        - { type: directory, value: src/Filesystem/.* }
     - name: Handler
       collectors:
         - { type: directory, value: src/Handler/.* }
@@ -56,6 +59,7 @@ deptrac:
       - Completion
       - Document
       - Domain
+      - Filesystem
       - Handler
       - Knowledge
       - Parser
@@ -89,6 +93,7 @@ deptrac:
       - Cache
       - Document
       - Domain
+      - Filesystem # PhpDirectoryReader: the one directory walk
       - Parser
       - Repository
     Repository:
