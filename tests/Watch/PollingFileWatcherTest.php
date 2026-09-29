@@ -99,7 +99,7 @@ final class PollingFileWatcherTest extends TestCase
 
         $this->later();
 
-        self::assertSame([$this->uri('bootstrap.php')], $this->invalidated, 'a changed file is one event for that file');
+        self::assertSame([$this->uri('bootstrap.php')], $this->invalidated, 'a changed file is one event for it');
     }
 
     public function testAWatchedFileThatWasDeletedIsReported(): void
@@ -108,7 +108,7 @@ final class PollingFileWatcherTest extends TestCase
 
         $this->later();
 
-        self::assertSame([$this->uri('bootstrap.php')], $this->invalidated, 'a deleted file is one event for that file');
+        self::assertSame([$this->uri('bootstrap.php')], $this->invalidated, 'a deleted file is one event for it');
     }
 
     public function testAWatchedFileThatAppearsIsReported(): void
@@ -174,7 +174,7 @@ final class PollingFileWatcherTest extends TestCase
         touch($this->root . '/src', self::LONG_AGO + 500);
 
         $this->later();
-        self::assertSame([$this->uri('src/Fresh/First.php')], $this->invalidated, 'every file in a new directory is new');
+        self::assertSame([$this->uri('src/Fresh/First.php')], $this->invalidated, 'a new directory\'s files are new');
 
         $this->invalidated = [];
         $this->place('src/Fresh/Second.php');
@@ -196,7 +196,43 @@ final class PollingFileWatcherTest extends TestCase
 
         $this->later();
 
-        self::assertSame([$this->uri('src/Nested/Gadget.php')], $this->invalidated, 'the files went with the directory');
+        self::assertSame([$this->uri('src/Nested/Gadget.php')], $this->invalidated, 'its files went with it');
+    }
+
+    public function testARootThatDoesNotExistYetIsSeenWhenItAppears(): void
+    {
+        $this->watched = new WatchedPaths(roots: [$this->root . '/lib']);
+        $this->later();
+
+        mkdir($this->root . '/lib');
+        $this->place('lib/Arrival.php');
+        touch($this->root . '/lib', self::LONG_AGO + 500);
+        $this->later();
+
+        self::assertSame(
+            [$this->uri('lib/Arrival.php')],
+            $this->invalidated,
+            'Composer maps a prefix to a directory whether or not the directory exists yet',
+        );
+    }
+
+    public function testARootThatDisappearsIsSeenAgainWhenItReturns(): void
+    {
+        $this->watched = new WatchedPaths(roots: [$this->root . '/src/Nested']);
+        $this->later();
+
+        unlink($this->root . '/src/Nested/Gadget.php');
+        rmdir($this->root . '/src/Nested');
+        $this->later();
+        self::assertSame([$this->uri('src/Nested/Gadget.php')], $this->invalidated, 'the files went with the root');
+
+        $this->invalidated = [];
+        mkdir($this->root . '/src/Nested');
+        $this->place('src/Nested/Gadget.php');
+        touch($this->root . '/src/Nested', self::LONG_AGO + 500);
+        $this->later();
+
+        self::assertSame([$this->uri('src/Nested/Gadget.php')], $this->invalidated, 'a branch checkout can do this');
     }
 
     public function testAChangeInTheSameSecondAsTheLastLookIsStillSeen(): void
