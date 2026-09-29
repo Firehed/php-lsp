@@ -269,7 +269,7 @@ parameters:
                 - 'move_uploaded_file()'
             message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
             allowIn:
-                - src/Parser/SourceFileReader.php
+                - src/Document/SourceFileReader.php
                 - src/Domain/ComposerAutoloadMap.php
                 - src/Knowledge/ComposerMapBackend.php
                 - src/Transport/*
