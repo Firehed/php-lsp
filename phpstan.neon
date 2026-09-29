@@ -308,8 +308,9 @@ parameters:
                 - 'SplFileInfo'
                 - 'SplFileObject'
                 - 'SplTempFileObject'
-            message: 'filesystem access is confined, and its readers (SourceFileReader, ComposerAutoloadMap, ComposerMapBackend, transport) reach the disk through functions rather than through a file object'
+            message: 'filesystem access is confined: SourceFileReader reads source, PhpDirectoryReader lists directories, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
             allowIn:
+                - src/Filesystem/PhpDirectoryReader.php
                 - tests/*
 
     disallowedMethodCalls:

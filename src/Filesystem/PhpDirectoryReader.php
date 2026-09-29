@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Filesystem;
 
+use FilesystemIterator;
+use SplFileInfo;
+
 final class PhpDirectoryReader
 {
     /** @var list<non-empty-string> */
@@ -20,23 +23,14 @@ final class PhpDirectoryReader
             return null;
         }
 
-        $entries = scandir($directory);
-        if ($entries === false) {
-            // @codeCoverageIgnoreStart
-            return null;
-            // @codeCoverageIgnoreEnd
-        }
-
         $files = [];
         $directories = [];
-        foreach ($entries as $entry) {
-            if ($entry === '.' || $entry === '..') {
-                continue;
-            }
-            $path = $directory . '/' . $entry;
-            if (is_dir($path)) {
+        foreach (new FilesystemIterator($directory, FilesystemIterator::SKIP_DOTS) as $entry) {
+            \assert($entry instanceof SplFileInfo);
+            $path = $entry->getPathname();
+            if ($entry->isDir()) {
                 $directories[] = $path;
-            } elseif ($this->hasWatchedExtension($entry) && is_file($path)) {
+            } elseif ($entry->isFile() && $this->hasWatchedExtension($entry->getFilename())) {
                 $files[] = $path;
             }
         }
