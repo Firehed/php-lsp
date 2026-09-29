@@ -18,6 +18,4 @@ interface DocumentManagerInterface
     public function close(string $uri): void;
 
     public function get(string $uri): ?TextDocument;
-
-    public function isOpen(string $uri): bool;
 }
