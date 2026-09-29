@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Document\CompositeDocumentSource;
+use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
@@ -245,6 +248,36 @@ final class KnowledgeStackTest extends TestCase
             $afterFirst,
             $this->metrics->getParseCount(),
             'what a file declares is remembered for the file, not for the name that was asked',
+        );
+    }
+
+    public function testAClassRemovedInAnOpenBufferNoLongerResolves(): void
+    {
+        $file = $this->fixturesRoot . '/src/Domain/User.php';
+        $buffers = new DocumentManager();
+        $stack = KnowledgeStack::forProject(
+            new ComposerAutoloadMapReader($this->fixturesRoot),
+            $this->parser,
+            new CompositeDocumentSource($buffers, $this->reader),
+        );
+        $name = self::className('Fixtures\Domain\User');
+
+        self::assertNotNull(
+            $stack->source->lookupClassLike($name),
+            'the class must resolve from disk first, so a remembered answer has the chance to outlive the edit',
+        );
+        $this->parser->endMessage();
+
+        // The buffer now holds what another fixture declares: User is gone from it.
+        $uri = FileUri::fromPath($file);
+        $buffers->open($uri, 'php', 1, (string) file_get_contents($this->fixturesRoot . '/src/Domain/Entity.php'));
+        $document = $buffers->get($uri);
+        self::assertNotNull($document, 'the buffer store must hold what was just opened');
+        $stack->sink->openDocument($document);
+
+        self::assertNull(
+            $stack->source->lookupClassLike($name),
+            'while a document is open its content is the client\'s, and the client\'s no longer declares the class',
         );
     }
 
