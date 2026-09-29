@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
@@ -56,7 +57,7 @@ final readonly class KnowledgeStack
 
         $openDocuments = new OpenDocumentBackend($declarations);
         $autoloadFiles = new AutoloadFilesBackend($mapReader, $reader, $declarations);
-        $composerMap = new ComposerMapBackend($mapReader, $reader, $declarations);
+        $composerMap = new ComposerMapBackend($mapReader, $reader, $declarations, new PhpDirectoryReader());
 
         return new self(
             new CompositeSymbolSource($openDocuments, $autoloadFiles, $composerMap, new BuiltinBackend()),
