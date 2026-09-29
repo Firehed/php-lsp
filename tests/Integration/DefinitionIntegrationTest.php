@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Integration;
 
 use Amp\ByteStream\ReadableBuffer;
 use Amp\ByteStream\WritableBuffer;
+use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\OutgoingMessageInterface;
 use Firehed\PhpLsp\Protocol\ServerInfo;
@@ -87,6 +88,48 @@ class DefinitionIntegrationTest extends TestCase
         self::assertStringContainsString('"id":2', $output, 'Should have response to definition request');
         // JSON escapes / as \/ so check for that
         self::assertStringContainsString('MyClass.php', $output, 'Definition should point to MyClass.php');
+    }
+
+    public function testADocumentThatWasNeverOpenedIsAnsweredFromDisk(): void
+    {
+        $root = dirname(__DIR__) . '/Fixtures';
+        $path = $root . '/src/Domain/User.php';
+        $lines = explode("\n", (string) file_get_contents($path));
+        $declaration = array_find_key($lines, static fn(string $line): bool => str_contains($line, 'implements Entity'));
+        self::assertIsInt($declaration, 'the fixture must still implement Entity for this test to mean anything');
+
+        $messages = [
+            $this->makeRequest(1, 'initialize', [
+                'processId' => getmypid(),
+                'capabilities' => [],
+                'rootUri' => FileUri::fromPath($root),
+            ]),
+            $this->makeNotification('initialized', []),
+            $this->makeRequest(2, 'textDocument/definition', [
+                'textDocument' => ['uri' => FileUri::fromPath($path)],
+                'position' => [
+                    'line' => $declaration,
+                    'character' => (int) strpos($lines[$declaration], 'Entity') + 1,
+                ],
+            ]),
+            $this->makeRequest(3, 'shutdown', null),
+            $this->makeNotification('exit', null),
+        ];
+
+        $outputBuffer = new WritableBuffer();
+        $server = Server::forProject(
+            $this->createTransport(implode('', array_map($this->encode(...), $messages)), $outputBuffer),
+            new ServerInfo('test', '1.0'),
+            $this->buildContainer(),
+            $root,
+        );
+
+        self::assertSame(0, $server->run(), 'the session must end cleanly');
+        self::assertStringContainsString(
+            'Entity.php',
+            $outputBuffer->buffer(),
+            'a server answers for a document whether or not it is open ([LSP] textDocument/didOpen)',
+        );
     }
 
     /**
