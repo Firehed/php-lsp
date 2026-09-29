@@ -533,6 +533,16 @@ final class AutoloadFilesBackendTest extends TestCase
         return $symbols;
     }
 
+    public function testItNeedsItsEntriesWatched(): void
+    {
+        $entries = ['/project/bootstrap.php', '/project/helpers.php'];
+
+        $watched = self::backendForMap(new ComposerAutoloadMap(files: $entries))->watchedPaths();
+
+        self::assertSame($entries, $watched->files, 'the index is stale exactly when an entry changes');
+        self::assertSame([], $watched->roots, 'the index depends on no directory listing');
+    }
+
     private static function backendForRoot(string $projectRoot): AutoloadFilesBackend
     {
         return self::backendForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot));
