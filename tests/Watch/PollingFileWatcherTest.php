@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Filesystem\StatReader;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Watch\PollingFileWatcher;
+use Firehed\PhpLsp\Watch\Snapshot;
 use Firehed\PhpLsp\Watch\WatchedPaths;
 use Firehed\PhpLsp\Watch\WatchedPathsSourceInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -21,6 +22,7 @@ use PHPUnit\Framework\TestCase;
  * nothing here depends on how fast the test runs.
  */
 #[CoversClass(PollingFileWatcher::class)]
+#[CoversClass(Snapshot::class)]
 final class PollingFileWatcherTest extends TestCase
 {
     use LoadsFixturesTrait;
