@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FileUri;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\CachingSymbolSource;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
@@ -97,7 +98,12 @@ final class CompositeInvalidatableTest extends TestCase
     {
         $production = ProductionSyntaxSource::create();
 
-        return new ComposerMapBackend($mapReader, $production->reader, $production->declarations);
+        return new ComposerMapBackend(
+            $mapReader,
+            $production->reader,
+            $production->declarations,
+            new PhpDirectoryReader(),
+        );
     }
 
     private static function autoloadFilesBackend(ComposerAutoloadMapReader $mapReader): AutoloadFilesBackend

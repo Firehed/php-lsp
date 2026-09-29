@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
@@ -73,6 +74,7 @@ final class ComposerMapBackendTest extends TestCase
             ])),
             new CompositeDocumentSource($open, $this->reader),
             $this->declarations,
+            new PhpDirectoryReader(),
         );
 
         self::assertNotNull(
@@ -333,6 +335,7 @@ final class ComposerMapBackendTest extends TestCase
             $mapReader,
             $this->reader,
             $this->declarations,
+            new PhpDirectoryReader(),
         );
 
         self::assertContains(
@@ -693,6 +696,7 @@ final class ComposerMapBackendTest extends TestCase
             ComposerAutoloadMapReader::fromMap($map),
             $this->reader,
             $this->declarations,
+            new PhpDirectoryReader(),
         );
     }
 
