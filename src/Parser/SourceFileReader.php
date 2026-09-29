@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser;
 
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\FileUri;
 
 /**
- * Reads a PHP source file from a path into a {@see TextDocument} so consumers
- * that hold a path parse through the {@see SyntaxSource\SyntaxSourceInterface} interface
- * the same way an open-document caller does. Filesystem access is confined
- * here so the parser layer is the only place a source file is opened.
+ * Reads a PHP source file from disk into a {@see TextDocument}. Filesystem
+ * access is confined here so this is the only place a source file is opened.
  */
-final class SourceFileReader
+final class SourceFileReader implements DocumentSourceInterface
 {
-    public function read(string $path): ?TextDocument
+    public function read(string $uri): ?TextDocument
     {
+        $path = FileUri::toPath($uri);
         if (!is_file($path) || !is_readable($path)) {
             return null;
         }
@@ -29,6 +30,6 @@ final class SourceFileReader
             // @codeCoverageIgnoreEnd
         }
 
-        return new TextDocument($path, 'php', 0, $content);
+        return new TextDocument($uri, 'php', 0, $content);
     }
 }

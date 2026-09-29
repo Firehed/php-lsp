@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Document;
 
 use Firehed\PhpLsp\Domain\FileUri;
 
-final class DocumentManager implements DocumentManagerInterface
+final class DocumentManager implements DocumentManagerInterface, DocumentSourceInterface
 {
     /** @var array<string, TextDocument> Keyed by decoded path: one path has several valid URI spellings */
     private array $documents = [];
@@ -39,5 +39,10 @@ final class DocumentManager implements DocumentManagerInterface
     public function isOpen(string $uri): bool
     {
         return $this->get($uri) !== null;
+    }
+
+    public function read(string $uri): ?TextDocument
+    {
+        return $this->get($uri);
     }
 }
