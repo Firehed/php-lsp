@@ -40,14 +40,29 @@ final readonly class ComposerAutoloadMap
 
     public static function fromProjectRoot(string $projectRoot): self
     {
-        $composerDir = self::composerDirFor($projectRoot);
+        [$psr4, $psr0, $classMap, $files] = self::sourceFilesFor($projectRoot);
 
         return new self(
-            self::loadPrefixes($composerDir . '/autoload_psr4.php'),
-            self::loadPrefixes($composerDir . '/autoload_namespaces.php'),
-            self::loadClassMap($composerDir . '/autoload_classmap.php'),
-            self::loadFiles($composerDir . '/autoload_files.php'),
+            self::loadPrefixes($psr4),
+            self::loadPrefixes($psr0),
+            self::loadClassMap($classMap),
+            self::loadFiles($files),
         );
+    }
+
+    /**
+     * @return array{string, string, string, string} The PSR-4, PSR-0, classmap, and files maps
+     */
+    public static function sourceFilesFor(string $projectRoot): array
+    {
+        $composerDir = self::composerDirFor($projectRoot);
+
+        return [
+            $composerDir . '/autoload_psr4.php',
+            $composerDir . '/autoload_namespaces.php',
+            $composerDir . '/autoload_classmap.php',
+            $composerDir . '/autoload_files.php',
+        ];
     }
 
     /**
