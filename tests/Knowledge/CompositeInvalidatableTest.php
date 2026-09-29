@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Symbol;
+use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
@@ -126,7 +127,12 @@ final class CompositeInvalidatableTest extends TestCase
     {
         $production = ProductionSyntaxSource::create();
 
-        return new ComposerMapBackend($mapReader, $production->reader, $production->declarations);
+        return new ComposerMapBackend(
+            $mapReader,
+            $production->reader,
+            $production->declarations,
+            new PhpDirectoryReader(),
+        );
     }
 
     private function autoloadFilesBackend(ComposerAutoloadMapReader $mapReader): AutoloadFilesBackend
