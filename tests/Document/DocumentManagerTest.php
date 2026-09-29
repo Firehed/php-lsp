@@ -98,7 +98,6 @@ class DocumentManagerTest extends TestCase
             $manager->get($spelling),
             'clients and the server percent-encode one path differently',
         );
-        self::assertTrue($manager->isOpen($spelling), 'isOpen must agree with get');
 
         $manager->update($spelling, '<?php // v2', 2);
         self::assertSame(
@@ -112,20 +111,5 @@ class DocumentManagerTest extends TestCase
             $manager->get('file:///tmp/a%7eb%20c.php'),
             'a close under another spelling must close the same document',
         );
-    }
-
-    public function testIsOpen(): void
-    {
-        $manager = new DocumentManager();
-
-        self::assertFalse($manager->isOpen('file:///test.php'));
-
-        $manager->open('file:///test.php', 'php', 1, '<?php');
-
-        self::assertTrue($manager->isOpen('file:///test.php'));
-
-        $manager->close('file:///test.php');
-
-        self::assertFalse($manager->isOpen('file:///test.php'));
     }
 }

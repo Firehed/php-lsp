@@ -103,7 +103,9 @@ While a document is open the server must not read it from disk ([LSP] `textDocum
 
 A service may hold an index it derives from its whole source and rebuilds on invalidation.
 A service never remembers the answer to a query.
-Answers are remembered by one PSR-16 decorator per backend, applied in wiring, never around open documents.
+What a document declares is remembered by one PSR-16 decorator on `DeclarationSourceInterface`, applied in wiring.
+Its key is the document's path and text together, so an entry describes one state of one file and is never invalidated.
+The cache's size limit evicts.
 
 #### Invalidation
 

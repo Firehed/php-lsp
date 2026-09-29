@@ -501,13 +501,11 @@ final class AstTextAgreementTest extends TestCase
         $factory = new DeclarationSymbolInfoFactory();
         $declarations = (new DeclarationScanner())->scan($stmts);
         $out = [];
-        foreach ($declarations->classLikes as $declaration) {
-            $info = $factory->fromDeclarations(
-                $declarations,
-                $declaration->name,
-                NameKind::ClassLike,
-                '/stub.php',
-            );
+        foreach ($factory->allIn($declarations, '/stub.php') as $symbol) {
+            if ($symbol->kind !== NameKind::ClassLike) {
+                continue;
+            }
+            $info = $symbol->info;
             assert($info instanceof \Firehed\PhpLsp\Domain\ClassInfo);
             $out[] = [
                 'name' => $info->name->qualifiedName->fullyQualifiedName(),

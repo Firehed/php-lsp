@@ -19,8 +19,6 @@ use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -49,9 +47,7 @@ final class CompositeSymbolSourceTest extends TestCase
     public function testOpenDocumentsWinsOverEveryLaterBackend(): void
     {
         $production = ProductionSyntaxSource::create();
-        $scanner = new DeclarationScanner();
-        $infoFactory = new DeclarationSymbolInfoFactory();
-        $openDocuments = new OpenDocumentBackend($production->source, $scanner, $infoFactory);
+        $openDocuments = new OpenDocumentBackend($production->declarations);
         $openDocuments->openDocument(new TextDocument(
             'file:///open.php',
             'php',
@@ -63,10 +59,8 @@ final class CompositeSymbolSourceTest extends TestCase
             $openDocuments,
             new AutoloadFilesBackend(
                 ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap()),
-                $infoFactory,
-                $scanner,
                 $production->reader,
-                $production->source,
+                $production->declarations,
             ),
             new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'disk.php')]),
             new FakeSymbolBackend([self::declaredClass('App\Widget', file: 'builtin.php')]),
@@ -302,13 +296,11 @@ final class CompositeSymbolSourceTest extends TestCase
     private static function compose(SymbolSourceInterface $disk, SymbolSourceInterface $builtin): CompositeSymbolSource
     {
         $production = ProductionSyntaxSource::create();
-        $scanner = new DeclarationScanner();
-        $infoFactory = new DeclarationSymbolInfoFactory();
         $emptyReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap());
 
         return new CompositeSymbolSource(
-            new OpenDocumentBackend($production->source, $scanner, $infoFactory),
-            new AutoloadFilesBackend($emptyReader, $infoFactory, $scanner, $production->reader, $production->source),
+            new OpenDocumentBackend($production->declarations),
+            new AutoloadFilesBackend($emptyReader, $production->reader, $production->declarations),
             $disk,
             $builtin,
         );

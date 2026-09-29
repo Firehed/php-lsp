@@ -85,23 +85,6 @@ final readonly class DeclarationSymbolInfoFactory
         return $symbols;
     }
 
-    public function fromDeclarations(
-        FileDeclarations $declarations,
-        QualifiedName $name,
-        NameKind $kind,
-        string $filePath,
-    ): ?SymbolInfoInterface {
-        $target = $kind->normalize($name);
-
-        foreach ($this->allIn($declarations, $filePath) as $symbol) {
-            if ($symbol->kind === $kind && $kind->normalize($symbol->name) === $target) {
-                return $symbol->info;
-            }
-        }
-
-        return null;
-    }
-
     private function classInfoFromNode(Stmt\ClassLike $node, string $uri): ClassInfo
     {
         $className = $this->resolveClasslikeName($node);

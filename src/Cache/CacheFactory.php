@@ -19,11 +19,20 @@ use Symfony\Component\Cache\Psr16Cache;
  */
 final class CacheFactory
 {
-    public static function inMemory(): CacheInterface
+    /**
+     * @param int $maxItems The least recently used entry is dropped past this
+     *                      count; zero is unbounded
+     */
+    public static function inMemory(int $maxItems = 0): CacheInterface
     {
         // ArrayAdapter's second argument disables its copy-on-read (named
         // `storeSerialized` in symfony/cache 7, `deepClone` in 8), so a hit
         // returns the cached instance rather than a clone.
-        return new Psr16Cache(new ArrayAdapter(0, false));
+        return new Psr16Cache(new ArrayAdapter(
+            defaultLifetime: 0,
+            deepClone: false,
+            maxLifetime: 0,
+            maxItems: $maxItems,
+        ));
     }
 }

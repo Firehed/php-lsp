@@ -36,11 +36,6 @@ final class DocumentManager implements DocumentManagerInterface, DocumentSourceI
         return $this->documents[FileUri::toPath($uri)] ?? null;
     }
 
-    public function isOpen(string $uri): bool
-    {
-        return $this->get($uri) !== null;
-    }
-
     public function read(string $uri): ?TextDocument
     {
         return $this->get($uri);

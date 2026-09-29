@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -253,12 +254,11 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertNotNull($document);
         $declarations = (new DeclarationScanner())->scan($production->source->parse($document));
 
-        $info = $this->factory->fromDeclarations(
-            $declarations,
-            QualifiedName::fromFullyQualified('Fixtures\IncompleteCode\brokenFreeStandingParam'),
-            NameKind::Function_,
-            $path,
-        );
+        $name = QualifiedName::fromFullyQualified('Fixtures\IncompleteCode\brokenFreeStandingParam');
+        $info = array_find(
+            $this->factory->allIn($declarations, $path),
+            static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, NameKind::Function_),
+        )?->info;
 
         self::assertInstanceOf(FunctionInfo::class, $info);
         self::assertSame(
@@ -284,26 +284,13 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertSame('renamedOnlyInA', $info->traitAliases[0]->newName);
     }
 
-    public function testLookupAgreesWithTheFullScan(): void
-    {
-        // RFC 1 §5.1: a derived verb must not fork from the one it derives from.
-        foreach ($this->factory->allIn($this->declarations, $this->path) as $symbol) {
-            self::assertEquals(
-                $symbol->info,
-                $this->build($symbol->name->fullyQualifiedName(), $symbol->kind),
-                'every symbol the scan reports must be reachable by name, with the same metadata',
-            );
-        }
-    }
-
     private function build(string $fqn, NameKind $kind): ?SymbolInfoInterface
     {
-        return $this->factory->fromDeclarations(
-            $this->declarations,
-            QualifiedName::fromFullyQualified($fqn),
-            $kind,
-            $this->path,
-        );
+        $name = QualifiedName::fromFullyQualified($fqn);
+        return array_find(
+            $this->factory->allIn($this->declarations, $this->path),
+            static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, $kind),
+        )?->info;
     }
 
     private function buildClassInfoFromFixture(string $fixturePath, string $fqn): ClassInfo
@@ -314,12 +301,11 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertNotNull($document, "the fixture $fixturePath must be readable");
         $declarations = (new DeclarationScanner())->scan($production->source->parse($document));
 
-        $info = $this->factory->fromDeclarations(
-            $declarations,
-            QualifiedName::fromFullyQualified($fqn),
-            NameKind::ClassLike,
-            $path,
-        );
+        $name = QualifiedName::fromFullyQualified($fqn);
+        $info = array_find(
+            $this->factory->allIn($declarations, $path),
+            static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, NameKind::ClassLike),
+        )?->info;
         self::assertInstanceOf(ClassInfo::class, $info, "the fixture must declare $fqn as a class-like");
         return $info;
     }

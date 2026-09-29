@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
+use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -19,7 +20,6 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
  * A {@see SymbolSourceInterface} over PHP files on disk, resolved through
@@ -62,10 +62,8 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
     public function __construct(
         private readonly ComposerAutoloadMapReader $mapReader,
-        private readonly SyntaxSourceInterface $parser,
-        private readonly DocumentSourceInterface $reader,
-        private readonly DeclarationSymbolInfoFactory $infoFactory,
-        private readonly DeclarationScanner $scanner,
+        private readonly DocumentSourceInterface $documents,
+        private readonly DeclarationSourceInterface $declarations,
     ) {
     }
 
@@ -292,9 +290,15 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
             return null;
         }
 
-        $declarations = $this->scanner->scanFile($file, $this->reader, $this->parser);
+        $document = $this->documents->read($file);
+        if ($document === null) {
+            return null;
+        }
 
-        return $this->infoFactory->fromDeclarations($declarations, $name, $kind, $file);
+        return array_find(
+            $this->declarations->declarationsIn($document),
+            static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, $kind),
+        )?->info;
     }
 
     /**
