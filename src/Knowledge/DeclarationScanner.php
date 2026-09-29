@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Knowledge;
 
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
@@ -34,7 +34,7 @@ final class DeclarationScanner
 {
     public function scanFile(
         string $filePath,
-        SourceFileReader $reader,
+        DocumentSourceInterface $reader,
         SyntaxSourceInterface $parser,
     ): FileDeclarations {
         $document = $reader->read($filePath);

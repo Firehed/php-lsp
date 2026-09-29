@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Cache\CacheFactory;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
-use Firehed\PhpLsp\Parser\SourceFileReader;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
@@ -40,7 +40,7 @@ final readonly class KnowledgeStack
     public static function forProject(
         ComposerAutoloadMapReader $mapReader,
         SyntaxSourceInterface $parser,
-        SourceFileReader $reader,
+        DocumentSourceInterface $reader,
     ): self {
         $declarationInfoFactory = new DeclarationSymbolInfoFactory();
         $scanner = new DeclarationScanner();
