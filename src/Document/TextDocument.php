@@ -8,8 +8,8 @@ use Firehed\PhpLsp\Protocol\PositionEncoding;
 
 final class TextDocument
 {
-    /** @var list<int> Byte offsets of line starts */
-    private array $lineOffsets;
+    /** @var list<int>|null */
+    private ?array $offsets = null;
 
     public function __construct(
         public readonly string $uri,
@@ -18,7 +18,6 @@ final class TextDocument
         private readonly string $content,
         private readonly PositionEncoding $encoding = PositionEncoding::Utf16,
     ) {
-        $this->lineOffsets = $this->computeLineOffsets();
     }
 
     public function getContent(): string
@@ -33,13 +32,13 @@ final class TextDocument
 
     public function getLine(int $line): string
     {
-        if ($line < 0 || $line >= count($this->lineOffsets)) {
+        if ($line < 0 || $line >= count($this->lineOffsets())) {
             return '';
         }
 
-        $start = $this->lineOffsets[$line];
-        $end = $line + 1 < count($this->lineOffsets)
-            ? $this->lineOffsets[$line + 1] - 1 // -1 to exclude newline
+        $start = $this->lineOffsets()[$line];
+        $end = $line + 1 < count($this->lineOffsets())
+            ? $this->lineOffsets()[$line + 1] - 1 // -1 to exclude newline
             : strlen($this->content);
 
         return substr($this->content, $start, $end - $start);
@@ -61,14 +60,14 @@ final class TextDocument
 
     public function offsetAt(int $line, int $character): int
     {
-        if ($line < 0 || $line >= count($this->lineOffsets)) {
+        if ($line < 0 || $line >= count($this->lineOffsets())) {
             return 0;
         }
 
         // The negotiated encoding measures `character`; the interior is bytes.
         // Converting against the line content also clamps an over-long column
         // to the line's byte length, so no separate line-end clamp is needed.
-        return $this->lineOffsets[$line]
+        return $this->lineOffsets()[$line]
             + $this->encoding->characterToByteOffset($this->getLine($line), $character);
     }
 
@@ -80,7 +79,7 @@ final class TextDocument
         $offset = max(0, min($offset, strlen($this->content)));
 
         $line = 0;
-        foreach ($this->lineOffsets as $i => $lineOffset) {
+        foreach ($this->lineOffsets() as $i => $lineOffset) {
             if ($lineOffset > $offset) {
                 break;
             }
@@ -91,9 +90,20 @@ final class TextDocument
             'line' => $line,
             'character' => $this->encoding->byteToCharacterOffset(
                 $this->getLine($line),
-                $offset - $this->lineOffsets[$line],
+                $offset - $this->lineOffsets()[$line],
             ),
         ];
+    }
+
+    /**
+     * Byte offsets of line starts. Derived on first use: a document read only
+     * for what it declares is never asked for a position.
+     *
+     * @return list<int>
+     */
+    private function lineOffsets(): array
+    {
+        return $this->offsets ??= $this->computeLineOffsets();
     }
 
     /**
