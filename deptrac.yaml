@@ -98,6 +98,7 @@ deptrac:
     Parser:
       - Document
     Document:
+      - Domain # FileUri: one path has several valid URI spellings
       - Protocol
     Capability:
       - Client

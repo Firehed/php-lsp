@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Firehed\PhpLsp\Document\CompositeDocumentSource;
+use Firehed\PhpLsp\Document\DocumentManager;
+use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -15,7 +18,6 @@ use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
@@ -55,6 +57,37 @@ final class ComposerMapBackendTest extends TestCase
             'Fixtures\Domain\User',
             $info->name->qualifiedName->fullyQualifiedName(),
             'the located class must be returned',
+        );
+    }
+
+    public function testLookupClassLikeReadsAnOpenFileFromItsBuffer(): void
+    {
+        // The buffer holds what another fixture declares, so the two answers
+        // below can only come from the buffer and never from the file on disk.
+        $file = $this->fixturesRoot . '/src/Domain/User.php';
+        $buffer = (string) file_get_contents($this->fixturesRoot . '/src/Domain/Entity.php');
+
+        $open = new DocumentManager();
+        $open->open(FileUri::fromPath($file), 'php', 1, $buffer);
+
+        $backend = new ComposerMapBackend(
+            ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(classMap: [
+                'Fixtures\Domain\User' => $file,
+                'Fixtures\Domain\Entity' => $file,
+            ])),
+            $this->parser,
+            new CompositeDocumentSource($open, $this->reader),
+            $this->infoFactory,
+            new DeclarationScanner(),
+        );
+
+        self::assertNotNull(
+            self::classLikeIn($backend, 'Fixtures\Domain\Entity'),
+            'a declaration that exists only in the buffer must resolve',
+        );
+        self::assertNull(
+            self::classLikeIn($backend, 'Fixtures\Domain\User'),
+            'a declaration the buffer no longer holds must not resolve from disk',
         );
     }
 

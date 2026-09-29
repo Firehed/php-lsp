@@ -93,6 +93,12 @@ Completion must keep working on code that does not parse mid-edit.
 Do not convert them to tree analysis.
 
 
+### Source text
+
+Every read of a document's text goes through `DocumentSourceInterface`.
+Its composite answers from the editor's buffer while the document is open and from disk otherwise.
+While a document is open the server must not read it from disk ([LSP] `textDocument/didOpen`).
+
 ### Caching
 
 A service may hold an index it derives from its whole source and rebuilds on invalidation.
