@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 
 /**
  * The {@see SymbolSourceInterface} over Composer's `autoload.files` set — the one
@@ -41,10 +40,8 @@ final class AutoloadFilesBackend implements SymbolSourceInterface, Invalidatable
 
     public function __construct(
         private readonly ComposerAutoloadMapReader $mapReader,
-        private readonly DeclarationSymbolInfoFactory $infoFactory,
-        private readonly DeclarationScanner $scanner,
-        private readonly DocumentSourceInterface $reader,
-        private readonly SyntaxSourceInterface $parser,
+        private readonly DocumentSourceInterface $documents,
+        private readonly DeclarationSourceInterface $declarations,
     ) {
         $this->buildIndex($this->mapReader->current());
     }
@@ -69,8 +66,9 @@ final class AutoloadFilesBackend implements SymbolSourceInterface, Invalidatable
     {
         $this->clearAllSymbols();
         foreach ($map->autoloadFiles() as $path) {
-            $declarations = $this->scanner->scanFile($path, $this->reader, $this->parser);
-            $this->setSymbolsFor(FileUri::fromPath($path), ...$this->infoFactory->allIn($declarations, $path));
+            $document = $this->documents->read($path);
+            $declared = $document === null ? [] : $this->declarations->declarationsIn($document);
+            $this->setSymbolsFor(FileUri::fromPath($path), ...$declared);
         }
         $this->mapAtBuild = $map;
     }

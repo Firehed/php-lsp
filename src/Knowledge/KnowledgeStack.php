@@ -42,24 +42,15 @@ final readonly class KnowledgeStack
         SyntaxSourceInterface $parser,
         DocumentSourceInterface $reader,
     ): self {
-        $declarationInfoFactory = new DeclarationSymbolInfoFactory();
-        $scanner = new DeclarationScanner();
+        $declarations = new ParsedDeclarationSource(
+            $parser,
+            new DeclarationScanner(),
+            new DeclarationSymbolInfoFactory(),
+        );
 
-        $openDocuments = new OpenDocumentBackend($parser, $scanner, $declarationInfoFactory);
-        $autoloadFiles = new AutoloadFilesBackend(
-            $mapReader,
-            $declarationInfoFactory,
-            $scanner,
-            $reader,
-            $parser,
-        );
-        $composerMap = new ComposerMapBackend(
-            $mapReader,
-            $parser,
-            $reader,
-            $declarationInfoFactory,
-            $scanner,
-        );
+        $openDocuments = new OpenDocumentBackend($declarations);
+        $autoloadFiles = new AutoloadFilesBackend($mapReader, $reader, $declarations);
+        $composerMap = new ComposerMapBackend($mapReader, $reader, $declarations);
         $disk = new CachingSymbolSource($composerMap, CacheFactory::inMemory(), $mapReader);
 
         // The built-in backend owns its own derived index of internal symbols, so

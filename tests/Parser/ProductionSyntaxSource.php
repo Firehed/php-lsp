@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser;
 
+use Firehed\PhpLsp\Knowledge\DeclarationScanner;
+use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
+use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
@@ -27,6 +30,7 @@ final readonly class ProductionSyntaxSource
     public MemoizingSyntaxSource $source;
     public ParseMetrics $metrics;
     public SourceFileReader $reader;
+    public ParsedDeclarationSource $declarations;
 
     private function __construct()
     {
@@ -39,6 +43,11 @@ final readonly class ProductionSyntaxSource
             ),
         );
         $this->reader = new SourceFileReader();
+        $this->declarations = new ParsedDeclarationSource(
+            $this->source,
+            new DeclarationScanner(),
+            new DeclarationSymbolInfoFactory(),
+        );
     }
 
     public static function create(): self
