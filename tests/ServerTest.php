@@ -182,6 +182,68 @@ class ServerTest extends TestCase
         }
     }
 
+    /**
+     * [LSP] leaves `workspace/didChangeWatchedFiles` optional for a client. With
+     * one that never sends it, a class created on disk must still reach
+     * completion: the composed server stands in for the missing notification.
+     */
+    public function testAFileCreatedOnDiskIsSeenWithoutWatchedFilesSupport(): void
+    {
+        $root = $this->createProject('');
+        $consumerUri = 'file://' . $root . '/src/consumer.php';
+        $sprocket = $root . '/src/Sprocket.php';
+
+        try {
+            $input = $this->buildMessages(
+                $this->initializeJson(1),
+                $this->initializedJson(),
+                $this->notificationJson('textDocument/didOpen', [
+                    'textDocument' => [
+                        'uri' => $consumerUri,
+                        'languageId' => 'php',
+                        'version' => 1,
+                        'text' => "<?php\nnamespace Temp;\n\$w = new Wid",
+                    ],
+                ]),
+                $this->classCompletionAt(2, $consumerUri),
+                $this->notificationJson('textDocument/didChange', [
+                    'textDocument' => ['uri' => $consumerUri, 'version' => 2],
+                    'contentChanges' => [['text' => "<?php\nnamespace Temp;\n\$w = new Spr"]],
+                ]),
+                $this->classCompletionAt(3, $consumerUri),
+                $this->requestJson(4, 'shutdown'),
+                $this->notificationJson('exit'),
+            );
+
+            $outputBuffer = new WritableBuffer();
+            // The class appears on disk after the first completion has built the
+            // name list, and nothing tells the server.
+            $transport = $this->createTransport($input, $outputBuffer, static function (Message $message) use ($sprocket): void {
+                if ($message->method === 'textDocument/didChange') {
+                    file_put_contents($sprocket, "<?php\nnamespace Temp;\nclass Sprocket {}\n");
+                }
+            });
+            $server = Server::forProject($transport, new ServerInfo('test', '1.0'), $this->buildContainer(), $root);
+
+            $server->run();
+
+            $responses = $this->decodeResponses($outputBuffer->buffer());
+            self::assertContains(
+                'Widget',
+                $this->completionLabels($this->responseWithId($responses, 2)),
+                'the first completion must build the name list for it to be able to go stale',
+            );
+            self::assertContains(
+                'Sprocket',
+                $this->completionLabels($this->responseWithId($responses, 3)),
+                'a class created on disk is offered on the next request',
+            );
+        } finally {
+            @unlink($sprocket);
+            $this->removeProject($root);
+        }
+    }
+
     public function testUnknownMethodReturnsError(): void
     {
         $input = $this->buildMessages(
@@ -884,6 +946,15 @@ class ServerTest extends TestCase
         return $this->requestJson($id, 'textDocument/completion', [
             'textDocument' => ['uri' => $uri],
             'position' => ['line' => 3, 'character' => 4],
+        ]);
+    }
+
+    private function classCompletionAt(int $id, string $uri): string
+    {
+        // The consumer's `$w = new Xxx` sits at line 2; the cursor follows the prefix.
+        return $this->requestJson($id, 'textDocument/completion', [
+            'textDocument' => ['uri' => $uri],
+            'position' => ['line' => 2, 'character' => strlen('$w = new Xxx')],
         ]);
     }
 
