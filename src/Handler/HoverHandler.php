@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Document\DocumentManagerInterface;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Protocol\MarkupContent;
 use Firehed\PhpLsp\Protocol\MarkupKind;
@@ -22,7 +22,7 @@ final class HoverHandler implements DocumentFeatureHandlerInterface
     use SupportsOwnMethodTrait;
 
     public function __construct(
-        private readonly DocumentManagerInterface $documentManager,
+        private readonly DocumentSourceInterface $documents,
         private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
     ) {
@@ -43,7 +43,7 @@ final class HoverHandler implements DocumentFeatureHandlerInterface
             return null;
         }
 
-        $document = $this->documentManager->get($position->uri);
+        $document = $this->documents->read($position->uri);
         if ($document === null) {
             return null;
         }
