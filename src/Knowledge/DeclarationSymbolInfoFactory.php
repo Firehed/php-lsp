@@ -91,15 +91,10 @@ final readonly class DeclarationSymbolInfoFactory
         NameKind $kind,
         string $filePath,
     ): ?SymbolInfoInterface {
-        $target = $kind->normalize($name);
-
-        foreach ($this->allIn($declarations, $filePath) as $symbol) {
-            if ($symbol->kind === $kind && $kind->normalize($symbol->name) === $target) {
-                return $symbol->info;
-            }
-        }
-
-        return null;
+        return array_find(
+            $this->allIn($declarations, $filePath),
+            static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, $kind),
+        )?->info;
     }
 
     private function classInfoFromNode(Stmt\ClassLike $node, string $uri): ClassInfo
