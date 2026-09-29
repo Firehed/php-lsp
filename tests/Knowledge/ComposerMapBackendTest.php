@@ -16,9 +16,7 @@ use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
@@ -35,17 +33,15 @@ final class ComposerMapBackendTest extends TestCase
     use LooksUpBackendSymbolsTrait;
 
     private string $fixturesRoot;
-    private MemoizingSyntaxSource $parser;
     private SourceFileReader $reader;
-    private DeclarationSymbolInfoFactory $infoFactory;
+    private ParsedDeclarationSource $declarations;
 
     protected function setUp(): void
     {
         $this->fixturesRoot = dirname(__DIR__, 2) . '/tests/Fixtures';
         $production = ProductionSyntaxSource::create();
-        $this->parser = $production->source;
         $this->reader = $production->reader;
-        $this->infoFactory = new DeclarationSymbolInfoFactory();
+        $this->declarations = $production->declarations;
     }
 
     public function testLookupClassLikeResolvesAndParsesAFixtureClass(): void
@@ -75,10 +71,8 @@ final class ComposerMapBackendTest extends TestCase
                 'Fixtures\Domain\User' => $file,
                 'Fixtures\Domain\Entity' => $file,
             ])),
-            $this->parser,
             new CompositeDocumentSource($open, $this->reader),
-            $this->infoFactory,
-            new DeclarationScanner(),
+            $this->declarations,
         );
 
         self::assertNotNull(
@@ -337,10 +331,8 @@ final class ComposerMapBackendTest extends TestCase
         ));
         $backend = new ComposerMapBackend(
             $mapReader,
-            $this->parser,
             $this->reader,
-            $this->infoFactory,
-            new DeclarationScanner(),
+            $this->declarations,
         );
 
         self::assertContains(
@@ -699,10 +691,8 @@ final class ComposerMapBackendTest extends TestCase
     {
         return new ComposerMapBackend(
             ComposerAutoloadMapReader::fromMap($map),
-            $this->parser,
             $this->reader,
-            $this->infoFactory,
-            new DeclarationScanner(),
+            $this->declarations,
         );
     }
 

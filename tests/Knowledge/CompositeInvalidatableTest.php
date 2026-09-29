@@ -12,8 +12,6 @@ use Firehed\PhpLsp\Knowledge\CachingSymbolSource;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\CompositeInvalidatable;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -99,25 +97,13 @@ final class CompositeInvalidatableTest extends TestCase
     {
         $production = ProductionSyntaxSource::create();
 
-        return new ComposerMapBackend(
-            $mapReader,
-            $production->source,
-            $production->reader,
-            new DeclarationSymbolInfoFactory(),
-            new DeclarationScanner(),
-        );
+        return new ComposerMapBackend($mapReader, $production->reader, $production->declarations);
     }
 
     private static function autoloadFilesBackend(ComposerAutoloadMapReader $mapReader): AutoloadFilesBackend
     {
         $production = ProductionSyntaxSource::create();
 
-        return new AutoloadFilesBackend(
-            $mapReader,
-            new DeclarationSymbolInfoFactory(),
-            new DeclarationScanner(),
-            $production->reader,
-            $production->source,
-        );
+        return new AutoloadFilesBackend($mapReader, $production->reader, $production->declarations);
     }
 }

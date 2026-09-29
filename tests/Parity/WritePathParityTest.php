@@ -7,8 +7,6 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Symbol;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -51,12 +49,7 @@ final class WritePathParityTest extends TestCase
     protected function setUp(): void
     {
         $this->projectRoot = dirname(__DIR__, 2);
-        $parser = ProductionSyntaxSource::create()->source;
-        $this->backend = new OpenDocumentBackend(
-            $parser,
-            new DeclarationScanner(),
-            new DeclarationSymbolInfoFactory(),
-        );
+        $this->backend = new OpenDocumentBackend(ProductionSyntaxSource::create()->declarations);
     }
 
     public function testWritePathSymbolStateMatchesGolden(): void

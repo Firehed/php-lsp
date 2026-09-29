@@ -10,8 +10,6 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -585,10 +583,6 @@ final class OpenDocumentBackendTest extends TestCase
 
     private static function buildBackend(): OpenDocumentBackend
     {
-        return new OpenDocumentBackend(
-            ProductionSyntaxSource::create()->source,
-            new DeclarationScanner(),
-            new DeclarationSymbolInfoFactory(),
-        );
+        return new OpenDocumentBackend(ProductionSyntaxSource::create()->declarations);
     }
 }
