@@ -47,8 +47,7 @@ use ReflectionProperty;
  * open-document and disk backends, so a name either of them can resolve never
  * reaches reflection (RFC 1 §5.3).
  *
- * Built-ins are fixed for a given target environment, so a {@see CachingSymbolSource}
- * in front of this backend remembers them (RFC 1 §5.3). This backend is reflection-backed and therefore describes the
+ * This backend is reflection-backed and therefore describes the
  * *server's* runtime, not the project's target — a known §4.7 gap deferred to Step 5
  * (Plan 0002 §5); the interim treats every reflected built-in as available.
  *
