@@ -126,13 +126,11 @@ final class ComposerMapBackend implements
 
     public function watchedPaths(): WatchedPaths
     {
-        if ($this->byNamespace === null || $this->mapAtBuild === null) {
-            return new WatchedPaths();
-        }
+        $map = $this->mapReader->current();
 
         return new WatchedPaths(roots: array_values(array_unique(array_merge(
-            ...array_values($this->mapAtBuild->psr4Prefixes()),
-            ...array_values($this->mapAtBuild->psr0Prefixes()),
+            ...array_values($map->psr4Prefixes()),
+            ...array_values($map->psr0Prefixes()),
         ))));
     }
 
