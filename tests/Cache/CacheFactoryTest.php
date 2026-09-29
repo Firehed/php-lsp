@@ -25,4 +25,18 @@ final class CacheFactoryTest extends TestCase
             'The cache must return the stored instance, not a clone, so callers keep object identity',
         );
     }
+
+    public function testABoundedCacheDropsTheEntryUsedLeastRecently(): void
+    {
+        $cache = CacheFactory::inMemory(maxItems: 2);
+
+        $cache->set('first', 1);
+        $cache->set('second', 2);
+        $cache->get('first');
+        $cache->set('third', 3);
+
+        self::assertTrue($cache->has('first'), 'an entry read since it was written is kept');
+        self::assertFalse($cache->has('second'), 'the entry used least recently makes room');
+        self::assertTrue($cache->has('third'), 'the newest entry is kept');
+    }
 }
