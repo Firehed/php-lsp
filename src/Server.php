@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManagerInterface;
+use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
@@ -27,7 +28,6 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\ParseMetrics;
-use Firehed\PhpLsp\Parser\SourceFileReader;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
@@ -94,7 +94,6 @@ final class Server
             ),
         ),
     ): self {
-        $reader = new SourceFileReader();
         if ($projectRoot === null) {
             $cwd = getcwd();
             if ($cwd === false) {
@@ -115,7 +114,7 @@ final class Server
         $knowledge = KnowledgeStack::forProject(
             new ComposerAutoloadMapReader($projectRoot),
             $parser,
-            $reader,
+            $container->get(DocumentSourceInterface::class),
         );
         $symbolSource = $knowledge->source;
         $symbolSink = $knowledge->sink;
