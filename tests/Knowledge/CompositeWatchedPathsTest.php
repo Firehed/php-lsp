@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
-use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
@@ -30,17 +29,15 @@ final class CompositeWatchedPathsTest extends TestCase
             files: [$entry],
         ));
         $production = ProductionSyntaxSource::create();
-        $maps = new ComposerMapBackend(
-            $mapReader,
-            $production->reader,
-            $production->declarations,
-            new PhpDirectoryReader(),
-        );
-        $maps->search('User', NameKind::ClassLike);
 
         $watched = new CompositeWatchedPaths(
             $mapReader,
-            $maps,
+            new ComposerMapBackend(
+                $mapReader,
+                $production->reader,
+                $production->declarations,
+                new PhpDirectoryReader(),
+            ),
             new AutoloadFilesBackend($mapReader, $production->reader, $production->declarations),
         )->watchedPaths();
 
