@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\Container\TypedContainerInterface as TC;
-use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
-use Firehed\PhpLsp\Client\TransportClientConnection;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
@@ -131,12 +130,12 @@ final class Server
             $typeSource,
         );
 
-        $negotiator = new CapabilityNegotiator($serverInfo);
+        $negotiator = $container->get(SessionCapabilitiesProviderInterface::class);
 
         // Watched-file events are registered dynamically after `initialized` (there
         // is no static server capability for them), gated on the client declaring
         // support; the events invalidate cached workspace state (RFC 1 §5.2, §5.3).
-        $watchedFilesRegistrar = new WatchedFilesRegistrar(new TransportClientConnection($transport));
+        $watchedFilesRegistrar = $container->get(WatchedFilesRegistrar::class);
         $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar]);
 
         $handlers = [
