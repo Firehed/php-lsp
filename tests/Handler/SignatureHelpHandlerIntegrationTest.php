@@ -21,7 +21,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(ResolvedTypeOnly::class)]
 #[CoversClass(SignatureHelpHandler::class)]
-class SignatureHelpHandlerTest extends TestCase
+class SignatureHelpHandlerIntegrationTest extends TestCase
 {
     use BuildsKnowledgeStackTrait;
     use OpensDocumentsTrait;
