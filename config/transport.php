@@ -15,6 +15,9 @@ return [
     WritableStream::class => WritableResourceStream::class,
     WritableResourceStream::class => fn () => new WritableResourceStream(STDOUT),
 
+    Client\ClientConnectionInterface::class => Client\TransportClientConnection::class,
+    Client\TransportClientConnection::class,
+
     Transport\StreamTransport::class,
     Transport\TransportInterface::class => Transport\StreamTransport::class,
 ];
