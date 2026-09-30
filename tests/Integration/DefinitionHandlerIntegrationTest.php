@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Handler;
+namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
+use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -23,7 +24,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(DefinitionHandler::class)]
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(ResolvedTypeOnly::class)]
-class DefinitionHandlerTest extends TestCase
+class DefinitionHandlerIntegrationTest extends TestCase
 {
     use BuildsKnowledgeStackTrait;
     use OpensDocumentsTrait;
