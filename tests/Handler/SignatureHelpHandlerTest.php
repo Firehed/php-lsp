@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
-use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -19,6 +18,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SignatureHelpHandler::class)]
 class SignatureHelpHandlerTest extends TestCase
 {
+    use BuildsHandlerRequestsTrait;
+
+    private const METHOD = 'textDocument/signatureHelp';
     private const URI = 'file:///test.php';
 
     public function testSupports(): void
@@ -46,7 +48,7 @@ class SignatureHelpHandlerTest extends TestCase
         $codeResolver->expects($this->never())->method('getCallContext');
 
         $handler = new SignatureHelpHandler($documents, $codeResolver);
-        $result = $handler->handle($this->request(['textDocument' => 'not-an-object']));
+        $result = $handler->handle($this->request(self::METHOD, ['textDocument' => 'not-an-object']));
 
         self::assertNull($result, 'a malformed textDocument shape short-circuits before any resolver call');
     }
@@ -59,7 +61,7 @@ class SignatureHelpHandlerTest extends TestCase
         $codeResolver->expects($this->never())->method('getCallContext');
 
         $handler = new SignatureHelpHandler($documents, $codeResolver);
-        $result = $handler->handle($this->positionRequest());
+        $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
 
         self::assertNull($result, 'an unopened document short-circuits before resolution');
     }
@@ -77,7 +79,7 @@ class SignatureHelpHandlerTest extends TestCase
             ->willReturn(null);
 
         $handler = new SignatureHelpHandler($documents, $codeResolver);
-        $result = $handler->handle($this->positionRequest(line: 3, character: 7));
+        $result = $handler->handle($this->positionRequest(self::METHOD, self::URI, line: 3, character: 7));
 
         self::assertNull($result, 'a cursor outside any call yields no signature help');
     }
@@ -97,7 +99,7 @@ class SignatureHelpHandlerTest extends TestCase
             $this->documentsReturning(new TextDocument(self::URI, 'php', 1, '<?php ')),
             $this->codeResolverReturning($context),
         );
-        $result = $handler->handle($this->positionRequest());
+        $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
 
         self::assertSame(
             [
@@ -126,7 +128,7 @@ class SignatureHelpHandlerTest extends TestCase
             $this->documentsReturning(new TextDocument(self::URI, 'php', 1, '<?php ')),
             $this->codeResolverReturning($context),
         );
-        $result = $handler->handle($this->positionRequest());
+        $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
 
         self::assertIsArray($result);
         self::assertArrayNotHasKey(
@@ -148,27 +150,6 @@ class SignatureHelpHandlerTest extends TestCase
         $stub = self::createStub(CodeResolverInterface::class);
         $stub->method('getCallContext')->willReturn($context);
         return $stub;
-    }
-
-    /**
-     * @param array<string, mixed> $params
-     */
-    private function request(array $params): RequestMessage
-    {
-        return RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/signatureHelp',
-            'params' => $params,
-        ]);
-    }
-
-    private function positionRequest(int $line = 0, int $character = 0): RequestMessage
-    {
-        return $this->request([
-            'textDocument' => ['uri' => self::URI],
-            'position' => ['line' => $line, 'character' => $character],
-        ]);
     }
 
     private function parameter(string $name, int $position): ParameterInfo
