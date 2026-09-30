@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase;
 class DefinitionHandlerTest extends TestCase
 {
     use BuildsHandlerRequestsTrait;
+    use StubsCollaboratorsTrait;
 
     private const METHOD = 'textDocument/definition';
     private const URI = 'file:///test.php';
@@ -128,19 +129,5 @@ class DefinitionHandlerTest extends TestCase
             $result,
             'the handler emits the resolved symbols definition location in LSP wire shape',
         );
-    }
-
-    private function documentsReturning(TextDocument $document): DocumentSourceInterface
-    {
-        $stub = self::createStub(DocumentSourceInterface::class);
-        $stub->method('read')->willReturn($document);
-        return $stub;
-    }
-
-    private function resolverReturning(?ResolvedSymbolInterface $symbol): CodeResolverInterface
-    {
-        $stub = self::createStub(CodeResolverInterface::class);
-        $stub->method('resolveAtPosition')->willReturn($symbol);
-        return $stub;
     }
 }

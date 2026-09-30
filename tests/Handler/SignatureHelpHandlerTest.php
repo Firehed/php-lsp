@@ -19,6 +19,7 @@ use PHPUnit\Framework\TestCase;
 class SignatureHelpHandlerTest extends TestCase
 {
     use BuildsHandlerRequestsTrait;
+    use StubsCollaboratorsTrait;
 
     private const METHOD = 'textDocument/signatureHelp';
     private const URI = 'file:///test.php';
@@ -140,13 +141,6 @@ class SignatureHelpHandlerTest extends TestCase
             $result['signatures'][0],
             'a callable without documentation must not surface a documentation key',
         );
-    }
-
-    private function documentsReturning(TextDocument $document): DocumentSourceInterface
-    {
-        $stub = self::createStub(DocumentSourceInterface::class);
-        $stub->method('read')->willReturn($document);
-        return $stub;
     }
 
     private function codeResolverReturning(?CallContext $context): CodeResolverInterface

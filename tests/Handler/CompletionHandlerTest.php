@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 class CompletionHandlerTest extends TestCase
 {
     use BuildsHandlerRequestsTrait;
+    use StubsCollaboratorsTrait;
 
     private const METHOD = 'textDocument/completion';
     private const URI = 'file:///test.php';
@@ -169,13 +170,6 @@ class CompletionHandlerTest extends TestCase
             $result['items'][0]['label'],
             'sortText overrides label so a source can rank its item ahead of an alphabetically earlier one',
         );
-    }
-
-    private function documentsReturning(TextDocument $document): DocumentSourceInterface
-    {
-        $stub = self::createStub(DocumentSourceInterface::class);
-        $stub->method('read')->willReturn($document);
-        return $stub;
     }
 
     /**

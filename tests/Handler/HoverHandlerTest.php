@@ -20,6 +20,7 @@ use PHPUnit\Framework\TestCase;
 class HoverHandlerTest extends TestCase
 {
     use BuildsHandlerRequestsTrait;
+    use StubsCollaboratorsTrait;
 
     private const METHOD = 'textDocument/hover';
     private const URI = 'file:///test.php';
@@ -172,20 +173,6 @@ class HoverHandlerTest extends TestCase
     {
         $stub = self::createStub(SessionCapabilitiesProviderInterface::class);
         $stub->method('getSessionCapabilities')->willReturn(new SessionCapabilities(hoverMarkupKind: $kind));
-        return $stub;
-    }
-
-    private function documentsReturning(TextDocument $document): DocumentSourceInterface
-    {
-        $stub = self::createStub(DocumentSourceInterface::class);
-        $stub->method('read')->willReturn($document);
-        return $stub;
-    }
-
-    private function resolverReturning(?ResolvedSymbolInterface $symbol): CodeResolverInterface
-    {
-        $stub = self::createStub(CodeResolverInterface::class);
-        $stub->method('resolveAtPosition')->willReturn($symbol);
         return $stub;
     }
 }
