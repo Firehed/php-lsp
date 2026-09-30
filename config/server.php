@@ -7,6 +7,9 @@ namespace Firehed\PhpLsp;
 use Firehed\Container\TypedContainerInterface as TC;
 
 return [
+    Capability\CapabilityNegotiator::class,
+    Capability\SessionCapabilitiesProviderInterface::class => Capability\CapabilityNegotiator::class,
+
     Protocol\ServerInfo::class => fn () => new Protocol\ServerInfo('php-lsp', '0.1.0'),
 
     Server::class => function (TC $c) {

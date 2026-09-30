@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\InitializedListenerInterface;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\InitializeResult;
 use Firehed\PhpLsp\Protocol\Message;
@@ -31,7 +31,7 @@ final class LifecycleHandler implements HandlerInterface
      *        Capability)
      */
     public function __construct(
-        private readonly CapabilityNegotiator $negotiator,
+        private readonly SessionCapabilitiesProviderInterface $negotiator,
         private readonly array $initializedListeners = [],
     ) {
     }
