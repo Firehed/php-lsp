@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Knowledge;
+namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -11,6 +11,8 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
+use Firehed\PhpLsp\Tests\Knowledge\GridQuery;
+use Firehed\PhpLsp\Tests\Knowledge\LooksUpBackendSymbolsTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
