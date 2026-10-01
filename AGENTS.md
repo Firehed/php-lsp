@@ -141,53 +141,7 @@ When considering edits (or avoiding them), remember: the project and architectur
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
 
-## Testing
-
-Do not write tests with inline PHP code.
-Use the fixture tooling when a test covers code or file handling.
-
-### Fixtures
-
-Fixtures live under `tests/Fixtures/` as a nested Composer project.
-Run `composer install` there before the suite, and again after adding files outside the PSR-4 or PSR-0 paths.
-
-Reuse existing fixtures before adding new ones.
-Shared domain fixtures live in `src/Domain/`, `src/Enum/`, `src/Inheritance/`, and similar; import and extend them.
-Handler-specific fixtures with cursor markers live in `src/Completion/`, `src/Hover/`, `src/Definition/`, and `src/SignatureHelp/`.
-Files that intentionally break PSR-4, such as multi-class files, live in top-level directories like `MultiClass/`, not under `src/`.
-
-Additive changes to shared fixtures are fine.
-Renames, removals, and signature changes need coordination.
-Some fixtures back the parity goldens under `tests/Parity/`; any change to one changes its golden.
-Recapture with `UPDATE_GOLDENS=1` and review the diff; see `tests/Parity/README.md`.
-
-### Helpers
-
-`OpensDocumentsTrait` serves handler tests:
-
-```php
-$uri = $this->openFixture('src/Domain/User.php');
-$cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
-$result = $this->handler->handle($this->completionRequestAt($cursor));
-```
-
-`LoadsFixturesTrait` serves unit tests with no handler infrastructure:
-
-```php
-$content = $this->loadFixture('src/TypeInference/NewKeywords.php');
-```
-
-### Cursor markers
-
-`/*|marker*/` puts the cursor before the marker.
-Use it for incomplete code such as `$this->`, where the parser must recover.
-Each incomplete statement needs its own method; two in one method confuse parser recovery.
-
-`//hover:marker` puts the cursor on the last member access or function call on that line.
-Use it for complete code such as `$this->method()`.
-
 ## LSP Protocol
 
 The server communicates over stdio.
 `docs/vim-ale.md` has Vim setup notes.
-
