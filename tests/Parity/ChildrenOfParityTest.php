@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
  * output is therefore stable across the 8.3/8.4/8.5 CI matrix; the built-in
  * reflection source is version-fragile and is covered by a subset assertion.
  *
- * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.2, §5.1.
+ * See RFC 1 §4.2, §5.1.
  */
 final class ChildrenOfParityTest extends TestCase
 {

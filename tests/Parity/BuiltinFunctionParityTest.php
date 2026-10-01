@@ -23,12 +23,9 @@ use PHPUnit\Framework\TestCase;
  * in the same way `TypeGraphParityTest` uses reflection as the oracle for member
  * resolution.
  *
- * Why it exists now, in the slice *before* the migration: Step 3b moves function
- * completion off its direct `get_defined_functions()` call and onto the backend.
  * Freezing the shape of that path's output is the function-surface golden's job
- * ({@see FunctionSurfaceParityTest}); proving the backend can supply the same
- * *set* of names is this test's, and it has to be true before the migration is
- * attempted, not after.
+ * ({@see FunctionSurfaceParityTest}); proving the backend supplies the same
+ * *set* of names is this test's.
  *
  * Note the two sides are not trivially the same call: reflection produces a flat
  * list of names, while the backend files each name under the namespace it
@@ -36,7 +33,7 @@ use PHPUnit\Framework\TestCase;
  * namespace at a time. A name filed under the wrong namespace, or dropped while
  * indexing, fails here.
  *
- * See docs/architecture/0002-execution-plan.md, Step 3b; RFC 1 §4.2, §4.7, §5.3.
+ * See RFC 1 §4.2, §4.7, §5.3.
  */
 final class BuiltinFunctionParityTest extends TestCase
 {

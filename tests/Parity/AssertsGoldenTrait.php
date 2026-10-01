@@ -11,8 +11,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
  * and diffed on every run thereafter. Any divergence is a failure: a
  * behavior-preserving migration must reproduce the golden byte for byte, and a
  * step that intends to change one surface recaptures only that surface's golden
- * while the others stay frozen. See docs/architecture/0002-execution-plan.md,
- * Step P.
+ * while the others stay frozen.
  */
 trait AssertsGoldenTrait
 {

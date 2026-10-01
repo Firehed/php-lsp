@@ -30,7 +30,7 @@ class ComposerAutoloadMapTest extends TestCase
         foreach (['AutoloadFiles/globals.php', 'AutoloadFiles/helpers.php'] as $expected) {
             self::assertTrue(
                 self::containsPathEndingIn($files, $expected),
-                "autoload.files must report {$expected}, the bounded function/constant reach (Plan 0002 §3)",
+                "autoload.files must report {$expected}, the bounded function/constant reach",
             );
         }
     }

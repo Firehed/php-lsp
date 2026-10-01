@@ -20,7 +20,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
  * composite's precedence and merge behavior without standing up real sources.
  *
  * Kind-agnostic like the real backends: a symbol carries its own kind, so a kind this
- * file has never heard of is configurable without a new parameter (Plan 0002 §5.6).
+ * file has never heard of is configurable without a new parameter.
  */
 final class FakeSymbolBackend implements SymbolSourceInterface
 {

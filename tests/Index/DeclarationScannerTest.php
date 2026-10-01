@@ -155,7 +155,7 @@ final class DeclarationScannerTest extends TestCase
         self::assertSame(
             self::GLOBAL_CONSTANTS,
             self::fqns($declarations->constants),
-            'constant reach covers const declarations and literal-name define() alike (Plan 0002 §3b)',
+            'constant reach covers const declarations and literal-name define() alike',
         );
     }
 
@@ -228,7 +228,7 @@ final class DeclarationScannerTest extends TestCase
         self::assertNotContains(
             'FIXTURE_COMPUTED_LIMIT',
             self::fqns($declarations->constants),
-            'a computed define() name exists only at runtime and contributes nothing (Plan 0002 §3b)',
+            'a computed define() name exists only at runtime and contributes nothing',
         );
     }
 

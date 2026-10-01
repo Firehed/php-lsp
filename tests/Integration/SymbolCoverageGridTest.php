@@ -30,7 +30,7 @@ final class SymbolCoverageGridTest extends TestCase
     use LooksUpBackendSymbolsTrait;
 
     /** The forms a blocker may take: an issue, or a section. */
-    private const string BLOCKER = '/^(#\d+|(RFC 1|Plan 0002) §\d+(\.\d+)*)$/u';
+    private const string BLOCKER = '/^(#\d+|RFC 1 §\d+(\.\d+)*)$/u';
 
     /**
      * Cells the shipped stack cannot answer, each naming an issue or an RFC
@@ -128,7 +128,7 @@ final class SymbolCoverageGridTest extends TestCase
             [],
             $stale,
             'a cell that now answers must lose its not-applicable registration, '
-                . 'or the blocker outlives the gap (Step Z)',
+                . 'or the blocker outlives the gap',
         );
     }
 
@@ -151,7 +151,7 @@ final class SymbolCoverageGridTest extends TestCase
 
     public function testARegistrationThatNoLongerBlocksIsReported(): void
     {
-        // A closed gap that keeps its blocker reads as open, which Step Z cannot see.
+        // A closed gap that keeps its blocker reads as open.
         $answering = 'BuiltinBackend|ClassLike|lookup';
         ['stale' => $stale] = $this->evaluate([$answering => 'a blocker that no longer applies']);
 
@@ -168,7 +168,7 @@ final class SymbolCoverageGridTest extends TestCase
             [],
             self::danglingBlockers(self::NOT_APPLICABLE),
             'a not-applicable cell must name an issue or a section: '
-                . 'a blocker nobody owns is the permanent exemption Step Z exists to prevent',
+                . 'a blocker nobody owns is a permanent exemption',
         );
     }
 

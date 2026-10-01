@@ -40,7 +40,7 @@ use PHPUnit\Framework\TestCase;
  * the other, never both), so it is asserted separately in
  * {@see testDocumentFunctionsPrecedeBuiltins}.
  *
- * See docs/architecture/0002-execution-plan.md, Step P and Step 3b; RFC 1 §4.2.
+ * See RFC 1 §4.2.
  */
 final class FunctionSurfaceParityTest extends TestCase
 {

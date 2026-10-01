@@ -1294,14 +1294,14 @@ class CompletionHandlerIntegrationTest extends TestCase
     }
 
     /**
-     * Step 0 acceptance: one parse per handled message. Completion is the fan-out
+     * One parse per handled message. Completion is the fan-out
      * that made this matter — its sources each call a different CodeResolverInterface
      * method, and every one of them re-parsed the same unchanged document.
      *
      * These fixtures are chosen to resolve nothing from disk, so the total parse
      * count *is* the open document's count. Parses of other documents are a
      * separate cost that dedup does not remove and is not meant to: they are
-     * memoized per class by the repository (0002-execution-plan.md, Section 8.2).
+     * memoized per class by the repository.
      */
     #[DataProvider('singleParseCompletions')]
     public function testCompletionParsesTheDocumentOnce(string $fixture, string $marker): void

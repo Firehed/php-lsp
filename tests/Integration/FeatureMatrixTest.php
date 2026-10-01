@@ -50,7 +50,7 @@ final class FeatureMatrixTest extends TestCase
     use OpensDocumentsTrait;
     use WiresCompletionSourceTrait;
 
-    private const string BLOCKER = '/^(#\d+|(RFC 1|Plan 0002) §\d+(\.\d+)*)$/u';
+    private const string BLOCKER = '/^(#\d+|RFC 1 §\d+(\.\d+)*)$/u';
 
     /**
      * Cells the current stack cannot answer. Keyed `<fixture>|<marker>|<handler>`.

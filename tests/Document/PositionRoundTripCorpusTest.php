@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The position round-trip corpus (RFC 1 §4.9, Step 1 acceptance): positions must
+ * The position round-trip corpus (RFC 1 §4.9): positions must
  * survive a round trip through the document boundary under the negotiated
  * encoding. {@see TextDocumentTest} pins specific multibyte conversions; this
  * corpus proves the boundary is a bijection across a whole file of mixed-width

@@ -66,7 +66,7 @@ final class KnowledgeStackTest extends TestCase
         // Composer's maps address none of these: they are declared in an
         // `autoload.files` entry, which is keyed by no name at all. Every flavour is
         // covered, because a scan narrowed to `class` would lose three of them
-        // silently (Plan 0002 §3, #181).
+        // silently (#181).
         yield 'interface' => ['Fixtures\Helpers\HelperContract'];
         yield 'trait' => ['Fixtures\Helpers\HelperFallback'];
         yield 'enum' => ['Fixtures\Helpers\HelperMode'];
