@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,37 +24,22 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResolvedTypeOnly::class)]
 class MemberAccessDetectorTest extends TestCase
 {
-    use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
 
     private MemberAccessDetector $detector;
-    private MemberAccessDetector $detectorWithReflection;
     private SyntaxSourceInterface $parser;
 
     protected function setUp(): void
     {
-        $production = ProductionSyntaxSource::create();
-        $this->parser = $production->source;
+        $this->parser = ProductionSyntaxSource::create()->source;
 
         $emptySource = self::createStub(SymbolSourceInterface::class);
         $emptySource->method('lookupClassLike')->willReturn(null);
         $emptyMemberResolver = new MemberResolver($emptySource);
-        $emptyTypeSource = new NativeTypeSource($emptySource, $emptyMemberResolver);
         $this->detector = new MemberAccessDetector(
             $emptySource,
             $emptyMemberResolver,
-            $emptyTypeSource,
-            $this->parser,
-        );
-
-        $fixturesRoot = __DIR__ . '/../Fixtures';
-        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
-        $memberResolver = new MemberResolver($knowledge->source);
-        $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
-        $this->detectorWithReflection = new MemberAccessDetector(
-            $knowledge->source,
-            $memberResolver,
-            $typeSource,
+            new NativeTypeSource($emptySource, $emptyMemberResolver),
             $this->parser,
         );
     }
@@ -131,7 +115,7 @@ class MemberAccessDetectorTest extends TestCase
         $content = $this->loadFixture('TopLevel/multibyte_static.php');
         ['line' => $line, 'character' => $character] = $this->locateCursorUtf16($content, 'multibyte_static');
 
-        $result = $this->detectWith($this->detectorWithReflection, 'TopLevel/multibyte_static.php', $line, $character);
+        $result = $this->detect('TopLevel/multibyte_static.php', $line, $character);
         self::assertInstanceOf(MemberAccessContext::class, $result);
         self::assertSame('Fixtures\\Domain\\User', $result->type->format());
         self::assertSame(
@@ -184,18 +168,9 @@ class MemberAccessDetectorTest extends TestCase
 
     private function detect(string $fixture, int $line, int $character): ?MemberAccessContext
     {
-        return $this->detectWith($this->detector, $fixture, $line, $character);
-    }
-
-    private function detectWith(
-        MemberAccessDetector $detector,
-        string $fixture,
-        int $line,
-        int $character,
-    ): ?MemberAccessContext {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $ast = $this->parser->parse($document);
-        return $detector->detect($document, $ast, $line, $character);
+        return $this->detector->detect($document, $ast, $line, $character);
     }
 }
