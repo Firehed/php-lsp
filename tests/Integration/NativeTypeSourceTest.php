@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Resolution\TypeSource;
+namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
@@ -30,7 +30,7 @@ final class NativeTypeSourceTest extends TestCase
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
-        $fixturesRoot = dirname(__DIR__, 2) . '/Fixtures';
+        $fixturesRoot = dirname(__DIR__) . '/Fixtures';
         $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $this->source = new NativeTypeSource(
             $knowledge->source,
