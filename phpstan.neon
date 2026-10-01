@@ -10,7 +10,7 @@ parameters:
     # to happen — extend the authority instead.
     #
     # Every entry in the three disallowed* blocks has the same shape, and each
-    # part has one edit meaning (docs/architecture/enforcement-edits.md):
+    # part has one edit meaning:
     #   namespace / function / method  — the deny list. Adding tightens.
     #   allowIn                        — the allowlist. Adding loosens (human only).
     #                                    On a new entry, each path must be one file

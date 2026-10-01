@@ -3,7 +3,7 @@ deptrac:
     - src
   # Layer-dependency contract (default-deny): an edge not listed in the ruleset
   # fails analysis. Adding a layer tightens; adding a ruleset edge loosens and is
-  # the human's edit only. See docs/architecture/enforcement-edits.md.
+  # the human's edit only.
   layers:
     - name: Root
       collectors:

@@ -43,7 +43,7 @@ foreach ($files as $file => $total) {
         fwrite(STDERR, sprintf(
             "%s grew (%d -> %d): baselines only shrink. Route the new" .
             " violation through its authority. Growth is permitted only" .
-            " for a newly added check; see docs/architecture/enforcement-edits.md.\n",
+            " for a newly added check.\n",
             $file,
             $base,
             $head,

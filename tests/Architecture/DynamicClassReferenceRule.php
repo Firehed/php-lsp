@@ -30,8 +30,7 @@ use PHPStan\Rules\RuleErrorBuilder;
 final class DynamicClassReferenceRule implements Rule
 {
     /**
-     * Adding an entry loosens (human only). See
-     * docs/architecture/enforcement-edits.md.
+     * Adding an entry loosens (human only).
      *
      * @var list<string>
      */
