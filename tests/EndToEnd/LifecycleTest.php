@@ -28,7 +28,7 @@ final class LifecycleTest extends TestCase
         $client->notify('exit');
 
         self::assertSame(0, $server->waitForExit());
-        self::assertSame('', $server->stderr);
+        self::assertSame('', $server->stderr());
 
         self::assertNull($initialize->error);
         self::assertInstanceOf(stdClass::class, $initialize->result);
