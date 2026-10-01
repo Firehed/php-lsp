@@ -1,3 +1,5 @@
+# AGENTS.md
+
 ## Quick Start
 
 ```bash

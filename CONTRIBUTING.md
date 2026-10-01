@@ -1,3 +1,5 @@
+# Contributing
+
 ## Code Style
 
 PHPCS enforces PSR-12 at minimum; generally follow the latest "PER" style guide as allowed by the minimum PHP version defined in composer.json.
