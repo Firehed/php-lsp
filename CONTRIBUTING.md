@@ -64,4 +64,3 @@ Each incomplete statement needs its own method; two in one method confuse parser
 
 `//hover:marker` puts the cursor on the last member access or function call on that line.
 Use it for complete code such as `$this->method()`.
-
