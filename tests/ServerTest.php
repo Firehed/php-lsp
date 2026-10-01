@@ -291,9 +291,8 @@ class ServerTest extends TestCase
         $input = $this->buildMessages(...[...$preamble, $gated, $this->notificationJson('exit')]);
         $outputBuffer = new WritableBuffer();
 
-        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$spy], ProductionSyntaxSource::create()->source);
+        $server = $this->serverWith($transport, [$spy]);
 
         $server->run();
 
@@ -565,9 +564,8 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$throwing], ProductionSyntaxSource::create()->source);
+        $server = $this->serverWith($transport, [$throwing]);
 
         $exitCode = $server->run();
 
@@ -628,9 +626,8 @@ class ServerTest extends TestCase
         // The lifecycle handler claims initialize/initialized/shutdown/exit
         // before the lookup reaches this double, so only the id 7 request trips
         // it and the session can still be driven to a clean exit.
-        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$throwing], ProductionSyntaxSource::create()->source);
+        $server = $this->serverWith($transport, [$throwing]);
 
         $exitCode = $server->run();
 
@@ -681,9 +678,8 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$unencodable], ProductionSyntaxSource::create()->source);
+        $server = $this->serverWith($transport, [$unencodable]);
 
         $exitCode = $server->run();
 
@@ -1006,6 +1002,22 @@ class ServerTest extends TestCase
         self::assertIsInt($code, 'the error carries an integer code');
 
         return ErrorCode::from($code);
+    }
+
+    /**
+     * A server with the lifecycle handler and only the handlers a test names,
+     * for tests of the dispatch loop itself.
+     *
+     * @param list<HandlerInterface> $handlers
+     */
+    private function serverWith(TransportInterface $transport, array $handlers = []): Server
+    {
+        return new Server(
+            $transport,
+            new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0'))),
+            $handlers,
+            ProductionSyntaxSource::create()->source,
+        );
     }
 
     /**
