@@ -87,7 +87,7 @@ exercise — to surface before the harness is trusted.
 The corpus drives the *lookup* and *enumeration* surfaces through the
 `CompositeSymbolSource` and its backends. One thing it deliberately does **not**
 drive, so its lines show here as unexecuted but are fully covered elsewhere: the
-per-backend `search` on the workspace, vendor, and built-in backends (prefix-search
+per-backend `search` on the autoload-files, Composer-map, and built-in backends (prefix-search
 parity runs against the open-document backend directly, and each backend's unit
 tests exercise its own `search`).
 
@@ -95,11 +95,12 @@ Within the surfaces the corpus does drive, a handful of defensive lines stay
 uncovered or are marked `@codeCoverageIgnore` — all unreachable for realistic project
 input:
 
-- the IO-failure guards in `FilesystemBackend` — `file_get_contents` failing after
-  `is_readable` succeeds, and a parse that throws despite error recovery — are marked
-  `@codeCoverageIgnore`: unreachable for a located, well-formed file;
+- the IO-failure guards — `file_get_contents` failing after `is_readable` succeeds
+  (`SourceFileReader`), and `scandir` failing after `is_dir` succeeds
+  (`ComposerMapBackend`) — are marked `@codeCoverageIgnore`: unreachable unless the
+  filesystem changes between the check and the read;
 - an autoload map pointing at a missing directory, or a non-`.php` file in a scanned
-  directory (`ComposerNamespaceSource`) — reachable only via a synthetic autoload
+  directory (`ComposerMapBackend`) — reachable only via a synthetic autoload
   map, which the dedicated unit tests exercise, not a real project corpus.
 
 Line coverage does not show that the corpus catches a regression; that takes
