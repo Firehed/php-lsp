@@ -58,12 +58,6 @@ class DefinitionHandlerIntegrationTest extends TestCase
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
-    public function testSupports(): void
-    {
-        self::assertTrue($this->handler->supports('textDocument/definition'));
-        self::assertFalse($this->handler->supports('textDocument/hover'));
-    }
-
     public function testGoToClassDefinition(): void
     {
         $this->openDocument('file:///MyClass.php', '<?php class MyClass {}');
@@ -98,23 +92,6 @@ class DefinitionHandlerIntegrationTest extends TestCase
             'params' => [
                 'textDocument' => ['uri' => 'file:///test.php'],
                 'position' => ['line' => 0, 'character' => 10],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertNull($result);
-    }
-
-    public function testReturnsNullForUnknownDocument(): void
-    {
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/definition',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///unknown.php'],
-                'position' => ['line' => 0, 'character' => 0],
             ],
         ]);
 

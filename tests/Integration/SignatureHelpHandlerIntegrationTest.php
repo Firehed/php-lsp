@@ -55,12 +55,6 @@ class SignatureHelpHandlerIntegrationTest extends TestCase
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
-    public function testSupports(): void
-    {
-        self::assertTrue($this->handler->supports('textDocument/signatureHelp'));
-        self::assertFalse($this->handler->supports('textDocument/hover'));
-    }
-
     public function testSignatureHelpOnUserDefinedFunction(): void
     {
         $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'first_param');

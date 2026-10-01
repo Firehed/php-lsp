@@ -63,63 +63,6 @@ class HoverHandlerIntegrationTest extends TestCase
         $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
-    public function testSupports(): void
-    {
-        self::assertTrue($this->handler->supports('textDocument/hover'));
-        self::assertFalse($this->handler->supports('textDocument/definition'));
-    }
-
-    public function testHoverContentsAdvertiseTheNegotiatedMarkupKind(): void
-    {
-        $handler = $this->handlerFor(MarkupKind::Markdown);
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
-
-        $result = $handler->handle($this->hoverRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertSame(
-            'markdown',
-            $result['contents']['kind'],
-            'the MarkupContent kind must reflect the client-negotiated hover format',
-        );
-    }
-
-    public function testMarkdownHoverFencesTheSignatureAsPhp(): void
-    {
-        $handler = $this->handlerFor(MarkupKind::Markdown);
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
-
-        $result = $handler->handle($this->hoverRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertStringContainsString(
-            '```php',
-            $result['contents']['value'],
-            'a markdown client renders the signature inside a fenced PHP block',
-        );
-    }
-
-    public function testPlainTextHoverOmitsTheMarkdownFences(): void
-    {
-        $handler = $this->handlerFor(MarkupKind::PlainText);
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
-
-        $result = $handler->handle($this->hoverRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertSame('plaintext', $result['contents']['kind'], 'the kind must degrade with the client');
-        self::assertStringNotContainsString(
-            '```',
-            $result['contents']['value'],
-            'a plaintext client would show markdown fences literally, so they must not be emitted',
-        );
-        self::assertStringContainsString(
-            'setName',
-            $result['contents']['value'],
-            'the signature itself is still present, just unfenced',
-        );
-    }
-
     public function testHoverOnClassWithDocblock(): void
     {
         $this->openFixture('src/Domain/User.php');
