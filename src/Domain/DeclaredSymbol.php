@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * Registration carries the kind rather than splitting into a parameter per kind, so
  * a new kind is a case in the info factories and not a signature change on every
- * write path (Plan 0002 §5.6).
+ * write path.
  */
 final readonly class DeclaredSymbol
 {

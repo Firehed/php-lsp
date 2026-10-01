@@ -13,7 +13,7 @@ use Firehed\PhpLsp\Domain\FileUri;
  * The {@see SymbolSourceInterface} over Composer's `autoload.files` set — the one
  * place Composer addresses a declaration by no name at all. PHP `require`s each
  * entry wholesale at bootstrap, so the only route to a name declared there is to
- * parse the set and derive a name -> declaration map (Plan 0002 §3).
+ * parse the set and derive a name -> declaration map.
  *
  * The index is built eagerly at construction, and rebuilt when a file in the set
  * changes on disk (RFC 1 §5.2, §5.3). The map itself is read through

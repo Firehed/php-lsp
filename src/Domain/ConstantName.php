@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * The fully-qualified name of a free-standing (namespace-level) constant
- * (Plan 0002 §5.3): a {@see QualifiedName} that carries its {@see NameKind}
+ * The fully-qualified name of a free-standing (namespace-level) constant:
+ * a {@see QualifiedName} that carries its {@see NameKind}
  * intrinsically, so a lookup taking one needs no separate kind argument.
  * `Foo\BAR` names a different symbol as a constant than as a class, and the
  * type is what says which.

@@ -44,8 +44,7 @@ use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
 /**
  * The one place a {@see NameKind} picks a declaration list and a builder, which is
- * what lets {@see LooksUpByKindTrait} carry a single lookup and a single registration
- * (Plan 0002 §5.6).
+ * what lets {@see LooksUpByKindTrait} carry a single lookup and a single registration.
  *
  * Lookup is a filter over {@see allIn()} rather than its own scan: RFC 1 §5.1
  * forbids a derived verb forking from the one it derives from, and a second scan is

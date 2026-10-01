@@ -10,7 +10,7 @@ namespace Firehed\PhpLsp\Domain;
  * is the empty path.
  *
  * A namespace is not a symbol: it has no declaration site and no {@see \Firehed\PhpLsp\Domain\NameKind},
- * existing only because something is declared beneath it (RFC 1 §5.1; Plan 0002 §5.6).
+ * existing only because something is declared beneath it (RFC 1 §5.1).
  * So this carries the path alone.
  *
  * Namespaces are case-insensitive in PHP, and comparisons here reflect that.

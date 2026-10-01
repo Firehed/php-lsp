@@ -12,8 +12,7 @@ use PhpParser\Node;
  * message boundary through {@see MessageScopedInterface}. Within one handled message a
  * document parses at most once; different content is a different key, so no
  * invalidation rule has to be got right. Discarding it at the message boundary
- * is what keeps it request-scoped rather than a standing cache the Step 0
- * spike declined (0002-execution-plan.md, Section 8.5).
+ * is what keeps it request-scoped rather than a standing cache.
  */
 final class MemoizingSyntaxSource implements SyntaxSourceInterface, MessageScopedInterface
 {

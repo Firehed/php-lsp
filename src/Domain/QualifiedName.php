@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Domain;
 
 /**
  * A fully-qualified name split into namespace path and short name, carrying no
- * notion of what it names (Plan 0002 §5.3: the kind-neutral base FQN value type).
+ * notion of what it names.
  * A name alone does not identify a symbol — PHP has three symbol namespaces — so a
  * {@see NameKind} travels alongside it.
  *

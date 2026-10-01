@@ -15,7 +15,7 @@ use PhpParser\NodeVisitorAbstract;
 /**
  * Reads the class-likes, functions and constants a parsed file declares, so a
  * name -> file map can be derived for an `autoload.files` entry, which Composer
- * addresses by no name at all (Plan 0002 §3).
+ * addresses by no name at all.
  *
  * What counts as a declaration is decided lexically, not by what a `require` of the
  * file would execute: a conditional polyfill (`if (!function_exists(...))`) and a
@@ -23,7 +23,7 @@ use PhpParser\NodeVisitorAbstract;
  * runtime question, and a name the file validly declares is a name the editor should
  * be able to resolve.
  *
- * The blind spots are Plan 0002 §3's locate-only limitation rather than oversights:
+ * The blind spots are a locate-only limitation rather than oversights:
  * a `define()` whose name — or whose call — resolves only at runtime, a name
  * introduced by `class_alias()` rather than by a declaration, and anything reached
  * only through a `require`/`include`, which is not followed.

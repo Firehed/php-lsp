@@ -238,8 +238,7 @@ final class Server
                 // decorator) closes here — this loop is the only boundary that knows
                 // where the message ends. Clearing it through MessageScopedInterface keeps
                 // Server from naming the decorator, and keeps the memo from becoming
-                // the standing cache the Step 0 spike declined
-                // (0002-execution-plan.md, Section 8.5).
+                // a standing cache.
                 $this->messageScope->endMessage();
             }
 
