@@ -48,8 +48,8 @@ use ReflectionProperty;
  * reaches reflection (RFC 1 §5.3).
  *
  * This backend is reflection-backed and therefore describes the
- * *server's* runtime, not the project's target — a known §4.7 gap deferred to Step 5
- * (Plan 0002 §5); the interim treats every reflected built-in as available.
+ * *server's* runtime, not the project's target — a known RFC 1 §4.7 gap;
+ * the interim treats every reflected built-in as available.
  *
  * Enumeration draws on one derived index of the internal symbols, built once on
  * first use and shared by every read: `childrenOf` reads its namespace grouping

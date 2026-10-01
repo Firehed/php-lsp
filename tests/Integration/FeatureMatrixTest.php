@@ -50,7 +50,7 @@ final class FeatureMatrixTest extends TestCase
     use OpensDocumentsTrait;
     use WiresCompletionSourceTrait;
 
-    private const string UNOWNED_BLOCKER = '/^(#\d+|(RFC 1|Plan 0002) §\d+(\.\d+)*)$/u';
+    private const string BLOCKER = '/^(#\d+|RFC 1 §\d+(\.\d+)*)$/u';
 
     /**
      * Cells the current stack cannot answer. Keyed `<fixture>|<marker>|<handler>`.
@@ -162,16 +162,16 @@ final class FeatureMatrixTest extends TestCase
         self::assertSame(
             [],
             self::danglingBlockers(self::NOT_APPLICABLE),
-            'a not-applicable cell must name a step, an issue, or an RFC section',
+            'a not-applicable cell must name an issue or a section',
         );
     }
 
-    public function testABlockerNamingNoSliceIsReported(): void
+    public function testABlockerNamingNoIssueOrSectionIsReported(): void
     {
         self::assertSame(
             ['x|y|z names S9.99'],
             self::danglingBlockers(['x|y|z' => 'S9.99']),
-            'a blocker matching no registry row, issue, or section must be reported',
+            'a blocker matching no issue or section must be reported',
         );
     }
 
@@ -280,12 +280,11 @@ final class FeatureMatrixTest extends TestCase
      */
     private static function danglingBlockers(array $notApplicable): array
     {
-        $slices = self::sliceIds();
         $dangling = [];
 
         foreach ($notApplicable as $cell => $blocker) {
             foreach (explode(', ', $blocker) as $named) {
-                if (in_array($named, $slices, true) || preg_match(self::UNOWNED_BLOCKER, $named) === 1) {
+                if (preg_match(self::BLOCKER, $named) === 1) {
                     continue;
                 }
                 $dangling[] = "{$cell} names {$named}";
@@ -293,17 +292,5 @@ final class FeatureMatrixTest extends TestCase
         }
 
         return $dangling;
-    }
-
-    /** @return list<string> */
-    private static function sliceIds(): array
-    {
-        $manifest = file_get_contents(dirname(__DIR__, 2) . '/docs/architecture/build-manifest.md');
-        self::assertNotFalse($manifest, 'the slice registry must be readable');
-
-        preg_match_all('/^- \[[ x]\] \*\*([a-z0-9-]+)\*\*/m', $manifest, $matches);
-        self::assertNotEmpty($matches[1], 'the slice list must be parseable');
-
-        return $matches[1];
     }
 }

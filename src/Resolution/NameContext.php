@@ -25,8 +25,8 @@ use PhpParser\Node\Stmt\Use_;
  *
  * The resolution rules themselves — namespace prefixing, alias lookup, and
  * the function/constant global fallback (PHP manual, name resolution rules
- * 5–7) — are delegated to php-parser's own {@see PhpParserNameContext}
- * (build-manifest step-44). The tables above stay public because
+ * 5–7) — are delegated to php-parser's own {@see PhpParserNameContext}.
+ * The tables above stay public because
  * {@see \Firehed\PhpLsp\Completion\SymbolCandidates} and
  * {@see ReferenceResolver} enumerate them, which php-parser's engine does not
  * expose.

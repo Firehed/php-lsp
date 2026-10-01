@@ -19,8 +19,7 @@
       "Edit(tests/Architecture/**)",
       "Edit(bin/**)",
       "Edit(.github/**)",
-      "Edit(.claude/**)",
-      "Edit(docs/architecture/enforcement-edits.md)"
+      "Edit(.claude/**)"
     ]
   }
 }

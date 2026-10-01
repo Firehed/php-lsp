@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 /**
- * The fully-qualified name of a standalone function (Plan 0002 §5.3): a
+ * The fully-qualified name of a standalone function: a
  * {@see QualifiedName} that carries its {@see NameKind} intrinsically, so a lookup
  * taking one needs no separate kind argument. `Foo\bar` names a different symbol as
  * a function than as a constant, and the type is what says which.

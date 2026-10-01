@@ -9,7 +9,7 @@ declare(strict_types=1);
  * and a `define()` whose name is computed.
  *
  * The computed one is deliberately unreachable: its name exists only at runtime, so
- * a static parse cannot know it (Plan 0002 §3b, §3's locate-only limitation). It is
+ * a static parse cannot know it (the locate-only limitation). It is
  * here so a test can prove the limitation holds rather than leave it asserted only
  * in prose.
  */

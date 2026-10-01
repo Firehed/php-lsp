@@ -27,8 +27,7 @@ use PHPStan\Type\MixedType;
 final class RawInitializeCapabilitiesRule implements Rule
 {
     /**
-     * Adding an entry tightens. Removing one loosens (human only). See
-     * docs/architecture/enforcement-edits.md.
+     * Adding an entry tightens. Removing one loosens (human only).
      *
      * @var list<string>
      */

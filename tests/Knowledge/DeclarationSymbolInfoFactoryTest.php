@@ -21,8 +21,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The single place a {@see NameKind} selects a declaration list and a builder
- * (Plan 0002 §5.6).
+ * The single place a {@see NameKind} selects a declaration list and a builder.
  */
 final class DeclarationSymbolInfoFactoryTest extends TestCase
 {

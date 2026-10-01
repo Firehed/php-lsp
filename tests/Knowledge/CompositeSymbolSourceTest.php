@@ -31,7 +31,7 @@ use PHPUnit\Framework\TestCase;
  * lookup, a merge, and a name clash. The concrete slots (openDocuments,
  * autoloadFiles) start empty so the fake-backed disk and built-in slots — the two
  * the composite types on the interface — carry every assertion. Parity with the
- * real backends is frozen by the Step P harness.
+ * real backends is frozen by the parity harness.
  */
 final class CompositeSymbolSourceTest extends TestCase
 {

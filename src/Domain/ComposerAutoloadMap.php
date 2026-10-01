@@ -55,7 +55,7 @@ final readonly class ComposerAutoloadMap
      * which is where a project's functions and constants are declared.
      *
      * Unlike PSR-4, this is not a name -> file map — it cannot be, because functions
-     * and constants have no such map (Plan 0002 §3). It is an explicit, usually tiny
+     * and constants have no such map. It is an explicit, usually tiny
      * list, which is what makes deriving one by parsing it affordable.
      *
      * @return list<string>

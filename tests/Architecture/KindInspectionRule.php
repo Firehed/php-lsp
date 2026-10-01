@@ -31,8 +31,7 @@ use PHPStan\Rules\RuleErrorBuilder;
 final class KindInspectionRule implements Rule
 {
     /**
-     * Adding an entry tightens. Removing one loosens (human only). See
-     * docs/architecture/enforcement-edits.md.
+     * Adding an entry tightens. Removing one loosens (human only).
      *
      * @var list<class-string>
      */
@@ -64,8 +63,7 @@ final class KindInspectionRule implements Rule
 
     /**
      * Adding an entry loosens (human only). Removing one tightens. Renaming one
-     * is lateral only when the same PR moves the file. See
-     * docs/architecture/enforcement-edits.md.
+     * is lateral only when the same PR moves the file.
      */
     private const array ALLOWED_FILES = [
         'src/Domain/TypeFactory.php',

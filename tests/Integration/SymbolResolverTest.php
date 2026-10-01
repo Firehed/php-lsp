@@ -1489,7 +1489,7 @@ final class SymbolResolverTest extends TestCase
         self::assertSame(
             '?Fixtures\\Domain\\User',
             $context->type->format(),
-            'Should resolve underlying type from nullable parameter (nullable preserved after step-40)',
+            'Should resolve underlying type from nullable parameter, preserving nullability',
         );
     }
 

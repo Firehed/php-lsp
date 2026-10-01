@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Client;
 /**
  * The channel for server-initiated messages to the client. Today its sole use is
  * dynamic capability registration (`client/registerCapability`); server-initiated
- * notifications (diagnostics) are the deferred scheduler tier (Plan 0002 Step 6).
+ * notifications (diagnostics) are not yet built.
  */
 interface ClientConnectionInterface
 {

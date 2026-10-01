@@ -26,8 +26,6 @@ use Firehed\PhpLsp\Domain\Symbol;
  *
  * Lookup is per-kind, because PHP's three symbol namespaces are independent: the
  * name type says which is meant, so no separate kind argument travels with it.
- * Constant lookup and a kind-parameterized search arrive with the slices that first
- * need them (Plan 0002 §5.2); a method with no caller is not carried ahead.
  */
 interface SymbolSourceInterface
 {
@@ -49,12 +47,11 @@ interface SymbolSourceInterface
      *
      * Reach is what a name can be resolved *through*: an open document, an
      * `autoload.files` entry, or a built-in. A constant in an unopened PSR-4
-     * file has no name -> file route at all, which is Plan 0002 §3's
+     * file has no name -> file route at all, which is a
      * locate-only limitation rather than an absence.
      *
      * Covers `const` declarations and literal-name `define()` calls; a
-     * computed-name `define()` is a runtime call invisible to static parse
-     * (Plan 0002 §3).
+     * computed-name `define()` is a runtime call invisible to static parse.
      */
     public function lookupConstant(ConstantName $name): ?ConstantInfo;
 
@@ -64,7 +61,7 @@ interface SymbolSourceInterface
      *
      * Reach is what a name can be resolved *through*: an open document, an
      * `autoload.files` entry, or a built-in. A function in an unopened PSR-4 file
-     * has no name -> file route at all, which is Plan 0002 §3's locate-only
+     * has no name -> file route at all, which is a locate-only
      * limitation rather than an absence.
      */
     public function lookupFunction(FunctionName $name): ?FunctionInfo;
@@ -72,7 +69,7 @@ interface SymbolSourceInterface
     /**
      * The symbols of $kind whose short name begins with $prefix. The prefix is
      * the partial fragment the user is typing, not a complete identifier, so a
-     * bare string is correct here (Plan 0002 §5.3).
+     * bare string is correct here.
      *
      * @return list<Symbol>
      */

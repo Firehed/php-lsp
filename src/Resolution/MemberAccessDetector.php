@@ -32,8 +32,8 @@ use PhpParser\Node\Stmt;
  * Detects member-access context at a cursor position.
  *
  * Walks the tree the {@see SyntaxSourceInterface} composite returns. A cursor over
- * broken text lands on a node the cursor-text source synthesizes (build-manifest
- * step-40), so instance and static access resolve through the same branches as
+ * broken text lands on a node the cursor-text source synthesizes,
+ * so instance and static access resolve through the same branches as
  * a real AST node — no separate text path. One
  * {@see self::visibilityBetween()} function decides the visibility a vantage
  * class has toward a target class, so instance and static branches cannot
@@ -117,7 +117,7 @@ final class MemberAccessDetector
     /**
      * The enclosing class-like of the access site, read from the node's file
      * position through {@see Scope::atOffset}. One route works for both parsed
-     * and synthesized nodes (build-manifest step-40).
+     * and synthesized nodes.
      *
      * @param array<Stmt> $ast
      */
@@ -236,7 +236,7 @@ final class MemberAccessDetector
         } else {
             // A bare short name here reaches us either because the file is in
             // the global namespace with no import for it, or because the node
-            // was synthesized by the cursor-text source (build-manifest step-40)
+            // was synthesized by the cursor-text source
             // and never went through the name resolver. The name context reads
             // the same imports either way and answers correctly for both.
             $context = NameContextFactory::fromAst($ast, $node->getStartLine() - 1);

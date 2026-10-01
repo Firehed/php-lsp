@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The S3.5 acceptance criteria end to end (Plan 0002 Step 3; RFC 1 §5.2, §5.3):
+ * External-change invalidation end to end (RFC 1 §5.2, §5.3):
  * against a real on-disk workspace, an external edit to an unopened file, a branch
  * checkout, and a deletion are each reflected on the next query, and closing an
  * edited file re-reads from disk rather than restoring the pre-edit cache.

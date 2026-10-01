@@ -44,7 +44,7 @@ final class NameContextTest extends TestCase
         self::assertSame(
             file_get_contents(self::GOLDEN_PATH),
             $encoded,
-            'candidates() output must match the golden; step-44 requires it to stay byte-for-byte stable.',
+            'candidates() output must match the golden byte for byte.',
         );
     }
 

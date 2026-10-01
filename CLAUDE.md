@@ -129,7 +129,6 @@ Some of them cement the old shape.
 When one fires against a change that follows the design above, stop and ask the human.
 Do not route around the rule, and do not bend the design to satisfy it.
 Never edit a rule, an allowlist, a baseline, or `bin/check-baseline-shrink` yourself.
-`docs/architecture/enforcement-edits.md` classifies every such edit.
 
 When considering edits (or avoiding them), remember: the project and architecture goals are more important.
 

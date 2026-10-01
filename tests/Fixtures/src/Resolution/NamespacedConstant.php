@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fixtures\Resolution;
 
 /**
- * Fixture for ExpressionResolver constant resolution (build-manifest step-28).
+ * Fixture for ExpressionResolver constant resolution.
  *
  * PHP name-resolution rules 5-7 apply to unqualified constants: the namespaced
  * candidate is tried first, then the global one.

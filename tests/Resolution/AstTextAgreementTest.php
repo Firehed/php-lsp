@@ -58,8 +58,8 @@ final class AstTextAgreementTest extends TestCase
      * cursor-text source alone must land on a call node of the same class at
      * the cursor. Diverging call classes would mean the empty-parse path and
      * the parsed-tree path resolve signature help against different callables
-     * — the M×N the cursor-text source exists to prevent (build-manifest
-     * step-41, RFC 1 §4.11).
+     * — the M×N the cursor-text source exists to prevent (RFC 1
+     * §4.11).
      *
      * @param class-string<FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute> $expectedNodeClass
      */
@@ -166,7 +166,7 @@ final class AstTextAgreementTest extends TestCase
      * the same receiver and name at the cursor. Diverging shapes at the cursor
      * would mean the empty-parse path and the parsed-tree path resolve a member
      * against different receivers — the M×N the cursor-text source exists to
-     * prevent (build-manifest step-40, RFC 1 §4.11).
+     * prevent (RFC 1 §4.11).
      */
     #[DataProvider('memberAccessFixtures')]
     public function testMemberAccessCursorAgreement(
@@ -378,7 +378,7 @@ final class AstTextAgreementTest extends TestCase
     }
 
     /**
-     * Producer agreement (step-37): the skeleton and the parsed tree describe
+     * Producer agreement: the skeleton and the parsed tree describe
      * the same file the same way, so a downstream reader that switches trees
      * cannot see a name context or a class shape that disagrees with the
      * parser. The corpus is every fixture the enclosing-class and name-context

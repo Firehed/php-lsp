@@ -1294,14 +1294,14 @@ class CompletionHandlerIntegrationTest extends TestCase
     }
 
     /**
-     * Step 0 acceptance: one parse per handled message. Completion is the fan-out
+     * One parse per handled message. Completion is the fan-out
      * that made this matter — its sources each call a different CodeResolverInterface
      * method, and every one of them re-parsed the same unchanged document.
      *
      * These fixtures are chosen to resolve nothing from disk, so the total parse
      * count *is* the open document's count. Parses of other documents are a
      * separate cost that dedup does not remove and is not meant to: they are
-     * memoized per class by the repository (0002-execution-plan.md, Section 8.2).
+     * memoized per class by the repository.
      */
     #[DataProvider('singleParseCompletions')]
     public function testCompletionParsesTheDocumentOnce(string $fixture, string $marker): void
@@ -3612,7 +3612,7 @@ class CompletionHandlerIntegrationTest extends TestCase
     public function testCompletionThisInVeryBrokenFile(): void
     {
         // File with NO closing braces — php-parser alone yields nothing, so member
-        // completion depends on the skeleton in the composite (step-37) producing
+        // completion depends on the skeleton in the composite producing
         // the class shape.
         $cursor = $this->openFixtureAtCursor('src/IncompleteCode/VeryBroken.php', 'this_in_if');
         $document = $this->documents->get($cursor['uri']);
@@ -4173,7 +4173,7 @@ class CompletionHandlerIntegrationTest extends TestCase
 
     public function testBackslashNavigationOffersGlobalFunctionsAtExpressionStart(): void
     {
-        // Step-22: `\`-prefixed function completion works at expression start. The
+        // `\`-prefixed function completion works at expression start. The
         // classifier keeps the leading `\`, so navigation walks the global namespace
         // and offers reflected built-in functions matching the segment.
         $this->openDocument('file:///expr.php', '<?php $x = \\strle');
@@ -4207,7 +4207,7 @@ class CompletionHandlerIntegrationTest extends TestCase
     #[DataProvider('provideFilteredPositionMarkers')]
     public function testFilteredPositionNavigationOffersNoFunctionsOrConstants(string $marker): void
     {
-        // Step-22: navigation in a class-only position offers class-likes only —
+        // Navigation in a class-only position offers class-likes only —
         // a function or constant leaf from the walked namespace must not leak.
         $cursor = $this->openFixtureAtCursor('Namespacing/AbsoluteNavigation.php', $marker);
 

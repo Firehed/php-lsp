@@ -14,14 +14,14 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Golden parity for the class-like lookup surface — `ClassRepository::get()`,
- * which Step 2 migrates onto `SymbolSourceInterface::lookupClassLike`. The golden freezes
+ * Golden parity for the class-like lookup surface —
+ * `SymbolSourceInterface::lookupClassLike()`. The golden freezes
  * the observable `ClassInfo` for a curated corpus of in-repo fixture classes and
  * locked vendored classes (both deterministic across the PHP matrix). A built-in
  * resolved through the reflection fallback is version-fragile, so it is covered
  * by a stable-subset assertion rather than frozen into the golden.
  *
- * See docs/architecture/0002-execution-plan.md, Step P; RFC 1 §4.2, §5.1.
+ * See RFC 1 §4.2, §5.1.
  */
 final class ClassLikeLookupParityTest extends TestCase
 {
@@ -115,7 +115,7 @@ final class ClassLikeLookupParityTest extends TestCase
     {
         // A file the locator finds but that declares no class of that name
         // (a multi-class file) resolves to null. A file php-parser cannot make
-        // sense of now resolves through the skeleton (step-37); that case moved
+        // sense of now resolves through the skeleton; that case moved
         // to WritePathParityTest::testUnparseableDocumentIsRecoveredViaTheSkeleton.
         self::assertNull(
             $this->knowledge->source->lookupClassLike(self::className('Fixtures\Utility\ClassModifiers')),

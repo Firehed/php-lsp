@@ -1,8 +1,7 @@
-# Per-surface parity harness (Plan 0002, Step P)
+# Per-surface parity harness
 
-This harness gates the behavior-preserving migrations in Steps 2–4 of
-`docs/architecture/0002-execution-plan.md`. `TypeGraphParityTest` covers member
-resolution; this covers the surfaces those steps move consumers onto:
+This harness gates behavior-preserving changes. `TypeGraphParityTest` covers member
+resolution; this covers the knowledge surfaces:
 
 | Surface | Production entry point | Golden |
 |---|---|---|
@@ -10,17 +9,10 @@ resolution; this covers the surfaces those steps move consumers onto:
 | namespace enumeration | `SymbolSourceInterface::childrenOf()` | `goldens/children-of.json` |
 | prefix search | `SymbolSourceInterface::search()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
-| function completion | `FunctionCandidates::find()` | `goldens/function-surface.json` |
+| function completion | `SymbolCandidates::find()` with `[NameKind::Function_]` | `goldens/function-surface.json` |
 | broken-file completion | `CompletionHandler::handle()` at cursors in broken fixtures | `goldens/completion-broken-first-open.json`, `goldens/completion-broken-mid-edit.json` |
 
-The function surface is frozen ahead of the step that changes it: Step 3b moves
-function completion off its direct `get_defined_functions()` call and onto
-`SymbolSourceInterface::search`, adding project reach it does not have today. The new reach
-is proven by new fixtures in that slice; the golden is the *preservation* half of
-its acceptance — built-in and open-document function completion must survive the
-migration unchanged.
-
-Alongside it, `BuiltinFunctionParityTest` is an **oracle, not a golden**: it asserts
+Alongside the function surface, `BuiltinFunctionParityTest` is an **oracle, not a golden**: it asserts
 the built-in backend enumerates exactly the functions `get_defined_functions()`
 reports, the way `TypeGraphParityTest` uses reflection as the oracle for members.
 That is what makes the version-fragile half of the function surface checkable at
@@ -34,15 +26,14 @@ recaptures **only** that surface's golden while the others stay frozen.
 
 ## Maintenance contract (read this before touching a fixture or a surface class)
 
-- **Permanent, not scaffolding.** This harness is never deleted. Plan 0002's
-  Teardown ledger does not list it, and Step Z requires it green. Treat it like
+- **Permanent, not scaffolding.** This harness is never deleted. Treat it like
   `TypeGraphParityTest` — a standing regression net, not a migration crutch.
 - **No scheduled cleanup.** A golden changes *only* when a surface's observable
   output legitimately changes. There is nothing to prune or refresh periodically.
 - **A red golden is a question, not a chore.** Ask: *did I mean to change this
   surface's output?*
   - **No** → you have a regression. Fix the code, not the golden.
-  - **Yes** (a Step 3b feature, or a deliberate fixture change) → recapture only the
+  - **Yes** (a feature, or a deliberate fixture change) → recapture only the
     affected surface (below) and read every changed line before committing.
 - **Editing a fixture the harness uses changes its golden.** Each surface test names
   its corpus (`CORPUS` / `INDEXED_DOCUMENTS` / the query lists). Adding a method to
@@ -51,8 +42,7 @@ recaptures **only** that surface's golden while the others stay frozen.
   corpus for unrelated tests: it is deliberately small and stable so unrelated
   fixture churn does not ripple here.
 - **A refactor that moves a surface class needs no harness change.** The goldens
-  assert *output*, so they ride a rename or relocation (e.g. the `SymbolSourceInterface`
-  facade in Step 2, the `SymbolResolver` decomposition in Step 4) unchanged; if a
+  assert *output*, so they ride a rename or relocation unchanged; if a
   golden *does* diff during a "behavior-preserving" step, the refactor changed
   behavior. There is no separate config or surface-file list to keep in sync — the
   surfaces are the classes in the table above.
@@ -97,7 +87,7 @@ exercise — to surface before the harness is trusted.
 The corpus drives the *lookup* and *enumeration* surfaces through the
 `CompositeSymbolSource` and its backends. One thing it deliberately does **not**
 drive, so its lines show here as unexecuted but are fully covered elsewhere: the
-per-backend `search` on the workspace, vendor, and built-in backends (prefix-search
+per-backend `search` on the autoload-files, Composer-map, and built-in backends (prefix-search
 parity runs against the open-document backend directly, and each backend's unit
 tests exercise its own `search`).
 
@@ -105,13 +95,13 @@ Within the surfaces the corpus does drive, a handful of defensive lines stay
 uncovered or are marked `@codeCoverageIgnore` — all unreachable for realistic project
 input:
 
-- the IO-failure guards in `FilesystemBackend` — `file_get_contents` failing after
-  `is_readable` succeeds, and a parse that throws despite error recovery — are marked
-  `@codeCoverageIgnore`: unreachable for a located, well-formed file;
+- the IO-failure guards — `file_get_contents` failing after `is_readable` succeeds
+  (`SourceFileReader`), and `scandir` failing after `is_dir` succeeds
+  (`ComposerMapBackend`) — are marked `@codeCoverageIgnore`: unreachable unless the
+  filesystem changes between the check and the read;
 - an autoload map pointing at a missing directory, or a non-`.php` file in a scanned
-  directory (`ComposerNamespaceSource`) — reachable only via a synthetic autoload
+  directory (`ComposerMapBackend`) — reachable only via a synthetic autoload
   map, which the dedicated unit tests exercise, not a real project corpus.
 
-Per Plan 0002, branch-level verification that the corpus actually catches a
-regression — naming a mutation and confirming a golden goes red — is the job of the
-`/review-slice` adversarial pass, not this line-coverage measurement.
+Line coverage does not show that the corpus catches a regression; that takes
+naming a mutation and confirming a golden goes red.

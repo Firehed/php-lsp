@@ -20,8 +20,7 @@ use PHPStan\Rules\RuleErrorBuilder;
 final class FileInclusionRule implements Rule
 {
     /**
-     * Adding an entry loosens (human only). Removing one tightens. See
-     * docs/architecture/enforcement-edits.md.
+     * Adding an entry loosens (human only). Removing one tightens.
      */
     private const array ALLOWED_FILES = [
         'src/Domain/ComposerAutoloadMap.php', // Composer writes its maps as PHP

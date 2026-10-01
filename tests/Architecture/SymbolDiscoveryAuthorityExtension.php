@@ -27,8 +27,7 @@ use ReflectionClass;
  * only the policy (which classes are confined, which namespaces compose them); the
  * framework owns detection, so no spelling can slip past.
  *
- * That coupling is the one §4.2 forbids, and the one the Step 2 migration (Plan 0002
- * §5.5) removed from `SymbolCandidates`, `SymbolResolver`, and
+ * That coupling is the one §4.2 forbids, and the one removed from `SymbolCandidates`, `SymbolResolver`, and
  * `TextDocumentSyncHandler`.
  */
 final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsageExtension
@@ -40,8 +39,7 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
      * {@see \Firehed\PhpLsp\Knowledge\SymbolBackendInterface}s, so `ClassRepository` is gone;
      * function lookup flows through `SymbolSourceInterface::lookupFunction`.
      *
-     * Adding an entry tightens. Removing one loosens (human only). See
-     * docs/architecture/enforcement-edits.md.
+     * Adding an entry tightens. Removing one loosens (human only).
      *
      * @var list<class-string>
      */

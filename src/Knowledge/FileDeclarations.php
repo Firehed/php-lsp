@@ -14,7 +14,7 @@ use PhpParser\Node\Stmt;
  * An `autoload.files` entry has no name -> file map of any kind, so the only way to
  * learn what it declares is to parse it — and once parsed, every kind costs the same
  * walk. Narrowing this to functions and constants would leave a class-like declared
- * there reachable at runtime but invisible here, for no saving (Plan 0002 §3).
+ * there reachable at runtime but invisible here, for no saving.
  */
 final readonly class FileDeclarations
 {

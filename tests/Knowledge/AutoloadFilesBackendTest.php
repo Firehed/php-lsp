@@ -25,7 +25,7 @@ use PHPUnit\Framework\TestCase;
  * name at all, so the only route to it is to parse the set and derive a name ->
  * declaration map. These prove the derived index reaches all three symbol
  * namespaces, applies PHP's per-kind case rules, and does not overreach into
- * names it never saw (Plan 0002 §3).
+ * names it never saw.
  *
  * The index answers all three reads of it: lookup for a known name, `childrenOf`
  * for what a namespace contains, and `search` for a bare short-name prefix.
