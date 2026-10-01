@@ -396,13 +396,13 @@ class ServerTest extends TestCase
             __DIR__ . '/Fixtures',
             $production->source,
         );
-        $atStartup = $production->metrics->getParseCount();
+        $atStartup = $production->counter->parseCount;
 
         $server->run();
 
         self::assertSame(
             1,
-            $production->metrics->getParseCount() - $atStartup,
+            $production->counter->parseCount - $atStartup,
             'three sync messages carrying one text, one parse',
         );
     }
@@ -446,13 +446,13 @@ class ServerTest extends TestCase
             __DIR__ . '/Fixtures',
             $production->source,
         );
-        $atStartup = $production->metrics->getParseCount();
+        $atStartup = $production->counter->parseCount;
 
         $server->run();
 
         self::assertSame(
             3,
-            $production->metrics->getParseCount() - $atStartup,
+            $production->counter->parseCount - $atStartup,
             'one didOpen and two completion requests, one parse each',
         );
     }
@@ -509,7 +509,7 @@ class ServerTest extends TestCase
 
         self::assertSame(
             2,
-            $production->metrics->getParseCount(),
+            $production->counter->parseCount,
             'the memo is discarded on the throwing message, so the second call parses again',
         );
     }

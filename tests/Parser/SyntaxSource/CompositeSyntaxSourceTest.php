@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -49,7 +48,7 @@ final class CompositeSyntaxSourceTest extends TestCase
     private static function composite(): CompositeSyntaxSource
     {
         return new CompositeSyntaxSource(
-            new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
+            new PhpParserSyntaxSource(new TreeAnnotator()),
             new SkeletonSyntaxSource(),
             new CursorTextSyntaxSource(),
         );

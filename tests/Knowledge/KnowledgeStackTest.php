@@ -15,8 +15,8 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\CountingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -32,7 +32,7 @@ final class KnowledgeStackTest extends TestCase
     private string $fixturesRoot;
     private MemoizingSyntaxSource $parser;
     private SourceFileReader $reader;
-    private ParseMetrics $metrics;
+    private CountingSyntaxSource $counter;
 
     protected function setUp(): void
     {
@@ -40,7 +40,7 @@ final class KnowledgeStackTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
         $this->reader = $production->reader;
-        $this->metrics = $production->metrics;
+        $this->counter = $production->counter;
     }
 
     public function testSourceResolvesAWorkspaceClassThroughTheBackends(): void
@@ -165,14 +165,14 @@ final class KnowledgeStackTest extends TestCase
             $this->parser,
             $this->reader,
         );
-        $afterConstruction = $this->metrics->getParseCount();
+        $afterConstruction = $this->counter->parseCount;
 
         $stack->source->childrenOf(new NamespaceName('Fixtures\Helpers'));
         $stack->source->childrenOf(new NamespaceName('Fixtures'));
 
         self::assertSame(
             $afterConstruction,
-            $this->metrics->getParseCount(),
+            $this->counter->parseCount,
             'enumeration reads the index built at construction rather than re-scanning the set',
         );
     }
@@ -193,7 +193,7 @@ final class KnowledgeStackTest extends TestCase
 
         self::assertSame(
             2,
-            $this->metrics->getParseCount(),
+            $this->counter->parseCount,
             'construction parses each autoload.files entry exactly once',
         );
     }
@@ -208,7 +208,7 @@ final class KnowledgeStackTest extends TestCase
         $name = self::className('Fixtures\Domain\User');
 
         self::assertNotNull($stack->source->lookupClassLike($name));
-        $afterFirst = $this->metrics->getParseCount();
+        $afterFirst = $this->counter->parseCount;
         // The parser's own memo lasts one message; only the stack's cache can
         // answer across messages.
         $this->parser->endMessage();
@@ -216,7 +216,7 @@ final class KnowledgeStackTest extends TestCase
 
         self::assertSame(
             $afterFirst,
-            $this->metrics->getParseCount(),
+            $this->counter->parseCount,
             'a repeated lookup across messages is remembered, not re-parsed from disk',
         );
     }
@@ -237,7 +237,7 @@ final class KnowledgeStackTest extends TestCase
             $stack->source->lookupClassLike(self::className('Fixtures\Completion\FirstUnrelated')),
             'the first name must resolve for the parse count to mean anything',
         );
-        $afterFirst = $this->metrics->getParseCount();
+        $afterFirst = $this->counter->parseCount;
         $this->parser->endMessage();
 
         self::assertNotNull(
@@ -246,7 +246,7 @@ final class KnowledgeStackTest extends TestCase
         );
         self::assertSame(
             $afterFirst,
-            $this->metrics->getParseCount(),
+            $this->counter->parseCount,
             'what a file declares is remembered for the file, not for the name that was asked',
         );
     }
