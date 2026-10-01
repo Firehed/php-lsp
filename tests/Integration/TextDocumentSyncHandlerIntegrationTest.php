@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Handler;
+namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Document\DocumentManager;
@@ -19,7 +19,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(TextDocumentSyncHandler::class)]
-class TextDocumentSyncHandlerTest extends TestCase
+class TextDocumentSyncHandlerIntegrationTest extends TestCase
 {
     use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
