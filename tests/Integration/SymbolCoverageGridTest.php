@@ -30,7 +30,7 @@ final class SymbolCoverageGridTest extends TestCase
     use LooksUpBackendSymbolsTrait;
 
     /** The forms a blocker may take: an issue, or a section. */
-    private const string BLOCKER ='/^(#\d+|(RFC 1|Plan 0002) §\d+(\.\d+)*)$/u';
+    private const string BLOCKER = '/^(#\d+|(RFC 1|Plan 0002) §\d+(\.\d+)*)$/u';
 
     /**
      * Cells the shipped stack cannot answer, each naming an issue or an RFC
