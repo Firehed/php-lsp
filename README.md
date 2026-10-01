@@ -33,8 +33,8 @@ The server communicates via stdio:
 # Install dependencies
 composer install
 
-# Generate test fixture autoload
-composer dump-autoload --working-dir=tests/Fixtures
+# Install test fixture dependencies
+composer install --working-dir=tests/Fixtures
 
 # Run tests, static analysis, and linters
 composer test
