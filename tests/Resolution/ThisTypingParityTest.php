@@ -6,10 +6,10 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -21,27 +21,25 @@ use PHPUnit\Framework\TestCase;
  * `ExpressionResolver::resolve(Variable('this'))`, which reads the enclosing
  * class from the node's position via `Scope::atOffset` (build-manifest step-40).
  * The two features must agree on the receiver type for the same source input.
+ *
+ * Enclosing-class resolution runs off the AST alone — no backend lookup, no
+ * member walk, no type source — so the parser is the only live collaborator
+ * and the three knowledge interfaces are stubbed.
  */
 #[CoversClass(SymbolResolver::class)]
 final class ThisTypingParityTest extends TestCase
 {
-    use BuildsKnowledgeStackTrait;
     use LoadsFixturesTrait;
 
     private SymbolResolver $resolver;
 
     protected function setUp(): void
     {
-        $production = ProductionSyntaxSource::create();
-        $parser = $production->source;
-        $fixturesRoot = __DIR__ . '/../Fixtures';
-        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
-        $memberResolver = new MemberResolver($knowledge->source);
         $this->resolver = new SymbolResolver(
-            $parser,
-            $knowledge->source,
-            $memberResolver,
-            new NativeTypeSource($knowledge->source, $memberResolver),
+            ProductionSyntaxSource::create()->source,
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(MemberResolverInterface::class),
+            self::createStub(TypeSourceInterface::class),
         );
     }
 
