@@ -27,7 +27,8 @@
         "phpunit/phpunit": "^12.5.22",
         "slevomat/coding-standard": "^8.31",
         "spaze/phpstan-disallowed-calls": "^4.14",
-        "squizlabs/php_codesniffer": "^4.0"
+        "squizlabs/php_codesniffer": "^4.0",
+        "symfony/process": "^8.1"
     },
     "autoload": {
         "psr-4": {
