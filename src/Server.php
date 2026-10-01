@@ -27,7 +27,6 @@ use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
@@ -88,7 +87,7 @@ final class Server
         ?string $projectRoot = null,
         SyntaxSourceInterface&MessageScopedInterface $parser = new MemoizingSyntaxSource(
             new CompositeSyntaxSource(
-                new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics()),
+                new PhpParserSyntaxSource(new TreeAnnotator()),
                 new SkeletonSyntaxSource(),
                 new CursorTextSyntaxSource(),
             ),

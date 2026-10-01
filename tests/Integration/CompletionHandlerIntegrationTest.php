@@ -30,7 +30,6 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -41,6 +40,7 @@ use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Completion\WiresCompletionSourceTrait;
 use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
+use Firehed\PhpLsp\Tests\Parser\CountingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -69,7 +69,7 @@ class CompletionHandlerIntegrationTest extends TestCase
 
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
-    private ParseMetrics $metrics;
+    private CountingSyntaxSource $counter;
     private SymbolSourceInterface $symbolSource;
     private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
@@ -80,7 +80,7 @@ class CompletionHandlerIntegrationTest extends TestCase
         $this->documents = new DocumentManager();
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
-        $this->metrics = $production->metrics;
+        $this->counter = $production->counter;
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
         $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
@@ -1310,11 +1310,11 @@ class CompletionHandlerIntegrationTest extends TestCase
         // didOpen is a message of its own; the server discards its parses before
         // the completion request is handled.
         $this->parser->endMessage();
-        $before = $this->metrics->getParseCount();
+        $before = $this->counter->parseCount;
 
         $this->handler->handle($this->completionRequestAt($cursor));
 
-        $parsesForRequest = $this->metrics->getParseCount() - $before;
+        $parsesForRequest = $this->counter->parseCount - $before;
         self::assertSame(1, $parsesForRequest, 'the whole request costs one parse');
     }
 
@@ -3622,7 +3622,6 @@ class CompletionHandlerIntegrationTest extends TestCase
         // the same precondition the parse-health grid pins for its empty column.
         $phpParserOnly = new \Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource(
             new \Firehed\PhpLsp\Parser\TreeAnnotator(),
-            new ParseMetrics(),
         );
         self::assertSame(
             [],

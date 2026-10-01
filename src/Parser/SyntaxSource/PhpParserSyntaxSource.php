@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
-use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\ErrorHandler;
 use PhpParser\Node;
@@ -16,10 +15,9 @@ use PhpParser\ParserFactory;
 /**
  * The {@see SyntaxSourceInterface} backed by php-parser: the one class that names
  * {@see \PhpParser\Parser}. Recovers from partial or invalid input through the
- * error-collecting handler, meters every exit path via {@see ParseMetrics}, and
- * hands the resulting tree to {@see TreeAnnotator} so `parent`, `resolvedName`,
- * and `namespacedName` are set the same way every other tree-producing source
- * has them set.
+ * error-collecting handler, and hands the resulting tree to {@see TreeAnnotator}
+ * so `parent`, `resolvedName`, and `namespacedName` are set the same way every
+ * other tree-producing source has them set.
  */
 final class PhpParserSyntaxSource implements SyntaxSourceInterface
 {
@@ -27,7 +25,6 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
 
     public function __construct(
         private readonly TreeAnnotator $annotator,
-        private readonly ParseMetrics $metrics,
     ) {
         $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
@@ -38,7 +35,6 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
     public function parse(TextDocument $document): array
     {
         $errorHandler = new ErrorHandler\Collecting();
-        $startNs = hrtime(true);
 
         try {
             $ast = $this->parser->parse($document->getContent(), $errorHandler);
@@ -52,8 +48,6 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
             return $tree;
         } catch (\PhpParser\Error) {
             return [];
-        } finally {
-            $this->metrics->record(hrtime(true) - $startNs);
         }
     }
 

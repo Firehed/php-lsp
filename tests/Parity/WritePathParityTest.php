@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
-use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -105,7 +104,7 @@ final class WritePathParityTest extends TestCase
         // symbol reaching the store below can only have come from the skeleton
         // arm of the composite. Without pinning this, the test proves only that
         // the composite recovered the shape, not that the skeleton did.
-        $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator(), new ParseMetrics());
+        $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator());
         self::assertSame(
             [],
             $phpParserOnly->parse($document),

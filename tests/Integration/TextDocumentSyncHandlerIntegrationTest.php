@@ -9,10 +9,10 @@ use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Parser\ParseMetrics;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\CountingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -24,7 +24,7 @@ class TextDocumentSyncHandlerIntegrationTest extends TestCase
     use LoadsFixturesTrait;
 
     private DocumentManager $manager;
-    private ParseMetrics $metrics;
+    private CountingSyntaxSource $counter;
     private SymbolSourceInterface $source;
     private TextDocumentSyncHandler $handler;
 
@@ -32,7 +32,7 @@ class TextDocumentSyncHandlerIntegrationTest extends TestCase
     {
         $this->manager = new DocumentManager();
         $production = ProductionSyntaxSource::create();
-        $this->metrics = $production->metrics;
+        $this->counter = $production->counter;
         $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $this->source = $knowledge->source;
         $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $knowledge->invalidator);
@@ -84,7 +84,7 @@ class TextDocumentSyncHandlerIntegrationTest extends TestCase
 
         self::assertSame(
             1,
-            $this->metrics->getParseCount(),
+            $this->counter->parseCount,
             'registering classes and indexing symbols share one parse',
         );
     }
