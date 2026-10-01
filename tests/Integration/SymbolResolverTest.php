@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Resolution;
+namespace Firehed\PhpLsp\Tests\Integration;
 
 use Exception;
 use Firehed\PhpLsp\Document\DocumentManager;
