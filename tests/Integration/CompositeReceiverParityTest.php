@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Parity;
+namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
