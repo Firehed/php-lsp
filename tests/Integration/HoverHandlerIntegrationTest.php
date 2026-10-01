@@ -163,7 +163,7 @@ class HoverHandlerIntegrationTest extends TestCase
     public function testHoverOnForeachVariableMemberResolvesElementType(): void
     {
         // The iterable is UserCollection::all(), whose docblock @return is
-        // User[]. #301 / step-14: the foreach binding takes the element type,
+        // User[]. #301: the foreach binding takes the element type,
         // so a member call on $user resolves to User::getName.
         $this->openFixture('src/Domain/User.php');
         $this->openFixture('src/Hover/ForeachElement.php');
@@ -253,7 +253,7 @@ class HoverHandlerIntegrationTest extends TestCase
     }
 
     /**
-     * step-25: the foreach element type is read from the docblock of any
+     * The foreach element type is read from the docblock of any
      * expression `ExpressionResolver::resolve()` answers, so every callable-,
      * member-, and constant-shaped node participates the same way `$this->items()`
      * does. Each row here names one of those node kinds.

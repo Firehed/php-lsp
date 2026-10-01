@@ -17,7 +17,7 @@ trait HasSymbolLocationTrait
 
     /**
      * The raw docblock text with `@tag` lines intact. Display consumers strip
-     * tags at render time; the step-30 presenter is where that lands.
+     * tags at render time; the presenter is where that lands.
      */
     public function getDocumentation(): ?string
     {

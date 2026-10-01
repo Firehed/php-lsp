@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * `$this` typing reads the enclosing class from a node's position through
- * {@see \Firehed\PhpLsp\Resolution\Scope::atOffset} (build-manifest step-40), so no
+ * {@see \Firehed\PhpLsp\Resolution\Scope::atOffset}, so no
  * file may stash a type on an AST node through a `resolvedType` attribute
  * side-channel. A future `setAttribute('resolvedType', ...)` would fork chain
  * typing and $this typing onto their own paths again; this test fails when one

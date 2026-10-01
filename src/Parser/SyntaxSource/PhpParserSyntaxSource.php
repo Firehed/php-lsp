@@ -59,7 +59,7 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
      * hit is a bare statement (a class, a method, the namespace) rather than an
      * expression, php-parser has nothing cursor-shaped to offer at this offset;
      * yielding null lets the cursor-text source synthesize one from the source
-     * text (build-manifest step-40).
+     * text.
      *
      * @param array<\PhpParser\Node\Stmt> $tree
      */

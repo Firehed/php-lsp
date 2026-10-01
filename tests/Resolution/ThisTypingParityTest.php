@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Both hover on `$this` and completion on `$this->` route through
  * `ExpressionResolver::resolve(Variable('this'))`, which reads the enclosing
- * class from the node's position via `Scope::atOffset` (build-manifest step-40).
+ * class from the node's position via `Scope::atOffset`.
  * The two features must agree on the receiver type for the same source input.
  *
  * Enclosing-class resolution runs off the AST alone — no backend lookup, no

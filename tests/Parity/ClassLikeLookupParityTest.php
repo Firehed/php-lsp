@@ -115,7 +115,7 @@ final class ClassLikeLookupParityTest extends TestCase
     {
         // A file the locator finds but that declares no class of that name
         // (a multi-class file) resolves to null. A file php-parser cannot make
-        // sense of now resolves through the skeleton (step-37); that case moved
+        // sense of now resolves through the skeleton; that case moved
         // to WritePathParityTest::testUnparseableDocumentIsRecoveredViaTheSkeleton.
         self::assertNull(
             $this->knowledge->source->lookupClassLike(self::className('Fixtures\Utility\ClassModifiers')),

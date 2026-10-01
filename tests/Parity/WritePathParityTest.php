@@ -91,7 +91,7 @@ final class WritePathParityTest extends TestCase
     public function testUnparseableDocumentIsRecoveredViaTheSkeleton(): void
     {
         // The write path must survive a document that php-parser cannot make sense
-        // of, and the skeleton in the composite (step-37) now recovers the
+        // of, and the skeleton in the composite now recovers the
         // structural shape so completion still finds the class and its members
         // (RFC 1 §5.3, §9). What is registered is the shape the skeleton recognises;
         // whether the file would actually run is a runtime question.

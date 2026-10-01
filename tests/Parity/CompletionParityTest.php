@@ -22,7 +22,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Golden parity for completion output on files whose current text does not parse.
  *
- * Freezes the recovery paths the manifest calls out as load-bearing: first-open of
+ * Freezes the load-bearing recovery paths: first-open of
  * a broken file (no last-good registration to preserve) still offers members
  * through the `SkeletonSyntaxSource` and `CursorTextSyntaxSource` composite
  * members, and a good open followed by a broken change offers them through the

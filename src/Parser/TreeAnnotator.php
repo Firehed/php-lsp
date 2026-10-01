@@ -15,8 +15,8 @@ use PhpParser\NodeVisitor\ParentConnectingVisitor;
  * The parent-connecting and name-resolving pass every tree-producing
  * {@see SyntaxSource\SyntaxSourceInterface} runs on its own result.
  *
- * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource}, build-manifest
- * step-37) is annotated by the same code as a parsed one, so a downstream
+ * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource})
+ * is annotated by the same code as a parsed one, so a downstream
  * reader that expects `parent`, `resolvedName`, or `namespacedName` finds
  * them regardless of which source produced the tree.
  */

@@ -27,7 +27,7 @@ use ReflectionClass;
 use ReflectionMethod;
 
 /**
- * The parse-health grid (build-manifest step-33; RFC 1 §4.11).
+ * The parse-health grid (RFC 1 §4.11).
  *
  * Every position-taking method on {@see CodeResolverInterface} — derived by reflection so
  * a new method is a new row without an edit to the test — is exercised at one
@@ -94,7 +94,7 @@ final class ParseHealthGridTest extends TestCase
     ];
 
     /**
-     * Empty-state cells that fail today, each with the manifest step that clears
+     * Empty-state cells that fail today, each with the issue that clears
      * it. A cell listed here runs and is skipped only when it fails; a listed cell
      * that passes fails the test so the entry is removed with the fix.
      *

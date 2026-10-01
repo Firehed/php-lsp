@@ -198,7 +198,7 @@ final class CompletionClassifier
 
         // Function/class/keyword completion (at start of expression or after operators).
         // A `\`-prefixed absolute name reaches the handler intact for the shared
-        // navigation path (step-22, #317, #383); a bare identifier stays a bare
+        // navigation path (#317, #383); a bare identifier stays a bare
         // identifier — a qualified relative name at expression start is not a
         // classified position.
         if (preg_match('/(?:^|[(\s=,!&|])(\\\\[\w\\\\]*|\w+)$/', $textBeforeCursor, $matches) === 1) {

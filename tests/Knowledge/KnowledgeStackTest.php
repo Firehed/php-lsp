@@ -154,7 +154,7 @@ final class KnowledgeStackTest extends TestCase
     }
 
     /**
-     * The manifest scopes this as wiring enumeration onto data already derived, not
+     * Enumeration is wired onto data already derived, not
      * a second scan: the set is parsed once at construction and enumerating it
      * groups what is already in memory.
      */
