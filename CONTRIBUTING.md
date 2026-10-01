@@ -1,5 +1,12 @@
 # Contributing
 
+## Development Workflow
+
+- Follow TDD. Coverage must be 100% for new code. Rewrite a dead branch out instead of excluding it.
+- Update `docs/features/*.md` when merging features.
+- Run `composer test` before commits.
+- `composer.lock` is gitignored. Do not stage or commit it.
+
 ## Code Style
 
 PHPCS enforces PSR-12 at minimum; generally follow the latest "PER" style guide as allowed by the minimum PHP version defined in composer.json.

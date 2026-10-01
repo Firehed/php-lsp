@@ -136,10 +136,6 @@ When considering edits (or avoiding them), remember: the project and architectur
 
 - GitHub issues are the source of truth for feature specs. Confirm a feature is not already built, and resolve every open question before writing code.
 - A good issue states which service owns each fact and how the work separates concerns. Adding a feature is adding a value on an existing axis, not adding a route.
-- Follow TDD. Coverage must be 100% for new code. Rewrite a dead branch out instead of excluding it.
-- Update `docs/features/*.md` when merging features.
-- Run `composer test` before commits.
-- `composer.lock` is gitignored. Do not stage or commit it.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
 
