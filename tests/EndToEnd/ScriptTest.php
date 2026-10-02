@@ -25,7 +25,8 @@ final class ScriptTest extends TestCase
     #[DataProvider('scripts')]
     public function testConversationMatchesItsTranscript(string $name): void
     {
-        $script = require self::SCRIPTS . "/{$name}.php";
+        // Loaded in its own scope: a script may define variables of its own.
+        $script = (static fn(string $path): mixed => require $path)(self::SCRIPTS . "/{$name}.php");
         self::assertInstanceOf(Script::class, $script, 'a script file returns a Script');
 
         $projectRoot = $this->projectRoot($script->project);
