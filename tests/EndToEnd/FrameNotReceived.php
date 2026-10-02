@@ -8,13 +8,11 @@ use RuntimeException;
 
 final class FrameNotReceived extends RuntimeException
 {
-    public function __construct(string $reason, string $unreadOutput, string $stderr)
-    {
-        parent::__construct(sprintf(
-            "%s\nUnread output: %s\nStderr: %s",
-            $reason,
-            json_encode($unreadOutput, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE),
-            json_encode($stderr, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE),
-        ));
+    public function __construct(
+        string $reason,
+        public readonly string $unreadOutput,
+        public readonly string $stderr,
+    ) {
+        parent::__construct("{$reason}\nUnread output:\n{$unreadOutput}\nStderr:\n{$stderr}");
     }
 }
