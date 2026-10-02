@@ -15,6 +15,14 @@ final class LspClient
      */
     public private(set) array $received = [];
 
+    /**
+     * Every request sent and every message received, in wire order. Sent
+     * notifications are left out: a `didOpen` carries a whole file.
+     *
+     * @var list<array{sent: array<string, mixed>}|array{received: stdClass}>
+     */
+    public private(set) array $transcript = [];
+
     private int $nextId = 1;
 
     public function __construct(private readonly ServerProcess $server)
@@ -29,10 +37,11 @@ final class LspClient
     public function request(string $method, ?stdClass $params = null): ServerMessage
     {
         $id = $this->nextId++;
-        $this->send(['id' => $id, 'method' => $method], $params);
+        $this->transcript[] = ['sent' => $this->send(['id' => $id, 'method' => $method], $params)];
 
         while (true) {
             $message = $this->server->readMessage();
+            $this->transcript[] = ['received' => $message->body];
             if ($message->method === null && $message->id === $id) {
                 return $message;
             }
@@ -52,22 +61,30 @@ final class LspClient
 
     /**
      * @param array{id?: int, method: string} $message
+     *
+     * @return array<string, mixed> The message as written.
      */
-    private function send(array $message, ?stdClass $params): void
+    private function send(array $message, ?stdClass $params): array
     {
         // [LSP] Base Protocol: `params` is omitted, not null, when a method takes none.
         if ($params !== null) {
             $message['params'] = $params;
         }
-        $this->write($message);
+
+        return $this->write($message);
     }
 
     /**
      * @param array<string, mixed> $message
+     *
+     * @return array<string, mixed> The message as written.
      */
-    private function write(array $message): void
+    private function write(array $message): array
     {
-        $json = json_encode(['jsonrpc' => '2.0', ...$message], JSON_THROW_ON_ERROR);
+        $message = ['jsonrpc' => '2.0', ...$message];
+        $json = json_encode($message, JSON_THROW_ON_ERROR);
         $this->server->write('Content-Length: ' . strlen($json) . "\r\n\r\n" . $json);
+
+        return $message;
     }
 }
