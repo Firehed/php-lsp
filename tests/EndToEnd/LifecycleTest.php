@@ -11,11 +11,13 @@ use stdClass;
 #[CoversNothing]
 final class LifecycleTest extends TestCase
 {
+    use StartsServerTrait;
+
     private const string PROJECT = __DIR__ . '/../Fixtures';
 
     public function testCleanSessionExitsZero(): void
     {
-        $server = ServerProcess::start(self::PROJECT);
+        $server = $this->startServer(self::PROJECT);
         $client = new LspClient($server);
 
         $initialize = $client->request('initialize', (object) [
@@ -41,7 +43,7 @@ final class LifecycleTest extends TestCase
 
     public function testSilentServerFailsTheReadAtItsDeadline(): void
     {
-        $server = ServerProcess::start(self::PROJECT);
+        $server = $this->startServer(self::PROJECT);
 
         $this->expectException(FrameNotReceived::class);
         $server->readFrame(deadline: 0.1);

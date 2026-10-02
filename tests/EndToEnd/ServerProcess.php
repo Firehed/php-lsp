@@ -21,19 +21,8 @@ final class ServerProcess
 
     private string $unread = '';
 
-    private function __construct(private readonly Process $process)
+    public function __construct(private readonly Process $process)
     {
-    }
-
-    /**
-     * @param string $projectRoot The server takes its project from its working directory.
-     */
-    public static function start(string $projectRoot): self
-    {
-        return new self(Process::start(
-            [PHP_BINARY, dirname(__DIR__, 2) . '/bin/php-lsp'],
-            $projectRoot,
-        ));
     }
 
     public function write(string $bytes): void
