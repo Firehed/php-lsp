@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 
 use RuntimeException;
 
-final class FrameNotReceived extends RuntimeException
+final class FrameNotReceivedException extends RuntimeException
 {
     public function __construct(
         string $reason,

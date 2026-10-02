@@ -112,10 +112,10 @@ final class ServerProcess
      * Ends the server: a session that missed a frame is unusable, and its
      * stderr is only complete once it has exited.
      */
-    private function frameNotReceived(string $reason): FrameNotReceived
+    private function frameNotReceived(string $reason): FrameNotReceivedException
     {
         $this->process->kill();
 
-        return new FrameNotReceived($reason, $this->unread, $this->stderr());
+        return new FrameNotReceivedException($reason, $this->unread, $this->stderr());
     }
 }
