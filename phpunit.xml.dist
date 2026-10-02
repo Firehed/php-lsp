@@ -16,6 +16,10 @@
             <directory>tests</directory>
             <exclude>tests/Integration</exclude>
             <exclude>tests/Parity</exclude>
+            <exclude>tests/EndToEnd</exclude>
+        </testsuite>
+        <testsuite name="end-to-end">
+            <directory>tests/EndToEnd</directory>
         </testsuite>
         <testsuite name="integration">
             <directory>tests/Integration</directory>
