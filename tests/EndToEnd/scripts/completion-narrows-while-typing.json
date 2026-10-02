@@ -1,0 +1,217 @@
+[
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "processId": null,
+                "rootUri": "file://{project}",
+                "capabilities": {}
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "capabilities": {
+                    "positionEncoding": "utf-16",
+                    "textDocumentSync": {
+                        "openClose": true,
+                        "change": 1,
+                        "save": false
+                    },
+                    "definitionProvider": true,
+                    "hoverProvider": true,
+                    "signatureHelpProvider": {
+                        "triggerCharacters": [
+                            "(",
+                            ","
+                        ]
+                    },
+                    "completionProvider": {
+                        "triggerCharacters": [
+                            ">",
+                            "$",
+                            "\\"
+                        ]
+                    }
+                },
+                "serverInfo": {
+                    "name": "php-lsp",
+                    "version": "0.1.0"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/completion",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Completion/MethodAccess.php"
+                },
+                "position": {
+                    "line": 44,
+                    "character": 15
+                }
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "isIncomplete": false,
+                "items": [
+                    {
+                        "label": "getName",
+                        "kind": 2,
+                        "detail": "public function getName(): string"
+                    },
+                    {
+                        "label": "setName",
+                        "kind": 2,
+                        "detail": "public function setName(string $name): void"
+                    },
+                    {
+                        "label": "getCount",
+                        "kind": 2,
+                        "detail": "public function getCount(): int"
+                    },
+                    {
+                        "label": "isActive",
+                        "kind": 2,
+                        "detail": "public function isActive(): bool"
+                    },
+                    {
+                        "label": "secretMethod",
+                        "kind": 2,
+                        "detail": "private function secretMethod(): void"
+                    },
+                    {
+                        "label": "hiddenMethod",
+                        "kind": 2,
+                        "detail": "protected function hiddenMethod(): void"
+                    },
+                    {
+                        "label": "triggerThisEmpty",
+                        "kind": 2,
+                        "detail": "public function triggerThisEmpty(): void"
+                    },
+                    {
+                        "label": "triggerThisPrefix",
+                        "kind": 2,
+                        "detail": "public function triggerThisPrefix(): void"
+                    },
+                    {
+                        "label": "triggerVarEmpty",
+                        "kind": 2,
+                        "detail": "public function triggerVarEmpty(): void"
+                    },
+                    {
+                        "label": "triggerVarPrefix",
+                        "kind": 2,
+                        "detail": "public function triggerVarPrefix(): void"
+                    },
+                    {
+                        "label": "withParameter",
+                        "kind": 2,
+                        "detail": "public function withParameter(Fixtures\\Completion\\MethodAccess $param): void"
+                    },
+                    {
+                        "label": "chainExample",
+                        "kind": 2,
+                        "detail": "public function chainExample(): void"
+                    },
+                    {
+                        "label": "triggerNullsafeThis",
+                        "kind": 2,
+                        "detail": "public function triggerNullsafeThis(): void"
+                    },
+                    {
+                        "label": "triggerNullsafeThisPrefix",
+                        "kind": 2,
+                        "detail": "public function triggerNullsafeThisPrefix(): void"
+                    },
+                    {
+                        "label": "triggerNullsafeVar",
+                        "kind": 2,
+                        "detail": "public function triggerNullsafeVar(?Fixtures\\Domain\\User $user): void"
+                    },
+                    {
+                        "label": "name",
+                        "kind": 10,
+                        "detail": "private string $name"
+                    },
+                    {
+                        "label": "count",
+                        "kind": 10,
+                        "detail": "protected int $count"
+                    },
+                    {
+                        "label": "active",
+                        "kind": 10,
+                        "detail": "public bool $active"
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "textDocument/completion",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Completion/MethodAccess.php"
+                },
+                "position": {
+                    "line": 44,
+                    "character": 18
+                }
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": {
+                "isIncomplete": false,
+                "items": [
+                    {
+                        "label": "getName",
+                        "kind": 2,
+                        "detail": "public function getName(): string"
+                    },
+                    {
+                        "label": "getCount",
+                        "kind": 2,
+                        "detail": "public function getCount(): int"
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "shutdown"
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "result": null
+        }
+    }
+]
