@@ -44,10 +44,8 @@ final class ScriptTest extends TestCase
 
         // The server reports paths under its physical working directory, which
         // differs per machine.
-        $portable = json_decode(
-            str_replace($projectRoot, '{project}', json_encode($client->transcript, JSON_THROW_ON_ERROR)),
-            flags: JSON_THROW_ON_ERROR,
-        );
+        $recorded = json_encode($client->transcript, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $portable = json_decode(str_replace($projectRoot, '{project}', $recorded), flags: JSON_THROW_ON_ERROR);
         self::assertIsArray($portable);
         $this->assertGoldenMatches($name, $portable);
     }
