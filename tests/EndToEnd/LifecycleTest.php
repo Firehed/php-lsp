@@ -46,6 +46,6 @@ final class LifecycleTest extends TestCase
         $server = $this->startServer(self::PROJECT);
 
         $this->expectException(FrameNotReceived::class);
-        $server->readFrame(deadline: 0.1);
+        $server->readMessage(deadline: 0.1);
     }
 }

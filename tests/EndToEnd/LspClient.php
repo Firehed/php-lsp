@@ -32,7 +32,7 @@ final class LspClient
         $this->send(['id' => $id, 'method' => $method], $params);
 
         while (true) {
-            $message = ServerMessage::fromJson($this->server->readFrame());
+            $message = $this->server->readMessage();
             if ($message->method === null && $message->id === $id) {
                 return $message;
             }
