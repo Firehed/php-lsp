@@ -15,10 +15,12 @@ use stdClass;
 final readonly class ServerMessage
 {
     /**
+     * @param stdClass $body The whole frame, as received.
      * @param stdClass|list<mixed>|string|int|float|bool|null $result
      * @param stdClass|list<mixed>|null $params
      */
     public function __construct(
+        public stdClass $body,
         public int|string|null $id,
         public ?string $method,
         public stdClass|array|null $params,
