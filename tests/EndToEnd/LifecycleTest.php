@@ -13,9 +13,11 @@ final class LifecycleTest extends TestCase
 {
     use StartsServerTrait;
 
+    private const string PROJECT = 'tests/Fixtures';
+
     public function testCleanSessionExitsZero(): void
     {
-        $projectRoot = $this->projectRoot();
+        $projectRoot = $this->projectRoot(self::PROJECT);
         $server = $this->startServer($projectRoot);
         $session = new Session(new LspClient($server), $projectRoot);
 
@@ -36,7 +38,7 @@ final class LifecycleTest extends TestCase
 
     public function testSilentServerFailsTheReadAtItsDeadline(): void
     {
-        $server = $this->startServer($this->projectRoot());
+        $server = $this->startServer($this->projectRoot(self::PROJECT));
 
         $this->expectException(FrameNotReceivedException::class);
         $server->readMessage(deadline: 0.1);

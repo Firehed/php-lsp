@@ -28,7 +28,7 @@ final class ScriptTest extends TestCase
         $script = require self::SCRIPTS . "/{$name}.php";
         self::assertInstanceOf(Script::class, $script, 'a script file returns a Script');
 
-        $projectRoot = $this->projectRoot();
+        $projectRoot = $this->projectRoot($script->project);
         $server = $this->startServer($projectRoot);
         $client = new LspClient($server);
         $session = new Session($client, $projectRoot);
