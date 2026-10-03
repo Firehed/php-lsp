@@ -21,7 +21,7 @@ final class LifecycleTest extends TestCase
         $server = $this->startServer($projectRoot);
         $session = new Session(new LspClient($server), $projectRoot);
 
-        $initialize = $session->start();
+        $initialize = $session->start(new ClientCapabilities());
         $shutdown = $session->end();
 
         self::assertSame(0, $server->waitForExit(), 'exit after shutdown is a clean exit ([LSP] exit)');
