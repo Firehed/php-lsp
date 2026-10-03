@@ -31,6 +31,22 @@ final class MessageErrorTest extends TestCase
         $this->session->start(new ClientCapabilities());
     }
 
+    public function testInvalidRequestIsAnsweredAtItsId(): void
+    {
+        // JSON-RPC 2.0 §4: `method` is a string.
+        $this->server->writeFrame('{"jsonrpc":"2.0","id":6,"method":42}');
+        $response = $this->server->readMessage();
+        $this->session->end();
+
+        self::assertSame(
+            ErrorCode::InvalidRequest->value,
+            $response->error?->code,
+            'a request that is JSON but not a valid request is an InvalidRequest error',
+        );
+        self::assertSame(6, $response->id, 'an id that can be detected is answered');
+        self::assertSame(0, $this->server->waitForExit(), 'the session carries on after the error');
+    }
+
     public function testUnparsableFrameIsAParseError(): void
     {
         $this->server->writeFrame('this is not json');
