@@ -16,24 +16,31 @@ final class MessageErrorTest extends TestCase
 {
     use StartsServerTrait;
 
-    private const string PROJECT = 'tests/Fixtures';
+    private ServerProcess $server;
+
+    private LspClient $client;
+
+    private Session $session;
+
+    protected function setUp(): void
+    {
+        $projectRoot = $this->projectRoot('tests/Fixtures');
+        $this->server = $this->startServer($projectRoot);
+        $this->client = new LspClient($this->server);
+        $this->session = new Session($this->client, $projectRoot);
+        $this->session->start(new ClientCapabilities());
+    }
 
     public function testUnknownMethodIsMethodNotFound(): void
     {
-        $projectRoot = $this->projectRoot(self::PROJECT);
-        $server = $this->startServer($projectRoot);
-        $client = new LspClient($server);
-        $session = new Session($client, $projectRoot);
-        $session->start(new ClientCapabilities());
-
-        $response = $client->request('unknown/method');
-        $session->end();
+        $response = $this->client->request('unknown/method');
+        $this->session->end();
 
         self::assertSame(
             ErrorCode::MethodNotFound->value,
             $response->error?->code,
             'a method the server does not handle is a MethodNotFound error',
         );
-        self::assertSame(0, $server->waitForExit(), 'the session carries on after the error');
+        self::assertSame(0, $this->server->waitForExit(), 'the session carries on after the error');
     }
 }
