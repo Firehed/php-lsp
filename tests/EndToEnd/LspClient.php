@@ -94,7 +94,7 @@ final class LspClient
     private function write(array $message): void
     {
         $json = json_encode(['jsonrpc' => '2.0', ...$message], JSON_THROW_ON_ERROR);
-        $this->server->write('Content-Length: ' . strlen($json) . "\r\n\r\n" . $json);
+        $this->server->writeFrame($json);
 
         $sent = json_decode($json, flags: JSON_THROW_ON_ERROR);
         assert($sent instanceof stdClass);
