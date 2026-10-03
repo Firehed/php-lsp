@@ -12,7 +12,7 @@ use stdClass;
 use function Amp\ByteStream\buffer;
 
 /**
- * A running `bin/php-lsp`, written to in bytes and read in messages. Framing is done here
+ * A running `bin/php-lsp`, written to in frames and read in messages. Framing is done here
  * rather than with the server's own transport classes so that a framing bug in
  * the server cannot be mirrored by the test reading it.
  */
@@ -26,9 +26,12 @@ final class ServerProcess
     {
     }
 
-    public function write(string $bytes): void
+    /**
+     * @param string $body Sent as is, so it may be malformed.
+     */
+    public function writeFrame(string $body): void
     {
-        $this->process->getStdin()->write($bytes);
+        $this->process->getStdin()->write('Content-Length: ' . strlen($body) . "\r\n\r\n" . $body);
     }
 
     public function closeInput(): void
