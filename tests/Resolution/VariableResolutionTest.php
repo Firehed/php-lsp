@@ -63,6 +63,15 @@ final class VariableResolutionTest extends TestCase
         );
     }
 
+    public function testTopLevelClosureUseBindsWithoutAType(): void
+    {
+        self::assertEquals(
+            new ResolvedVariable('closureOuter', null, self::bindingAt(self::TOP_LEVEL, 14, 28)),
+            $this->resolveVariableAt(self::TOP_LEVEL, 'top_closure_use_capture'),
+            'the use clause is the binding, but no enclosing function gives it a type',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
