@@ -31,6 +31,8 @@ final class VariableResolutionTest extends TestCase
 
     private const string BINDINGS = 'src/Definition/VariableBindings.php';
 
+    private const string TOP_LEVEL = 'TopLevel/top_level_closures.php';
+
     private SymbolResolver $resolver;
 
     protected function setUp(): void
@@ -49,6 +51,15 @@ final class VariableResolutionTest extends TestCase
             new ResolvedVariable('outer', null, self::bindingAt(self::BINDINGS, 72, 8)),
             $this->resolveVariableAt(self::BINDINGS, 'arrow_fallthrough'),
             'an arrow function captures an unbound name from the enclosing function',
+        );
+    }
+
+    public function testTopLevelArrowFunctionHasNoScopeToCaptureFrom(): void
+    {
+        self::assertEquals(
+            new ResolvedVariable('outer', null),
+            $this->resolveVariableAt(self::TOP_LEVEL, 'top_arrow_capture'),
+            'a file-scope assignment is not an enclosing function scope, so no binding is found',
         );
     }
 
