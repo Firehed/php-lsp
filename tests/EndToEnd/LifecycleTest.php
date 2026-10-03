@@ -61,6 +61,25 @@ final class LifecycleTest extends TestCase
         self::assertSame(1, $server->waitForExit(), 'exit before shutdown is an error exit ([LSP] exit)');
     }
 
+    public function testRequestAfterShutdownIsRejected(): void
+    {
+        $projectRoot = $this->projectRoot(self::PROJECT);
+        $server = $this->startServer($projectRoot);
+        $client = new LspClient($server);
+        (new Session($client, $projectRoot))->start(new ClientCapabilities());
+
+        $client->request('shutdown');
+        $response = $client->request('textDocument/hover');
+        $client->notify('exit');
+
+        self::assertSame(
+            ErrorCode::InvalidRequest->value,
+            $response->error?->code,
+            'a request after shutdown is an InvalidRequest error ([LSP] shutdown)',
+        );
+        self::assertSame(0, $server->waitForExit(), 'the rejected request does not undo the shutdown ([LSP] exit)');
+    }
+
     public function testRequestBeforeInitializeIsRejected(): void
     {
         $server = $this->startServer($this->projectRoot(self::PROJECT));
