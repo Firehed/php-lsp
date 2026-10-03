@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
+use FilesystemIterator;
 use Firehed\PhpLsp\Tests\Parity\GoldenCodec;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 
 /**
  * Runs each script in `scripts/` against a real server and compares the
@@ -21,6 +25,8 @@ final class ScriptTest extends TestCase
 
     private const string SCRIPTS = __DIR__ . '/scripts';
 
+    private ?string $copy = null;
+
     #[DataProvider('scripts')]
     public function testConversationMatchesItsTranscript(string $name): void
     {
@@ -28,7 +34,7 @@ final class ScriptTest extends TestCase
         $script = (static fn(string $path): mixed => require $path)(self::SCRIPTS . "/{$name}.php");
         self::assertInstanceOf(Script::class, $script, 'a script file returns a Script');
 
-        $projectRoot = $this->projectRoot($script->project);
+        $projectRoot = $this->copyProject($script->project);
         $server = $this->startServer($projectRoot);
         $client = new LspClient($server);
         $session = new Session($client, $projectRoot);
@@ -69,5 +75,49 @@ final class ScriptTest extends TestCase
             $name = basename($file, '.php');
             yield $name => [$name];
         }
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->copy === null) {
+            return;
+        }
+        $contents = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($this->copy, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST,
+        );
+        foreach ($contents as $item) {
+            assert($item instanceof SplFileInfo);
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        }
+        rmdir($this->copy);
+    }
+
+    /**
+     * A throwaway copy of a project, so a script may change files on disk.
+     *
+     * @return string The copy's physical path.
+     */
+    private function copyProject(string $project): string
+    {
+        $source = $this->projectRoot($project);
+        $copy = sys_get_temp_dir() . '/php-lsp-e2e-' . bin2hex(random_bytes(8));
+        self::assertTrue(mkdir($copy), 'a temporary project directory can be created');
+        $contents = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST,
+        );
+        foreach ($contents as $item) {
+            assert($item instanceof SplFileInfo);
+            $target = $copy . substr($item->getPathname(), strlen($source));
+            $item->isDir() ? mkdir($target) : copy($item->getPathname(), $target);
+        }
+
+        // The temporary directory may itself be reached through a symlink.
+        $physical = realpath($copy);
+        assert($physical !== false);
+        $this->copy = $physical;
+
+        return $physical;
     }
 }
