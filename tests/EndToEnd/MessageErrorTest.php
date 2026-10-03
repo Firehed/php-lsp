@@ -31,6 +31,21 @@ final class MessageErrorTest extends TestCase
         $this->session->start(new ClientCapabilities());
     }
 
+    public function testUnparsableFrameIsAParseError(): void
+    {
+        $this->server->writeFrame('this is not json');
+        $response = $this->server->readMessage();
+        $this->session->end();
+
+        self::assertSame(
+            ErrorCode::ParseError->value,
+            $response->error?->code,
+            'a body that is not JSON is a ParseError',
+        );
+        self::assertNull($response->id, 'an id that cannot be detected is answered as null (JSON-RPC 2.0 §5)');
+        self::assertSame(0, $this->server->waitForExit(), 'the session carries on after the error');
+    }
+
     public function testUnknownMethodIsMethodNotFound(): void
     {
         $response = $this->client->request('unknown/method');
