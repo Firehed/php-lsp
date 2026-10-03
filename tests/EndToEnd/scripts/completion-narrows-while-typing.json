@@ -49,6 +49,27 @@
     {
         "sent": {
             "jsonrpc": "2.0",
+            "method": "initialized",
+            "params": {}
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Completion/MethodAccess.php",
+                    "languageId": "php",
+                    "version": 1,
+                    "text": "…"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
             "id": 2,
             "method": "textDocument/completion",
             "params": {
@@ -166,6 +187,23 @@
     {
         "sent": {
             "jsonrpc": "2.0",
+            "method": "textDocument/didChange",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Completion/MethodAccess.php",
+                    "version": 2
+                },
+                "contentChanges": [
+                    {
+                        "text": "…"
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
             "id": 3,
             "method": "textDocument/completion",
             "params": {
@@ -212,6 +250,12 @@
             "jsonrpc": "2.0",
             "id": 4,
             "result": null
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "exit"
         }
     }
 ]

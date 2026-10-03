@@ -49,6 +49,13 @@
     {
         "sent": {
             "jsonrpc": "2.0",
+            "method": "initialized",
+            "params": {}
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
             "id": 2,
             "method": "textDocument/definition",
             "params": {
@@ -93,6 +100,12 @@
             "jsonrpc": "2.0",
             "id": 3,
             "result": null
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "exit"
         }
     }
 ]
