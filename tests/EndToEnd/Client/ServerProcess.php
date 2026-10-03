@@ -43,16 +43,14 @@ final class ServerProcess
 
         $id = $body->id ?? null;
         $method = $body->method ?? null;
-        $params = $body->params ?? null;
         $result = $body->result ?? null;
         $error = $body->error ?? null;
         assert($id === null || is_int($id) || is_string($id));
         assert($method === null || is_string($method));
-        assert($params === null || $params instanceof stdClass || self::isList($params));
         assert($result === null || is_scalar($result) || $result instanceof stdClass || self::isList($result));
         assert($error === null || $error instanceof stdClass);
 
-        return new ServerMessage($id, $method, $params, $result, $error);
+        return new ServerMessage($id, $method, $result, $error);
     }
 
     /**

@@ -16,12 +16,10 @@ final readonly class ServerMessage
 {
     /**
      * @param stdClass|list<mixed>|string|int|float|bool|null $result
-     * @param stdClass|list<mixed>|null $params
      */
     public function __construct(
         public int|string|null $id,
         public ?string $method,
-        public stdClass|array|null $params,
         public stdClass|array|string|int|float|bool|null $result,
         public ?stdClass $error,
     ) {
