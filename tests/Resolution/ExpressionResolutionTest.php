@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -32,6 +34,8 @@ final class ExpressionResolutionTest extends TestCase
     private const string BINDINGS = 'src/Definition/VariableBindings.php';
 
     private const string TOP_LEVEL = 'TopLevel/top_level_closures.php';
+
+    private const string USER = 'src/Domain/User.php';
 
     private SymbolResolver $resolver;
 
@@ -69,6 +73,28 @@ final class ExpressionResolutionTest extends TestCase
             new ResolvedVariable('closureOuter', null, self::bindingAt(self::TOP_LEVEL, 14, 28)),
             $this->resolveVariableAt(self::TOP_LEVEL, 'top_closure_use_capture'),
             'the use clause is the binding, but no enclosing function gives it a type',
+        );
+    }
+
+    public function testTernaryAssignmentTakesTheTypeOfItsFirstBranch(): void
+    {
+        $resolved = $this->resolveAt(self::USER, function (string $content): array {
+            // The receiver of the marked call, which a ternary assigns.
+            $line = $this->locateHoverMarker($content, 'nullsafe_via_assignment')['line'];
+            $character = strpos(explode("\n", $content)[$line], '$user');
+            assert($character !== false);
+
+            return ['line' => $line, 'character' => $character];
+        });
+
+        self::assertEquals(
+            new ResolvedVariable(
+                'user',
+                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
+                self::bindingAt(self::USER, 191, 8),
+            ),
+            $resolved,
+            'a ternary resolves to its first branch that has a type',
         );
     }
 
