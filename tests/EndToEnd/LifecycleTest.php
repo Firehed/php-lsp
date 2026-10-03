@@ -36,6 +36,15 @@ final class LifecycleTest extends TestCase
         self::assertNull($shutdown->result, 'the shutdown result is null ([LSP] shutdown)');
     }
 
+    public function testExitWithoutShutdownExitsOne(): void
+    {
+        $server = $this->startServer($this->projectRoot(self::PROJECT));
+
+        (new LspClient($server))->notify('exit');
+
+        self::assertSame(1, $server->waitForExit(), 'exit before shutdown is an error exit ([LSP] exit)');
+    }
+
     public function testSilentServerFailsTheReadAtItsDeadline(): void
     {
         $server = $this->startServer($this->projectRoot(self::PROJECT));
