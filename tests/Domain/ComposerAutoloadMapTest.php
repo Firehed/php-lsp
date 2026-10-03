@@ -20,6 +20,20 @@ class ComposerAutoloadMapTest extends TestCase
         self::assertArrayHasKey('GlobalConfig', $map->classMap(), 'A classmapped class');
     }
 
+    public function testTheFilesAMapIsReadFromAreNamed(): void
+    {
+        self::assertSame(
+            [
+                '/project/vendor/composer/autoload_psr4.php',
+                '/project/vendor/composer/autoload_namespaces.php',
+                '/project/vendor/composer/autoload_classmap.php',
+                '/project/vendor/composer/autoload_files.php',
+            ],
+            ComposerAutoloadMap::sourceFilesFor('/project/'),
+            'these are the four files Composer generates the maps into',
+        );
+    }
+
     public function testAutoloadFilesAreReadFromTheProject(): void
     {
         $map = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures');

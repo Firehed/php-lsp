@@ -21,6 +21,8 @@ use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
+use Firehed\PhpLsp\Watch\WatchedPaths;
+use Firehed\PhpLsp\Watch\WatchedPathsSourceInterface;
 
 /**
  * A {@see SymbolSourceInterface} over PHP files on disk, resolved through
@@ -43,7 +45,10 @@ use Firehed\PhpLsp\Filesystem\PhpDirectoryReader;
  * lazy-first). Only class-likes are addressable through Composer's maps;
  * functions and constants have no name -> file route here.
  */
-final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableInterface
+final class ComposerMapBackend implements
+    SymbolSourceInterface,
+    InvalidatableInterface,
+    WatchedPathsSourceInterface
 {
     use LooksUpByKindTrait;
 
@@ -117,6 +122,16 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         }
 
         $this->byNamespace = NamespaceContents::indexByNamespace($this->catalog);
+    }
+
+    public function watchedPaths(): WatchedPaths
+    {
+        $map = $this->mapReader->current();
+
+        return new WatchedPaths(roots: array_values(array_unique(array_merge(
+            ...array_values($map->psr4Prefixes()),
+            ...array_values($map->psr0Prefixes()),
+        ))));
     }
 
     /**
