@@ -100,6 +100,14 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testConstantOnAVariableClassIsUnresolved(): void
+    {
+        self::assertNull(
+            $this->resolveSymbolAt(self::DYNAMIC, 'dynamic_class_const'),
+            'the class is only known at runtime',
+        );
+    }
+
     public function testStaticPropertyOnAVariableClassIsUnresolved(): void
     {
         self::assertNull(
