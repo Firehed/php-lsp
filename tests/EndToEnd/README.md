@@ -23,6 +23,8 @@ A script is a PHP file in `scripts/` that returns a `Script`: a project and a li
   Each names a file relative to the project and a place in it by marker.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
 - `SymbolMarker` is the symbol on a line ending in `//hover:name`.
+- `VariableMarker` is the last `$var` on a line ending in `//jtd:name var`.
+  A cursor marker cannot sit inside a variable name without breaking the parse.
 - `Type` inserts a short literal fragment, as a person would type it.
   This is the one exception to the no-inline-PHP rule in `CONTRIBUTING.md`.
 
