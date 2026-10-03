@@ -36,6 +36,22 @@ final class LifecycleTest extends TestCase
         self::assertNull($shutdown->result, 'the shutdown result is null ([LSP] shutdown)');
     }
 
+    /**
+     * The specification does not cover a client that disconnects without
+     * `exit`. The server treats it as an exit without shutdown.
+     */
+    public function testClosedInputExitsOne(): void
+    {
+        $projectRoot = $this->projectRoot(self::PROJECT);
+        $server = $this->startServer($projectRoot);
+        (new Session(new LspClient($server), $projectRoot))->start(new ClientCapabilities());
+
+        $server->closeInput();
+
+        self::assertSame(1, $server->waitForExit(), 'a disconnect is not a clean exit');
+        self::assertSame('', $server->stderr(), 'a disconnect is not a failure to report');
+    }
+
     public function testExitWithoutShutdownExitsOne(): void
     {
         $server = $this->startServer($this->projectRoot(self::PROJECT));
