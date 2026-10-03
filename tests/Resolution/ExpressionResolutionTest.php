@@ -33,6 +33,8 @@ final class ExpressionResolutionTest extends TestCase
 
     private const string BINDINGS = 'src/Definition/VariableBindings.php';
 
+    private const string DYNAMIC = 'EdgeCases/DynamicAccess.php';
+
     private const string TOP_LEVEL = 'TopLevel/top_level_closures.php';
 
     private const string USER = 'src/Domain/User.php';
@@ -98,6 +100,14 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testStaticPropertyOnAVariableClassIsUnresolved(): void
+    {
+        self::assertNull(
+            $this->resolveSymbolAt(self::DYNAMIC, 'dynamic_class_static_prop'),
+            'the class is only known at runtime',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
@@ -106,6 +116,14 @@ final class ExpressionResolutionTest extends TestCase
     private static function uri(string $fixture): string
     {
         return "file:///{$fixture}";
+    }
+
+    private function resolveSymbolAt(string $fixture, string $marker): ?ResolvedSymbolInterface
+    {
+        return $this->resolveAt(
+            $fixture,
+            fn (string $content): array => $this->locateHoverMarker($content, $marker),
+        );
     }
 
     private function resolveVariableAt(string $fixture, string $marker): ?ResolvedSymbolInterface
