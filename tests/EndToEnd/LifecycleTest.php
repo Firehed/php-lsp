@@ -61,6 +61,22 @@ final class LifecycleTest extends TestCase
         self::assertSame(1, $server->waitForExit(), 'exit before shutdown is an error exit ([LSP] exit)');
     }
 
+    public function testRequestBeforeInitializeIsRejected(): void
+    {
+        $server = $this->startServer($this->projectRoot(self::PROJECT));
+        $client = new LspClient($server);
+
+        $response = $client->request('textDocument/hover');
+        $client->notify('exit');
+
+        self::assertSame(
+            ErrorCode::ServerNotInitialized->value,
+            $response->error?->code,
+            'a request before initialize is an error with code -32002 ([LSP] initialize)',
+        );
+        self::assertSame(1, $server->waitForExit(), 'exit is still honored before initialize ([LSP] initialize)');
+    }
+
     public function testSilentServerFailsTheReadAtItsDeadline(): void
     {
         $server = $this->startServer($this->projectRoot(self::PROJECT));
