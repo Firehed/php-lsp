@@ -267,9 +267,10 @@ parameters:
                 - 'disk_total_space()'
                 - 'parse_ini_file()'
                 - 'move_uploaded_file()'
-            message: 'filesystem access is confined: SourceFileReader reads source, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
+            message: 'filesystem access is confined: SourceFileReader reads source, PhpDirectoryReader lists directories, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
             allowIn:
                 - src/Document/SourceFileReader.php
+                - src/Filesystem/PhpDirectoryReader.php
                 - src/Domain/ComposerAutoloadMap.php
                 - src/Knowledge/ComposerMapBackend.php
                 - src/Transport/*
@@ -307,8 +308,9 @@ parameters:
                 - 'SplFileInfo'
                 - 'SplFileObject'
                 - 'SplTempFileObject'
-            message: 'filesystem access is confined, and its readers (SourceFileReader, ComposerAutoloadMap, ComposerMapBackend, transport) reach the disk through functions rather than through a file object'
+            message: 'filesystem access is confined: SourceFileReader reads source, PhpDirectoryReader lists directories, ComposerAutoloadMap and ComposerMapBackend read Composer metadata, transport owns its streams'
             allowIn:
+                - src/Filesystem/PhpDirectoryReader.php
                 - tests/*
 
     disallowedMethodCalls:
