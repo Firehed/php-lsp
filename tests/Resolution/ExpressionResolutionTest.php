@@ -84,8 +84,20 @@ final class ExpressionResolutionTest extends TestCase
 
     private function resolveVariableAt(string $fixture, string $marker): ?ResolvedSymbolInterface
     {
+        return $this->resolveAt(
+            $fixture,
+            fn (string $content): array => $this->locateVariableMarker($content, $marker),
+        );
+    }
+
+    /**
+     * @param \Closure(string): array{line: int, character: int} $locate Finds
+     *        the position in the fixture's text.
+     */
+    private function resolveAt(string $fixture, \Closure $locate): ?ResolvedSymbolInterface
+    {
         $content = $this->loadFixture($fixture);
-        ['line' => $line, 'character' => $character] = $this->locateVariableMarker($content, $marker);
+        ['line' => $line, 'character' => $character] = $locate($content);
 
         return $this->resolver->resolveAtPosition(
             new TextDocument(self::uri($fixture), 'php', 1, $content),
