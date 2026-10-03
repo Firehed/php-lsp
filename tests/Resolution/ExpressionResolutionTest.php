@@ -20,12 +20,12 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Which binding a variable resolves to across closure boundaries. Bindings are
- * read from the tree alone, so the knowledge interfaces are stubbed.
+ * Resolution that reads only the document's own tree, so the knowledge
+ * interfaces are stubbed.
  */
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(Scope::class)]
-final class VariableResolutionTest extends TestCase
+final class ExpressionResolutionTest extends TestCase
 {
     use LoadsFixturesTrait;
 
