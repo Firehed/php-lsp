@@ -191,27 +191,7 @@ class VariableDefinitionTest extends TestCase
     private function cursorOnVariable(string $fixturePath, string $markerName): array
     {
         [$uri, $content] = $this->loadAndOpenFixture($fixturePath);
-        $lines = explode("\n", $content);
 
-        foreach ($lines as $lineNum => $line) {
-            $marker = "//jtd:{$markerName} ";
-            $markerPos = strpos($line, $marker);
-            if ($markerPos === false) {
-                continue;
-            }
-            $varName = trim(substr($line, $markerPos + strlen($marker)));
-            $lastDollar = strrpos(substr($line, 0, $markerPos), '$' . $varName);
-            self::assertNotFalse(
-                $lastDollar,
-                "Fixture line for {$markerName} must contain $\${$varName}",
-            );
-            return [
-                'uri' => $uri,
-                'line' => $lineNum,
-                'character' => $lastDollar + 1,
-            ];
-        }
-
-        self::fail("Marker //jtd:{$markerName} not found in fixture");
+        return ['uri' => $uri, ...$this->locateVariableMarker($content, $markerName)];
     }
 }
