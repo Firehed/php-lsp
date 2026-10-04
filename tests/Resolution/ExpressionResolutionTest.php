@@ -178,6 +178,17 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testNullCoalesceTakesItsLeftSide(): void
+    {
+        $this->typeEveryParameterAs(self::dateTimeType());
+
+        self::assertEquals(
+            new ResolvedVariable('result', self::dateTimeType(), self::bindingAt(self::BUILTIN_TYPES, 73, 8)),
+            $this->resolveReceiverAt(self::BUILTIN_TYPES, 'coalesce_receiver', '$result'),
+            'a coalesce resolves through its left side when that resolves',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
