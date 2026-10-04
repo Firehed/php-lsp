@@ -18,9 +18,14 @@ A script is a PHP file in `scripts/` that returns a `Script`: a project and a li
 
 - `project` is a directory holding `composer.json`, `composer.lock`, and source code, named as a path from the repository root.
   Run `composer install` in it before the suite.
-  The server takes its project from its working directory.
-- `Open`, `Type`, and `Ask` are the steps.
-  Each names a file relative to the project and a place in it by marker.
+  Each script runs against a throwaway copy, which becomes the server's working directory.
+- `capabilities` is what the client declares in `initialize`.
+  Declare watched-file support in any script that changes files on disk.
+- `Open`, `Type`, `Close`, and `Ask` are what a person does in the editor.
+  Each names a file relative to the project, and `Type` and `Ask` a place in it by marker.
+- `Copy` and `Delete` change the disk as another program would, and the server is not told.
+  `Copy` puts a prepared variant in place; variants live outside the autoload paths, such as `DiskChange/` in the fixture project.
+- `ReportChanges` is the client's file watcher reporting what changed, in one notification.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
 - `SymbolMarker` is the symbol on a line ending in `//hover:name`.
 - `VariableMarker` is the last `$var` on a line ending in `//jtd:name var`.
