@@ -52,7 +52,10 @@ final class ExpressionResolutionTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->resolver = self::resolverOver(self::createStub(SymbolSourceInterface::class));
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+        );
     }
 
     public function testArrowFunctionResolvesThroughToItsEnclosingFunction(): void
@@ -176,13 +179,13 @@ final class ExpressionResolutionTest extends TestCase
         return new ClasslikeType(self::className(self::USER_CLASS));
     }
 
-    private static function resolverOver(SymbolSourceInterface $symbols): SymbolResolver
+    private static function resolverOver(SymbolSourceInterface $symbols, TypeSourceInterface $types): SymbolResolver
     {
         return new SymbolResolver(
             ProductionSyntaxSource::create()->source,
             $symbols,
             self::createStub(MemberResolverInterface::class),
-            self::createStub(TypeSourceInterface::class),
+            $types,
         );
     }
 
@@ -215,7 +218,7 @@ final class ExpressionResolutionTest extends TestCase
                 return null;
             },
         );
-        $this->resolver = self::resolverOver($symbols);
+        $this->resolver = self::resolverOver($symbols, self::createStub(TypeSourceInterface::class));
     }
 
     /**
