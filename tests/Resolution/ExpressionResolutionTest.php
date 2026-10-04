@@ -122,6 +122,20 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testForeachElementTypeFullyQualified(): void
+    {
+        $this->knowUserAnd(self::functionDocumented(
+            'Fixtures\Hover\foreachUserFqnProvider',
+            '/** @return \Fixtures\Domain\User[] */',
+        ));
+
+        self::assertEquals(
+            new ResolvedVariable('user', self::userType(), self::bindingAt(self::FOREACH, 85, 45)),
+            $this->resolveReceiverAt(self::FOREACH, 'foreach_func_call_fqn', '$user'),
+            'a leading backslash names the element type exactly',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
