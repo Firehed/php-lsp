@@ -1,0 +1,113 @@
+[
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "processId": null,
+                "rootUri": "file://{project}",
+                "capabilities": {}
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "capabilities": {
+                    "positionEncoding": "utf-16",
+                    "textDocumentSync": {
+                        "openClose": true,
+                        "change": 1,
+                        "save": false
+                    },
+                    "definitionProvider": true,
+                    "hoverProvider": true,
+                    "signatureHelpProvider": {
+                        "triggerCharacters": [
+                            "(",
+                            ","
+                        ]
+                    },
+                    "completionProvider": {
+                        "triggerCharacters": [
+                            ">",
+                            "$",
+                            "\\"
+                        ]
+                    }
+                },
+                "serverInfo": {
+                    "name": "php-lsp",
+                    "version": "0.1.0"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "initialized",
+            "params": {}
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/SignatureHelp.php",
+                    "languageId": "php",
+                    "version": 1,
+                    "text": "…"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/signatureHelp",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/SignatureHelp.php"
+                },
+                "position": {
+                    "line": 37,
+                    "character": 2
+                }
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": null
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "shutdown"
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": null
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "exit"
+        }
+    }
+]

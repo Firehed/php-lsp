@@ -1,0 +1,118 @@
+[
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "processId": null,
+                "rootUri": "file://{project}",
+                "capabilities": {}
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "capabilities": {
+                    "positionEncoding": "utf-16",
+                    "textDocumentSync": {
+                        "openClose": true,
+                        "change": 1,
+                        "save": false
+                    },
+                    "definitionProvider": true,
+                    "hoverProvider": true,
+                    "signatureHelpProvider": {
+                        "triggerCharacters": [
+                            "(",
+                            ","
+                        ]
+                    },
+                    "completionProvider": {
+                        "triggerCharacters": [
+                            ">",
+                            "$",
+                            "\\"
+                        ]
+                    }
+                },
+                "serverInfo": {
+                    "name": "php-lsp",
+                    "version": "0.1.0"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "initialized",
+            "params": {}
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Resolution/NamespacedConstant.php",
+                    "languageId": "php",
+                    "version": 1,
+                    "text": "…"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Resolution/NamespacedConstant.php"
+                },
+                "position": {
+                    "line": 16,
+                    "character": 11
+                }
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "contents": {
+                    "kind": "plaintext",
+                    "value": "Fixture for ExpressionResolver constant resolution.\nPHP name-resolution rules 5-7 apply to unqualified constants: the namespaced\ncandidate is tried first, then the global one.\n\nconst NAMESPACED_CONSTANT"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "shutdown"
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": null
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "exit"
+        }
+    }
+]

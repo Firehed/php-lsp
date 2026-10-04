@@ -48,10 +48,9 @@ Every test here is `#[CoversNothing]`, and coverage cannot see the child process
 
 ## Constraints
 
-- Built-in symbols come from the PHP running the server (#401), so they vary across the CI matrix.
-  A transcript belongs to a script, never to a PHP version.
-  Keep built-in classes, functions, and their members out of a script's output until #401 is fixed.
-  Every enum has a built-in ancestor.
+- Built-in symbols come from the PHP running the server (#401), so they can differ across the CI matrix.
+  A transcript belongs to a script, never to a PHP version, so a script may show a built-in only when its output is the same on every version.
+  CI runs every version in the matrix; a built-in script is not settled until it passes there.
 - The server matches documents by their physical path.
   Build every URI from the resolved project root, as `Session` does.
 - A PHP warning from the server corrupts the protocol stream and fails the test.
@@ -67,7 +66,7 @@ No test uses the dependency container.
 
 ## Migrating a test
 
-1. Confirm the test's output stays clear of built-in symbols.
+1. Note which cases show built-in symbols; their scripts need a CI run before they are settled.
 2. Write a script per case, reusing existing fixtures and markers.
 3. Record the transcript and check it against what the original test asserts.
 4. Whether the original is deleted is decided per migration, in review.
