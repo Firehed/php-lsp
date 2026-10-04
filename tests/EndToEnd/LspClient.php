@@ -16,10 +16,10 @@ final class LspClient
     public private(set) array $received = [];
 
     /**
-     * Every request sent and every message received, in wire order. Sent
-     * notifications are left out: a `didOpen` carries a whole file.
+     * Every message sent and received, in wire order. Document text sent is
+     * replaced with `…`: `didOpen` and `didChange` carry whole files.
      *
-     * @var list<array{sent: array<string, mixed>}|array{received: stdClass}>
+     * @var list<array{sent: stdClass}|array{received: stdClass}>
      */
     public private(set) array $transcript = [];
 
@@ -37,7 +37,7 @@ final class LspClient
     public function request(string $method, ?stdClass $params = null): ServerMessage
     {
         $id = $this->nextId++;
-        $this->transcript[] = ['sent' => $this->send(['id' => $id, 'method' => $method], $params)];
+        $this->send(['id' => $id, 'method' => $method], $params);
 
         while (true) {
             $message = $this->server->readMessage();
@@ -60,31 +60,46 @@ final class LspClient
     }
 
     /**
-     * @param array{id?: int, method: string} $message
-     *
-     * @return array<string, mixed> The message as written.
+     * In what a client sends, `text` holds document content ([LSP]
+     * TextDocumentItem, TextDocumentContentChangeEvent, DidSaveTextDocumentParams).
      */
-    private function send(array $message, ?stdClass $params): array
+    private static function elideText(mixed $decoded): void
+    {
+        if ($decoded instanceof stdClass && property_exists($decoded, 'text')) {
+            $decoded->text = '…';
+        }
+        $members = $decoded instanceof stdClass ? get_object_vars($decoded) : $decoded;
+        if (is_array($members)) {
+            foreach ($members as $member) {
+                self::elideText($member);
+            }
+        }
+    }
+
+    /**
+     * @param array{id?: int, method: string} $message
+     */
+    private function send(array $message, ?stdClass $params): void
     {
         // [LSP] Base Protocol: `params` is omitted, not null, when a method takes none.
         if ($params !== null) {
             $message['params'] = $params;
         }
 
-        return $this->write($message);
+        $this->write($message);
     }
 
     /**
      * @param array<string, mixed> $message
-     *
-     * @return array<string, mixed> The message as written.
      */
-    private function write(array $message): array
+    private function write(array $message): void
     {
-        $message = ['jsonrpc' => '2.0', ...$message];
-        $json = json_encode($message, JSON_THROW_ON_ERROR);
+        $json = json_encode(['jsonrpc' => '2.0', ...$message], JSON_THROW_ON_ERROR);
         $this->server->write('Content-Length: ' . strlen($json) . "\r\n\r\n" . $json);
 
-        return $message;
+        $sent = json_decode($json, flags: JSON_THROW_ON_ERROR);
+        assert($sent instanceof stdClass);
+        self::elideText($sent);
+        $this->transcript[] = ['sent' => $sent];
     }
 }

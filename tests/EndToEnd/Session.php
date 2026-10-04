@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
-use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use stdClass;
 
 /**
@@ -13,7 +12,11 @@ use stdClass;
  */
 final class Session
 {
-    use LoadsFixturesTrait;
+    /** @var array<string, string> Text of each open document, by file. */
+    private array $buffers = [];
+
+    /** @var array<string, int> Version of each open document, by file. */
+    private array $versions = [];
 
     /**
      * @param string $projectRoot The physical path the server runs in. The
@@ -26,13 +29,10 @@ final class Session
     ) {
     }
 
-    /**
-     * @param string $symbolMarker A `//hover:name` marker in the file.
-     */
-    public function ask(Feature $feature, string $file, string $symbolMarker): void
+    public function ask(Feature $feature, string $file, MarkerInterface $at): void
     {
         $text = $this->text($file);
-        ['line' => $line, 'character' => $byteColumn] = $this->locateHoverMarker($text, $symbolMarker);
+        ['line' => $line, 'character' => $byteColumn] = $at->locate($text);
         $before = substr(explode("\n", $text)[$line], 0, $byteColumn);
 
         $this->client->request($feature->value, (object) [
@@ -58,12 +58,15 @@ final class Session
 
     public function open(string $file): void
     {
+        $this->buffers[$file] = $this->text($file);
+        $this->versions[$file] = 1;
+
         $this->client->notify('textDocument/didOpen', (object) [
             'textDocument' => [
                 'uri' => $this->uri($file),
                 'languageId' => 'php',
                 'version' => 1,
-                'text' => $this->text($file),
+                'text' => $this->buffers[$file],
             ],
         ]);
     }
@@ -83,8 +86,34 @@ final class Session
         return $response;
     }
 
+    /**
+     * Inserts text into an open document. The server advertises full-document
+     * sync, so the whole new text is sent ([LSP] textDocument/didChange).
+     */
+    public function type(string $file, MarkerInterface $at, string $typed): void
+    {
+        assert(array_key_exists($file, $this->buffers), "Not open: {$file}");
+
+        ['line' => $line, 'character' => $byteColumn] = $at->locate($this->buffers[$file]);
+        $lines = explode("\n", $this->buffers[$file]);
+        $lines[$line] = substr_replace($lines[$line], $typed, $byteColumn, 0);
+        $this->buffers[$file] = implode("\n", $lines);
+
+        $this->client->notify('textDocument/didChange', (object) [
+            'textDocument' => ['uri' => $this->uri($file), 'version' => ++$this->versions[$file]],
+            'contentChanges' => [['text' => $this->buffers[$file]]],
+        ]);
+    }
+
+    /**
+     * What the editor shows for a file: its buffer when open, else the disk.
+     */
     private function text(string $file): string
     {
+        if (array_key_exists($file, $this->buffers)) {
+            return $this->buffers[$file];
+        }
+
         $text = file_get_contents("{$this->projectRoot}/{$file}");
         assert($text !== false, "Not in the project: {$file}");
 

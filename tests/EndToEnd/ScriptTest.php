@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
-use Firehed\PhpLsp\Tests\Parity\AssertsGoldenTrait;
+use Firehed\PhpLsp\Tests\Parity\GoldenCodec;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -17,7 +17,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 final class ScriptTest extends TestCase
 {
-    use AssertsGoldenTrait;
     use StartsServerTrait;
 
     private const string SCRIPTS = __DIR__ . '/scripts';
@@ -25,7 +24,8 @@ final class ScriptTest extends TestCase
     #[DataProvider('scripts')]
     public function testConversationMatchesItsTranscript(string $name): void
     {
-        $script = require self::SCRIPTS . "/{$name}.php";
+        // Loaded in its own scope: a script may define variables of its own.
+        $script = (static fn(string $path): mixed => require $path)(self::SCRIPTS . "/{$name}.php");
         self::assertInstanceOf(Script::class, $script, 'a script file returns a Script');
 
         $projectRoot = $this->projectRoot($script->project);
@@ -44,10 +44,17 @@ final class ScriptTest extends TestCase
 
         // The server reports paths under its physical working directory, which
         // differs per machine.
-        $recorded = json_encode($client->transcript, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
-        $portable = json_decode(str_replace($projectRoot, '{project}', $recorded), flags: JSON_THROW_ON_ERROR);
-        self::assertIsArray($portable);
-        $this->assertGoldenMatches($name, $portable);
+        $recorded = str_replace($projectRoot, '{project}', GoldenCodec::encode($client->transcript));
+        $transcript = self::SCRIPTS . "/{$name}.json";
+        if (getenv('UPDATE_GOLDENS') === '1') {
+            file_put_contents($transcript, $recorded);
+        }
+        self::assertJsonStringEqualsJsonFile(
+            $transcript,
+            $recorded,
+            "Script '{$name}' does not match its transcript. If the change is intended, "
+                . 'record it with UPDATE_GOLDENS=1 and review the diff.',
+        );
     }
 
     /**
@@ -62,10 +69,5 @@ final class ScriptTest extends TestCase
             $name = basename($file, '.php');
             yield $name => [$name];
         }
-    }
-
-    protected function goldenDir(): string
-    {
-        return self::SCRIPTS;
     }
 }

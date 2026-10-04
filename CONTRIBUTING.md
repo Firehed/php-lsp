@@ -24,6 +24,7 @@ The above list is non-exhaustive. `composer.json` lists the canonical minimum ve
 
 Do not write tests with inline PHP code.
 Use the fixture tooling when a test covers code or file handling.
+The one exception is the text an end-to-end script types into an open document (`tests/EndToEnd/scripts/`): keep it to a short fragment, as a person would type it.
 
 ### Fixtures
 
