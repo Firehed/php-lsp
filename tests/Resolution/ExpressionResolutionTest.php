@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
+use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
@@ -37,6 +38,8 @@ final class ExpressionResolutionTest extends TestCase
     use LoadsFixturesTrait;
 
     private const string BINDINGS = 'src/Definition/VariableBindings.php';
+
+    private const string BUILTIN_TYPES = 'src/TypeInference/BuiltinTypes.php';
 
     private const string DYNAMIC = 'EdgeCases/DynamicAccess.php';
 
@@ -164,9 +167,25 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testCloneKeepsTheTypeOfWhatItCopies(): void
+    {
+        $this->typeEveryParameterAs(self::dateTimeType());
+
+        self::assertEquals(
+            new ResolvedVariable('cloned', self::dateTimeType(), self::bindingAt(self::BUILTIN_TYPES, 60, 8)),
+            $this->resolveReceiverAt(self::BUILTIN_TYPES, 'clone_receiver', '$cloned'),
+            'a clone has the type of the object it copies',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
+    }
+
+    private static function dateTimeType(): ClasslikeType
+    {
+        return new ClasslikeType(self::className(\DateTime::class));
     }
 
     private static function functionDocumented(string $fqn, string $docblock): FunctionInfo
@@ -219,6 +238,17 @@ final class ExpressionResolutionTest extends TestCase
             },
         );
         $this->resolver = self::resolverOver($symbols, self::createStub(TypeSourceInterface::class));
+    }
+
+    /**
+     * Resolves against a type source that gives every method parameter this
+     * type, and knows nothing else.
+     */
+    private function typeEveryParameterAs(TypeInterface $type): void
+    {
+        $types = self::createStub(TypeSourceInterface::class);
+        $types->method('forMethodParameter')->willReturn($type);
+        $this->resolver = self::resolverOver(self::createStub(SymbolSourceInterface::class), $types);
     }
 
     /**
