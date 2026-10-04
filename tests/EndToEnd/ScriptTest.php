@@ -33,7 +33,7 @@ final class ScriptTest extends TestCase
         $client = new LspClient($server);
         $session = new Session($client, $projectRoot);
 
-        $session->start();
+        $session->start($script->capabilities);
         foreach ($script->steps as $step) {
             $step->run($session);
         }

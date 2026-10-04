@@ -4,17 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
+use RuntimeException;
 use stdClass;
 
 final class LspClient
 {
-    /**
-     * Requests and notifications the server sent on its own initiative.
-     *
-     * @var list<ServerMessage>
-     */
-    public private(set) array $received = [];
-
     /**
      * Every message sent and received, in wire order. Document text sent is
      * replaced with `…`: `didOpen` and `didChange` carry whole files.
@@ -45,18 +39,10 @@ final class LspClient
             if ($message->method === null && $message->id === $id) {
                 return $message;
             }
-            $this->received[] = $message;
+            if ($message->method !== null && $message->id !== null) {
+                $this->answer($message->id, $message->method);
+            }
         }
-    }
-
-    /**
-     * Answers a request the server sent.
-     *
-     * @param stdClass|list<mixed>|string|int|float|bool|null $result
-     */
-    public function respond(int|string $id, stdClass|array|string|int|float|bool|null $result): void
-    {
-        $this->write(['id' => $id, 'result' => $result]);
     }
 
     /**
@@ -74,6 +60,19 @@ final class LspClient
                 self::elideText($member);
             }
         }
+    }
+
+    /**
+     * Answers a request from the server as an editor that accepts it would.
+     */
+    private function answer(int|string $id, string $method): void
+    {
+        if ($method !== 'client/registerCapability') {
+            throw new RuntimeException("No answer for the server's {$method} request.");
+        }
+
+        // [LSP] client/registerCapability: the result is null.
+        $this->write(['id' => $id, 'result' => null]);
     }
 
     /**
@@ -95,7 +94,7 @@ final class LspClient
     private function write(array $message): void
     {
         $json = json_encode(['jsonrpc' => '2.0', ...$message], JSON_THROW_ON_ERROR);
-        $this->server->write('Content-Length: ' . strlen($json) . "\r\n\r\n" . $json);
+        $this->server->writeFrame($json);
 
         $sent = json_decode($json, flags: JSON_THROW_ON_ERROR);
         assert($sent instanceof stdClass);

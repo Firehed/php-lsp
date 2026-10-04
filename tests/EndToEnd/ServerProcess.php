@@ -12,7 +12,7 @@ use stdClass;
 use function Amp\ByteStream\buffer;
 
 /**
- * A running `bin/php-lsp`, written to in bytes and read in messages. Framing is done here
+ * A running `bin/php-lsp`, written to in frames and read in messages. Framing is done here
  * rather than with the server's own transport classes so that a framing bug in
  * the server cannot be mirrored by the test reading it.
  */
@@ -26,9 +26,12 @@ final class ServerProcess
     {
     }
 
-    public function write(string $bytes): void
+    /**
+     * @param string $body Sent as is, so it may be malformed.
+     */
+    public function writeFrame(string $body): void
     {
-        $this->process->getStdin()->write($bytes);
+        $this->process->getStdin()->write('Content-Length: ' . strlen($body) . "\r\n\r\n" . $body);
     }
 
     public function closeInput(): void
@@ -43,16 +46,14 @@ final class ServerProcess
 
         $id = $body->id ?? null;
         $method = $body->method ?? null;
-        $params = $body->params ?? null;
         $result = $body->result ?? null;
         $error = $body->error ?? null;
         assert($id === null || is_int($id) || is_string($id));
         assert($method === null || is_string($method));
-        assert($params === null || $params instanceof stdClass || self::isList($params));
         assert($result === null || is_scalar($result) || $result instanceof stdClass || self::isList($result));
         assert($error === null || $error instanceof stdClass);
 
-        return new ServerMessage($body, $id, $method, $params, $result, $error);
+        return new ServerMessage($body, $id, $method, $result, $error);
     }
 
     /**
