@@ -65,6 +65,15 @@ final class Session
     }
 
     /**
+     * Deletes a file on disk as another process would. Nothing is sent.
+     */
+    public function delete(string $file): void
+    {
+        $deleted = unlink("{$this->projectRoot}/{$file}");
+        assert($deleted, "Cannot delete {$file}");
+    }
+
+    /**
      * @return ServerMessage The response to `shutdown`.
      */
     public function end(): ServerMessage
