@@ -80,22 +80,13 @@ final class ExpressionResolutionTest extends TestCase
 
     public function testTernaryAssignmentTakesTheTypeOfItsFirstBranch(): void
     {
-        $resolved = $this->resolveAt(self::USER, function (string $content): array {
-            // The receiver of the marked call, which a ternary assigns.
-            $line = $this->locateHoverMarker($content, 'nullsafe_via_assignment')['line'];
-            $character = strpos(explode("\n", $content)[$line], '$user');
-            assert($character !== false);
-
-            return ['line' => $line, 'character' => $character];
-        });
-
         self::assertEquals(
             new ResolvedVariable(
                 'user',
                 new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
                 self::bindingAt(self::USER, 191, 8),
             ),
-            $resolved,
+            $this->resolveReceiverAt(self::USER, 'nullsafe_via_assignment', '$user'),
             'a ternary resolves to its first branch that has a type',
         );
     }
@@ -124,6 +115,20 @@ final class ExpressionResolutionTest extends TestCase
     private static function uri(string $fixture): string
     {
         return "file:///{$fixture}";
+    }
+
+    /**
+     * The `//hover:` marker lands on the call; this resolves its receiver.
+     */
+    private function resolveReceiverAt(string $fixture, string $marker, string $variable): ?ResolvedSymbolInterface
+    {
+        return $this->resolveAt($fixture, function (string $content) use ($marker, $variable): array {
+            $line = $this->locateHoverMarker($content, $marker)['line'];
+            $character = strpos(explode("\n", $content)[$line], $variable);
+            assert($character !== false, "{$variable} is not on the line marked {$marker}");
+
+            return ['line' => $line, 'character' => $character];
+        });
     }
 
     private function resolveSymbolAt(string $fixture, string $marker): ?ResolvedSymbolInterface
