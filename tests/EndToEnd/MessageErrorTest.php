@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 /**
- * Messages the server cannot act on are answered with an error, and the
- * session carries on.
+ * Messages the server cannot act on are answered, and the session carries on.
  */
 #[CoversNothing]
 final class MessageErrorTest extends TestCase
@@ -29,6 +30,40 @@ final class MessageErrorTest extends TestCase
         $this->client = new LspClient($this->server);
         $this->session = new Session($this->client, $projectRoot);
         $this->session->start(new ClientCapabilities());
+    }
+
+    /**
+     * Today the answer is an empty result. JSON-RPC 2.0 §5.1 also defines
+     * InvalidParams (-32602) for this.
+     */
+    #[DataProvider('malformedPositionParams')]
+    public function testMalformedPositionParamsAreAnsweredWithNoResult(string $params): void
+    {
+        $decoded = json_decode($params, flags: JSON_THROW_ON_ERROR);
+        assert($decoded instanceof stdClass);
+
+        $response = $this->client->request(Feature::Definition->value, $decoded);
+        $this->session->end();
+
+        self::assertNull($response->error, 'malformed parameters are not answered with an error');
+        self::assertNull($response->result, 'malformed parameters are answered with no result');
+        self::assertSame(0, $this->server->waitForExit(), 'the session carries on');
+    }
+
+    /**
+     * Parameters are checked before the document is read, so the URI need not
+     * name a real file.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function malformedPositionParams(): iterable
+    {
+        yield 'textDocument is not an object' => ['{"textDocument":"x","position":{"line":0,"character":0}}'];
+        yield 'uri is not a string' => ['{"textDocument":{"uri":123},"position":{"line":0,"character":0}}'];
+        yield 'position is not an object' => ['{"textDocument":{"uri":"file:///x.php"},"position":"x"}'];
+        yield 'line is not an integer' => [
+            '{"textDocument":{"uri":"file:///x.php"},"position":{"line":"x","character":0}}',
+        ];
     }
 
     public function testInvalidRequestIsAnsweredAtItsId(): void

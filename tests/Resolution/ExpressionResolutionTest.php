@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -20,18 +22,22 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Which binding a variable resolves to across closure boundaries. Bindings are
- * read from the tree alone, so the knowledge interfaces are stubbed.
+ * Resolution that reads only the document's own tree, so the knowledge
+ * interfaces are stubbed.
  */
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(Scope::class)]
-final class VariableResolutionTest extends TestCase
+final class ExpressionResolutionTest extends TestCase
 {
     use LoadsFixturesTrait;
 
     private const string BINDINGS = 'src/Definition/VariableBindings.php';
 
+    private const string DYNAMIC = 'EdgeCases/DynamicAccess.php';
+
     private const string TOP_LEVEL = 'TopLevel/top_level_closures.php';
+
+    private const string USER = 'src/Domain/User.php';
 
     private SymbolResolver $resolver;
 
@@ -72,6 +78,44 @@ final class VariableResolutionTest extends TestCase
         );
     }
 
+    public function testTernaryAssignmentTakesTheTypeOfItsFirstBranch(): void
+    {
+        $resolved = $this->resolveAt(self::USER, function (string $content): array {
+            // The receiver of the marked call, which a ternary assigns.
+            $line = $this->locateHoverMarker($content, 'nullsafe_via_assignment')['line'];
+            $character = strpos(explode("\n", $content)[$line], '$user');
+            assert($character !== false);
+
+            return ['line' => $line, 'character' => $character];
+        });
+
+        self::assertEquals(
+            new ResolvedVariable(
+                'user',
+                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
+                self::bindingAt(self::USER, 191, 8),
+            ),
+            $resolved,
+            'a ternary resolves to its first branch that has a type',
+        );
+    }
+
+    public function testConstantOnAVariableClassIsUnresolved(): void
+    {
+        self::assertNull(
+            $this->resolveSymbolAt(self::DYNAMIC, 'dynamic_class_const'),
+            'the class is only known at runtime',
+        );
+    }
+
+    public function testStaticPropertyOnAVariableClassIsUnresolved(): void
+    {
+        self::assertNull(
+            $this->resolveSymbolAt(self::DYNAMIC, 'dynamic_class_static_prop'),
+            'the class is only known at runtime',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
@@ -82,10 +126,30 @@ final class VariableResolutionTest extends TestCase
         return "file:///{$fixture}";
     }
 
+    private function resolveSymbolAt(string $fixture, string $marker): ?ResolvedSymbolInterface
+    {
+        return $this->resolveAt(
+            $fixture,
+            fn (string $content): array => $this->locateHoverMarker($content, $marker),
+        );
+    }
+
     private function resolveVariableAt(string $fixture, string $marker): ?ResolvedSymbolInterface
     {
+        return $this->resolveAt(
+            $fixture,
+            fn (string $content): array => $this->locateVariableMarker($content, $marker),
+        );
+    }
+
+    /**
+     * @param \Closure(string): array{line: int, character: int} $locate Finds
+     *        the position in the fixture's text.
+     */
+    private function resolveAt(string $fixture, \Closure $locate): ?ResolvedSymbolInterface
+    {
         $content = $this->loadFixture($fixture);
-        ['line' => $line, 'character' => $character] = $this->locateVariableMarker($content, $marker);
+        ['line' => $line, 'character' => $character] = $locate($content);
 
         return $this->resolver->resolveAtPosition(
             new TextDocument(self::uri($fixture), 'php', 1, $content),
