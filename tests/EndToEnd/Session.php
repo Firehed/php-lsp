@@ -56,6 +56,15 @@ final class Session
     }
 
     /**
+     * Writes a file on disk as another process would. Nothing is sent.
+     */
+    public function copy(string $from, string $to): void
+    {
+        $copied = copy("{$this->projectRoot}/{$from}", "{$this->projectRoot}/{$to}");
+        assert($copied, "Cannot copy {$from} to {$to}");
+    }
+
+    /**
      * @return ServerMessage The response to `shutdown`.
      */
     public function end(): ServerMessage
