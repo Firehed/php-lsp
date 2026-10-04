@@ -52,7 +52,7 @@ final class ServerProcess
         assert($result === null || is_scalar($result) || $result instanceof stdClass || self::isList($result));
         assert($error === null || $error instanceof stdClass);
 
-        return new ServerMessage($id, $method, $params, $result, $error);
+        return new ServerMessage($body, $id, $method, $params, $result, $error);
     }
 
     /**
