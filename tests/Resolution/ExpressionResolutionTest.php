@@ -136,6 +136,20 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testForeachElementTypeNamingNoKnownClassHasNoType(): void
+    {
+        $this->knowUserAnd(self::functionDocumented(
+            'Fixtures\Hover\foreachUnknownProvider',
+            '/** @return NoSuchClass[] */',
+        ));
+
+        self::assertEquals(
+            new ResolvedVariable('item', null, self::bindingAt(self::FOREACH, 92, 45)),
+            $this->resolveReceiverAt(self::FOREACH, 'foreach_func_call_unknown', '$item'),
+            'an element type is only taken when it names a known class',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
