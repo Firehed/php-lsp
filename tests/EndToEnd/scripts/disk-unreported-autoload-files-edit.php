@@ -10,16 +10,16 @@ use Firehed\PhpLsp\Tests\EndToEnd\Script;
 use Firehed\PhpLsp\Tests\EndToEnd\SymbolMarker;
 
 $consumer = 'src/DiskChange/Consumer.php';
-$greet = new SymbolMarker('widget_greet');
+$helper = new SymbolMarker('helper_added');
 
-// The editor is the only source of change events, so a change it does not
-// report is not seen.
+// The index of `autoload.files` entries is rebuilt only when the editor
+// reports a change, so an unreported edit is not seen.
 return new Script(
     project: 'tests/Fixtures',
     steps: [
-        new Ask(Feature::Definition, $consumer, $greet),
-        new Copy('DiskChange/Widget.with-greet.php', 'src/DiskChange/Widget.php'),
-        new Ask(Feature::Definition, $consumer, $greet),
+        new Ask(Feature::Definition, $consumer, $helper),
+        new Copy('DiskChange/helpers.with-added.php', 'AutoloadFiles/helpers.php'),
+        new Ask(Feature::Definition, $consumer, $helper),
     ],
     capabilities: new ClientCapabilities(watchedFilesDynamicRegistration: true),
 );
