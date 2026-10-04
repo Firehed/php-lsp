@@ -45,6 +45,16 @@ final class Session
         ]);
     }
 
+    public function close(string $file): void
+    {
+        assert(array_key_exists($file, $this->buffers), "Not open: {$file}");
+        unset($this->buffers[$file], $this->versions[$file]);
+
+        $this->client->notify('textDocument/didClose', (object) [
+            'textDocument' => ['uri' => $this->uri($file)],
+        ]);
+    }
+
     /**
      * @return ServerMessage The response to `shutdown`.
      */
