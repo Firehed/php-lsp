@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -16,28 +19,34 @@ use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Resolution that reads only the document's own tree, so the knowledge
- * interfaces are stubbed.
+ * Expression resolution over a real parse, with the knowledge interfaces
+ * stubbed: other files are only what a test says they are.
  */
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(Scope::class)]
 final class ExpressionResolutionTest extends TestCase
 {
+    use BuildsSymbolInfoTrait;
     use LoadsFixturesTrait;
 
     private const string BINDINGS = 'src/Definition/VariableBindings.php';
 
     private const string DYNAMIC = 'EdgeCases/DynamicAccess.php';
 
+    private const string FOREACH = 'src/Hover/ForeachElement.php';
+
     private const string TOP_LEVEL = 'TopLevel/top_level_closures.php';
 
     private const string USER = 'src/Domain/User.php';
+
+    private const string USER_CLASS = 'Fixtures\Domain\User';
 
     private SymbolResolver $resolver;
 
@@ -102,9 +111,30 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testForeachElementTypeNamedThroughAnImport(): void
+    {
+        $this->knowUserAnd(self::functionDocumented('Fixtures\Hover\foreachUserProvider', '/** @return User[] */'));
+
+        self::assertEquals(
+            new ResolvedVariable('user', self::userType(), self::bindingAt(self::FOREACH, 78, 42)),
+            $this->resolveReceiverAt(self::FOREACH, 'foreach_func_call', '$user'),
+            'a foreach variable takes its element type from the `@return` docblock, resolved through `use`',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
+    }
+
+    private static function functionDocumented(string $fqn, string $docblock): FunctionInfo
+    {
+        return new FunctionInfo(FunctionName::fromFullyQualified($fqn), [], null, $docblock, null, null);
+    }
+
+    private static function userType(): ClasslikeType
+    {
+        return new ClasslikeType(self::className(self::USER_CLASS));
     }
 
     private static function resolverOver(SymbolSourceInterface $symbols): SymbolResolver
@@ -120,6 +150,33 @@ final class ExpressionResolutionTest extends TestCase
     private static function uri(string $fixture): string
     {
         return "file:///{$fixture}";
+    }
+
+    /**
+     * Resolves against a symbol source that knows the fixtures' User class and
+     * these functions, and nothing else.
+     */
+    private function knowUserAnd(FunctionInfo ...$functions): void
+    {
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupClassLike')->willReturnCallback(
+            static fn (ClasslikeName $name): ?ClassInfo => $name->equals(self::className(self::USER_CLASS))
+                ? self::classInfo(self::USER_CLASS)
+                : null,
+        );
+        $symbols->method('lookupFunction')->willReturnCallback(
+            static function (FunctionName $name) use ($functions): ?FunctionInfo {
+                $wanted = $name->qualifiedName->fullyQualifiedName();
+                foreach ($functions as $function) {
+                    if ($function->name->qualifiedName->fullyQualifiedName() === $wanted) {
+                        return $function;
+                    }
+                }
+
+                return null;
+            },
+        );
+        $this->resolver = self::resolverOver($symbols);
     }
 
     /**
