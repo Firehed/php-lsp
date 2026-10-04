@@ -45,6 +45,34 @@ final class Session
         ]);
     }
 
+    public function close(string $file): void
+    {
+        assert(array_key_exists($file, $this->buffers), "Not open: {$file}");
+        unset($this->buffers[$file], $this->versions[$file]);
+
+        $this->client->notify('textDocument/didClose', (object) [
+            'textDocument' => ['uri' => $this->uri($file)],
+        ]);
+    }
+
+    /**
+     * Writes a file on disk as another process would. Nothing is sent.
+     */
+    public function copy(string $from, string $to): void
+    {
+        $copied = copy("{$this->projectRoot}/{$from}", "{$this->projectRoot}/{$to}");
+        assert($copied, "Cannot copy {$from} to {$to}");
+    }
+
+    /**
+     * Deletes a file on disk as another process would. Nothing is sent.
+     */
+    public function delete(string $file): void
+    {
+        $deleted = unlink("{$this->projectRoot}/{$file}");
+        assert($deleted, "Cannot delete {$file}");
+    }
+
     /**
      * @return ServerMessage The response to `shutdown`.
      */
@@ -68,6 +96,21 @@ final class Session
                 'version' => 1,
                 'text' => $this->buffers[$file],
             ],
+        ]);
+    }
+
+    /**
+     * Reports changes on disk, as the client's file watcher would.
+     *
+     * @param list<FileChange> $changes
+     */
+    public function reportChanges(array $changes): void
+    {
+        $this->client->notify('workspace/didChangeWatchedFiles', (object) [
+            'changes' => array_map(
+                fn (FileChange $change): array => ['uri' => $this->uri($change->file), 'type' => $change->type->value],
+                $changes,
+            ),
         ]);
     }
 
