@@ -150,6 +150,17 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testForeachOverADocblockWithoutAnElementTypeHasNoType(): void
+    {
+        $this->knowUserAnd(self::functionDocumented('Fixtures\Hover\foreachUserProvider', '/** @return array */'));
+
+        self::assertEquals(
+            new ResolvedVariable('user', null, self::bindingAt(self::FOREACH, 78, 42)),
+            $this->resolveReceiverAt(self::FOREACH, 'foreach_func_call', '$user'),
+            'a docblock that names no element type gives the element no type',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
