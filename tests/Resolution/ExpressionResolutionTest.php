@@ -43,12 +43,7 @@ final class ExpressionResolutionTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->resolver = new SymbolResolver(
-            ProductionSyntaxSource::create()->source,
-            self::createStub(SymbolSourceInterface::class),
-            self::createStub(MemberResolverInterface::class),
-            self::createStub(TypeSourceInterface::class),
-        );
+        $this->resolver = self::resolverOver(self::createStub(SymbolSourceInterface::class));
     }
 
     public function testArrowFunctionResolvesThroughToItsEnclosingFunction(): void
@@ -110,6 +105,16 @@ final class ExpressionResolutionTest extends TestCase
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
+    }
+
+    private static function resolverOver(SymbolSourceInterface $symbols): SymbolResolver
+    {
+        return new SymbolResolver(
+            ProductionSyntaxSource::create()->source,
+            $symbols,
+            self::createStub(MemberResolverInterface::class),
+            self::createStub(TypeSourceInterface::class),
+        );
     }
 
     private static function uri(string $fixture): string
