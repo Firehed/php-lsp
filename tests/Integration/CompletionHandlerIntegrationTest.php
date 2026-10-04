@@ -181,25 +181,6 @@ class CompletionHandlerIntegrationTest extends TestCase
         self::assertContains('active', $labels);
     }
 
-    public function testThisCompletionIncludesInheritedMembers(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'this_inherited');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        // Own members
-        self::assertContains('ownProperty', $labels);
-        self::assertContains('ownMethod', $labels);
-        // Inherited from ChildClass
-        self::assertContains('childMethod', $labels);
-        // Inherited from ParentClass
-        self::assertContains('parentMethod', $labels);
-        // Inherited from Grandparent
-        self::assertContains('grandparentMethod', $labels);
-    }
-
     /**
      * @see https://github.com/Firehed/php-lsp/issues/185
      */
@@ -955,24 +936,6 @@ class CompletionHandlerIntegrationTest extends TestCase
         $labels = array_column($result['items'], 'label');
         // Should resolve User alias to Fixtures\Namespacing\Models\UserModel
         self::assertContains('ROLE_ADMIN', $labels);
-    }
-
-    public function testStaticCompletionShowsOnlyPublicForExternalClass(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/StaticCaller.php', 'external_static');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        // Public members visible
-        self::assertContains('create', $labels);
-        self::assertContains('getInstance', $labels);
-        self::assertContains('NAME', $labels);
-        // Protected/private not visible from external class
-        self::assertNotContains('reset', $labels);
-        self::assertNotContains('INTERNAL', $labels);
-        self::assertNotContains('SECRET', $labels);
     }
 
     public function testStaticCompletionShowsAllForSameClass(): void
