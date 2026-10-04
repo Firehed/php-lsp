@@ -100,6 +100,21 @@ final class Session
     }
 
     /**
+     * Reports changes on disk, as the client's file watcher would.
+     *
+     * @param list<FileChange> $changes
+     */
+    public function reportChanges(array $changes): void
+    {
+        $this->client->notify('workspace/didChangeWatchedFiles', (object) [
+            'changes' => array_map(
+                fn (FileChange $change): array => ['uri' => $this->uri($change->file), 'type' => $change->type->value],
+                $changes,
+            ),
+        ]);
+    }
+
+    /**
      * @return ServerMessage The response to `initialize`.
      */
     public function start(ClientCapabilities $capabilities): ServerMessage
