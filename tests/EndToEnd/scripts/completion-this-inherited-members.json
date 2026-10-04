@@ -1,0 +1,371 @@
+[
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "processId": null,
+                "rootUri": "file://{project}",
+                "capabilities": {}
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "capabilities": {
+                    "positionEncoding": "utf-16",
+                    "textDocumentSync": {
+                        "openClose": true,
+                        "change": 1,
+                        "save": false
+                    },
+                    "definitionProvider": true,
+                    "hoverProvider": true,
+                    "signatureHelpProvider": {
+                        "triggerCharacters": [
+                            "(",
+                            ","
+                        ]
+                    },
+                    "completionProvider": {
+                        "triggerCharacters": [
+                            ">",
+                            "$",
+                            "\\"
+                        ]
+                    }
+                },
+                "serverInfo": {
+                    "name": "php-lsp",
+                    "version": "0.1.0"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "initialized",
+            "params": {}
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Completion/InheritanceCompletion.php",
+                    "languageId": "php",
+                    "version": 1,
+                    "text": "…"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/completion",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Completion/InheritanceCompletion.php"
+                },
+                "position": {
+                    "line": 29,
+                    "character": 15
+                }
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "isIncomplete": false,
+                "items": [
+                    {
+                        "label": "ownMethod",
+                        "kind": 2,
+                        "detail": "public function ownMethod(): void"
+                    },
+                    {
+                        "label": "triggerThis",
+                        "kind": 2,
+                        "detail": "public function triggerThis(): void"
+                    },
+                    {
+                        "label": "__construct",
+                        "kind": 2,
+                        "detail": "public function __construct(string $name)"
+                    },
+                    {
+                        "label": "triggerParentPrefix",
+                        "kind": 2,
+                        "detail": "public function triggerParentPrefix(): void"
+                    },
+                    {
+                        "label": "triggerParentClassStatic",
+                        "kind": 2,
+                        "detail": "public function triggerParentClassStatic(): void"
+                    },
+                    {
+                        "label": "getCreatedAt",
+                        "kind": 2,
+                        "detail": "public function getCreatedAt(): ?DateTimeImmutable"
+                    },
+                    {
+                        "label": "getUpdatedAt",
+                        "kind": 2,
+                        "detail": "public function getUpdatedAt(): ?DateTimeImmutable"
+                    },
+                    {
+                        "label": "markCreated",
+                        "kind": 2,
+                        "detail": "public function markCreated(): void"
+                    },
+                    {
+                        "label": "markUpdated",
+                        "kind": 2,
+                        "detail": "public function markUpdated(): void"
+                    },
+                    {
+                        "label": "triggerTraitPropertyHover",
+                        "kind": 2,
+                        "detail": "public function triggerTraitPropertyHover(): void"
+                    },
+                    {
+                        "label": "childMethod",
+                        "kind": 2,
+                        "detail": "public function childMethod(): void",
+                        "documentation": "Child method documentation. */"
+                    },
+                    {
+                        "label": "overriddenMethod",
+                        "kind": 2,
+                        "detail": "public function overriddenMethod(): void",
+                        "documentation": "Child implementation of overridden method. */"
+                    },
+                    {
+                        "label": "triggerDirectParentStatic",
+                        "kind": 2,
+                        "detail": "public function triggerDirectParentStatic(): void"
+                    },
+                    {
+                        "label": "withParentParam",
+                        "kind": 2,
+                        "detail": "public function withParentParam(Fixtures\\Inheritance\\ParentClass $obj): void"
+                    },
+                    {
+                        "label": "triggerGrandparentAccess",
+                        "kind": 2,
+                        "detail": "public function triggerGrandparentAccess(): void"
+                    },
+                    {
+                        "label": "triggerHoverInheritedMethod",
+                        "kind": 2,
+                        "detail": "public function triggerHoverInheritedMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverInheritedProperty",
+                        "kind": 2,
+                        "detail": "public function triggerHoverInheritedProperty(): void"
+                    },
+                    {
+                        "label": "triggerHoverGrandparentMethod",
+                        "kind": 2,
+                        "detail": "public function triggerHoverGrandparentMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverGrandparentProperty",
+                        "kind": 2,
+                        "detail": "public function triggerHoverGrandparentProperty(): void"
+                    },
+                    {
+                        "label": "triggerHoverOverriddenMethod",
+                        "kind": 2,
+                        "detail": "public function triggerHoverOverriddenMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverSharedProperty",
+                        "kind": 2,
+                        "detail": "public function triggerHoverSharedProperty(): void"
+                    },
+                    {
+                        "label": "triggerHoverPrivateMethod",
+                        "kind": 2,
+                        "detail": "public function triggerHoverPrivateMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverPrivateProperty",
+                        "kind": 2,
+                        "detail": "public function triggerHoverPrivateProperty(): void"
+                    },
+                    {
+                        "label": "triggerHoverSelfMethod",
+                        "kind": 2,
+                        "detail": "public function triggerHoverSelfMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverStaticMethod",
+                        "kind": 2,
+                        "detail": "public function triggerHoverStaticMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverParentMethod",
+                        "kind": 2,
+                        "detail": "public function triggerHoverParentMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverSelfProperty",
+                        "kind": 2,
+                        "detail": "public function triggerHoverSelfProperty(): void"
+                    },
+                    {
+                        "label": "triggerHoverStaticProperty",
+                        "kind": 2,
+                        "detail": "public function triggerHoverStaticProperty(): void"
+                    },
+                    {
+                        "label": "triggerHoverParentProperty",
+                        "kind": 2,
+                        "detail": "public function triggerHoverParentProperty(): void"
+                    },
+                    {
+                        "label": "triggerSignatureHelpParent",
+                        "kind": 2,
+                        "detail": "public function triggerSignatureHelpParent(): void"
+                    },
+                    {
+                        "label": "triggerSignatureHelpSelf",
+                        "kind": 2,
+                        "detail": "public function triggerSignatureHelpSelf(): void"
+                    },
+                    {
+                        "label": "triggerSignatureHelpStatic",
+                        "kind": 2,
+                        "detail": "public function triggerSignatureHelpStatic(): void"
+                    },
+                    {
+                        "label": "parentMethod",
+                        "kind": 2,
+                        "detail": "public function parentMethod(): void",
+                        "documentation": "Parent method documentation. */"
+                    },
+                    {
+                        "label": "protectedMethod",
+                        "kind": 2,
+                        "detail": "protected function protectedMethod(): void",
+                        "documentation": "Protected method documentation. */"
+                    },
+                    {
+                        "label": "triggerDefPrivateMethod",
+                        "kind": 2,
+                        "detail": "public function triggerDefPrivateMethod(): void"
+                    },
+                    {
+                        "label": "triggerDefProtectedMethod",
+                        "kind": 2,
+                        "detail": "public function triggerDefProtectedMethod(): void"
+                    },
+                    {
+                        "label": "triggerHoverClassConstant",
+                        "kind": 2,
+                        "detail": "public function triggerHoverClassConstant(): string"
+                    },
+                    {
+                        "label": "grandparentMethod",
+                        "kind": 2,
+                        "detail": "public function grandparentMethod(): void",
+                        "documentation": "Grandparent method documentation. */"
+                    },
+                    {
+                        "label": "protectedGrandparentMethod",
+                        "kind": 2,
+                        "detail": "protected function protectedGrandparentMethod(): void",
+                        "documentation": "Protected grandparent method. */"
+                    },
+                    {
+                        "label": "ownProperty",
+                        "kind": 10,
+                        "detail": "private string $ownProperty"
+                    },
+                    {
+                        "label": "createdAt",
+                        "kind": 10,
+                        "detail": "private ?DateTimeImmutable $createdAt",
+                        "documentation": "When the entity was created."
+                    },
+                    {
+                        "label": "updatedAt",
+                        "kind": 10,
+                        "detail": "private ?DateTimeImmutable $updatedAt",
+                        "documentation": "When the entity was last updated."
+                    },
+                    {
+                        "label": "displayName",
+                        "kind": 10,
+                        "detail": "protected string $displayName",
+                        "documentation": "Display name for the entity."
+                    },
+                    {
+                        "label": "childProperty",
+                        "kind": 10,
+                        "detail": "public string $childProperty",
+                        "documentation": "Child property. */"
+                    },
+                    {
+                        "label": "sharedProperty",
+                        "kind": 10,
+                        "detail": "protected string $sharedProperty",
+                        "documentation": "Child override of shared property. */"
+                    },
+                    {
+                        "label": "parentProperty",
+                        "kind": 10,
+                        "detail": "public string $parentProperty",
+                        "documentation": "Parent property. */"
+                    },
+                    {
+                        "label": "protectedProperty",
+                        "kind": 10,
+                        "detail": "protected int $protectedProperty",
+                        "documentation": "Protected parent property. */"
+                    },
+                    {
+                        "label": "grandparentProperty",
+                        "kind": 10,
+                        "detail": "public string $grandparentProperty",
+                        "documentation": "Grandparent property. */"
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "shutdown"
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": null
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "exit"
+        }
+    }
+]
