@@ -1,0 +1,146 @@
+[
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "processId": null,
+                "rootUri": "file://{project}",
+                "capabilities": {}
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "capabilities": {
+                    "positionEncoding": "utf-16",
+                    "textDocumentSync": {
+                        "openClose": true,
+                        "change": 1,
+                        "save": false
+                    },
+                    "definitionProvider": true,
+                    "hoverProvider": true,
+                    "signatureHelpProvider": {
+                        "triggerCharacters": [
+                            "(",
+                            ","
+                        ]
+                    },
+                    "completionProvider": {
+                        "triggerCharacters": [
+                            ">",
+                            "$",
+                            "\\"
+                        ]
+                    }
+                },
+                "serverInfo": {
+                    "name": "php-lsp",
+                    "version": "0.1.0"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "initialized",
+            "params": {}
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Inheritance/Grandparent.php",
+                    "languageId": "php",
+                    "version": 1,
+                    "text": "…"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Inheritance/ParentClass.php",
+                    "languageId": "php",
+                    "version": 1,
+                    "text": "…"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Inheritance/ChildClass.php",
+                    "languageId": "php",
+                    "version": 1,
+                    "text": "…"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {
+                    "uri": "file://{project}/src/Inheritance/ChildClass.php"
+                },
+                "position": {
+                    "line": 83,
+                    "character": 14
+                }
+            }
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "contents": {
+                    "kind": "plaintext",
+                    "value": "Static method documentation. */\n\npublic static function staticMethod(): void"
+                }
+            }
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "shutdown"
+        }
+    },
+    {
+        "received": {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": null
+        }
+    },
+    {
+        "sent": {
+            "jsonrpc": "2.0",
+            "method": "exit"
+        }
+    }
+]
