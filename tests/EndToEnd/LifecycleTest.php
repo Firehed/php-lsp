@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
+use Firehed\PhpLsp\Tests\EndToEnd\Client\FrameNotReceivedException;
+use Firehed\PhpLsp\Tests\EndToEnd\Client\LspClient;
+use Firehed\PhpLsp\Tests\EndToEnd\Client\StartsServerTrait;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use stdClass;

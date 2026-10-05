@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\EndToEnd;
+namespace Firehed\PhpLsp\Tests\EndToEnd\Client;
 
 use RuntimeException;
 
