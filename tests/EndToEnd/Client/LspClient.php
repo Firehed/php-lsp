@@ -8,13 +8,6 @@ use stdClass;
 
 final class LspClient
 {
-    /**
-     * Requests and notifications the server sent on its own initiative.
-     *
-     * @var list<ServerMessage>
-     */
-    public private(set) array $received = [];
-
     private int $nextId = 1;
 
     public function __construct(private readonly ServerProcess $server)
@@ -31,23 +24,13 @@ final class LspClient
         $id = $this->nextId++;
         $this->send(['id' => $id, 'method' => $method], $params);
 
+        // Messages the server sends on its own initiative are passed over.
         while (true) {
             $message = $this->server->readMessage();
             if ($message->method === null && $message->id === $id) {
                 return $message;
             }
-            $this->received[] = $message;
         }
-    }
-
-    /**
-     * Answers a request the server sent.
-     *
-     * @param stdClass|list<mixed>|string|int|float|bool|null $result
-     */
-    public function respond(int|string $id, stdClass|array|string|int|float|bool|null $result): void
-    {
-        $this->write(['id' => $id, 'result' => $result]);
     }
 
     /**
