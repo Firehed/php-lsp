@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\CompletionRequest;
+use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
@@ -96,10 +97,34 @@ final class MemberCandidatesTest extends TestCase
         );
     }
 
-    private static function candidates(CodeResolverInterface $codeResolver): MemberCandidates
+    public function testMethodsInsertASnippetWhenTheClientSupportsIt(): void
     {
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getMemberAccessContext')->willReturn(
+            MemberAccessContext::forInstance(new ClasslikeType(self::owner()), Visibility::Public, ''),
+        );
+        $codeResolver->method('getAccessibleMembers')->willReturn([
+            self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
+        ]);
+
+        $items = self::candidates($codeResolver, snippetSupport: true)->find(self::request());
+
+        self::assertNotNull($items, 'a member access offers members');
+        self::assertSame(
+            InsertTextFormat::Snippet->value,
+            $items[0]['insertTextFormat'] ?? null,
+            'the session snippet support reaches the method item',
+        );
+    }
+
+    private static function candidates(
+        CodeResolverInterface $codeResolver,
+        bool $snippetSupport = false,
+    ): MemberCandidates {
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
-        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
+        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities(
+            snippetSupport: $snippetSupport,
+        ));
 
         return new MemberCandidates($codeResolver, $capabilities);
     }
