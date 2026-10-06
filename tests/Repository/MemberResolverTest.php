@@ -489,6 +489,37 @@ final class MemberResolverTest extends TestCase
         self::assertNotContains($parentPrivate, $result);
     }
 
+    public function testGetMethodsIncludesMethodsOfExtendedInterfaces(): void
+    {
+        $messageName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $requestName = ClasslikeName::fromFullyQualified(self::fakeClass());
+
+        $getHeaders = $this->createMethodInfo('getHeaders', Visibility::Public, $messageName);
+        $getMethod = $this->createMethodInfo('getMethod', Visibility::Public, $requestName);
+
+        $messageInfo = $this->createClassInfo($messageName, ClassKind::Interface_, methods: [
+            'getHeaders' => $getHeaders,
+        ]);
+        $requestInfo = $this->createClassInfo($requestName, ClassKind::Interface_, methods: [
+            'getMethod' => $getMethod,
+        ], interfaces: [$messageName]);
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $messageName->qualifiedName->fullyQualifiedName() => $messageInfo,
+                $requestName->qualifiedName->fullyQualifiedName() => $requestInfo,
+                default => null,
+            },
+        );
+
+        self::assertSame(
+            [$getMethod, $getHeaders],
+            (new MemberResolver($repo))->getMethods($requestName, Visibility::Public),
+            'an interface offers its own methods and those of every interface it extends',
+        );
+    }
+
     public function testGetMethodsFiltersStatic(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
