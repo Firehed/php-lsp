@@ -19,9 +19,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionFunction;
 
-#[CoversClass(Declaration::class)]
 #[CoversClass(DeclarationScanner::class)]
-#[CoversClass(FileDeclarations::class)]
 final class DeclarationScannerTest extends TestCase
 {
     use LoadsFixturesTrait;
