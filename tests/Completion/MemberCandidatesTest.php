@@ -52,6 +52,10 @@ final class MemberCandidatesTest extends TestCase
             MemberAccessContext::forStatic($type, Visibility::Public, ''),
             ['getName', 'getCount', 'name', 'class'],
         ];
+        yield 'static prefix that matches only class' => [
+            MemberAccessContext::forStatic($type, Visibility::Public, 'cl'),
+            ['class'],
+        ];
         yield 'static prefix that misses class' => [
             MemberAccessContext::forStatic($type, Visibility::Public, 'get'),
             ['getName', 'getCount'],
