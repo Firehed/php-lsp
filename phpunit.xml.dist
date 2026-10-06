@@ -10,7 +10,10 @@
          displayDetailsOnPhpunitDeprecations="true"
          displayDetailsOnTestsThatTriggerErrors="true"
          displayDetailsOnTestsThatTriggerNotices="true"
-         displayDetailsOnTestsThatTriggerWarnings="true">
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         failOnWarning="true">
     <testsuites>
         <testsuite name="unit">
             <directory>tests</directory>
