@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
@@ -22,6 +23,7 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompositeCompletionSource::class)]
@@ -43,21 +45,73 @@ final class CompositeCompletionSourceTest extends TestCase
         $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
-        $symbols->method('search')->willReturn([
-            new Symbol('var_dump', 'var_dump', SymbolKind::Function_, new Location('file:///f.php', 0, 0, 0, 0)),
-        ]);
-        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
-        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
-        $source = self::completionSourceFor($symbols, $codeResolver, $capabilities);
-        $line = 'foo($va';
-        $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
-
-        $items = $source->find(new CompletionRequest($document, 1, strlen($line)));
+        $symbols->method('search')->willReturn([self::symbol('var_dump', SymbolKind::Function_)]);
 
         self::assertSame(
             ['name:', '$variable'],
-            array_column($items, 'label'),
+            self::labelsAfter('foo($va', $symbols, $codeResolver),
             'a variable being typed in a call offers argument names and variables, not expressions',
         );
+    }
+
+    /**
+     * @return iterable<string, array{string, list<string>}>
+     */
+    public static function typePositions(): iterable
+    {
+        $common = [
+            'string', 'int', 'float', 'bool', 'array', 'object',
+            'mixed', 'null', 'callable', 'iterable', 'true', 'false',
+        ];
+        yield 'return type' => ['function foo(): ', [...$common, 'void', 'never', 'self', 'static', 'parent']];
+        yield 'parameter type' => ['function foo(', [...$common, 'self', 'parent']];
+        yield 'property type' => ['class Foo { private ?', $common];
+    }
+
+    /**
+     * @param list<string> $builtinTypes
+     */
+    #[DataProvider('typePositions')]
+    public function testATypePositionOffersTypesOnly(string $line, array $builtinTypes): void
+    {
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
+        $codeResolver->method('isValidTypeHint')->willReturn(true);
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('childrenOf')->willReturn(new NamespaceContents());
+        $symbols->method('search')->willReturnCallback(
+            static fn (string $prefix, NameKind $kind): array => match ($kind) {
+                NameKind::ClassLike => [self::symbol('Widget', SymbolKind::Class_)],
+                NameKind::Function_ => [self::symbol('strlen', SymbolKind::Function_)],
+                NameKind::Constant => [self::symbol('PHP_VERSION', SymbolKind::Constant)],
+            },
+        );
+
+        self::assertSame(
+            [...$builtinTypes, 'Widget'],
+            self::labelsAfter($line, $symbols, $codeResolver),
+            'the built-in types valid there and class-likes; never functions, constants, or keywords',
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function labelsAfter(
+        string $line,
+        SymbolSourceInterface $symbols,
+        CodeResolverInterface $codeResolver,
+    ): array {
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
+        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
+        $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
+        $request = new CompletionRequest($document, 1, strlen($line));
+
+        return array_column(self::completionSourceFor($symbols, $codeResolver, $capabilities)->find($request), 'label');
+    }
+
+    private static function symbol(string $name, SymbolKind $kind): Symbol
+    {
+        return new Symbol($name, $name, $kind, new Location('file:///f.php', 0, 0, 0, 0));
     }
 }
