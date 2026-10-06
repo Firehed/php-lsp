@@ -6,6 +6,9 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -27,6 +30,27 @@ final class CompletionItemFactoryTest extends TestCase
             ],
             CompletionItemFactory::forNamedArgument($parameter),
             'a named argument shows its signature and sorts first, so a capped list keeps it',
+        );
+    }
+
+    public function testResolvedMemberShowsItsSignature(): void
+    {
+        $case = new EnumCaseInfo(
+            name: new EnumCaseName(ClasslikeName::fromFullyQualified('Fixtures\Enum\Priority'), 'Low'),
+            backingValue: 1,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(
+            [
+                'label' => 'Low',
+                'kind' => CompletionItemKind::EnumMember->value,
+                'detail' => 'case Low = 1',
+            ],
+            CompletionItemFactory::forResolvedMember($case),
+            'a member shows its signature as the detail',
         );
     }
 }
