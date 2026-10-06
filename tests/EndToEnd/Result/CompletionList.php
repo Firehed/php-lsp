@@ -41,6 +41,17 @@ final readonly class CompletionList
     }
 
     /**
+     * @return list<CompletionItem>
+     */
+    public function itemsLabelled(string $label): array
+    {
+        return array_values(array_filter(
+            $this->items,
+            static fn (CompletionItem $item): bool => $item->label === $label,
+        ));
+    }
+
+    /**
      * @return list<string>
      */
     public function labels(): array
