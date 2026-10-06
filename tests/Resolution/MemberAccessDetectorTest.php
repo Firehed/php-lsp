@@ -18,7 +18,9 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
@@ -248,11 +250,12 @@ class MemberAccessDetectorTest extends TestCase
         $content = $this->loadFixture($fixture);
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $parser = new PhpParserSyntaxSource(new TreeAnnotator());
+        $detector = self::detectorKnowingFixtureMembers($parser);
 
         self::assertEquals(
             $expected,
-            self::detectorKnowingFixtureMembers($this->parser)
-                ->detect($document, $this->parser->parse($document), $line, $character),
+            $detector->detect($document, $parser->parse($document), $line, $character),
             'the receiver type comes from the expression before the arrow; visibility from where the access is',
         );
     }
