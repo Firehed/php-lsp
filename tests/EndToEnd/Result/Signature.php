@@ -12,6 +12,8 @@ use stdClass;
  */
 final readonly class Signature
 {
+    use DecodesDocumentationTrait;
+
     /**
      * @param int|null $activeParameter Null when the signature has no parameters.
      */
@@ -55,20 +57,5 @@ final readonly class Signature
         Assert::assertTrue($index === null || is_int($index), 'the active parameter is an index');
 
         return $index !== null && $index < $parameterCount ? $index : 0;
-    }
-
-    /**
-     * Documentation is a string or MarkupContent.
-     */
-    private static function documentationOf(mixed $documentation): ?string
-    {
-        if ($documentation === null || is_string($documentation)) {
-            return $documentation;
-        }
-        Assert::assertInstanceOf(stdClass::class, $documentation, 'documentation is a string or MarkupContent');
-        $value = $documentation->value ?? null;
-        Assert::assertIsString($value, 'MarkupContent has a value');
-
-        return $value;
     }
 }

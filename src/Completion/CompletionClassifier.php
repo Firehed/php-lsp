@@ -268,7 +268,7 @@ final class CompletionClassifier
             $char = $afterClass[$i];
 
             if ($inString) {
-                if ($char === $stringChar && ($i === 0 || $afterClass[$i - 1] !== '\\')) {
+                if ($char === $stringChar && $afterClass[$i - 1] !== '\\') {
                     $inString = false;
                 }
                 continue;

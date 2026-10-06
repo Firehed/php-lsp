@@ -24,8 +24,9 @@ final readonly class Withholds implements CompletionExpectationInterface
     {
         // A label left out of a capped list is not evidence it was withheld.
         Assert::assertFalse($completions->isIncomplete, 'the list is complete, so an absent label was withheld');
+        $offered = $completions->labels();
         foreach ($this->labels as $label) {
-            Assert::assertNotContains($label, $completions->labels, "{$label} is withheld");
+            Assert::assertNotContains($label, $offered, "{$label} is withheld");
         }
     }
 }

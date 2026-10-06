@@ -22,8 +22,9 @@ final readonly class Offers implements CompletionExpectationInterface
 
     public function checkCompletion(CompletionList $completions): void
     {
+        $offered = $completions->labels();
         foreach ($this->labels as $label) {
-            Assert::assertContains($label, $completions->labels, "{$label} is offered");
+            Assert::assertContains($label, $offered, "{$label} is offered");
         }
     }
 }

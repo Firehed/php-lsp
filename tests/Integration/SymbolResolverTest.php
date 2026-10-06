@@ -1593,9 +1593,8 @@ final class SymbolResolverTest extends TestCase
 
         // Find namespace
         $foundNamespace = null;
-        for ($i = 0; $i < count($lines); $i++) {
-            $lineText = $lines[$i];
-            if (preg_match('/^\s*namespace\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*[;{]/', $lineText, $m) === 1) {
+        foreach ($lines as $line) {
+            if (preg_match('/^\s*namespace\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*[;{]/', $line, $m) === 1) {
                 $foundNamespace = $m[1];
                 break;
             }

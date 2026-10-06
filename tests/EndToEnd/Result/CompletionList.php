@@ -13,11 +13,11 @@ use stdClass;
 final readonly class CompletionList
 {
     /**
-     * @param list<string> $labels In the order the server sent them.
+     * @param list<CompletionItem> $items In the order the server sent them.
      */
     public function __construct(
         public bool $isIncomplete,
-        public array $labels,
+        public array $items,
     ) {
     }
 
@@ -31,28 +31,30 @@ final readonly class CompletionList
             return new self(false, []);
         }
         if (is_array($result)) {
-            return new self(false, self::labelsOf($result));
+            return new self(false, self::itemsOf($result));
         }
         Assert::assertInstanceOf(stdClass::class, $result, 'a completion answer is a list, a CompletionList, or null');
         $isIncomplete = $result->isIncomplete ?? null;
         Assert::assertIsBool($isIncomplete, 'a CompletionList says whether it is incomplete');
 
-        return new self($isIncomplete, self::labelsOf($result->items ?? null));
+        return new self($isIncomplete, self::itemsOf($result->items ?? null));
     }
 
     /**
      * @return list<string>
      */
-    private static function labelsOf(mixed $items): array
+    public function labels(): array
+    {
+        return array_map(static fn (CompletionItem $item): string => $item->label, $this->items);
+    }
+
+    /**
+     * @return list<CompletionItem>
+     */
+    private static function itemsOf(mixed $items): array
     {
         Assert::assertIsList($items, 'completion items are a list');
 
-        return array_map(static function (mixed $item): string {
-            Assert::assertInstanceOf(stdClass::class, $item, 'a CompletionItem is an object');
-            $label = $item->label ?? null;
-            Assert::assertIsString($label, 'a CompletionItem has a label');
-
-            return $label;
-        }, $items);
+        return array_map(CompletionItem::fromWire(...), $items);
     }
 }

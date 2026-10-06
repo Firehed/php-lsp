@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp\Tests\EndToEnd\Expectation;
+
+use Firehed\PhpLsp\Tests\EndToEnd\Result\CompletionList;
+use PHPUnit\Framework\Assert;
+
+/**
+ * The item with this label is offered, and its documentation is exactly this.
+ */
+final readonly class Documents implements CompletionExpectationInterface
+{
+    public function __construct(
+        private string $label,
+        private string $documentation,
+    ) {
+    }
+
+    public function checkCompletion(CompletionList $completions): void
+    {
+        $documented = [];
+        foreach ($completions->items as $item) {
+            if ($item->label === $this->label) {
+                $documented[] = $item->documentation;
+            }
+        }
+        Assert::assertSame(
+            [$this->documentation],
+            $documented,
+            "{$this->label} is offered once, documented as expected",
+        );
+    }
+}
