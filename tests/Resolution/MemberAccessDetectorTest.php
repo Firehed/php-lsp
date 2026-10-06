@@ -348,7 +348,7 @@ class MemberAccessDetectorTest extends TestCase
         self::assertEquals(
             $expected,
             $detector->detect($document, $parser->parse($document), $line, $character),
-            'the receiver type comes from the expression before the arrow; visibility from where the access is',
+            'the receiver type comes from the expression before the operator; visibility from where the access is',
         );
     }
 
