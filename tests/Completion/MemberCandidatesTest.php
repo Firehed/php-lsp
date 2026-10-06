@@ -120,6 +120,6 @@ final class MemberCandidatesTest extends TestCase
 
     private static function request(): CompletionRequest
     {
-        return new CompletionRequest(new TextDocument('file:///t.php', 'php', 0, "<?php\n\$user->"), 1, 7);
+        return new CompletionRequest(new TextDocument('file:///t.php', 'php', 0, ''), 0, 0);
     }
 }
