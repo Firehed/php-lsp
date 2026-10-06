@@ -18,6 +18,7 @@ final readonly class CompletionItem
         public string $label,
         public ?string $detail,
         public ?string $documentation,
+        public ?string $sortText,
     ) {
     }
 
@@ -31,7 +32,17 @@ final readonly class CompletionItem
         Assert::assertIsString($label, 'a CompletionItem has a label');
         $detail = $wire->detail ?? null;
         Assert::assertTrue($detail === null || is_string($detail), 'a CompletionItem detail is a string');
+        $sortText = $wire->sortText ?? null;
+        Assert::assertTrue($sortText === null || is_string($sortText), 'a CompletionItem sortText is a string');
 
-        return new self($label, $detail, self::documentationOf($wire->documentation ?? null));
+        return new self($label, $detail, self::documentationOf($wire->documentation ?? null), $sortText);
+    }
+
+    /**
+     * [LSP] CompletionItem.sortText: when omitted, the label is used.
+     */
+    public function sortKey(): string
+    {
+        return $this->sortText ?? $this->label;
     }
 }
