@@ -104,6 +104,10 @@ class ScopeTest extends TestCase
             Scope::forNode(self::findClosureWithUses($ast))->allowsImplicitCapture(),
             'a closure sees only what its use clause names',
         );
+        self::assertFalse(
+            Scope::forNode(self::findMethod('methodWithThis', $ast))->allowsImplicitCapture(),
+            'a method sees none of the enclosing variables',
+        );
     }
 
     public function testSourceNodeIsTheFunctionLikeTheScopeWasBuiltFrom(): void
