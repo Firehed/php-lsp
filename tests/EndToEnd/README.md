@@ -99,6 +99,7 @@ No test uses the dependency container.
 3. Turn each of the original test's assertions into an expectation, and see each fail once before trusting it.
    Check that each expectation would reject a plausible wrong answer, not just an empty one.
 4. Whether the original is deleted is decided per migration, in review.
-5. Before deleting an original, run `composer unit -- --coverage-text` before and after, and report the difference in the pull request.
-   Cover lost lines with unit tests where possible.
+5. Before deleting an original, the unit suite must already cover the source lines it exercised.
+   Check with `composer coverage`, and report coverage of those files in the pull request.
+   Cover missing lines with unit tests where possible.
    Name any line that only the end-to-end tier still runs; those are approved case by case.

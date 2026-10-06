@@ -13,7 +13,8 @@
          displayDetailsOnTestsThatTriggerWarnings="true"
          failOnDeprecation="true"
          failOnNotice="true"
-         failOnWarning="true">
+         failOnWarning="true"
+         requireCoverageMetadata="true">
     <testsuites>
         <testsuite name="unit">
             <directory>tests</directory>

@@ -27,17 +27,26 @@ jobs:
       - name: Install fixture dependencies
         run: composer install --prefer-dist --no-progress --working-dir=tests/Fixtures
 
-      - name: Run PHPUnit
-        run: composer unit
+      - name: Run unit tests with coverage
+        run: composer coverage
           --
           --coverage-clover coverage.xml
-          --log-junit junit.xml
+          --log-junit junit-unit.xml
+
+      - name: Run integration and end-to-end tests
+        if: ${{ !cancelled() }}
+        run: composer unit
+          --
+          --testsuite integration,end-to-end
+          --log-junit junit-other.xml
 
       - name: Upload coverage reports to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          disable_search: true
 
       - name: Upload test reports to Codecov
         if: ${{ !cancelled() }}
@@ -45,3 +54,5 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
+          files: junit-unit.xml,junit-other.xml
+          disable_search: true

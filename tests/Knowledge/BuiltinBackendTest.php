@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -25,6 +26,7 @@ use PHPUnit\Framework\TestCase;
  * that namespace enumeration reads the same internal-symbol index the prefix
  * search does.
  */
+#[CoversClass(BuiltinBackend::class)]
 final class BuiltinBackendTest extends TestCase
 {
     use LooksUpBackendSymbolsTrait;
