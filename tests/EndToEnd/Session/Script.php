@@ -16,6 +16,7 @@ final readonly class Script
     public function __construct(
         public string $project,
         public array $steps,
+        public ClientCapabilities $capabilities = new ClientCapabilities(),
     ) {
     }
 }

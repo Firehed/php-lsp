@@ -30,6 +30,7 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
 - `project` is a directory holding `composer.json`, `composer.lock`, and source code, named as a path from the repository root.
   Run `composer install` in it before the suite.
   Each script runs against a throwaway copy, which becomes the server's working directory.
+- `capabilities` is what the client declares in `initialize`.
 - `Open` and `Type` are what a person does in the editor.
   Open only files a person would have open; the server finds the rest on its own.
 - `Definition` and `Complete` are requests.
