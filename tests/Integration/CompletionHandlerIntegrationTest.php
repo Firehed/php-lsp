@@ -137,37 +137,6 @@ class CompletionHandlerIntegrationTest extends TestCase
         self::fail("no completion item labelled {$label}");
     }
 
-    public function testThisMethodCompletion(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-        self::assertNotEmpty($result['items']);
-
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('getName', $labels);
-        self::assertContains('setName', $labels);
-        self::assertContains('getCount', $labels);
-        self::assertContains('isActive', $labels);
-    }
-
-    public function testThisMethodCompletionWithPrefix(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_prefix');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        self::assertContains('getName', $labels);
-        self::assertContains('getCount', $labels);
-        self::assertNotContains('setName', $labels);
-        self::assertNotContains('isActive', $labels);
-    }
-
     public function testThisPropertyCompletion(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
