@@ -15,7 +15,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(VariableBindings::class)]
-#[CoversClass(VariableBinding::class)]
 class VariableBindingsTest extends TestCase
 {
     use AstTestHelperTrait;
