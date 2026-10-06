@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
-use Firehed\PhpLsp\Completion\CompletionClassification;
 use Firehed\PhpLsp\Completion\CompletionClassifier;
 use Firehed\PhpLsp\Completion\CompletionKind;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -16,8 +15,6 @@ use PHPUnit\Framework\TestCase;
  * whole file, so inputs are inline fragments rather than fixtures.
  */
 #[CoversClass(CompletionClassifier::class)]
-#[CoversClass(CompletionClassification::class)]
-#[CoversClass(CompletionKind::class)]
 class CompletionClassifierTest extends TestCase
 {
     #[DataProvider('provideClassifications')]
