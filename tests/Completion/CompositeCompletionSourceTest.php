@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
@@ -83,12 +84,17 @@ final class CompositeCompletionSourceTest extends TestCase
     {
         $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
-        $codeResolver->method('isValidTypeHint')->willReturn(true);
+        $codeResolver->method('isValidTypeHint')->willReturnCallback(
+            static fn (ClasslikeName $name): bool => !$name->equals(ClasslikeName::fromFullyQualified('Mixin')),
+        );
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturnCallback(
             static fn (string $prefix, NameKind $kind): array => match ($kind) {
-                NameKind::ClassLike => [self::symbol('Widget', SymbolKind::Class_)],
+                NameKind::ClassLike => [
+                    self::symbol('Widget', SymbolKind::Class_),
+                    self::symbol('Mixin', SymbolKind::Trait_),
+                ],
                 NameKind::Function_ => [self::symbol('strlen', SymbolKind::Function_)],
                 NameKind::Constant => [self::symbol('PHP_VERSION', SymbolKind::Constant)],
             },
@@ -97,7 +103,8 @@ final class CompositeCompletionSourceTest extends TestCase
         self::assertSame(
             $expected,
             self::labelsAfter($line, $symbols, $codeResolver),
-            'built-in types valid there and class-likes, plus modifiers after visibility; no functions or constants',
+            'built-in types valid there and type-hintable class-likes, plus modifiers after visibility; '
+                . 'no traits, functions, or constants',
         );
     }
 
