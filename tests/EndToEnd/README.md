@@ -42,7 +42,7 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
 - Definition expectations are `LandsOn(file, line, column)`, where the column is optional, and `NoAnswer()`.
   Lines and columns are 1-based, as the file reads.
 - Hover expectations are `Shows(...)` and `Hides(...)`, fragments of the content, `Formatted(MarkupKind)`, and `NoAnswer()`.
-- Signature help expectations are `SignatureShows(...)` and `DocumentationShows(...)` on the active signature, `ActiveParameter(index)`, `SignatureCount(n)`, and `NoAnswer()`.
+- Signature help expectations are `SignatureShows(...)` and `DocumentationShows(...)` on the active signature, `DocumentationIs(text)` for its exact documentation, `ActiveParameter(index)`, `SignatureCount(n)`, and `NoAnswer()`.
 - Completion expectations are `Offers(...)`, every label present in any order, `Withholds(...)`, no label present in a complete list, and `Documents(label, text)`, one item with that label and exactly that documentation.
 - Steps name files relative to the project, and places in them by marker.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
