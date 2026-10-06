@@ -11,6 +11,8 @@ $common = [
     'string', 'int', 'float', 'bool', 'array', 'object',
     'mixed', 'iterable', 'callable', 'null', 'true', 'false',
 ];
+$parameterTypes = [...$common, 'self', 'parent'];
+$returnTypes = [...$common, 'void', 'never', 'self', 'static', 'parent'];
 
 $typeThenComplete = fn (
     string $file,
@@ -38,48 +40,22 @@ return [
     ),
     'parameter type prefix' => $typeThenComplete($hints, 'param_type', 'str', new Expectation\Offers('string')),
     'property type prefix' => $typeThenComplete($hints, 'property_type', 'str', new Expectation\Offers('string')),
-    'return type' => $typeThenComplete(
-        $hints,
-        'return_type',
-        '',
-        new Expectation\Offers(...$common),
-        new Expectation\Offers('void', 'never', 'self', 'static', 'parent'),
-    ),
-    'return type after |' => $typeThenComplete(
-        $hints,
-        'return_type',
-        'int|',
-        new Expectation\Offers(...$common),
-        new Expectation\Offers('void', 'never', 'self', 'static', 'parent'),
-    ),
+    'return type' => $typeThenComplete($hints, 'return_type', '', new Expectation\Offers(...$returnTypes)),
+    'return type after |' => $typeThenComplete($hints, 'return_type', 'int|', new Expectation\Offers(...$returnTypes)),
     'return type after &' => $typeThenComplete(
         $hints,
         'return_type',
         'Countable&',
-        new Expectation\Offers(...$common),
-        new Expectation\Offers('void', 'never', 'self', 'static', 'parent'),
+        new Expectation\Offers(...$returnTypes),
     ),
-    'return type after ?' => $typeThenComplete(
-        $hints,
-        'return_type',
-        '?',
-        new Expectation\Offers(...$common),
-        new Expectation\Offers('void', 'never', 'self', 'static', 'parent'),
-    ),
+    'return type after ?' => $typeThenComplete($hints, 'return_type', '?', new Expectation\Offers(...$returnTypes)),
     'return type after ? and a space' => $typeThenComplete(
         $hints,
         'return_type',
         '? ',
-        new Expectation\Offers(...$common),
-        new Expectation\Offers('void', 'never', 'static'),
+        new Expectation\Offers(...$returnTypes),
     ),
-    'parameter type' => $typeThenComplete(
-        $hints,
-        'param_type',
-        '',
-        new Expectation\Offers(...$common),
-        new Expectation\Offers('self', 'parent'),
-    ),
+    'parameter type' => $typeThenComplete($hints, 'param_type', '', new Expectation\Offers(...$parameterTypes)),
     'property type after ?' => $typeThenComplete($hints, 'nullable_property', '', new Expectation\Offers(...$common)),
     'property type after |' => $typeThenComplete($hints, 'property_type', 'int|', new Expectation\Offers(...$common)),
     'property type after &' => $typeThenComplete(
