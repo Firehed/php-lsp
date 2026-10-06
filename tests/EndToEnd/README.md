@@ -48,6 +48,7 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
   - `Withholds(...)`: no label is present, in a complete list.
   - `Documents(label, text)` and `Details(label, text)`: one item has the label, with exactly that documentation or detail.
   - `RanksAbove(higher, lower)`: the client sorts one above the other.
+  - `NoAnswer()`: nothing is offered.
 - Steps name files relative to the project, and places in them by marker.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
 - `SymbolMarker` is the symbol on a line ending in `//hover:name`.
