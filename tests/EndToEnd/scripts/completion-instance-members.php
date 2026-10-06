@@ -100,7 +100,13 @@ return [
     '$this in the second class of a file' => $complete(
         $multiClass,
         'this_in_second_class',
-        new Expectation\Offers('ownProperty', 'ownMethod', 'triggerThisInChild', 'inheritedProperty', 'inheritedMethod'),
+        new Expectation\Offers(
+            'ownProperty',
+            'ownMethod',
+            'triggerThisInChild',
+            'inheritedProperty',
+            'inheritedMethod',
+        ),
     ),
     '$this ignores an unrelated class in the same file' => $complete(
         $multiClass,
