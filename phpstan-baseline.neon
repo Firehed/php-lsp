@@ -147,30 +147,3 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 2
 			path: tests/Domain/TypeFactoryTest.php
-
-		-
-			message: '''
-				#^Fetching deprecated class constant STOP_TRAVERSAL of class PhpParser\\NodeTraverser\:
-				Use NodeVisitor\:\:STOP_TRAVERSAL instead\.$#
-			'''
-			identifier: classConstant.deprecated
-			count: 6
-			path: tests/Utility/ScopeFinderTest.php
-
-		-
-			message: '''
-				#^Fetching deprecated class constant STOP_TRAVERSAL of class PhpParser\\NodeTraverser\:
-				Use NodeVisitor\:\:STOP_TRAVERSAL instead\.$#
-			'''
-			identifier: classConstant.deprecated
-			count: 1
-			path: tests/Utility/ScopeTest.php
-
-		-
-			message: '''
-				#^Fetching deprecated class constant STOP_TRAVERSAL of class PhpParser\\NodeTraverser\:
-				Use NodeVisitor\:\:STOP_TRAVERSAL instead\.$#
-			'''
-			identifier: classConstant.deprecated
-			count: 1
-			path: tests/Utility/VariableBindingsTest.php

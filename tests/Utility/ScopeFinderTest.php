@@ -11,6 +11,7 @@ use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -108,7 +109,7 @@ class ScopeFinderTest extends TestCase
             {
                 if ($node instanceof Stmt\ClassMethod) {
                     $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
+                    return NodeVisitor::STOP_TRAVERSAL;
                 }
                 return null;
             }
@@ -268,7 +269,7 @@ class ScopeFinderTest extends TestCase
             {
                 if ($node instanceof Stmt\Class_ && $node->name === null) {
                     $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
+                    return NodeVisitor::STOP_TRAVERSAL;
                 }
                 return null;
             }
@@ -468,7 +469,7 @@ class ScopeFinderTest extends TestCase
             {
                 if ($node instanceof Node\Name && $node->toString() === $this->name) {
                     $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
+                    return NodeVisitor::STOP_TRAVERSAL;
                 }
                 return null;
             }
@@ -497,7 +498,7 @@ class ScopeFinderTest extends TestCase
             {
                 if ($node instanceof Stmt\ClassMethod && $node->name->toString() === $this->name) {
                     $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
+                    return NodeVisitor::STOP_TRAVERSAL;
                 }
                 return null;
             }
@@ -530,7 +531,7 @@ class ScopeFinderTest extends TestCase
                     && $node->name->toString() === $this->methodName
                 ) {
                     $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
+                    return NodeVisitor::STOP_TRAVERSAL;
                 }
                 return null;
             }
