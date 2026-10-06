@@ -31,8 +31,12 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
   Run `composer install` in it before the suite.
   Each script runs against a throwaway copy, which becomes the server's working directory.
 - `capabilities` is what the client declares in `initialize`.
-- `Open` and `Type` are what a person does in the editor.
+  Declare watched-file support in any script that changes files on disk.
+- `Open`, `Type`, and `Close` are what a person does in the editor.
   Open only files a person would have open; the server finds the rest on its own.
+- `Copy` and `Delete` change the disk as another program would, and the server is not told.
+  `Copy` puts a prepared variant in place; variants live outside the autoload paths, such as `DiskChange/` in the fixture project.
+- `ReportChanges` is the client's file watcher reporting what changed, in one notification.
 - `Definition` and `Complete` are requests.
   Each decodes the answer, failing on a malformed one, and checks it against `expect:`: one expectation, or a list that must all hold.
 - Definition expectations are `LandsOn(file, line, column)`, where the column is optional, and `NoAnswer()`.
