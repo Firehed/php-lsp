@@ -39,6 +39,10 @@ final class MemberCandidatesTest extends TestCase
             MemberAccessContext::forInstance($type, Visibility::Public, 'get'),
             ['getName', 'getCount'],
         ];
+        yield 'instance, prefix that matches nothing' => [
+            MemberAccessContext::forInstance($type, Visibility::Public, 'zzz'),
+            [],
+        ];
         yield 'parent, methods only' => [
             MemberAccessContext::forParent($type, Visibility::Protected, ''),
             ['getName', 'getCount'],
@@ -73,7 +77,7 @@ final class MemberCandidatesTest extends TestCase
 
         $items = self::candidates($codeResolver)->find($request);
 
-        self::assertNotNull($items, 'a member access offers members');
+        self::assertNotNull($items, 'a member access answers, even when nothing matches');
         self::assertSame(
             $expected,
             array_column($items, 'label'),
