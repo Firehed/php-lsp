@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\FrameNotReceivedException;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\LspClient;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\StartsServerTrait;
+use Firehed\PhpLsp\Tests\EndToEnd\Session\Session;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -16,21 +17,16 @@ final class LifecycleTest extends TestCase
 {
     use StartsServerTrait;
 
-    private const string PROJECT = __DIR__ . '/../Fixtures';
+    private const string PROJECT = 'tests/Fixtures';
 
     public function testCleanSessionExitsZero(): void
     {
-        $server = $this->startServer(self::PROJECT);
-        $client = new LspClient($server);
+        $projectRoot = $this->projectRoot(self::PROJECT);
+        $server = $this->startServer($projectRoot);
+        $session = new Session(new LspClient($server), $projectRoot);
 
-        $initialize = $client->request('initialize', (object) [
-            'processId' => null,
-            'rootUri' => 'file://' . self::PROJECT,
-            'capabilities' => new stdClass(),
-        ]);
-        $client->notify('initialized', new stdClass());
-        $shutdown = $client->request('shutdown');
-        $client->notify('exit');
+        $initialize = $session->start();
+        $shutdown = $session->end();
 
         self::assertSame(0, $server->waitForExit(), 'exit after shutdown is a clean exit ([LSP] exit)');
         self::assertSame('', $server->stderr(), 'the server writes nothing to stderr in a clean session');
@@ -46,7 +42,7 @@ final class LifecycleTest extends TestCase
 
     public function testSilentServerFailsTheReadAtItsDeadline(): void
     {
-        $server = $this->startServer(self::PROJECT);
+        $server = $this->startServer($this->projectRoot(self::PROJECT));
 
         $this->expectException(FrameNotReceivedException::class);
         $server->readMessage(deadline: 0.1);

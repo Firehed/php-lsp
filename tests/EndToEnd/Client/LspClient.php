@@ -8,6 +8,14 @@ use stdClass;
 
 final class LspClient
 {
+    /**
+     * Every message sent and received, in wire order. Document text sent is
+     * replaced with `…`: `didOpen` and `didChange` carry whole files.
+     *
+     * @var list<array{sent: stdClass}|array{received: stdClass}>
+     */
+    public private(set) array $transcript = [];
+
     private int $nextId = 1;
 
     public function __construct(private readonly ServerProcess $server)
@@ -27,8 +35,26 @@ final class LspClient
         // Messages the server sends on its own initiative are passed over.
         while (true) {
             $message = $this->server->readMessage();
+            $this->transcript[] = ['received' => $message->body];
             if ($message->method === null && $message->id === $id) {
                 return $message;
+            }
+        }
+    }
+
+    /**
+     * In what a client sends, `text` holds document content ([LSP]
+     * TextDocumentItem, TextDocumentContentChangeEvent, DidSaveTextDocumentParams).
+     */
+    private static function elideText(mixed $decoded): void
+    {
+        if ($decoded instanceof stdClass && property_exists($decoded, 'text')) {
+            $decoded->text = '…';
+        }
+        $members = $decoded instanceof stdClass ? get_object_vars($decoded) : $decoded;
+        if (is_array($members)) {
+            foreach ($members as $member) {
+                self::elideText($member);
             }
         }
     }
@@ -42,6 +68,7 @@ final class LspClient
         if ($params !== null) {
             $message['params'] = $params;
         }
+
         $this->write($message);
     }
 
@@ -52,5 +79,10 @@ final class LspClient
     {
         $json = json_encode(['jsonrpc' => '2.0', ...$message], JSON_THROW_ON_ERROR);
         $this->server->writeFrame($json);
+
+        $sent = json_decode($json, flags: JSON_THROW_ON_ERROR);
+        assert($sent instanceof stdClass);
+        self::elideText($sent);
+        $this->transcript[] = ['sent' => $sent];
     }
 }
