@@ -17,7 +17,6 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
-use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -31,7 +30,6 @@ use PHPUnit\Framework\TestCase;
  * stubbed: other files are only what a test says they are.
  */
 #[CoversClass(ExpressionResolver::class)]
-#[CoversClass(Scope::class)]
 final class ExpressionResolutionTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
