@@ -3,6 +3,10 @@
 
 declare(strict_types=1);
 
+// Stdout carries the protocol; a PHP error printed there corrupts the stream.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 require __DIR__ . '/../vendor/autoload.php';
 
 use Firehed\Container\AutoDetect;

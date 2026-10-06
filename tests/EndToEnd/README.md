@@ -75,8 +75,8 @@ Every test here is `#[CoversNothing]`, and coverage cannot see the child process
   CI runs every version in the matrix; a built-in script is not settled until it passes there.
 - The server matches documents by their physical path.
   Build every URI from the resolved project root, as `Session` does.
-- A PHP warning from the server corrupts the protocol stream and fails the test.
-  That is intended; fix the server, not the test.
+- The server logs PHP errors rather than displaying them, so they never corrupt the protocol stream and do not fail a script.
+  The in-process suites fail on deprecations, notices, and warnings instead.
 
 ## Where a test belongs
 
