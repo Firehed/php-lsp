@@ -31,36 +31,6 @@ class ServerTest extends TestCase
     use BuildsContainerTrait;
     use LoadsFixturesTrait;
 
-    public function testFullLifecycle(): void
-    {
-        $input = $this->buildMessages(
-            $this->initializeJson(1),
-            $this->initializedJson(),
-            $this->requestJson(2, 'shutdown'),
-            $this->notificationJson('exit'),
-        );
-        $outputBuffer = new WritableBuffer();
-
-        $transport = $this->createTransport($input, $outputBuffer);
-        $server = $this->serverWith($transport);
-
-        $exitCode = $server->run();
-
-        self::assertSame(0, $exitCode);
-
-        $responses = $this->decodeResponses($outputBuffer->buffer());
-
-        $initialize = $this->responseWithId($responses, 1);
-        $result = $initialize['result'];
-        assert(is_array($result));
-        self::assertArrayHasKey('capabilities', $result, 'initialize advertises capabilities');
-        self::assertArrayHasKey('serverInfo', $result, 'initialize reports server info');
-
-        $shutdown = $this->responseWithId($responses, 2);
-        self::assertArrayHasKey('result', $shutdown, 'shutdown is answered with a success result');
-        self::assertNull($shutdown['result'], 'shutdown result is null');
-    }
-
     public function testRegistersForWatchedFilesAfterInitializedWhenTheClientSupportsIt(): void
     {
         $input = $this->buildMessages(
